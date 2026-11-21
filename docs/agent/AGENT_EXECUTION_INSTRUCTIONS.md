@@ -52,7 +52,8 @@ No hard deletion or restore. Soft deletion only where explicitly allowed, with r
 ## Safety
 - Never expose secrets in logs/reports or commit `.env`, `.env.testing`, backups or credentials.
 - Never use the development DB for tests.
-- Never run `migrate:fresh`, drop/truncate databases, destructive migrations, production deployment, remote push or Git history rewriting without explicit approval.
+- Never run `migrate:fresh`, drop/truncate databases, destructive migrations, production deployment, or Git history rewriting without explicit Product Owner approval.
+- Never run `git push`, `git push --force`, or any equivalent remote-publishing command. Never publish branches, tags, releases, or other repository changes remotely. This remote-publishing prohibition is absolute and cannot be overridden by a future approval request.
 - Do not change global PostgreSQL authentication, MySQL, Redis or other machine services without a demonstrated need and approval.
 - Do not install packages/services without checking whether they are already available and whether they are justified.
 - Do not modify sibling projects or legacy applications.
@@ -61,7 +62,16 @@ No hard deletion or restore. Soft deletion only where explicitly allowed, with r
 Use Pest, Pint, Larastan and frontend production builds. Add regression tests for meaningful behavior. Do not weaken tests to get green results. Report skipped tests accurately. Browser and load tests should be introduced at the appropriate foundation phase.
 
 ## Git
-Work only in the `nexus` repository on its existing `main` branch unless an approved branching strategy is established. Review diffs, secrets and tests before each milestone commit. Commit logical completed milestones locally; do not push without approval.
+Work only in the `nexus` repository on its existing `main` branch unless an approved branching strategy is established. Review diffs, secrets and tests before each milestone commit.
+
+**Local commits:** Local Git commits are permitted only when authorized by the Product Owner. Use small, descriptive commits after verification when so authorized. Report commit hashes and working-tree status.
+
+**Absolute no-push / no remote publish:**
+- Never run `git push`, `git push --force`, or any equivalent remote-publishing command.
+- Never publish branches, tags, releases, or other repository changes remotely.
+- This prohibition is absolute and cannot be overridden by a future approval request.
+
+This policy is consistent with `.cursor/rules/truckbill-project.mdc`.
 
 ## Reporting
 Maintain `docs/engineering/IMPLEMENTATION_LOG.md` and architecture decision records. At each milestone report: completed work, changed files, verification and actual results, security implications, decisions, outstanding risks/blockers, and next milestone. Distinguish implemented/tested, implemented/untested, planned and blocked.

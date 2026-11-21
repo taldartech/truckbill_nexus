@@ -6,6 +6,8 @@
 **Assignment:** Phase 0 documentation finalization & approval package  
 **Formal approval status:** **Not claimed.** Documents are Draft / Pending Review / Ready for Formal Approval preparation.
 
+> **SUPERSEDED (traceability statistics):** This report’s **75-row** traceability statistics are a **historical snapshot** from the finalization pass. They are **superseded** by the verified recount in [`PHASE_0_FINAL_CONSISTENCY_REPORT.md`](./PHASE_0_FINAL_CONSISTENCY_REPORT.md) (**76** unique requirement IDs; reconciled status totals). Do not treat the 75-row figures in this document as current. Historical findings and narrative below are preserved; they are not rewritten to claim this report originally contained 76 rows.
+
 ---
 
 ## 1. Executive Summary

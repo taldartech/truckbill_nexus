@@ -54,10 +54,11 @@ Update progress documentation only with verified implementation results.
 Governing documents remain Draft until the product owner formally approves them.
 
 ## Git Policy
-- Local Git commits are explicitly permitted.
-- Use small, descriptive commits after verification.
+- Local Git commits are permitted only when authorized by the Product Owner.
+- Use small, descriptive commits after verification when so authorized.
 - Never execute `git push`, `git push --force`, or any equivalent remote-publishing command.
-- Never publish branches, tags or releases.
+- Never publish branches, tags, releases, or other repository changes remotely.
+- This remote-publishing prohibition is absolute and cannot be overridden by a future approval request.
 - Report commit hashes and working-tree status.
 
 ## Safety

@@ -50,7 +50,12 @@ Before work, read all six governing docs and ADRs. Identify acceptance criteria,
 Record date, fact, reason, affected modules and ADR/PR/issue when technology/version, schema, API, infrastructure, major constraint, approved requirement change, migration or release milestone changes. Business policy changes require PRD/Rules update and approval first. Memory must not silently override governing docs.
 
 ## Current status
-Phase 0 documentation finalization in progress for formal approval. Not approved. No application code authorized. Legacy migration is future work.
+- Phase 0 documentation package is **ready for Product Owner formal approval**.
+- Phase 0 is **not approved**.
+- No application coding is authorized (DEC-004).
+- Design deliverables remain **Not Started** and are required before product-specific UI (Design Deliverables Gate; not a substitute for Phase 0 approval).
+- Legacy migration remains future work.
+- Authoritative current consistency snapshot: `docs/engineering/PHASE_0_FINAL_CONSISTENCY_REPORT.md`.
 
 ### Phase 0 decision log (documentation)
 | Date | Decision | Source |
