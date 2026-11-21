@@ -1,0 +1,68 @@
+---
+description: TruckBill product, architecture, security, development workflow and Git policies
+alwaysApply: true
+---
+
+# TruckBill Project Instructions
+
+## Governing Documents
+Before implementation, read the relevant documents in `docs/governing/` and `docs/agent/`.
+
+The governing documents define product requirements, architecture, business rules, design and delivery phases. Do not silently change them.
+
+## Product
+TruckBill is a unified transport, logistics, fleet management and accounting SaaS platform.
+
+Broker, OwnFleet and Partload are integrated workflows within one company workspace, not separate applications.
+
+Follow the approved product scope and business rules.
+
+## Technology
+Follow the existing configured stack:
+- Laravel 13
+- PHP 8.5
+- React
+- Inertia
+- PostgreSQL
+- Redis
+
+Follow `Architecture.md` for the complete architecture direction.
+
+## Architecture and Security
+- Maintain modular monolith architecture.
+- Enforce company and branch tenant isolation.
+- Enforce backend authorization for every operation.
+- Preserve financial integrity and immutable audit history.
+- Never implement hard deletion or restoration contrary to governing rules.
+- Follow the documented identity, ownership and permission models.
+
+## Development Workflow
+- Follow `Phases.md` as the sole delivery phase-numbering authority (DEC-001). Phase 1 is engineering foundation; initial manual Razorpay renewals are Phase 3.
+- Do not start application coding — including engineering foundation implementation — until Phase 0 is formally completed and approved (DEC-004).
+- Do not start business modules before engineering foundation exit criteria are met.
+- Inspect existing code and conventions before changing files.
+- Prefer existing dependencies and components.
+- Do not change dependencies without approval.
+- Test meaningful behavior changes.
+- Update implementation memory and requirements traceability.
+- Record significant architectural decisions as ADRs.
+
+## Documentation
+Preserve governing document intent; do not silently invent requirements.
+Document conflicts and unresolved decisions as Pending instead of inventing answers.
+Update progress documentation only with verified implementation results.
+Governing documents remain Draft until the product owner formally approves them.
+
+## Git Policy
+- Local Git commits are explicitly permitted.
+- Use small, descriptive commits after verification.
+- Never execute `git push`, `git push --force`, or any equivalent remote-publishing command.
+- Never publish branches, tags or releases.
+- Report commit hashes and working-tree status.
+
+## Safety
+- Never expose secrets or credentials.
+- Never commit environment files or private keys.
+- Never modify the sibling `website/` project.
+- Never modify production systems or incur external service costs without explicit approval.
+- Preserve existing user changes.

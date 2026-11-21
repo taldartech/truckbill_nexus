@@ -1,9 +1,14 @@
 # TruckBill Platform — Full Product Requirements Document
-**Edition:** Full requirements-preservation draft | **Status:** Draft for review, not approved for implementation  
-**Product owner:** Taldar Tech Consultancy | **Product:** TruckBill — “Transport. Billing. Simplified.”
+**Edition:** Full requirements-preservation draft | **Status:** Draft — Pending Review / Ready for Formal Approval preparation. Not formally approved for implementation.  
+**Product owner:** Taldar Tech Consultancy | **Product:** TruckBill — “Transport. Billing. Simplified.”  
+**Phase numbering:** Follow `Phases.md` only (DEC-001).
 
 ## 1. Purpose and scope
-TruckBill is a unified multi-tenant logistics, transport operations, fleet and accounting SaaS. Broker, OwnFleet and Partload are workflow mechanisms within one company workspace, not separate applications. This is an independent new codebase. Legacy applications are excluded as sources for code, architecture and feature reuse; they may be used later only for data migration after the new platform is ready. Reports are deferred until underlying workflows are implemented. No coding until all six governing documents are approved.
+TruckBill is a unified multi-tenant logistics, transport operations, fleet and accounting SaaS. Broker, OwnFleet and Partload are workflow mechanisms within one company workspace, not separate applications. This is an independent new codebase. Legacy applications are excluded as sources for code, architecture and feature reuse; they may be used later only for data migration after the new platform is ready. Reports are deferred until underlying workflows are implemented.
+
+**Out of scope (DEC-005):** Partload Expense Management is explicitly excluded from Partload. OwnFleet expense management (including trip expenses/diesel and any separately defined OwnFleet expense add-ons) remains in scope and must not be removed because of this exclusion.
+
+**Coding gate (DEC-004):** No application coding — including engineering foundation implementation, schema changes, dependency changes, or business modules — until Phase 0 is formally completed and approved.
 
 ## 2. Technology baseline
 Laravel 13; React + Inertia; PostgreSQL; Redis/Valkey; AWS; private S3; Razorpay; Sanctum where appropriate; Reverb or evaluated equivalent; Terraform; GitHub Actions; Pest, Playwright, k6; CloudWatch, Sentry, OpenTelemetry. Start as modular monolith. Target 5,000 concurrent users is a load-test objective, not a sizing assumption.
@@ -13,9 +18,19 @@ One global identity with mutually exclusive Internal Team or Customer type. One 
 Customer identity may own multiple companies and belong to multiple companies. Branch access is explicit selected branches; no “All Branches”. New branches do not grant existing users access. Owner automatically accesses all company branches, including future branches. Owner can add users from Owner Panel with name, email, mobile, password, company/branch and branch-specific role. Existing identity password is never overwritten. Branch creation selects existing users and roles; does not create identities. Branch edit does not manage users. No forced password change at first login.
 Customer single active session across web and TruckBill mobile app; new login invalidates previous. Internal Team may have multiple sessions. Password change/deactivation invalidates customer sessions. Ownership transfer invalidates new Owner sessions; old Owner remains logged in but loses access to transferred company.
 
+**Email changes (DEC-009):** Email address changes for Internal and Customer identities may only be performed through authorized administration. There is no self-service email-change functionality. **Pending:** identity verification steps, notification recipients, uniqueness enforcement details, and audit field requirements for administrative email change.
+
+**Account deletion (DEC-006 / DEC-003):** Users cannot delete their own accounts. Account lifecycle changes use authorized administrative processes and applicable identity, membership, deactivation, soft-deletion and audit rules. Hard deletion and restoration of identities are prohibited.
+
 ## 4. Company Owner and company lifecycle
 Exactly one Company Owner per company, a protected designation separate from ordinary roles. Only Internal Team Super Admin/Admin can transfer ownership to an existing Customer User. New Owner receives Owner privileges and ordinary membership for that company is removed. Previous Owner loses all access to transferred company; other company access is unaffected. Other users' memberships/branch assignments/roles remain unchanged. Transfer history retained.
-Internal Super Admin/Admin can deactivate/reactivate Owner and company. Deactivated Owner cannot log in. Deactivated company blocks Owner and all company users from Branch Panel; company remains visible as Deactivated; no data/history deleted. Users can access other active companies. If ordinary access revocation/ownership transfer leaves a user with no memberships, soft-delete identity and invalidate sessions. Exception: do not soft-delete solely because Owner/company deactivation removed access.
+Internal Super Admin/Admin can deactivate/reactivate Owner and company. These are **distinct** lifecycle actions (DEC-002).
+
+**Owner identity deactivation:** A deactivated Owner identity cannot log in. This is not company deactivation and does not by itself define company Branch/Owner Panel behaviour.
+
+**Company deactivation (DEC-002):** Does not deactivate the Owner identity. Branch Panel access is blocked for the Company Owner and all company users of that company. The company remains visible as Deactivated. **Owner Panel remains accessible** for the active Owner (login-capable identity with Owner designation) and may provide company-level administrative and billing information. Company deactivation must not restore operational Branch Panel access. Company data and history are preserved (deactivation is not deletion). Users can access other active companies. Authorization must not treat deactivated company status as a blanket deny that removes this Owner Panel exception (see Architecture §3).
+
+If ordinary access revocation/ownership transfer leaves a user with no memberships, soft-delete identity and invalidate sessions. Exception: do not soft-delete solely because Owner/company deactivation removed access. Hard deletion and restoration of companies, branches and identities are prohibited (DEC-003). **Pending:** exhaustive list of Owner Panel actions permitted while a company is Deactivated (do not invent beyond administrative/billing visibility already stated).
 
 ## 5. Owner Panel / Branch Panel
 Owner Panel exclusively accessible by Company Owner. It manages companies, branches, users, company settings, subscription and billing. Customer Admin and other roles cannot access these areas; operational role permissions do not grant Owner Panel.
@@ -89,6 +104,7 @@ Invoice only after delivery/adjustments. Select Billing Customer. Sections: deli
 Linked Bilty: group number auto company/branch sequence; minimum two; shared Date/Vehicle/Payee/Driver/Reference. Each independent Bilty has LR No, Billing Customer, GR No, Invoice No, Consignor, Loading Station, Consignee, Unloading Station, Goods Type, units, weight/unit, Goods Value, Weight, Rate, Amount. Lorry Hire per Bilty before voucher payment. Group payment proportionate to each Lorry Hire outstanding after TDS, adjustments, previous payments; no over-allocation; separate voucher/payment per Lorry Hire, common mode/date/remarks.
 
 ## 14. Partload
+**Scope exclusion (DEC-005):** Partload Expense Management is explicitly out of scope for Partload. This exclusion does not remove or restrict OwnFleet expense management (trip expenses, diesel, or OwnFleet expense-related add-ons defined elsewhere).
 Payment types Paid, To Pay, TBB, FOC. Charges Freight, Bilty Charge, Surcharge, Handling, Risk/Door Delivery, Cartage, custom charges, Less Advance Received. Cartage Cash/Due linked ledger. TBB freight may finalize later. GST liability Consignor/Consignee/Transporter/Exempted, company GST config; intra CGST/SGST, inter IGST. Multiple EWBs (number/validity), Declared Goods Value, Customer Invoice Number, Private Marka, Delivery At transporter. To Station auto-selects Station Master default transporter; user can change; later default changes do not alter saved Bilty.
 Status Pending→In Transit when added to outgoing Challan (not Loading Report)→Inward/Delivery/Forward→Delivered via DR. Pending Bilty can cancel even with advance/financial entry; preserve history/reason. Delivered cannot cancel. Pending-only soft delete with dependency checks.
 Loading Report: Date, From/To Station, Truck, Driver, Remark; shows Pending Bilties and eligible inward/forwarding items; select physically loaded; print grouped destination with Bilty/GR, Private Marka, Consignee, goods, packages/totals; generated on fly, not saved, no status change, multiple destinations.
@@ -102,7 +118,7 @@ Paid: full freight collected at Bilty booking, Cash/Bank, no partial. To Pay: fu
 
 ## 15. Accounting
 Central Tally-inspired double-entry engine; company books with branch attribution; FY April–March; chart of accounts/groups/ledgers; Receipt, Payment, Contra, Journal, Sales, Purchase, Credit Note, Debit Note, Bank Reconciliation; opening balances; cost centres.
-Posting intent: Customer invoice Dr Customer, Cr Revenue/GST; customer payment Dr Bank/Cash, Cr Customer; invoice TDS Dr TDS Receivable, Cr Customer; Lorry Hire Dr Freight Expense, Cr Transporter Payable; transporter advance Dr Advance, Cr Bank/Cash; transporter payment Dr Payable, Cr Bank/Cash; transporter TDS Dr Payable, Cr TDS Payable; Trip expense Dr Expense, Cr Bank/Cash/Payable; Partload Paid Dr Cash/Bank, Cr Income; To Pay DR Dr Receivable, Cr Income/GST; TBB invoice Dr Billing Customer, Cr Income/GST; DR settlement according to mode. Final mappings must be validated with accountant/tax advisor.
+Posting intent: Customer invoice Dr Customer, Cr Revenue/GST; customer payment Dr Bank/Cash, Cr Customer; invoice TDS Dr TDS Receivable, Cr Customer; Lorry Hire Dr Freight Expense, Cr Transporter Payable; transporter advance Dr Advance, Cr Bank/Cash; transporter payment Dr Payable, Cr Bank/Cash; transporter TDS Dr Payable, Cr TDS Payable; Trip expense Dr Expense, Cr Bank/Cash/Payable; Partload Paid Dr Cash/Bank, Cr Income; To Pay DR Dr Receivable, Cr Income/GST; TBB invoice Dr Billing Customer, Cr Income/GST; DR settlement according to mode. **Final mappings must be validated with accountant/tax advisor before production use (external validation required; status Pending until validated).** Posted financial records are immutable and corrected by reversal; hard deletion and restoration are prohibited (DEC-003).
 Reports: Account Ledger, Party Ledger, Cash Book, Bank Book, Day Book, Trial Balance, P&L, Balance Sheet, Receivables, Payables, Expense Summary, GST Summary, TDS Summary, Voucher Register, Bank Reconciliation.
 Every posted voucher balances and is immutable. Corrections by reversal/replacement. Idempotent source reference. Closed period blocks unauthorized backdating. Cash/bank movements distinct from party-ledger settlement. Financial reports derive from ledger.
 
@@ -121,5 +137,18 @@ Inventory: part name/code/category/UOM/brand/MPN/min/reorder/vendor/status. Move
 Job Cards: number/date/vehicle/odometer/problem/requested work/workshop/technician/priority/expected completion/estimated cost/docs. Status Draft, Open, Inspection, Work in Progress, On Hold, Completed, Closed; cancellation separate terminal state with reason and financial handling. Labour operations, parts, external services, technician/workshop charges, docs, before/after photos, completion notes, actual completion odometer. Parts issue decreases stock and links cost; return is separate movement. External workshop can create vendor payable. No duplicate expense recognition.
 
 ## 18. Global documents and acceptance
-Upload max 2 MB/file; JPG/JPEG/PNG/WEBP/PDF/DOC/DOCX/XLS/XLSX; private S3; server-side validation; malware scanning; authorized access; retain history. Soft-deleted record attachments remain and count storage. Failed upload no quota. New replacement must succeed before old file cleanup. Temporary files count after permanent attachment/storage. Reconcile storage against S3.
+Upload max 2 MB/file; JPG/JPEG/PNG/WEBP/PDF/DOC/DOCX/XLS/XLSX; private S3; server-side validation; malware scanning; authorized access; retain history. Soft-deleted record attachments remain and count storage. Failed upload no quota. New replacement must succeed before old file cleanup. Temporary files count after permanent attachment/storage. Reconcile storage against S3. Document hard deletion and restoration are prohibited (DEC-003).
 Each module acceptance requires field validation, state transitions, permission matrix, tenant tests, audit/remark, cancellation/deletion dependency, accounting posting/reversal, subscription entitlement, documents, notifications, API contract, idempotency/retry, monitoring and test evidence.
+
+## 19. Subscription and Billing
+Product-level subscription behaviour is summarized here. **Detailed commercial rules, catalogues, proration, discounts, quotas, credits, Razorpay webhook behaviour and invoice-number approval** are specified in **Rules §15** and must not be reinvented in the UI or application code.
+
+- One company billing account and one common renewal date; no base/workspace fee.
+- First-company trial per Owner: 15 days; subsequent companies: no trial.
+- Paid grace configurable (default 10 days), view-only; then restriction; Owner Panel remains.
+- Company-bound, non-transferable contract; ownership transfer does not change the contract; new Owner receives billing access.
+- **Initial manual Razorpay renewals** are delivered in **Phase 3** per `Phases.md` (DEC-001). No mandate/auto-deduction for that delivery. Do not describe this as “Phase 1 billing.”
+- Payment activation is independent of invoice-number approval.
+- No in-system refund initiation; external refunds handled outside the system with audited manual adjustments.
+- Broker/Partload unused credits and service credits retained indefinitely in separate ledgers; storage shared company-wide.
+- Subscription suspension blocks Branch Panel while Owner Panel remains; company deactivation follows DEC-002 (Branch Panel blocked; Owner Panel remains for administrative/billing information). **Pending:** consolidated UX/entitlement matrix distinguishing trial, grace, restricted, suspended and deactivated states (AUD-CON-006).

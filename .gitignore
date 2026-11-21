@@ -31,7 +31,11 @@ yarn-error.log
 /.amp
 /.claude
 /.codex
-/.cursor
+# Cursor: ignore local state; version the TruckBill project rule only (DEC-008 / ADR-012)
+.cursor/*
+!.cursor/rules/
+.cursor/rules/*
+!.cursor/rules/truckbill-project.mdc
 /.factory
 /.grok
 /.junie

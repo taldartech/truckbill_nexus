@@ -1,5 +1,5 @@
 # TruckBill Platform — Full Rules and Calculation Specification
-**Status:** Full draft for review. User-supplied tax and TDS rules require professional legal validation before production.
+**Status:** Draft — Pending Review. Not formally approved for implementation. User-supplied tax and TDS rules require professional legal validation before production. Phase numbering follows `Phases.md` only (DEC-001).
 
 ## 1. Rule precedence
 Security and tenant isolation → immutable financial/audit integrity → explicit module rule → global platform rule → UI convenience. Permission cannot bypass business restrictions. Entitlement, feature availability, role permission and business eligibility must all pass.
@@ -13,7 +13,10 @@ Security and tenant isolation → immutable financial/audit integrity → explic
 - New Owner receives Owner privileges; old Owner loses access to that company; other users unchanged; new Owner sessions invalidated; history retained.
 - Customer single active session across web/mobile; Internal Team multi-session.
 - Password change/deactivation invalidates customer sessions.
-- Company deactivation blocks Branch Panel for all company users, but Owner Panel remains; no data deletion.
+- **Email changes (DEC-009):** only through authorized administration for Internal and Customer identities; no self-service email change. Pending: verification, notification, uniqueness and audit field details.
+- **No self-service account deletion (DEC-006).** Account lifecycle uses authorized administrative processes. Hard deletion and restoration of identities are prohibited (DEC-003).
+- **Owner identity deactivation** is distinct from **company deactivation**. A deactivated Owner identity cannot log in.
+- **Company deactivation (DEC-002):** Does not deactivate the Owner identity. Branch Panel access is blocked for the Company Owner and all company users of that company. Owner Panel remains accessible for an active Owner (login-capable identity with Owner designation) for company-level administrative and billing information. Must not restore operational Branch Panel access. No data deletion. Authorization must not apply company deactivated status as a blanket deny that blocks this Owner Panel exception (Architecture §3). Pending: exhaustive Owner Panel action list while deactivated — do not invent.
 - Ordinary user with no memberships after access revocation is soft-deleted, except loss solely due to Owner/company deactivation.
 - Last active Super Admin cannot be demoted/deactivated.
 
@@ -34,8 +37,10 @@ Security and tenant isolation → immutable financial/audit integrity → explic
 - Audit stores actor, timestamp, old/new values, deletion state.
 - Mutation and audit event atomic.
 - Audit immutable.
-- No hard delete or restore.
+- **No hard delete or restore (DEC-003)** for user identities, companies, branches, business records, financial records, documents and audit records.
+- Use controlled deactivation or soft deletion only where the applicable module requirements permit it.
 - Soft delete requires explicit Delete permission and dependency checks.
+- Do not invent one universal deletion workflow for every record type; follow module-specific rules. Unresolved lifecycle details remain Pending.
 - Financial posted entries, approved invoices and contract snapshots follow stricter immutability rules.
 - Cancellation is not deletion.
 
@@ -49,7 +54,7 @@ Customer/Consignor/Consignee fields: Name*, Contact Person, Contact Number*, Ema
 Transporter: Name*, Email, GST, PAN*, PAN Status*, Contact Person, Contact Number*, State*, City*, Address, Declaration*, TDS%*, adjustment remark, optional one bank account, Short Name, Beneficiary ID, Number of Goods Vehicles.
 Driver: Permanent/Market, Name*, Mobile*, License Number mandatory Permanent, Address, License Expiry. Permanent-only Joining Date, Aadhaar, PAN, Bank Name/Account/IFSC, Emergency Contact Name/Mobile, Monthly Payment Base.
 General Vendor: Name*, Contact Person*, Contact Number*, Email, State, City, GST, PAN. Pump Vendor: Name*, Contact Person*, Contact Number*.
-GST company config: Regular/Composition/Unregistered; FCM/RCM; GSTIN conditional. Party Is GST Applicable controls GST, no transaction override. Rate snapshot; intra CGST/SGST, inter IGST. Composition Bill of Supply/no GST. Unregistered no GST. RCM shows statutory notice and excludes GST from net payable per configured treatment. Legal validation required.
+GST company config: Regular/Composition/Unregistered; FCM/RCM; GSTIN conditional. Party Is GST Applicable controls GST, no transaction override. Rate snapshot; intra CGST/SGST, inter IGST. Composition Bill of Supply/no GST. Unregistered no GST. RCM shows statutory notice and excludes GST from net payable per configured treatment. **Professional legal/tax validation required before production (external validation; Pending until validated).**
 Transporter TDS: Owner declaration valid and <=10 goods vehicles=0%; >10=standard rate. Agency ignores declaration and applies standard rate by PAN/entity type. Invalid/inactive PAN=20%. Active PAN fourth char P/H=1%; C/F/A/B/J/L/T=2%. Manual override requires remark. April 1 declaration resets No and recalculates. Basis original loading weight or original fixed freight; unloading adjustments do not alter. Submission lock affects TDS only. Snapshot basis/rate/amount per Lorry Hire. TDS rules structured AND/OR, priority, active/inactive; no match config error; changes apply new transactions only. Validate legal rules before production.
 
 ## 7. Enquiry
@@ -94,6 +99,7 @@ Customer invoice only after delivery/adjustments. Select Billing Customer. With 
 Linked Bilty: min 2; common group no/date/vehicle/payee/driver/reference; each independent LR/GR/invoice/customer/consignor/consignee/stations/goods/units/weight/rate/amount. Lorry Hire per Bilty before voucher payment. Group payment proportionate by each Lorry Hire outstanding after TDS/adjustments/prior payments; no over-allocation; separate voucher/payment per Lorry Hire.
 
 ## 12. Partload
+**Excluded (DEC-005):** Partload Expense Management is out of scope. This does not restrict OwnFleet expense management (Rules §9 trip expenses/diesel and OwnFleet-related catalogue add-ons in §15).
 Paid, To Pay, TBB, FOC. Charges Freight, Bilty Charge, Surcharge, Handling, Risk/Door Delivery, Cartage, custom, Less Advance. Cartage Cash/Due linked ledger. TBB freight may finalize later. GST liability Consignor/Consignee/Transporter/Exempted under company GST config; intra CGST/SGST, inter IGST. Multiple EWBs (number/validity), declared goods value, customer invoice number, Private Marka, Delivery At transporter. To Station auto-selects station default; manually change; later default changes do not alter saved Bilty.
 Status Pending→In Transit on outgoing Challan (not Loading Report)→Inward/Delivery/Forward→Delivered via DR. Pending Bilty can cancel even with advance; retain history/reason. Delivered cannot cancel. Pending-only soft delete with dependencies.
 Loading Report: date/from/to/truck/driver/remark; Pending and eligible inward/forward items; select physically loaded; print grouped by destination with Bilty/GR, Private Marka, Consignee, goods, packages/totals; generated on fly, not saved, no status change, multiple destinations.
@@ -107,7 +113,7 @@ Paid: full at booking Cash/Bank, no partial. To Pay: full at DR, no partial; DR 
 
 ## 13. Accounting
 Central double-entry. Company books, branch attribution, FY April–March, chart of accounts/groups/ledgers, cost centres, opening balances. Vouchers Receipt, Payment, Contra, Journal, Sales, Purchase, Credit Note, Debit Note, Bank Reconciliation.
-Posting intent: customer invoice Dr Customer / Cr revenue and GST; customer payment Dr bank/cash / Cr customer; invoice TDS Dr TDS receivable / Cr customer; Lorry Hire Dr freight expense / Cr transporter payable; transporter advance Dr advance / Cr bank/cash; transporter payment Dr payable / Cr bank/cash; transporter TDS Dr payable / Cr TDS payable; Trip expense Dr expense / Cr bank/cash/payable; Partload Paid Dr cash/bank / Cr income; To Pay DR Dr receivable / Cr income/GST; TBB invoice Dr Billing Customer / Cr income/GST; DR settlement according to mode. These mappings are posting intent and require accounting/tax review before production.
+Posting intent: customer invoice Dr Customer / Cr revenue and GST; customer payment Dr bank/cash / Cr customer; invoice TDS Dr TDS receivable / Cr customer; Lorry Hire Dr freight expense / Cr transporter payable; transporter advance Dr advance / Cr bank/cash; transporter payment Dr payable / Cr bank/cash; transporter TDS Dr payable / Cr TDS payable; Trip expense Dr expense / Cr bank/cash/payable; Partload Paid Dr cash/bank / Cr income; To Pay DR Dr receivable / Cr income/GST; TBB invoice Dr Billing Customer / Cr income/GST; DR settlement according to mode. These mappings are posting intent and require accounting/tax review before production (**external validation required; Pending until validated**).
 Reports: Account Ledger, Party Ledger, Cash Book, Bank Book, Day Book, Trial Balance, P&L, Balance Sheet, Receivables, Payables, Expense Summary, GST Summary, TDS Summary, Voucher Register, Bank Reconciliation.
 Every posted voucher balances and is immutable. Correction by reversal/replacement. Source-linked idempotency. Closed period blocks unauthorized backdating. Cash/bank movement distinct from party-ledger settlement. Reports derive from ledger.
 
@@ -130,7 +136,7 @@ Price protection: active contract retains agreed price until renewal; new price 
 Cancellation: Owner request, effective common renewal; active until paid-through subject to expiry rules; no refund/credit; withdrawable before renewal. Individual add-on same. Reactivation uses current catalogue, verified payment, explicit modules/add-ons and new common renewal date; data retained.
 Subscription is company-bound/non-transferable. Ownership transfer leaves contract, modules, add-ons, price, renewal and payments unchanged; new Owner gets billing access; old loses it; pending payment remains company-associated. Deactivation/suspension does not pause term or renewal. Suspension immediately blocks Branch Panel, Owner Panel remains; reactivation authorized Internal Team/audit.
 Contract snapshots immutable. Catalogue changes affect new purchases/renewals. Corrections authorized with reason/audit; agreed midterm changes explicit amendment/effective date.
-Razorpay manual Phase 1; no mandate/auto deduction. Verify signature/webhook; successful payment activates; failure no extension. Successful webhook completes after browser close; retries idempotent. Payment and invoice number approval independent. Draft invoice after verified payment; proposed sequential number editable before approval; lifecycle Draft→Awaiting Number Approval→Approved/Issued→Emailed. Approval only invoice number; no rejection. Approved number locked even for Super Admin. Email failure does not reverse approval. Invoice issuer details centrally managed. Financial-year numbering configurable. No in-system refund initiation/reversal. External refund handled outside system; manual record adjustment with evidence/remark/audit, original preserved.
+Initial manual Razorpay renewals are delivered in **Phase 3** per `Phases.md` (DEC-001); no mandate/auto deduction for that delivery. Do not refer to subscription billing as “Phase 1.” Verify signature/webhook; successful payment activates; failure no extension. Successful webhook completes after browser close; retries idempotent. Payment and invoice number approval independent. Draft invoice after verified payment; proposed sequential number editable before approval; lifecycle Draft→Awaiting Number Approval→Approved/Issued→Emailed. Approval only invoice number; no rejection. Approved number locked even for Super Admin. Email failure does not reverse approval. Invoice issuer details centrally managed. Financial-year numbering configurable. No in-system refund initiation/reversal. External refund handled outside system; manual record adjustment with evidence/remark/audit, original preserved.
 Reconciliation: webhooks primary; scheduled compare Order ID, Payment ID, company, amount, currency. Mismatch/unmatched/delayed to exception queue. Manual confirmation only with verifiable evidence, authorization, remark/audit.
 Broker/Partload credits remain indefinitely; cannot consume while module inactive/restricted; reactivation restores. Service credits same, service-specific. Storage/usage visible in Owner Panel.
 

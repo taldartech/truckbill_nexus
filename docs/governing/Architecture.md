@@ -1,6 +1,6 @@
 # TruckBill Platform — Full Architecture Specification
 
-**Status:** Draft for review. Infrastructure and provider choices remain subject to validation.
+**Status:** Draft — Pending Review. Not formally approved for implementation. Infrastructure and provider choices remain subject to validation. Delivery phase numbering follows `Phases.md` only (DEC-001).
 
 ## 1. Technology and deployment
 Laravel 13; React + Inertia; PostgreSQL; Redis/Valkey; AWS; private S3; Razorpay; Sanctum where appropriate; Reverb/evaluated equivalent; Terraform; GitHub Actions; Pest, Playwright, k6; CloudWatch, Sentry, OpenTelemetry. Modular monolith with asynchronous workers; no premature microservices.
@@ -11,13 +11,19 @@ Identity/Access; Company/Branch; CRM/Enquiry; Masters; Consignment/LR; Broker; O
 
 ## 3. Tenancy and authorization
 Shared PostgreSQL database. Every tenant record has company_id; branch-specific records have branch_id; Owner-level masters use explicit owner_id. Internal Team has separate authorization. Enforce tenant scope in policies/query layers and database constraints. Evaluate PostgreSQL RLS as defence in depth, never sole control. Background jobs carry explicit tenant/branch context. Cache keys include tenant scope. Exports, downloads, APIs, real-time channels and error responses enforce same boundaries.
-Authorization sequence: identity type/active status → company status → branch membership → subscription entitlement → feature availability → role permission → business-state eligibility. Owner Panel requires active Owner designation.
+
+**Authorization sequence (general):** identity type and active status → company/branch eligibility for the requested surface → subscription entitlement → feature availability → role permission → business-state eligibility.
+
+**Owner identity deactivation vs company deactivation (DEC-002):** These are distinct.
+- **Owner identity deactivation:** the Owner identity cannot log in. This is not the same as company deactivation.
+- **Company deactivation:** does not deactivate the Owner identity. Branch Panel access for that company is blocked for the Company Owner and all company users. **Owner Panel remains accessible** for an active Owner (identity able to log in, with active Owner designation) for permitted company-level administrative and billing information. Deactivation must not restore operational Branch Panel access. Exhaustive permitted Owner Panel actions remain **Pending** — do not invent them.
+- **Authorization exception:** company deactivated status must **not** be applied as a blanket deny that blocks the Owner Panel exception above. Branch Panel and other operational surfaces remain blocked for that company. Owner Panel still requires an active Owner designation and an active (login-capable) identity.
 
 ## 4. Identity/session model
 Global identity with mutually exclusive Internal/Customer type. Separate role/permission domains. Company Owner modeled separately from membership. Branch memberships explicit. Customer single-active-session across web/mobile uses session/device token registry and revocation; Internal sessions may coexist. Password change, deactivation and ownership-transfer rules trigger specified revocations.
 
 ## 5. Data conventions
-Relational schema, UUID/opaque public IDs, foreign keys, tenant-aware unique constraints, decimal/numeric money/rates/weights, currency code (INR initial), UTC timestamps with company timezone for business interpretation, soft-delete only where allowed, append-only audit and financial history, versioned contract/tax snapshots, tenant-aware indexes, append-only usage ledger, outbox and idempotency records. Cached counters are never the financial/entitlement source of truth.
+Relational schema, UUID/opaque public IDs, foreign keys, tenant-aware unique constraints, decimal/numeric money/rates/weights, currency code (INR initial), UTC timestamps with company timezone for business interpretation, soft-delete or controlled deactivation only where allowed (**no hard delete or restore** — DEC-003), append-only audit and financial history, versioned contract/tax snapshots, tenant-aware indexes, append-only usage ledger, outbox and idempotency records. Cached counters are never the financial/entitlement source of truth. Lifecycle rules differ by record type; do not invent one universal deletion workflow.
 
 ## 6. Transactional events and jobs
 Business mutation and outbox event commit atomically. Dispatcher publishes; consumers are idempotent; transient failures retry with bounded backoff; exhausted failures enter dead-letter/exception handling. Retain attempts, result and correlation ID. Event examples: EnquiryCreated/Assigned/Converted; LRCreated/Dispatched/Delivered/Cancelled; InvoiceIssued/PaymentRecorded; TripCompleted/ExpenseRecorded; LorryHireCreated/VoucherPaid; ChallanCreated/InwardRegistered/DRCreated; SubscriptionPurchased/Renewed/Expired/Suspended; DocumentUploaded/Expiring; InventoryReceived/Issued/Adjusted; JobCardOpened/Completed. Event payloads carry identifiers/minimum data; consumers reload source and revalidate.
