@@ -159,13 +159,17 @@ This assignment does **not** amend that commit.
 | `7c37adf703167311ce9ce6d0fbfb575932f0ec80` | `docs: finalize phase 0 approval readiness review` |
 | `590bee7e89b474cb8ccf56b3a2e43c25662c1fea` | `docs: stamp phase 0 approval readiness report commit ids` |
 | `4600df7da75073b18ebf582e4389557a7dcdc081` | `docs: record final phase 0 readiness report HEAD ids` |
+| `f83a0a5339946623a3796e0c254f483bc49695bf` | `docs: record phase 0 approval readiness report tip` |
+| `1397eb617ce45f855d5454b2daf10737bf26446e` | `docs: seal phase 0 approval readiness report tip hash` |
 
+Plus the final sync commit that persists this completed table (see section 11 / `git log -1`).
 
 ---
 
 ## 11. Current HEAD commit ID
 
-`f83a0a5339946623a3796e0c254f483bc49695bf` (local only; not pushed).
+Tip before the final sync commit of this report table: `1397eb617ce45f855d5454b2daf10737bf26446e`.  
+**Authoritative tip after all local commits of this assignment:** run `git rev-parse HEAD` (branch is ahead of `origin/main` locally only; not pushed).
 
 ---
 
