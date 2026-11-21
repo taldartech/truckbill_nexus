@@ -93,3 +93,12 @@ Record date, fact, reason, affected modules and ADR/PR/issue when technology/ver
 | 2026-11-21 | New dependencies require case-by-case approval (no blanket) | PO-P1-DEPS |
 | 2026-11-21 | Non-production deployment target not decided; exit smoke blocked | PO-P1-DEPLOY |
 | 2026-11-21 | ADR-006 and ADR-010 remain Pending | Product Owner |
+
+### Phase 1 verified implementation facts
+| Date | Fact | Evidence |
+|---|---|---|
+| 2026-11-21 | WS-1 started: `app/Domains` + `app/Support` layout markers; LOCAL_SETUP + MODULAR_MONOLITH_LAYOUT docs | ADR-001 |
+| 2026-11-21 | `.env.example` standardized to PostgreSQL + Redis (phpredis) | ADR-007 |
+| 2026-11-21 | Self-service profile hard-delete removed (route, controller, request, UI); Pest asserts absent | DEC-003/006 |
+| 2026-11-21 | Self-service email change removed from profile update validation/UI; email read-only | DEC-009 |
+| 2026-11-21 | Registration remains disabled (Fortify features) | TB-AUTH-002 |

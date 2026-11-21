@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use Illuminate\Support\Facades\Route;
 
 test('profile page is displayed', function () {
     $user = User::factory()->create();
@@ -12,14 +13,16 @@ test('profile page is displayed', function () {
     $response->assertOk();
 });
 
-test('profile information can be updated', function () {
-    $user = User::factory()->create();
+test('profile name can be updated without changing email', function () {
+    $user = User::factory()->create([
+        'email' => 'keep@example.com',
+    ]);
 
     $response = $this
         ->actingAs($user)
         ->patch(route('profile.update'), [
             'name' => 'Test User',
-            'email' => 'test@example.com',
+            'email' => 'attacker@example.com',
         ]);
 
     $response
@@ -29,98 +32,49 @@ test('profile information can be updated', function () {
     $user->refresh();
 
     expect($user->name)->toBe('Test User');
-    expect($user->email)->toBe('test@example.com');
-    expect($user->email_verified_at)->toBeNull();
+    expect($user->email)->toBe('keep@example.com');
+    expect($user->email_verified_at)->not->toBeNull();
 });
 
-test('email is stored in lowercase so the user can still log in', function () {
-    $user = User::factory()->create();
+test('self-service email change is ignored when submitted', function () {
+    $user = User::factory()->create([
+        'email' => 'original@example.com',
+    ]);
 
     $this
         ->actingAs($user)
         ->patch(route('profile.update'), [
-            'name' => 'Test User',
-            'email' => 'Test@Example.com',
+            'name' => $user->name,
+            'email' => 'changed@example.com',
         ])
         ->assertSessionHasNoErrors();
 
-    expect($user->refresh()->email)->toBe('test@example.com');
-
-    $this->post(route('logout'));
-
-    $this->post(route('login.store'), [
-        'email' => 'Test@Example.com',
-        'password' => 'password',
-    ]);
-
-    $this->assertAuthenticatedAs($user);
+    expect($user->refresh()->email)->toBe('original@example.com');
 });
 
-test('email must be unique regardless of case', function () {
-    User::factory()->create(['email' => 'taken@example.com']);
+test('profile destroy route is not registered', function () {
+    expect(Route::has('profile.destroy'))->toBeFalse();
+});
 
+test('account hard-delete endpoint is absent', function () {
     $user = User::factory()->create();
 
     $response = $this
         ->actingAs($user)
-        ->from(route('profile.edit'))
-        ->patch(route('profile.update'), [
-            'name' => 'Test User',
-            'email' => 'Taken@Example.com',
-        ]);
-
-    $response
-        ->assertSessionHasErrors('email')
-        ->assertRedirect(route('profile.edit'));
-});
-
-test('email verification status is unchanged when the email address is unchanged', function () {
-    $user = User::factory()->create();
-
-    $response = $this
-        ->actingAs($user)
-        ->patch(route('profile.update'), [
-            'name' => 'Test User',
-            'email' => $user->email,
-        ]);
-
-    $response
-        ->assertSessionHasNoErrors()
-        ->assertRedirect(route('profile.edit'));
-
-    expect($user->refresh()->email_verified_at)->not->toBeNull();
-});
-
-test('user can delete their account', function () {
-    $user = User::factory()->create();
-
-    $response = $this
-        ->actingAs($user)
-        ->delete(route('profile.destroy'), [
+        ->delete('/settings/profile', [
             'password' => 'password',
         ]);
 
-    $response
-        ->assertSessionHasNoErrors()
-        ->assertRedirect(route('home'));
-
-    $this->assertGuest();
-    expect($user->fresh())->toBeNull();
+    expect($response->status())->toBeIn([404, 405]);
+    expect($user->fresh())->not->toBeNull();
 });
 
-test('correct password must be provided to delete account', function () {
-    $user = User::factory()->create();
-
-    $response = $this
-        ->actingAs($user)
-        ->from(route('profile.edit'))
-        ->delete(route('profile.destroy'), [
-            'password' => 'wrong-password',
-        ]);
-
-    $response
-        ->assertSessionHasErrors('password')
-        ->assertRedirect(route('profile.edit'));
-
-    expect($user->fresh())->not->toBeNull();
+test('registration remains disabled', function () {
+    $this->get('/register')->assertNotFound();
+    $this->post('/register', [
+        'name' => 'New User',
+        'email' => 'new@example.com',
+        'password' => 'password',
+        'password_confirmation' => 'password',
+    ])->assertNotFound();
 });
