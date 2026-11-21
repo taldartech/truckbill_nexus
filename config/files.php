@@ -54,8 +54,12 @@ return [
     | Malware scanner
     |--------------------------------------------------------------------------
     |
-    | Drivers: "pass" (always clean), "fake" (test deterministic), "reject" (always fail).
-    | Real external scanners require PO-P1-DEPS approval before installation.
+    | Non-production drivers: "pass" (always clean), "fake" (deterministic test),
+    | "reject" (always unclean). These drivers are refused in production.
+    |
+    | Production must set FILES_SCANNER to an approved production driver after
+    | PO-P1-DEPS approval. Until then, production scanner resolution fails closed.
+    | Never rely on a silent pass-through default in production.
     |
     */
 

@@ -127,3 +127,4 @@ Record date, fact, reason, affected modules and ADR/PR/issue when technology/ver
 | 2026-11-21 | WS-4 audit foundation: `audit_entries`, AuditWriter, AuditedTransaction, append-only model, harness, AuditAtomicityTest                                                    | ADR-003 / TB-AUD-001–003 |
 | 2026-11-22 | WS-5 private files: `stored_files`, `private_files` disk, validation (2 MiB + MIME/ext), scan lifecycle interface (`pass`/`fake`/`reject`), safe replace, FileSecurityTest | ADR-008 / TB-DOC-001–002 |
 | 2026-11-22 | WS-5 access: Internal Team branch access and multi-company Owner file semantics remain **Pending PO** and fail closed                                                      | Storage metadata         |
+| 2026-11-22 | WS-5 remediation: production refuses pass/fake/reject; scanner exceptions fail closed; replace cleanup is post-commit + retryable `pending_cleanup`                        | Independent review       |

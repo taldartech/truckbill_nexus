@@ -1,6 +1,6 @@
 # Private File Storage Foundation (WS-5 / ADR-008)
 
-**Status:** Implemented in Phase 1  
+**Status:** Implemented in Phase 1 (remediated)  
 **Authority:** ADR-008 Accepted (PO-P1-ADR-008)  
 **Related requirements:** TB-DOC-001, TB-DOC-002 (quota/retention counting prepared; full quota Phase 3)
 
@@ -16,7 +16,13 @@
 
 Allowed extensions: `jpg`, `jpeg`, `png`, `webp`, `pdf`, `doc`, `docx`, `xls`, `xlsx` with matching MIME allow-lists.
 
-No real external malware product is installed. Production scanner clients require separate `PO-P1-DEPS` approval.
+### Production scanner requirement (critical)
+
+- `pass`, `fake`, and `reject` are **non-production** adapters only.
+- Production resolution via `MalwareScannerFactory` **refuses** those drivers and refuses empty/missing/unknown drivers.
+- No approved production malware engine is installed yet. Installing one requires separate `PO-P1-DEPS` approval.
+- Until an approved production driver exists, production private-file operations **fail closed** at scanner resolution (before any file becomes available).
+- Local/test defaults may use `FILES_SCANNER=pass`. Never rely on a silent production pass-through.
 
 ## Schema (`stored_files`)
 
@@ -27,18 +33,20 @@ No real external malware product is installed. Production scanner clients requir
 | `original_name`, `extension`, `mime_type`, `size_bytes`, `checksum_sha256` | Validated upload metadata                               |
 | `company_id`, `branch_id`, `owner_id`                                      | Tenant metadata from `TenantStorageMetadata`            |
 | `scan_status`                                                              | `pending_scan` → `scanning` → `available` \| `rejected` |
-| `scan_message`, `scanned_at`, `available_at`                               | Scan outcome                                            |
-| `replaces_file_id`, `replaced_at`, `pending_cleanup`                       | Safe replacement lifecycle                              |
+| `scan_message`, `scanned_at`, `available_at`                               | Scan outcome / sanitized diagnostics                    |
+| `replaces_file_id`, `replaced_at`, `pending_cleanup`                       | Safe replacement lifecycle + retryable cleanup          |
 
 ## Lifecycle
 
 1. Authenticated actor + non-empty tenant context required.
-2. Validate size, extension, and MIME (detected + client-declared).
-3. Store object on the private disk only.
-4. Persist metadata as `pending_scan`.
-5. Transition to `scanning`, invoke `MalwareScanner`.
-6. On clean → `available` (+ `available_at`); downloadable only in this state.
-7. On unclean / scanner failure semantics → `rejected`, object deleted, not downloadable (fail closed).
+2. Resolve malware scanner (fail closed if unsafe/unconfigured).
+3. Validate size, extension, and MIME (detected + client-declared).
+4. Store object on the private disk only.
+5. Persist metadata as `pending_scan`. If metadata persistence fails, attempt object cleanup and rethrow (no silent untracked object).
+6. Transition to `scanning`, invoke `MalwareScanner`.
+7. On clean → `available` (+ `available_at`); downloadable only in this state.
+8. On unclean result → `rejected`, object deleted, not downloadable.
+9. On scanner **exception** → mark `rejected` (never leave indefinitely `scanning`), sanitize diagnostic message, delete object, rethrow fail-closed. Cleanup failure after reject still leaves the file non-downloadable.
 
 Upload success alone never grants downloadability.
 
@@ -72,13 +80,18 @@ Uses existing `TenantContextHolder` + `TenantStorageMetadata::assertSameTenant()
 
 Pending Product Owner decisions must not be implemented by assumption. Do not grant broader Internal Team privileges or infer cross-company Owner permissions.
 
-## Safe replacement
+## Safe replacement (post-commit cleanup)
 
 1. Validate and store the replacement privately.
 2. Complete scan; replacement must become `available`.
-3. Link `replaces_file_id`, mark old file for cleanup.
-4. Delete old object + metadata only after replacement is available.
-5. If replacement scan fails: delete replacement artefact; **original remains downloadable**.
+3. In a DB transaction only: link `replaces_file_id`, mark old file `rejected` + `pending_cleanup` + clear `available_at`.
+4. **Commit** the transaction.
+5. **After commit**, delete the old filesystem object, then delete old metadata.
+6. If filesystem deletion fails after commit: keep `pending_cleanup`, retain `path`, keep non-downloadable; cleanup is retryable via `cleanupReplaced()`.
+7. If the DB transaction fails: original remains intact and downloadable; unused replacement artefact is discarded.
+8. If replacement scan fails/throws: original remains downloadable.
+
+No outbox/queue is used for cleanup in WS-5 (WS-6 owns that foundation). Cleanup is synchronous with retryable `pending_cleanup` state.
 
 ## Scanner interface
 
@@ -90,11 +103,13 @@ interface MalwareScanner
 }
 ```
 
-| Driver   | Behavior                                             |
-| -------- | ---------------------------------------------------- |
-| `pass`   | Always clean (local/dev default)                     |
-| `fake`   | Rejects when name/content contains `MALWARE` (tests) |
-| `reject` | Always unclean (negative tests)                      |
+| Driver   | Behavior                                                  |
+| -------- | --------------------------------------------------------- |
+| `pass`   | Always clean (local/dev only; refused in production)      |
+| `fake`   | Rejects when name/content contains `MALWARE` (tests only) |
+| `reject` | Always unclean (negative tests only)                      |
+
+Resolved by `MalwareScannerFactory` (production-aware).
 
 ## Service API
 
@@ -104,10 +119,11 @@ interface MalwareScanner
 - `replace(StoredFile, UploadedFile): StoredFile`
 - `download(StoredFile): StreamedResponse`
 - `assertCanAccess(StoredFile): void`
-- `cleanupReplaced(StoredFile): void`
+- `cleanupReplaced(StoredFile): void` (retryable when `pending_cleanup` is true)
 
 No product document UI or HTTP upload routes in WS-5 — foundation service + Pest suite only.
 
 ## Tests
 
-`tests/Feature/FileSecurityTest.php` — validation, scan lifecycle, tenant denial, public-serve absence, replacement preserve/cleanup, storage-write failure, Internal Team fail-closed.
+- `tests/Feature/FileSecurityTest.php` — validation, scan lifecycle, tenant denial, public-serve absence, replacement preserve/cleanup, storage-write failure, Internal Team fail-closed.
+- `tests/Feature/FileSecurityRemediationTest.php` — production scanner refusal, scanner exceptions, metadata/object cleanup, post-commit cleanup failure + retry, tenant-safe cleanup.

@@ -3,6 +3,7 @@
 namespace App\Support\Files;
 
 use App\Support\Files\Exceptions\FileNotAvailableException;
+use App\Support\Files\Exceptions\ScannerConfigurationException;
 use App\Support\Files\Scanning\MalwareScanner;
 use App\Support\Tenant\TenantContextHolder;
 use App\Support\Tenant\TenantStorageMetadata;
@@ -31,6 +32,10 @@ class PrivateFileService
         $this->assertAuthorizedActor();
         $this->validator->validate($upload);
 
+        // Resolve scanner before writing so unsafe production/local misconfig fails closed
+        // without leaving an available object.
+        $scanner = $this->scanner();
+
         $tenant = TenantStorageMetadata::forCurrentContext();
         $disk = (string) config('files.disk', 'private_files');
         $extension = strtolower((string) $upload->getClientOriginalExtension());
@@ -58,23 +63,29 @@ class PrivateFileService
             throw new RuntimeException('Stored file path is missing after write.');
         }
 
-        $file = StoredFile::query()->create([
-            'id' => $uuid,
-            'disk' => $disk,
-            'path' => $path,
-            'original_name' => $upload->getClientOriginalName(),
-            'extension' => $extension,
-            'mime_type' => (string) ($upload->getMimeType() ?: $upload->getClientMimeType()),
-            'size_bytes' => (int) $upload->getSize(),
-            'checksum_sha256' => $checksum,
-            'company_id' => $tenant['company_id'],
-            'branch_id' => $tenant['branch_id'],
-            'owner_id' => $tenant['owner_id'],
-            'scan_status' => FileScanStatus::PendingScan->value,
-            'scan_message' => null,
-        ]);
+        try {
+            $file = StoredFile::query()->create([
+                'id' => $uuid,
+                'disk' => $disk,
+                'path' => $path,
+                'original_name' => $upload->getClientOriginalName(),
+                'extension' => $extension,
+                'mime_type' => (string) ($upload->getMimeType() ?: $upload->getClientMimeType()),
+                'size_bytes' => (int) $upload->getSize(),
+                'checksum_sha256' => $checksum,
+                'company_id' => $tenant['company_id'],
+                'branch_id' => $tenant['branch_id'],
+                'owner_id' => $tenant['owner_id'],
+                'scan_status' => FileScanStatus::PendingScan->value,
+                'scan_message' => null,
+            ]);
+        } catch (Throwable $e) {
+            $this->deletePath($disk, $path, $e);
 
-        return $this->scanAndFinalize($file);
+            throw new RuntimeException('Failed to persist private file metadata.', 0, $e);
+        }
+
+        return $this->scanAndFinalize($file, $scanner);
     }
 
     public function replace(StoredFile $existing, UploadedFile $upload): StoredFile
@@ -84,27 +95,34 @@ class PrivateFileService
         $replacement = $this->store($upload);
 
         if (! $replacement->isDownloadable()) {
-            $this->deleteStoredObject($replacement);
-            $replacement->delete();
+            $this->discardRejectedUpload($replacement);
 
             throw new FileNotAvailableException('Replacement file failed scan; original file preserved.');
         }
 
-        return DB::transaction(function () use ($existing, $replacement) {
-            $replacement->replaces_file_id = $existing->id;
-            $replacement->save();
+        try {
+            DB::transaction(function () use ($existing, $replacement): void {
+                $replacement->replaces_file_id = $existing->id;
+                $replacement->save();
 
-            $existing->pending_cleanup = true;
-            $existing->replaced_at = now();
-            $existing->scan_status = FileScanStatus::Rejected->value;
-            $existing->scan_message = 'replaced';
-            $existing->available_at = null;
-            $existing->save();
+                $existing->pending_cleanup = true;
+                $existing->replaced_at = now();
+                $existing->scan_status = FileScanStatus::Rejected->value;
+                $existing->scan_message = 'replaced';
+                $existing->available_at = null;
+                $existing->save();
+            });
+        } catch (Throwable $e) {
+            // Original remains downloadable; discard the unused replacement artefact.
+            $this->discardRejectedUpload($replacement);
 
-            $this->cleanupReplaced($existing);
+            throw new RuntimeException('Failed to finalize file replacement metadata; original preserved.', 0, $e);
+        }
 
-            return $replacement->refresh();
-        });
+        // Filesystem deletion only after a successful DB commit (retryable via pending_cleanup).
+        $this->cleanupReplaced($existing->refresh());
+
+        return $replacement->refresh();
     }
 
     public function download(StoredFile $file): StreamedResponse
@@ -132,6 +150,10 @@ class PrivateFileService
         TenantStorageMetadata::assertSameTenant($file->tenantMetadata());
     }
 
+    /**
+     * Deletes a replaced file's object then metadata. Safe to retry while pending_cleanup is true.
+     * Filesystem deletion is intentionally outside any DB transaction that could roll back.
+     */
     public function cleanupReplaced(StoredFile $file): void
     {
         if (! $file->pending_cleanup) {
@@ -139,17 +161,45 @@ class PrivateFileService
         }
 
         $this->assertCanAccess($file);
-        $this->deleteStoredObject($file);
+
+        try {
+            $this->deleteStoredObject($file);
+        } catch (Throwable $e) {
+            $file->scan_message = 'replaced; cleanup pending: object delete failed';
+            $file->available_at = null;
+            $file->scan_status = FileScanStatus::Rejected->value;
+            $file->pending_cleanup = true;
+            $file->save();
+
+            throw new RuntimeException(
+                'Failed to delete replaced file object; cleanup remains pending for retry.',
+                0,
+                $e
+            );
+        }
+
         $file->delete();
     }
 
-    private function scanAndFinalize(StoredFile $file): StoredFile
+    private function scanAndFinalize(StoredFile $file, MalwareScanner $scanner): StoredFile
     {
         $file->scan_status = FileScanStatus::Scanning->value;
+        $file->available_at = null;
         $file->save();
 
-        $absolute = Storage::disk($file->disk)->path($file->path);
-        $result = $this->scanner()->scan($absolute, $file->original_name);
+        try {
+            $absolute = Storage::disk($file->disk)->path($file->path);
+            $result = $scanner->scan($absolute, $file->original_name);
+        } catch (Throwable $e) {
+            $this->markRejected($file, 'scan exception: '.$this->safeFailureMessage($e));
+            $this->deleteStoredObjectSafely($file, $e);
+
+            throw new FileNotAvailableException(
+                'Malware scan failed closed; file is not available.',
+                0,
+                $e
+            );
+        }
 
         if ($result['clean'] === true) {
             $file->scan_status = FileScanStatus::Available->value;
@@ -161,24 +211,66 @@ class PrivateFileService
             return $file->refresh();
         }
 
-        $file->scan_status = FileScanStatus::Rejected->value;
-        $file->scan_message = $result['message'];
-        $file->scanned_at = now();
-        $file->available_at = null;
-        $file->save();
-
-        $this->deleteStoredObject($file);
+        $this->markRejected($file, $result['message']);
+        $this->deleteStoredObjectSafely($file);
 
         return $file->refresh();
     }
 
+    private function markRejected(StoredFile $file, string $message): void
+    {
+        $file->scan_status = FileScanStatus::Rejected->value;
+        $file->scan_message = $message;
+        $file->scanned_at = now();
+        $file->available_at = null;
+        $file->save();
+    }
+
     private function deleteStoredObject(StoredFile $file): void
     {
-        $disk = Storage::disk($file->disk);
+        $this->deletePath($file->disk, $file->path);
+    }
 
-        if ($disk->exists($file->path)) {
-            $disk->delete($file->path);
+    private function deleteStoredObjectSafely(StoredFile $file, ?Throwable $scanFailure = null): void
+    {
+        try {
+            $this->deleteStoredObject($file);
+        } catch (Throwable $cleanup) {
+            // Already rejected / not downloadable; preserve both failures for diagnosis.
+            throw new RuntimeException(
+                'File marked rejected but object cleanup failed.',
+                0,
+                $scanFailure ?? $cleanup
+            );
         }
+    }
+
+    private function deletePath(string $disk, string $path, ?Throwable $prior = null): void
+    {
+        try {
+            $filesystem = Storage::disk($disk);
+
+            if ($filesystem->exists($path) && ! $filesystem->delete($path)) {
+                throw new RuntimeException('Storage delete returned false.');
+            }
+        } catch (Throwable $e) {
+            throw new RuntimeException(
+                'Failed to clean up private file object.',
+                0,
+                $prior ?? $e
+            );
+        }
+    }
+
+    private function discardRejectedUpload(StoredFile $file): void
+    {
+        try {
+            $this->deleteStoredObject($file);
+        } catch (Throwable) {
+            // Best-effort: metadata removal still proceeds for unused replacement artefacts.
+        }
+
+        $file->delete();
     }
 
     private function buildPath(string $companyId, string $uuid, string $extension): string
@@ -188,7 +280,37 @@ class PrivateFileService
 
     private function scanner(): MalwareScanner
     {
-        return $this->scanner ?? app(MalwareScanner::class);
+        if ($this->scanner !== null) {
+            return $this->scanner;
+        }
+
+        try {
+            return app(MalwareScanner::class);
+        } catch (ScannerConfigurationException $e) {
+            throw $e;
+        } catch (Throwable $e) {
+            throw new ScannerConfigurationException(
+                'Malware scanner could not be resolved; private file operations fail closed.',
+                0,
+                $e
+            );
+        }
+    }
+
+    private function safeFailureMessage(Throwable $e): string
+    {
+        $class = $e::class;
+        $message = trim($e->getMessage());
+
+        if ($message === '') {
+            return $class;
+        }
+
+        // Avoid leaking paths/secrets from raw exception text into persisted diagnostics.
+        $truncated = preg_replace('/[^\p{L}\p{N}\s._:-]/u', '', $message) ?? '';
+        $truncated = Str::limit(trim($truncated), 180, '…');
+
+        return $truncated === '' ? $class : $class.': '.$truncated;
     }
 
     private function assertAuthorizedActor(): void

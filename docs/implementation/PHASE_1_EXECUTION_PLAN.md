@@ -306,15 +306,15 @@ PO-P1-AUTH
 
 ### WS-5 — File/document infrastructure
 
-| Field                   | Content                                                                                                                                                  |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Objective**           | Private uploads; validate; scan-before-availability; authorized download                                                                                 |
-| **Requirement IDs**     | `TB-DOC-001`, `TB-DOC-002` (prepare retention counting; full quota Phase 3)                                                                              |
-| **ADRs**                | **ADR-008** (blocking for strategy)                                                                                                                      |
-| **Acceptance criteria** | Private disk only; 2 MB enforced; bad MIME/extension rejected; unscanned/failed scan not downloadable; tenant on metadata; replace-then-cleanup ordering |
-| **Negative tests**      | Public URL access fails; cross-tenant download; oversize; unscanned fetch                                                                                |
-| **Exit evidence**       | Pest file/security suite (`tests/Feature/FileSecurityTest.php`); `docs/engineering/FILE_STORAGE_FOUNDATION.md`                                           |
-| **Implementation**      | **Complete locally** (2026-11-22) — pending independent review before WS-6                                                                               |
+| Field                   | Content                                                                                                                                                                |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Objective**           | Private uploads; validate; scan-before-availability; authorized download                                                                                               |
+| **Requirement IDs**     | `TB-DOC-001`, `TB-DOC-002` (prepare retention counting; full quota Phase 3)                                                                                            |
+| **ADRs**                | **ADR-008** (blocking for strategy)                                                                                                                                    |
+| **Acceptance criteria** | Private disk only; 2 MB enforced; bad MIME/extension rejected; unscanned/failed scan not downloadable; tenant on metadata; replace-then-cleanup ordering               |
+| **Negative tests**      | Public URL access fails; cross-tenant download; oversize; unscanned fetch                                                                                              |
+| **Exit evidence**       | Pest file/security suite (`tests/Feature/FileSecurityTest.php`); `docs/engineering/FILE_STORAGE_FOUNDATION.md`                                                         |
+| **Implementation**      | **Complete locally** (2026-11-22); remediation applied for production scanner refusal, scan exception fail-closed, post-commit cleanup — pending re-review before WS-6 |
 
 ### WS-6 — Outbox, queues, idempotency
 
