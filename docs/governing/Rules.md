@@ -1,5 +1,7 @@
 # TruckBill Platform — Full Rules and Calculation Specification
-**Status:** Draft — Pending Review. Not formally approved for implementation. User-supplied tax and TDS rules require professional legal validation before production. Phase numbering follows `Phases.md` only (DEC-001).
+**Status:** Approved by Product Owner — Phase 0 governing baseline.  
+**Approval date:** 21 November 2026 | **Approval scope:** Phase 0 governing baseline.  
+**Approval subject to:** Accepted Pending, Deferred and Proposed exceptions (PO-EXCEPT-001). User-supplied tax and TDS rules still require professional legal validation before production (TB-TAX-001 remains Pending). Phase numbering follows `Phases.md` only (DEC-001).
 
 ## 1. Rule precedence
 Security and tenant isolation → immutable financial/audit integrity → explicit module rule → global platform rule → UI convenience. Permission cannot bypass business restrictions. Entitlement, feature availability, role permission and business eligibility must all pass.

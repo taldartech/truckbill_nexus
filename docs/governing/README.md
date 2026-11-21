@@ -1,30 +1,38 @@
 # TruckBill Governing Specification Package
 
-**Status: Draft — Pending Review / Ready for Formal Approval preparation.**  
-**Not formally approved for implementation.** Phase 0 documentation finalization incorporates user decisions DEC-001–DEC-009; formal approval remains with the product owner.
+**Status: Approved by Product Owner — Phase 0 governing baseline.**  
+**Approval date:** 21 November 2026  
+**Approval scope:** Phase 0 governing baseline (six governing documents + supporting Phase 0 engineering package).  
+**Approval decisions:** PO-APPROVE-001 (Approved); PO-EXCEPT-001 (Accepted); PO-HIST-001 (Accepted).  
+**Phase 0:** Formally approved and **closed**.
+
+Approval is **subject to** accepted Pending, Deferred and Proposed exceptions (PO-EXCEPT-001). Those items retain their existing statuses and must not be silently reclassified as Confirmed/Accepted.
 
 ## Six governing documents
-1. PRD.md
-2. Architecture.md
-3. Rules.md
-4. Design.md
-5. Phases.md
-6. Memory.md
+1. PRD.md — **Approved** (21 November 2026)
+2. Architecture.md — **Approved** (21 November 2026)
+3. Rules.md — **Approved** (21 November 2026)
+4. Design.md — **Approved** (21 November 2026)
+5. Phases.md — **Approved** (21 November 2026)
+6. Memory.md — **Approved** (21 November 2026)
 
 ## Supporting control artefacts
-- Requirements-Traceability-Starter.md (expanded Phase 0 register)
+- Requirements-Traceability-Starter.md (expanded Phase 0 register; Pending/Deferred/Excluded statuses preserved)
 - `docs/engineering/FOUNDATION_AUDIT.md`
-- `docs/engineering/PHASE_0_FINALIZATION_REPORT.md`
-- `docs/architecture-decisions/` (ADR-001–ADR-012)
+- `docs/engineering/PHASE_0_FINALIZATION_REPORT.md` (historical; 75-row stats superseded)
+- `docs/engineering/PHASE_0_FINAL_CONSISTENCY_REPORT.md`
+- `docs/engineering/PHASE_0_APPROVAL_READINESS_REPORT.md` (records formal approval)
+- `docs/architecture-decisions/` (ADR-001–ADR-012; Proposed/Pending unchanged by Phase 0 approval)
 - `docs/testing/TEST_STRATEGY.md`
-- `docs/implementation/PHASE_0_DELIVERABLES.md`
+- `docs/implementation/PHASE_0_DELIVERABLES.md` (artefacts remain Not Started)
 
 ## Source authority
 - Functional/business requirements are based on the decisions consolidated from the TruckBill rebuild discussions and the existing expanded PRD/Rules draft.
-- Visual brand requirements are based on the TruckBill Design Guideline (PDF); repository presence of the PDF is Pending (AUD-GOV-004).
+- Visual brand requirements are based on the TruckBill Design Guideline (PDF); repository presence of the PDF remains Pending (AUD-GOV-004).
 - Older architecture files and old subscription proposals are historical/non-authoritative where superseded by later confirmed decisions.
 - The pricing workbook is an initial catalogue source; commercial values remain configurable and versioned.
 - Delivery phase numbering authority: **`Phases.md` only** (DEC-001 / ADR-011).
+- **PO-HIST-001:** Historical discussion residual risk accepted; no additional sampling review required.
 
 ## Important scope and decision safeguards
 - Laravel 13, React + Inertia, PostgreSQL, modular monolith.
@@ -34,10 +42,10 @@
 - **Partload Expense Management is explicitly excluded** from Partload scope (DEC-005). OwnFleet expense management remains in scope.
 - Reports are deferred until source workflows are successfully implemented.
 - Legacy applications are migration sources only after the new platform is ready.
-- **No application coding** (including engineering foundation implementation) until Phase 0 is formally completed and approved (DEC-004).
+- **DEC-004:** Phase 0 approval prerequisite is **satisfied**. Implementation must follow `Phases.md` sequencing. Phase 1 may be planned under approved boundaries; Phase 1 implementation starts only on **separate Product Owner authorization**.
 
-## Review caveat
-This is a materially expanded specification package prepared for formal approval. It must still pass product-owner formal approval and remaining Pending items / external validations. Any genuinely undecided point remains labelled Pending; do not silently invent a business rule.
+## Accepted exceptions (PO-EXCEPT-001)
+Outstanding Pending, Deferred and Proposed items remain open for their designated phases or gates. Do not invent resolutions. External validations (accounting maps, GST/TDS) remain required before production use of those rules.
 
 ## Document status vocabulary
 - **Draft** — content exists; not formally approved
@@ -45,4 +53,4 @@ This is a materially expanded specification package prepared for formal approval
 - **Pending Decision** — requires further user decision
 - **Resolved by User Decision** — incorporated from DEC-001–DEC-009
 - **Ready for Formal Approval** — documentation package complete enough to request approval
-- **Approved** — reserved for product-owner formal approval only (not claimed by this package)
+- **Approved** — Product Owner formal approval recorded (Phase 0 governing baseline, 21 November 2026)

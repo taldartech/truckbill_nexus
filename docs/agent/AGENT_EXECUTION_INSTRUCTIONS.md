@@ -47,7 +47,7 @@ No hard deletion or restore. Soft deletion only where explicitly allowed, with r
 3. Audit starter-kit behaviors, especially self-registration, account deletion, profile/email changes, password reset, sessions and Fortify.
 4. Produce `docs/engineering/FOUNDATION_AUDIT.md`, an initial requirement traceability plan, risk register and proposed prioritized corrections.
 5. Do not begin Broker, OwnFleet or Partload feature development.
-6. **Coding gate (DEC-004):** Do not implement engineering foundation or application behaviour until Phase 0 is formally completed and approved. Documentation finalization and read-only inspection are permitted. Pause for product-owner formal approval before Phase 1.
+6. **Coding gate (DEC-004):** Phase 0 is formally approved (PO-APPROVE-001, 21 November 2026); the Phase 0 approval prerequisite is satisfied. Do **not** implement Phase 1 engineering foundation or application behaviour until the Product Owner issues a **separate Phase 1 authorization**. Preserve Pending/Deferred/Proposed exceptions (PO-EXCEPT-001). Documentation updates and read-only inspection remain permitted when authorized.
 
 ## Safety
 - Never expose secrets in logs/reports or commit `.env`, `.env.testing`, backups or credentials.

@@ -3,7 +3,13 @@
 **Date:** 2026-11-21  
 **Repository:** `/Users/ttc/Sites/truckbill/nexus`  
 **Branch:** `main`  
-**Formal approval:** **Not claimed.** Only the Product Owner can approve Phase 0.
+
+> **FORMAL APPROVAL RECORDED (21 November 2026)**  
+> - **PO-APPROVE-001:** APPROVED — Formal Phase 0 approval. Phase 0 is **closed**.  
+> - **PO-EXCEPT-001:** ACCEPTED — Pending, Deferred and Proposed items remain open with existing statuses.  
+> - **PO-HIST-001:** ACCEPTED — Historical discussion residual risk accepted; no additional sampling review required.  
+> - Approved governing documents + supporting Phase 0 engineering package = **implementation baseline** (subject to exceptions).  
+> - DEC-004 Phase 0 approval prerequisite = **satisfied**. Phase 1 may be planned under approved boundaries; **Phase 1 implementation requires separate Product Owner authorization** (not granted by this approval record alone).
 
 ---
 
@@ -181,10 +187,9 @@ Confirmed: no `git push`, `git push --force`, branch publish, tag publish, relea
 
 ## Final verdict
 
-# Ready for Product Owner Approval
+# Phase 0 Formally Approved and Closed (21 November 2026)
 
-The Phase 0 **documentation package** is ready for Product Owner formal review and approval.
+Historical readiness verdict was **Ready for Product Owner Approval**. The Product Owner has since recorded **PO-APPROVE-001 / PO-EXCEPT-001 / PO-HIST-001**.
 
-This verdict does **not** approve Phase 0.  
-Pending/Deferred/external-validation items remain open.  
-No application coding is authorized until the Product Owner formally approves Phase 0 (DEC-004).
+Pending/Deferred/Proposed exceptions remain open (PO-EXCEPT-001).  
+DEC-004 Phase 0 prerequisite is satisfied. Phase 1 implementation starts only on separate Product Owner authorization.

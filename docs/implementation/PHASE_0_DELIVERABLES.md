@@ -1,9 +1,11 @@
 # Phase 0 Design Deliverables Register
 
-**Status:** Draft — Pending Review  
-**Date:** 2026-11-21 (consistency correction)  
-**Authority:** Design.md §14; Phases.md §§0–1; TB-DES-002  
+**Status:** Active register (Phase 0 governing baseline approved 21 November 2026; design artefacts themselves remain Not Started)  
+**Date:** 2026-11-21 (consistency correction); Phase 0 approval recorded 21 November 2026  
+**Authority:** Design.md §14; Phases.md §§0–1; TB-DES-002; PO-APPROVE-001  
 **Rule:** Do not mark Completed unless the artefact exists and has been reviewed.
+
+**Phase 0 closure:** Formal approval does **not** complete these artefacts. They remain required under the Design Deliverables Gate before product-specific Phase 1 UI. Phase 1 technical UI shell still requires separate Product Owner Phase 1 authorization.
 
 ## Gate clarification (aligned across Design.md and Phases.md)
 

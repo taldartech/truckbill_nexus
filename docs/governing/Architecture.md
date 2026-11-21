@@ -1,6 +1,8 @@
 # TruckBill Platform — Full Architecture Specification
 
-**Status:** Draft — Pending Review. Not formally approved for implementation. Infrastructure and provider choices remain subject to validation. Delivery phase numbering follows `Phases.md` only (DEC-001).
+**Status:** Approved by Product Owner — Phase 0 governing baseline.  
+**Approval date:** 21 November 2026 | **Approval scope:** Phase 0 governing baseline.  
+**Approval subject to:** Accepted Pending, Deferred and Proposed exceptions (PO-EXCEPT-001); Proposed/Pending ADRs and infrastructure candidates remain as stated. Delivery phase numbering follows `Phases.md` only (DEC-001).
 
 ## 1. Technology and deployment
 Laravel 13; React + Inertia; PostgreSQL; Redis/Valkey; AWS; private S3; Razorpay; Sanctum where appropriate; Reverb/evaluated equivalent; Terraform; GitHub Actions; Pest, Playwright, k6; CloudWatch, Sentry, OpenTelemetry. Modular monolith with asynchronous workers; no premature microservices.

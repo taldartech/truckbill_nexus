@@ -1,6 +1,8 @@
 # TruckBill Platform — Full Design Specification
 
-**Status:** Draft — Pending Review. Not formally approved for implementation.
+**Status:** Approved by Product Owner — Phase 0 governing baseline.  
+**Approval date:** 21 November 2026 | **Approval scope:** Phase 0 governing baseline.  
+**Approval subject to:** Accepted Pending, Deferred and Proposed exceptions (PO-EXCEPT-001). Design artefacts in `PHASE_0_DELIVERABLES.md` remain Not Started and are still required before product-specific Phase 1 UI (Design Deliverables Gate).
 
 ## 1. Brand and experience
 Light-first professional logistics SaaS. TruckBill gradient #2FB36F→#2D8CFF; supporting #4CAF50, #81C784, #388E3C, #2196F3, #FFC107, #F8F9FA, #F5F7FA, #212529. Avoid dark full-page backgrounds. Use official logo.  

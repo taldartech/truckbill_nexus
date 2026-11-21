@@ -3,9 +3,10 @@
 **Date:** 2026-11-21  
 **Repository:** `/Users/ttc/Sites/truckbill/nexus`  
 **Scope:** Documentation-only consistency corrections after Phase 0 finalization  
-**Formal approval:** **Not claimed.** Only the Product Owner can formally approve Phase 0.
 
-**Re-verification (approval readiness audit):** Traceability re-counted at **76** unique IDs with status totals **55 / 11 / 7 / 2 / 1** (Confirmed / Resolved by User Decision / Pending / Deferred / Excluded). DEC-001–009 and DEC-004 coding gate unchanged. See `PHASE_0_APPROVAL_READINESS_REPORT.md`.
+> **Phase 0 approval note (21 November 2026):** PO-APPROVE-001 Approved; PO-EXCEPT-001 Accepted; PO-HIST-001 Accepted. Phase 0 formally approved and closed. This consistency report’s technical findings remain valid. Pending/Deferred/Excluded/Proposed statuses were **not** changed by approval. See `PHASE_0_APPROVAL_READINESS_REPORT.md`.
+
+**Re-verification (approval readiness audit):** Traceability re-counted at **76** unique IDs with status totals **55 / 11 / 7 / 2 / 1** (Confirmed / Resolved by User Decision / Pending / Deferred / Excluded). DEC-001–009 unchanged. DEC-004 Phase 0 prerequisite now satisfied by formal approval.
 
 ---
 
@@ -159,14 +160,9 @@ Documentation and the design-deliverables register were updated only.
 
 ## 9. Final recommendation
 
-**Ready for Product Owner Approval** of the Phase 0 **governing documentation package**, with explicit acceptance that:
+**Historical recommendation:** Ready for Product Owner Approval (with exceptions).  
 
-1. Design artefacts remain Not Started and are gated separately before product-specific UI.  
-2. Listed Pending / Deferred / external-validation items remain open and must not be invented during implementation.  
-3. DEC-004 still blocks all application coding until the Product Owner formally approves Phase 0.
-
-This report does **not** approve Phase 0.  
-**Product Owner formal approval is still required.**
+**Subsequent Product Owner action (21 November 2026):** Phase 0 formally approved and closed (PO-APPROVE-001), with exceptions accepted (PO-EXCEPT-001) and historical residual risk accepted (PO-HIST-001). Design artefacts remain Not Started and gated before product-specific UI. Pending/Deferred/Proposed items remain open. DEC-004 Phase 0 prerequisite satisfied; Phase 1 implementation requires separate authorization.
 
 ---
 

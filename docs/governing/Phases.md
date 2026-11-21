@@ -1,7 +1,9 @@
 # TruckBill Platform — Full Delivery Phases
 
-**Status:** Draft — Pending Review.  
-**Hard gate:** No application coding — including engineering foundation implementation, schema changes, dependency changes, or business modules — until Phase 0 is formally completed and approved (DEC-004).  
+**Status:** Approved by Product Owner — Phase 0 governing baseline.  
+**Approval date:** 21 November 2026 | **Approval scope:** Phase 0 governing baseline.  
+**Approval subject to:** Accepted Pending, Deferred and Proposed exceptions (PO-EXCEPT-001).  
+**DEC-004:** Phase 0 formal approval prerequisite is **satisfied** (PO-APPROVE-001). Implementation must still follow this document’s phase sequencing. Phase 1 may be planned under approved boundaries only when separately authorized by the Product Owner; Phase 0 closure does not by itself start Phase 1 coding in the repository.  
 **Phase numbering authority:** This document is the single authoritative source for delivery phase numbers (DEC-001 / ADR-011). Do not overload “Phase 1” to mean subscription billing.
 
 ## Principles
@@ -11,6 +13,8 @@ Independent codebase. Legacy app reserved for later migration only. Modular mono
 Finalize and obtain formal approval of PRD, Architecture, Rules, Design, Phases, Memory. Expand traceability matrix, ADR/change-control, risk register and test strategy. Maintain the design deliverables register (`docs/implementation/PHASE_0_DELIVERABLES.md`) with accurate Not Started / Pending / Completed status.  
 **Design deliverables are not a mandatory Phase 0 approval exit criterion.** Missing design artefacts may remain Not Started at Phase 0 approval.  
 Exit: all six governing documents formally approved by the product owner; critical conflicts resolved or explicitly deferred; Phase 0 finalization / consistency reports accepted for review outcomes.
+
+**Phase 0 closure (recorded):** Formally approved and closed on **21 November 2026** (PO-APPROVE-001). Exceptions accepted under PO-EXCEPT-001. Historical discussion residual risk accepted under PO-HIST-001 (no additional sampling review required). The six governing documents and supporting Phase 0 engineering package are the approved implementation baseline, subject to those exceptions.
 
 ## Phase 1 — Engineering foundation
 Repository, Laravel 13/React/Inertia/PostgreSQL, macOS/Linux/Windows setup, CI, static analysis, Pest, frontend tests, tenant context, audit, file service/S3/malware scanning, outbox, idempotency, queues, observability, and a **technical UI shell**. Exit: CI green; tenant isolation, audit atomicity, upload and queue reliability tested; non-production deployment.  

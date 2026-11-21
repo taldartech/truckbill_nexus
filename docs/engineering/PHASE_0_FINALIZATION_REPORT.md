@@ -4,7 +4,8 @@
 **Repository:** `/Users/ttc/Sites/truckbill/nexus`  
 **Branch:** `main`  
 **Assignment:** Phase 0 documentation finalization & approval package  
-**Formal approval status:** **Not claimed.** Documents are Draft / Pending Review / Ready for Formal Approval preparation.
+
+> **Phase 0 approval note (21 November 2026):** Subsequent to this finalization report, the Product Owner recorded **PO-APPROVE-001** (Approved), **PO-EXCEPT-001** (Accepted), and **PO-HIST-001** (Accepted). Phase 0 is formally approved and closed. This file remains a **historical finalization snapshot**; it is not rewritten. See [`PHASE_0_APPROVAL_READINESS_REPORT.md`](./PHASE_0_APPROVAL_READINESS_REPORT.md).
 
 > **SUPERSEDED (traceability statistics):** This report’s **75-row** traceability statistics are a **historical snapshot** from the finalization pass. They are **superseded** by the verified recount in [`PHASE_0_FINAL_CONSISTENCY_REPORT.md`](./PHASE_0_FINAL_CONSISTENCY_REPORT.md) (**76** unique requirement IDs; reconciled status totals). Do not treat the 75-row figures in this document as current. Historical findings and narrative below are preserved; they are not rewritten to claim this report originally contained 76 rows.
 

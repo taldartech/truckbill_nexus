@@ -1,5 +1,7 @@
 # TruckBill Platform — Full Product Requirements Document
-**Edition:** Full requirements-preservation draft | **Status:** Draft — Pending Review / Ready for Formal Approval preparation. Not formally approved for implementation.  
+**Edition:** Full requirements-preservation draft | **Status:** Approved by Product Owner — Phase 0 governing baseline.  
+**Approval date:** 21 November 2026 | **Approval scope:** Phase 0 governing baseline.  
+**Approval subject to:** Accepted Pending, Deferred and Proposed exceptions (PO-EXCEPT-001); statuses of those items unchanged.  
 **Product owner:** Taldar Tech Consultancy | **Product:** TruckBill — “Transport. Billing. Simplified.”  
 **Phase numbering:** Follow `Phases.md` only (DEC-001).
 
@@ -8,7 +10,7 @@ TruckBill is a unified multi-tenant logistics, transport operations, fleet and a
 
 **Out of scope (DEC-005):** Partload Expense Management is explicitly excluded from Partload. OwnFleet expense management (including trip expenses/diesel and any separately defined OwnFleet expense add-ons) remains in scope and must not be removed because of this exclusion.
 
-**Coding gate (DEC-004):** No application coding — including engineering foundation implementation, schema changes, dependency changes, or business modules — until Phase 0 is formally completed and approved.
+**Coding gate (DEC-004):** Phase 0 formal approval prerequisite is **satisfied** (PO-APPROVE-001, 21 November 2026). Application coding must still follow `Phases.md` sequencing. Phase 1 engineering foundation may be planned under approved boundaries only when separately authorized by the Product Owner; this document approval alone does not start Phase 1 implementation in the repository.
 
 ## 2. Technology baseline
 Laravel 13; React + Inertia; PostgreSQL; Redis/Valkey; AWS; private S3; Razorpay; Sanctum where appropriate; Reverb or evaluated equivalent; Terraform; GitHub Actions; Pest, Playwright, k6; CloudWatch, Sentry, OpenTelemetry. Start as modular monolith. Target 5,000 concurrent users is a load-test objective, not a sizing assumption.

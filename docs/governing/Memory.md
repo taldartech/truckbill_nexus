@@ -1,6 +1,8 @@
 # TruckBill Platform — Full Living Implementation Memory
 
-**Status:** Draft — Pending Review. Initial handover baseline updated for Phase 0 finalization (DEC-001–DEC-009). Does not override PRD.md, Architecture.md or Rules.md. Not formally approved.
+**Status:** Approved by Product Owner — Phase 0 governing baseline (living Memory; does not override PRD.md, Architecture.md or Rules.md).  
+**Approval date:** 21 November 2026 | **Approval scope:** Phase 0 governing baseline.  
+**Approval subject to:** Accepted Pending, Deferred and Proposed exceptions (PO-EXCEPT-001).
 
 ## Project
 TruckBill by Taldar Tech Consultancy. Tagline “Transport. Billing. Simplified.” Unified Broker, OwnFleet and Partload. Independent new codebase. Legacy apps are not code/architecture/feature references; reserved for later migration.
@@ -20,9 +22,9 @@ Global identity, mutually exclusive Internal/Customer. No public self-registrati
 
 ## Global rules
 Shared PostgreSQL tenancy. Company/branch scope server-enforced. Edit/delete remarks. Audit mutation atomic. Posted financial entries immutable and corrected by reversal. Access requires entitlement, feature, permission and business eligibility. Reports deferred until source workflows work.  
-**Coding gate (DEC-004):** No application coding until Phase 0 is formally completed and approved.  
+**Coding gate (DEC-004):** Phase 0 formal approval prerequisite is **satisfied** (PO-APPROVE-001, 21 November 2026). Implementation must follow `Phases.md` sequencing. Phase 1 may be planned under approved boundaries only when separately authorized by the Product Owner.  
 **Phase numbering (DEC-001):** `Phases.md` is the sole authority. Phase 1 = engineering foundation. Initial manual Razorpay renewals = Phase 3.  
-**Design gates:** Completing design artefacts is not mandatory for Phase 0 approval. Product-specific UI requires the Design Deliverables Gate; Phase 1 technical UI shell only after Phase 0 approval (`Design.md` §14; `Phases.md`).
+**Design gates:** Completing design artefacts was not mandatory for Phase 0 approval. Product-specific UI still requires the Design Deliverables Gate; Phase 1 technical UI shell only after separate Phase 1 authorization (`Design.md` §14; `Phases.md`).
 
 ## Modules
 Enquiry; Unified Consignment/LR; Broker/Market-Hired; OwnFleet Trip; Partload; Accounting; Subscription; in-app notifications; SMS/WhatsApp/Email; Vehicle Documents; Tyres; Batteries; Maintenance; Spare Parts/Store; Workshop/Job Cards.  
@@ -44,18 +46,20 @@ Tyres/batteries individually tracked with installation/removal history. Maintena
 2 MB/file; JPG/JPEG/PNG/WEBP/PDF/DOC/DOCX/XLS/XLSX. Private S3, server validation, malware scan, authorized access. Retained soft-delete attachments count toward storage. Failed upload no quota. Replacement must succeed before old cleanup.
 
 ## Agent protocol
-Before work, read all six governing docs and ADRs. Identify acceptance criteria, dependencies, permissions, entitlements, tenant scope, audit/deletion, accounting, documents and events. Add tests. Do not invent policy where specified. Record assumptions. Ask product owner only for consequential decisions. Do not start implementation until Phase 0 formal approval (DEC-004).
+Before work, read all six governing docs and ADRs. Identify acceptance criteria, dependencies, permissions, entitlements, tenant scope, audit/deletion, accounting, documents and events. Add tests. Do not invent policy where specified. Do not convert Pending/Deferred/Proposed items to Confirmed without Product Owner decision. Record assumptions. Ask product owner only for consequential decisions. Phase 0 is approved; do not start Phase 1 implementation until the Product Owner issues a separate Phase 1 authorization.
 
 ## Update protocol
 Record date, fact, reason, affected modules and ADR/PR/issue when technology/version, schema, API, infrastructure, major constraint, approved requirement change, migration or release milestone changes. Business policy changes require PRD/Rules update and approval first. Memory must not silently override governing docs.
 
 ## Current status
-- Phase 0 documentation package is **ready for Product Owner formal approval**.
-- Phase 0 is **not approved**.
-- No application coding is authorized (DEC-004).
-- Design deliverables remain **Not Started** and are required before product-specific UI (Design Deliverables Gate; not a substitute for Phase 0 approval).
+- Phase 0 is **formally approved and closed** (PO-APPROVE-001, 21 November 2026).
+- The six governing documents and supporting Phase 0 engineering package are the **approved implementation baseline**, subject to PO-EXCEPT-001.
+- PO-EXCEPT-001 **accepted**: Pending, Deferred and Proposed items remain open with existing statuses (not reclassified).
+- PO-HIST-001 **accepted**: historical discussion residual risk accepted; no additional sampling review required.
+- DEC-004 Phase 0 approval prerequisite is **satisfied**. Phase 1 engineering foundation may be **planned** under approved phase boundaries; **Phase 1 implementation starts only on separate Product Owner authorization**.
+- Design deliverables remain **Not Started** and are required before product-specific UI (Design Deliverables Gate).
 - Legacy migration remains future work.
-- Authoritative current consistency snapshot: `docs/engineering/PHASE_0_FINAL_CONSISTENCY_REPORT.md`.
+- Authoritative consistency snapshot: `docs/engineering/PHASE_0_FINAL_CONSISTENCY_REPORT.md`. Approval record: `docs/engineering/PHASE_0_APPROVAL_READINESS_REPORT.md`.
 
 ### Phase 0 decision log (documentation)
 | Date | Decision | Source |
@@ -63,9 +67,12 @@ Record date, fact, reason, affected modules and ADR/PR/issue when technology/ver
 | 2026-11-21 | Phases.md is sole phase-numbering authority; Razorpay manual renewals = Phase 3 | DEC-001 |
 | 2026-11-21 | Deactivated company: Branch Panel blocked; Owner Panel remains | DEC-002 |
 | 2026-11-21 | No hard delete or restore | DEC-003 |
-| 2026-11-21 | No application coding until Phase 0 formal approval | DEC-004 |
+| 2026-11-21 | No application coding until Phase 0 formal approval (prerequisite now satisfied) | DEC-004 |
 | 2026-11-21 | Partload Expense Management excluded | DEC-005 |
 | 2026-11-21 | No self-service account deletion | DEC-006 |
 | 2026-11-21 | Poppins is product UI font | DEC-007 |
 | 2026-11-21 | Version-control `.cursor/rules/truckbill-project.mdc` | DEC-008 |
 | 2026-11-21 | Email changes via authorized administration only | DEC-009 |
+| 2026-11-21 | Formal Phase 0 approval — governing baseline established | PO-APPROVE-001 |
+| 2026-11-21 | Pending/Deferred/Proposed exceptions accepted; statuses unchanged | PO-EXCEPT-001 |
+| 2026-11-21 | Historical discussion residual risk accepted; no sampling review | PO-HIST-001 |

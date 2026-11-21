@@ -1,7 +1,8 @@
 # TruckBill Requirements Traceability — Phase 0 Expanded Register
 
-**Status:** Draft — Pending Review. Control artefact; does not replace the six governing documents.  
+**Status:** Control artefact under Approved Phase 0 governing baseline (21 November 2026). Does not replace the six governing documents.  
 **Phase numbering authority:** `Phases.md` only (DEC-001).  
+**PO-EXCEPT-001:** Pending, Deferred, Excluded and Resolved-by-User-Decision statuses below are **unchanged** by Phase 0 approval — do not silently reclassify.  
 **Original area-level IDs preserved** where possible; atomic children use suffixes (`-01`, `-02`, …).
 
 ### Column legend

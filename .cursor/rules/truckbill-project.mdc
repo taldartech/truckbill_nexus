@@ -38,7 +38,7 @@ Follow `Architecture.md` for the complete architecture direction.
 
 ## Development Workflow
 - Follow `Phases.md` as the sole delivery phase-numbering authority (DEC-001). Phase 1 is engineering foundation; initial manual Razorpay renewals are Phase 3.
-- Do not start application coding — including engineering foundation implementation — until Phase 0 is formally completed and approved (DEC-004).
+- Phase 0 is formally approved (PO-APPROVE-001, 21 November 2026). DEC-004 Phase 0 approval prerequisite is satisfied. Do **not** start Phase 1 implementation until the Product Owner issues a separate Phase 1 authorization. Preserve Pending/Deferred/Proposed exceptions (PO-EXCEPT-001).
 - Do not start business modules before engineering foundation exit criteria are met.
 - Inspect existing code and conventions before changing files.
 - Prefer existing dependencies and components.
@@ -51,7 +51,7 @@ Follow `Architecture.md` for the complete architecture direction.
 Preserve governing document intent; do not silently invent requirements.
 Document conflicts and unresolved decisions as Pending instead of inventing answers.
 Update progress documentation only with verified implementation results.
-Governing documents remain Draft until the product owner formally approves them.
+Governing documents are Approved as the Phase 0 baseline (21 November 2026), subject to accepted Pending/Deferred/Proposed exceptions.
 
 ## Git Policy
 - Local Git commits are permitted only when authorized by the Product Owner.
