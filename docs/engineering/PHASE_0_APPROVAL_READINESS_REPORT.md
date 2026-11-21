@@ -160,13 +160,12 @@ This assignment does **not** amend that commit.
 | `590bee7e89b474cb8ccf56b3a2e43c25662c1fea` | `docs: stamp phase 0 approval readiness report commit ids` |
 | `4600df7da75073b18ebf582e4389557a7dcdc081` | `docs: record final phase 0 readiness report HEAD ids` |
 
-The tip commit that contains this completed ID table is recorded in section 11 after that commit is created.
 
 ---
 
 ## 11. Current HEAD commit ID
 
-Confirm with `git rev-parse HEAD` after the final local commit of this assignment. Expected tip subject: `docs: record phase 0 approval readiness report tip`.
+`f83a0a5339946623a3796e0c254f483bc49695bf` (local only; not pushed).
 
 ---
 
