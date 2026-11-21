@@ -1,12 +1,13 @@
 # TruckBill Nexus — Phase 1 Engineering Foundation Execution Plan
 
-**Status:** Draft — Pending Product Owner Review  
-**Date:** 21 November 2026 (refined — Principal Architecture Review)  
+**Status:** Approved — Phase 1 Implementation Authorized  
+**Date:** 21 November 2026 (authorized for implementation)  
 **Repository:** `/Users/ttc/Sites/truckbill/nexus`  
-**Authorization for this document:** Phase 1 **planning only**. This plan does **not** authorize implementation.  
+**Authorization:** **PO-P1-AUTH APPROVED** (21 November 2026) — Phase 1 Engineering Foundation implementation authorized under this plan. Satisfies DEC-004 separate implementation authorization.  
 **Phase 0:** Formally approved and closed (PO-APPROVE-001, 21 November 2026).  
-**DEC-004:** Phase 0 approval prerequisite is satisfied; Phase 1 coding starts only on **separate Product Owner implementation authorization**.  
-**PO-EXCEPT-001:** Pending, Deferred, Excluded and Proposed statuses remain unchanged — never treat Proposed ADRs as Accepted.
+**Authorization record:** `docs/engineering/PHASE_1_AUTHORIZATION_RECORD.md`  
+**PO-EXCEPT-001:** Pending, Deferred, Excluded and Proposed product-requirement statuses remain unchanged.  
+**Remaining Pending ADRs:** ADR-006 (no Sanctum), ADR-010 (no accounting posting architecture).
 
 ---
 
@@ -113,12 +114,12 @@ Per-ADR acceptances as each workstream needs them → **WS-1** baseline + hard-d
 
 | ADR | Status | Blocks | Required before | Recommended decision | Latest safe point |
 |---|---|---|---|---|---|
-| **ADR-001** Modular monolith structure | Proposed | App folder layout | WS-1 structure / first domain dirs | Accept concrete `app/` layout | Before first foundation package layout |
-| **ADR-002** Tenant context propagation | Proposed | WS-3 | WS-3 start | Accept explicit context on HTTP/jobs/events/cache/storage; RLS later only | Before tenant helpers/migrations |
-| **ADR-003** Audit log + atomic mutation | Proposed | WS-4 | WS-4 start | Accept append-only + same-TX audit write | Before audit migration |
-| **ADR-007** PostgreSQL + Redis local/CI | Proposed | WS-1 env, **WS-2 CI** | WS-1/WS-2 | Accept pgsql+redis baseline; document overrides | **Before CI Postgres work** |
-| **ADR-008** Private files + malware scanning | Proposed | WS-5 production scan choice | WS-5 non-stub drivers | Accept private storage + scan interface; CI stub OK | Before non-stub scanner wiring |
-| **ADR-009** Outbox + idempotency | Proposed | WS-6 | WS-6 start | Accept outbox + idempotency primitives | Before outbox migration |
+| **ADR-001** Modular monolith structure | **Accepted** (PO-P1-ADR-001) | App folder layout | WS-1 structure / first domain dirs | Accepted concrete `app/` layout | Accepted 21 November 2026 |
+| **ADR-002** Tenant context propagation | **Accepted** (PO-P1-ADR-002) | WS-3 | WS-3 start | Accepted explicit context on HTTP/jobs/events/cache/storage; RLS later only | Accepted 21 November 2026 |
+| **ADR-003** Audit log + atomic mutation | **Accepted** (PO-P1-ADR-003) | WS-4 | WS-4 start | Accepted append-only + same-TX audit write | Accepted 21 November 2026 |
+| **ADR-007** PostgreSQL + Redis local/CI | **Accepted** (PO-P1-ADR-007) | WS-1 env, **WS-2 CI** | WS-1/WS-2 | Accepted pgsql+redis baseline; document overrides | Accepted 21 November 2026 |
+| **ADR-008** Private files + malware scanning | **Accepted** (PO-P1-ADR-008) | WS-5 production scan choice | WS-5 non-stub drivers | Accepted private storage + scan interface; CI stub OK | Accepted 21 November 2026 |
+| **ADR-009** Outbox + idempotency | **Accepted** (PO-P1-ADR-009) | WS-6 | WS-6 start | Accepted outbox + idempotency primitives | Accepted 21 November 2026 |
 | ADR-004 Soft delete / no restore | Accepted | — | Follow | N/A | N/A |
 | ADR-005 Identity model | Accepted product / Proposed schema | Phase 2 schema | Do not implement Phase 2 schema in P1 | Keep | Phase 2 |
 | **ADR-006** Web/mobile auth | **Pending** | Sanctum/mobile | **Do not install Sanctum** | Leave Pending | Phase 2 |
@@ -126,19 +127,19 @@ Per-ADR acceptances as each workstream needs them → **WS-1** baseline + hard-d
 | ADR-011 Phase numbering | Accepted | Sequencing | Follow | N/A | N/A |
 | ADR-012 Cursor rule versioning | Accepted | Process | Follow | N/A | N/A |
 
-### 4.3 Product Owner approvals required before implementation
+### 4.3 Product Owner decisions (Phase 1 authorization)
 
-| Decision ID | Topic |
-|---|---|
-| **PO-P1-AUTH** | Authorize Phase 1 **implementation** (this plan alone is insufficient) |
-| **PO-P1-ADR-001** | Accept ADR-001 (or written Proposed-default authorization) |
-| **PO-P1-ADR-002** | Accept ADR-002 |
-| **PO-P1-ADR-003** | Accept ADR-003 |
-| **PO-P1-ADR-007** | Accept ADR-007 |
-| **PO-P1-ADR-008** | Accept ADR-008 |
-| **PO-P1-ADR-009** | Accept ADR-009 |
-| **PO-P1-DEPS** | Approve any new packages when requested (Playwright, scan client, etc.) |
-| **PO-P1-DEPLOY** | Name non-production deployment target for exit smoke |
+| Decision ID | Topic | Status (21 November 2026) |
+|---|---|---|
+| **PO-P1-AUTH** | Authorize Phase 1 **implementation** | **APPROVED** |
+| **PO-P1-ADR-001** | Accept ADR-001 | **ACCEPTED** |
+| **PO-P1-ADR-002** | Accept ADR-002 | **ACCEPTED** |
+| **PO-P1-ADR-003** | Accept ADR-003 | **ACCEPTED** |
+| **PO-P1-ADR-007** | Accept ADR-007 | **ACCEPTED** |
+| **PO-P1-ADR-008** | Accept ADR-008 | **ACCEPTED** |
+| **PO-P1-ADR-009** | Accept ADR-009 | **ACCEPTED** |
+| **PO-P1-DEPS** | Approve any new packages when requested | **CASE-BY-CASE** (no blanket approval) |
+| **PO-P1-DEPLOY** | Name non-production deployment target for exit smoke | **NOT DECIDED** (smoke blocked) |
 
 ---
 
@@ -381,7 +382,7 @@ PO-P1-AUTH
 
 ### Mandatory
 
-- [ ] **ADR-001, 002, 003, 007, 008, 009** each Accepted (or written Proposed-default authorization) **before that ADR’s related irreversible work** — unrelated preparatory work need not wait for every ADR
+- [x] **ADR-001, 002, 003, 007, 008, 009** Accepted (PO-P1-ADR-*) — 21 November 2026
 - [ ] **ADR-006** still Pending; Sanctum **not** installed
 - [ ] **ADR-010** still Pending; accounting posting architecture **not** finalized
 - [ ] CI green: **PostgreSQL migrate + Pest**, Pint, Larastan, frontend build/types
@@ -395,7 +396,7 @@ PO-P1-AUTH
 - [ ] Upload validation + scan-before-availability verified; no public files
 - [ ] Technical UI shell only; Design Deliverables Gate not violated
 - [ ] Security gates (§12) complete
-- [ ] Non-production deployment smoke verified
+- [ ] Non-production deployment smoke verified — **BLOCKED** until **PO-P1-DEPLOY** decided
 - [ ] Runbooks present
 - [ ] Memory updated with verified facts only
 - [ ] Traceability acceptance-test IDs filled for implemented Phase 1 reqs **without** changing Pending/Deferred/Excluded/Proposed statuses
@@ -428,7 +429,7 @@ PO-P1-AUTH
 | TB-EVT-001 | Confirmed | WS-5 TX with WS-6, WS-9 |
 | TB-DES-001 | Resolved by User Decision | WS-8 |
 | TB-DES-002 | Confirmed | WS-8 boundary |
-| TB-PLT-001 | Resolved by User Decision | Phase 0 done; still need PO-P1-AUTH |
+| TB-PLT-001 | Resolved by User Decision | Phase 0 done; **PO-P1-AUTH APPROVED** 21 November 2026 |
 | TB-PLT-002 | Resolved by User Decision | Sequencing |
 
 **Do not reclassify:** Pending `TB-OWN-006`, `TB-SUB-STATE-001`, `TB-ACC-003`, `TB-TAX-001`, `TB-NFR-001`, `TB-NFR-002`, `TB-INVITE-001`; Deferred `TB-SUP-001`, `TB-DEF-001`; Excluded `TB-PTL-EXP-001`.
@@ -484,13 +485,15 @@ PO-P1-AUTH
 
 ---
 
-## 15. Outstanding Product Owner decisions (before implementation)
+## 15. Outstanding Product Owner decisions
 
-1. **PO-P1-AUTH** — Authorize Phase 1 implementation.  
-2. **PO-P1-ADR-001 / 002 / 003 / 007 / 008 / 009** — Accept each before its related irreversible work (or written Proposed-default authorization).  
-3. Confirm **ADR-006** and **ADR-010** remain Pending (no Sanctum; no accounting posting architecture).  
-4. **PO-P1-DEPS** — Approve packages when requested.  
-5. **PO-P1-DEPLOY** — Non-prod deploy target for exit smoke.
+| Decision ID | Status | Notes |
+|---|---|---|
+| **PO-P1-AUTH** | **APPROVED** (21 November 2026) | Phase 1 implementation authorized |
+| **PO-P1-ADR-001 / 002 / 003 / 007 / 008 / 009** | **ACCEPTED** | See authorization record |
+| **ADR-006 / ADR-010** | **Pending** (confirmed) | No Sanctum; no accounting posting architecture |
+| **PO-P1-DEPS** | **CASE-BY-CASE** | No blanket dependency approval |
+| **PO-P1-DEPLOY** | **NOT DECIDED** | Exit smoke blocked until target supplied |
 
 ---
 
@@ -498,7 +501,8 @@ PO-P1-AUTH
 
 | Field | Value |
 |---|---|
-| Plan status | **Draft — Pending Product Owner Review** |
-| Implementation authorized | **No** |
-| Refinement | Principal Architecture Review + clarifications: critical vs parallel path, authorized administration (DEC-009), no universal soft-delete lifecycle, per-ADR gates |
-| Next step | PO review → implementation authorization referencing this plan + ADR Acceptances |
+| Plan status | **Approved — Phase 1 Implementation Authorized** |
+| Implementation authorized | **Yes** (PO-P1-AUTH, 21 November 2026) |
+| Authorization record | `docs/engineering/PHASE_1_AUTHORIZATION_RECORD.md` |
+| Refinement | Principal Architecture Review + clarifications; formal PO authorization recorded |
+| Next step | Execute WS-1 → WS-2 → remaining workstreams per this plan |

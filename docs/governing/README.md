@@ -4,7 +4,8 @@
 **Approval date:** 21 November 2026  
 **Approval scope:** Phase 0 governing baseline (six governing documents + supporting Phase 0 engineering package).  
 **Approval decisions:** PO-APPROVE-001 (Approved); PO-EXCEPT-001 (Accepted); PO-HIST-001 (Accepted).  
-**Phase 0:** Formally approved and **closed**.
+**Phase 0:** Formally approved and **closed**.  
+**Phase 1:** **PO-P1-AUTH APPROVED** (21 November 2026) — see `docs/engineering/PHASE_1_AUTHORIZATION_RECORD.md`.
 
 Approval is **subject to** accepted Pending, Deferred and Proposed exceptions (PO-EXCEPT-001). Those items retain their existing statuses and must not be silently reclassified as Confirmed/Accepted.
 
@@ -22,7 +23,9 @@ Approval is **subject to** accepted Pending, Deferred and Proposed exceptions (P
 - `docs/engineering/PHASE_0_FINALIZATION_REPORT.md` (historical; 75-row stats superseded)
 - `docs/engineering/PHASE_0_FINAL_CONSISTENCY_REPORT.md`
 - `docs/engineering/PHASE_0_APPROVAL_READINESS_REPORT.md` (records formal approval)
-- `docs/architecture-decisions/` (ADR-001–ADR-012; Proposed/Pending unchanged by Phase 0 approval)
+- `docs/architecture-decisions/` (ADR-001–ADR-012; ADR-001/002/003/007/008/009 Accepted under PO-P1-ADR-*; ADR-006/010 remain Pending)
+- `docs/engineering/PHASE_1_AUTHORIZATION_RECORD.md`
+- `docs/implementation/PHASE_1_EXECUTION_PLAN.md` (Approved — Phase 1 Implementation Authorized)
 - `docs/testing/TEST_STRATEGY.md`
 - `docs/implementation/PHASE_0_DELIVERABLES.md` (artefacts remain Not Started)
 
@@ -42,7 +45,7 @@ Approval is **subject to** accepted Pending, Deferred and Proposed exceptions (P
 - **Partload Expense Management is explicitly excluded** from Partload scope (DEC-005). OwnFleet expense management remains in scope.
 - Reports are deferred until source workflows are successfully implemented.
 - Legacy applications are migration sources only after the new platform is ready.
-- **DEC-004:** Phase 0 approval prerequisite is **satisfied**. Implementation must follow `Phases.md` sequencing. Phase 1 may be planned under approved boundaries; Phase 1 implementation starts only on **separate Product Owner authorization**.
+- **DEC-004:** Phase 0 approval prerequisite is **satisfied**. Implementation must follow `Phases.md` sequencing. **PO-P1-AUTH APPROVED** (21 November 2026) authorizes Phase 1 Engineering Foundation under the Phase 1 Execution Plan. Phase 2+ remains unauthorized until separately approved.
 
 ## Accepted exceptions (PO-EXCEPT-001)
 Outstanding Pending, Deferred and Proposed items remain open for their designated phases or gates. Do not invent resolutions. External validations (accounting maps, GST/TDS) remain required before production use of those rules.

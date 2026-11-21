@@ -3,7 +3,7 @@
 **Status:** Approved by Product Owner — Phase 0 governing baseline.  
 **Approval date:** 21 November 2026 | **Approval scope:** Phase 0 governing baseline.  
 **Approval subject to:** Accepted Pending, Deferred and Proposed exceptions (PO-EXCEPT-001).  
-**DEC-004:** Phase 0 formal approval prerequisite is **satisfied** (PO-APPROVE-001). Implementation must still follow this document’s phase sequencing. Phase 1 may be planned under approved boundaries only when separately authorized by the Product Owner; Phase 0 closure does not by itself start Phase 1 coding in the repository.  
+**DEC-004:** Phase 0 formal approval prerequisite is **satisfied** (PO-APPROVE-001). Implementation must still follow this document’s phase sequencing. **PO-P1-AUTH APPROVED** (21 November 2026) authorizes Phase 1 Engineering Foundation under `docs/implementation/PHASE_1_EXECUTION_PLAN.md`. Phase 0 closure alone does not authorize later phases.  
 **Phase numbering authority:** This document is the single authoritative source for delivery phase numbers (DEC-001 / ADR-011). Do not overload “Phase 1” to mean subscription billing.
 
 ## Principles

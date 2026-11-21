@@ -4,14 +4,16 @@
 |---|---|
 | ADR ID | ADR-009 |
 | Title | Transactional Outbox and Idempotency |
-| Status | Proposed |
+| Status | Accepted |
 | Date | 2026-11-21 |
+| Accepted by | Product Owner (PO-P1-ADR-009) |
+| Acceptance date | 21 November 2026 |
 
 ## Context
 Architecture §6 requires atomic business mutation + outbox commit, idempotent consumers, bounded retries, dead-letter handling and correlation IDs. Payments, webhooks and financial posting require idempotency keys (Architecture §12; Rules §15).
 
 ## Decision
-Provide platform primitives for transactional outbox and idempotency in Phase 1 (after Phase 0 approval). Consumers reload source state and revalidate. Exact table schemas and dispatcher technology remain Proposed.
+Provide platform primitives for transactional outbox and idempotency in Phase 1 (WS-6). Consumers reload source state and revalidate. Exact table schemas and dispatcher technology are finalized during WS-6 under this Accepted decision.
 
 ## Alternatives
 1. Fire-and-forget events after commit — rejected.
@@ -30,3 +32,8 @@ TB-EVT-001, TB-SUB-008
 
 ## Related audit findings
 AUD-ARCH-004
+
+## Acceptance record
+| Decision ID | Decision | Status | Date | Authority |
+|---|---|---|---|---|
+| PO-P1-ADR-009 | Accept transactional outbox and idempotency | Accepted | 21 November 2026 | Product Owner |

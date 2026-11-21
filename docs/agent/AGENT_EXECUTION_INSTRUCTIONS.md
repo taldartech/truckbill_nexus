@@ -47,7 +47,7 @@ No hard deletion or restore. Soft deletion only where explicitly allowed, with r
 3. Audit starter-kit behaviors, especially self-registration, account deletion, profile/email changes, password reset, sessions and Fortify.
 4. Produce `docs/engineering/FOUNDATION_AUDIT.md`, an initial requirement traceability plan, risk register and proposed prioritized corrections.
 5. Do not begin Broker, OwnFleet or Partload feature development.
-6. **Coding gate (DEC-004):** Phase 0 is formally approved (PO-APPROVE-001, 21 November 2026); the Phase 0 approval prerequisite is satisfied. Do **not** implement Phase 1 engineering foundation or application behaviour until the Product Owner issues a **separate Phase 1 authorization**. Preserve Pending/Deferred/Proposed exceptions (PO-EXCEPT-001). Documentation updates and read-only inspection remain permitted when authorized.
+6. **Coding gate (DEC-004 / PO-P1-AUTH):** Phase 0 is formally approved (PO-APPROVE-001). **PO-P1-AUTH APPROVED** (21 November 2026) authorizes Phase 1 Engineering Foundation implementation under `docs/implementation/PHASE_1_EXECUTION_PLAN.md` and `docs/engineering/PHASE_1_AUTHORIZATION_RECORD.md`. Stay within that plan’s scope, sequencing and exclusions. Do **not** implement Phase 2+ identity/RBAC/product panels, Sanctum (ADR-006 Pending), Razorpay, business modules, or accounting posting architecture (ADR-010 Pending). Preserve Pending/Deferred/Proposed/Excluded exceptions (PO-EXCEPT-001). **PO-P1-DEPS** is case-by-case; **PO-P1-DEPLOY** is not decided.
 
 ## Safety
 - Never expose secrets in logs/reports or commit `.env`, `.env.testing`, backups or credentials.

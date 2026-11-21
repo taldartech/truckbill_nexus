@@ -4,8 +4,10 @@
 |---|---|
 | ADR ID | ADR-003 |
 | Title | Audit Log and Atomic Mutation |
-| Status | Proposed |
+| Status | Accepted |
 | Date | 2026-11-21 |
+| Accepted by | Product Owner (PO-P1-ADR-003) |
+| Acceptance date | 21 November 2026 |
 
 ## Context
 Rules §4 and Architecture §5 require immutable audit history, mandatory remarks for edit/update/deletion, and atomic commit of business mutation with audit (and outbox where applicable).
@@ -19,8 +21,8 @@ Every qualifying mutation writes an append-only audit record in the same databas
 3. Application logs only — insufficient for product audit requirements.
 
 ## Consequences
-- Phase 1 must provide a reusable audit writer and transaction pattern.
-- Schema details remain Proposed until Phase 1 design after Phase 0 approval.
+- Phase 1 must provide a reusable audit writer and transaction pattern (WS-4).
+- Schema details are finalized during WS-4 implementation under this Accepted decision.
 
 ## Security implications
 Privileged-action audit is required for accountability and incident response.
@@ -30,3 +32,8 @@ TB-AUD-001, TB-AUD-002, TB-AUD-003, TB-EVT-001
 
 ## Related audit findings
 AUD-SEC-003, AUD-ARCH-004
+
+## Acceptance record
+| Decision ID | Decision | Status | Date | Authority |
+|---|---|---|---|---|
+| PO-P1-ADR-003 | Accept audit log and atomic mutation | Accepted | 21 November 2026 | Product Owner |
