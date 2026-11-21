@@ -387,23 +387,23 @@ PO-P1-AUTH
 ### Mandatory
 
 - [x] **ADR-001, 002, 003, 007, 008, 009** Accepted (PO-P1-ADR-*) — 21 November 2026
-- [ ] **ADR-006** still Pending; Sanctum **not** installed
-- [ ] **ADR-010** still Pending; accounting posting architecture **not** finalized
-- [ ] CI green: **PostgreSQL migrate + Pest**, Pint, Larastan, frontend build/types (workflow added; remote CI run pending PO push)
+- [x] **ADR-006** still Pending; Sanctum **not** installed
+- [x] **ADR-010** still Pending; accounting posting architecture **not** finalized
+- [ ] CI green: **PostgreSQL migrate + Pest**, Pint, Larastan, frontend build/types — **local equivalent green 22 Nov 2026**; remote Actions URL pending PO push
 - [x] Cross-OS setup doc published (`docs/engineering/LOCAL_SETUP.md`)
 - [x] Profile **hard-delete** removed from routes, controller, UI, tests (Wayfinder regenerated locally)
 - [x] Self-service **email change** removed
 - [x] Registration remains disabled
-- [ ] Tenant isolation negative tests pass (HTTP/jobs/events/cache/storage)
+- [x] Tenant isolation negative tests pass (HTTP/jobs/events/cache/storage)
 - [x] Audit atomicity + remark rules verified (`AuditAtomicityTest`; see `docs/engineering/AUDIT_FOUNDATION.md`)
-- [ ] Outbox TX boundaries + idempotency verified
-- [ ] Upload validation + scan-before-availability verified; no public files
-- [ ] Technical UI shell only; Design Deliverables Gate not violated
-- [ ] Security gates (§12) complete
+- [x] Outbox TX boundaries + idempotency verified (`OutboxIdempotencyTest`)
+- [x] Upload validation + scan-before-availability verified; no public files (`FileSecurity*`)
+- [x] Technical UI shell only; Design Deliverables Gate not violated (`TechnicalUiShellTest`)
+- [x] Security gates (§12) complete for Phase 1 foundation scope
 - [ ] Non-production deployment smoke verified — **BLOCKED** until **PO-P1-DEPLOY** decided
-- [ ] Runbooks present
-- [ ] Memory updated with verified facts only
-- [ ] Traceability acceptance-test IDs filled for implemented Phase 1 reqs **without** changing Pending/Deferred/Excluded/Proposed statuses
+- [x] Runbooks present (`OPERATIONS_RUNBOOK.md`)
+- [x] Memory updated with verified facts only
+- [x] Traceability acceptance-test IDs filled for implemented Phase 1 reqs **without** changing Pending/Deferred/Excluded/Proposed statuses
 
 ### Recommended (not mandatory exit)
 

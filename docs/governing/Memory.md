@@ -132,3 +132,4 @@ Record date, fact, reason, affected modules and ADR/PR/issue when technology/ver
 | 2026-11-22 | WS-6 outbox/idempotency: `outbox_messages`, `idempotency_records`, dispatcher SKIP LOCKED, ProcessOutboxMessageJob, OutboxIdempotencyTest                                  | ADR-009 / TB-EVT-001     |
 | 2026-11-22 | WS-7 observability: correlation IDs, log redaction, `/health/ready`, OPERATIONS_RUNBOOK, ObservabilityTest                                                                 | Architecture §§13–14     |
 | 2026-11-22 | WS-8 technical UI shell: Poppins, TruckBill tokens/logo, light-first shell, workspace empty state, TechnicalUiShellTest                                                    | DEC-007 / TB-DES-001     |
+| 2026-11-22 | WS-9 Phase 1 certification: local CI-equivalent green; CONDITIONALLY CERTIFIED (remote CI + PO-P1-DEPLOY smoke outstanding)                                                | PHASE_1_FINAL_CERTIFICATION_REPORT |
