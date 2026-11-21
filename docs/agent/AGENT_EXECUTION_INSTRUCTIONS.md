@@ -12,7 +12,7 @@ Read all six governing documents in this package before making product or archit
 - `Phases.md`
 - `Memory.md`
 
-Also read `Requirements-Traceability-Starter.md`. Do not invent missing requirements or silently resolve contradictions. Keep `Memory.md` synchronized with verified implementation decisions. The documents currently carry draft/review status; do not label them approved. The user's direction is to let the agent take over execution, but genuinely unresolved or conflicting requirements must be reported rather than guessed.
+Also read `Requirements-Traceability-Starter.md`. Do not invent missing requirements or silently resolve contradictions. Keep `Memory.md` synchronized with verified implementation decisions. The six governing documents are Approved as the Phase 0 baseline (21 November 2026), subject to PO-EXCEPT-001. Pending, Deferred, Proposed, and Excluded items retain their recorded statuses. Do not independently resolve or reinterpret them. The user's direction is to let the agent take over execution, but genuinely unresolved or conflicting requirements must be reported rather than guessed.
 
 ## Repository and environment
 Repository: `/Users/ttc/Sites/truckbill/nexus`.

@@ -18,7 +18,7 @@
   - `!.cursor/rules/`
   - `.cursor/rules/*`
   - `!.cursor/rules/truckbill-project.mdc`
-- Do not commit or push as part of documentation finalization; commit remains a separate user-authorized action.
+- Version-control the shared Cursor project rule. Local commits follow the repository Git Policy: local commits by default after completed implementation or documentation tasks, subject to verification and explicit Product Owner opt-out. Remote pushing and publishing are strictly prohibited; the Product Owner handles all remote publishing.
 
 ## Alternatives
 1. Commit entire `.cursor/` — rejected (private/local state risk).

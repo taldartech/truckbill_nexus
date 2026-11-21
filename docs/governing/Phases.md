@@ -21,7 +21,7 @@ Repository, Laravel 13/React/Inertia/PostgreSQL, macOS/Linux/Windows setup, CI, 
 **Note:** Phase 1 does **not** include Razorpay subscription billing. Billing is Phase 3.
 
 ### Phase 1 technical UI shell vs product UI (Design Deliverables Gate)
-After Phase 0 formal approval lifts DEC-004, Phase 1 may implement a **technical UI shell** only: application chrome/layouts, shared non-product scaffolding, auth surfaces already in the starter (aligned to DEC-006/009), design-token plumbing, and empty/placeholder shells needed to prove tenant/authz wiring.
+Phase 0 approval satisfies the DEC-004 approval prerequisite. Phase 1 implementation, including the technical UI shell, requires separate explicit Product Owner authorization. When so authorized, Phase 1 may implement a **technical UI shell** only: application chrome/layouts, shared non-product scaffolding, auth surfaces already in the starter (aligned to DEC-006/009), design-token plumbing, and empty/placeholder shells needed to prove tenant/authz wiring.
 
 **Design Deliverables Gate (separate from Phase 0 approval):** Product-specific screens — including Owner Panel / Branch Panel product information architecture, operational workflows, billing product UI, and other product module screens — must not be implemented until the required design artefacts for those screens are produced and reviewed (`Design.md` §14; `PHASE_0_DELIVERABLES.md`). Do not treat “UI shell” as permission to build product workflows early.
 
