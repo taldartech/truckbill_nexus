@@ -23,10 +23,15 @@ final class TenantContext
         return $this->companyId !== null && $this->companyId !== '';
     }
 
+    public function hasBranch(): bool
+    {
+        return $this->branchId !== null && $this->branchId !== '';
+    }
+
     public function isEmpty(): bool
     {
         return ! $this->hasCompany()
-            && ($this->branchId === null || $this->branchId === '')
+            && ! $this->hasBranch()
             && ($this->ownerId === null || $this->ownerId === '')
             && ! $this->isInternal
             && ! $this->isOwnerScope;
@@ -60,11 +65,22 @@ final class TenantContext
         );
     }
 
+    /**
+     * Deterministic, collision-resistant cache namespace (TB-SEC-004).
+     * Cache is never an authorization source.
+     */
     public function cacheKey(string $suffix): string
     {
-        $company = $this->companyId ?? 'none';
-        $branch = $this->branchId ?? 'none';
+        $parts = [
+            'tenant',
+            'c:'.($this->companyId ?? '_'),
+            'b:'.($this->branchId ?? '_'),
+            'o:'.($this->ownerId ?? '_'),
+            'i:'.($this->isInternal ? '1' : '0'),
+            'os:'.($this->isOwnerScope ? '1' : '0'),
+            $suffix,
+        ];
 
-        return "tenant:{$company}:{$branch}:{$suffix}";
+        return implode(':', $parts);
     }
 }

@@ -3,23 +3,32 @@
 namespace App\Support\Tenant;
 
 use Closure;
-use Illuminate\Contracts\Queue\Job;
 use RuntimeException;
+use Throwable;
 
 /**
- * Queue middleware: jobs fail closed without tenant context (TB-SEC-003).
+ * Queue middleware: restore serialized tenant context, fail closed if missing, always clear (TB-SEC-003).
+ *
+ * Runs around the job via Laravel's queue middleware pipeline (before handle()).
  */
 class RequiresTenantContext
 {
-    /**
-     * @param  Job|object  $job
-     */
     public function handle(object $job, Closure $next): mixed
     {
-        if (! TenantContextHolder::has()) {
-            throw new RuntimeException('Queued job executed without tenant context.');
-        }
+        try {
+            if (method_exists($job, 'restoreTenantContext')) {
+                $job->restoreTenantContext();
+            }
 
-        return $next($job);
+            if (! TenantContextHolder::has()) {
+                throw new RuntimeException('Queued job executed without tenant context.');
+            }
+
+            return $next($job);
+        } catch (Throwable $e) {
+            throw $e;
+        } finally {
+            TenantContextHolder::clear();
+        }
     }
 }

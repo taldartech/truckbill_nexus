@@ -19,9 +19,10 @@ class ExampleTenantJob implements ShouldQueue
     use SerializesModels;
     use TenantAware;
 
+    public static ?string $lastSeenCompanyId = null;
+
     public function handle(): void
     {
-        $this->restoreTenantContext();
-        TenantContextHolder::require();
+        self::$lastSeenCompanyId = TenantContextHolder::require()->companyId;
     }
 }

@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\ManageTenantContextLifecycle;
 use App\Http\Middleware\RejectClientTenantIdentifiers;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -18,8 +19,13 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
-        $middleware->web(append: [
+        // Global: all HTTP entry points (web, and api when configured).
+        $middleware->append([
             RejectClientTenantIdentifiers::class,
+            ManageTenantContextLifecycle::class,
+        ]);
+
+        $middleware->web(append: [
             HandleAppearance::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,

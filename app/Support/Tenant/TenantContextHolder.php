@@ -6,6 +6,8 @@ use RuntimeException;
 
 /**
  * Request/job scoped holder for the active tenant context.
+ *
+ * Only trusted server-side code may call set()/inject(). Client input is never authoritative.
  */
 final class TenantContextHolder
 {
@@ -14,6 +16,14 @@ final class TenantContextHolder
     public static function set(TenantContext $context): void
     {
         self::$context = $context;
+    }
+
+    /**
+     * Trusted server-side injection helper (Phase 1 — no membership resolution).
+     */
+    public static function inject(TenantContext $context): void
+    {
+        self::set($context);
     }
 
     public static function clear(): void

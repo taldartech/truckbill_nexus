@@ -4,6 +4,9 @@ namespace App\Support\Tenant;
 
 /**
  * Trait for queued jobs that must carry and restore tenant context.
+ *
+ * Restoration and cleanup are performed by RequiresTenantContext middleware
+ * around handle() — do not rely on calling restoreTenantContext() inside handle().
  */
 trait TenantAware
 {
