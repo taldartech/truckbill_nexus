@@ -62,14 +62,40 @@ No hard deletion or restore. Soft deletion only where explicitly allowed, with r
 Use Pest, Pint, Larastan and frontend production builds. Add regression tests for meaningful behavior. Do not weaken tests to get green results. Report skipped tests accurately. Browser and load tests should be introduced at the appropriate foundation phase.
 
 ## Git
-Work only in the `nexus` repository on its existing `main` branch unless an approved branching strategy is established. Review diffs, secrets and tests before each milestone commit.
+Work only in the `nexus` repository on its existing `main` branch unless an approved branching strategy is established.
 
-**Local commits:** Local Git commits are permitted only when authorized by the Product Owner. Use small, descriptive commits after verification when so authorized. Report commit hashes and working-tree status.
+### Local commits — expected by default
+- When the Product Owner asks Cursor to implement, modify, fix, refine or complete a task, Cursor is authorized and expected to create a local Git commit for the completed changes by default.
+- This applies to application code, tests, configuration and documentation.
+- Before committing, inspect the complete diff, run relevant tests and quality checks, and verify that no secrets, environment files, credentials or unrelated user changes are included.
+- Use a clear, descriptive conventional commit message.
+- Keep commits focused on the task. Do not include unrelated changes.
+- Do not commit incomplete or unverified work. If a blocker prevents safe completion, report it and leave the work uncommitted.
+- If the Product Owner explicitly says "do not commit", "no commit", or requests a review-only/uncommitted change, respect that instruction.
+- If the task is only an analysis or review and no files are changed, no commit is necessary.
+- After committing, report the full commit SHA, commit message, changed files, verification results and remaining working-tree status.
 
-**Absolute no-push / no remote publish:**
-- Never run `git push`, `git push --force`, or any equivalent remote-publishing command.
-- Never publish branches, tags, releases, or other repository changes remotely.
-- This prohibition is absolute and cannot be overridden by a future approval request.
+### Absolute no-push / no-remote-publishing policy
+This restriction remains unchanged and absolute:
+- Never execute `git push`, `git push --force`, or equivalent commands.
+- Never publish branches, tags, releases or repository changes remotely.
+- Never use GitHub APIs or other tools to create commits or update remote references on behalf of the user.
+- The Product Owner will handle all remote pushes and publishing personally.
+- No future instruction or approval can override this prohibition.
+
+### Safe Git workflow
+For each task:
+1. Inspect current branch, HEAD and working-tree status.
+2. Preserve all pre-existing user changes.
+3. Complete only the requested task.
+4. Run relevant tests, linting, builds and checks.
+5. Review git diff and staged changes.
+6. Stage only files belonging to the task.
+7. Create the local commit.
+8. Verify the resulting commit and working-tree status.
+9. Report the commit SHA and explicitly confirm that no push or remote publication occurred.
+
+If the local branch is behind or diverged from its upstream, do not reset, rebase, overwrite or discard user work. Report the discrepancy and request direction before proceeding with any operation that could affect existing history.
 
 This policy is consistent with `.cursor/rules/truckbill-project.mdc`.
 
