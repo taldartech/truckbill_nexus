@@ -157,15 +157,13 @@ This assignment does **not** amend that commit.
 | Commit ID | Message |
 |---|---|
 | `7c37adf703167311ce9ce6d0fbfb575932f0ec80` | `docs: finalize phase 0 approval readiness review` |
-
-A follow-up local stamp commit may exist solely to persist these IDs inside this report file; it does not change audit findings. Confirm with `git log --oneline -3`.
+| `590bee7e89b474cb8ccf56b3a2e43c25662c1fea` | `docs: stamp phase 0 approval readiness report commit ids` |
 
 ---
 
 ## 11. Current HEAD commit ID
 
-At completion of the readiness commit: `7c37adf703167311ce9ce6d0fbfb575932f0ec80`.  
-If a stamp commit follows, HEAD advances; use `git rev-parse HEAD` for the tip.
+`590bee7e89b474cb8ccf56b3a2e43c25662c1fea` (after stamp commit; branch ahead of origin locally only).
 
 ---
 
