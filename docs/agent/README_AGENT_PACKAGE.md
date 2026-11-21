@@ -3,6 +3,7 @@
 This package contains the six governing specification documents previously prepared for the TruckBill rebuild, the requirements traceability starter, and an execution instruction file for a coding agent.
 
 ## Contents
+
 - PRD.md — Product requirements
 - Architecture.md — Technical architecture
 - Rules.md — Business rules and calculations
@@ -14,4 +15,5 @@ This package contains the six governing specification documents previously prepa
 - README.md — Original specification-package notes
 
 ## Important status notice
+
 The original source package labels the six specifications as expanded drafts for review, not formally approved. The README also states that a line-by-line traceability review against the historical discussion record is still required. Do not silently relabel these files as formally approved. The coding agent should treat them as the current requirements baseline, preserve unresolved items as pending, and report any genuine gaps or contradictions before implementing affected behavior.

@@ -30,6 +30,7 @@ jobs:
 
     env:
       APP_ENV: testing
+      # Fixed non-production CI key only (not a real secret). Kept in sync with .env below.
       APP_KEY: base64:2fl+KtvkdmxDJcq4+UZC0c41+6ehMy/PoKCjpTbOF0A=
       DB_CONNECTION: pgsql
       DB_HOST: 127.0.0.1
@@ -67,7 +68,8 @@ jobs:
       - name: Prepare environment
         run: |
           cp .env.example .env
-          php artisan key:generate --force
+          php -r '$p=".env"; $k=getenv("APP_KEY"); if ($k===false || $k==="") { fwrite(STDERR, "APP_KEY env missing\n"); exit(1);} $c=file_get_contents($p); $c=preg_replace("/^APP_KEY=.*/m", "APP_KEY=".$k, $c, -1, $count); if ($count!==1) { fwrite(STDERR, "Failed to set APP_KEY in .env\n"); exit(1);} file_put_contents($p, $c);'
+          grep -q '^APP_KEY=base64:' .env
 
       - name: Run PostgreSQL migrations
         run: php artisan migrate --force --no-interaction
@@ -88,7 +90,7 @@ jobs:
         run: vendor/bin/pint --test
 
       - name: Larastan
-        run: vendor/bin/phpstan analyse --no-interaction
+        run: vendor/bin/phpstan analyse --memory-limit=512M --no-interaction
 
       - name: Pest (PostgreSQL)
         run: php artisan test --compact

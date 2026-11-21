@@ -5,13 +5,13 @@
 
 ## Prerequisites
 
-| Tool | Notes |
-|---|---|
-| PHP 8.5+ | With `pgsql`, `redis` (phpredis), `mbstring`, `openssl`, `tokenizer`, `xml`, `ctype`, `json`, `bcmath` |
-| Composer 2 | — |
-| Node.js 22+ | npm included |
-| PostgreSQL 16+ | Create databases below |
-| Redis 7+ | Default `127.0.0.1:6379` |
+| Tool           | Notes                                                                                                  |
+| -------------- | ------------------------------------------------------------------------------------------------------ |
+| PHP 8.5+       | With `pgsql`, `redis` (phpredis), `mbstring`, `openssl`, `tokenizer`, `xml`, `ctype`, `json`, `bcmath` |
+| Composer 2     | —                                                                                                      |
+| Node.js 22+    | npm included                                                                                           |
+| PostgreSQL 16+ | Create databases below                                                                                 |
+| Redis 7+       | Default `127.0.0.1:6379`                                                                               |
 
 Works on macOS, Linux and Windows (WSL2 recommended on Windows for PHP extensions and Redis).
 
@@ -46,11 +46,11 @@ Or: `composer setup` after `.env` exists with valid PostgreSQL credentials (do n
 
 ## Configuration baseline (ADR-007)
 
-| Concern | Local intent |
-|---|---|
-| `DB_CONNECTION` | `pgsql` |
-| Cache / queue / session | Redis via `phpredis` |
-| Tests (`phpunit.xml`) | PostgreSQL `nexus_test`; array cache; sync queue; array session |
+| Concern                 | Local intent                                                    |
+| ----------------------- | --------------------------------------------------------------- |
+| `DB_CONNECTION`         | `pgsql`                                                         |
+| Cache / queue / session | Redis via `phpredis`                                            |
+| Tests (`phpunit.xml`)   | PostgreSQL `nexus_test`; array cache; sync queue; array session |
 
 ## Quality checks
 
