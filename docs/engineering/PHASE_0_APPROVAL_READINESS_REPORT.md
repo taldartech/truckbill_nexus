@@ -130,8 +130,9 @@ Also Pending (ADRs / gaps, not all separate TB rows): ADR-006 mobile auth; ADR-0
 - HEAD: `92bf5f73d50ead75ae83c6585e6217b703188f39`
 
 ### After this assignment (post local commit)
-- See sections 10–11 below.
-- Remote publishing: **not performed**.
+- Branch: `main` (ahead of `origin/main` by local commits only; not pushed)
+- Remote publishing: **not performed**
+- See sections 10–11 for commit IDs
 
 ---
 
@@ -140,7 +141,8 @@ Also Pending (ADRs / gaps, not all separate TB rows): ADR-006 mobile auth; ADR-0
 | Field | Value |
 |---|---|
 | Exists | **Yes** (valid commit object) |
-| Relationship | **Current HEAD at start of this assignment** |
+| Relationship | **HEAD at start of this assignment** (prior commit; not amended) |
+| Full hash | `92bf5f73d50ead75ae83c6585e6217b703188f39` |
 | Subject | Refine Git policies and safety instructions in documentation… |
 | Author | Shalin Devpura |
 | Date | 2026-11-21 22:37:34 +0530 |
@@ -154,13 +156,16 @@ This assignment does **not** amend that commit.
 
 | Commit ID | Message |
 |---|---|
-| *(filled after local commit)* | `docs: finalize phase 0 approval readiness review` |
+| `7c37adf703167311ce9ce6d0fbfb575932f0ec80` | `docs: finalize phase 0 approval readiness review` |
+
+A follow-up local stamp commit may exist solely to persist these IDs inside this report file; it does not change audit findings. Confirm with `git log --oneline -3`.
 
 ---
 
 ## 11. Current HEAD commit ID
 
-*(filled after local commit)*
+At completion of the readiness commit: `7c37adf703167311ce9ce6d0fbfb575932f0ec80`.  
+If a stamp commit follows, HEAD advances; use `git rev-parse HEAD` for the tip.
 
 ---
 
