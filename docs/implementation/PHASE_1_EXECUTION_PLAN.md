@@ -24,8 +24,10 @@ Phase 1 builds the **engineering foundation** on the Laravel 13 + React/Inertia 
 | `.env.example` SQLite + database drivers; CI without Postgres | Align to ADR-007 once Accepted; CI must migrate+test on PostgreSQL |
 | No tenant/audit/outbox/file-scan | Build foundations only after formal ADR gate |
 
-**Critical path:**  
-**ADR Decision Gate** (ADR-001, 002, 003, 007, 008, 009) → WS-1 baseline + hard-delete/email removal → **WS-2 CI (mandatory early)** → WS-3 tenant context → WS-4 audit + WS-6 outbox (shared TX rules) → WS-5 files → WS-7 observability → WS-8 technical UI shell → WS-9 exit certification.
+**Critical path (serial foundation):**  
+Per-ADR acceptances as each workstream needs them → **WS-1** baseline + hard-delete/email removal → **WS-2** CI (mandatory early) → **WS-3** tenant context → **WS-4** audit / **WS-5** files / **WS-6** outbox (shared TX rules where applicable) → **WS-9** exit certification.
+
+**Parallel after WS-1 (not on the critical path):** **WS-7** observability and **WS-8** technical UI shell may proceed once WS-1 starter security corrections are done; they must still join WS-9 certification.
 
 **Not Phase 1:** Phase 2 identity/membership/sessions/RBAC; Sanctum (`ADR-006` Pending); accounting posting architecture (`ADR-010` Pending); Owner/Branch product UI; Razorpay; business modules; microservices.
 
@@ -52,8 +54,8 @@ Phase 1 builds the **engineering foundation** on the Laravel 13 + React/Inertia 
 | Concern | Phase 1 | Phase 2 |
 |---|---|---|
 | Login / password reset (Fortify) | Keep / harden | Extend as needed |
-| Self-service account delete | **Remove completely** | Admin/soft-delete lifecycle per Rules |
-| Self-service email change | **Remove completely** | Admin-only email change (DEC-009 details may still be Pending) |
+| Self-service account delete | **Remove completely** | Later account lifecycle only via the relevant module’s approved requirements, permissions, dependency checks and audit rules — **not** a universal soft-delete workflow |
+| Self-service email change | **Remove completely** | **Authorized administration only** (DEC-009; remaining Pending details stay Pending) |
 | Registration | Remains off | Invite/provisioning (`TB-INVITE-001` Pending) |
 | Company/branch **context carrier** | Yes (injected/explicit) | Yes + membership resolution |
 | Membership, roles, Owner transfer, Permission Master | **No** | **Yes** |
@@ -98,11 +100,12 @@ Phase 1 builds the **engineering foundation** on the Laravel 13 + React/Inertia 
 
 ### 4.1 Gate rule
 
-**No irreversible Phase 1 schema, CI, or package choice may proceed for a workstream until its blocking ADR is Accepted (or the Product Owner explicitly authorizes “implement this Proposed default” in writing).**
+**Each blocking ADR must be Accepted (or the Product Owner must authorize “implement this Proposed default” in writing) before that ADR’s related irreversible implementation decisions.** Unrelated preparatory work that does not lock in the ADR’s decision may proceed without waiting for every Phase 1 ADR.
 
 | Rule | Enforcement |
 |---|---|
 | Proposed ≠ Accepted | Agents/implementers must not treat Proposed as decided |
+| Per-ADR, not blanket | Accept ADR-00N before irreversible work that depends on ADR-00N; do not block unrelated prep (e.g. docs, lint wiring, UI shell without layout package decisions) |
 | Pending stays Pending | ADR-006, ADR-010 — no premature Sanctum or accounting posting architecture |
 | Status changes | Product Owner / architecture authority only — not this plan |
 
@@ -147,7 +150,7 @@ For any foundation harness mutation that emits side effects:
 
 ```text
 BEGIN
-  1. Apply business mutation (create/update/soft-delete fields as allowed)
+  1. Apply business mutation (create/update/lifecycle fields as allowed by the module’s approved rules)
   2. Write append-only audit row(s) for that mutation
   3. Insert outbox row(s) for events that must be published (if any)
 COMMIT
@@ -200,45 +203,51 @@ Also represent **Owner-level** and **Internal Team** context separation at the c
 
 ## 7. Workstream sequence (complete)
 
+**Critical path** vs **parallel after WS-1** are distinct. WS-7 and WS-8 are **not** on the critical path and must not be drawn as dependents of WS-3.
+
 ```text
-PO-P1-AUTH + ADR Gate (001,002,003,007,008,009)
+PO-P1-AUTH
+        │
+        ▼
+ Per-ADR acceptances as each irreversible decision is reached
+ (ADR-001/007 before related WS-1/WS-2; ADR-002 before WS-3; …)
         │
         ▼
  WS-1  Baseline + remove hard-delete/email self-service
         │
-        ▼
- WS-2  CI EARLY MANDATORY GATE (Postgres migrate + Pest)
-        │
-        ▼
- WS-3  Tenant context (HTTP/jobs/events/cache/storage)
+        ├──────────────────────────────┐
+        ▼                              ▼
+ WS-2  CI EARLY MANDATORY          WS-7  Observability
+ (Postgres migrate + Pest)         WS-8  Technical UI shell
+        │                          (parallel after WS-1;
+        ▼                           not on critical path)
+ WS-3  Tenant context
         │
         ├──────────────┬──────────────┐
         ▼              ▼              ▼
-      WS-4           WS-7           WS-8
-      Audit      Observability   Technical UI shell
+      WS-4           WS-6           WS-5
+      Audit          Outbox/Q       Files
+      (ADR-003)      (ADR-009)      (ADR-008)
         │              │              │
-        ├──────────────┤              │
-        ▼              ▼              │
-      WS-6  Outbox/Q   │              │
-        │              │              │
-        ▼              │              │
-      WS-5  Files ─────┘              │
-        │                             │
-        └──────────► WS-9 Certification ◄─┘
+        └──────────────┴──────────────┘
+                       │
+                       ▼
+              WS-9 Certification
+              (also requires WS-7 + WS-8 complete)
 ```
 
-| Order | ID | Name | Parallel with |
-|---|---|---|---|
-| 1 | **ADR Gate** | Accept 001,002,003,007,008,009 | — |
-| 2 | **WS-1** | Repository baseline + starter security corrections | — |
-| 3 | **WS-2** | CI/CD early mandatory gate | — |
-| 4 | **WS-3** | Tenant context foundation | — |
-| 5a | **WS-4** | Audit foundation | WS-7, WS-8 |
-| 5b | **WS-6** | Outbox / queues / idempotency | after WS-3; with/after WS-4 TX pattern |
-| 5c | **WS-5** | Files / scan | after WS-3; ADR-008 |
-| 5d | **WS-7** | Observability | after WS-1 |
-| 5e | **WS-8** | Technical UI shell | after WS-1 hardening |
-| 6 | **WS-9** | Testing & Phase 1 exit certification | after above |
+| Order | ID | Name | Path | Notes |
+|---|---|---|---|---|
+| — | **Per-ADR gates** | Accept each blocking ADR before its related irreversible work | Gate | Not a single all-or-nothing gate |
+| 1 | **WS-1** | Repository baseline + starter security corrections | Critical | Needs ADR-001/007 before irreversible layout/env/CI choices |
+| 2 | **WS-2** | CI/CD early mandatory gate | Critical | After WS-1; ADR-007 |
+| 3 | **WS-3** | Tenant context foundation | Critical | After WS-2; ADR-002 |
+| 4a | **WS-4** | Audit foundation | Critical | After WS-3; ADR-003 |
+| 4b | **WS-6** | Outbox / queues / idempotency | Critical | After WS-3; ADR-009; TX pattern with WS-4 |
+| 4c | **WS-5** | Files / scan | Critical | After WS-3; ADR-008 |
+| P | **WS-7** | Observability | **Parallel after WS-1** | Not blocked by WS-2/WS-3 |
+| P | **WS-8** | Technical UI shell | **Parallel after WS-1** | Not blocked by WS-2/WS-3; no product UI |
+| 5 | **WS-9** | Testing & Phase 1 exit certification | Exit | After critical path **and** WS-7/WS-8 |
 
 ---
 
@@ -251,8 +260,8 @@ PO-P1-AUTH + ADR Gate (001,002,003,007,008,009)
 | **Objective** | Reproducible baseline; remove starter hard-delete and self-service email change |
 | **Requirement IDs** | `TB-DEL-001`, `TB-AUTH-006`, `TB-AUTH-007`, `TB-AUTH-002`, `TB-PLT-002` |
 | **ADRs** | **ADR-007** (blocking), **ADR-001** (blocking for layout), ADR-004 (follow) |
-| **Scope — hard-delete removal (explicit)** | Delete/disable **all** exposure of account self-destruction: `DELETE settings/profile` route; `ProfileController::destroy`; `ProfileDeleteRequest`; Inertia profile delete UI; Wayfinder generated delete actions; Pest tests that expect hard delete (replace with “forbidden/absent”); any API-equivalent if introduced. **No** soft-delete-self either in Phase 1 — account lifecycle is Phase 2 admin processes. |
-| **Scope — email** | Remove self-service email update from profile update validation/UI; email changes admin-only later (DEC-009). |
+| **Scope — hard-delete removal (explicit)** | Delete/disable **all** exposure of account self-destruction: `DELETE settings/profile` route; `ProfileController::destroy`; `ProfileDeleteRequest`; Inertia profile delete UI; Wayfinder generated delete actions; Pest tests that expect hard delete (replace with “forbidden/absent”); any API-equivalent if introduced. Phase 1 does **not** implement account lifecycle workflows. Later lifecycle operations must follow the **relevant module’s** approved requirements, permissions, dependency checks and audit rules — do **not** assume a universal soft-delete workflow. |
+| **Scope — email** | Remove self-service email update from profile update validation/UI; later email changes are **authorized administration only** (DEC-009; Pending details stay Pending). |
 | **Scope — baseline** | Env conventions; pgsql/redis alignment post-ADR-007; cross-OS setup docs; migration conventions; coding boundaries; no microservices |
 | **Acceptance criteria** | (1) `route:list` shows no profile destroy; (2) HTTP DELETE profile → 404/405/403 as designed; (3) UI has no delete-account control; (4) PATCH profile cannot change email; (5) registration still off; (6) setup doc boots pgsql+redis per ADR-007; (7) Pint/Larastan clean on touched PHP |
 | **Negative tests** | Attempt delete account; attempt email change; attempt register |
@@ -353,18 +362,18 @@ PO-P1-AUTH + ADR Gate (001,002,003,007,008,009)
 
 ## 9. Dependency matrix
 
-| Workstream | Depends on | Blocks |
-|---|---|---|
-| ADR Gate | PO-P1-AUTH | All irreversible work |
-| WS-1 | ADR-007, ADR-001; PO-P1-AUTH | WS-2, WS-8 hardening |
-| WS-2 | WS-1; ADR-007 | Merging WS-3+ to main |
-| WS-3 | WS-2; ADR-002 | WS-4, WS-5, WS-6 |
-| WS-4 | WS-3; ADR-003 | Combined TX with WS-6 |
-| WS-6 | WS-3; ADR-009; TX pattern with WS-4 | Reliable async |
-| WS-5 | WS-3; ADR-008 | Upload features later |
-| WS-7 | WS-1 | Operability |
-| WS-8 | WS-1 | Shell only |
-| WS-9 | WS-1–8 | Phase 1 exit |
+| Workstream | Depends on | Blocks | Path |
+|---|---|---|---|
+| Per-ADR gates | PO-P1-AUTH; each ADR before its related irreversible decisions | Related irreversible work only (not unrelated prep) | Gate |
+| WS-1 | ADR-007 / ADR-001 before irreversible env/layout choices; PO-P1-AUTH | WS-2; enables WS-7/WS-8 parallel | Critical |
+| WS-2 | WS-1; ADR-007 | Merging WS-3+ foundation schemas to `main` | Critical |
+| WS-3 | WS-2; ADR-002 | WS-4, WS-5, WS-6 | Critical |
+| WS-4 | WS-3; ADR-003 | Combined TX with WS-6 | Critical |
+| WS-6 | WS-3; ADR-009; TX pattern with WS-4 | Reliable async | Critical |
+| WS-5 | WS-3; ADR-008 | Upload features later | Critical |
+| WS-7 | WS-1 only | Operability (joins WS-9) | **Parallel after WS-1** |
+| WS-8 | WS-1 only (starter security done) | Shell only (joins WS-9) | **Parallel after WS-1** |
+| WS-9 | Critical path WS-1–6 **and** WS-7 + WS-8 | Phase 1 exit | Exit |
 
 ---
 
@@ -372,7 +381,7 @@ PO-P1-AUTH + ADR Gate (001,002,003,007,008,009)
 
 ### Mandatory
 
-- [ ] **ADR-001, 002, 003, 007, 008, 009** Accepted (or written Proposed-default authorization) before related irreversible work
+- [ ] **ADR-001, 002, 003, 007, 008, 009** each Accepted (or written Proposed-default authorization) **before that ADR’s related irreversible work** — unrelated preparatory work need not wait for every ADR
 - [ ] **ADR-006** still Pending; Sanctum **not** installed
 - [ ] **ADR-010** still Pending; accounting posting architecture **not** finalized
 - [ ] CI green: **PostgreSQL migrate + Pest**, Pint, Larastan, frontend build/types
@@ -464,7 +473,7 @@ PO-P1-AUTH + ADR Gate (001,002,003,007,008,009)
 
 | Risk | Mitigation |
 |---|---|
-| Treating Proposed ADR as Accepted | Formal ADR gate §4 |
+| Treating Proposed ADR as Accepted | Per-ADR gate §4 (block related irreversible work only) |
 | Phase 2 identity creep | §2.2 hard split |
 | CI remains sqlite | WS-2 early mandatory |
 | Hard-delete left in Wayfinder/UI | Explicit multi-surface removal checklist in WS-1 |
@@ -478,7 +487,7 @@ PO-P1-AUTH + ADR Gate (001,002,003,007,008,009)
 ## 15. Outstanding Product Owner decisions (before implementation)
 
 1. **PO-P1-AUTH** — Authorize Phase 1 implementation.  
-2. **PO-P1-ADR-001 / 002 / 003 / 007 / 008 / 009** — Accept each (or written Proposed-default authorization).  
+2. **PO-P1-ADR-001 / 002 / 003 / 007 / 008 / 009** — Accept each before its related irreversible work (or written Proposed-default authorization).  
 3. Confirm **ADR-006** and **ADR-010** remain Pending (no Sanctum; no accounting posting architecture).  
 4. **PO-P1-DEPS** — Approve packages when requested.  
 5. **PO-P1-DEPLOY** — Non-prod deploy target for exit smoke.
@@ -491,5 +500,5 @@ PO-P1-AUTH + ADR Gate (001,002,003,007,008,009)
 |---|---|
 | Plan status | **Draft — Pending Product Owner Review** |
 | Implementation authorized | **No** |
-| Refinement | Principal Architecture Review — hard-delete surfaces, early CI, ADR gate, TX boundaries, Phase 1 vs 2 split, tenant surfaces, negatives, exclusions, exit checklist |
+| Refinement | Principal Architecture Review + clarifications: critical vs parallel path, authorized administration (DEC-009), no universal soft-delete lifecycle, per-ADR gates |
 | Next step | PO review → implementation authorization referencing this plan + ADR Acceptances |
