@@ -64,4 +64,6 @@ npm run build
 
 - Registration remains disabled (Fortify features).
 - Self-service account deletion and self-service email change are removed (DEC-003 / DEC-006 / DEC-009).
+- Audit foundation (WS-4): see `docs/engineering/AUDIT_FOUNDATION.md`. Migrations create `audit_entries` and the isolated `audit_harness_records` test harness table.
+- Before TypeScript checks in a clean checkout: `php artisan wayfinder:generate --with-form`.
 - Do not commit `.env` or credentials.

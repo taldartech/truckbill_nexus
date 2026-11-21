@@ -391,7 +391,7 @@ PO-P1-AUTH
 - [x] Self-service **email change** removed
 - [x] Registration remains disabled
 - [ ] Tenant isolation negative tests pass (HTTP/jobs/events/cache/storage)
-- [ ] Audit atomicity + remark rules verified
+- [x] Audit atomicity + remark rules verified (`AuditAtomicityTest`; see `docs/engineering/AUDIT_FOUNDATION.md`)
 - [ ] Outbox TX boundaries + idempotency verified
 - [ ] Upload validation + scan-before-availability verified; no public files
 - [ ] Technical UI shell only; Design Deliverables Gate not violated
