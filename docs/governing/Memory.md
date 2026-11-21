@@ -102,3 +102,4 @@ Record date, fact, reason, affected modules and ADR/PR/issue when technology/ver
 | 2026-11-21 | Self-service profile hard-delete removed (route, controller, request, UI); Pest asserts absent | DEC-003/006 |
 | 2026-11-21 | Self-service email change removed from profile update validation/UI; email read-only | DEC-009 |
 | 2026-11-21 | Registration remains disabled (Fortify features) | TB-AUTH-002 |
+| 2026-11-21 | WS-2 CI: GitHub Actions uses PostgreSQL 18 service; migrate + Pint + Larastan + Pest + frontend check/types/build | ADR-007 |
