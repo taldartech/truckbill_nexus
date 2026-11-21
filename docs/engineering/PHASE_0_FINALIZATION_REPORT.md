@@ -31,7 +31,7 @@ Phase 0 documentation finalization incorporated user decisions **DEC-001–DEC-0
 | DEC-005 | Partload Expense Management excluded; OwnFleet expenses remain | Yes — PRD §§1,14, Rules §12, Phases §5/§7, Memory, TB-PTL-EXP-001 |
 | DEC-006 | No self-service account deletion | Yes — PRD §3, Rules §2, Design §4, ADR-004, TB-AUTH-007 |
 | DEC-007 | Poppins product UI font | Yes — Design §1, Memory, TB-DES-001 |
-| DEC-008 | Version-control TruckBill Cursor rule | Yes — `.gitignore` selective un-ignore, ADR-012, rule updated (uncommitted) |
+| DEC-008 | Version-control TruckBill Cursor rule | Yes — `.gitignore` selective un-ignore, ADR-012, rule versioned (later committed; see Git history) |
 | DEC-009 | Email changes via authorized administration only | Yes — PRD §3, Rules §2, Design §4, TB-AUTH-006 |
 
 ---
@@ -222,19 +222,10 @@ Do **not** treat this report as approval. Do **not** start Phase 1 until the pro
 
 ---
 
-## Appendix — Working tree note (no commit)
+## Appendix — Working tree note (historical)
 
-Expected uncommitted documentation / config changes include:
+**Historical note from the finalization pass:** at the time this report was first written, the listed documentation artefacts were expected to be uncommitted. Subsequent local commits (including hygiene and consistency corrections) may have recorded them. This appendix is retained as a historical working-tree note, not a current `git status`.
 
-- Updated `docs/governing/*`
-- Expanded traceability
-- New `docs/architecture-decisions/ADR-00*.md`
-- `docs/testing/TEST_STRATEGY.md`
-- `docs/implementation/PHASE_0_DELIVERABLES.md`
-- `docs/engineering/FINDING_DISPOSITION_REGISTER.md`
-- `docs/engineering/PHASE_0_FINALIZATION_REPORT.md`
-- Updated `docs/agent/AGENT_EXECUTION_INSTRUCTIONS.md`
-- Updated `.gitignore`
-- Trackable `.cursor/rules/truckbill-project.mdc`
+Application PHP/React/config/runtime behaviour remained **unchanged** by the finalization documentation work.
 
-Application PHP/React/config/runtime behaviour: **unchanged**.
+**Traceability statistics in §5 of this report (75 rows) remain a superseded historical snapshot** — see the banner at the top of this file and `PHASE_0_FINAL_CONSISTENCY_REPORT.md`.
