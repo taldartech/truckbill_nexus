@@ -136,7 +136,7 @@ test('database transaction failure before cleanup preserves original file', func
     $originalPath = $original->path;
 
     StoredFile::updating(function (StoredFile $file): void {
-        if ($file->isDirty('replaces_file_id') || $file->isDirty('pending_cleanup')) {
+        if ($file->isDirty('replaces_file_id') || $file->isDirty('replaced_at')) {
             throw new RuntimeException('forced replacement tx failure');
         }
     });
@@ -227,4 +227,108 @@ test('cleanup still cannot remove another tenants pending file', function () {
         ->toThrow(HttpException::class);
 
     expect(StoredFile::query()->whereKey($file->id)->exists())->toBeTrue();
+});
+
+test('rejected replacement with successful object deletion removes metadata', function () {
+    $original = app(PrivateFileService::class)->store(remediationPdf('original.pdf'));
+    $originalPath = $original->path;
+
+    app()->bind(MalwareScanner::class, fn () => new RejectAllMalwareScanner);
+
+    expect(fn () => app(PrivateFileService::class)->replace($original, remediationPdf('replacement.pdf')))
+        ->toThrow(FileNotAvailableException::class);
+
+    $original->refresh();
+    expect($original->isDownloadable())->toBeTrue();
+    Storage::disk('private_files')->assertExists($originalPath);
+    expect(StoredFile::query()->where('id', '!=', $original->id)->count())->toBe(0);
+});
+
+test('rejected replacement with failed object deletion retains metadata path and stays non-downloadable', function () {
+    $original = app(PrivateFileService::class)->store(remediationPdf('original.pdf'));
+    $originalPath = $original->path;
+
+    StoredFile::updating(function (StoredFile $file): void {
+        if ($file->isDirty('replaces_file_id') || $file->isDirty('replaced_at')) {
+            throw new RuntimeException('forced replacement tx failure');
+        }
+    });
+
+    $realDisk = Storage::disk('private_files');
+    $failingDisk = Mockery::mock(Filesystem::class);
+    $failingDisk->shouldReceive('putFileAs')->andReturnUsing(
+        fn (...$args) => $realDisk->putFileAs(...$args)
+    );
+    $failingDisk->shouldReceive('exists')->andReturnUsing(
+        fn (...$args) => $realDisk->exists(...$args)
+    );
+    $failingDisk->shouldReceive('path')->andReturnUsing(
+        fn (...$args) => $realDisk->path(...$args)
+    );
+    $failingDisk->shouldReceive('delete')->andThrow(new RuntimeException('disk I/O error'));
+
+    Storage::forgetDisk('private_files');
+    Storage::set('private_files', $failingDisk);
+
+    expect(fn () => app(PrivateFileService::class)->replace($original, remediationPdf('replacement.pdf')))
+        ->toThrow(RuntimeException::class);
+
+    $original->refresh();
+    expect($original->isDownloadable())->toBeTrue();
+    expect($original->pending_cleanup)->toBeFalse();
+
+    $pending = StoredFile::query()
+        ->where('pending_cleanup', true)
+        ->whereKeyNot($original->id)
+        ->first();
+
+    expect($pending)->not->toBeNull();
+    expect($pending->path)->not->toBeEmpty();
+    expect($pending->isDownloadable())->toBeFalse();
+    expect($pending->scan_status)->toBe(FileScanStatus::Rejected->value);
+    expect($pending->scan_message)->toContain('cleanup pending');
+});
+
+test('retained discarded replacement cleanup can be retried successfully', function () {
+    $original = app(PrivateFileService::class)->store(remediationPdf('original.pdf'));
+    $replacement = app(PrivateFileService::class)->store(remediationPdf('replacement.pdf'));
+    $replacementPath = $replacement->path;
+
+    $replacement->scan_status = FileScanStatus::Rejected->value;
+    $replacement->available_at = null;
+    $replacement->pending_cleanup = true;
+    $replacement->scan_message = 'discarded; cleanup pending: RuntimeException: disk I/O error';
+    $replacement->save();
+
+    expect($original->isDownloadable())->toBeTrue();
+    expect($replacement->isDownloadable())->toBeFalse();
+    Storage::disk('private_files')->assertExists($replacementPath);
+
+    app(PrivateFileService::class)->cleanupReplaced($replacement->refresh());
+
+    expect(StoredFile::query()->find($replacement->id))->toBeNull();
+    Storage::disk('private_files')->assertMissing($replacementPath);
+
+    $original->refresh();
+    expect($original->isDownloadable())->toBeTrue();
+});
+
+test('cross-tenant cannot cleanup retained discarded replacement metadata', function () {
+    $replacement = app(PrivateFileService::class)->store(remediationPdf('replacement.pdf'));
+    $replacement->scan_status = FileScanStatus::Rejected->value;
+    $replacement->available_at = null;
+    $replacement->pending_cleanup = true;
+    $replacement->scan_message = 'discarded; cleanup pending';
+    $replacement->save();
+
+    TenantContextHolder::inject(new TenantContext(
+        companyId: 'co-other',
+        branchId: 'br-files',
+        ownerId: 'own-files',
+    ));
+
+    expect(fn () => app(PrivateFileService::class)->cleanupReplaced($replacement))
+        ->toThrow(HttpException::class);
+
+    expect(StoredFile::query()->whereKey($replacement->id)->exists())->toBeTrue();
 });

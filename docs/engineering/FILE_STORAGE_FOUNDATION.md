@@ -88,8 +88,20 @@ Pending Product Owner decisions must not be implemented by assumption. Do not gr
 4. **Commit** the transaction.
 5. **After commit**, delete the old filesystem object, then delete old metadata.
 6. If filesystem deletion fails after commit: keep `pending_cleanup`, retain `path`, keep non-downloadable; cleanup is retryable via `cleanupReplaced()`.
-7. If the DB transaction fails: original remains intact and downloadable; unused replacement artefact is discarded.
-8. If replacement scan fails/throws: original remains downloadable.
+7. If the DB transaction fails: original remains intact and downloadable; unused replacement is discarded via the same retryable cleanup rules below.
+8. If replacement scan fails/throws: original remains downloadable; rejected replacement cleanup follows the same rules.
+
+### Discard / rejected-upload cleanup (no orphan objects)
+
+Unused or rejected uploads are discarded only through retryable cleanup:
+
+1. Mark the artefact `rejected`, non-downloadable, and `pending_cleanup = true` (path retained).
+2. Attempt filesystem object deletion.
+3. **Only if deletion succeeds**, delete metadata.
+4. If deletion fails: keep metadata + path + `pending_cleanup`, record a sanitized diagnostic, and surface the failure to the caller.
+5. Retry later with `cleanupReplaced()` under the same tenant authorization rules.
+
+Never delete metadata while a private object may still exist. A cleanup failure for a replacement artefact must not make the original unavailable.
 
 No outbox/queue is used for cleanup in WS-5 (WS-6 owns that foundation). Cleanup is synchronous with retryable `pending_cleanup` state.
 

@@ -95,7 +95,15 @@ class PrivateFileService
         $replacement = $this->store($upload);
 
         if (! $replacement->isDownloadable()) {
-            $this->discardRejectedUpload($replacement);
+            try {
+                $this->discardRejectedUpload($replacement);
+            } catch (Throwable $cleanup) {
+                throw new FileNotAvailableException(
+                    'Replacement file failed scan; original file preserved; replacement cleanup pending.',
+                    0,
+                    $cleanup
+                );
+            }
 
             throw new FileNotAvailableException('Replacement file failed scan; original file preserved.');
         }
@@ -114,7 +122,16 @@ class PrivateFileService
             });
         } catch (Throwable $e) {
             // Original remains downloadable; discard the unused replacement artefact.
-            $this->discardRejectedUpload($replacement);
+            // Refresh so a failed in-transaction assignment (e.g. replaces_file_id) is not re-persisted.
+            try {
+                $this->discardRejectedUpload($replacement->refresh());
+            } catch (Throwable $cleanup) {
+                throw new RuntimeException(
+                    'Failed to finalize file replacement metadata; original preserved; replacement cleanup pending.',
+                    0,
+                    $cleanup
+                );
+            }
 
             throw new RuntimeException('Failed to finalize file replacement metadata; original preserved.', 0, $e);
         }
@@ -165,11 +182,7 @@ class PrivateFileService
         try {
             $this->deleteStoredObject($file);
         } catch (Throwable $e) {
-            $file->scan_message = 'replaced; cleanup pending: object delete failed';
-            $file->available_at = null;
-            $file->scan_status = FileScanStatus::Rejected->value;
-            $file->pending_cleanup = true;
-            $file->save();
+            $this->retainPendingCleanup($file, $e, 'replaced');
 
             throw new RuntimeException(
                 'Failed to delete replaced file object; cleanup remains pending for retry.',
@@ -236,9 +249,11 @@ class PrivateFileService
         try {
             $this->deleteStoredObject($file);
         } catch (Throwable $cleanup) {
-            // Already rejected / not downloadable; preserve both failures for diagnosis.
+            // Already rejected / not downloadable; retain path + pending_cleanup for retry.
+            $this->retainPendingCleanup($file, $cleanup, $file->scan_message ?: 'rejected');
+
             throw new RuntimeException(
-                'File marked rejected but object cleanup failed.',
+                'File marked rejected but object cleanup failed; cleanup remains pending for retry.',
                 0,
                 $scanFailure ?? $cleanup
             );
@@ -262,15 +277,39 @@ class PrivateFileService
         }
     }
 
+    /**
+     * Discard an unused/rejected upload artefact.
+     *
+     * Deletes metadata only after the filesystem object is removed. On delete failure,
+     * retains non-downloadable metadata with pending_cleanup for retry via cleanupReplaced().
+     */
     private function discardRejectedUpload(StoredFile $file): void
     {
-        try {
-            $this->deleteStoredObject($file);
-        } catch (Throwable) {
-            // Best-effort: metadata removal still proceeds for unused replacement artefacts.
-        }
+        $context = $file->scan_message ?: 'discarded';
 
-        $file->delete();
+        $file->scan_status = FileScanStatus::Rejected->value;
+        $file->available_at = null;
+        $file->pending_cleanup = true;
+        $file->scan_message = $context;
+        $file->save();
+
+        $this->cleanupReplaced($file);
+    }
+
+    private function retainPendingCleanup(StoredFile $file, Throwable $e, string $context): void
+    {
+        $file->pending_cleanup = true;
+        $file->available_at = null;
+        $file->scan_status = FileScanStatus::Rejected->value;
+        $file->scan_message = $this->cleanupPendingMessage($context, $e);
+        $file->save();
+    }
+
+    private function cleanupPendingMessage(string $context, Throwable $e): string
+    {
+        $message = trim($context.'; cleanup pending: '.$this->safeFailureMessage($e));
+
+        return Str::limit($message, 500, '…');
     }
 
     private function buildPath(string $companyId, string $uuid, string $extension): string
