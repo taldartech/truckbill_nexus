@@ -349,7 +349,8 @@ PO-P1-AUTH
 | **ADRs**                | —                                                                                                                                                |
 | **Acceptance criteria** | Shell builds; Poppins applied; **no** Owner/Branch product screens; **no** delete-account or email-change UI; Design Deliverables Gate respected |
 | **Negative tests**      | Assert product panel routes absent; delete/email controls absent                                                                                 |
-| **Exit evidence**       | Build/typecheck; optional Playwright smoke; checklist sign-off                                                                                   |
+| **Exit evidence**       | Build/typecheck; `tests/Feature/TechnicalUiShellTest.php`; `docs/engineering/UI_SHELL.md`                                                        |
+| **Implementation**      | **Complete locally** (2026-11-22)                                                                                                                |
 
 ### WS-9 — Testing and Phase 1 exit certification
 

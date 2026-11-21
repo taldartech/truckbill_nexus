@@ -75,9 +75,10 @@ export function initializeTheme(): void {
         return;
     }
 
+    // Light-first B2B default (Design.md); users may still choose dark/system.
     if (!localStorage.getItem('appearance')) {
-        localStorage.setItem('appearance', 'system');
-        setCookie('appearance', 'system');
+        localStorage.setItem('appearance', 'light');
+        setCookie('appearance', 'light');
     }
 
     currentAppearance = getStoredAppearance();
