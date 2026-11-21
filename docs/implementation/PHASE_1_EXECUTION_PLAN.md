@@ -325,7 +325,8 @@ PO-P1-AUTH
 | **ADRs**                | **ADR-009** (blocking); ADR-007 for Redis queues                                                                                              |
 | **Acceptance criteria** | Business+audit+outbox atomic; publish after commit; idempotent consumers; bounded retry; DLQ/failed-job path; correlation IDs; tenant on jobs |
 | **Negative tests**      | Duplicate delivery; orphan outbox on rollback; job without tenant                                                                             |
-| **Exit evidence**       | Pest outbox/idempotency suite                                                                                                                 |
+| **Exit evidence**       | Pest outbox/idempotency suite (`tests/Feature/OutboxIdempotencyTest.php`); `docs/engineering/OUTBOX_IDEMPOTENCY_FOUNDATION.md`                |
+| **Implementation**      | **Complete locally** (2026-11-22)                                                                                                             |
 
 ### WS-7 — Observability
 
