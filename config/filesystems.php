@@ -33,8 +33,20 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            'serve' => false,
             'throw' => false,
+            'report' => false,
+        ],
+
+        /*
+         * Private document storage (ADR-008). Never publicly served.
+         */
+        'private_files' => [
+            'driver' => 'local',
+            'root' => storage_path('app/private/files'),
+            'visibility' => 'private',
+            'serve' => false,
+            'throw' => true,
             'report' => false,
         ],
 

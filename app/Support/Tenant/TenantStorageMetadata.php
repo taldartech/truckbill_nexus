@@ -2,6 +2,8 @@
 
 namespace App\Support\Tenant;
 
+use RuntimeException;
+
 /**
  * Tenant metadata helpers for private file storage (TB-SEC-001 / TB-DOC-001 prep).
  *
@@ -25,8 +27,12 @@ final class TenantStorageMetadata
     {
         $context = TenantContextHolder::require();
 
+        if ($context->companyId === null || $context->companyId === '') {
+            throw new RuntimeException('Company tenant identity is required for private file storage.');
+        }
+
         return [
-            'company_id' => (string) $context->companyId,
+            'company_id' => $context->companyId,
             'branch_id' => $context->branchId,
             'owner_id' => $context->ownerId,
         ];

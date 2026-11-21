@@ -79,7 +79,7 @@ Without Phase 2 identity, unauthenticated/system paths record `actor_type=system
 
 ## WS-5 / WS-6
 
-Not implemented here. Outbox insert belongs inside `AuditedTransaction::run` after the audit write (WS-6).
+WS-5 private file foundation is documented in `FILE_STORAGE_FOUNDATION.md`. Outbox insert belongs inside `AuditedTransaction::run` after the audit write (WS-6).
 
 ## Tests
 

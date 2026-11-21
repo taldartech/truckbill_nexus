@@ -112,16 +112,18 @@ Record date, fact, reason, affected modules and ADR/PR/issue when technology/ver
 
 ### Phase 1 verified implementation facts
 
-| Date       | Fact                                                                                                                                                 | Evidence                 |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
-| 2026-11-21 | WS-1 started: `app/Domains` + `app/Support` layout markers; LOCAL_SETUP + MODULAR_MONOLITH_LAYOUT docs                                               | ADR-001                  |
-| 2026-11-21 | `.env.example` standardized to PostgreSQL + Redis (phpredis)                                                                                         | ADR-007                  |
-| 2026-11-21 | Self-service profile hard-delete removed (route, controller, request, UI); Pest asserts absent                                                       | DEC-003/006              |
-| 2026-11-21 | Self-service email change removed from profile update validation/UI; email read-only                                                                 | DEC-009                  |
-| 2026-11-21 | Registration remains disabled (Fortify features)                                                                                                     | TB-AUTH-002              |
-| 2026-11-21 | WS-2 CI: GitHub Actions uses PostgreSQL 18 service; migrate + Pint + Larastan + Pest + frontend check/types/build                                    | ADR-007                  |
-| 2026-11-21 | WS-3 tenant context carrier + RejectClientTenantIdentifiers + job/cache/storage helpers; TenantIsolationTest green                                   | ADR-002 / TB-SEC-001–004 |
-| 2026-11-21 | WS-3 remediation: queue restore-before-validate + finally clear; global HTTP reject+lifecycle; full cache key dims; fail-closed branch file metadata | Independent review       |
-| 2026-11-21 | **Pending PO:** whether Internal Team (non-Owner-scope) may access branch-scoped files without matching branch_id                                    | Storage metadata         |
-| 2026-11-21 | **Pending PO:** owner_id ↔ company ↔ branch file semantics for multi-company Owners beyond same-company Owner-scope + matching owner_id              | Storage metadata         |
-| 2026-11-21 | WS-4 audit foundation: `audit_entries`, AuditWriter, AuditedTransaction, append-only model, harness, AuditAtomicityTest                              | ADR-003 / TB-AUD-001–003 |
+| Date       | Fact                                                                                                                                                                       | Evidence                 |
+| ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------ |
+| 2026-11-21 | WS-1 started: `app/Domains` + `app/Support` layout markers; LOCAL_SETUP + MODULAR_MONOLITH_LAYOUT docs                                                                     | ADR-001                  |
+| 2026-11-21 | `.env.example` standardized to PostgreSQL + Redis (phpredis)                                                                                                               | ADR-007                  |
+| 2026-11-21 | Self-service profile hard-delete removed (route, controller, request, UI); Pest asserts absent                                                                             | DEC-003/006              |
+| 2026-11-21 | Self-service email change removed from profile update validation/UI; email read-only                                                                                       | DEC-009                  |
+| 2026-11-21 | Registration remains disabled (Fortify features)                                                                                                                           | TB-AUTH-002              |
+| 2026-11-21 | WS-2 CI: GitHub Actions uses PostgreSQL 18 service; migrate + Pint + Larastan + Pest + frontend check/types/build                                                          | ADR-007                  |
+| 2026-11-21 | WS-3 tenant context carrier + RejectClientTenantIdentifiers + job/cache/storage helpers; TenantIsolationTest green                                                         | ADR-002 / TB-SEC-001–004 |
+| 2026-11-21 | WS-3 remediation: queue restore-before-validate + finally clear; global HTTP reject+lifecycle; full cache key dims; fail-closed branch file metadata                       | Independent review       |
+| 2026-11-21 | **Pending PO:** whether Internal Team (non-Owner-scope) may access branch-scoped files without matching branch_id                                                          | Storage metadata         |
+| 2026-11-21 | **Pending PO:** owner_id ↔ company ↔ branch file semantics for multi-company Owners beyond same-company Owner-scope + matching owner_id                                    | Storage metadata         |
+| 2026-11-21 | WS-4 audit foundation: `audit_entries`, AuditWriter, AuditedTransaction, append-only model, harness, AuditAtomicityTest                                                    | ADR-003 / TB-AUD-001–003 |
+| 2026-11-22 | WS-5 private files: `stored_files`, `private_files` disk, validation (2 MiB + MIME/ext), scan lifecycle interface (`pass`/`fake`/`reject`), safe replace, FileSecurityTest | ADR-008 / TB-DOC-001–002 |
+| 2026-11-22 | WS-5 access: Internal Team branch access and multi-company Owner file semantics remain **Pending PO** and fail closed                                                      | Storage metadata         |

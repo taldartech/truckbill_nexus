@@ -2,11 +2,16 @@
 
 namespace App\Providers;
 
+use App\Support\Files\Scanning\FakeMalwareScanner;
+use App\Support\Files\Scanning\MalwareScanner;
+use App\Support\Files\Scanning\PassThroughMalwareScanner;
+use App\Support\Files\Scanning\RejectAllMalwareScanner;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use InvalidArgumentException;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -15,7 +20,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(MalwareScanner::class, function (): MalwareScanner {
+            return match ((string) config('files.scanner', 'pass')) {
+                'pass' => new PassThroughMalwareScanner,
+                'fake' => new FakeMalwareScanner,
+                'reject' => new RejectAllMalwareScanner,
+                default => throw new InvalidArgumentException('Unsupported files.scanner driver.'),
+            };
+        });
     }
 
     /**
