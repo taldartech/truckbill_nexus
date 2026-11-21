@@ -70,6 +70,23 @@ test('http rejects spoofed company_id in request body', function () {
         ->assertForbidden();
 });
 
+test('rejected client tenant request clears pre-injected context via lifecycle wrap', function () {
+    TenantContextHolder::inject(new TenantContext(
+        companyId: 'co-leak',
+        branchId: 'br-leak',
+        ownerId: 'own-leak',
+    ));
+    expect(TenantContextHolder::has())->toBeTrue();
+
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->get('/settings/profile?company_id=spoofed')
+        ->assertForbidden();
+
+    expect(TenantContextHolder::has())->toBeFalse();
+});
+
 test('trusted server injection is available during the request and cleared afterwards', function () {
     Route::middleware('web')->get('/__harness/tenant-context', function () {
         TenantContextHolder::inject(new TenantContext(
@@ -172,29 +189,80 @@ test('cache keys distinguish company branch owner internal and owner-scope dimen
     expect(Cache::get($internal->cacheKey('dashboard')))->toBe('internal');
 });
 
-test('storage allows same company and same branch', function () {
-    TenantContextHolder::inject(new TenantContext(companyId: 'co-1', branchId: 'br-1'));
-    $meta = TenantStorageMetadata::forCurrentContext();
+test('storage allows matching company owner and branch', function () {
+    TenantContextHolder::inject(new TenantContext(
+        companyId: 'co-1',
+        branchId: 'br-1',
+        ownerId: 'own-1',
+    ));
+    $meta = [
+        'company_id' => 'co-1',
+        'branch_id' => 'br-1',
+        'owner_id' => 'own-1',
+    ];
 
     expect(fn () => TenantStorageMetadata::assertSameTenant($meta))
         ->not->toThrow(HttpException::class);
-    expect($meta['company_id'])->toBe('co-1');
-    expect($meta['branch_id'])->toBe('br-1');
 });
 
 test('storage denies different company', function () {
-    TenantContextHolder::inject(new TenantContext(companyId: 'co-1', branchId: 'br-1'));
-    $meta = TenantStorageMetadata::forCurrentContext();
+    $meta = ['company_id' => 'co-1', 'branch_id' => 'br-1', 'owner_id' => 'own-1'];
+    TenantContextHolder::inject(new TenantContext(
+        companyId: 'co-2',
+        branchId: 'br-1',
+        ownerId: 'own-1',
+    ));
 
-    TenantContextHolder::inject(new TenantContext(companyId: 'co-2', branchId: 'br-1'));
+    expect(fn () => TenantStorageMetadata::assertSameTenant($meta))
+        ->toThrow(HttpException::class);
+});
+
+test('storage denies different owner on owner-specific metadata', function () {
+    $meta = ['company_id' => 'co-1', 'branch_id' => 'br-1', 'owner_id' => 'own-1'];
+    TenantContextHolder::inject(new TenantContext(
+        companyId: 'co-1',
+        branchId: 'br-1',
+        ownerId: 'own-2',
+        isOwnerScope: true,
+    ));
 
     expect(fn () => TenantStorageMetadata::assertSameTenant($meta))
         ->toThrow(HttpException::class);
 });
 
 test('storage denies different branch', function () {
-    $meta = ['company_id' => 'co-1', 'branch_id' => 'br-1'];
-    TenantContextHolder::inject(new TenantContext(companyId: 'co-1', branchId: 'br-2'));
+    $meta = ['company_id' => 'co-1', 'branch_id' => 'br-1', 'owner_id' => 'own-1'];
+    TenantContextHolder::inject(new TenantContext(
+        companyId: 'co-1',
+        branchId: 'br-2',
+        ownerId: 'own-1',
+    ));
+
+    expect(fn () => TenantStorageMetadata::assertSameTenant($meta))
+        ->toThrow(HttpException::class);
+});
+
+test('storage allows owner-scope access to branch metadata when owner matches', function () {
+    $meta = ['company_id' => 'co-1', 'branch_id' => 'br-9', 'owner_id' => 'own-1'];
+    TenantContextHolder::inject(new TenantContext(
+        companyId: 'co-1',
+        branchId: null,
+        ownerId: 'own-1',
+        isOwnerScope: true,
+    ));
+
+    expect(fn () => TenantStorageMetadata::assertSameTenant($meta))
+        ->not->toThrow(HttpException::class);
+});
+
+test('storage denies owner-scope access when owner identity is missing', function () {
+    $meta = ['company_id' => 'co-1', 'branch_id' => 'br-9'];
+    TenantContextHolder::inject(new TenantContext(
+        companyId: 'co-1',
+        branchId: null,
+        ownerId: null,
+        isOwnerScope: true,
+    ));
 
     expect(fn () => TenantStorageMetadata::assertSameTenant($meta))
         ->toThrow(HttpException::class);
@@ -208,7 +276,7 @@ test('storage denies company-level context accessing branch-level metadata', fun
         ->toThrow(HttpException::class);
 });
 
-test('storage allows branch-level context to read company-scoped shared metadata', function () {
+test('storage allows shared data access for same company', function () {
     $meta = ['company_id' => 'co-1', 'branch_id' => null];
     TenantContextHolder::inject(new TenantContext(companyId: 'co-1', branchId: 'br-1'));
 
@@ -216,15 +284,14 @@ test('storage allows branch-level context to read company-scoped shared metadata
         ->not->toThrow(HttpException::class);
 });
 
-test('storage allows owner-scope context to access branch-level metadata in same company', function () {
-    $meta = ['company_id' => 'co-1', 'branch_id' => 'br-9'];
+test('storage denies shared data when owner-specific metadata owner differs', function () {
+    $meta = ['company_id' => 'co-1', 'branch_id' => null, 'owner_id' => 'own-1'];
     TenantContextHolder::inject(new TenantContext(
         companyId: 'co-1',
-        branchId: null,
-        ownerId: 'own-1',
-        isOwnerScope: true,
+        branchId: 'br-1',
+        ownerId: 'own-2',
     ));
 
     expect(fn () => TenantStorageMetadata::assertSameTenant($meta))
-        ->not->toThrow(HttpException::class);
+        ->toThrow(HttpException::class);
 });

@@ -123,3 +123,4 @@ Record date, fact, reason, affected modules and ADR/PR/issue when technology/ver
 | 2026-11-21 | WS-3 tenant context carrier + RejectClientTenantIdentifiers + job/cache/storage helpers; TenantIsolationTest green                                   | ADR-002 / TB-SEC-001–004 |
 | 2026-11-21 | WS-3 remediation: queue restore-before-validate + finally clear; global HTTP reject+lifecycle; full cache key dims; fail-closed branch file metadata | Independent review       |
 | 2026-11-21 | **Pending PO:** whether Internal Team (non-Owner-scope) may access branch-scoped files without matching branch_id                                    | Storage metadata         |
+| 2026-11-21 | **Pending PO:** owner_id ↔ company ↔ branch file semantics for multi-company Owners beyond same-company Owner-scope + matching owner_id              | Storage metadata         |

@@ -74,6 +74,9 @@ jobs:
       - name: Run PostgreSQL migrations
         run: php artisan migrate --force --no-interaction
 
+      - name: Generate Wayfinder TypeScript
+        run: php artisan wayfinder:generate --with-form --no-interaction
+
       - name: Install NPM dependencies
         run: npm ci
 

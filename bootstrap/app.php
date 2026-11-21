@@ -19,10 +19,11 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
-        // Global: all HTTP entry points (web, and api when configured).
+        // Global: Lifecycle must wrap Reject so context is cleared even on abort.
+        // Order: ManageTenantContextLifecycle (outer) → RejectClientTenantIdentifiers (inner).
         $middleware->append([
-            RejectClientTenantIdentifiers::class,
             ManageTenantContextLifecycle::class,
+            RejectClientTenantIdentifiers::class,
         ]);
 
         $middleware->web(append: [
