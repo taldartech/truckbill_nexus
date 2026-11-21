@@ -26,17 +26,17 @@ Phase 1 Engineering Foundation workstreams WS-1 through WS-8 are implemented and
 
 ## 3. Workstream results
 
-| WS   | Status                    | Commit                                                                               |
-| ---- | ------------------------- | ------------------------------------------------------------------------------------ |
-| WS-1 | Accepted                  | `6bf55d6d41fd25bd98a7b97eb1bc11acb4e6d1e1`                                           |
-| WS-2 | Accepted                  | `9ddd875be6de51949dc3fd652e62beba47ccdebc`                                           |
-| WS-3 | Accepted (+ remediations) | `111e4acb6041c50095d5f8451acdba0220301409` (base); remediations `3d8ba42`, `21c1059` |
-| WS-4 | Accepted                  | `b9e110074d5a14ac33d116a35741faa829cb3583`                                           |
-| WS-5 | Accepted (+ remediations) | `8159fbd7b9373b238404c032dc3d934a096c5f99`                                           |
-| WS-6 | Complete (local)          | `6ef2f717b4d592f17d99d2c21d661c80723da46c`                                           |
-| WS-7 | Complete (local)          | `b8a2c3c31b73191d8e9140c41d3e19fb106cc06e`                                           |
-| WS-8 | Complete (local)          | `90bc2196cd08ad0722f1def1fa72b8d80bcfef87`                                           |
-| WS-9 | This certification commit | _(recorded at commit time)_                                                          |
+| WS   | Status                         | Commit                                                                               |
+| ---- | ------------------------------ | ------------------------------------------------------------------------------------ |
+| WS-1 | Accepted                       | `6bf55d6d41fd25bd98a7b97eb1bc11acb4e6d1e1`                                           |
+| WS-2 | Accepted                       | `9ddd875be6de51949dc3fd652e62beba47ccdebc`                                           |
+| WS-3 | Accepted (+ remediations)      | `111e4acb6041c50095d5f8451acdba0220301409` (base); remediations `3d8ba42`, `21c1059` |
+| WS-4 | Accepted                       | `b9e110074d5a14ac33d116a35741faa829cb3583`                                           |
+| WS-5 | Accepted (+ remediations)      | `8159fbd7b9373b238404c032dc3d934a096c5f99`                                           |
+| WS-6 | Complete (local)               | `6ef2f717b4d592f17d99d2c21d661c80723da46c`                                           |
+| WS-7 | Complete (local)               | `b8a2c3c31b73191d8e9140c41d3e19fb106cc06e`                                           |
+| WS-8 | Complete (local)               | `90bc2196cd08ad0722f1def1fa72b8d80bcfef87`                                           |
+| WS-9 | Complete (local certification) | `deb18b6ba495b120a357804b9eb0f4eacf6afd13`                                           |
 
 ## 4. Architecture and security review
 
@@ -118,7 +118,7 @@ Verified via `TechnicalUiShellTest` + build:
 
 ## 12. Commit history (Phase 1 implementation tip)
 
-Local `main` is ahead of `origin/main` with WS-6..WS-8 (and this WS-9 commit). No `git push` was performed by the agent.
+Local `main` includes WS-6..WS-9 commits ahead of `origin/main`. No `git push` was performed by the agent.
 
 ## 13. Remaining Product Owner decisions
 
