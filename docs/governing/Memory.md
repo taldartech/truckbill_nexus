@@ -130,3 +130,4 @@ Record date, fact, reason, affected modules and ADR/PR/issue when technology/ver
 | 2026-11-22 | WS-5 remediation: production refuses pass/fake/reject; scanner exceptions fail closed; replace cleanup is post-commit + retryable `pending_cleanup`                        | Independent review       |
 | 2026-11-22 | WS-5 final remediation: discardRejectedUpload retains metadata/path on object-delete failure (no orphan objects)                                                           | Independent review       |
 | 2026-11-22 | WS-6 outbox/idempotency: `outbox_messages`, `idempotency_records`, dispatcher SKIP LOCKED, ProcessOutboxMessageJob, OutboxIdempotencyTest                                  | ADR-009 / TB-EVT-001     |
+| 2026-11-22 | WS-7 observability: correlation IDs, log redaction, `/health/ready`, OPERATIONS_RUNBOOK, ObservabilityTest                                                                | Architecture §§13–14     |

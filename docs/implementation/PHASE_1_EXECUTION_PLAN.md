@@ -337,7 +337,8 @@ PO-P1-AUTH
 | **ADRs**                | None blocking; avoid undeclared Sentry/OTel deps without PO-P1-DEPS                                                        |
 | **Acceptance criteria** | Correlation/request IDs on logs; PII/secrets masked in tests; DB/Redis/queue health signals; runbooks for restart/fail-job |
 | **Negative tests**      | Password/token absent from captured logs                                                                                   |
-| **Exit evidence**       | Runbooks; log fixture tests                                                                                                |
+| **Exit evidence**       | Runbooks (`OPERATIONS_RUNBOOK.md`); `tests/Feature/ObservabilityTest.php`                                                  |
+| **Implementation**      | **Complete locally** (2026-11-22)                                                                                          |
 
 ### WS-8 — Technical UI shell
 

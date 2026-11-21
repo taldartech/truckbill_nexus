@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\AssignCorrelationId;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\ManageTenantContextLifecycle;
@@ -22,6 +23,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // Global: Lifecycle must wrap Reject so context is cleared even on abort.
         // Order: ManageTenantContextLifecycle (outer) → RejectClientTenantIdentifiers (inner).
         $middleware->append([
+            AssignCorrelationId::class,
             ManageTenantContextLifecycle::class,
             RejectClientTenantIdentifiers::class,
         ]);

@@ -45,6 +45,7 @@ class OutboxDispatcher
         foreach ($claimed as $message) {
             $job = (new ProcessOutboxMessageJob($message->id))
                 ->withTenantContext($message->tenantContext());
+            $job->correlationId = $message->correlation_id;
 
             dispatch($job)->onQueue('outbox');
         }
