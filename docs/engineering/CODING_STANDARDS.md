@@ -1,7 +1,8 @@
 # TruckBill Nexus — Coding Standards
 
 **Status:** Mandatory for all implementation, maintenance, refactoring and bug-fix work  
-**Cursor enforcement:** `.cursor/rules/truckbill-clean-code.mdc` (`alwaysApply: true`)  
+**Cursor enforcement:** `.cursor/rules/truckbill-clean-code.mdc` (`alwaysApply: true`); `.cursor/rules/truckbill-fullstack-delivery.mdc` (`alwaysApply: true`)  
+**Full-stack delivery:** `docs/engineering/FULLSTACK_DELIVERY_STANDARD.md`  
 **Authority:** Complements Architecture.md, Rules.md, Design.md and ADRs — does not override governing product decisions
 
 ---
@@ -132,3 +133,5 @@ Remove duplication, dead code and accidental complexity introduced by the curren
 **Understand → Inspect Existing Code → Design Minimally → Implement → Review Clean Code → Test → Refactor Safely → Document → Format → Validate → Commit → Verify**
 
 Inspect existing implementations before creating new classes or services. Clean Code review is mandatory before commit. Preserve repository formatting/validation order and the absolute **no-push** policy.
+
+For authorized **user-facing** vertical slices, also follow the full-stack sequence in `FULLSTACK_DELIVERY_STANDARD.md`: design gate → backend + frontend together → integration tests → certification. Do not treat backend-only delivery as Complete for product surfaces unless the Product Owner explicitly authorized a backend-only exception.

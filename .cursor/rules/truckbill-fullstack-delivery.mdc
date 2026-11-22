@@ -1,0 +1,54 @@
+---
+description: Mandatory production-ready backend and frontend delivery, UI/UX integration, testing and certification for TruckBill Nexus
+alwaysApply: true
+---
+
+# TruckBill Full-Stack Delivery (Mandatory)
+
+This rule applies to **every** authorized functional development batch from the next implementation batch onward.
+
+## Permanent delivery sequence
+
+**Requirements → Design Review → Backend → Frontend → Integration → Automated Tests → Browser QA → Security Review → Documentation → Certification → Local Commit**
+
+Backend and frontend for a user-facing vertical slice are developed **together** in the same delivery batch. A completed backend alone does **not** make a user-facing feature Complete while its authorized UI remains missing.
+
+## Required deliverables (where applicable)
+
+1. Database / migrations  
+2. Domain / application services  
+3. Server-side authorization and tenant isolation  
+4. Validated HTTP / Inertia endpoints  
+5. React / Inertia screens using the approved design system  
+6. Form validation (server authoritative)  
+7. Loading, empty, and error states  
+8. User feedback (toasts / inline errors)  
+9. Confirmation dialogs for destructive or irreversible actions  
+10. Audit visibility where the domain requires it  
+11. Pest / unit / feature tests  
+12. Frontend / component tests using installed tools  
+13. End-to-end / Playwright journeys when the suite already supports them  
+14. Responsive layouts for critical workflows  
+15. Accessibility (labels, focus, keyboard, non-color status)  
+16. Final functional certification for the slice  
+
+## Hard exceptions (must be explicit)
+
+- Foundational infrastructure with no product UI  
+- Pure background jobs / processors with no dedicated screen  
+- Missing Product Owner design approval or unresolved business policy (**hard gate**)  
+- Explicitly documented backend-only authorization for a named batch  
+
+Do **not** invent speculative screens to satisfy this rule.  
+Do **not** present placeholders, fake metrics, non-functional buttons, or client-only authorization as Complete.
+
+## Phase 4 and later
+
+- Obtain design approval for each product surface **before** the corresponding implementation batch begins.  
+- Batches C–F deliver backend **and** UI in the same batch.  
+- Batch G is integrated QA / polish / certification — **not** the first time earlier backend features become usable in the UI.  
+- Preserve Pending gates (`PO-P4-DESIGN-FORMAL`, `PO-P4-CNV-CARDINALITY`, Phase 3 EX-01…EX-07, etc.). Never self-approve.
+
+## Quality bar
+
+Production-ready means deployable **quality** (security, maintainability, tests, Clean Code). It does **not** authorize production deployment, live payments, or git push.

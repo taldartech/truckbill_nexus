@@ -47,6 +47,7 @@ Follow `Architecture.md` for the complete architecture direction.
 - Update implementation memory and requirements traceability.
 - Record significant architectural decisions as ADRs.
 - **Clean Code (mandatory):** Follow `.cursor/rules/truckbill-clean-code.mdc` and `docs/engineering/CODING_STANDARDS.md` on every task. Workflow: Understand → Inspect Existing Code → Design Minimally → Implement → **Review Clean Code** → Test → Refactor Safely → Document → Format → Validate → Commit → Verify. Clean Code review is required before every local commit.
+- **Full-stack delivery (mandatory):** Follow `.cursor/rules/truckbill-fullstack-delivery.mdc` and `docs/engineering/FULLSTACK_DELIVERY_STANDARD.md`. From the next functional batch onward, authorized user-facing vertical slices deliver backend + corresponding UI + integrated tests together. Design approval remains a hard gate. Batch G is QA/certification polish, not deferred first UI for earlier batches. Explicit backend-only authorizations must be documented as exceptions.
 
 ## Documentation
 Preserve governing document intent; do not silently invent requirements.

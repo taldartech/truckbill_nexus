@@ -37,6 +37,7 @@ yarn-error.log
 .cursor/rules/*
 !.cursor/rules/truckbill-project.mdc
 !.cursor/rules/truckbill-clean-code.mdc
+!.cursor/rules/truckbill-fullstack-delivery.mdc
 /.factory
 /.grok
 /.junie

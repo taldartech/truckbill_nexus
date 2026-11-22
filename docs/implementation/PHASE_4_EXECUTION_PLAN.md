@@ -18,8 +18,10 @@
 
 **Hard rules under PO-P4-AUTH:**
 
-- Backend Batches A–F authorized subject to remaining gates; **do not auto-start Batch B** after A.
-- Do **not** implement product UI until **PO-P4-DESIGN-FORMAL** (Pending).
+- Backend Batches A–F authorized subject to remaining gates; **do not auto-start Batch C** after B without separate PO batch auth.
+- Do **not** implement product UI until **PO-P4-DESIGN-FORMAL** (Pending). Batch B Enquiry UI package is ready for review in `docs/design/phase-4/PHASE_4_UI_REVIEW.md` — **not** self-approved.
+- From **Batch C onward**, authorized user-facing slices deliver **backend + corresponding UI + integrated tests in the same batch** (`docs/engineering/FULLSTACK_DELIVERY_STANDARD.md`). Obtain design approval for each surface **before** that batch begins.
+- **Batch G** is integration QA / polish / certification — **not** the first UI delivery for Batches C–F.
 - Do **not** implement conversion cardinality behaviour until **PO-P4-CNV-CARDINALITY** (Pending).
 - Do **not** modify Phase 3 accepted behaviour except shared infrastructure hooks.
 - Do **not** install unapproved dependencies; do not invent AUD-CON-006 cells.
@@ -93,7 +95,7 @@
 | G-DEPS        | New packages                                                                   | **Case-by-case PO-P1-DEPS**                 |
 | G-CI          | Migrate + Pest + Pint + Larastan + FE check/types/build                        | Required after auth                         |
 
-**Backend-before-UI rule:** After **PO-P4-AUTH**, schema/domain/Pest may proceed without product UI. Product screens additionally require **G-DESIGN-P4** for that surface.
+**Full-stack delivery (Batches C+):** Design approval for the batch’s product surfaces must precede implementation. Backend and frontend ship together. Batch A remains a documented infrastructure exception (no product UI). Batch B backend shipped under explicit backend-only authorization; Enquiry product UI waits on **PO-P4-DESIGN-FORMAL**.
 
 ---
 
@@ -123,15 +125,15 @@ One foundation; context-aware From/To and party rules; goods/freight/EWBs/charge
 
 ## 4. Implementation batches (vertical slices)
 
-| Batch | Scope                             | Primary WS | Backend                                                               | Frontend                                    | Tests                                 | Blocked by            |
-| ----- | --------------------------------- | ---------- | --------------------------------------------------------------------- | ------------------------------------------- | ------------------------------------- | --------------------- |
-| **A** | Domain foundations and schema     | WS-1/5     | Models, migrations, enums, factories, sequence tables, policies stubs | None / shells only                          | Schema + factory + policy unit        | PO-P4-AUTH            |
-| **B** | Website webhook + manual enquiry  | WS-1       | Webhook controller, EnquiryService, goods rows, docs                  | Create/Edit Enquiry, List, Unassigned Queue | Webhook security + enquiry validation | A; G-WEBHOOK decision |
-| **C** | Assignment and follow-ups         | WS-2       | Assignment/follow-up services + history                               | Detail tabs, filters                        | Reassignment + tenant negatives       | B                     |
-| **D** | Quotation management              | WS-3       | Quotation/broadcast-request services                                  | Quotation entry/compare/select              | Uniqueness + selection history        | C; G-BROADCAST        |
-| **E** | Unified LR + numbering            | WS-5       | LR aggregate, freight calc, EWB, sequences                            | LR list/form/detail/numbering/print         | Freight + numbering concurrency       | A; G-NUMBER clarity   |
-| **F** | Enquiry→LR conversion             | WS-4       | ConversionService transactional + idempotency                         | Conversion preview                          | Duplicate + concurrent conversion     | D + E; G-CONVERT      |
-| **G** | UI integration, QA, certification | All        | Hardening                                                             | Full screen polish                          | Browser/a11y + Phase 4 cert report    | F; G-DESIGN-P4        |
+| Batch | Scope                            | Primary WS | Backend                                                               | Frontend                                                              | Tests                                              | Blocked by                         |
+| ----- | -------------------------------- | ---------- | --------------------------------------------------------------------- | --------------------------------------------------------------------- | -------------------------------------------------- | ---------------------------------- |
+| **A** | Domain foundations and schema    | WS-1/5     | Models, migrations, enums, factories, sequence tables, policies stubs | None (infrastructure exception)                                       | Schema + factory + policy unit                     | PO-P4-AUTH                         |
+| **B** | Website webhook + manual enquiry | WS-1       | Webhook + EnquiryService + manual JSON API (**COMPLETE**)             | Product UI **blocked** until `PO-P4-DESIGN-FORMAL`                    | Webhook + enquiry Pest (**COMPLETE**)              | A; design formal for UI            |
+| **C** | Assignment and follow-ups        | WS-2       | Assignment/follow-up services + history                               | **Same batch:** detail tabs, filters, history (after design approval) | Reassignment + tenant + UI integration             | B; design for C surfaces           |
+| **D** | Quotation management             | WS-3       | Quotation/broadcast-request services                                  | **Same batch:** entry/compare/select/broadcast request UI             | Uniqueness + selection + UI                        | C; G-BROADCAST; design for D       |
+| **E** | Unified LR + numbering           | WS-5       | LR aggregate, freight calc, EWB, sequences                            | **Same batch:** LR list/form/detail/numbering/print                   | Freight + numbering + UI                           | A; G-NUMBER; design for E          |
+| **F** | Enquiry→LR conversion            | WS-4       | ConversionService transactional + idempotency                         | **Same batch:** conversion preview/confirm                            | Duplicate + concurrent + UI; **needs cardinality** | D + E; G-CONVERT; CNV-CARDINALITY  |
+| **G** | Integration QA & certification   | All        | Hardening only                                                        | Polish / a11y / responsive — **not first UI for C–F**                 | Browser/a11y + Phase 4 cert report                 | F; design formal already satisfied |
 
 ### Per-batch completion criteria (common)
 
@@ -171,83 +173,84 @@ One foundation; context-aware From/To and party rules; goods/freight/EWBs/charge
 | Completion   | Manual + webhook create unassigned/assigned correctly; negatives green                                                                  |
 | Approvals    | G-WEBHOOK; G-PERM for policy wiring                                                                                                     |
 
-## 4.3 Batch C — Assignment and follow-ups
+## 4.3 Batch C — Assignment and follow-ups (**full-stack**)
 
-| Item         | Detail                                                             |
-| ------------ | ------------------------------------------------------------------ |
-| Requirements | TB-ENQ-008…011                                                     |
-| Dependencies | Batch B                                                            |
-| Backend      | AssignmentService; FollowUpService; status history; search filters |
-| Frontend     | Detail tabs: follow-ups, assignment history; filters on list       |
-| Tests        | TEST-ASN-*; reassignment history; tenant negatives                 |
-| Security     | Branch membership checks; remark mandatory on reassign             |
-| Completion   | Website enquiry assignable; history immutable                      |
-| Approvals    | None beyond AUTH                                                   |
+| Item         | Detail                                                                                          |
+| ------------ | ----------------------------------------------------------------------------------------------- |
+| Requirements | TB-ENQ-008…011                                                                                  |
+| Dependencies | Batch B; **design approval for C surfaces** before code                                         |
+| Backend      | AssignmentService; FollowUpService; status history; search filters                              |
+| Frontend     | **Same batch:** detail tabs (follow-ups, assignment history); list filters; permission-aware UI |
+| Tests        | TEST-ASN-*; reassignment history; tenant negatives; UI integration                              |
+| Security     | Branch membership checks; remark mandatory on reassign                                          |
+| Completion   | Website enquiry assignable in UI; history immutable                                             |
+| Approvals    | Batch auth; design for C                                                                        |
 
-## 4.4 Batch D — Quotation management
+## 4.4 Batch D — Quotation management (**full-stack**)
 
-| Item         | Detail                                                                                 |
-| ------------ | -------------------------------------------------------------------------------------- |
-| Requirements | TB-QT-001…009                                                                          |
-| Dependencies | Batch C; **G-BROADCAST**                                                               |
-| Backend      | QuotationService; uniqueness; selection history; BroadcastRequestService → outbox only |
-| Frontend     | Quotation entry, comparison, selection; broadcast request UI with Queued messaging     |
-| Tests        | TEST-QT-*; no provider HTTP                                                            |
-| Security     | Transporter party must be company-scoped; audit on edit                                |
-| Completion   | Duplicate quote blocked; preferred selection history correct; Own Vehicle skip         |
-| Approvals    | G-BROADCAST                                                                            |
+| Item         | Detail                                                                                             |
+| ------------ | -------------------------------------------------------------------------------------------------- |
+| Requirements | TB-QT-001…009                                                                                      |
+| Dependencies | Batch C; **G-BROADCAST**; design approval for D surfaces                                           |
+| Backend      | QuotationService; uniqueness; selection history; BroadcastRequestService → outbox only             |
+| Frontend     | **Same batch:** quotation entry, comparison, selection; broadcast request UI with Queued messaging |
+| Tests        | TEST-QT-*; no provider HTTP; UI integration                                                        |
+| Security     | Transporter party must be company-scoped; audit on edit                                            |
+| Completion   | Duplicate quote blocked; preferred selection history correct; Own Vehicle skip; UI wired           |
+| Approvals    | G-BROADCAST; design for D                                                                          |
 
-## 4.5 Batch E — Unified LR and numbering
+## 4.5 Batch E — Unified LR and numbering (**full-stack**)
 
 | Item         | Detail                                                                                                                                   |
 | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | Requirements | TB-LR-001…015                                                                                                                            |
-| Dependencies | Batch A; **G-NUMBER** clarity                                                                                                            |
+| Dependencies | Batch A; **G-NUMBER**; design approval for E surfaces                                                                                    |
 | Backend      | LorryReceiptService; context validators; freight calculator; EWB/charges; numbering + concurrency; cancel/soft-delete + dependency guard |
-| Frontend     | LR List/Form/Detail/Numbering (design-gated)                                                                                             |
-| Tests        | TEST-LR-001…016; concurrency allocation                                                                                                  |
+| Frontend     | **Same batch:** LR List/Form/Detail/Numbering/print preview where approved                                                               |
+| Tests        | TEST-LR-001…016; concurrency allocation; UI integration                                                                                  |
 | Security     | Tenant isolation; private docs; sequence locks                                                                                           |
-| Completion   | All three contexts validate; concurrent numbers unique; delivered locks                                                                  |
-| Approvals    | G-NUMBER                                                                                                                                 |
+| Completion   | All three contexts validate; concurrent numbers unique; delivered locks; UI wired                                                        |
+| Approvals    | G-NUMBER; design for E                                                                                                                   |
+| Note         | Prefer active-only unique indexes for soft-deleted goods positions (see enquiry goods DEC-003 fix)                                       |
 
-## 4.6 Batch F — Enquiry-to-LR conversion
+## 4.6 Batch F — Enquiry-to-LR conversion (**full-stack**)
 
 | Item         | Detail                                                                                       |
 | ------------ | -------------------------------------------------------------------------------------------- |
 | Requirements | TB-CNV-001…006                                                                               |
-| Dependencies | Batches D + E; **G-CONVERT**; cardinality decision                                           |
+| Dependencies | Batches D + E; **G-CONVERT**; **PO-P4-CNV-CARDINALITY**; design for F                        |
 | Backend      | EnquiryConversionService; transactional lock; idempotency; outbox EnquiryConverted/LRCreated |
-| Frontend     | Conversion Preview                                                                           |
-| Tests        | TEST-CNV-*; assert no Trip/LH/Challan                                                        |
+| Frontend     | **Same batch:** conversion preview, confirm, outcome presentation                            |
+| Tests        | TEST-CNV-*; assert no Trip/LH/Challan; UI integration                                        |
 | Security     | Convert permission; company match; concurrent safety                                         |
-| Completion   | Whole-enquiry only; duplicate/concurrent safe; history preserved                             |
-| Approvals    | G-CONVERT; PO-P4-CNV-CARDINALITY                                                             |
+| Completion   | Whole-enquiry only; duplicate/concurrent safe; history preserved; UI wired                   |
+| Approvals    | G-CONVERT; PO-P4-CNV-CARDINALITY; design for F                                               |
 
-## 4.7 Batch G — UI integration, QA and certification
+## 4.7 Batch G — Integration QA and certification (**not first UI**)
 
-| Item         | Detail                                                  |
-| ------------ | ------------------------------------------------------- |
-| Requirements | Design §5–6 print/a11y; exit criteria evidence          |
-| Dependencies | Batch F; **G-DESIGN-P4**                                |
-| Backend      | Hardening; print data presenters                        |
-| Frontend     | Full screen polish; print preview; responsive/a11y      |
-| Tests        | TEST-UI-*; browser smoke; Phase 4 certification report  |
-| Security     | Final tenant/permission sweep                           |
-| Completion   | Cert report READY FOR PO ACCEPTANCE (not auto-accepted) |
-| Approvals    | PO-P4-DESIGN-FORMAL                                     |
+| Item         | Detail                                                                                  |
+| ------------ | --------------------------------------------------------------------------------------- |
+| Requirements | Design §5–6 print/a11y; exit criteria evidence                                          |
+| Dependencies | Batch F; product surfaces already implemented under prior design approvals              |
+| Backend      | Hardening; print data presenters                                                        |
+| Frontend     | Polish, responsive/a11y pass, print preview refinements — **not** deferred C–F first UI |
+| Tests        | TEST-UI-*; browser smoke when tooling available; Phase 4 certification report           |
+| Security     | Final tenant/permission sweep                                                           |
+| Completion   | Cert report READY FOR PO ACCEPTANCE (not auto-accepted)                                 |
+| Approvals    | Formal Phase 4 acceptance is a separate PO decision                                     |
 
 ---
 
 ## 5. Dependency graph
 
 ```text
-PO-P4-AUTH ──► Batch A (schema/domain)
-                 ├─► Batch B (enquiry + webhook)
-                 │     └─► Batch C (assignment/follow-ups)
-                 │           └─► Batch D (quotations)
-                 ├─► Batch E (unified LR + numbering)  [parallel after A]
-                 └─► Batch F (conversion) ← needs D + E
-                       └─► Batch G (UI QA + certification) ← needs G-DESIGN-P4
+PO-P4-AUTH ──► Batch A (schema/domain; no product UI)
+                 ├─► Batch B (enquiry + webhook backend; UI gated on DESIGN-FORMAL)
+                 │     └─► Batch C (assignment/follow-ups — backend + UI same batch)
+                 │           └─► Batch D (quotations — backend + UI same batch)
+                 ├─► Batch E (unified LR + numbering — backend + UI same batch)
+                 └─► Batch F (conversion — backend + UI; needs CNV-CARDINALITY)
+                       └─► Batch G (integration QA + certification polish)
 ```
 
 ---
@@ -267,15 +270,16 @@ PO-P4-AUTH ──► Batch A (schema/domain)
 
 ## 7. Required approvals before/during delivery
 
-| Approval                                 | When                                                     |
-| ---------------------------------------- | -------------------------------------------------------- |
-| **PO-P4-AUTH**                           | Before Batch A code/migrations                           |
-| Webhook contract (G-WEBHOOK)             | Before Batch B webhook go-live contract freeze           |
-| Broadcast boundary (G-BROADCAST)         | Before Batch D broadcast enqueue                         |
-| Permission catalogue (G-PERM)            | Before Batch B policies finalize                         |
-| Numbering scope (G-NUMBER)               | Before Batch E sequence design freeze                    |
-| **PO-P4-DESIGN-FORMAL** (or per-surface) | Before Batch G product UI / earlier if UI-first surfaces |
-| PO-P1-DEPS                               | Only if new packages proposed                            |
+| Approval                                 | When                                                                                                       |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| **PO-P4-AUTH**                           | Before Batch A code/migrations                                                                             |
+| Webhook contract (G-WEBHOOK)             | Before Batch B webhook go-live contract freeze                                                             |
+| Broadcast boundary (G-BROADCAST)         | Before Batch D broadcast enqueue                                                                           |
+| Permission catalogue (G-PERM)            | Before Batch B policies finalize                                                                           |
+| Numbering scope (G-NUMBER)               | Before Batch E sequence design freeze                                                                      |
+| **PO-P4-DESIGN-FORMAL** (or per-surface) | Before implementing that surface’s product UI (Batch B Enquiry UI package ready; before Batches C–F start) |
+| Full-stack delivery standard             | Batches C–F: backend + UI + tests same batch; Batch G = QA polish only                                     |
+| PO-P1-DEPS                               | Only if new packages proposed                                                                              |
 
 ---
 
