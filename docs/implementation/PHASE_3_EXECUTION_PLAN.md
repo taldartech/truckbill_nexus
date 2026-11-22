@@ -167,7 +167,7 @@
 | UI                | Owner lifecycle/status after G-DESIGN-P3; entitlement-dependent controls wait on AUD-CON-006                                                                                                                                                                              |
 | Tests             | Trial clock; grace view-only; storage block; no invented restricted behaviours                                                                                                                                                                                            |
 | Acceptance        | Confirmed lifecycle rules tested; Pending matrix explicitly documented as blocked                                                                                                                                                                                         |
-| **Status**        | **Batch E foundations complete (Confirmed rules only)** — evaluator/trial/grace/cancel/proposals tested; AUD-CON-006 enforcement still Pending; no blanket middleware                                                                                                     |
+| **Status**        | **Final Confirmed enforcement integrated** — `SubscriptionEntitlementGate` + Owner lifecycle UI + jobs; AUD-CON-006 fine-grained cells still Pending (decision package); no invented matrix cells                                                                         |
 
 ---
 
@@ -185,7 +185,7 @@
 | Blocked by        | G-PAY credentials/approach; package approval if SDK added; **no live charges** without explicit PO                                                                                                                                              |
 | Tests             | Signature failure reject; duplicate webhook no double credit; activation without invoice approval; refund APIs absent                                                                                                                           |
 | Acceptance        | Webhook idempotency + payment-activated subscription exit criteria                                                                                                                                                                              |
-| **Status**        | **Batch E simulated foundations complete** — FakePaymentGateway + PaymentEventProcessor + invoice state machine; live Razorpay / webhook HTTP / Owner billing UI still gated (PO-P3-PAY / G-PAY)                                                |
+| **Status**        | **Simulated foundations + Owner payment/invoice read UI** — FakePaymentGateway + processor + invoice SM; live Razorpay / webhook HTTP / checkout still gated (PO-P3-PAY / G-PAY)                                                                |
 
 ---
 
@@ -197,7 +197,7 @@
 | Scope         | Pricing; webhook idempotency; entitlement (Confirmed only); storage/credit reconciliation; immutable contracts; tenant/file negatives |
 | Prerequisites | P3-WS-1–6 for authorized slices                                                                                                       |
 | Acceptance    | Certification report + CI green                                                                                                       |
-| **Status**    | **Partial (Batch E evidence)** — `PHASE_3_BATCH_E_CERTIFICATION_REPORT.md` covers WS-5/6 foundations; full Phase 3 exit still open    |
+| **Status**    | **Final cert with exceptions** — `PHASE_3_FINAL_CERTIFICATION_REPORT.md` + PO decision/acceptance packages; Phase 3 not auto-accepted |
 
 ---
 

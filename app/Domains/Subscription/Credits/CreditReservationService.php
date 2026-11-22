@@ -3,8 +3,10 @@
 namespace App\Domains\Subscription\Credits;
 
 use App\Domains\Subscription\Contract\CompanySubscriptionContractService;
+use App\Domains\Subscription\Entitlement\SubscriptionEntitlementGate;
 use App\Domains\Subscription\Exceptions\SubscriptionDomainException;
 use App\Domains\Subscription\Support\DecimalMath;
+use App\Models\Company;
 use App\Models\SubscriptionCreditLedger;
 use App\Models\SubscriptionCreditReservation;
 use App\Support\Audit\AuditedTransaction;
@@ -19,6 +21,7 @@ final class CreditReservationService
     public function __construct(
         private readonly AuditedTransaction $tx = new AuditedTransaction,
         private readonly CompanySubscriptionContractService $contracts = new CompanySubscriptionContractService,
+        private readonly SubscriptionEntitlementGate $entitlements = new SubscriptionEntitlementGate,
     ) {}
 
     public function reserve(
@@ -29,6 +32,14 @@ final class CreditReservationService
     ): SubscriptionCreditReservation {
         if (DecimalMath::compare($amount, '0', 4) <= 0) {
             throw new SubscriptionDomainException('Reservation amount must be positive.');
+        }
+
+        $company = Company::query()->whereKey($ledger->company_id)->firstOrFail();
+        if (! $this->entitlements->allowsCreditConsumption($company)) {
+            throw new SubscriptionDomainException(
+                $this->entitlements->evaluate($company)['restriction_reason']
+                    ?? 'Credit consumption is not permitted for the current subscription lifecycle status.'
+            );
         }
 
         return $this->tx->run(function () use ($ledger, $amount, $idempotencyKey, $reason): SubscriptionCreditReservation {

@@ -3,18 +3,24 @@
 namespace App\Http\Controllers\Owner;
 
 use App\Domains\Company\CompanyAccessService;
+use App\Domains\Subscription\Capacity\CompanyCapacityService;
 use App\Domains\Subscription\Contract\CompanySubscriptionContractService;
+use App\Domains\Subscription\Entitlement\SubscriptionEntitlementGate;
 use App\Domains\Subscription\Enums\SubscriptionTenure;
 use App\Domains\Subscription\Exceptions\SubscriptionDomainException;
+use App\Domains\Subscription\Lifecycle\SubscriptionLifecycleService;
 use App\Domains\Subscription\Pricing\SubscriptionPricingCalculator;
+use App\Domains\Subscription\Storage\StorageReconciliationService;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Owner\Concerns\AuthorizesOwnerPanel;
 use App\Models\Company;
 use App\Models\CompanySubscription;
+use App\Models\PaymentIntent;
 use App\Models\SubscriptionAddon;
 use App\Models\SubscriptionCatalogueVersion;
 use App\Models\SubscriptionCreditEntry;
 use App\Models\SubscriptionCreditLedger;
+use App\Models\SubscriptionInvoice;
 use App\Models\SubscriptionPlan;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
@@ -25,7 +31,7 @@ use Inertia\Response;
 
 /**
  * Owner subscription overview, catalogue pricing, drafts and credits (PO-P3-UI-AUTH).
- * Does not activate payments or invent AUD-CON-006 entitlements.
+ * Live Razorpay checkout remains gated (PO-P3-PAY / G-PAY). Confirmed entitlement rules only.
  */
 class OwnerSubscriptionController extends Controller
 {
@@ -35,6 +41,10 @@ class OwnerSubscriptionController extends Controller
         private readonly CompanyAccessService $access,
         private readonly SubscriptionPricingCalculator $pricing,
         private readonly CompanySubscriptionContractService $contracts,
+        private readonly SubscriptionEntitlementGate $entitlements = new SubscriptionEntitlementGate,
+        private readonly SubscriptionLifecycleService $lifecycle = new SubscriptionLifecycleService,
+        private readonly CompanyCapacityService $capacity = new CompanyCapacityService,
+        private readonly StorageReconciliationService $storage = new StorageReconciliationService,
     ) {}
 
     public function overview(Request $request, Company $company): Response
@@ -53,12 +63,18 @@ class OwnerSubscriptionController extends Controller
             ->limit(20)
             ->get();
 
-        $activeOrDraft = $subscriptions->first(fn (CompanySubscription $s): bool => in_array($s->status, ['active', 'draft'], true));
+        $activeOrDraft = $subscriptions->first(fn (CompanySubscription $s): bool => in_array($s->status, ['active', 'draft', 'pending_payment'], true));
+        $active = $subscriptions->first(fn (CompanySubscription $s): bool => $s->status === 'active');
 
         $ledgers = SubscriptionCreditLedger::query()
             ->where('company_id', $company->id)
             ->orderBy('ledger_type')
             ->get();
+
+        $entitlement = $this->entitlements->evaluate($company);
+        $effective = $this->lifecycle->effectiveStatus($company);
+        $capacity = $this->capacity->evaluate($company);
+        $storage = $this->storage->reconcile($company);
 
         return Inertia::render('owner/subscription/overview', [
             'company' => $this->companyPayload($company),
@@ -72,6 +88,32 @@ class OwnerSubscriptionController extends Controller
             ],
             'subscription' => $activeOrDraft === null ? null : $this->subscriptionPayload($activeOrDraft),
             'subscriptions' => $subscriptions->map(fn (CompanySubscription $s): array => $this->subscriptionPayload($s))->values()->all(),
+            'lifecycle' => [
+                'status' => $entitlement['status']->value,
+                'company_admin_active' => $entitlement['company_admin_active'],
+                'branch_mutations_allowed' => $entitlement['branch_mutations_allowed'],
+                'owner_billing_allowed' => $entitlement['owner_billing_allowed'],
+                'restriction_reason' => $entitlement['restriction_reason'],
+                'matrix_authority' => $entitlement['matrix_authority'],
+                'notes' => $entitlement['notes'],
+                'trial_ends_at' => $effective['trial_ends_at'] ?? null,
+                'paid_through_date' => $effective['paid_through_date'] ?? null,
+                'grace_ends_on' => $effective['grace_ends_on'] ?? null,
+                'cancellation_effective_on' => $effective['cancellation_effective_on'] ?? null,
+            ],
+            'capacity' => $capacity,
+            'storage' => [
+                'counted_bytes' => $storage['counted_bytes'],
+                'alert' => $storage['alert'],
+                'block' => $storage['block'],
+                'percent_of_allocation' => $storage['percent_of_allocation'],
+            ],
+            'cancellation' => $active === null ? null : [
+                'subscription_id' => $active->id,
+                'pending' => $active->cancellation_requested_at !== null && $active->cancelled_at === null,
+                'effective_on' => $active->cancellation_effective_on?->toDateString(),
+                'remark' => $active->cancellation_remark,
+            ],
             'credit_summary' => $ledgers->map(fn (SubscriptionCreditLedger $ledger): array => [
                 'id' => $ledger->id,
                 'ledger_type' => $ledger->ledger_type,
@@ -79,12 +121,17 @@ class OwnerSubscriptionController extends Controller
                 'balance' => (string) $ledger->balance,
                 'unit' => $this->creditUnitLabel($ledger->ledger_type),
             ])->values()->all(),
-            'entitlement_note' => 'Trial, grace, restricted and suspended entitlement matrices remain Pending (AUD-CON-006). This screen shows configured contract and credit data only.',
+            'entitlement_note' => 'Confirmed Rules §15 lifecycle enforcement is active for Branch mutations during paid grace/restricted states. Fine-grained AUD-CON-006 action cells remain Pending. Live Razorpay checkout remains gated (PO-P3-PAY / G-PAY).',
+            'payment_gate_note' => 'Manual Razorpay Test Mode and production charges require PO-P3-PAY / G-PAY. Simulated payment foundations exist for certification doubles only.',
             'links' => [
                 'dashboard' => route('owner.dashboard', $company),
                 'catalogue' => route('owner.subscription.catalogue', $company),
                 'drafts' => route('owner.subscription.drafts', $company),
                 'credits' => route('owner.subscription.credits', $company),
+                'payments' => route('owner.subscription.payments', $company),
+                'invoices' => route('owner.subscription.invoices', $company),
+                'cancel' => route('owner.subscription.cancel', $company),
+                'withdraw_cancel' => route('owner.subscription.cancel.withdraw', $company),
             ],
         ]);
     }
@@ -401,6 +448,116 @@ class OwnerSubscriptionController extends Controller
             ->with('success', 'Draft contract updated (not activated).');
     }
 
+    public function requestCancellation(Request $request, Company $company): RedirectResponse
+    {
+        ['user' => $user] = $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
+
+        $validated = $request->validate([
+            'subscription_id' => ['required', 'uuid'],
+            'remark' => ['required', 'string', 'max:500'],
+        ]);
+
+        $subscription = CompanySubscription::query()->whereKey($validated['subscription_id'])->firstOrFail();
+        $this->assertCompanySubscription($company, $subscription);
+
+        try {
+            $this->lifecycle->requestCancellation($user, $subscription, $validated['remark']);
+        } catch (SubscriptionDomainException $e) {
+            return back()->withErrors(['remark' => $e->getMessage()]);
+        }
+
+        return redirect()
+            ->route('owner.subscription', $company)
+            ->with('success', 'Cancellation scheduled for the common renewal date.');
+    }
+
+    public function withdrawCancellation(Request $request, Company $company): RedirectResponse
+    {
+        ['user' => $user] = $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
+
+        $validated = $request->validate([
+            'subscription_id' => ['required', 'uuid'],
+            'remark' => ['required', 'string', 'max:500'],
+        ]);
+
+        $subscription = CompanySubscription::query()->whereKey($validated['subscription_id'])->firstOrFail();
+        $this->assertCompanySubscription($company, $subscription);
+
+        try {
+            $this->lifecycle->withdrawCancellation($user, $subscription, $validated['remark']);
+        } catch (SubscriptionDomainException $e) {
+            return back()->withErrors(['remark' => $e->getMessage()]);
+        }
+
+        return redirect()
+            ->route('owner.subscription', $company)
+            ->with('success', 'Pending cancellation withdrawn.');
+    }
+
+    public function payments(Request $request, Company $company): Response
+    {
+        ['scope' => $scope] = $this->authorizeOwnerPanel($request, $company, $this->access);
+
+        $intents = PaymentIntent::query()
+            ->where('company_id', $company->id)
+            ->orderByDesc('created_at')
+            ->limit(100)
+            ->get();
+
+        return Inertia::render('owner/subscription/payments', [
+            'company' => $this->companyPayload($company),
+            'ownerPanelScope' => $scope,
+            'gate_note' => 'Live Razorpay checkout is not enabled. This list shows company-scoped payment intents including simulated records. PO-P3-PAY / G-PAY required for Test Mode charges.',
+            'payments' => $intents->map(fn (PaymentIntent $intent): array => [
+                'id' => $intent->id,
+                'purpose' => $intent->purpose,
+                'amount' => (string) $intent->amount,
+                'currency' => $intent->currency,
+                'status' => $intent->status,
+                'verification_status' => $intent->verification_status,
+                'gateway' => $intent->gateway,
+                'gateway_order_id' => $intent->gateway_order_id,
+                'gateway_payment_id' => $intent->gateway_payment_id,
+                'created_at' => $intent->created_at?->toIso8601String(),
+            ])->values()->all(),
+            'links' => [
+                'overview' => route('owner.subscription', $company),
+            ],
+        ]);
+    }
+
+    public function invoices(Request $request, Company $company): Response
+    {
+        ['scope' => $scope] = $this->authorizeOwnerPanel($request, $company, $this->access);
+
+        $invoices = SubscriptionInvoice::query()
+            ->where('company_id', $company->id)
+            ->orderByDesc('created_at')
+            ->limit(100)
+            ->get();
+
+        return Inertia::render('owner/subscription/invoices', [
+            'company' => $this->companyPayload($company),
+            'ownerPanelScope' => $scope,
+            'issuer_note' => 'Production legally operative invoice issuance requires validated issuer/tax configuration. Invoice-number approval workflow foundations exist; Super Admin approval UI remains operationally gated pending issuer setup.',
+            'invoices' => $invoices->map(fn (SubscriptionInvoice $invoice): array => [
+                'id' => $invoice->id,
+                'status' => $invoice->status,
+                'proposed_number' => $invoice->proposed_number,
+                'approved_number' => $invoice->approved_number,
+                'financial_year' => $invoice->financial_year,
+                'amount' => (string) $invoice->amount,
+                'currency' => $invoice->currency,
+                'email_status' => $invoice->email_status,
+                'approved_at' => $invoice->approved_at?->toIso8601String(),
+                'created_at' => $invoice->created_at?->toIso8601String(),
+            ])->values()->all(),
+            'links' => [
+                'overview' => route('owner.subscription', $company),
+            ],
+        ]);
+    }
+
     public function credits(Request $request, Company $company): Response
     {
         ['scope' => $scope] = $this->authorizeOwnerPanel($request, $company, $this->access);
@@ -467,6 +624,10 @@ class OwnerSubscriptionController extends Controller
             'list_annual_total' => (string) $subscription->list_annual_total,
             'discounted_annual_total' => (string) $subscription->discounted_annual_total,
             'pricing_breakdown' => $subscription->pricing_breakdown,
+            'paid_through_date' => $subscription->paid_through_date?->toDateString(),
+            'grace_ends_on' => $subscription->grace_ends_on?->toDateString(),
+            'cancellation_requested_at' => $subscription->cancellation_requested_at?->toIso8601String(),
+            'cancellation_effective_on' => $subscription->cancellation_effective_on?->toDateString(),
             'updated_at' => $subscription->updated_at?->toIso8601String(),
             'snapshot_count' => $subscription->relationLoaded('snapshots')
                 ? $subscription->snapshots->count()

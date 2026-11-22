@@ -6,6 +6,7 @@ use App\Domains\Company\CompanyAccessService;
 use App\Domains\Company\Exceptions\CompanyAccessException;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
+use App\Domains\Subscription\Entitlement\SubscriptionEntitlementGate;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\User;
@@ -29,25 +30,55 @@ trait AuthorizesBranchPanel
             abort(403, 'Branch Panel access denied.');
         }
 
+        // Confirmed Rules §15: paid grace / restricted block Branch mutations (not navigation/views).
+        if (! $request->isMethodSafe()) {
+            $this->assertBranchMutationEntitlement($company);
+        }
+
         WorkspaceSession::put($request, $company->id, $branch->id);
 
         return $user;
     }
 
     /**
-     * @return array{can_view: bool, can_create: bool, can_edit: bool, can_delete: bool, is_owner: bool}
+     * @return array{
+     *     can_view: bool,
+     *     can_create: bool,
+     *     can_edit: bool,
+     *     can_delete: bool,
+     *     is_owner: bool,
+     *     subscription_lifecycle_status: string,
+     *     subscription_mutations_allowed: bool,
+     *     subscription_restriction_reason: string|null
+     * }
      */
     protected function masterPermissions(User $actor, Company $company, Branch $branch, CompanyAccessService $access, PermissionAuthorizer $authorizer): array
     {
         $isOwner = $access->isCompanyOwner($actor, $company);
+        $entitlement = app(SubscriptionEntitlementGate::class)->evaluate($company);
+        $mutationsAllowed = $entitlement['branch_mutations_allowed'];
+
+        $canView = ($isOwner || $authorizer->allowsCustomer($actor, PermissionCodes::PLATFORM_VIEW, $company, $branch))
+            && $entitlement['branch_view_allowed'];
+        $canCreate = $mutationsAllowed && ($isOwner || $authorizer->allowsCustomer($actor, PermissionCodes::PLATFORM_CREATE, $company, $branch));
+        $canEdit = $mutationsAllowed && ($isOwner || $authorizer->allowsCustomer($actor, PermissionCodes::PLATFORM_EDIT, $company, $branch));
+        $canDelete = $mutationsAllowed && ($isOwner || $authorizer->allowsCustomer($actor, PermissionCodes::PLATFORM_DELETE, $company, $branch));
 
         return [
-            'can_view' => $isOwner || $authorizer->allowsCustomer($actor, PermissionCodes::PLATFORM_VIEW, $company, $branch),
-            'can_create' => $isOwner || $authorizer->allowsCustomer($actor, PermissionCodes::PLATFORM_CREATE, $company, $branch),
-            'can_edit' => $isOwner || $authorizer->allowsCustomer($actor, PermissionCodes::PLATFORM_EDIT, $company, $branch),
-            'can_delete' => $isOwner || $authorizer->allowsCustomer($actor, PermissionCodes::PLATFORM_DELETE, $company, $branch),
+            'can_view' => $canView,
+            'can_create' => $canCreate,
+            'can_edit' => $canEdit,
+            'can_delete' => $canDelete,
             'is_owner' => $isOwner,
+            'subscription_lifecycle_status' => $entitlement['status']->value,
+            'subscription_mutations_allowed' => $mutationsAllowed,
+            'subscription_restriction_reason' => $entitlement['restriction_reason'],
         ];
+    }
+
+    protected function assertBranchMutationEntitlement(Company $company): void
+    {
+        app(SubscriptionEntitlementGate::class)->assertBranchMutationAllowed($company);
     }
 
     /**

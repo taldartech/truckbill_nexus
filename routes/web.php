@@ -63,6 +63,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/owner/companies/{company}/subscription/drafts/{subscription}', [OwnerSubscriptionController::class, 'updateDraft'])
         ->name('owner.subscription.drafts.update');
     Route::get('/owner/companies/{company}/subscription/credits', [OwnerSubscriptionController::class, 'credits'])->name('owner.subscription.credits');
+    Route::get('/owner/companies/{company}/subscription/payments', [OwnerSubscriptionController::class, 'payments'])->name('owner.subscription.payments');
+    Route::get('/owner/companies/{company}/subscription/invoices', [OwnerSubscriptionController::class, 'invoices'])->name('owner.subscription.invoices');
+    Route::post('/owner/companies/{company}/subscription/cancel', [OwnerSubscriptionController::class, 'requestCancellation'])->name('owner.subscription.cancel');
+    Route::post('/owner/companies/{company}/subscription/cancel/withdraw', [OwnerSubscriptionController::class, 'withdrawCancellation'])->name('owner.subscription.cancel.withdraw');
     Route::get('/owner/companies/{company}/branches', OwnerBranchesController::class)->name('owner.branches');
 
     Route::get('/owner/companies/{company}/users', [OwnerUsersController::class, 'index'])->name('owner.users');

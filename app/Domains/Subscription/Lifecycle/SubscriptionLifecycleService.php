@@ -250,6 +250,54 @@ final class SubscriptionLifecycleService
     }
 
     /**
+     * Mark active subscriptions with due cancellation_effective_on as cancelled (idempotent).
+     *
+     * @return int number of subscriptions finalized
+     */
+    public function finalizeDueCancellations(): int
+    {
+        $today = $this->clock->now()->startOfDay()->toDateString();
+        $count = 0;
+
+        CompanySubscription::query()
+            ->where('status', 'active')
+            ->whereNotNull('cancellation_effective_on')
+            ->whereDate('cancellation_effective_on', '<=', $today)
+            ->whereNull('cancelled_at')
+            ->orderBy('id')
+            ->chunkById(50, function ($subscriptions) use (&$count): void {
+                foreach ($subscriptions as $subscription) {
+                    $this->tx->run(function () use ($subscription, &$count): void {
+                        /** @var CompanySubscription $locked */
+                        $locked = CompanySubscription::query()->whereKey($subscription->id)->lockForUpdate()->firstOrFail();
+                        if ($locked->cancelled_at !== null || $locked->status !== 'active') {
+                            return;
+                        }
+                        $company = $locked->company()->firstOrFail();
+                        $this->withTenant(null, $company, function () use ($locked, &$count): void {
+                            $before = $locked->toArray();
+                            $locked->status = 'cancelled';
+                            $locked->cancelled_at = $this->clock->now();
+                            $locked->save();
+                            $this->contracts->writeImmutableSnapshot($locked->load('items'), null, 'cancellation_effective');
+                            $this->audit->write(
+                                action: AuditAction::Updated,
+                                subjectType: 'company_subscription',
+                                subjectId: $locked->id,
+                                remark: 'Cancellation effective at common renewal',
+                                before: $before,
+                                after: $locked->fresh()?->toArray(),
+                            );
+                            $count++;
+                        });
+                    });
+                }
+            });
+
+        return $count;
+    }
+
+    /**
      * Apply a scheduled downgrade if usage still fits; otherwise retain current plan and flag retention.
      *
      * @return array{applied: bool, retained_current_plan: bool, proposal: SubscriptionChangeProposal}
