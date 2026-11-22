@@ -1,8 +1,9 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Form, Head, Link } from '@inertiajs/react';
 import { CompanySwitcher } from '@/components/company-switcher';
 import ShellEmptyState from '@/components/shell-empty-state';
 import { Button } from '@/components/ui/button';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
+import { enter } from '@/routes/workspace/branches';
 import type { WorkspaceBranch } from '@/types/workspace';
 
 type OwnerBranchesProps = {
@@ -61,16 +62,18 @@ export default function OwnerBranches({
                                     <WorkspaceStatusBadge status={branch.status} />
                                 </div>
                                 {canEnterBranch ? (
-                                    <Button
-                                        type="button"
-                                        onClick={() =>
-                                            router.post(
-                                                `/workspace/companies/${company.id}/branches/${branch.id}/enter`,
-                                            )
-                                        }
+                                    <Form
+                                        {...enter.form({
+                                            company: company.id,
+                                            branch: branch.id,
+                                        })}
                                     >
-                                        Enter Branch Panel
-                                    </Button>
+                                        {({ processing }) => (
+                                            <Button type="submit" disabled={processing}>
+                                                Enter Branch Panel
+                                            </Button>
+                                        )}
+                                    </Form>
                                 ) : null}
                             </li>
                         ))}

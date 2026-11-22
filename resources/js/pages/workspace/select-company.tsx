@@ -1,7 +1,8 @@
-import { Head, router } from '@inertiajs/react';
+import { Form, Head } from '@inertiajs/react';
 import { Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
+import { enter } from '@/routes/workspace/companies';
 import type { WorkspaceCompany } from '@/types/workspace';
 
 type SelectCompanyProps = {
@@ -34,27 +35,32 @@ export default function SelectCompany({
                 <ul className="space-y-3" role="list">
                     {companies.map((company) => (
                         <li key={company.id}>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                className="h-auto w-full justify-start gap-3 px-4 py-3 text-left"
-                                onClick={() =>
-                                    router.post(
-                                        `/workspace/companies/${company.id}/enter`,
-                                    )
-                                }
-                            >
-                                <Building2 className="size-5 shrink-0" aria-hidden />
-                                <span className="min-w-0 flex-1">
-                                    <span className="block font-medium">
-                                        {company.name}
-                                    </span>
-                                    <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                                        <span>{company.relationship}</span>
-                                        <WorkspaceStatusBadge status={company.status} />
-                                    </span>
-                                </span>
-                            </Button>
+                            <Form {...enter.form(company.id)}>
+                                {({ processing }) => (
+                                    <Button
+                                        type="submit"
+                                        variant="outline"
+                                        disabled={processing}
+                                        className="h-auto w-full justify-start gap-3 px-4 py-3 text-left"
+                                    >
+                                        <Building2
+                                            className="size-5 shrink-0"
+                                            aria-hidden
+                                        />
+                                        <span className="min-w-0 flex-1">
+                                            <span className="block font-medium">
+                                                {company.name}
+                                            </span>
+                                            <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+                                                <span>{company.relationship}</span>
+                                                <WorkspaceStatusBadge
+                                                    status={company.status}
+                                                />
+                                            </span>
+                                        </span>
+                                    </Button>
+                                )}
+                            </Form>
                         </li>
                     ))}
                 </ul>

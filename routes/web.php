@@ -11,6 +11,7 @@ use App\Http\Controllers\HealthController;
 use App\Http\Controllers\InvitationAcceptanceController;
 use App\Http\Controllers\Owner\OwnerBranchesController;
 use App\Http\Controllers\Owner\OwnerDashboardController;
+use App\Http\Controllers\Owner\OwnerDeferredController;
 use App\Http\Controllers\Owner\OwnerSubscriptionController;
 use App\Http\Controllers\Workspace\EnterBranchController;
 use App\Http\Controllers\Workspace\EnterCompanyController;
@@ -46,6 +47,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/owner/companies/{company}', OwnerDashboardController::class)->name('owner.dashboard');
     Route::get('/owner/companies/{company}/subscription', OwnerSubscriptionController::class)->name('owner.subscription');
     Route::get('/owner/companies/{company}/branches', OwnerBranchesController::class)->name('owner.branches');
+    Route::get('/owner/companies/{company}/users', [OwnerDeferredController::class, 'users'])->name('owner.users');
+    Route::get('/owner/companies/{company}/settings', [OwnerDeferredController::class, 'settings'])->name('owner.settings');
+    Route::get('/owner/companies/{company}/audit', [OwnerDeferredController::class, 'audit'])->name('owner.audit');
 
     Route::get('/branch/companies/{company}/branches/{branch}', BranchDashboardController::class)
         ->scopeBindings()

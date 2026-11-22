@@ -227,6 +227,50 @@ test('subscription presentation does not invent entitlement actions', function (
             ->where('subscription.presentation', 'unavailable'));
 });
 
+test('owner dashboard exposes deferred Region B entry points without inventing CRUD', function () {
+    ['owner' => $owner, 'company' => $company] = createOwnerWorkspace();
+
+    loginCustomer($owner);
+
+    $this->get(route('owner.dashboard', ['company' => $company]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('owner/dashboard')
+            ->has('links.users')
+            ->has('links.settings')
+            ->has('links.audit'));
+
+    $this->get(route('owner.users', ['company' => $company]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('owner/deferred')
+            ->where('section.status', 'deferred')
+            ->where('section.key', 'users'));
+
+    $this->get(route('owner.settings', ['company' => $company]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('section.key', 'settings'));
+
+    $this->get(route('owner.audit', ['company' => $company]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->where('section.key', 'audit'));
+});
+
+test('member cannot open deferred owner entry points', function () {
+    ['company' => $company, 'headOffice' => $headOffice] = createOwnerWorkspace();
+    $member = User::factory()->customer()->create([
+        'password' => Hash::make('member-secret'),
+    ]);
+    $membership = panelWorkspace()->addMembership($company, $member, 'Join');
+    panelWorkspace()->assignBranch($membership, $headOffice, 'Assign');
+
+    loginCustomer($member, 'member-secret');
+
+    $this->get(route('owner.users', ['company' => $company]))->assertForbidden();
+    $this->get(route('owner.settings', ['company' => $company]))->assertForbidden();
+    $this->get(route('owner.audit', ['company' => $company]))->assertForbidden();
+});
+
 test('branch settings remain branch-scoped', function () {
     ['owner' => $owner, 'company' => $company, 'headOffice' => $headOffice] = createOwnerWorkspace();
 

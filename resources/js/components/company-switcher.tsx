@@ -1,14 +1,14 @@
-import { router, usePage } from '@inertiajs/react';
+import { Form, usePage } from '@inertiajs/react';
 import { Building2, ChevronsUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
     DropdownMenu,
     DropdownMenuContent,
-    DropdownMenuItem,
     DropdownMenuLabel,
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { enter } from '@/routes/workspace/companies';
 import type { WorkspaceCompany, WorkspaceShare } from '@/types/workspace';
 
 type PageProps = {
@@ -25,10 +25,6 @@ export function CompanySwitcher() {
     const active =
         workspace.companies.find((c) => c.id === workspace.active_company_id) ??
         null;
-
-    const enterCompany = (company: WorkspaceCompany) => {
-        router.post(`/workspace/companies/${company.id}/enter`);
-    };
 
     return (
         <DropdownMenu>
@@ -57,18 +53,33 @@ export function CompanySwitcher() {
             <DropdownMenuContent align="start" className="w-72">
                 <DropdownMenuLabel>Companies</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                {workspace.companies.map((company) => (
-                    <DropdownMenuItem
-                        key={company.id}
-                        onSelect={() => enterCompany(company)}
-                        className="flex flex-col items-start gap-0.5 py-2"
-                    >
-                        <span className="font-medium">{company.name}</span>
-                        <span className="text-xs text-muted-foreground">
-                            {company.relationship} · {company.status}
-                        </span>
-                    </DropdownMenuItem>
-                ))}
+                <div className="flex flex-col gap-1 p-1">
+                    {workspace.companies.map((company: WorkspaceCompany) => (
+                        <Form
+                            key={company.id}
+                            {...enter.form(company.id)}
+                            className="w-full"
+                        >
+                            {({ processing }) => (
+                                <Button
+                                    type="submit"
+                                    variant="ghost"
+                                    disabled={processing}
+                                    className="h-auto w-full justify-start px-2 py-2 text-left"
+                                >
+                                    <span className="min-w-0">
+                                        <span className="block font-medium">
+                                            {company.name}
+                                        </span>
+                                        <span className="block text-xs text-muted-foreground">
+                                            {company.relationship} · {company.status}
+                                        </span>
+                                    </span>
+                                </Button>
+                            )}
+                        </Form>
+                    ))}
+                </div>
             </DropdownMenuContent>
         </DropdownMenu>
     );

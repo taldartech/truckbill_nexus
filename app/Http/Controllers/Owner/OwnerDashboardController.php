@@ -60,6 +60,9 @@ class OwnerDashboardController extends Controller
             'links' => [
                 'subscription' => route('owner.subscription', ['company' => $company]),
                 'branches' => route('owner.branches', ['company' => $company]),
+                'users' => route('owner.users', ['company' => $company]),
+                'settings' => route('owner.settings', ['company' => $company]),
+                'audit' => route('owner.audit', ['company' => $company]),
                 'select_branch' => $company->isActive()
                     ? route('workspace.branches.select', ['company' => $company])
                     : null,

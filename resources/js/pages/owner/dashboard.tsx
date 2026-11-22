@@ -1,5 +1,12 @@
 import { Head, Link } from '@inertiajs/react';
-import { Building2, CreditCard, GitBranch } from 'lucide-react';
+import {
+    Building2,
+    CreditCard,
+    FileSearch,
+    GitBranch,
+    Settings,
+    Users,
+} from 'lucide-react';
 import type { ReactNode } from 'react';
 import { CompanySwitcher } from '@/components/company-switcher';
 import ShellEmptyState from '@/components/shell-empty-state';
@@ -20,6 +27,9 @@ type OwnerDashboardProps = {
     links: {
         subscription: string;
         branches: string;
+        users: string;
+        settings: string;
+        audit: string;
         select_branch: string | null;
     };
 };
@@ -59,18 +69,15 @@ export default function OwnerDashboard({
                         role="status"
                         className="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm"
                     >
-                        This company is deactivated. Branch Panel and operational
-                        actions are unavailable. You may view company identity and
-                        billing information only.
+                        Company is Deactivated. Branch Panel is unavailable.
+                        Administrative and billing information remains visible.
                     </div>
                 ) : null}
 
-                <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                    <PanelCard
-                        icon={Building2}
-                        title="Company administration"
-                        body="Company profile and administrative context for this owned company."
-                    />
+                <section
+                    aria-label="Administration shortcuts"
+                    className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
+                >
                     <PanelCard
                         icon={GitBranch}
                         title="Branches"
@@ -86,6 +93,36 @@ export default function OwnerDashboard({
                         }
                     />
                     <PanelCard
+                        icon={Users}
+                        title="Users & memberships"
+                        body="Owner Panel entry point. Full invite and membership screens are deferred beyond this P2-WS-8 slice."
+                        action={
+                            <Button asChild variant="secondary" size="sm">
+                                <Link href={links.users}>Open users</Link>
+                            </Button>
+                        }
+                    />
+                    <PanelCard
+                        icon={Settings}
+                        title="Company settings"
+                        body="Company settings hub entry point. Detailed profile editing is deferred beyond this P2-WS-8 slice."
+                        action={
+                            <Button asChild variant="secondary" size="sm">
+                                <Link href={links.settings}>Open settings</Link>
+                            </Button>
+                        }
+                    />
+                    <PanelCard
+                        icon={FileSearch}
+                        title="Company audit"
+                        body="Audit entry point. Read-oriented audit screen is deferred beyond this P2-WS-8 slice."
+                        action={
+                            <Button asChild variant="secondary" size="sm">
+                                <Link href={links.audit}>Open audit</Link>
+                            </Button>
+                        }
+                    />
+                    <PanelCard
                         icon={CreditCard}
                         title="Subscription & billing"
                         body={subscription.message}
@@ -96,6 +133,11 @@ export default function OwnerDashboard({
                                 </Link>
                             </Button>
                         }
+                    />
+                    <PanelCard
+                        icon={Building2}
+                        title="Company snapshot"
+                        body={`Identity and status for ${company.name}.`}
                     />
                 </section>
 
@@ -111,8 +153,8 @@ export default function OwnerDashboard({
 
                 {branches.length === 0 && !isDeactivated ? (
                     <ShellEmptyState
-                        title="No branches available"
-                        description="Create or activate a branch before entering the Branch Panel."
+                        title="No active branches available"
+                        description="No active branches are available for this company. Branch creation is not part of this P2-WS-8 UI slice."
                     />
                 ) : null}
             </div>

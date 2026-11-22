@@ -3,6 +3,8 @@
 namespace App\Http\Middleware;
 
 use App\Domains\Company\WorkspaceNavigationService;
+use App\Models\Branch;
+use App\Models\Company;
 use App\Models\User;
 use App\Support\Workspace\WorkspaceSession;
 use Illuminate\Http\Request;
@@ -71,10 +73,21 @@ class HandleInertiaRequests extends Middleware
 
         $navigation = app(WorkspaceNavigationService::class);
 
+        $routeCompany = $request->route('company');
+        $routeBranch = $request->route('branch');
+
+        $activeCompanyId = $routeCompany instanceof Company
+            ? $routeCompany->id
+            : WorkspaceSession::companyId($request);
+
+        $activeBranchId = $routeBranch instanceof Branch
+            ? $routeBranch->id
+            : WorkspaceSession::branchId($request);
+
         return [
             'companies' => $navigation->accessibleCompanies($user)->values(),
-            'active_company_id' => WorkspaceSession::companyId($request),
-            'active_branch_id' => WorkspaceSession::branchId($request),
+            'active_company_id' => $activeCompanyId,
+            'active_branch_id' => $activeBranchId,
         ];
     }
 }
