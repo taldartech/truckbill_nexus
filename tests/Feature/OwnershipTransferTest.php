@@ -430,3 +430,112 @@ test('transfer does not create a new identity or alter target credentials', func
         ->and($newOwner->fresh()->getAuthPassword())->toBe($hashBefore)
         ->and($newOwner->fresh()->identity_type->value)->toBe('customer');
 });
+
+test('new owner session revoke failure rolls back transfer and allows safe retry', function () {
+    ['owner' => $owner, 'company' => $company] = transferOwnedCompany();
+    $newOwner = User::factory()->customer()->create();
+    transferWorkspace()->addMembership($company, $newOwner, 'Join');
+    $otherCompany = transferWorkspace()->createCompany($owner, 'Unrelated Co');
+    $peer = User::factory()->customer()->create();
+    transferWorkspace()->addMembership($otherCompany, $peer, 'Peer stays');
+    $sa = User::factory()->superAdmin()->create();
+    $auditBefore = AuditEntry::query()->count();
+    $newOwnerVersionBefore = (int) $newOwner->fresh()->web_session_version;
+
+    // Final domain services cannot be Mockery-replaced under type hints; fail the
+    // transactional web_session_version bump for the new Owner instead.
+    $failNewOwnerSessionRevoke = true;
+    User::updating(function (User $user) use ($newOwner, &$failNewOwnerSessionRevoke): void {
+        if ($failNewOwnerSessionRevoke
+            && (int) $user->id === (int) $newOwner->id
+            && $user->isDirty('web_session_version')) {
+            throw new RuntimeException('forced new-owner session revoke failure');
+        }
+    });
+
+    expect(fn () => transferService()->transfer($sa, $company, $newOwner, 'Should roll back'))
+        ->toThrow(RuntimeException::class, 'forced new-owner session revoke failure');
+
+    expect(OwnershipTransfer::query()->count())->toBe(0)
+        ->and($company->fresh()->owner_user_id)->toBe($owner->id)
+        ->and(transferAccess()->isCompanyOwner($owner->fresh(), $company->fresh()))->toBeTrue()
+        ->and((int) $newOwner->fresh()->web_session_version)->toBe($newOwnerVersionBefore)
+        ->and(AuditEntry::query()->count())->toBe($auditBefore)
+        ->and(transferAccess()->activeMembership($peer->fresh(), $otherCompany->fresh()))->not->toBeNull()
+        ->and(transferAccess()->isCompanyOwner($owner->fresh(), $otherCompany->fresh()))->toBeTrue();
+
+    $failNewOwnerSessionRevoke = false;
+
+    $history = transferService()->transfer($sa, $company->fresh(), $newOwner->fresh(), 'Retry after follow-up failure');
+
+    expect($history)->toBeInstanceOf(OwnershipTransfer::class)
+        ->and(OwnershipTransfer::query()->count())->toBe(1)
+        ->and($company->fresh()->owner_user_id)->toBe($newOwner->id)
+        ->and(transferAccess()->isCompanyOwner($newOwner->fresh(), $company->fresh()))->toBeTrue()
+        ->and(transferAccess()->isCompanyOwner($owner->fresh(), $otherCompany->fresh()))->toBeTrue()
+        ->and(transferAccess()->activeMembership($peer->fresh(), $otherCompany->fresh()))->not->toBeNull();
+});
+
+test('previous owner soft-delete failure rolls back transfer and allows safe retry', function () {
+    $owner = User::factory()->customer()->create();
+    $company = transferWorkspace()->createCompany($owner, 'Solo Soft-Delete Co');
+    $newOwner = User::factory()->customer()->create();
+    transferWorkspace()->addMembership($company, $newOwner, 'Join');
+    $sa = User::factory()->superAdmin()->create();
+
+    $failSoftDelete = true;
+    User::deleting(function (User $user) use ($owner, &$failSoftDelete): void {
+        if ($failSoftDelete && (int) $user->id === (int) $owner->id) {
+            throw new RuntimeException('forced soft-delete failure');
+        }
+    });
+
+    expect(fn () => transferService()->transfer($sa, $company, $newOwner, 'Soft-delete must roll back'))
+        ->toThrow(RuntimeException::class, 'forced soft-delete failure');
+
+    expect(OwnershipTransfer::query()->count())->toBe(0)
+        ->and($company->fresh()->owner_user_id)->toBe($owner->id)
+        ->and($owner->fresh()->trashed())->toBeFalse()
+        ->and(transferAccess()->isCompanyOwner($owner->fresh(), $company->fresh()))->toBeTrue();
+
+    $failSoftDelete = false;
+
+    transferService()->transfer($sa, $company->fresh(), $newOwner->fresh(), 'Retry after soft-delete failure');
+
+    expect(OwnershipTransfer::query()->count())->toBe(1)
+        ->and($company->fresh()->owner_user_id)->toBe($newOwner->id)
+        ->and(User::withTrashed()->findOrFail($owner->id)->trashed())->toBeTrue()
+        ->and(AuditEntry::query()
+            ->where('subject_type', OwnershipTransfer::class)
+            ->count())->toBe(1);
+});
+
+test('session revoke failure during previous owner soft-delete rolls back transfer', function () {
+    $owner = User::factory()->customer()->create();
+    $company = transferWorkspace()->createCompany($owner, 'Soft-Delete Session Co');
+    $newOwner = User::factory()->customer()->create();
+    transferWorkspace()->addMembership($company, $newOwner, 'Join');
+    $sa = User::factory()->superAdmin()->create();
+
+    $previousOwnerSoftDeleted = false;
+    User::deleted(function (User $user) use ($owner, &$previousOwnerSoftDeleted): void {
+        if ((int) $user->id === (int) $owner->id) {
+            $previousOwnerSoftDeleted = true;
+        }
+    });
+    User::updating(function (User $user) use ($owner, &$previousOwnerSoftDeleted): void {
+        if ($previousOwnerSoftDeleted
+            && (int) $user->id === (int) $owner->id
+            && $user->isDirty('web_session_version')) {
+            throw new RuntimeException('forced soft-delete session revoke failure');
+        }
+    });
+
+    expect(fn () => transferService()->transfer($sa, $company, $newOwner, 'Soft-delete session fail'))
+        ->toThrow(RuntimeException::class, 'forced soft-delete session revoke failure');
+
+    expect(OwnershipTransfer::query()->count())->toBe(0)
+        ->and($company->fresh()->owner_user_id)->toBe($owner->id)
+        ->and($owner->fresh()->trashed())->toBeFalse()
+        ->and(transferAccess()->isCompanyOwner($owner->fresh(), $company->fresh()))->toBeTrue();
+});

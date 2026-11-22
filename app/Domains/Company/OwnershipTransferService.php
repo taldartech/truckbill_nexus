@@ -47,22 +47,27 @@ final class OwnershipTransferService
         $previousOwnerId = (int) $company->owner_user_id;
         $previousOwner = User::query()->findOrFail($previousOwnerId);
 
-        $transfer = $this->auditedTransaction->run(function () use ($actor, $company, $newOwner, $previousOwner, $remark): OwnershipTransfer {
+        return $this->auditedTransaction->run(function () use ($actor, $company, $newOwner, $previousOwner, $remark): OwnershipTransfer {
             /** @var Company $locked */
             $locked = Company::query()->whereKey($company->id)->lockForUpdate()->firstOrFail();
 
-            $this->assertTransferActor($actor);
-            $this->assertEligibleNewOwner($locked, $newOwner);
+            /** @var User $lockedPreviousOwner */
+            $lockedPreviousOwner = User::query()->whereKey($previousOwner->id)->lockForUpdate()->firstOrFail();
+            /** @var User $lockedNewOwner */
+            $lockedNewOwner = User::query()->whereKey($newOwner->id)->lockForUpdate()->firstOrFail();
 
-            if ((int) $locked->owner_user_id !== (int) $previousOwner->id) {
+            $this->assertTransferActor($actor);
+            $this->assertEligibleNewOwner($locked, $lockedNewOwner);
+
+            if ((int) $locked->owner_user_id !== (int) $lockedPreviousOwner->id) {
                 throw new CompanyDomainException('Company Owner changed during transfer; retry with current Owner.');
             }
 
             return $this->withCompanyAuditContext($locked, function () use (
                 $actor,
                 $locked,
-                $newOwner,
-                $previousOwner,
+                $lockedNewOwner,
+                $lockedPreviousOwner,
                 $remark,
             ): OwnershipTransfer {
                 $beforeCompany = [
@@ -72,28 +77,28 @@ final class OwnershipTransferService
                     'deactivated_at' => $locked->deactivated_at?->toISOString(),
                 ];
 
-                $this->revokeCompanyAccessForUser($locked, $previousOwner, 'Previous Owner access revoked by ownership transfer');
+                $this->revokeCompanyAccessForUser($locked, $lockedPreviousOwner, 'Previous Owner access revoked by ownership transfer');
 
                 // Owner designation replaces ordinary membership for the new Owner.
-                $this->revokeOrdinaryMembershipForUser($locked, $newOwner, 'Ordinary membership replaced by Owner designation');
+                $this->revokeOrdinaryMembershipForUser($locked, $lockedNewOwner, 'Ordinary membership replaced by Owner designation');
 
-                Company::withoutEvents(function () use ($locked, $newOwner): void {
+                Company::withoutEvents(function () use ($locked, $lockedNewOwner): void {
                     $locked->forceFill([
-                        'owner_user_id' => $newOwner->id,
+                        'owner_user_id' => $lockedNewOwner->id,
                     ])->save();
                 });
 
                 $locked->refresh();
 
-                if (Company::query()->whereKey($locked->id)->where('owner_user_id', $newOwner->id)->count() !== 1) {
+                if (Company::query()->whereKey($locked->id)->where('owner_user_id', $lockedNewOwner->id)->count() !== 1) {
                     throw new CompanyDomainException('Ownership uniqueness invariant failed.');
                 }
 
                 $history = new OwnershipTransfer;
                 $history->forceFill([
                     'company_id' => $locked->id,
-                    'previous_owner_user_id' => $previousOwner->id,
-                    'new_owner_user_id' => $newOwner->id,
+                    'previous_owner_user_id' => $lockedPreviousOwner->id,
+                    'new_owner_user_id' => $lockedNewOwner->id,
                     'initiated_by_user_id' => $actor->id,
                     'remark' => trim($remark),
                     'transferred_at' => now(),
@@ -131,19 +136,19 @@ final class OwnershipTransferService
                     ],
                 );
 
+                // Session/identity follow-ups participate in the same DB transaction so a
+                // failure rolls back ownership (retry-safe). Session-store destroy remains
+                // best-effort and non-transactional, matching WebSessionService elsewhere.
+                $this->webSessions->revokeAllSessionsForSecurityEvent(
+                    $lockedNewOwner->fresh(),
+                    'Ownership transfer; new Owner web sessions revoked',
+                );
+
+                $this->softDeletePreviousOwnerIfNoMemberships($lockedPreviousOwner->fresh());
+
                 return $history->refresh();
             });
         });
-
-        // Outside transfer transaction: session/identity side effects for eligible outcomes.
-        $this->webSessions->revokeAllSessionsForSecurityEvent(
-            $newOwner->fresh(),
-            'Ownership transfer; new Owner web sessions revoked',
-        );
-
-        $this->softDeletePreviousOwnerIfNoMemberships($previousOwner->fresh());
-
-        return $transfer;
     }
 
     private function assertTransferActor(User $actor): void
@@ -287,6 +292,13 @@ final class OwnershipTransferService
             return;
         }
 
+        // Serialize zero-membership decision against concurrent membership/ownership changes.
+        CompanyMembership::query()
+            ->where('user_id', $previousOwner->id)
+            ->whereNull('deactivated_at')
+            ->lockForUpdate()
+            ->get();
+
         $remainingMemberships = CompanyMembership::query()
             ->where('user_id', $previousOwner->id)
             ->whereNull('deactivated_at')
@@ -295,6 +307,7 @@ final class OwnershipTransferService
         $stillOwnsCompanies = Company::query()
             ->where('owner_user_id', $previousOwner->id)
             ->whereNull('deleted_at')
+            ->lockForUpdate()
             ->exists();
 
         if ($remainingMemberships || $stillOwnsCompanies) {
