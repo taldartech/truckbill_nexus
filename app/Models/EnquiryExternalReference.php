@@ -18,7 +18,7 @@ class EnquiryExternalReference extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
-        'id', 'company_id', 'external_reference', 'enquiry_id', 'source',
+        'id', 'company_id', 'external_reference', 'enquiry_id', 'source', 'request_fingerprint',
     ];
 
     protected static function booted(): void

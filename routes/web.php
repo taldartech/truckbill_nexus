@@ -13,6 +13,7 @@ use App\Http\Controllers\Branch\BranchDashboardController;
 use App\Http\Controllers\Branch\BranchSettingsController;
 use App\Http\Controllers\Branch\CatalogueController;
 use App\Http\Controllers\Branch\DocumentAttachmentController;
+use App\Http\Controllers\Branch\EnquiryController;
 use App\Http\Controllers\Branch\MastersHubController;
 use App\Http\Controllers\Branch\PartyController;
 use App\Http\Controllers\Branch\StationController;
@@ -25,6 +26,7 @@ use App\Http\Controllers\Owner\OwnerDashboardController;
 use App\Http\Controllers\Owner\OwnerSettingsController;
 use App\Http\Controllers\Owner\OwnerSubscriptionController;
 use App\Http\Controllers\Owner\OwnerUsersController;
+use App\Http\Controllers\Webhooks\EnquiryWebhookController;
 use App\Http\Controllers\Webhooks\RazorpayWebhookController;
 use App\Http\Controllers\Workspace\EnterBranchController;
 use App\Http\Controllers\Workspace\EnterCompanyController;
@@ -39,6 +41,7 @@ Route::inertia('/', 'welcome')->name('home');
 Route::get('/health/ready', [HealthController::class, 'ready'])->name('health.ready');
 
 Route::post('/webhooks/razorpay', RazorpayWebhookController::class)->name('webhooks.razorpay');
+Route::post('/webhooks/enquiries', EnquiryWebhookController::class)->name('webhooks.enquiries');
 
 Route::get('/invitations/accept/{token}', [InvitationAcceptanceController::class, 'show'])
     ->name('invitations.accept');
@@ -117,6 +120,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/branch/companies/{company}/branches/{branch}/settings', BranchSettingsController::class)
         ->scopeBindings()
         ->name('branch.settings');
+
+    Route::get('/branch/companies/{company}/branches/{branch}/enquiries', [EnquiryController::class, 'index'])
+        ->scopeBindings()
+        ->name('branch.enquiries.index');
+    Route::post('/branch/companies/{company}/branches/{branch}/enquiries', [EnquiryController::class, 'store'])
+        ->scopeBindings()
+        ->name('branch.enquiries.store');
+    // Enquiry is company-scoped; controller enforces branch/unassigned visibility (no Branch::enquiries relation).
+    Route::get('/branch/companies/{company}/branches/{branch}/enquiries/{enquiry}', [EnquiryController::class, 'show'])
+        ->name('branch.enquiries.show');
+    Route::patch('/branch/companies/{company}/branches/{branch}/enquiries/{enquiry}', [EnquiryController::class, 'update'])
+        ->name('branch.enquiries.update');
 
     Route::get('/branch/companies/{company}/branches/{branch}/masters', MastersHubController::class)
         ->scopeBindings()

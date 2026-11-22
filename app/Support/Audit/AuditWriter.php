@@ -4,6 +4,7 @@ namespace App\Support\Audit;
 
 use App\Support\Audit\Exceptions\AuditRemarkRequiredException;
 use App\Support\Tenant\TenantContextHolder;
+use Closure;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Support\Facades\Auth;
 use InvalidArgumentException;
@@ -16,9 +17,31 @@ use RuntimeException;
  */
 class AuditWriter
 {
+    private static ?string $systemActorOverride = null;
+
     public function __construct(
         private readonly SensitiveFieldFilter $sensitiveFieldFilter = new SensitiveFieldFilter,
     ) {}
+
+    /**
+     * Temporarily represent a non-user system actor (e.g. website webhook intake).
+     *
+     * @template TReturn
+     *
+     * @param  Closure(): TReturn  $callback
+     * @return TReturn
+     */
+    public static function usingSystemActor(string $actorId, Closure $callback): mixed
+    {
+        $previous = self::$systemActorOverride;
+        self::$systemActorOverride = $actorId;
+
+        try {
+            return $callback();
+        } finally {
+            self::$systemActorOverride = $previous;
+        }
+    }
 
     /**
      * @param  array<string, mixed>|null  $before
@@ -101,8 +124,7 @@ class AuditWriter
             return ['user', $id !== null ? (string) $id : null];
         }
 
-        // Phase 1 limitation: no system-actor registry. Explicit placeholder until Phase 2 identity.
-        return ['system', 'phase1-system'];
+        return ['system', self::$systemActorOverride ?? 'phase1-system'];
     }
 
     /**

@@ -10,8 +10,16 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
+/**
+ * @property EnquirySource $source
+ * @property EnquiryStatus $status
+ * @property Carbon|null $enquiry_date
+ * @property Carbon|null $expected_loading_date
+ * @property Carbon|null $converted_at
+ */
 class Enquiry extends Model
 {
     /** @use HasFactory<EnquiryFactory> */

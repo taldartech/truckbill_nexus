@@ -3,12 +3,18 @@
 namespace App\Models;
 
 use App\Domains\Enquiry\Enums\EnquiryStatus;
+use Carbon\CarbonImmutable;
 use Database\Factories\EnquiryStatusHistoryFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
+/**
+ * @property EnquiryStatus|null $from_status
+ * @property EnquiryStatus $to_status
+ * @property CarbonImmutable|null $changed_at
+ */
 class EnquiryStatusHistory extends Model
 {
     /** @use HasFactory<EnquiryStatusHistoryFactory> */

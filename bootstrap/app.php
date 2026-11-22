@@ -21,9 +21,11 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
-        // Razorpay Test Mode webhooks authenticate via HMAC, not session CSRF.
+        // External webhooks authenticate via their own secrets, not session CSRF.
+        // Only these exact paths are exempt — never broaden this list casually.
         $middleware->validateCsrfTokens(except: [
             'webhooks/razorpay',
+            'webhooks/enquiries',
         ]);
 
         // Global: Lifecycle must wrap Reject so context is cleared even on abort.
