@@ -115,3 +115,7 @@ Parent register: `docs/governing/Requirements-Traceability-Starter.md` (TB-ENQ-0
 | TB-PTL-001 Challan/DR         | Phase 7           |
 | TB-COM-001 Provider messaging | Phase 9           |
 | TB-ACC-001 GL                 | Phase 8 / ADR-010 |
+
+## Batch B implementation note (23 November 2026)
+
+Backend intake for TB-ENQ website webhook + manual create/edit certified under `PHASE_4_BATCH_B_CERTIFICATION_REPORT.md` and `WEBSITE_ENQUIRY_WEBHOOK_V1_API.md`. Product UI rows remain Pending (PO-P4-DESIGN-FORMAL).

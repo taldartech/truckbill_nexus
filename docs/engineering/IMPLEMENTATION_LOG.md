@@ -46,3 +46,12 @@ Dated workstream records with verified local commit SHAs. Living product Memory 
 | 2026-11-23 | P4 Batch A cert SHA     | `834c0932546513585a7eeb8bcaa35ff121bb16db` | Record Batch A certification commit SHA; tip after local Batch A delivery.                                                                                                                                                                                                            |
 | 2026-11-23 | Clean Code standards    | `f3646f72ea4d9ea611630b91973d446dee871f8e` | Permanent `.cursor/rules/truckbill-clean-code.mdc` + `docs/engineering/CODING_STANDARDS.md`; project rule workflow updated.                                                                                                                                                           |
 | 2026-11-23 | P4 Batch A quality      | `2f5acec5b019990e0daeeb5cf72109a8c5869f5d` | DocumentNumberAllocator exception specificity; webhook credential clarity; focused Pest; cert §9b.                                                                                                                                                                                    |
+
+## 2026-11-23 — Phase 4 Batch B complete
+
+- Authorized: PO-P4-BATCH-B-AUTH
+- Delivered: EnquiryService, manual Branch JSON API, website webhook V1, durable external-ref dedup, idempotency, replay/rate limit, audit/outbox, Pest suites, API contract + certification
+- Explicitly excluded: product UI, Batch C+, quotations, conversion, live payments, push/deploy
+- Implementation commit:
+- Implementation commit: `44322ed9248f336d19fee4b2a2953954cb2c85eb`
+- Verdict: BATCH B COMPLETE — READY FOR BATCH C REVIEW

@@ -187,3 +187,10 @@ Browser suite: run critical paths in Batch G; do not block Batch A–F backend c
 | Major    | Missing audit; quotation uniqueness fail; wrong context validation      |
 | Minor    | Copy/UX polish; non-critical filter edge                                |
 | Deferred | Provider delivery status; Trip blockers until Phase 5–6                 |
+
+## Batch B executed suites
+
+- `tests/Feature/Phase4/Phase4BatchBEnquiryTest.php`
+- `tests/Feature/Phase4/Phase4BatchBWebhookTest.php`
+
+Certified 23 November 2026 — see Batch B certification report.
