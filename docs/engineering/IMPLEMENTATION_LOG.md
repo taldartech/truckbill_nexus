@@ -52,6 +52,20 @@ Dated workstream records with verified local commit SHAs. Living product Memory 
 - Authorized: PO-P4-BATCH-B-AUTH
 - Delivered: EnquiryService, manual Branch JSON API, website webhook V1, durable external-ref dedup, idempotency, replay/rate limit, audit/outbox, Pest suites, API contract + certification
 - Explicitly excluded: product UI, Batch C+, quotations, conversion, live payments, push/deploy
-- Implementation commit:
 - Implementation commit: `44322ed9248f336d19fee4b2a2953954cb2c85eb`
 - Verdict: BATCH B COMPLETE — READY FOR BATCH C REVIEW
+
+## 2026-11-23 — UI backfill + full-stack delivery standard
+
+- Starting HEAD: `ea66c3aac070c3feb3f65e56dcbeb687ebe39b1d` (Actions #65)
+- P0: Enquiry goods soft-delete + partial unique index (DEC-003); Pest regression
+- Permanent: `.cursor/rules/truckbill-fullstack-delivery.mdc` + `FULLSTACK_DELIVERY_STANDARD.md`; Phase 4 plan Batches C–F same-batch UI; Batch G = QA
+- Audit: Phase 1–3 authorized UI Complete; no material rebuild; Phase 4 Enquiry UI blocked on PO-P4-DESIGN-FORMAL
+- Design: `docs/design/phase-4/PHASE_4_UI_REVIEW.md` ready for PO — **not Approved**
+- Reports: `UI_COMPLETION_AUDIT.md`, `UI_BACKFILL_EXECUTION_REPORT.md`, `UI_BACKFILL_CERTIFICATION_REPORT.md`
+- Verdict: UI BACKFILL COMPLETE WITH DOCUMENTED GATES
+- Commits:
+    - `4287b4a` fix(phase4): preserve enquiry goods history on edit
+    - `6a2c362` docs(standards): require production-ready fullstack delivery
+    - `7827805` docs(design): prepare phase 4 UI approval package
+    - (certification commit follows)
