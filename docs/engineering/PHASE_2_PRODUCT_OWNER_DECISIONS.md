@@ -435,7 +435,7 @@ Accepts P2-WS-8 core workspace and Owner Panel follow-on for implemented, tested
 - Visibility, numbering, and document settings — deferred
 - Membership reactivation — API/policy not approved
 - AUD-CON-006 / TB-SUB-STATE-001 — Pending
-- Unexecuted interactive browser QA — verification outstanding
+- Interactive browser QA — **completed** in Phase 2 Final QA (22 November 2026); no longer outstanding as a verification exception (see `PHASE_2_FINAL_CERTIFICATION_REPORT.md` §6)
 
 ---
 
