@@ -1,11 +1,13 @@
 <?php
 
 use App\Http\Controllers\Admin\CompanyLifecycleController;
+use App\Http\Controllers\Admin\GstRateController;
 use App\Http\Controllers\Admin\IdentityLifecycleController;
 use App\Http\Controllers\Admin\InternalUserController;
 use App\Http\Controllers\Admin\InvitationController;
 use App\Http\Controllers\Admin\OwnershipTransferController;
 use App\Http\Controllers\Admin\SubscriptionInvoiceController;
+use App\Http\Controllers\Admin\TdsRuleController;
 use App\Http\Controllers\Branch\BankCashAccountController;
 use App\Http\Controllers\Branch\BranchDashboardController;
 use App\Http\Controllers\Branch\BranchSettingsController;
@@ -69,6 +71,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/owner/companies/{company}/subscription/credits', [OwnerSubscriptionController::class, 'credits'])->name('owner.subscription.credits');
     Route::get('/owner/companies/{company}/subscription/payments', [OwnerSubscriptionController::class, 'payments'])->name('owner.subscription.payments');
     Route::get('/owner/companies/{company}/subscription/invoices', [OwnerSubscriptionController::class, 'invoices'])->name('owner.subscription.invoices');
+    Route::get('/owner/companies/{company}/subscription/invoices/{invoice}', [OwnerSubscriptionController::class, 'invoiceShow'])->name('owner.subscription.invoices.show');
+    Route::get('/owner/companies/{company}/subscription/invoices/{invoice}/download', [OwnerSubscriptionController::class, 'invoiceDownload'])->name('owner.subscription.invoices.download');
+    Route::post('/owner/companies/{company}/subscription/invoices/{invoice}/email', [OwnerSubscriptionController::class, 'invoiceEmail'])->name('owner.subscription.invoices.email');
     Route::post('/owner/companies/{company}/subscription/cancel', [OwnerSubscriptionController::class, 'requestCancellation'])->name('owner.subscription.cancel');
     Route::post('/owner/companies/{company}/subscription/cancel/withdraw', [OwnerSubscriptionController::class, 'withdrawCancellation'])->name('owner.subscription.cancel.withdraw');
     Route::get('/owner/companies/{company}/subscription/drafts/{subscription}/checkout', [OwnerSubscriptionController::class, 'checkout'])
@@ -232,6 +237,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('admin.subscription-invoices');
     Route::post('/admin/subscription-invoices/{invoice}/approve', [SubscriptionInvoiceController::class, 'approve'])
         ->name('admin.subscription-invoices.approve');
+
+    Route::get('/admin/gst-rates', [GstRateController::class, 'index'])
+        ->name('admin.gst-rates');
+    Route::post('/admin/gst-rates', [GstRateController::class, 'store'])
+        ->name('admin.gst-rates.store');
+    Route::post('/admin/gst-rates/{rate}/deactivate', [GstRateController::class, 'deactivate'])
+        ->name('admin.gst-rates.deactivate');
+
+    Route::get('/admin/tds-rules', [TdsRuleController::class, 'index'])
+        ->name('admin.tds-rules');
+    Route::post('/admin/tds-rules', [TdsRuleController::class, 'store'])
+        ->name('admin.tds-rules.store');
+    Route::put('/admin/tds-rules/{rule}', [TdsRuleController::class, 'update'])
+        ->name('admin.tds-rules.update');
 });
 
 require __DIR__.'/settings.php';

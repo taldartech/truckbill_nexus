@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Owner;
 
 use App\Domains\Company\CompanyAccessService;
+use App\Domains\Subscription\Billing\SubscriptionInvoiceDocumentService;
 use App\Domains\Subscription\Capacity\CompanyCapacityService;
 use App\Domains\Subscription\Contract\CompanySubscriptionContractService;
 use App\Domains\Subscription\Entitlement\SubscriptionEntitlementGate;
@@ -16,21 +17,26 @@ use App\Domains\Subscription\Payments\Gateway\PaymentGatewayAuthorization;
 use App\Domains\Subscription\Payments\Gateway\RazorpayTestPaymentGateway;
 use App\Domains\Subscription\Payments\PaymentIntentService;
 use App\Domains\Subscription\Pricing\SubscriptionPricingCalculator;
+use App\Domains\Subscription\Quota\QuotaAllocationService;
 use App\Domains\Subscription\Storage\StorageReconciliationService;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Owner\Concerns\AuthorizesOwnerPanel;
 use App\Models\Company;
+use App\Models\CompanyQuotaCounter;
 use App\Models\CompanySubscription;
 use App\Models\PaymentIntent;
 use App\Models\SubscriptionAddon;
 use App\Models\SubscriptionCatalogueVersion;
+use App\Models\SubscriptionChangeProposal;
 use App\Models\SubscriptionCreditEntry;
 use App\Models\SubscriptionCreditLedger;
 use App\Models\SubscriptionInvoice;
 use App\Models\SubscriptionPlan;
 use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -55,6 +61,8 @@ class OwnerSubscriptionController extends Controller
         private readonly SubscriptionLifecycleService $lifecycle = new SubscriptionLifecycleService,
         private readonly CompanyCapacityService $capacity = new CompanyCapacityService,
         private readonly StorageReconciliationService $storage = new StorageReconciliationService,
+        private readonly QuotaAllocationService $quotas = new QuotaAllocationService,
+        private readonly SubscriptionInvoiceDocumentService $invoiceDocuments = new SubscriptionInvoiceDocumentService,
     ) {}
 
     public function overview(Request $request, Company $company): Response
@@ -83,8 +91,21 @@ class OwnerSubscriptionController extends Controller
 
         $entitlement = $this->entitlements->evaluate($company);
         $effective = $this->lifecycle->effectiveStatus($company);
-        $capacity = $this->capacity->evaluate($company);
-        $storage = $this->storage->reconcile($company);
+        [$purchasedBranches, $purchasedSeats] = $this->purchasedCapacityFromSubscription($active);
+        $capacity = $this->capacity->evaluate($company, $purchasedBranches, $purchasedSeats);
+        $vehicleCapacity = $this->vehicleCapacityFromSubscription($active);
+        $allocationBytes = (int) config('subscription.storage.default_allocation_bytes', 0);
+        $storage = $this->storage->reconcile($company, $allocationBytes > 0 ? $allocationBytes : null);
+        $quotaCounters = CompanyQuotaCounter::query()
+            ->where('company_id', $company->id)
+            ->orderBy('quota_type')
+            ->get();
+        $scheduledChanges = SubscriptionChangeProposal::query()
+            ->where('company_id', $company->id)
+            ->where('status', 'scheduled')
+            ->orderBy('effective_on')
+            ->limit(20)
+            ->get();
 
         return Inertia::render('owner/subscription/overview', [
             'company' => $this->companyPayload($company),
@@ -110,14 +131,26 @@ class OwnerSubscriptionController extends Controller
                 'paid_through_date' => $effective['paid_through_date'] ?? null,
                 'grace_ends_on' => $effective['grace_ends_on'] ?? null,
                 'cancellation_effective_on' => $effective['cancellation_effective_on'] ?? null,
+                'common_renewal_date' => $active?->common_renewal_date?->toDateString(),
             ],
-            'capacity' => $capacity,
+            'capacity' => array_merge($capacity, [
+                'vehicle_capacity' => $vehicleCapacity,
+                'utilized_vehicle_capacity' => $capacity['used_vehicles'],
+            ]),
             'storage' => [
+                'allocated_bytes' => $allocationBytes > 0 ? $allocationBytes : null,
+                'used_bytes' => $storage['counted_bytes'],
+                'remaining_bytes' => $allocationBytes > 0
+                    ? max(0, $allocationBytes - $storage['counted_bytes'])
+                    : null,
                 'counted_bytes' => $storage['counted_bytes'],
                 'alert' => $storage['alert'],
                 'block' => $storage['block'],
                 'percent_of_allocation' => $storage['percent_of_allocation'],
+                'threshold_warning' => $storage['alert'] || $storage['block'],
             ],
+            'quotas' => $this->quotaPayloads($quotaCounters),
+            'scheduled_changes' => $this->scheduledChangePayloads($scheduledChanges),
             'cancellation' => $active === null ? null : [
                 'subscription_id' => $active->id,
                 'pending' => $active->cancellation_requested_at !== null && $active->cancelled_at === null,
@@ -131,8 +164,8 @@ class OwnerSubscriptionController extends Controller
                 'balance' => (string) $ledger->balance,
                 'unit' => $this->creditUnitLabel($ledger->ledger_type),
             ])->values()->all(),
-            'entitlement_note' => 'Confirmed Rules §15 lifecycle enforcement is active for Branch mutations during paid grace/restricted states. Fine-grained AUD-CON-006 action cells remain Pending. Live Razorpay checkout remains gated (PO-P3-PAY / G-PAY).',
-            'payment_gate_note' => 'Manual Razorpay Test Mode and production charges require PO-P3-PAY / G-PAY. Simulated payment foundations exist for certification doubles only.',
+            'entitlement_note' => 'Confirmed Rules §15 lifecycle enforcement is active for Branch mutations during paid grace/restricted states. Fine-grained AUD-CON-006 action cells remain Pending. Live Razorpay production charges remain gated (PO-P3-PAY-PROD).',
+            'payment_gate_note' => 'Razorpay Test Mode checkout is authorized (PO-P3-PAY-TEST). Production charges require PO-P3-PAY-PROD. Dashboard→local webhook delivery remains operationally evidenced separately from CI doubles.',
             'links' => [
                 'dashboard' => route('owner.dashboard', $company),
                 'catalogue' => route('owner.subscription.catalogue', $company),
@@ -725,7 +758,7 @@ class OwnerSubscriptionController extends Controller
         return Inertia::render('owner/subscription/invoices', [
             'company' => $this->companyPayload($company),
             'ownerPanelScope' => $scope,
-            'issuer_note' => 'Production legally operative invoice issuance requires validated issuer/tax configuration. Invoice-number approval workflow foundations exist; Super Admin approval UI remains operationally gated pending issuer setup.',
+            'issuer_note' => 'SAMPLE / NON-PRODUCTION invoices only. Legally operative tax invoices require validated issuer/GST (Pending). Approved numbers are immutable. Email failure never reverses payment or number approval.',
             'invoices' => $invoices->map(fn (SubscriptionInvoice $invoice): array => [
                 'id' => $invoice->id,
                 'status' => $invoice->status,
@@ -737,10 +770,68 @@ class OwnerSubscriptionController extends Controller
                 'email_status' => $invoice->email_status,
                 'approved_at' => $invoice->approved_at?->toIso8601String(),
                 'created_at' => $invoice->created_at?->toIso8601String(),
+                'preview_url' => route('owner.subscription.invoices.show', [$company, $invoice]),
+                'download_url' => route('owner.subscription.invoices.download', [$company, $invoice]),
+                'email_url' => in_array($invoice->status, ['approved', 'issued', 'emailed'], true)
+                    ? route('owner.subscription.invoices.email', [$company, $invoice])
+                    : null,
             ])->values()->all(),
             'links' => [
                 'overview' => route('owner.subscription', $company),
             ],
+        ]);
+    }
+
+    public function invoiceShow(Request $request, Company $company, SubscriptionInvoice $invoice): Response
+    {
+        ['scope' => $scope] = $this->authorizeOwnerPanel($request, $company, $this->access);
+        $this->assertCompanyInvoice($company, $invoice);
+
+        return Inertia::render('owner/subscription/invoice-preview', [
+            'company' => $this->companyPayload($company),
+            'ownerPanelScope' => $scope,
+            'document' => $this->invoiceDocuments->presentation($invoice),
+            'links' => [
+                'invoices' => route('owner.subscription.invoices', $company),
+                'download' => route('owner.subscription.invoices.download', [$company, $invoice]),
+                'email' => in_array($invoice->status, ['approved', 'issued', 'emailed'], true)
+                    ? route('owner.subscription.invoices.email', [$company, $invoice])
+                    : null,
+            ],
+        ]);
+    }
+
+    public function invoiceDownload(Request $request, Company $company, SubscriptionInvoice $invoice): HttpResponse
+    {
+        $this->authorizeOwnerPanel($request, $company, $this->access);
+        $this->assertCompanyInvoice($company, $invoice);
+
+        $html = $this->invoiceDocuments->renderHtml($invoice);
+
+        return response($html, 200, [
+            'Content-Type' => 'text/html; charset=UTF-8',
+            'Content-Disposition' => 'inline; filename="subscription-invoice-'.$invoice->id.'.html"',
+            'X-TruckBill-Invoice-Sample' => 'non-production',
+        ]);
+    }
+
+    public function invoiceEmail(Request $request, Company $company, SubscriptionInvoice $invoice): RedirectResponse
+    {
+        ['user' => $user] = $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
+        $this->assertCompanyInvoice($company, $invoice);
+
+        try {
+            $result = $this->invoiceDocuments->dispatchEmail($invoice, $user);
+        } catch (SubscriptionDomainException $e) {
+            return back()->withErrors(['email' => $e->getMessage()]);
+        }
+
+        if ($result->email_status === 'sent') {
+            return back()->with('success', 'Sample invoice email dispatched. Delivery does not affect payment or number approval.');
+        }
+
+        return back()->withErrors([
+            'email' => 'Email dispatch failed: '.($result->email_failure_reason ?? 'unknown').'. Approval and payment remain unchanged.',
         ]);
     }
 
@@ -758,6 +849,11 @@ class OwnerSubscriptionController extends Controller
             ->where('company_id', $company->id)
             ->orderByDesc('created_at')
             ->limit(100)
+            ->get();
+
+        $quotaCounters = CompanyQuotaCounter::query()
+            ->where('company_id', $company->id)
+            ->orderBy('quota_type')
             ->get();
 
         return Inertia::render('owner/subscription/credits', [
@@ -779,7 +875,8 @@ class OwnerSubscriptionController extends Controller
                 'reason' => $entry->reason,
                 'created_at' => $entry->created_at?->toIso8601String(),
             ])->values()->all(),
-            'presentation_note' => 'Credits are non-cash balances in their ledger units. They are never shown as a generic ₹ cash wallet.',
+            'quotas' => $this->quotaPayloads($quotaCounters, consumedKey: true),
+            'presentation_note' => 'Credits are non-cash balances in their ledger units. They are never shown as a generic ₹ cash wallet. Broker/Partload quotas are server-calculated; LR/Bilty operational gates remain Phase 4+',
             'links' => [
                 'overview' => route('owner.subscription', $company),
             ],
@@ -851,6 +948,112 @@ class OwnerSubscriptionController extends Controller
         }
     }
 
+    private function assertCompanyInvoice(Company $company, SubscriptionInvoice $invoice): void
+    {
+        if ($invoice->company_id !== $company->id) {
+            abort(404);
+        }
+    }
+
+    /**
+     * @param  iterable<int, CompanyQuotaCounter>  $counters
+     * @return list<array<string, mixed>>
+     */
+    private function quotaPayloads(iterable $counters, bool $consumedKey = false): array
+    {
+        $payloads = [];
+        foreach ($counters as $counter) {
+            $thresholds = $this->quotas->thresholdState($counter);
+            $included = (string) $counter->included_units;
+            $used = (string) $counter->used_units;
+            $row = [
+                'id' => $counter->id,
+                'quota_type' => $counter->quota_type,
+                'included_units' => $included,
+                'available_units' => (string) max(0, (float) $included - (float) $used),
+                'period_start' => $this->formatModelDate($counter->getAttribute('period_start')),
+                'period_end' => $this->formatModelDate($counter->getAttribute('period_end')),
+                'percent_used' => $thresholds['percent_used'],
+                'alert' => $thresholds['alert'],
+                'block' => $thresholds['block'],
+            ];
+            if ($consumedKey) {
+                $row['consumed_units'] = $used;
+            } else {
+                $row['used_units'] = $used;
+            }
+            $payloads[] = $row;
+        }
+
+        return $payloads;
+    }
+
+    /**
+     * @param  iterable<int, SubscriptionChangeProposal>  $proposals
+     * @return list<array<string, mixed>>
+     */
+    private function scheduledChangePayloads(iterable $proposals): array
+    {
+        $payloads = [];
+        foreach ($proposals as $proposal) {
+            $payloads[] = [
+                'id' => $proposal->id,
+                'change_type' => $proposal->change_type,
+                'status' => $proposal->status,
+                'effective_on' => $this->formatModelDate($proposal->getAttribute('effective_on')),
+                'remark' => $proposal->remark,
+            ];
+        }
+
+        return $payloads;
+    }
+
+    private function formatModelDate(mixed $value): ?string
+    {
+        if ($value instanceof CarbonImmutable || $value instanceof CarbonInterface) {
+            return $value->toDateString();
+        }
+
+        if (is_string($value) && $value !== '') {
+            return $value;
+        }
+
+        return null;
+    }
+
+    /**
+     * @return array{0: int, 1: int}
+     */
+    private function purchasedCapacityFromSubscription(?CompanySubscription $subscription): array
+    {
+        if ($subscription === null) {
+            return [0, 0];
+        }
+
+        $raw = $subscription->getAttribute('pricing_breakdown');
+        $breakdown = is_array($raw) ? $raw : [];
+        $branches = (int) ($breakdown['purchased_branches'] ?? $breakdown['extra_branches'] ?? 0);
+        $seats = (int) ($breakdown['purchased_seats'] ?? $breakdown['extra_seats'] ?? 0);
+
+        return [max(0, $branches), max(0, $seats)];
+    }
+
+    private function vehicleCapacityFromSubscription(?CompanySubscription $subscription): ?int
+    {
+        if ($subscription === null || ! $subscription->relationLoaded('items')) {
+            return null;
+        }
+
+        $units = $subscription->items
+            ->where('item_type', 'plan')
+            ->pluck('capacity_units_snapshot')
+            ->filter(fn ($value): bool => $value !== null)
+            ->map(fn ($value): int => (int) $value)
+            ->sum();
+
+        return $units > 0 ? $units : null;
+    }
+
     private function creditUnitLabel(string $ledgerType): string
     {
         return match ($ledgerType) {
@@ -858,6 +1061,8 @@ class OwnerSubscriptionController extends Controller
             'sms' => 'SMS credits',
             'whatsapp' => 'WhatsApp credits',
             'capacity' => 'Capacity units',
+            'broker' => 'Broker credits',
+            'partload' => 'Partload credits',
             default => $ledgerType.' units',
         };
     }

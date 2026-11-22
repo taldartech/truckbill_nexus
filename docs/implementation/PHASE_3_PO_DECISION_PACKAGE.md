@@ -1,7 +1,7 @@
 # Phase 3 — Product Owner Decision Package (F0)
 
 **Date:** 22 November 2026  
-**Baseline HEAD:** `74a7d4e4da4e693963e8c179745cee434ce537db` (Actions #55 SUCCESS)  
+**Baseline HEAD (Batch G start):** `3b84ef21bcc860d65c879e9e1f6377d86f96e487` (Actions #59 SUCCESS)  
 **Purpose:** Decision-ready approvals required to finish remaining Phase 3 exit criteria.  
 **Status:** Awaiting Product Owner decisions — **not** auto-approved.
 
@@ -9,49 +9,67 @@
 
 ## Approval matrix summary
 
-| Decision ID     | Topic                                   | Status today                     | Blocks                                                                        |
-| --------------- | --------------------------------------- | -------------------------------- | ----------------------------------------------------------------------------- |
-| AUD-CON-006     | Exact entitlement / state-action matrix | **Pending** (proposed below)     | Fine-grained create/edit/delete cells beyond Confirmed view-only              |
-| PO-P3-PAY-TEST  | Razorpay Test Mode + checkout + webhook | **Approved** (22 Nov 2026)       | SDK + Owner checkout implemented; full card/webhook matrix waits on G-PAY ops |
-| G-PAY           | Credentials + verified webhook approach | **Open** (keys present locally)  | Dashboard webhook subscription + public HTTPS tunnel delivery                 |
-| PO-P1-DEPS      | Official `razorpay/razorpay` SDK        | **Approved** (SDK case only)     | `razorpay/razorpay` 2.9.3 installed; custom HTTP removed                      |
-| PO-P3-PAY-PROD  | Production monetary charges             | **Pending**                      | Real customer charges                                                         |
-| TB-TAX / issuer | Central invoice issuer + GST validation | **Pending**                      | Legally operative production invoice issuance                                 |
-| ADR-010         | Accounting posting architecture         | **Pending**                      | Invoice → GL postings                                                         |
-| Batch D PO      | Batch D UI acceptance                   | Ready for PO (not auto-accepted) | Formal Batch D closure                                                        |
+| Decision ID              | Topic                                   | Status today                     | Blocks                                                         |
+| ------------------------ | --------------------------------------- | -------------------------------- | -------------------------------------------------------------- |
+| AUD-CON-006              | Exact entitlement / state-action matrix | **Pending** (proposed below)     | Fine-grained cells beyond Confirmed §15                        |
+| PO-P3-PAY-TEST           | Razorpay Test Mode + checkout + webhook | **Approved**                     | SDK + Owner checkout; G-PAY ops for Dashboard webhook evidence |
+| G-PAY                    | Credentials + verified webhook approach | **Open**                         | Dashboard webhook subscription + public HTTPS tunnel delivery  |
+| PO-P1-DEPS               | Official `razorpay/razorpay` SDK        | **Approved** (SDK)               | Installed; PDF package **not** requested                       |
+| PO-P3-PAY-PROD           | Production monetary charges             | **Pending**                      | Real customer charges                                          |
+| TB-TAX / issuer          | Central invoice issuer + GST validation | **Pending**                      | Legally operative production invoice issuance                  |
+| ADR-010                  | Accounting posting architecture         | **Pending**                      | Invoice → GL postings                                          |
+| Renewal reminder windows | Paid-term reminder schedule             | **Requires PO approval**         | Do not invent days-before-renewal windows                      |
+| Batch D/G PO             | UI / Batch G acceptance                 | Ready for PO (not auto-accepted) | Formal Phase 3 closure                                         |
 
 Already approved and **not** re-requested: PO-P3-AUTH, PO-P3-DESIGN-FORMAL, PO-P3-UI-AUTH (masters/documents/subscription surfaces), DEC-001…009, Phase 2 deactivation (DEC-002).
 
 ---
 
-## F0.1 — AUD-CON-006 proposed matrix (PROPOSED — not approved)
+## F0.1 — AUD-CON-006 final decision table (REQUIRES PO APPROVAL)
 
-Legend: **A** = allow · **V** = view-only · **B** = block · **R** = recovery/billing only · **—** = N/A  
-Cells marked **IMPLEMENTED (Confirmed)** already enforce Confirmed Rules §15. Other cells are **PROPOSED** for PO sign-off.
+Legend: **A** = allow · **V** = view-only · **B** = block · **R** = recovery/billing only · **—** = N/A
 
-| Capability                         | Trial | Active | Paid grace | Restricted / expired | Cancelled (post-effective) | Company suspended | Company deactivated | Owner identity deactivated |
-| ---------------------------------- | ----- | ------ | ---------- | -------------------- | -------------------------- | ----------------- | ------------------- | -------------------------- |
-| Owner Panel — subscription/billing | A\*   | A\*    | A\*        | A\*                  | A\*                        | A\*               | R\* (DEC-002)       | B (no login)\*             |
-| Owner Panel — company admin writes | A     | A      | A          | A (PROPOSED)         | A (PROPOSED)               | A (PROPOSED)      | B\*                 | B\*                        |
-| Branch Panel — enter / view        | A\*   | A\*    | V\*        | V (PROPOSED=A view)  | V (PROPOSED)               | B\*               | B\*                 | B\*                        |
-| Branch — create / edit / delete    | A\*   | A\*    | B\*        | B\*                  | B\*                        | B\*               | B\*                 | B\*                        |
-| Document upload / replace / delete | A\*   | A\*    | B\*        | B\*                  | B\*                        | B\*               | B\*                 | B\*                        |
-| Document download (authorized)     | A     | A      | A\*        | A (PROPOSED)         | A (PROPOSED)               | B                 | B                   | B                          |
-| Module operational create (future) | A     | A      | B          | B                    | B                          | B                 | B                   | B                          |
-| Credit consumption                 | A\*   | A\*    | B\*        | B\*                  | B\*                        | B\*               | B\*                 | B\*                        |
-| Subscription renewal / pay         | A     | A      | A\*        | A\*                  | A (reactivation)           | A\*               | A\*                 | B                          |
-| Notifications / recovery           | A\*   | A\*    | A\*        | A\*                  | A\*                        | A\*               | A\*                 | —                          |
+Cell tags: **CONFIRMED** (governing) · **IMPLEMENTED** (enforced in code) · **PROPOSED** · **REQUIRES PO APPROVAL**
 
-\*Confirmed or already implemented under Rules §15 / DEC-002 / Batch Final integration.
+| Capability                    | Trial                    | Active                  | Paid grace              | Restricted / expired     | Cancelled (post-effective) | Company suspended        | Company deactivated               | Owner identity deactivated |
+| ----------------------------- | ------------------------ | ----------------------- | ----------------------- | ------------------------ | -------------------------- | ------------------------ | --------------------------------- | -------------------------- |
+| Owner billing                 | A CONFIRMED+IMPLEMENTED  | A CONFIRMED+IMPLEMENTED | A CONFIRMED+IMPLEMENTED | A CONFIRMED+IMPLEMENTED  | A CONFIRMED+IMPLEMENTED    | A CONFIRMED+IMPLEMENTED  | R CONFIRMED+IMPLEMENTED (DEC-002) | B CONFIRMED+IMPLEMENTED    |
+| Owner company administration  | A IMPLEMENTED            | A IMPLEMENTED           | A IMPLEMENTED           | A PROPOSED / REQUIRES PO | A PROPOSED / REQUIRES PO   | A PROPOSED / REQUIRES PO | B CONFIRMED+IMPLEMENTED           | B CONFIRMED+IMPLEMENTED    |
+| Branch enter / view           | A CONFIRMED+IMPLEMENTED  | A CONFIRMED+IMPLEMENTED | V CONFIRMED+IMPLEMENTED | V PROPOSED / REQUIRES PO | V PROPOSED / REQUIRES PO   | B CONFIRMED+IMPLEMENTED  | B CONFIRMED+IMPLEMENTED           | B CONFIRMED+IMPLEMENTED    |
+| Branch create / edit / delete | A CONFIRMED+IMPLEMENTED  | A CONFIRMED+IMPLEMENTED | B CONFIRMED+IMPLEMENTED | B CONFIRMED+IMPLEMENTED  | B CONFIRMED+IMPLEMENTED    | B CONFIRMED+IMPLEMENTED  | B CONFIRMED+IMPLEMENTED           | B CONFIRMED+IMPLEMENTED    |
+| Master data mutations         | A IMPLEMENTED (capacity) | A IMPLEMENTED           | B CONFIRMED+IMPLEMENTED | B CONFIRMED+IMPLEMENTED  | B CONFIRMED+IMPLEMENTED    | B CONFIRMED+IMPLEMENTED  | B CONFIRMED+IMPLEMENTED           | B CONFIRMED+IMPLEMENTED    |
+| Document write                | A CONFIRMED+IMPLEMENTED  | A CONFIRMED+IMPLEMENTED | B CONFIRMED+IMPLEMENTED | B CONFIRMED+IMPLEMENTED  | B CONFIRMED+IMPLEMENTED    | B CONFIRMED+IMPLEMENTED  | B CONFIRMED+IMPLEMENTED           | B CONFIRMED+IMPLEMENTED    |
+| Document download             | A PROPOSED               | A PROPOSED              | A IMPLEMENTED (path)    | A PROPOSED / REQUIRES PO | A PROPOSED / REQUIRES PO   | B PROPOSED               | B PROPOSED                        | B PROPOSED                 |
+| Module operations (Phase 4+)  | A PROPOSED               | A PROPOSED              | B PROPOSED              | B PROPOSED               | B PROPOSED                 | B PROPOSED               | B PROPOSED                        | B PROPOSED                 |
+| Credit consumption            | A CONFIRMED+IMPLEMENTED  | A CONFIRMED+IMPLEMENTED | B CONFIRMED+IMPLEMENTED | B CONFIRMED+IMPLEMENTED  | B CONFIRMED+IMPLEMENTED    | B CONFIRMED+IMPLEMENTED  | B CONFIRMED+IMPLEMENTED           | B CONFIRMED+IMPLEMENTED    |
+| Renewal / recovery pay        | A IMPLEMENTED            | A IMPLEMENTED           | A CONFIRMED+IMPLEMENTED | A CONFIRMED+IMPLEMENTED  | A (reactivation) PROPOSED  | A CONFIRMED+IMPLEMENTED  | A CONFIRMED+IMPLEMENTED           | B CONFIRMED+IMPLEMENTED    |
 
-### Explicit Product Owner questions
+### Explicit Product Owner choices (unresolved cells)
 
-1. During **paid grace**, confirm uniform Branch mutation block (current Confirmed implementation) **or** allow selected edits (e.g. correct party address)?
-2. During **restricted/expired**, may users still **download** previously authorized documents?
-3. Does **trial** allow full Branch master CRUD subject only to capacity limits (current Confirmed)?
-4. For **company suspension** vs **subscription restricted**, confirm suspension always hard-blocks Branch regardless of paid_through?
+1. Paid grace: keep uniform Branch mutation **B** (current) **or** allow selected master edits?
+2. Restricted/expired: allow authorized **document download**?
+3. Trial: confirm full Branch master CRUD subject only to capacity (current)?
+4. Company **suspended** vs subscription restricted: always hard-block Branch regardless of paid_through?
+5. Cancelled post-effective: Owner company admin writes **A** or **B**?
 
-**Do not treat this proposal as AUD-CON-006 Approved until PO records an explicit decision.**
+**Do not treat this table as AUD-CON-006 Approved until PO records an explicit decision.**
+
+---
+
+## F0.1b — Renewal reminder windows (REQUIRES PO APPROVAL)
+
+Trial reminders **[7, 3, 1] days before trial expiry** are CONFIRMED+IMPLEMENTED.
+
+Paid-term renewal reminders are **not** scheduled. Suggested alternatives for PO choice (do not invent):
+
+| Option | Windows before common renewal            |
+| ------ | ---------------------------------------- |
+| A      | 14, 7, 3, 1 days                         |
+| B      | 7, 3, 1 days (mirror trial)              |
+| C      | 30, 14, 7 days                           |
+| D      | Defer — trial-only reminders for Phase 3 |
+
+Engineering will implement only after an explicit Option selection.
 
 ---
 

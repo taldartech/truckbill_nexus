@@ -39,25 +39,59 @@ type Props = {
     capacity: {
         included_branches: number;
         included_seats: number;
+        purchased_branches: number;
+        purchased_seats: number;
         used_branches: number;
         used_billable_seats: number;
         available_branch_slots: number;
         available_seat_slots: number;
+        available_user_capacity: number;
         owner_is_billable_seat: boolean;
+        used_vehicles: number;
+        vehicle_capacity: number | null;
+        utilized_vehicle_capacity: number;
     };
     storage: {
+        allocated_bytes: number | null;
+        used_bytes: number;
+        remaining_bytes: number | null;
         counted_bytes: number;
         alert: boolean;
         block: boolean;
         percent_of_allocation: number | null;
+        threshold_warning: boolean;
     };
+    quotas: {
+        id: string;
+        quota_type: string;
+        included_units: string;
+        used_units: string;
+        available_units: string;
+        period_start: string | null;
+        period_end: string | null;
+        percent_used: number;
+        alert: boolean;
+        block: boolean;
+    }[];
+    scheduled_changes: {
+        id: string;
+        change_type: string;
+        status: string;
+        effective_on: string | null;
+        remark: string | null;
+    }[];
     cancellation: null | {
         subscription_id: string;
         pending: boolean;
         effective_on: string | null;
         remark: string | null;
     };
-    credit_summary: { ledger_type: string; balance: string; unit: string }[];
+    credit_summary: {
+        ledger_type: string;
+        service_key?: string | null;
+        balance: string;
+        unit: string;
+    }[];
     entitlement_note: string;
     payment_gate_note: string;
     links: {
@@ -83,6 +117,8 @@ export default function SubscriptionOverview({
     lifecycle,
     capacity,
     storage,
+    quotas,
+    scheduled_changes,
     cancellation,
     credit_summary,
     entitlement_note,
@@ -245,20 +281,32 @@ export default function SubscriptionOverview({
                         <dl className="mt-3 space-y-2 text-sm">
                             <div className="flex justify-between gap-4">
                                 <dt className="text-muted-foreground">
-                                    Branches
+                                    Branches (used / included + purchased)
                                 </dt>
                                 <dd>
                                     {capacity.used_branches} /{' '}
-                                    {capacity.included_branches}
+                                    {capacity.included_branches}+
+                                    {capacity.purchased_branches}
                                 </dd>
                             </div>
                             <div className="flex justify-between gap-4">
                                 <dt className="text-muted-foreground">
-                                    Billable seats
+                                    Users (used / available)
                                 </dt>
                                 <dd>
                                     {capacity.used_billable_seats} /{' '}
-                                    {capacity.included_seats}
+                                    {capacity.available_user_capacity} free
+                                </dd>
+                            </div>
+                            <div className="flex justify-between gap-4">
+                                <dt className="text-muted-foreground">
+                                    Vehicles
+                                </dt>
+                                <dd>
+                                    {capacity.utilized_vehicle_capacity}
+                                    {capacity.vehicle_capacity != null
+                                        ? ` / ${capacity.vehicle_capacity}`
+                                        : ' used'}
                                 </dd>
                             </div>
                             <div className="flex justify-between gap-4">
@@ -278,21 +326,96 @@ export default function SubscriptionOverview({
                         <dl className="mt-3 space-y-2 text-sm">
                             <div className="flex justify-between gap-4">
                                 <dt className="text-muted-foreground">
-                                    Counted bytes
+                                    Used / allocated
                                 </dt>
-                                <dd>{storage.counted_bytes}</dd>
+                                <dd>
+                                    {storage.used_bytes}
+                                    {storage.allocated_bytes != null
+                                        ? ` / ${storage.allocated_bytes}`
+                                        : ''}
+                                </dd>
                             </div>
                             <div className="flex justify-between gap-4">
-                                <dt className="text-muted-foreground">Alert</dt>
-                                <dd>{storage.alert ? 'Yes' : 'No'}</dd>
+                                <dt className="text-muted-foreground">
+                                    Remaining
+                                </dt>
+                                <dd>
+                                    {storage.remaining_bytes != null
+                                        ? storage.remaining_bytes
+                                        : '—'}
+                                </dd>
                             </div>
                             <div className="flex justify-between gap-4">
-                                <dt className="text-muted-foreground">Block</dt>
-                                <dd>{storage.block ? 'Yes' : 'No'}</dd>
+                                <dt className="text-muted-foreground">
+                                    Utilization
+                                </dt>
+                                <dd>
+                                    {storage.percent_of_allocation != null
+                                        ? `${storage.percent_of_allocation}%`
+                                        : '—'}
+                                    {storage.threshold_warning
+                                        ? ' · warning'
+                                        : ''}
+                                </dd>
                             </div>
                         </dl>
                     </div>
                 </section>
+                <section className="space-y-3 rounded-xl border border-border p-4">
+                    <h2 className="font-semibold">
+                        Quotas (Broker / Partload)
+                    </h2>
+                    {quotas.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                            No quota counters allocated yet.
+                        </p>
+                    ) : (
+                        <ul className="grid gap-3 sm:grid-cols-2">
+                            {quotas.map((quota) => (
+                                <li
+                                    key={quota.id}
+                                    className="rounded-lg border border-border/70 p-3 text-sm"
+                                >
+                                    <p className="font-medium">
+                                        {quota.quota_type}
+                                    </p>
+                                    <p className="text-muted-foreground">
+                                        Included {quota.included_units} · Used{' '}
+                                        {quota.used_units} · Available{' '}
+                                        {quota.available_units}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                        Period {quota.period_start || '—'} →{' '}
+                                        {quota.period_end || '—'} ·{' '}
+                                        {quota.percent_used}%
+                                        {quota.alert ? ' · alert' : ''}
+                                        {quota.block ? ' · block' : ''}
+                                    </p>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </section>
+                {scheduled_changes.length > 0 ? (
+                    <section className="space-y-3 rounded-xl border border-border p-4">
+                        <h2 className="font-semibold">Scheduled changes</h2>
+                        <ul className="space-y-2 text-sm">
+                            {scheduled_changes.map((change) => (
+                                <li
+                                    key={change.id}
+                                    className="flex flex-wrap justify-between gap-2 border-b border-border/60 py-2"
+                                >
+                                    <span>
+                                        {change.change_type} ({change.status})
+                                    </span>
+                                    <span className="text-muted-foreground">
+                                        Effective {change.effective_on || '—'}
+                                    </span>
+                                </li>
+                            ))}
+                        </ul>
+                    </section>
+                ) : null}
                 {subscription ? (
                     <section className="grid gap-4 rounded-xl border border-border p-4 lg:grid-cols-2">
                         <div>

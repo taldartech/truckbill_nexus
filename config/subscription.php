@@ -34,6 +34,8 @@ return [
     'storage' => [
         'alert_percent' => 80,
         'block_percent' => 100,
+        // Display / threshold allocation until catalogue-driven storage entitlements are finalized.
+        'default_allocation_bytes' => (int) env('SUBSCRIPTION_STORAGE_BYTES', 5 * 1024 * 1024 * 1024),
     ],
 
     'quota' => [

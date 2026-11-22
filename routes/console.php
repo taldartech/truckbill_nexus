@@ -10,3 +10,6 @@ Artisan::command('inspire', function () {
 
 Schedule::command('subscription:dispatch-trial-reminders')->dailyAt('01:15');
 Schedule::command('subscription:evaluate-lifecycle --storage')->dailyAt('01:30');
+Schedule::command('subscription:apply-scheduled-changes')->dailyAt('01:45');
+Schedule::command('subscription:retry-invoice-emails')->dailyAt('02:00');
+// Renewal reminder windows are not product-approved — do not invent a schedule (see PO decision package).

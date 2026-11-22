@@ -577,8 +577,9 @@ test('super admin can approve subscription invoice numbers via admin route', fun
         'approved_number' => $invoice->proposed_number,
     ])->assertRedirect();
 
-    expect($invoice->fresh()->status)->toBe('approved')
-        ->and($invoice->fresh()->approved_number)->toBe($invoice->proposed_number);
+    // Approval remains immutable; sample email dispatch may advance status to emailed.
+    expect($invoice->fresh()->approved_number)->toBe($invoice->proposed_number)
+        ->and(in_array($invoice->fresh()->status, ['approved', 'issued', 'emailed'], true))->toBeTrue();
 });
 
 test('owner cannot approve invoice numbers', function () {

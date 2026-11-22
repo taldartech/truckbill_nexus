@@ -16,6 +16,9 @@ type Props = {
         email_status: string | null;
         approved_at: string | null;
         created_at: string | null;
+        preview_url: string;
+        download_url: string;
+        email_url: string | null;
     }[];
     links: { overview: string };
 };
@@ -70,6 +73,9 @@ export default function SubscriptionInvoices({
                                     <th className="px-3 py-2 font-medium">
                                         Email
                                     </th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Actions
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -94,6 +100,24 @@ export default function SubscriptionInvoices({
                                         </td>
                                         <td className="px-3 py-2">
                                             {invoice.email_status || '—'}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            <div className="flex flex-wrap gap-2">
+                                                <Link
+                                                    href={invoice.preview_url}
+                                                    className="text-sm underline-offset-2 hover:underline"
+                                                >
+                                                    Preview
+                                                </Link>
+                                                <a
+                                                    href={invoice.download_url}
+                                                    className="text-sm underline-offset-2 hover:underline"
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                >
+                                                    HTML
+                                                </a>
+                                            </div>
                                         </td>
                                     </tr>
                                 ))}

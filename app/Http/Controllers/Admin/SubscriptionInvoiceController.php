@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Domains\Subscription\Billing\SubscriptionInvoiceDocumentService;
 use App\Domains\Subscription\Billing\SubscriptionInvoiceService;
 use App\Domains\Subscription\Exceptions\SubscriptionDomainException;
 use App\Http\Controllers\Controller;
@@ -20,6 +21,7 @@ class SubscriptionInvoiceController extends Controller
 {
     public function __construct(
         private readonly SubscriptionInvoiceService $invoices = new SubscriptionInvoiceService,
+        private readonly SubscriptionInvoiceDocumentService $documents = new SubscriptionInvoiceDocumentService,
     ) {}
 
     public function index(Request $request): Response
@@ -60,16 +62,18 @@ class SubscriptionInvoiceController extends Controller
         ]);
 
         try {
-            $this->invoices->approveNumber(
+            $approved = $this->invoices->approveNumber(
                 $actor,
                 $invoice,
                 $validated['approved_number'] ?? null,
             );
+            // Attempt sample email after approval; failures never reverse number approval.
+            $this->documents->dispatchEmail($approved);
         } catch (SubscriptionDomainException $e) {
             return back()->withErrors(['approved_number' => $e->getMessage()]);
         }
 
-        return back()->with('success', 'Invoice number approved (immutable). Email/issuance may proceed separately.');
+        return back()->with('success', 'Invoice number approved (immutable). Sample email attempted; failures do not reverse approval.');
     }
 
     private function assertSuperAdmin(Request $request): User

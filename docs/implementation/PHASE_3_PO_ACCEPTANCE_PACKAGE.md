@@ -3,7 +3,8 @@
 **Date:** 22 November 2026  
 **Certification:** `PHASE_3_FINAL_CERTIFICATION_REPORT.md`  
 **Decisions:** `PHASE_3_PO_DECISION_PACKAGE.md`  
-**Baseline tip (pre-completion pass):** `1afeb37631000069e32df619214bd220691c3ee9` (Actions #58 SUCCESS)  
+**Batch G:** `PHASE_3_BATCH_G_CERTIFICATION_REPORT.md`  
+**Baseline tip (Batch G start):** `3b84ef21bcc860d65c879e9e1f6377d86f96e487` (Actions #59 SUCCESS)  
 **Status:** Ready for **explicit** PO decision — not auto-accepted.
 
 ---
@@ -11,15 +12,16 @@
 ## 1. Delivered Phase 3 scope (authorized)
 
 - Party / Vehicle / Bank-Cash / Station / supporting catalogues
-- GST Rate + TDS Rule foundations
+- GST Rate + TDS Rule foundations **and Super Admin management UI**
 - Common documents (upload/scan/download/replace/soft-delete/storage/drawers)
 - Subscription catalogue, pricing, drafts, immutable snapshots
-- Trial / grace / restricted Confirmed entitlements; cancel/withdraw
-- Capacity, quota, credit foundations (no Phase 4 LR/Bilty ops)
-- Manual Razorpay **Test Mode** via official `razorpay/razorpay` SDK
+- Trial / grace / restricted Confirmed entitlements; cancel/withdraw; scheduled downgrade finalization
+- Capacity, quota, credit, storage presentation on Owner dashboard (no Phase 4 LR/Bilty ops)
+- Manual Razorpay **Test Mode** via official `razorpay/razorpay` SDK (preserved)
 - Owner checkout, payments, invoices; webhook route
 - Draft invoice after verified payment; Super Admin number approval
-- Scheduled trial reminders + lifecycle/storage evaluation
+- Sample / non-production invoice HTML preview, download, email + retry
+- Scheduled trial reminders + lifecycle/storage evaluation + scheduled changes + invoice email retry
 
 ---
 
@@ -35,28 +37,27 @@
 
 ### Exception list (accept / reject / amend)
 
-| Exception                                                                                                 | Accept as Phase 3 exception?  |
-| --------------------------------------------------------------------------------------------------------- | ----------------------------- |
-| AUD-CON-006 fine-grained cells Pending; Confirmed Rules §15 enforced                                      | Yes / No / Amend              |
-| Real Razorpay Checkout capture + Dashboard webhook delivery waits on G-PAY ops (SDK + order API verified) | Yes / No                      |
-| No production charges (PO-P3-PAY-PROD Pending)                                                            | Yes (required)                |
-| No legally operative production invoices until issuer/GST validated                                       | Yes / No                      |
-| ADR-010 accounting postings Deferred                                                                      | Yes / No                      |
-| Official `razorpay/razorpay` SDK installed under PO-P1-DEPS (custom HTTP removed)                         | Yes (already authorized)      |
-| Dedicated renewal-reminder job beyond trial reminders                                                     | Yes / Amend (specify windows) |
+| Exception                                                                                | Accept as Phase 3 exception?  |
+| ---------------------------------------------------------------------------------------- | ----------------------------- |
+| AUD-CON-006 fine-grained cells Pending; Confirmed Rules §15 enforced                     | Yes / No / Amend              |
+| Dashboard→local webhook delivery not independently certified (checkout may work locally) | Yes / No                      |
+| No production charges (PO-P3-PAY-PROD Pending)                                           | Yes (required)                |
+| No legally operative production invoices until issuer/GST validated (sample HTML only)   | Yes / No                      |
+| ADR-010 accounting postings Deferred                                                     | Yes / No                      |
+| Official Razorpay SDK under PO-P1-DEPS; no PDF package                                   | Yes (already authorized)      |
+| Paid renewal-reminder windows (choose A/B/C/D in decision package)                       | Yes / Amend (specify windows) |
 
 ---
 
-## 3. Test Mode payment evidence (sanitized)
+## 3. Razorpay evidence distinction
 
-| Item                  | Evidence                                                                                    |
-| --------------------- | ------------------------------------------------------------------------------------------- |
-| SDK                   | `razorpay/razorpay` 2.9.3                                                                   |
-| Env                   | Exactly three `RAZORPAY_*` variables                                                        |
-| Order create          | Success — Test Mode order id prefix `order_U3J3` (₹1.00)                                    |
-| Signature API         | Invalid signature rejected by SDK                                                           |
-| Card Checkout capture | Not claimed in this package                                                                 |
-| Live webhook delivery | Not claimed — register `{APP_URL}/webhooks/razorpay` via HTTPS tunnel in Razorpay Dashboard |
+| Item                         | Evidence                                               |
+| ---------------------------- | ------------------------------------------------------ |
+| SDK                          | `razorpay/razorpay` 2.9.3 — not rewritten in Batch G   |
+| Env                          | Exactly three `RAZORPAY_*` variables                   |
+| PO-reported local checkout   | Working (user-reported)                                |
+| CI / Fake doubles            | Automated                                              |
+| Live Dashboard→local webhook | **Not independently claimed** in Batch G certification |
 
 ---
 
@@ -65,15 +66,18 @@
 - Does **not** approve live customer charges.
 - Does **not** invent AUD-CON-006.
 - Does **not** waive ADR-010 or issuer/GST validation.
-- Does **not** claim real Checkout/webhook e2e without Dashboard evidence.
+- Does **not** invent renewal reminder windows.
+- Does **not** claim Dashboard webhook e2e without independent evidence.
 - Engineering must **not** auto-mark Phase 3 Accepted.
+- Phase 4 must **not** start from this package.
 
 ---
 
 ## 5. Recommended next actions after Option A
 
-1. Complete G-PAY sandbox matrix (Checkout + webhook) and attach sanitized ids.
-2. Decide AUD-CON-006 proposal cells.
-3. Validate issuer/GST for production invoices.
-4. Decide PO-P3-PAY-PROD separately (not implied by Test Mode).
-5. ADR-010 when accounting architecture is ready.
+1. Complete G-PAY sandbox matrix (Checkout + webhook) and attach sanitized ids if not already done operationally.
+2. Decide AUD-CON-006 unresolved cells.
+3. Choose renewal-reminder Option A/B/C/D.
+4. Validate issuer/GST for production invoices.
+5. Decide PO-P3-PAY-PROD separately.
+6. ADR-010 when accounting architecture is ready.

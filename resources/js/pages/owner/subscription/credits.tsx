@@ -21,6 +21,18 @@ type Props = {
         reason: string;
         created_at: string | null;
     }[];
+    quotas: {
+        id: string;
+        quota_type: string;
+        included_units: string;
+        consumed_units: string;
+        available_units: string;
+        period_start: string | null;
+        period_end: string | null;
+        percent_used: number;
+        alert: boolean;
+        block: boolean;
+    }[];
     presentation_note: string;
     links: { overview: string };
 };
@@ -29,6 +41,7 @@ export default function SubscriptionCredits({
     company,
     ledgers,
     entries,
+    quotas,
     presentation_note,
     links,
 }: Props) {
@@ -55,6 +68,40 @@ export default function SubscriptionCredits({
                 <Button asChild variant="outline" className="self-start">
                     <Link href={links.overview}>Back to overview</Link>
                 </Button>
+                <section className="space-y-3">
+                    <h2 className="font-semibold">Broker / Partload quotas</h2>
+                    {quotas.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                            No quota periods allocated yet.
+                        </p>
+                    ) : (
+                        <ul className="grid gap-3 sm:grid-cols-2">
+                            {quotas.map((quota) => (
+                                <li
+                                    key={quota.id}
+                                    className="rounded-xl border border-border p-4 text-sm"
+                                >
+                                    <p className="font-medium">
+                                        {quota.quota_type}
+                                    </p>
+                                    <p className="mt-1 text-muted-foreground">
+                                        Included {quota.included_units} ·
+                                        Consumed {quota.consumed_units} ·
+                                        Available {quota.available_units}
+                                    </p>
+                                    <p className="mt-1 text-xs text-muted-foreground">
+                                        {quota.period_start || '—'} →{' '}
+                                        {quota.period_end || '—'} ·{' '}
+                                        {quota.percent_used}%
+                                        {quota.alert ? ' · alert' : ''}
+                                        {quota.block ? ' · block' : ''}
+                                    </p>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </section>
+                <h2 className="font-semibold">Service credit balances</h2>
                 <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {ledgers.map((ledger) => (
                         <li

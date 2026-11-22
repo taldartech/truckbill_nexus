@@ -346,6 +346,59 @@ final class SubscriptionLifecycleService
     }
 
     /**
+     * Finalize due scheduled downgrade proposals (idempotent, lock-protected).
+     * Payload may include proposed_branch_limit / proposed_seat_limit (or branches / seats).
+     *
+     * @param  callable(Company): array{used_branches: int, used_billable_seats: int}  $usageResolver
+     * @return int number of proposals resolved (applied or retained)
+     */
+    public function finalizeDueScheduledDowngrades(callable $usageResolver): int
+    {
+        $today = $this->clock->now()->startOfDay()->toDateString();
+        $count = 0;
+
+        SubscriptionChangeProposal::query()
+            ->where('change_type', 'downgrade')
+            ->where('status', 'scheduled')
+            ->whereNotNull('effective_on')
+            ->whereDate('effective_on', '<=', $today)
+            ->orderBy('id')
+            ->chunkById(50, function ($proposals) use ($usageResolver, &$count): void {
+                foreach ($proposals as $proposal) {
+                    /** @var SubscriptionChangeProposal $proposal */
+                    $company = Company::query()->whereKey($proposal->company_id)->first();
+                    if ($company === null) {
+                        continue;
+                    }
+
+                    $usage = $usageResolver($company);
+                    $payload = is_array($proposal->payload) ? $proposal->payload : [];
+                    $proposedBranches = (int) ($payload['proposed_branch_limit']
+                        ?? $payload['branches']
+                        ?? config('subscription.capacity.included_branches', 2));
+                    $proposedSeats = (int) ($payload['proposed_seat_limit']
+                        ?? $payload['seats']
+                        ?? ((int) config('subscription.capacity.included_branches', 2)
+                            * (int) config('subscription.capacity.seats_per_included_branch', 3)));
+
+                    $result = $this->applyScheduledDowngradeIfEligible(
+                        $proposal,
+                        $usage['used_branches'],
+                        $usage['used_billable_seats'],
+                        $proposedBranches,
+                        $proposedSeats,
+                    );
+
+                    if ($result['applied'] || $result['retained_current_plan']) {
+                        $count++;
+                    }
+                }
+            });
+
+        return $count;
+    }
+
+    /**
      * Apply a scheduled downgrade if usage still fits; otherwise retain current plan and flag retention.
      *
      * @return array{applied: bool, retained_current_plan: bool, proposal: SubscriptionChangeProposal}
