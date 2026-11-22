@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Admin\CompanyLifecycleController;
+use App\Http\Controllers\Admin\IdentityLifecycleController;
 use App\Http\Controllers\Admin\InternalUserController;
 use App\Http\Controllers\Admin\InvitationController;
 use App\Http\Controllers\HealthController;
@@ -28,6 +30,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('admin.invitations.revoke');
     Route::post('/admin/internal-users', [InternalUserController::class, 'store'])
         ->name('admin.internal-users.store');
+
+    Route::post('/admin/companies/{company}/deactivate', [CompanyLifecycleController::class, 'deactivate'])
+        ->name('admin.companies.deactivate');
+    Route::post('/admin/companies/{company}/reactivate', [CompanyLifecycleController::class, 'reactivate'])
+        ->name('admin.companies.reactivate');
+    Route::post('/admin/identities/{user}/deactivate', [IdentityLifecycleController::class, 'deactivate'])
+        ->name('admin.identities.deactivate');
+    Route::post('/admin/identities/{user}/reactivate', [IdentityLifecycleController::class, 'reactivate'])
+        ->name('admin.identities.reactivate');
 });
 
 require __DIR__.'/settings.php';

@@ -40,6 +40,14 @@ final class CompanyAccessService
     }
 
     /**
+     * Owner Panel access modes (P2-WS-6 / DEC-002).
+     * Product UI for these scopes remains gated by P2-WS-8 design artefacts.
+     */
+    public const OWNER_PANEL_FULL = 'full';
+
+    public const OWNER_PANEL_ADMIN_BILLING_ONLY = 'admin_billing_only';
+
+    /**
      * Owner Panel: active Owner identity + Owner designation.
      * Company may be deactivated (limited admin/billing visibility only).
      */
@@ -54,6 +62,29 @@ final class CompanyAccessService
         }
 
         return $this->isCompanyOwner($user, $company);
+    }
+
+    /**
+     * Server-side Owner Panel scope. Null when Owner Panel is denied.
+     * Deactivated company → admin/billing information only (PO-P2-DEACT-COMPANY).
+     */
+    public function ownerPanelScope(User $user, Company $company): ?string
+    {
+        if (! $this->canAccessOwnerPanel($user, $company)) {
+            return null;
+        }
+
+        return $company->isActive()
+            ? self::OWNER_PANEL_FULL
+            : self::OWNER_PANEL_ADMIN_BILLING_ONLY;
+    }
+
+    /**
+     * Operational Branch Panel features are never available under the Owner Panel exception.
+     */
+    public function canPerformBranchPanelOperation(User $user, Company $company, ?Branch $branch = null): bool
+    {
+        return $this->canAccessBranchPanel($user, $company, $branch);
     }
 
     /**

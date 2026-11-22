@@ -101,6 +101,44 @@ final class IdentityLifecycleService
         return $user;
     }
 
+    /**
+     * Explicit reactivation of a deactivated identity (not soft-delete restore).
+     * Does not recreate memberships, roles or Owner designation changes.
+     */
+    public function reactivate(User $user, string $remark): User
+    {
+        if (trim($remark) === '') {
+            throw new InvalidArgumentException('A remark is required for identity reactivation.');
+        }
+
+        if ($user->trashed()) {
+            throw new InvalidArgumentException('Soft-deleted identities cannot be reactivated via deactivation lifecycle.');
+        }
+
+        if (! $user->isDeactivated()) {
+            throw new InvalidArgumentException('Identity is not deactivated.');
+        }
+
+        return $this->auditedTransaction->run(function () use ($user, $remark): User {
+            $before = $this->auditableSnapshot($user);
+
+            $user->forceFill([
+                'deactivated_at' => null,
+            ])->save();
+
+            $this->auditWriter->write(
+                AuditAction::Updated,
+                User::class,
+                $user->id,
+                remark: $remark,
+                before: $before,
+                after: $this->auditableSnapshot($user->refresh()),
+            );
+
+            return $user->refresh();
+        });
+    }
+
     public function softDelete(User $user, string $remark): User
     {
         if ($user->isLastActiveSuperAdmin()) {

@@ -294,7 +294,8 @@ test('company deactivation blocks branch panel but retains limited owner panel',
     $membership = workspace()->addMembership($company, $member, 'Join');
     workspace()->assignBranch($membership, $headOffice, 'Assign');
 
-    workspace()->deactivateCompany($company, 'Subscription paused');
+    $sa = User::factory()->superAdmin()->create();
+    workspace()->deactivateCompany($sa, $company, 'Subscription paused');
 
     expect($owner->fresh()->isActive())->toBeTrue()
         ->and($owner->fresh()->isDeactivated())->toBeFalse()
@@ -332,7 +333,9 @@ test('company and membership mutations write atomic audits with required remarks
     workspace()->updateCompany($company, 'Acme Renamed', 'Legal name change');
     expect(AuditEntry::query()->where('subject_type', Company::class)->where('action', AuditAction::Updated->value)->count())->toBe(1);
 
-    expect(fn () => workspace()->deactivateCompany($company->fresh(), ''))
+    $sa = User::factory()->superAdmin()->create();
+
+    expect(fn () => workspace()->deactivateCompany($sa, $company->fresh(), ''))
         ->toThrow(InvalidArgumentException::class);
 
     expect($company->fresh()->isActive())->toBeTrue()
@@ -349,7 +352,7 @@ test('company and membership mutations write atomic audits with required remarks
     expect($company->fresh()->name)->toBe('Acme Renamed')
         ->and(AuditEntry::query()->count())->toBe($beforeCount);
 
-    workspace()->deactivateCompany($company->fresh(), 'Shutting down operations');
+    workspace()->deactivateCompany($sa, $company->fresh(), 'Shutting down operations');
     expect($company->fresh()->isDeactivated())->toBeTrue()
         ->and(AuditEntry::query()->where('subject_type', Company::class)->where('remark', 'Shutting down operations')->exists())->toBeTrue()
         ->and($owner->fresh()->isActive())->toBeTrue();

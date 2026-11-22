@@ -247,8 +247,14 @@ final class CompanyWorkspaceService
         });
     }
 
-    public function deactivateCompany(Company $company, string $remark): Company
+    /**
+     * Internal Super Admin deactivates a company (PO-P2-DEACT-COMPANY).
+     * Does not deactivate the Owner identity.
+     */
+    public function deactivateCompany(User $actor, Company $company, string $remark): Company
     {
+        $this->assertCompanyLifecycleAdmin($actor);
+
         if (trim($remark) === '') {
             throw new InvalidArgumentException('A remark is required for company deactivation.');
         }
@@ -261,6 +267,44 @@ final class CompanyWorkspaceService
             return $this->withCompanyAuditContext($company, true, function () use ($company, $remark): Company {
                 $before = $this->companySnapshot($company);
                 $company->forceFill(['deactivated_at' => now()])->save();
+
+                $this->auditWriter->write(
+                    AuditAction::Updated,
+                    Company::class,
+                    $company->id,
+                    remark: $remark,
+                    before: $before,
+                    after: $this->companySnapshot($company->refresh()),
+                );
+
+                return $company;
+            });
+        });
+    }
+
+    /**
+     * Explicit reactivation — not restore/undelete (DEC-003 / PO-P2-DEACT-COMPANY).
+     */
+    public function reactivateCompany(User $actor, Company $company, string $remark): Company
+    {
+        $this->assertCompanyLifecycleAdmin($actor);
+
+        if (trim($remark) === '') {
+            throw new InvalidArgumentException('A remark is required for company reactivation.');
+        }
+
+        if (! $company->isDeactivated()) {
+            throw new CompanyDomainException('Company is not deactivated.');
+        }
+
+        if ($company->trashed()) {
+            throw new CompanyDomainException('Soft-deleted companies cannot be reactivated via deactivation lifecycle.');
+        }
+
+        return $this->auditedTransaction->run(function () use ($company, $remark): Company {
+            return $this->withCompanyAuditContext($company, true, function () use ($company, $remark): Company {
+                $before = $this->companySnapshot($company);
+                $company->forceFill(['deactivated_at' => null])->save();
 
                 $this->auditWriter->write(
                     AuditAction::Updated,
@@ -437,6 +481,19 @@ final class CompanyWorkspaceService
     {
         if (! $user->isCustomer()) {
             throw new CompanyDomainException('Only Customer identities may own or join companies.');
+        }
+    }
+
+    /**
+     * PRD: Internal Super Admin/Admin may deactivate/reactivate companies.
+     * Ordinary Internal Admin PM catalogues are not invented here — Super Admin only.
+     */
+    private function assertCompanyLifecycleAdmin(User $actor): void
+    {
+        if (! $actor->isSuperAdmin() || ! $actor->isActive()) {
+            throw new CompanyDomainException(
+                'Only an active Super Admin may deactivate or reactivate companies.'
+            );
         }
     }
 
