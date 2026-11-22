@@ -3,7 +3,8 @@
 **Date:** 22 November 2026  
 **Authority:** `docs/governing/Phases.md` (DEC-001 / ADR-011)  
 **Phase 2:** Formally accepted WITH DOCUMENTED EXCEPTIONS (PO-P2-FINAL-ACCEPT)  
-**Phase 3 authorization:** **Not granted — do not implement**
+**Phase 3 authorization:** **Not granted — do not implement**  
+**Execution plan (planning only):** `docs/implementation/PHASE_3_EXECUTION_PLAN.md`
 
 ---
 
