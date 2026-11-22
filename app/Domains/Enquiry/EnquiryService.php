@@ -228,11 +228,12 @@ final class EnquiryService
                     'instructions' => $normalized['instructions'],
                 ])->save();
 
-                // Soft-deleted rows still occupy (enquiry_id, position); replace must hard-delete.
-                EnquiryGoodsRow::withTrashed()
+                // Soft-delete prior goods rows (DEC-003). Active uniqueness is enforced by a
+                // partial unique index on (enquiry_id, position) WHERE deleted_at IS NULL.
+                EnquiryGoodsRow::query()
                     ->where('enquiry_id', $enquiry->id)
                     ->where('company_id', $enquiry->company_id)
-                    ->forceDelete();
+                    ->delete();
 
                 $this->persistGoodsRows($enquiry, $normalized['goods']);
 

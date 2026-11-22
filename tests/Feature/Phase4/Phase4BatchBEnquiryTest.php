@@ -422,6 +422,53 @@ test('edit with remark updates enquiry and preserves creation side effects', fun
         ->and(AuditEntry::query()->where('subject_id', $enquiryId)->where('action', 'updated')->count())->toBe(1);
 });
 
+test('enquiry goods edit soft-deletes prior rows and retains history identifiers', function () {
+    $ws = batchBWorkspace();
+    batchBActingAs($ws['member']);
+
+    $enquiryId = $this->postJson(
+        route('branch.enquiries.store', [$ws['company'], $ws['branch']]),
+        batchBManualPayload($ws),
+    )->assertCreated()->json('data.id');
+
+    $originalIds = EnquiryGoodsRow::query()
+        ->where('enquiry_id', $enquiryId)
+        ->orderBy('position')
+        ->pluck('id')
+        ->all();
+
+    expect($originalIds)->toHaveCount(2);
+
+    batchBActingAs($ws['member']);
+    $this->patchJson(route('branch.enquiries.update', [$ws['company'], $ws['branch'], $enquiryId]), [
+        'remark' => 'Replace goods rows',
+        'goods' => [
+            [
+                'goods_type_id' => $ws['goodsType']->id,
+                'package_type_id' => $ws['packageType']->id,
+                'goods_description' => 'Replacement cargo',
+                'package_count' => 3,
+                'actual_weight' => 30,
+                'charged_weight' => 30,
+            ],
+        ],
+    ])->assertOk()->assertJsonCount(1, 'data.goods')->assertJsonPath('data.goods.0.position', 1);
+
+    $active = EnquiryGoodsRow::query()->where('enquiry_id', $enquiryId)->orderBy('position')->get();
+    $trashed = EnquiryGoodsRow::onlyTrashed()->where('enquiry_id', $enquiryId)->orderBy('position')->get();
+
+    expect($active)->toHaveCount(1)
+        ->and($trashed)->toHaveCount(2)
+        ->and($trashed->pluck('id')->all())->toEqualCanonicalizing($originalIds)
+        ->and($active->first()?->id)->not->toBeIn($originalIds)
+        ->and($active->first()?->goods_description)->toBe('Replacement cargo');
+
+    // Active position uniqueness still holds after soft-delete reuse of position 1.
+    expect(
+        EnquiryGoodsRow::query()->where('enquiry_id', $enquiryId)->where('position', 1)->count()
+    )->toBe(1);
+});
+
 test('failed persistence rolls back enquiry goods number and outbox', function () {
     $ws = batchBWorkspace();
     batchBActingAs($ws['member']);
