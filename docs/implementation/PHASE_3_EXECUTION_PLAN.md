@@ -101,7 +101,7 @@
 | UI                | Master list/form screens after G-DESIGN-P3                                                                                                                           |
 | Tests             | Tenant isolation; visibility Shared vs Branch-restricted; Station Owner-share; duplicate Party across branches allowed; soft-delete no restore                       |
 | Acceptance        | Masters enforce Rules §5 ownership/visibility; cross-tenant negatives pass                                                                                           |
-| **Status**        | **In progress** — Party Master backend + HTTP + Pest (Batch A); remaining masters Batch B                                                                            |
+| **Status**        | **Backend complete (Batch A+B)** — Party, Vehicle, Bank/Cash, Station, Owner catalogues, Payment Modes seed; Pest; product UI blocked on G-DESIGN-P3                 |
 
 ---
 
@@ -117,7 +117,7 @@
 | UI                | Internal/central admin surfaces as designed; Customer read of active rates where required                                                                                                            |
 | Tests             | No-match TDS = config error; inactive rules excluded; changes apply to new transactions only                                                                                                         |
 | Acceptance        | Engine selectable rates/rules without inventing production legal certainty                                                                                                                           |
-| **Status**        | Not started                                                                                                                                                                                          |
+| **Status**        | **Backend complete (Batch B)** — GST rate versioning/snapshots; TDS rule CRUD + AND/OR evaluator + no-match; Pest; TB-TAX-001 legal validation remains Pending                                       |
 | Note              | Company GST registration/tax liability fields remain Pending schema/policy from Phase 2 exceptions — do not invent company master tax UI beyond approved Phase 2 name-only settings until PO unlocks |
 
 ---
@@ -135,7 +135,7 @@
 | UI                | Upload/preview/replace components after G-DESIGN-P3                                                                                                                           |
 | Tests             | Unauthorized download denied; unscanned unavailable; replace keeps old until new succeeds; soft-delete counts storage; cross-company deny                                     |
 | Acceptance        | Document service usable by later modules; storage accounting inputs correct                                                                                                   |
-| **Status**        | Not started                                                                                                                                                                   |
+| **Status**        | **Backend complete (Batch B)** — attach/replace/download/soft-delete retention; storage usage + reconcile foundations; Pest security suite; UI blocked on G-DESIGN-P3         |
 
 ---
 
