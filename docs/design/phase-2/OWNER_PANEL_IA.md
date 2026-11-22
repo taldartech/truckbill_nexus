@@ -1,0 +1,170 @@
+# A — Owner Panel Information Architecture
+
+**Status:** Draft — Awaiting Product Owner Review  
+**Traceability:** PRD §§4–5, 19; Rules §2; Design.md §§2, 8; DEC-002; PO-P2-DEACT-COMPANY; TB-OWN-001–005
+
+## 1. Purpose and user boundary
+
+| Item               | Content                                                                                                                                                              | Label                                         |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| Purpose            | Company-level administration surface for the designated Company Owner: companies, branches, users/memberships, company settings, subscription/billing, company audit | **Approved requirement**                      |
+| Who may enter      | Only the identity that holds `companies.owner_user_id` for the selected company, and that identity must be an active Customer (login-capable)                        | **Approved requirement** (PRD §5; TB-OWN-001) |
+| Who must not enter | Customer Admin and all other Customer roles; Internal Team; previous Owner after ownership transfer; deactivated Owner identity                                      | **Approved requirement**                      |
+| Ordinary roles     | Operational role permissions never grant Owner Panel                                                                                                                 | **Approved requirement** (PRD §5)             |
+
+## 2. Entry and default landing
+
+```mermaid
+flowchart TD
+  Login[Customer authenticates] --> IsOwner{Owns at least one company?}
+  IsOwner -->|Yes| OwnerLanding[Land in Owner Panel]
+  IsOwner -->|No| BranchPath[Branch selection / Branch Panel path]
+  OwnerLanding --> SelectCompany[Active company context server-resolved]
+  SelectCompany --> OwnerHome[Owner Dashboard / company hub]
+```
+
+- **Approved requirement:** Owner always lands in Owner Panel (PRD §5).
+- **Design interpretation:** “Land in Owner Panel” means the post-login default route for Owner identities is the Owner Panel shell for a server-selected default company (see workspace flow).
+- **Pending:** Exact default-company selection rule when an Owner owns multiple companies (most recently used vs alphabetical vs explicit preference).
+
+## 3. Navigation hierarchy
+
+```mermaid
+flowchart LR
+  OP[Owner Panel]
+  OP --> Switcher[Company switcher]
+  OP --> Dash[Owner Dashboard]
+  OP --> CoAdmin[Company administration]
+  OP --> BrAdmin[Branches]
+  OP --> Users[Users and memberships]
+  OP --> Settings[Company settings]
+  OP --> Sub[Subscription and billing]
+  OP --> Audit[Company audit]
+  OP --> EnterBranch[Enter Branch Panel]
+```
+
+### 3.1 Company switcher and multi-company context
+
+| Element          | Behaviour                                                                                                                                     | Label                                                |
+| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Switcher content | Lists companies where the identity is the designated Owner (and optionally companies where the identity is only a member — see open question) | **Design interpretation** / **Pending**              |
+| Selection effect | Requests server to activate company context; UI never treats selected id as authority                                                         | **Approved requirement** (TB-SEC-002)                |
+| Active indicator | Show active company name + status text (Active / Deactivated) with non-colour status                                                          | **Approved requirement** + **Design interpretation** |
+| File access      | Customer-uploaded files scoped to server-resolved active company only                                                                         | **Approved requirement** (PO-P2-FILE-MULTI)          |
+
+**Open question OQ-OP-01:** Should the Owner Panel company switcher list only companies the user _owns_, or also companies where they are a non-Owner member (with clear Owner vs Member badge)? Affects switcher IA and post-login routing.
+
+### 3.2 Company administration
+
+Entry points (navigation labels — **Design interpretation**):
+
+| Nav item                    | Intent                                                       | Label                                                                               |
+| --------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| Companies                   | View/manage Owner’s companies (create flow is product-gated) | **Approved requirement** (PRD §5)                                                   |
+| Company profile             | Legal/tax/contact settings for active company                | **Approved requirement** (PRD company master)                                       |
+| Data visibility / numbering | Company-level configuration entry                            | **Approved requirement** (PRD); detailed screens **Out of scope** for this IA depth |
+
+### 3.3 Branch administration entry points
+
+| Nav item     | Intent                                                                        | Label                                           |
+| ------------ | ----------------------------------------------------------------------------- | ----------------------------------------------- |
+| Branches     | List company branches; create/edit branch (no user management on branch edit) | **Approved requirement** (PRD §3)               |
+| Enter branch | Owner selects a branch and enters Branch Panel without re-login               | **Approved requirement** (PRD §5; Design.md §2) |
+
+Owner automatically accesses all current and future branches — no assignment rows required (**Approved requirement**, TB-OWN-008).
+
+### 3.4 Users and memberships
+
+| Nav item                  | Intent                                                                                              | Label                                           |
+| ------------------------- | --------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| Users                     | Add/invite users; name, email, mobile, password, company/branch, branch-specific role               | **Approved requirement** (PRD §3; PO-P2-INVITE) |
+| Memberships / assignments | View membership and branch assignments; deactivate membership (not Owner designation)               | **Approved requirement**                        |
+| Roles                     | Assign active Customer roles to branch assignments; Owner cannot edit Permission Master definitions | **Approved requirement** (PRD §6)               |
+
+Password of an existing identity is never overwritten on attach (**Approved requirement**).
+
+### 3.5 Company settings
+
+| Area                        | Notes                                                           | Label                              |
+| --------------------------- | --------------------------------------------------------------- | ---------------------------------- |
+| Company settings hub        | Groups profile, visibility, numbering, documents/logo/signature | **Design interpretation**          |
+| Self-service email change   | Must not appear                                                 | **Approved requirement** (DEC-009) |
+| Self-service account delete | Must not appear                                                 | **Approved requirement** (DEC-006) |
+
+### 3.6 Subscription and billing visibility
+
+| Area                         | Notes                                                                                  | Label                                                                                          |
+| ---------------------------- | -------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Subscription overview        | Active modules/add-ons, contract, common renewal date, capacity, usage, storage        | **Approved requirement** (Design.md §8; PRD §19)                                               |
+| Billing / invoices / credits | Payment history, invoice number approval surfaces, Broker/Partload and service credits | **Approved requirement** (Design.md §8)                                                        |
+| Checkout / Razorpay          | Phase 3 commercial delivery; Owner Panel IA reserves the entry point                   | **Approved requirement** for visibility; **Out of scope** for Phase 2 UI implementation detail |
+| Ownership transfer effect    | Contract remains company-bound; new Owner receives billing access                      | **Approved requirement** (Rules §15)                                                           |
+
+Do not imply auto-renewal for the initial manual renewal delivery (**Approved requirement**, Phases.md Phase 3).
+
+### 3.7 Company-level audit
+
+| Area                      | Notes                                                      | Label                                   |
+| ------------------------- | ---------------------------------------------------------- | --------------------------------------- |
+| Company audit             | Read-oriented company audit entry for Owner                | **Approved requirement** (Design.md §2) |
+| Remark-required mutations | Edit/delete/cancel confirmation patterns from Design.md §3 | **Approved requirement**                |
+
+## 4. Active vs deactivated company presentation
+
+| Company state | Owner Panel                                | Branch Panel from Owner Panel                | Presentation                                                    | Label                                                   |
+| ------------- | ------------------------------------------ | -------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------------- |
+| Active        | Full Owner Panel scope (`full`)            | Allowed (Owner may enter any company branch) | Status: Active (text + badge)                                   | **Approved requirement**                                |
+| Deactivated   | Limited Owner Panel (`admin_billing_only`) | Blocked                                      | Status: Deactivated; banner explaining Branch Panel unavailable | **Approved requirement** (DEC-002; PO-P2-DEACT-COMPANY) |
+
+### Limited Owner Panel while company deactivated
+
+**Approved requirement:** administrative and billing information visibility only.
+
+**Pending (do not invent):** exhaustive action list while deactivated (PRD §4; Rules §2). Until Product Owner resolves this list, design must:
+
+- Show company status, billing/subscription information and administrative read surfaces already stated.
+- Not invent operational reactivation of Branch Panel features.
+- Mark any additional write actions as **Proposal** only if explicitly requested for review — none are proposed here beyond visibility of admin/billing information.
+
+### Owner identity deactivation
+
+Distinct from company deactivation (**Approved requirement**, DEC-002 / PO-P2-DEACT-OWNER):
+
+- Deactivated Owner identity cannot log in.
+- Owner Panel inaccessible.
+- Sessions revoked via approved session policy.
+
+## 5. Page relationships (Owner Panel)
+
+| From            | To                                                 | How                                                  | Label                                   |
+| --------------- | -------------------------------------------------- | ---------------------------------------------------- | --------------------------------------- |
+| Owner Dashboard | Branches / Users / Settings / Subscription / Audit | Primary nav                                          | **Design interpretation**               |
+| Owner Panel     | Branch Panel                                       | Explicit “Open branch” / branch picker; no new login | **Approved requirement**                |
+| Branch Panel    | Owner Panel                                        | Persistent “Owner Panel” control for Owners          | **Approved requirement** (Design.md §2) |
+| Owner Panel     | Another owned company                              | Company switcher → server context switch             | **Approved requirement**                |
+
+## 6. Empty / loading / error / denied states
+
+| State               | Owner Panel behaviour                                                                         | Label                                    |
+| ------------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------- |
+| Loading             | Skeleton shell; retain brand light surface                                                    | **Design interpretation** (Design.md §3) |
+| Empty companies     | Message that no owned company is available; contact support / Internal Team path as copy only | **Design interpretation**                |
+| Access denied       | Non-Owner hitting Owner routes → deny; no Owner chrome                                        | **Approved requirement**                 |
+| Server error        | Recoverable error with retry; no fabricated data                                              | **Design interpretation**                |
+| Deactivated company | Banner + limited nav; Branch entry disabled with text reason                                  | **Approved requirement**                 |
+
+## 7. Open questions
+
+| ID       | Question                                                       | Affects                    |
+| -------- | -------------------------------------------------------------- | -------------------------- |
+| OQ-OP-01 | Switcher: owned companies only vs owned + member companies     | Company switcher; landing  |
+| OQ-OP-02 | Default company when Owner owns many                           | Post-login landing         |
+| OQ-OP-03 | Exhaustive deactivated-company Owner Panel action list         | Limited Owner Panel chrome |
+| OQ-OP-04 | Whether Owner Dashboard is a distinct home vs company hub list | Owner Dashboard artefact D |
+
+## 8. Out of scope for this artefact
+
+- Internal Team IA
+- Detailed subscription checkout screens (Phase 3)
+- Product React implementation
+- Invented metrics or operational module screens inside Owner Panel
