@@ -1,10 +1,11 @@
 # Phase 3 Batch F — Razorpay Test Mode Certification
 
 **Date:** 22 November 2026  
-**Authority:** PO-P3-PAY-TEST **APPROVED** (HTTP/HMAC, no SDK)  
-**Initial HEAD:** `1a383ebdecba7d87f54669c176b88dabdb28671e` (GitHub Actions #56 SUCCESS)  
-**Final HEAD:** `f6a3a70c4d4077ec30c5bbb05d075e5901f3a4f3`  
-**Verdict:** **IMPLEMENTATION COMPLETE — G-PAY CONFIGURATION PENDING**
+**Authority:** PO-P3-PAY-TEST **APPROVED** · PO-P1-DEPS **APPROVED** for official `razorpay/razorpay` SDK only  
+**Initial Batch F HEAD:** `1a383ebdecba7d87f54669c176b88dabdb28671e`  
+**SDK refactor baseline:** `a58f032d9cbb9ef44d01c72e84065df041e0f7c5`  
+**Final HEAD:** _(recorded after local commit)_  
+**Verdict:** **IMPLEMENTATION COMPLETE — G-PAY SANDBOX EVIDENCE PENDING**
 
 No push. No deployment. No production charges. Phase 3 is not auto-accepted.
 
@@ -12,125 +13,96 @@ No push. No deployment. No production charges. Phase 3 is not auto-accepted.
 
 ## Distinction of evidence
 
-| Layer                                 | Status                                                             |
-| ------------------------------------- | ------------------------------------------------------------------ |
-| 1. Implemented payment integration    | **Yes** — adapter, checkout, webhook, verification, renewal wiring |
-| 2. HTTP-mocked automated verification | **Yes** — Pest + `Http::fake`                                      |
-| 3. Actual Razorpay Test Mode sandbox  | **Blocked** — G-PAY credentials / HTTPS reachability Open          |
-| 4. Production readiness               | **No** — PO-P3-PAY-PROD Pending                                    |
-| 5. Remaining gates                    | AUD-CON-006, issuer/tax, ADR-010                                   |
+| Layer                                         | Status                                                                           |
+| --------------------------------------------- | -------------------------------------------------------------------------------- |
+| 1. Implemented payment integration            | **Yes** — official SDK adapter, checkout, webhook, verification, renewal         |
+| 2. SDK-boundary mocked automated verification | **Yes** — Pest + `RazorpayClient` doubles                                        |
+| 3. Actual Razorpay Test Mode sandbox          | **Partial** — order API verified earlier; full card/webhook e2e not claimed here |
+| 4. Production readiness                       | **No** — PO-P3-PAY-PROD Pending                                                  |
+| 5. Remaining gates                            | AUD-CON-006, issuer/tax, ADR-010                                                 |
 
 ---
 
 ## A. Authorization recorded
 
-| Gate                                     | Status                        |
-| ---------------------------------------- | ----------------------------- |
-| PO-P3-PAY-TEST                           | **Approved** — Test Mode only |
-| HTTP client + HMAC-SHA256 (no SDK)       | **Approved**                  |
-| PO-P3-PAY-PROD                           | **Pending**                   |
-| G-PAY credentials + webhook reachability | **Open**                      |
-| AUD-CON-006                              | Pending                       |
-| Issuer/GST                               | Pending                       |
-| ADR-010                                  | Pending                       |
+| Gate                                           | Status                                                              |
+| ---------------------------------------------- | ------------------------------------------------------------------- |
+| PO-P3-PAY-TEST                                 | **Approved** — Test Mode only                                       |
+| Official PHP SDK (`razorpay/razorpay`)         | **Approved** (PO-P1-DEPS case) — supersedes prior no-SDK preference |
+| Custom Laravel HTTP client adapter             | **Removed**                                                         |
+| PO-P3-PAY-PROD                                 | **Pending**                                                         |
+| G-PAY credentials + HTTPS webhook reachability | **Open** until sandbox matrix completed                             |
+| AUD-CON-006 / Issuer/GST / ADR-010             | Pending                                                             |
 
 ---
 
 ## B. Implemented features
 
-| Component                     | Detail                                                                           |
-| ----------------------------- | -------------------------------------------------------------------------------- |
-| Config                        | `fake` / `razorpay_test` / `razorpay_live` (live unavailable); `RAZORPAY_*` env  |
-| `PaymentGatewayAuthorization` | Fail-closed; rejects production env, live keys, incomplete credentials           |
-| `RazorpayTestPaymentGateway`  | Orders + checkout/webhook HMAC + payment fetch via Laravel HTTP                  |
-| `FakePaymentGateway`          | Preserved for CI                                                                 |
-| `PaymentIntentService`        | Test Mode allowed without `live_enabled`; HTTP outside DB lock                   |
-| `RazorpayWebhookNormalizer`   | Maps real Razorpay event JSON → domain payload                                   |
-| `PaymentEventProcessor`       | Parses **same** signed raw body; idempotent activation                           |
-| `CheckoutVerificationService` | Owner callback verify + optional remote capture check                            |
-| Webhook                       | `POST /webhooks/razorpay` — CSRF exempt; enabled only when Test Mode flags allow |
-| Owner UI                      | Checkout page, simulate (fake), renew entry, Test Mode banner                    |
-| Renewal                       | `extendAfterVerifiedRenewal` after verified renewal payment                      |
+| Component                                          | Detail                                                                          |
+| -------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Config                                             | Exactly `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET`     |
+| Selection                                          | Automatic from `APP_ENV` + Key ID prefix (`rzp_test_` / `rzp_live_`)            |
+| `PaymentGatewayAuthorization`                      | Fail-closed; production + live keys rejected                                    |
+| `RazorpaySdkClient` / `RazorpayTestPaymentGateway` | Official SDK order/payment/signature APIs                                       |
+| `FakePaymentGateway`                               | CI / missing credentials (no env secret)                                        |
+| Checkout                                           | Capture-only fulfillment; Owner UX errors without generic aborts                |
+| Webhook                                            | `POST /webhooks/razorpay` — CSRF exempt; non-production + test credentials only |
+
+Setup guide: `docs/implementation/RAZORPAY_TEST_MODE_SETUP.md`
 
 ---
 
-## C. Integration results
+## C. Original checkout failure (corrected)
 
-### HTTP-mocked (CI)
+**Root cause:** Idempotent reuse of a prior `fake` intent (`order_fake_*`) after enabling Razorpay Test Mode, so Checkout opened an invalid Razorpay order id.
 
-- Order create amount/currency match
-- Checkout signature valid/invalid
-- Webhook signature valid/invalid
-- Normalized `payment.captured`
-- Duplicate event id
-- Amount mismatch quarantine
-- Owner simulate capture → subscription active
-- Webhook closed when disabled; processes when enabled
-
-### Actual Razorpay sandbox
-
-**Not executed.** Requires G-PAY:
-
-1. Test Key ID / Secret / Webhook Secret in secret store
-2. `SUBSCRIPTION_PAYMENT_GATEWAY=razorpay_test`
-3. `RAZORPAY_MODE=test`
-4. `RAZORPAY_TEST_ENABLED=true`
-5. `RAZORPAY_WEBHOOK_ENDPOINT_ENABLED=true`
-6. Non-production HTTPS URL → `POST {APP_URL}/webhooks/razorpay`
-7. Dashboard webhook events: `payment.captured`, `payment.failed` (and `order.paid` if used)
+**Corrections:** Gateway-scoped idempotency; capture-only remote verification; checkout error handling; obsolete multi-flag config removed in favor of three env vars + SDK.
 
 ---
 
 ## D. Security evidence
 
-| Control                               | Result                             |
-| ------------------------------------- | ---------------------------------- |
-| No SDK / no new deps                  | Confirmed                          |
-| Secrets not exposed to React          | Only public Test key id when ready |
-| Payload bound to signed raw body      | Confirmed                          |
-| Constant-time HMAC compare            | `hash_equals`                      |
-| Production rejects Test Mode          | Confirmed                          |
-| Live key id rejected in Test Mode     | Confirmed                          |
-| Client amount tampering quarantined   | Confirmed                          |
-| Cross-company checkout rejected       | Confirmed                          |
-| Idempotent activation                 | Confirmed                          |
-| Delayed failure after capture ignored | Confirmed                          |
+| Control                                             | Result                  |
+| --------------------------------------------------- | ----------------------- |
+| Official SDK only (no third-party Laravel wrappers) | Confirmed               |
+| Secrets not exposed to React                        | Only public Test key id |
+| SDK signature verification (checkout + webhook)     | Confirmed               |
+| Payload bound to signed raw webhook body            | Confirmed               |
+| Production rejects Razorpay                         | Confirmed               |
+| Live key id rejected                                | Confirmed               |
+| Authorized ≠ captured                               | Confirmed               |
+| Idempotent activation                               | Confirmed               |
 
 ---
 
 ## E. Tests / validation
 
-| Gate                            | Result                                                   |
-| ------------------------------- | -------------------------------------------------------- |
-| Full Pest                       | **375 tests · 373 passed · 2 skipped · 1905 assertions** |
-| Batch F focused                 | Pass                                                     |
-| `npm run check` / types / build | Pass                                                     |
-| Pint / PHPStan                  | Pass                                                     |
+| Gate                              | Result                                                   |
+| --------------------------------- | -------------------------------------------------------- |
+| Full Pest                         | **382 tests · 380 passed · 2 skipped · 1945 assertions** |
+| Batch E/F focused                 | Pass                                                     |
+| Composer validate / platform-reqs | Pass (`razorpay/razorpay` 2.9.3; PHP 8.5)                |
+| `npm run check` / types / build   | Pass                                                     |
+| Pint / PHPStan                    | Pass                                                     |
 
 ---
 
-## F. G-PAY setup (remaining)
+## F. G-PAY remaining
 
-| Step | Action                                                                                  |
-| ---- | --------------------------------------------------------------------------------------- |
-| 1    | Create Razorpay Test Mode keys                                                          |
-| 2    | Create webhook secret; subscribe events                                                 |
-| 3    | Place secrets in approved env/secret manager (**never commit**)                         |
-| 4    | Point webhook to non-prod `https://<host>/webhooks/razorpay`                            |
-| 5    | Enable flags listed above                                                               |
-| 6    | Run manual sandbox matrix; attach sanitized order/payment/event ids to a follow-up cert |
-
-Webhook URL format: `{APP_URL}/webhooks/razorpay` (do not invent a deployment hostname here).
+1. Confirm Test Mode keys + webhook secret in secret store
+2. Optional HTTPS tunnel → `{APP_URL}/webhooks/razorpay`
+3. Dashboard events: `payment.captured`, `payment.failed`
+4. Manual sandbox matrix with sanitized order/payment/event ids
 
 ---
 
 ## G. Remaining decisions
 
 Unchanged Pending: AUD-CON-006, PO-P3-PAY-PROD, issuer/tax, ADR-010.  
-Do not treat Batch F as Phase 3 formal acceptance.
+Do not treat Batch F / SDK refactor as Phase 3 formal acceptance.
 
 ---
 
 ## H. Final verdict
 
-**IMPLEMENTATION COMPLETE — G-PAY CONFIGURATION PENDING**
+**IMPLEMENTATION COMPLETE — G-PAY SANDBOX EVIDENCE PENDING**

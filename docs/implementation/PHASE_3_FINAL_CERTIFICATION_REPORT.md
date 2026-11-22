@@ -145,7 +145,7 @@ See `PHASE_3_PO_DECISION_PACKAGE.md`:
 
 1. AUD-CON-006 approve / amend / accept Confirmed-only exception
 2. PO-P3-PAY Test Mode + G-PAY credentials
-3. PO-P1-DEPS Option A (no SDK) vs B (official SDK)
+3. PO-P1-DEPS official `razorpay/razorpay` SDK **Approved** (Test Mode); PO-P3-PAY-PROD still Pending
 4. Issuer/tax validation for production invoices
 5. ADR-010 deferred
 

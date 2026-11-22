@@ -333,9 +333,9 @@ export default function SubscriptionCheckout({
                 </div>
                 {gateway === 'razorpay_test' && !public_key ? (
                     <p className="text-sm text-muted-foreground">
-                        Razorpay Test Mode is selected but credentials are not
-                        ready (G-PAY). Configure RAZORPAY_* env vars and
-                        RAZORPAY_TEST_ENABLED=true.
+                        Razorpay Test Mode credentials are incomplete. Set
+                        RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, and
+                        RAZORPAY_WEBHOOK_SECRET (Test Mode only).
                     </p>
                 ) : null}
             </div>

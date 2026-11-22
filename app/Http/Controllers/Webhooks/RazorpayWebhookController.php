@@ -12,7 +12,8 @@ use Throwable;
 
 /**
  * Non-production Razorpay Test Mode webhook (PO-P3-PAY-TEST).
- * Disabled in production and when Test Mode / webhook flag is off.
+ * Enabled only when APP_ENV is non-production and complete rzp_test_* credentials exist.
+ * Always disabled in production (PO-P3-PAY-PROD Pending).
  */
 final class RazorpayWebhookController extends Controller
 {

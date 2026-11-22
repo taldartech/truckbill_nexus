@@ -185,7 +185,7 @@
 | Blocked by        | G-PAY credentials/approach; package approval if SDK added; **no live charges** without explicit PO                                                                                                                                              |
 | Tests             | Signature failure reject; duplicate webhook no double credit; activation without invoice approval; refund APIs absent                                                                                                                           |
 | Acceptance        | Webhook idempotency + payment-activated subscription exit criteria                                                                                                                                                                              |
-| **Status**        | **Batch F Test Mode implementation complete** — RazorpayTestPaymentGateway + checkout + webhook; G-PAY sandbox evidence Open; PO-P3-PAY-PROD Pending                                                                                            |
+| **Status**        | **Batch F Test Mode + official SDK** — `razorpay/razorpay`; three env vars; checkout + webhook; G-PAY sandbox evidence Open; PO-P3-PAY-PROD Pending                                                                                             |
 
 ---
 

@@ -6,8 +6,10 @@ use App\Domains\Subscription\Exceptions\SubscriptionDomainException;
 use Illuminate\Contracts\Foundation\Application;
 
 /**
- * PO-P3-PAY-TEST approved Test Mode; PO-P3-PAY-PROD remains Pending.
- * Fails closed on inconsistent environment / credentials.
+ * PO-P3-PAY-TEST: Razorpay Test Mode via official SDK.
+ * PO-P3-PAY-PROD remains Pending — production Razorpay is always blocked.
+ *
+ * Selection uses APP_ENV + Key ID prefix (rzp_test_ / rzp_live_), not extra env flags.
  */
 final class PaymentGatewayAuthorization
 {
@@ -15,30 +17,70 @@ final class PaymentGatewayAuthorization
         private readonly Application $app,
     ) {}
 
-    public function selectedGateway(): string
+    public function keyId(): string
     {
-        return (string) config('subscription.payments.gateway', 'fake');
+        return trim((string) config('subscription.payments.razorpay.key_id', ''));
     }
 
-    public function razorpayMode(): string
+    public function keySecret(): string
     {
-        return strtolower((string) config('subscription.payments.razorpay.mode', 'test'));
+        return trim((string) config('subscription.payments.razorpay.key_secret', ''));
     }
 
-    public function isTestModeConfigured(): bool
+    public function webhookSecret(): string
     {
-        return (bool) config('subscription.payments.razorpay.test_enabled', false);
+        return trim((string) config('subscription.payments.razorpay.webhook_secret', ''));
     }
 
-    public function isWebhookEndpointEnabled(): bool
+    public function hasCompleteCredentials(): bool
+    {
+        return $this->keyId() !== ''
+            && $this->keySecret() !== ''
+            && $this->webhookSecret() !== '';
+    }
+
+    public function isLiveKeyId(): bool
+    {
+        return str_starts_with($this->keyId(), 'rzp_live_');
+    }
+
+    public function isTestKeyId(): bool
+    {
+        return str_starts_with($this->keyId(), 'rzp_test_');
+    }
+
+    /**
+     * True when non-production APP_ENV has complete rzp_test_* credentials.
+     */
+    public function isRazorpayTestModeAvailable(): bool
     {
         if ($this->app->isProduction()) {
             return false;
         }
 
-        return (bool) config('subscription.payments.webhook_endpoint_enabled', false)
-            && $this->selectedGateway() === 'razorpay_test'
-            && $this->isTestModeConfigured();
+        if (! $this->hasCompleteCredentials()) {
+            return false;
+        }
+
+        if ($this->isLiveKeyId()) {
+            return false;
+        }
+
+        return $this->isTestKeyId();
+    }
+
+    public function isWebhookEndpointEnabled(): bool
+    {
+        return $this->isRazorpayTestModeAvailable();
+    }
+
+    public function selectedGateway(): string
+    {
+        if ($this->app->environment('testing')) {
+            return 'fake';
+        }
+
+        return $this->isRazorpayTestModeAvailable() ? 'razorpay_test' : 'fake';
     }
 
     public function assertGatewayAllowed(string $gatewayName): void
@@ -47,7 +89,7 @@ final class PaymentGatewayAuthorization
             return;
         }
 
-        if ($gatewayName === 'razorpay_live' || $this->razorpayMode() === 'live') {
+        if ($gatewayName === 'razorpay_live') {
             throw new SubscriptionDomainException(
                 'Production Razorpay (PO-P3-PAY-PROD) is not authorized.'
             );
@@ -59,47 +101,31 @@ final class PaymentGatewayAuthorization
 
         if ($this->app->isProduction()) {
             throw new SubscriptionDomainException(
-                'Razorpay Test Mode must not run in the production application environment.'
+                'Razorpay payments are disabled in the production application environment until PO-P3-PAY-PROD.'
             );
         }
 
-        if (! $this->isTestModeConfigured()) {
+        if (! $this->hasCompleteCredentials()) {
             throw new SubscriptionDomainException(
-                'Razorpay Test Mode is disabled. Set RAZORPAY_TEST_ENABLED=true after G-PAY credentials are configured.'
+                'Razorpay Test Mode credentials are incomplete (RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET).'
             );
         }
 
-        if ($this->razorpayMode() !== 'test') {
-            throw new SubscriptionDomainException('RAZORPAY_MODE must be "test" for PO-P3-PAY-TEST.');
+        if ($this->isLiveKeyId()) {
+            throw new SubscriptionDomainException('Live Razorpay key id is not permitted (PO-P3-PAY-PROD Pending).');
         }
 
-        $keyId = trim((string) config('subscription.payments.razorpay.key_id', ''));
-        $keySecret = trim((string) config('subscription.payments.razorpay.key_secret', ''));
-        $webhookSecret = trim((string) config('subscription.payments.razorpay.webhook_secret', ''));
-
-        if ($keyId === '' || $keySecret === '' || $webhookSecret === '') {
-            throw new SubscriptionDomainException(
-                'Razorpay Test Mode credentials are incomplete (key id, key secret, webhook secret required).'
-            );
-        }
-
-        // Live key ids commonly start with rzp_live_; reject them in Test Mode.
-        if (str_starts_with($keyId, 'rzp_live_')) {
-            throw new SubscriptionDomainException('Live Razorpay key id is not permitted in Test Mode.');
+        if (! $this->isTestKeyId()) {
+            throw new SubscriptionDomainException('Razorpay Key ID must start with rzp_test_ for Test Mode.');
         }
     }
 
     public function resolveBindingClass(): string
     {
-        $gateway = $this->selectedGateway();
-
-        return match ($gateway) {
+        return match ($this->selectedGateway()) {
             'fake' => FakePaymentGateway::class,
             'razorpay_test' => RazorpayTestPaymentGateway::class,
-            'razorpay_live' => throw new SubscriptionDomainException(
-                'Production Razorpay binding is unavailable (PO-P3-PAY-PROD Pending).'
-            ),
-            default => throw new SubscriptionDomainException('Unknown SUBSCRIPTION_PAYMENT_GATEWAY: '.$gateway),
+            default => FakePaymentGateway::class,
         };
     }
 }

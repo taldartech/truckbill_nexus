@@ -6,7 +6,9 @@ use App\Domains\Subscription\Enums\SubscriptionTenure;
 use App\Domains\Subscription\Exceptions\SubscriptionDomainException;
 use App\Domains\Subscription\Payments\CheckoutVerificationService;
 use App\Domains\Subscription\Payments\Gateway\FakePaymentGateway;
+use App\Domains\Subscription\Payments\Gateway\PaymentGateway;
 use App\Domains\Subscription\Payments\Gateway\PaymentGatewayAuthorization;
+use App\Domains\Subscription\Payments\Gateway\RazorpayClient;
 use App\Domains\Subscription\Payments\Gateway\RazorpayTestPaymentGateway;
 use App\Domains\Subscription\Payments\PaymentEventProcessor;
 use App\Domains\Subscription\Payments\PaymentIntentService;
@@ -22,17 +24,18 @@ use Database\Seeders\RbacSeeder;
 use Database\Seeders\SubscriptionCatalogueSeeder;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Http;
 use Mockery;
+use Mockery\MockInterface;
+use Razorpay\Api\Errors\SignatureVerificationError;
 
 beforeEach(function () {
     TenantContextHolder::clear();
     (new RbacSeeder)->run();
     (new SubscriptionCatalogueSeeder)->run();
     config([
-        'subscription.payments.gateway' => 'fake',
-        'subscription.payments.razorpay.test_enabled' => false,
-        'subscription.payments.webhook_endpoint_enabled' => false,
+        'subscription.payments.razorpay.key_id' => '',
+        'subscription.payments.razorpay.key_secret' => '',
+        'subscription.payments.razorpay.webhook_secret' => '',
     ]);
 });
 
@@ -73,6 +76,30 @@ function batchFOwnerDraft(): array
     return compact('owner', 'company', 'draft');
 }
 
+function batchFRazorpayConfig(): void
+{
+    config([
+        'subscription.payments.razorpay.key_id' => 'rzp_test_ci_key',
+        'subscription.payments.razorpay.key_secret' => 'test_secret',
+        'subscription.payments.razorpay.webhook_secret' => 'wh_secret',
+    ]);
+}
+
+/**
+ * @return array{0: RazorpayClient&MockInterface, 1: RazorpayTestPaymentGateway}
+ */
+function batchFSdkGateway(?callable $configure = null): array
+{
+    batchFRazorpayConfig();
+    $client = Mockery::mock(RazorpayClient::class);
+    if ($configure !== null) {
+        $configure($client);
+    }
+    $gateway = new RazorpayTestPaymentGateway(app(PaymentGatewayAuthorization::class), $client);
+
+    return [$client, $gateway];
+}
+
 test('paise conversion is exact', function () {
     expect(RazorpayMoney::toPaise('10.00'))->toBe(1000)
         ->and(RazorpayMoney::fromPaise(1000))->toBe('10.00')
@@ -82,27 +109,22 @@ test('paise conversion is exact', function () {
 test('production environment rejects razorpay test mode', function () {
     $app = Mockery::mock(Application::class);
     $app->shouldReceive('isProduction')->andReturn(true);
+    $app->shouldReceive('environment')->with('testing')->andReturn(false);
     $auth = new PaymentGatewayAuthorization($app);
-    config([
-        'subscription.payments.gateway' => 'razorpay_test',
-        'subscription.payments.razorpay.test_enabled' => true,
-        'subscription.payments.razorpay.mode' => 'test',
-        'subscription.payments.razorpay.key_id' => 'rzp_test_x',
-        'subscription.payments.razorpay.key_secret' => 'secret',
-        'subscription.payments.razorpay.webhook_secret' => 'whsec',
-    ]);
+    batchFRazorpayConfig();
 
     expect(fn () => $auth->assertGatewayAllowed('razorpay_test'))
-        ->toThrow(SubscriptionDomainException::class);
+        ->toThrow(SubscriptionDomainException::class)
+        ->and($auth->isRazorpayTestModeAvailable())->toBeFalse()
+        ->and($auth->isWebhookEndpointEnabled())->toBeFalse();
 });
 
 test('live key id is rejected in test mode', function () {
     $app = Mockery::mock(Application::class);
     $app->shouldReceive('isProduction')->andReturn(false);
+    $app->shouldReceive('environment')->with('testing')->andReturn(false);
     $auth = new PaymentGatewayAuthorization($app);
     config([
-        'subscription.payments.razorpay.test_enabled' => true,
-        'subscription.payments.razorpay.mode' => 'test',
         'subscription.payments.razorpay.key_id' => 'rzp_live_should_fail',
         'subscription.payments.razorpay.key_secret' => 'secret',
         'subscription.payments.razorpay.webhook_secret' => 'whsec',
@@ -115,17 +137,23 @@ test('live key id is rejected in test mode', function () {
 test('missing credentials fail closed', function () {
     $app = Mockery::mock(Application::class);
     $app->shouldReceive('isProduction')->andReturn(false);
+    $app->shouldReceive('environment')->with('testing')->andReturn(false);
     $auth = new PaymentGatewayAuthorization($app);
     config([
-        'subscription.payments.razorpay.test_enabled' => true,
-        'subscription.payments.razorpay.mode' => 'test',
         'subscription.payments.razorpay.key_id' => '',
         'subscription.payments.razorpay.key_secret' => '',
         'subscription.payments.razorpay.webhook_secret' => '',
     ]);
 
     expect(fn () => $auth->assertGatewayAllowed('razorpay_test'))
-        ->toThrow(SubscriptionDomainException::class);
+        ->toThrow(SubscriptionDomainException::class)
+        ->and($auth->selectedGateway())->toBe('fake');
+});
+
+test('testing environment selects fake gateway automatically', function () {
+    expect(app(PaymentGatewayAuthorization::class)->selectedGateway())->toBe('fake')
+        ->and(app(PaymentGateway::class))
+        ->toBeInstanceOf(FakePaymentGateway::class);
 });
 
 test('razorpay webhook normalizer maps payment captured events', function () {
@@ -151,49 +179,41 @@ test('razorpay webhook normalizer maps payment captured events', function () {
         ->and($normalized['status'])->toBe('captured');
 });
 
-test('http-mocked razorpay test gateway creates orders and verifies signatures', function () {
-    config([
-        'subscription.payments.gateway' => 'razorpay_test',
-        'subscription.payments.razorpay.test_enabled' => true,
-        'subscription.payments.razorpay.mode' => 'test',
-        'subscription.payments.razorpay.key_id' => 'rzp_test_ci',
-        'subscription.payments.razorpay.key_secret' => 'test_secret',
-        'subscription.payments.razorpay.webhook_secret' => 'wh_secret',
-        'subscription.payments.razorpay.base_url' => 'https://api.razorpay.com/v1',
-    ]);
+test('sdk-backed gateway creates orders and verifies signatures', function () {
+    ['company' => $company, 'draft' => $draft] = batchFOwnerDraft();
 
-    Http::fake([
-        'api.razorpay.com/v1/orders' => Http::response([
-            'id' => 'order_RzpHttp1',
+    [$client, $gateway] = batchFSdkGateway(function (RazorpayClient&MockInterface $client): void {
+        $client->shouldReceive('createOrder')->once()->andReturn([
+            'id' => 'order_RzpSdk1',
             'amount' => 100000,
             'currency' => 'INR',
             'status' => 'created',
-        ], 200),
-        'api.razorpay.com/v1/payments/pay_RzpHttp1' => Http::response([
-            'id' => 'pay_RzpHttp1',
-            'order_id' => 'order_RzpHttp1',
-            'status' => 'captured',
-            'amount' => 100000,
-            'currency' => 'INR',
-        ], 200),
-    ]);
+        ]);
+        $client->shouldReceive('verifyPaymentSignature')->once()->with(Mockery::on(
+            fn (array $attrs): bool => $attrs['razorpay_order_id'] === 'order_RzpSdk1'
+                && $attrs['razorpay_payment_id'] === 'pay_RzpSdk1'
+                && $attrs['razorpay_signature'] === 'sig_ok'
+        ))->andReturnNull();
+        $client->shouldReceive('verifyPaymentSignature')->once()->with(Mockery::on(
+            fn (array $attrs): bool => ($attrs['razorpay_signature'] ?? '') === 'bad'
+        ))->andThrow(new SignatureVerificationError('Invalid signature passed'));
+        $client->shouldReceive('verifyWebhookSignature')->twice()->andReturnNull();
+        $client->shouldReceive('fetchPayment')->never();
+    });
 
-    ['owner' => $owner, 'company' => $company, 'draft' => $draft] = batchFOwnerDraft();
-    $gateway = new RazorpayTestPaymentGateway(app(PaymentGatewayAuthorization::class));
     $intents = new PaymentIntentService($gateway, app(PaymentGatewayAuthorization::class));
-    $intent = $intents->create($company, 'subscription_activation', '1000.00', 'rzp-http-1', subscription: $draft);
+    $intent = $intents->create($company, 'subscription_activation', '1000.00', 'rzp-sdk-1', subscription: $draft);
 
-    expect($intent->gateway_order_id)->toBe('order_RzpHttp1')
+    expect($intent->gateway_order_id)->toBe('order_RzpSdk1')
         ->and($intent->gateway)->toBe('razorpay_test');
 
-    $signature = hash_hmac('sha256', 'order_RzpHttp1|pay_RzpHttp1', 'test_secret');
     expect($gateway->verifyCheckoutSignature([
-        'razorpay_order_id' => 'order_RzpHttp1',
-        'razorpay_payment_id' => 'pay_RzpHttp1',
-    ], $signature))->toBeTrue()
+        'razorpay_order_id' => 'order_RzpSdk1',
+        'razorpay_payment_id' => 'pay_RzpSdk1',
+    ], 'sig_ok'))->toBeTrue()
         ->and($gateway->verifyCheckoutSignature([
-            'razorpay_order_id' => 'order_RzpHttp1',
-            'razorpay_payment_id' => 'pay_RzpHttp1',
+            'razorpay_order_id' => 'order_RzpSdk1',
+            'razorpay_payment_id' => 'pay_RzpSdk1',
         ], 'bad'))->toBeFalse();
 
     $raw = json_encode([
@@ -201,8 +221,8 @@ test('http-mocked razorpay test gateway creates orders and verifies signatures',
         'payload' => [
             'payment' => [
                 'entity' => [
-                    'id' => 'pay_RzpHttp1',
-                    'order_id' => 'order_RzpHttp1',
+                    'id' => 'pay_RzpSdk1',
+                    'order_id' => 'order_RzpSdk1',
                     'status' => 'captured',
                     'amount' => 100000,
                     'currency' => 'INR',
@@ -210,15 +230,15 @@ test('http-mocked razorpay test gateway creates orders and verifies signatures',
             ],
         ],
     ], JSON_THROW_ON_ERROR);
-    $whSig = hash_hmac('sha256', $raw, 'wh_secret');
+
     $processor = new PaymentEventProcessor($gateway);
-    $event = $processor->processRawWebhook($raw, $whSig, 'rzp_evt_1');
+    $event = $processor->processRawWebhook($raw, 'wh_sig', 'rzp_evt_1', 'wh_secret');
 
     expect($event->processing_status)->toBe('processed')
         ->and($intent->fresh()->status)->toBe('paid')
         ->and($draft->fresh()->status)->toBe('active');
 
-    $dup = $processor->processRawWebhook($raw, $whSig, 'rzp_evt_1');
+    $dup = $processor->processRawWebhook($raw, 'wh_sig', 'rzp_evt_1', 'wh_secret');
     expect($dup->processing_status)->toBe('duplicate');
 });
 
@@ -259,32 +279,27 @@ test('owner checkout simulate activates subscription with fake gateway', functio
         ->and($draft->fresh()->status)->toBe('active');
 });
 
-test('webhook endpoint is closed when test mode disabled', function () {
+test('webhook endpoint is closed when test credentials are absent', function () {
     $this->post(route('webhooks.razorpay'), ['event' => 'payment.captured'])->assertNotFound();
 });
 
-test('webhook endpoint processes signed razorpay payload when enabled', function () {
-    config([
-        'subscription.payments.gateway' => 'razorpay_test',
-        'subscription.payments.razorpay.test_enabled' => true,
-        'subscription.payments.razorpay.mode' => 'test',
-        'subscription.payments.razorpay.key_id' => 'rzp_test_ci',
-        'subscription.payments.razorpay.key_secret' => 'test_secret',
-        'subscription.payments.razorpay.webhook_secret' => 'wh_secret',
-        'subscription.payments.webhook_endpoint_enabled' => true,
-    ]);
+test('webhook endpoint processes signed razorpay payload when test credentials exist', function () {
+    batchFRazorpayConfig();
 
-    Http::fake([
-        'api.razorpay.com/v1/orders' => Http::response([
-            'id' => 'order_Wh1',
-            'amount' => 25000,
-            'currency' => 'INR',
-            'status' => 'created',
-        ], 200),
+    $client = Mockery::mock(RazorpayClient::class);
+    $client->shouldReceive('createOrder')->once()->andReturn([
+        'id' => 'order_Wh1',
+        'amount' => 25000,
+        'currency' => 'INR',
+        'status' => 'created',
     ]);
+    $client->shouldReceive('verifyWebhookSignature')->once()->andReturnNull();
+
+    $this->app->instance(RazorpayClient::class, $client);
+    $gateway = new RazorpayTestPaymentGateway(app(PaymentGatewayAuthorization::class), $client);
+    $this->app->instance(PaymentGateway::class, $gateway);
 
     ['company' => $company, 'draft' => $draft] = batchFOwnerDraft();
-    $gateway = new RazorpayTestPaymentGateway(app(PaymentGatewayAuthorization::class));
     $intent = (new PaymentIntentService($gateway, app(PaymentGatewayAuthorization::class)))
         ->create($company, 'subscription_activation', '250.00', 'wh-intent-1', subscription: $draft);
 
@@ -302,7 +317,7 @@ test('webhook endpoint processes signed razorpay payload when enabled', function
             ],
         ],
     ], JSON_THROW_ON_ERROR);
-    $sig = hash_hmac('sha256', $raw, 'wh_secret');
+    $sig = 'signed';
 
     $this->call(
         'POST',
@@ -370,25 +385,15 @@ test('stale fake gateway intent is not reused under razorpay test mode', functio
     expect($fakeIntent->gateway)->toBe('fake')
         ->and($fakeIntent->gateway_order_id)->toStartWith('order_fake_');
 
-    config([
-        'subscription.payments.gateway' => 'razorpay_test',
-        'subscription.payments.razorpay.test_enabled' => true,
-        'subscription.payments.razorpay.mode' => 'test',
-        'subscription.payments.razorpay.key_id' => 'rzp_test_ci',
-        'subscription.payments.razorpay.key_secret' => 'test_secret',
-        'subscription.payments.razorpay.webhook_secret' => 'wh_secret',
-    ]);
-
-    Http::fake([
-        'api.razorpay.com/v1/orders' => Http::response([
+    [, $rzpGateway] = batchFSdkGateway(function (RazorpayClient&MockInterface $client): void {
+        $client->shouldReceive('createOrder')->once()->andReturn([
             'id' => 'order_RzpFresh1',
             'amount' => 900000,
             'currency' => 'INR',
             'status' => 'created',
-        ], 200),
-    ]);
+        ]);
+    });
 
-    $rzpGateway = new RazorpayTestPaymentGateway(app(PaymentGatewayAuthorization::class));
     $rzpIntent = (new PaymentIntentService($rzpGateway, app(PaymentGatewayAuthorization::class)))
         ->create($company, 'subscription_activation', '9000.00', $logicalKey, subscription: $draft);
 
@@ -399,43 +404,33 @@ test('stale fake gateway intent is not reused under razorpay test mode', functio
 });
 
 test('checkout verification rejects authorized but uncaptured payments', function () {
-    config([
-        'subscription.payments.gateway' => 'razorpay_test',
-        'subscription.payments.razorpay.test_enabled' => true,
-        'subscription.payments.razorpay.mode' => 'test',
-        'subscription.payments.razorpay.key_id' => 'rzp_test_ci',
-        'subscription.payments.razorpay.key_secret' => 'test_secret',
-        'subscription.payments.razorpay.webhook_secret' => 'wh_secret',
-    ]);
+    ['owner' => $owner, 'company' => $company, 'draft' => $draft] = batchFOwnerDraft();
 
-    Http::fake([
-        'api.razorpay.com/v1/orders' => Http::response([
+    [, $gateway] = batchFSdkGateway(function (RazorpayClient&MockInterface $client): void {
+        $client->shouldReceive('createOrder')->once()->andReturn([
             'id' => 'order_Auth1',
             'amount' => 50000,
             'currency' => 'INR',
             'status' => 'created',
-        ], 200),
-        'api.razorpay.com/v1/payments/pay_Auth1' => Http::response([
+        ]);
+        $client->shouldReceive('verifyPaymentSignature')->once()->andReturnNull();
+        $client->shouldReceive('fetchPayment')->once()->with('pay_Auth1')->andReturn([
             'id' => 'pay_Auth1',
             'order_id' => 'order_Auth1',
             'status' => 'authorized',
             'amount' => 50000,
             'currency' => 'INR',
-        ], 200),
-    ]);
+        ]);
+    });
 
-    ['owner' => $owner, 'company' => $company, 'draft' => $draft] = batchFOwnerDraft();
-    $gateway = new RazorpayTestPaymentGateway(app(PaymentGatewayAuthorization::class));
     $intent = (new PaymentIntentService($gateway, app(PaymentGatewayAuthorization::class)))
         ->create($company, 'subscription_activation', '500.00', 'auth-uncaptured', subscription: $draft);
-
-    $signature = hash_hmac('sha256', 'order_Auth1|pay_Auth1', 'test_secret');
 
     expect(fn () => (new CheckoutVerificationService($gateway, new PaymentEventProcessor($gateway)))
         ->verifyOwnerCallback($owner, $company, $intent, [
             'razorpay_order_id' => 'order_Auth1',
             'razorpay_payment_id' => 'pay_Auth1',
-            'razorpay_signature' => $signature,
+            'razorpay_signature' => 'sig',
         ]))->toThrow(SubscriptionDomainException::class);
 
     expect($intent->fresh()->status)->not->toBe('paid')
@@ -443,42 +438,33 @@ test('checkout verification rejects authorized but uncaptured payments', functio
 });
 
 test('checkout verification accepts captured payment with matching amount', function () {
-    config([
-        'subscription.payments.gateway' => 'razorpay_test',
-        'subscription.payments.razorpay.test_enabled' => true,
-        'subscription.payments.razorpay.mode' => 'test',
-        'subscription.payments.razorpay.key_id' => 'rzp_test_ci',
-        'subscription.payments.razorpay.key_secret' => 'test_secret',
-        'subscription.payments.razorpay.webhook_secret' => 'wh_secret',
-    ]);
+    ['owner' => $owner, 'company' => $company, 'draft' => $draft] = batchFOwnerDraft();
 
-    Http::fake([
-        'api.razorpay.com/v1/orders' => Http::response([
+    [, $gateway] = batchFSdkGateway(function (RazorpayClient&MockInterface $client): void {
+        $client->shouldReceive('createOrder')->once()->andReturn([
             'id' => 'order_Cap1',
             'amount' => 75000,
             'currency' => 'INR',
             'status' => 'created',
-        ], 200),
-        'api.razorpay.com/v1/payments/pay_Cap1' => Http::response([
+        ]);
+        $client->shouldReceive('verifyPaymentSignature')->once()->andReturnNull();
+        $client->shouldReceive('fetchPayment')->once()->with('pay_Cap1')->andReturn([
             'id' => 'pay_Cap1',
             'order_id' => 'order_Cap1',
             'status' => 'captured',
             'amount' => 75000,
             'currency' => 'INR',
-        ], 200),
-    ]);
+        ]);
+    });
 
-    ['owner' => $owner, 'company' => $company, 'draft' => $draft] = batchFOwnerDraft();
-    $gateway = new RazorpayTestPaymentGateway(app(PaymentGatewayAuthorization::class));
     $intent = (new PaymentIntentService($gateway, app(PaymentGatewayAuthorization::class)))
         ->create($company, 'subscription_activation', '750.00', 'cap-ok', subscription: $draft);
 
-    $signature = hash_hmac('sha256', 'order_Cap1|pay_Cap1', 'test_secret');
     $verified = (new CheckoutVerificationService($gateway, new PaymentEventProcessor($gateway)))
         ->verifyOwnerCallback($owner, $company, $intent, [
             'razorpay_order_id' => 'order_Cap1',
             'razorpay_payment_id' => 'pay_Cap1',
-            'razorpay_signature' => $signature,
+            'razorpay_signature' => 'sig',
         ]);
 
     expect($verified->status)->toBe('paid')
@@ -486,43 +472,33 @@ test('checkout verification accepts captured payment with matching amount', func
 });
 
 test('checkout verification rejects remote amount mismatch', function () {
-    config([
-        'subscription.payments.gateway' => 'razorpay_test',
-        'subscription.payments.razorpay.test_enabled' => true,
-        'subscription.payments.razorpay.mode' => 'test',
-        'subscription.payments.razorpay.key_id' => 'rzp_test_ci',
-        'subscription.payments.razorpay.key_secret' => 'test_secret',
-        'subscription.payments.razorpay.webhook_secret' => 'wh_secret',
-    ]);
+    ['owner' => $owner, 'company' => $company, 'draft' => $draft] = batchFOwnerDraft();
 
-    Http::fake([
-        'api.razorpay.com/v1/orders' => Http::response([
+    [, $gateway] = batchFSdkGateway(function (RazorpayClient&MockInterface $client): void {
+        $client->shouldReceive('createOrder')->once()->andReturn([
             'id' => 'order_Mis1',
             'amount' => 10000,
             'currency' => 'INR',
             'status' => 'created',
-        ], 200),
-        'api.razorpay.com/v1/payments/pay_Mis1' => Http::response([
+        ]);
+        $client->shouldReceive('verifyPaymentSignature')->once()->andReturnNull();
+        $client->shouldReceive('fetchPayment')->once()->andReturn([
             'id' => 'pay_Mis1',
             'order_id' => 'order_Mis1',
             'status' => 'captured',
             'amount' => 1,
             'currency' => 'INR',
-        ], 200),
-    ]);
+        ]);
+    });
 
-    ['owner' => $owner, 'company' => $company, 'draft' => $draft] = batchFOwnerDraft();
-    $gateway = new RazorpayTestPaymentGateway(app(PaymentGatewayAuthorization::class));
     $intent = (new PaymentIntentService($gateway, app(PaymentGatewayAuthorization::class)))
         ->create($company, 'subscription_activation', '100.00', 'amt-mis', subscription: $draft);
-
-    $signature = hash_hmac('sha256', 'order_Mis1|pay_Mis1', 'test_secret');
 
     expect(fn () => (new CheckoutVerificationService($gateway, new PaymentEventProcessor($gateway)))
         ->verifyOwnerCallback($owner, $company, $intent, [
             'razorpay_order_id' => 'order_Mis1',
             'razorpay_payment_id' => 'pay_Mis1',
-            'razorpay_signature' => $signature,
+            'razorpay_signature' => 'sig',
         ]))->toThrow(SubscriptionDomainException::class);
 
     expect($intent->fresh()->status)->not->toBe('paid');
@@ -540,4 +516,16 @@ test('failed intent can be retried without reusing the failed row', function () 
     expect($second->id)->not->toBe($first->id)
         ->and($second->status)->toBe('order_created')
         ->and($second->gateway_order_id)->not->toBe($first->gateway_order_id);
+});
+
+test('sdk order creation failures are wrapped safely', function () {
+    ['company' => $company, 'draft' => $draft] = batchFOwnerDraft();
+
+    [, $gateway] = batchFSdkGateway(function (RazorpayClient&MockInterface $client): void {
+        $client->shouldReceive('createOrder')->once()->andThrow(new RuntimeException('network down'));
+    });
+
+    expect(fn () => (new PaymentIntentService($gateway, app(PaymentGatewayAuthorization::class)))
+        ->create($company, 'subscription_activation', '100.00', 'sdk-fail', subscription: $draft))
+        ->toThrow(SubscriptionDomainException::class);
 });

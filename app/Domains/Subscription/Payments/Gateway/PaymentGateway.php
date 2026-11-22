@@ -5,7 +5,8 @@ namespace App\Domains\Subscription\Payments\Gateway;
 use App\Models\PaymentIntent;
 
 /**
- * Gateway adapter boundary. Live Razorpay requires PO-P3-PAY + G-PAY.
+ * Gateway adapter boundary. Official Razorpay PHP SDK for Test Mode (PO-P3-PAY-TEST).
+ * Live Razorpay requires PO-P3-PAY-PROD.
  */
 interface PaymentGateway
 {

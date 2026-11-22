@@ -14,7 +14,7 @@
 | AUD-CON-006     | Exact entitlement / state-action matrix | **Pending** (proposed below)     | Fine-grained create/edit/delete cells beyond Confirmed view-only |
 | PO-P3-PAY-TEST  | Razorpay Test Mode + checkout + webhook | **Approved** (22 Nov 2026)       | Implemented Batch F; sandbox evidence waits on G-PAY             |
 | G-PAY           | Credentials + verified webhook approach | **Open**                         | Sandbox keys, webhook secret, HTTPS reachability                 |
-| PO-P1-DEPS      | `razorpay/razorpay` SDK                 | **Option A approved (no SDK)**   | Do not install official SDK                                      |
+| PO-P1-DEPS      | Official `razorpay/razorpay` SDK        | **Approved** (SDK case only)     | Custom HTTP adapter superseded; no third-party wrappers          |
 | PO-P3-PAY-PROD  | Production monetary charges             | **Pending**                      | Real customer charges                                            |
 | TB-TAX / issuer | Central invoice issuer + GST validation | **Pending**                      | Legally operative production invoice issuance                    |
 | ADR-010         | Accounting posting architecture         | **Pending**                      | Invoice → GL postings                                            |
@@ -59,15 +59,15 @@ Cells marked **IMPLEMENTED (Confirmed)** already enforce Confirmed Rules §15. O
 
 ### PO-P3-PAY-TEST — APPROVED (22 November 2026)
 
-| Item                   | Decision                                                                   |
-| ---------------------- | -------------------------------------------------------------------------- |
-| Razorpay **Test Mode** | **Approved**                                                               |
-| Integration method     | Laravel HTTP client + HMAC-SHA256 (**no SDK**)                             |
-| Env vars               | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` (test) |
-| Webhook HTTP endpoint  | `/webhooks/razorpay` non-prod when flags enabled                           |
-| Checkout UI            | Owner Panel Test Mode checkout                                             |
-| Activation             | Verified Test Mode settlement may activate in non-prod only                |
-| Production charges     | **Not approved** — **PO-P3-PAY-PROD** Pending                              |
+| Item                   | Decision                                                                    |
+| ---------------------- | --------------------------------------------------------------------------- |
+| Razorpay **Test Mode** | **Approved**                                                                |
+| Integration method     | Official `razorpay/razorpay` PHP SDK (PO-P1-DEPS) — custom HTTP removed     |
+| Env vars               | Exactly `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` |
+| Webhook HTTP endpoint  | `/webhooks/razorpay` non-prod when Test Mode credentials are present        |
+| Checkout UI            | Owner Panel Test Mode checkout                                              |
+| Activation             | Verified Test Mode settlement may activate in non-prod only                 |
+| Production charges     | **Not approved** — **PO-P3-PAY-PROD** Pending                               |
 
 ### Recommended signature approach (no inventing)
 
@@ -86,12 +86,15 @@ Cells marked **IMPLEMENTED (Confirmed)** already enforce Confirmed Rules §15. O
 
 ---
 
-## F0.3 — PO-P1-DEPS recommendation
+## F0.3 — PO-P1-DEPS (Razorpay SDK)
 
-| Option | Package                 | Recommendation                                                  |
-| ------ | ----------------------- | --------------------------------------------------------------- |
-| A      | No new package          | **Approved with PO-P3-PAY-TEST** — `RazorpayTestPaymentGateway` |
-| B      | `razorpay/razorpay:2.*` | **Not approved** — do not install                               |
+| Option                                | Package                                                            | Status |
+| ------------------------------------- | ------------------------------------------------------------------ | ------ |
+| Official `razorpay/razorpay` ^2.9.3   | **Approved** — Test Mode only; custom Laravel HTTP adapter removed |
+| Third-party Laravel Razorpay wrappers | **Not approved**                                                   |
+| Production / live keys                | **Not approved** (PO-P3-PAY-PROD Pending)                          |
+
+Prior “no SDK” preference for Batch F is **superseded** by this explicit Product Owner authorization.
 
 ---
 

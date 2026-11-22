@@ -7,10 +7,16 @@ use Illuminate\Support\Str;
 
 /**
  * Deterministic non-production gateway for tests and local simulation.
+ * Selected automatically in the testing environment or when Test Mode credentials are absent.
  * Never represents genuine production settlement.
  */
 final class FakePaymentGateway implements PaymentGateway
 {
+    /**
+     * Fixed secret for CI / local fake webhooks — not configurable via env.
+     */
+    public const WEBHOOK_SECRET = 'test-webhook-secret-not-for-production';
+
     public function name(): string
     {
         return 'fake';
@@ -33,8 +39,8 @@ final class FakePaymentGateway implements PaymentGateway
 
     public function verifyCheckoutSignature(array $payload, string $signature): bool
     {
-        $orderId = (string) ($payload['order_id'] ?? '');
-        $paymentId = (string) ($payload['payment_id'] ?? '');
+        $orderId = (string) ($payload['razorpay_order_id'] ?? $payload['order_id'] ?? '');
+        $paymentId = (string) ($payload['razorpay_payment_id'] ?? $payload['payment_id'] ?? '');
         $expected = hash_hmac('sha256', $orderId.'|'.$paymentId, $this->secret());
 
         return hash_equals($expected, $signature);
@@ -49,7 +55,7 @@ final class FakePaymentGateway implements PaymentGateway
 
     public function secret(): string
     {
-        return (string) config('subscription.payments.fake_webhook_secret');
+        return self::WEBHOOK_SECRET;
     }
 
     /**

@@ -5,25 +5,21 @@ namespace App\Domains\Subscription\Payments\Gateway;
 use App\Domains\Subscription\Exceptions\SubscriptionDomainException;
 use App\Domains\Subscription\Payments\Support\RazorpayMoney;
 use App\Models\PaymentIntent;
-use Illuminate\Http\Client\ConnectionException;
-use Illuminate\Http\Client\PendingRequest;
-use Illuminate\Http\Client\RequestException;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Razorpay\Api\Errors\Error as RazorpayError;
+use Razorpay\Api\Errors\SignatureVerificationError;
 use Throwable;
 
 /**
- * Razorpay Test Mode adapter via Laravel HTTP client (PO-P3-PAY-TEST).
- * No SDK. Production live mode is never available here.
+ * Razorpay Test Mode adapter via official PHP SDK (PO-P3-PAY-TEST / PO-P1-DEPS).
+ * Production live mode is never available here.
  */
 final class RazorpayTestPaymentGateway implements PaymentGateway
 {
-    private readonly PaymentGatewayAuthorization $auth;
-
-    public function __construct(?PaymentGatewayAuthorization $auth = null)
-    {
-        $this->auth = $auth ?? app(PaymentGatewayAuthorization::class);
-    }
+    public function __construct(
+        private readonly PaymentGatewayAuthorization $auth,
+        private readonly RazorpayClient $client,
+    ) {}
 
     public function name(): string
     {
@@ -34,14 +30,14 @@ final class RazorpayTestPaymentGateway implements PaymentGateway
     {
         $this->auth->assertGatewayAllowed($this->name());
 
-        return (string) config('subscription.payments.razorpay.key_id');
+        return $this->auth->keyId();
     }
 
     public function webhookSecret(): string
     {
         $this->auth->assertGatewayAllowed($this->name());
 
-        return (string) config('subscription.payments.razorpay.webhook_secret');
+        return $this->auth->webhookSecret();
     }
 
     public function createOrder(PaymentIntent $intent, array $attributes = []): array
@@ -67,20 +63,17 @@ final class RazorpayTestPaymentGateway implements PaymentGateway
         ];
 
         try {
-            $response = $this->client()
-                ->post('/orders', $payload)
-                ->throw()
-                ->json();
-        } catch (ConnectionException $e) {
-            Log::warning('razorpay_test.order_timeout', ['payment_intent_id' => $intent->id]);
-            throw new SubscriptionDomainException('Razorpay Test Mode order request timed out.', 0, $e);
-        } catch (RequestException $e) {
+            $response = $this->client->createOrder($payload);
+        } catch (RazorpayError $e) {
             Log::warning('razorpay_test.order_failed', [
                 'payment_intent_id' => $intent->id,
-                'status' => $e->response->status(),
+                'code' => $e->getCode(),
             ]);
             throw new SubscriptionDomainException('Razorpay Test Mode order creation failed.', 0, $e);
         } catch (Throwable $e) {
+            Log::warning('razorpay_test.order_exception', [
+                'payment_intent_id' => $intent->id,
+            ]);
             throw new SubscriptionDomainException('Razorpay Test Mode order creation failed.', 0, $e);
         }
 
@@ -101,6 +94,7 @@ final class RazorpayTestPaymentGateway implements PaymentGateway
             'meta' => [
                 'simulated' => false,
                 'mode' => 'test',
+                'sdk' => 'razorpay/razorpay',
                 'amount_paise' => $paise,
                 'payment_intent_id' => $intent->id,
             ],
@@ -115,10 +109,7 @@ final class RazorpayTestPaymentGateway implements PaymentGateway
         $this->auth->assertGatewayAllowed($this->name());
 
         try {
-            return $this->client()
-                ->get('/payments/'.$paymentId)
-                ->throw()
-                ->json();
+            return $this->client->fetchPayment($paymentId);
         } catch (Throwable $e) {
             throw new SubscriptionDomainException('Unable to fetch Razorpay Test Mode payment.', 0, $e);
         }
@@ -134,13 +125,19 @@ final class RazorpayTestPaymentGateway implements PaymentGateway
             return false;
         }
 
-        $expected = hash_hmac(
-            'sha256',
-            $orderId.'|'.$paymentId,
-            (string) config('subscription.payments.razorpay.key_secret'),
-        );
+        try {
+            $this->client->verifyPaymentSignature([
+                'razorpay_order_id' => $orderId,
+                'razorpay_payment_id' => $paymentId,
+                'razorpay_signature' => $signature,
+            ]);
 
-        return hash_equals($expected, $signature);
+            return true;
+        } catch (SignatureVerificationError) {
+            return false;
+        } catch (Throwable) {
+            return false;
+        }
     }
 
     public function verifyWebhookSignature(string $rawBody, string $signature, string $secret): bool
@@ -149,26 +146,14 @@ final class RazorpayTestPaymentGateway implements PaymentGateway
             return false;
         }
 
-        $expected = hash_hmac('sha256', $rawBody, $secret);
+        try {
+            $this->client->verifyWebhookSignature($rawBody, $signature, $secret);
 
-        return hash_equals($expected, $signature);
-    }
-
-    /**
-     * @return PendingRequest
-     */
-    private function client()
-    {
-        $base = rtrim((string) config('subscription.payments.razorpay.base_url', 'https://api.razorpay.com/v1'), '/');
-
-        return Http::baseUrl($base)
-            ->withBasicAuth(
-                (string) config('subscription.payments.razorpay.key_id'),
-                (string) config('subscription.payments.razorpay.key_secret'),
-            )
-            ->acceptJson()
-            ->asJson()
-            ->connectTimeout(3)
-            ->timeout(10);
+            return true;
+        } catch (SignatureVerificationError) {
+            return false;
+        } catch (Throwable) {
+            return false;
+        }
     }
 }

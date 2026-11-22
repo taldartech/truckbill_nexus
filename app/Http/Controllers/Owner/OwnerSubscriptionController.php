@@ -148,9 +148,7 @@ class OwnerSubscriptionController extends Controller
                 'renew' => route('owner.subscription.renew', $company),
             ],
             'payment_gateway' => $this->gateway->name(),
-            'razorpay_test_ready' => $this->paymentAuth->isTestModeConfigured()
-                && $this->paymentAuth->selectedGateway() === 'razorpay_test'
-                && ! app()->isProduction(),
+            'razorpay_test_ready' => $this->paymentAuth->isRazorpayTestModeAvailable(),
         ]);
     }
 

@@ -7,6 +7,8 @@ use App\Domains\Auth\WebSessionService;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Subscription\Payments\Gateway\PaymentGateway;
 use App\Domains\Subscription\Payments\Gateway\PaymentGatewayAuthorization;
+use App\Domains\Subscription\Payments\Gateway\RazorpayClient;
+use App\Domains\Subscription\Payments\Gateway\RazorpaySdkClient;
 use App\Models\User;
 use App\Policies\UserPolicy;
 use App\Support\Files\Scanning\MalwareScanner;
@@ -19,6 +21,7 @@ use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Razorpay\Api\Api;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -40,7 +43,17 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->singleton(PaymentGatewayAuthorization::class);
 
-        // Resolves fake | razorpay_test. razorpay_live remains unavailable (PO-P3-PAY-PROD).
+        // Official Razorpay SDK client (PO-P1-DEPS). Bound only when Test Mode credentials are valid.
+        $this->app->bind(RazorpayClient::class, function ($app): RazorpayClient {
+            /** @var PaymentGatewayAuthorization $auth */
+            $auth = $app->make(PaymentGatewayAuthorization::class);
+            $auth->assertGatewayAllowed('razorpay_test');
+
+            return new RazorpaySdkClient(new Api($auth->keyId(), $auth->keySecret()));
+        });
+
+        // testing / missing credentials → FakePaymentGateway; non-prod rzp_test_* → SDK gateway.
+        // Production Razorpay remains unavailable (PO-P3-PAY-PROD Pending).
         $this->app->bind(PaymentGateway::class, function ($app): PaymentGateway {
             /** @var PaymentGatewayAuthorization $auth */
             $auth = $app->make(PaymentGatewayAuthorization::class);
