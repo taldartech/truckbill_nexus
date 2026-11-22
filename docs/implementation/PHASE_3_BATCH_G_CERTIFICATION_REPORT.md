@@ -4,7 +4,7 @@
 **Baseline before Batch G:** `3b84ef21bcc860d65c879e9e1f6377d86f96e487` (GitHub Actions #59 SUCCESS)  
 **Batch G HEAD:** `1dda31390dbc14f990373c2aa70c0eb7b47596a4`  
 **Authority:** PO-P3-AUTH · PO-P3-DESIGN-FORMAL · PO-P3-UI-AUTH · PO-P3-PAY-TEST · IN-T-01/IN-T-02  
-**Status:** Engineering complete with documented Product Owner exceptions — **not** auto-accepted.
+**Status:** Engineering complete with documented exceptions. **Superseding PO status:** Phase 3 **FORMALLY ACCEPTED WITH DOCUMENTED EXCEPTIONS** under **PO-P3-FINAL-ACCEPT** (Option A, 22 November 2026) against accepted tip baseline `68d11b1ecc267e91d3adb37825d94def71334a3a` (Actions #60). See `PHASE_3_ACCEPTANCE_RECORD.md`.
 
 ---
 
@@ -43,4 +43,6 @@ Full validation pipeline executed at Batch G close (see final certification repo
 
 ## Verdict
 
-**COMPLETE WITH DOCUMENTED EXCEPTIONS — PO ACCEPTANCE REQUIRED**
+**Engineering:** COMPLETE WITH DOCUMENTED EXCEPTIONS
+
+**Product Owner:** FORMALLY ACCEPTED WITH DOCUMENTED EXCEPTIONS (PO-P3-FINAL-ACCEPT) — deferred gates EX-01…EX-07 remain open; Phase 4 not authorized.

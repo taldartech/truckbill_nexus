@@ -1,31 +1,35 @@
 # Phase 3 — Product Owner Decision Package (F0)
 
 **Date:** 22 November 2026  
-**Baseline HEAD (Batch G start):** `3b84ef21bcc860d65c879e9e1f6377d86f96e487` (Actions #59 SUCCESS)  
-**Purpose:** Decision-ready approvals required to finish remaining Phase 3 exit criteria.  
-**Status:** Awaiting Product Owner decisions — **not** auto-approved.
+**Accepted baseline (PO-P3-FINAL-ACCEPT):** `68d11b1ecc267e91d3adb37825d94def71334a3a` (Actions **#60 SUCCESS**)  
+**Purpose:** Decision register for Phase 3 exit criteria and deferred gates.  
+**Status:** **PO-P3-FINAL-ACCEPT APPROVED — OPTION A** — Phase 3 **FORMALLY ACCEPTED WITH DOCUMENTED EXCEPTIONS**. Deferred gates remain open.
+
+Formal record: `PHASE_3_ACCEPTANCE_RECORD.md`.
 
 ---
 
 ## Approval matrix summary
 
-| Decision ID              | Topic                                   | Status today                     | Blocks                                                         |
-| ------------------------ | --------------------------------------- | -------------------------------- | -------------------------------------------------------------- |
-| AUD-CON-006              | Exact entitlement / state-action matrix | **Pending** (proposed below)     | Fine-grained cells beyond Confirmed §15                        |
-| PO-P3-PAY-TEST           | Razorpay Test Mode + checkout + webhook | **Approved**                     | SDK + Owner checkout; G-PAY ops for Dashboard webhook evidence |
-| G-PAY                    | Credentials + verified webhook approach | **Open**                         | Dashboard webhook subscription + public HTTPS tunnel delivery  |
-| PO-P1-DEPS               | Official `razorpay/razorpay` SDK        | **Approved** (SDK)               | Installed; PDF package **not** requested                       |
-| PO-P3-PAY-PROD           | Production monetary charges             | **Pending**                      | Real customer charges                                          |
-| TB-TAX / issuer          | Central invoice issuer + GST validation | **Pending**                      | Legally operative production invoice issuance                  |
-| ADR-010                  | Accounting posting architecture         | **Pending**                      | Invoice → GL postings                                          |
-| Renewal reminder windows | Paid-term reminder schedule             | **Requires PO approval**         | Do not invent days-before-renewal windows                      |
-| Batch D/G PO             | UI / Batch G acceptance                 | Ready for PO (not auto-accepted) | Formal Phase 3 closure                                         |
+| Decision ID              | Topic                                   | Status today                    | Notes                                                                 |
+| ------------------------ | --------------------------------------- | ------------------------------- | --------------------------------------------------------------------- |
+| **PO-P3-FINAL-ACCEPT**   | Phase 3 formal closure                  | **APPROVED — Option A**         | Accepted WITH DOCUMENTED EXCEPTIONS                                   |
+| AUD-CON-006              | Exact entitlement / state-action matrix | **Pending** (EX-01)             | Confirmed Rules §15 authoritative                                     |
+| PO-P3-PAY-TEST           | Razorpay Test Mode + checkout + webhook | **Approved**                    | SDK + Owner checkout                                                  |
+| G-PAY                    | Independent Dashboard webhook evidence  | **Open** (EX-02)                | Local checkout reported working; Dashboard→local evidence outstanding |
+| PO-P1-DEPS               | Official `razorpay/razorpay` SDK        | **Approved** (SDK)              | PDF package **not** approved (EX-07)                                  |
+| PO-P3-PAY-PROD           | Production monetary charges             | **Pending** (EX-03)             | Real customer charges blocked                                         |
+| TB-TAX / issuer          | Central invoice issuer + GST validation | **Pending** (EX-04)             | Sample invoices only                                                  |
+| ADR-010                  | Accounting posting architecture         | **Pending** (EX-05)             | No GL posts                                                           |
+| Renewal reminder windows | Paid-term reminder schedule             | **Deferred — Option D** (EX-06) | Trial reminders retained                                              |
+| Production PDF invoices  | PDF dependency / generation             | **Deferred** (EX-07)            | Sample HTML accepted                                                  |
+| Phase 4                  | Enquiry / unified LR                    | **Not authorized**              | Requires separate PO authorization                                    |
 
-Already approved and **not** re-requested: PO-P3-AUTH, PO-P3-DESIGN-FORMAL, PO-P3-UI-AUTH (masters/documents/subscription surfaces), DEC-001…009, Phase 2 deactivation (DEC-002).
+Already approved earlier: PO-P3-AUTH, PO-P3-DESIGN-FORMAL, PO-P3-UI-AUTH, DEC-001…009, Phase 2 deactivation (DEC-002).
 
 ---
 
-## F0.1 — AUD-CON-006 final decision table (REQUIRES PO APPROVAL)
+## F0.1 — AUD-CON-006 (EX-01 — Pending under Phase 3 acceptance)
 
 Legend: **A** = allow · **V** = view-only · **B** = block · **R** = recovery/billing only · **—** = N/A
 
@@ -44,7 +48,9 @@ Cell tags: **CONFIRMED** (governing) · **IMPLEMENTED** (enforced in code) · **
 | Credit consumption            | A CONFIRMED+IMPLEMENTED  | A CONFIRMED+IMPLEMENTED | B CONFIRMED+IMPLEMENTED | B CONFIRMED+IMPLEMENTED  | B CONFIRMED+IMPLEMENTED    | B CONFIRMED+IMPLEMENTED  | B CONFIRMED+IMPLEMENTED           | B CONFIRMED+IMPLEMENTED    |
 | Renewal / recovery pay        | A IMPLEMENTED            | A IMPLEMENTED           | A CONFIRMED+IMPLEMENTED | A CONFIRMED+IMPLEMENTED  | A (reactivation) PROPOSED  | A CONFIRMED+IMPLEMENTED  | A CONFIRMED+IMPLEMENTED           | B CONFIRMED+IMPLEMENTED    |
 
-### Explicit Product Owner choices (unresolved cells)
+**PO-P3-FINAL-ACCEPT** accepts Phase 3 closure with AUD-CON-006 remaining **Pending**. Unresolved cells still **REQUIRE PO APPROVAL** before implementation beyond Confirmed Rules §15. No unapproved entitlement behavior is authorized.
+
+### Remaining Product Owner questions (still open)
 
 1. Paid grace: keep uniform Branch mutation **B** (current) **or** allow selected master edits?
 2. Restricted/expired: allow authorized **document download**?
@@ -52,24 +58,20 @@ Cell tags: **CONFIRMED** (governing) · **IMPLEMENTED** (enforced in code) · **
 4. Company **suspended** vs subscription restricted: always hard-block Branch regardless of paid_through?
 5. Cancelled post-effective: Owner company admin writes **A** or **B**?
 
-**Do not treat this table as AUD-CON-006 Approved until PO records an explicit decision.**
-
 ---
 
-## F0.1b — Renewal reminder windows (REQUIRES PO APPROVAL)
+## F0.1b — Renewal reminder windows (EX-06 — Option D Deferred)
 
 Trial reminders **[7, 3, 1] days before trial expiry** are CONFIRMED+IMPLEMENTED.
 
-Paid-term renewal reminders are **not** scheduled. Suggested alternatives for PO choice (do not invent):
+**PO-P3-FINAL-ACCEPT:** Paid-term renewal reminders — **Option D Deferred** for Phase 3. No paid-renewal reminder schedule is approved. Engineering must not invent windows until a later explicit Option A/B/C (or other) decision.
 
-| Option | Windows before common renewal            |
-| ------ | ---------------------------------------- |
-| A      | 14, 7, 3, 1 days                         |
-| B      | 7, 3, 1 days (mirror trial)              |
-| C      | 30, 14, 7 days                           |
-| D      | Defer — trial-only reminders for Phase 3 |
-
-Engineering will implement only after an explicit Option selection.
+| Option | Windows before common renewal            | Disposition                           |
+| ------ | ---------------------------------------- | ------------------------------------- |
+| A      | 14, 7, 3, 1 days                         | Not selected                          |
+| B      | 7, 3, 1 days (mirror trial)              | Not selected                          |
+| C      | 30, 14, 7 days                           | Not selected                          |
+| D      | Defer — trial-only reminders for Phase 3 | **Selected under PO-P3-FINAL-ACCEPT** |
 
 ---
 
@@ -80,21 +82,20 @@ Engineering will implement only after an explicit Option selection.
 | Item                   | Decision                                                                    |
 | ---------------------- | --------------------------------------------------------------------------- |
 | Razorpay **Test Mode** | **Approved**                                                                |
-| Integration method     | Official `razorpay/razorpay` PHP SDK (PO-P1-DEPS) — custom HTTP removed     |
+| Integration method     | Official `razorpay/razorpay` PHP SDK (PO-P1-DEPS)                           |
 | Env vars               | Exactly `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` |
 | Webhook HTTP endpoint  | `/webhooks/razorpay` non-prod when Test Mode credentials are present        |
 | Checkout UI            | Owner Panel Test Mode checkout                                              |
 | Activation             | Verified Test Mode settlement may activate in non-prod only                 |
-| Production charges     | **Not approved** — **PO-P3-PAY-PROD** Pending                               |
+| Production charges     | **Not approved** — **PO-P3-PAY-PROD** Pending (EX-03)                       |
 
-### Recommended signature approach (no inventing)
+### G-PAY (EX-02 — Open under Phase 3 acceptance)
 
-- Checkout: HMAC SHA256 over `order_id|payment_id` with **key secret** (Razorpay docs).
-- Webhook: HMAC SHA256 over **raw body** with **webhook secret**; header `X-Razorpay-Signature`.
-- Never trust client success flags; never log secrets.
-- Existing `PaymentGateway` + `PaymentEventProcessor` already model this; Fake adapter remains for CI.
+- PO reports Razorpay works locally.
+- Independent evidence of Razorpay Dashboard-to-local webhook delivery remains **outstanding**.
+- Phase 3 closure **accepts this evidence gap**; do not fabricate webhook delivery results.
 
-### G-PAY readiness checklist
+### G-PAY readiness checklist (still operational)
 
 - [ ] Test key id / secret available in approved secret store
 - [ ] Webhook secret configured
@@ -104,15 +105,14 @@ Engineering will implement only after an explicit Option selection.
 
 ---
 
-## F0.3 — PO-P1-DEPS (Razorpay SDK)
+## F0.3 — PO-P1-DEPS
 
-| Option                                | Package                                                            | Status |
-| ------------------------------------- | ------------------------------------------------------------------ | ------ |
-| Official `razorpay/razorpay` ^2.9.3   | **Approved** — Test Mode only; custom Laravel HTTP adapter removed |
-| Third-party Laravel Razorpay wrappers | **Not approved**                                                   |
-| Production / live keys                | **Not approved** (PO-P3-PAY-PROD Pending)                          |
-
-Prior “no SDK” preference for Batch F is **superseded** by this explicit Product Owner authorization.
+| Option                                | Package                                   | Status           |
+| ------------------------------------- | ----------------------------------------- | ---------------- |
+| Official `razorpay/razorpay` ^2.9.3   | **Approved** — Test Mode                  | Installed        |
+| Third-party Laravel Razorpay wrappers | **Not approved**                          | —                |
+| Production / live keys                | **Not approved** (PO-P3-PAY-PROD Pending) | EX-03            |
+| Production PDF / dompdf (or similar)  | **Not approved** (EX-07 Deferred)         | Sample HTML only |
 
 ---
 
@@ -121,19 +121,20 @@ Prior “no SDK” preference for Batch F is **superseded** by this explicit Pro
 | Topic                        | Status                                       | Note                                   |
 | ---------------------------- | -------------------------------------------- | -------------------------------------- |
 | Invoice state machine        | Foundations complete                         | Draft→Awaiting→Approved/Issued→Emailed |
-| FY numbering config          | Config keys exist; production format Pending |
-| Issuer legal details         | Pending validation                           |
-| GST on subscription invoices | Pending (TB-TAX)                             |
-| ADR-010 postings             | Pending — no GL posts                        |
+| FY numbering config          | Config keys exist; production format Pending | —                                      |
+| Issuer legal details         | Pending validation (EX-04)                   | Sample invoices only                   |
+| GST on subscription invoices | Pending (TB-TAX)                             | EX-04                                  |
+| ADR-010 postings             | Pending — no GL posts (EX-05)                | —                                      |
+| Production PDF invoices      | Deferred (EX-07)                             | HTML sample accepted                   |
 
 ---
 
-## Recommended PO decision order
+## Post-acceptance decision order (remaining gates)
 
-1. Accept or amend **AUD-CON-006** proposed matrix (or formally accept Confirmed-only enforcement as Phase 3 exception).
-2. Authorize **PO-P3-PAY Test Mode** + complete **G-PAY** checklist (still no production charges).
-3. Choose **PO-P1-DEPS** Option A or B.
-4. Authorize production issuer/tax validation path separately before legally operative invoices.
-5. Keep **ADR-010** Pending for a later phase.
-
-Until these are decided, Phase 3 exit criteria that depend on them remain **gated**, and certification must record exceptions rather than inventing authority.
+1. AUD-CON-006 unresolved cells (EX-01) when ready.
+2. Complete G-PAY independent webhook evidence (EX-02) when ready.
+3. Issuer/GST validation before production invoices (EX-04).
+4. PO-P3-PAY-PROD separately (EX-03).
+5. ADR-010 when accounting architecture is ready (EX-05).
+6. Paid renewal reminders if needed later (not Option D).
+7. Separate **Phase 4 authorization** before Enquiry / LR work.

@@ -3,8 +3,9 @@
 **Date:** 22 November 2026  
 **Authority:** `docs/governing/Phases.md` (DEC-001 / ADR-011)  
 **Phase 2:** Formally accepted WITH DOCUMENTED EXCEPTIONS (PO-P2-FINAL-ACCEPT)  
-**Phase 3 authorization:** **Not granted — do not implement**  
-**Execution plan (planning only):** `docs/implementation/PHASE_3_EXECUTION_PLAN.md`
+**Historical note:** This document was written before PO-P3-AUTH as a non-authorizing readiness summary.  
+**Current status:** Phase 3 was authorized (PO-P3-AUTH), implemented (Batches A–G), and **FORMALLY ACCEPTED WITH DOCUMENTED EXCEPTIONS** (**PO-P3-FINAL-ACCEPT**, Option A, 22 November 2026) — see `docs/implementation/PHASE_3_ACCEPTANCE_RECORD.md`.  
+**Phase 4:** **Not authorized** for implementation.
 
 ---
 

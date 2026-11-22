@@ -3,7 +3,7 @@
 **Status:** Approved by Product Owner — Phase 0 governing baseline.  
 **Approval date:** 21 November 2026 | **Approval scope:** Phase 0 governing baseline.  
 **Approval subject to:** Accepted Pending, Deferred and Proposed exceptions (PO-EXCEPT-001).  
-**DEC-004:** Phase 0 formal approval prerequisite is **satisfied** (PO-APPROVE-001). Implementation must still follow this document’s phase sequencing. **PO-P1-AUTH APPROVED** (21 November 2026) authorizes Phase 1 Engineering Foundation under `docs/implementation/PHASE_1_EXECUTION_PLAN.md`. **PO-P2-AUTH APPROVED** (22 November 2026) authorizes Phase 2 Identity / Company / Access under `docs/implementation/PHASE_2_EXECUTION_PLAN.md`. Phase 0 or Phase 1 closure alone does not authorize later phases; each phase requires its own Product Owner authorization.  
+**DEC-004:** Phase 0 formal approval prerequisite is **satisfied** (PO-APPROVE-001). Implementation must still follow this document’s phase sequencing. **PO-P1-AUTH APPROVED** (21 November 2026) authorizes Phase 1 Engineering Foundation under `docs/implementation/PHASE_1_EXECUTION_PLAN.md`. **PO-P2-AUTH APPROVED** (22 November 2026) authorizes Phase 2 Identity / Company / Access under `docs/implementation/PHASE_2_EXECUTION_PLAN.md`. **PO-P2-FINAL-ACCEPT APPROVED WITH DOCUMENTED EXCEPTIONS** (22 November 2026): Phase 2 formally closed. **PO-P3-AUTH APPROVED** (22 November 2026) authorized Phase 3 under `docs/implementation/PHASE_3_EXECUTION_PLAN.md`. **PO-P3-FINAL-ACCEPT APPROVED — OPTION A** (22 November 2026): Phase 3 **FORMALLY ACCEPTED WITH DOCUMENTED EXCEPTIONS** against baseline `68d11b1ecc267e91d3adb37825d94def71334a3a` (Actions #60 SUCCESS) — see `docs/implementation/PHASE_3_ACCEPTANCE_RECORD.md`. Phase 0–3 closure alone does not authorize later phases; **Phase 4+ requires separate Product Owner authorization**. Deferred Phase 3 gates remain open (AUD-CON-006, G-PAY webhook evidence, PO-P3-PAY-PROD, issuer/GST, ADR-010, paid renewal reminders Option D Deferred, production PDF).  
 **Phase numbering authority:** This document is the single authoritative source for delivery phase numbers (DEC-001 / ADR-011). Do not overload “Phase 1” to mean subscription billing.
 
 ## Principles
@@ -37,9 +37,12 @@ Global identity, internal/customer separation, auth, customer single session, co
 
 Party/Vehicle/Bank/Station/other masters; GST/TDS masters; common document service; catalogue, contracts, entitlements, trial, capacity, quotas, credits, **initial manual Razorpay renewals** (no auto-renew), invoice-number approval, Owner billing. Exit: pricing calculation, webhook idempotency, entitlement, storage/credit reconciliation, immutable contracts.
 
+**Phase 3 closure (recorded):** **FORMALLY ACCEPTED WITH DOCUMENTED EXCEPTIONS** on **22 November 2026** (**PO-P3-FINAL-ACCEPT**, Option A). Accepted baseline `68d11b1ecc267e91d3adb37825d94def71334a3a` (Actions #60 SUCCESS). Exceptions EX-01…EX-07 remain open gates (AUD-CON-006 Pending; G-PAY webhook evidence Open; PO-P3-PAY-PROD Pending; issuer/GST Pending; ADR-010 Pending; paid renewal reminders Option D Deferred; production PDF Deferred). Production deployment and Phase 4 implementation are **not** approved by Phase 3 acceptance. Record: `docs/implementation/PHASE_3_ACCEPTANCE_RECORD.md`.
+
 ## Phase 4 — Enquiry and unified LR
 
-Website webhook, manual enquiry, assignment, follow-up, quotation broadcast/entry/selection, whole conversion, unified LR, goods/EWB/numbering. Exit: duplicate conversion prevention, scope, numbering concurrency, edit/cancel/delete dependency tests.
+Website webhook, manual enquiry, assignment, follow-up, quotation broadcast/entry/selection, whole conversion, unified LR, goods/EWB/numbering. Exit: duplicate conversion prevention, scope, numbering concurrency, edit/cancel/delete dependency tests.  
+**Authorization status:** **Not authorized** for implementation. Requires a separate Product Owner Phase 4 authorization decision.
 
 ## Phase 5 — OwnFleet operations
 

@@ -191,13 +191,13 @@
 
 ### P3-WS-7 — Phase 3 exit certification
 
-| Field         | Content                                                                                                                               |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| Objective     | Prove Phases.md Phase 3 exit bullets with executed tests                                                                              |
-| Scope         | Pricing; webhook idempotency; entitlement (Confirmed only); storage/credit reconciliation; immutable contracts; tenant/file negatives |
-| Prerequisites | P3-WS-1–6 for authorized slices                                                                                                       |
-| Acceptance    | Certification report + CI green                                                                                                       |
-| **Status**    | **Final cert with exceptions** — `PHASE_3_FINAL_CERTIFICATION_REPORT.md` + PO decision/acceptance packages; Phase 3 not auto-accepted |
+| Field         | Content                                                                                                                                                                                                                               |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Objective     | Prove Phases.md Phase 3 exit bullets with executed tests                                                                                                                                                                              |
+| Scope         | Pricing; webhook idempotency; entitlement (Confirmed only); storage/credit reconciliation; immutable contracts; tenant/file negatives                                                                                                 |
+| Prerequisites | P3-WS-1–6 for authorized slices                                                                                                                                                                                                       |
+| Acceptance    | Certification report + CI green                                                                                                                                                                                                       |
+| **Status**    | **PO-P3-FINAL-ACCEPT APPROVED — OPTION A** — Phase 3 FORMALLY ACCEPTED WITH DOCUMENTED EXCEPTIONS (`PHASE_3_ACCEPTANCE_RECORD.md`; baseline `68d11b1…`, Actions #60). Deferred gates EX-01…EX-07 remain open; Phase 4 not authorized. |
 
 ---
 
