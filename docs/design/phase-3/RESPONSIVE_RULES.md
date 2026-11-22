@@ -32,3 +32,15 @@
 ## Prototype frames
 
 Static prototypes include desktop canvas (~1280) and a “Mobile frame” toggle section on key screens (parties list, subscription overview, documents).
+
+## Prototype breakpoint alignment (Visual QA)
+
+Static prototypes implement:
+
+| Width      | Behavior                                                                                    |
+| ---------- | ------------------------------------------------------------------------------------------- |
+| ≥1024px    | Persistent sidebar; Menu hidden                                                             |
+| 768–1023px | Sidebar hidden; Menu opens accessible nav sheet; tables retained with scroll hint           |
+| &lt;768px  | Menu sheet; card lists for dense masters; document drawer full-width; pricing summary first |
+
+Verified against QA-01 (cloud-browser review).

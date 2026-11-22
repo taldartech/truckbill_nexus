@@ -1,0 +1,56 @@
+{
+    "method": "Cursor IDE browser Chromium + CDP Emulation.setDeviceMetricsOverride",
+    "baseUrl": "http://127.0.0.1:8765/",
+    "checks": [
+        {
+            "viewport": "390x844",
+            "page": "parties-list.html",
+            "overflow": false,
+            "menu": "flex",
+            "sidebar": "none",
+            "mobileCards": 3,
+            "desktopTable": "none",
+            "shot": "mobile-390__parties-list.png"
+        },
+        {
+            "viewport": "390x844",
+            "page": "party-form.html",
+            "overflow": false,
+            "clipped": false,
+            "inputRight": 357,
+            "panelRight": 374,
+            "shot": "mobile-390__party-form.png"
+        },
+        {
+            "viewport": "390x844",
+            "page": "catalogue-pricing.html",
+            "overflow": false,
+            "summaryOrder": "-1",
+            "shot": "mobile-390__catalogue-pricing.png"
+        },
+        {
+            "viewport": "1023x900",
+            "page": "parties-list.html",
+            "menu": "flex",
+            "sidebar": "none"
+        },
+        {
+            "viewport": "1024x768",
+            "page": "parties-list.html",
+            "menu": "none",
+            "sidebar": "flex"
+        },
+        {
+            "viewport": "1280x800",
+            "page": "catalogue-pricing.html",
+            "shot": "desktop-1280__catalogue-pricing.png"
+        },
+        {
+            "check": "drawer-a11y",
+            "focusOnOpen": "closeDocs",
+            "escapeCloses": true,
+            "focusAfterEscape": "openDocs"
+        }
+    ],
+    "playwrightHeadless": "Attempted via playwright-core + cached Chromium; launch aborted (browser closed). Cursor IDE browser used as primary evidence."
+}

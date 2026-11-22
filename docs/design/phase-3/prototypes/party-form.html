@@ -2,33 +2,104 @@
 <html lang="en">
     <head>
         <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Create party — Phase 3 prototype</title>
-        <link rel="stylesheet" href="shared.css" />
+        <link rel="stylesheet" href="shared.css?v=4" />
     </head>
     <body>
         <div class="shell">
-            <aside class="sidebar">
-                <div class="brand">
-                    <span class="brand-mark"></span>TruckBill
-                </div>
-                <div class="nav">
-                    <div class="nav-label">Masters</div>
-                    <a href="masters-hub.html">Masters hub</a
-                    ><a class="active" href="parties-list.html">Parties</a>
-                </div>
+            <aside class="sidebar" aria-label="Branch · Masters navigation">
+                <a class="brand" href="index.html"
+                    ><span class="brand-mark" aria-hidden="true"></span
+                    >TruckBill</a
+                >
+                <nav class="nav" aria-label="Branch · Masters">
+                    <div class="nav-label">Branch · Masters</div>
+                    <a href="masters-hub.html">Masters hub</a>
+                    <a
+                        href="parties-list.html"
+                        aria-current="page"
+                        class="active"
+                        >Parties</a
+                    >
+                    <a href="vehicles-list.html">Vehicles</a>
+                    <a href="bank-cash.html">Bank & Cash</a>
+                    <a href="stations.html">Stations</a>
+                    <a href="supporting-masters.html">Supporting</a>
+                </nav>
             </aside>
+            <div
+                id="nav-backdrop"
+                class="nav-backdrop"
+                aria-hidden="true"
+            ></div>
+            <div
+                id="nav-sheet"
+                class="nav-sheet"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="nav-sheet-title"
+                aria-hidden="true"
+                tabindex="-1"
+            >
+                <div class="nav-sheet-header">
+                    <strong id="nav-sheet-title">Branch · Masters</strong>
+                    <button
+                        type="button"
+                        class="btn"
+                        id="nav-close"
+                        aria-label="Close navigation"
+                    >
+                        Close
+                    </button>
+                </div>
+                <nav class="nav" aria-label="Branch · Masters mobile">
+                    <div class="nav-label">Branch · Masters</div>
+                    <a href="masters-hub.html">Masters hub</a>
+                    <a
+                        href="parties-list.html"
+                        aria-current="page"
+                        class="active"
+                        >Parties</a
+                    >
+                    <a href="vehicles-list.html">Vehicles</a>
+                    <a href="bank-cash.html">Bank & Cash</a>
+                    <a href="stations.html">Stations</a>
+                    <a href="supporting-masters.html">Supporting</a>
+                </nav>
+                <p class="hint" style="padding: 0.75rem 0.6rem">
+                    Acme Logistics · Pune branch
+                </p>
+            </div>
             <main class="main">
                 <div class="topbar">
-                    <div class="crumbs">
-                        Branch › Masters › Parties › <strong>Create</strong>
+                    <div class="topbar-left">
+                        <button
+                            type="button"
+                            class="menu-toggle"
+                            id="menu-toggle"
+                            aria-expanded="false"
+                            aria-controls="nav-sheet"
+                            aria-label="Open navigation"
+                        >
+                            Menu
+                        </button>
+                        <nav class="crumbs" aria-label="Breadcrumb">
+                            <a href="masters-hub.html">Masters</a> ›
+                            <a href="parties-list.html">Parties</a> ›
+                            <strong>Create</strong>
+                        </nav>
                     </div>
-                    <span class="context-chip">Acme Logistics · Pune</span>
+                    <span class="context-chip"
+                        >Acme Logistics · Pune branch</span
+                    >
                 </div>
                 <div class="content">
                     <p class="proto-note">
-                        BP-M-02 — At least one role required. Role panels
-                        expand. No uniqueness across GST/PAN/mobile.
+                        BP-M-02 — Labels associated via
+                        <code>for</code>/<code>id</code>. Required fields use
+                        <code>required</code> + visible asterisk. Single column
+                        below 1024px.
                     </p>
                     <div class="page-head">
                         <div>
@@ -36,27 +107,45 @@
                             <p>Common fields plus role-specific attributes.</p>
                         </div>
                     </div>
-                    <div class="panel">
-                        <div class="form-grid">
+                    <form
+                        class="panel"
+                        action="#"
+                        method="get"
+                        onsubmit="return false;"
+                    >
+                        <fieldset
+                            class="form-grid"
+                            style="border: 0; margin: 0"
+                        >
+                            <legend class="sr-only">Party details</legend>
                             <div class="field full">
-                                <label>Scope</label>
+                                <span class="label" id="scope-label"
+                                    >Scope</span
+                                >
                                 <div
+                                    role="radiogroup"
+                                    aria-labelledby="scope-label"
                                     style="
                                         display: flex;
                                         gap: 0.75rem;
                                         flex-wrap: wrap;
                                     "
                                 >
-                                    <label class="badge"
+                                    <label class="role-option"
                                         ><input
                                             type="radio"
                                             name="scope"
+                                            value="shared"
                                             checked
                                         />
                                         Shared across company</label
                                     >
-                                    <label class="badge"
-                                        ><input type="radio" name="scope" />
+                                    <label class="role-option"
+                                        ><input
+                                            type="radio"
+                                            name="scope"
+                                            value="branch"
+                                        />
                                         This branch only</label
                                     >
                                 </div>
@@ -66,102 +155,251 @@
                                 >
                             </div>
                             <div class="field">
-                                <label>Name *</label
-                                ><input class="input" value="" />
+                                <label for="party-name"
+                                    >Name
+                                    <span aria-hidden="true">*</span></label
+                                ><input
+                                    id="party-name"
+                                    class="input"
+                                    name="name"
+                                    required
+                                    aria-required="true"
+                                    autocomplete="organization"
+                                />
                             </div>
                             <div class="field">
-                                <label>Contact person</label
-                                ><input class="input" />
+                                <label for="contact-person"
+                                    >Contact person</label
+                                ><input
+                                    id="contact-person"
+                                    class="input"
+                                    name="contact_person"
+                                    autocomplete="name"
+                                />
                             </div>
                             <div class="field">
-                                <label>Contact number</label
-                                ><input class="input" />
+                                <label for="contact-number"
+                                    >Contact number</label
+                                ><input
+                                    id="contact-number"
+                                    class="input"
+                                    name="contact_number"
+                                    inputmode="tel"
+                                    autocomplete="tel"
+                                    aria-describedby="contact-number-error"
+                                /><span
+                                    id="contact-number-error"
+                                    class="error"
+                                    role="alert"
+                                    >Required when Customer role is
+                                    selected</span
+                                >
                             </div>
                             <div class="field">
-                                <label>Email</label
-                                ><input class="input" type="email" />
+                                <label for="email">Email</label
+                                ><input
+                                    id="email"
+                                    class="input"
+                                    name="email"
+                                    type="email"
+                                    autocomplete="email"
+                                />
                             </div>
                             <div class="field">
-                                <label>GSTIN</label><input class="input" />
+                                <label for="gstin">GSTIN</label
+                                ><input id="gstin" class="input" name="gstin" />
                             </div>
                             <div class="field">
-                                <label>PAN</label><input class="input" />
+                                <label for="pan">PAN</label
+                                ><input id="pan" class="input" name="pan" />
                             </div>
                             <div class="field">
-                                <label>State</label><input class="input" />
+                                <label for="state">State</label
+                                ><input id="state" class="input" name="state" />
                             </div>
                             <div class="field">
-                                <label>City</label><input class="input" />
+                                <label for="city">City</label
+                                ><input id="city" class="input" name="city" />
                             </div>
                             <div class="field full">
-                                <label>Address</label><input class="input" />
+                                <label for="address">Address</label
+                                ><input
+                                    id="address"
+                                    class="input"
+                                    name="address"
+                                    autocomplete="street-address"
+                                />
                             </div>
                             <div class="field full">
-                                <label>Is GST applicable</label
-                                ><select class="select">
-                                    <option>Yes (default)</option>
-                                    <option>No</option>
+                                <label for="gst-applicable"
+                                    >Is GST applicable</label
+                                >
+                                <select
+                                    id="gst-applicable"
+                                    class="select"
+                                    name="is_gst_applicable"
+                                >
+                                    <option value="yes" selected>
+                                        Yes (default)
+                                    </option>
+                                    <option value="no">No</option>
                                 </select>
                             </div>
                             <div class="field full">
-                                <label>Roles * (select at least one)</label>
-                                <div
-                                    style="
-                                        display: flex;
-                                        flex-wrap: wrap;
-                                        gap: 0.4rem;
-                                    "
+                                <span class="label" id="roles-label"
+                                    >Roles
+                                    <span aria-hidden="true">*</span></span
                                 >
-                                    <span class="badge badge-blue"
-                                        >☑ Customer</span
-                                    ><span class="badge">☐ Consignor</span
-                                    ><span class="badge">☐ Consignee</span>
-                                    <span class="badge">☐ Transporter</span
-                                    ><span class="badge">☐ Driver</span
-                                    ><span class="badge">☐ General Vendor</span
-                                    ><span class="badge">☐ Pump Vendor</span>
+                                <div
+                                    class="role-options"
+                                    role="group"
+                                    aria-labelledby="roles-label"
+                                    aria-required="true"
+                                >
+                                    <label class="role-option"
+                                        ><input
+                                            type="checkbox"
+                                            name="roles"
+                                            value="customer"
+                                            checked
+                                        />
+                                        Customer</label
+                                    >
+                                    <label class="role-option"
+                                        ><input
+                                            type="checkbox"
+                                            name="roles"
+                                            value="consignor"
+                                        />
+                                        Consignor</label
+                                    >
+                                    <label class="role-option"
+                                        ><input
+                                            type="checkbox"
+                                            name="roles"
+                                            value="consignee"
+                                        />
+                                        Consignee</label
+                                    >
+                                    <label class="role-option"
+                                        ><input
+                                            type="checkbox"
+                                            name="roles"
+                                            value="transporter"
+                                        />
+                                        Transporter</label
+                                    >
+                                    <label class="role-option"
+                                        ><input
+                                            type="checkbox"
+                                            name="roles"
+                                            value="driver"
+                                        />
+                                        Driver</label
+                                    >
+                                    <label class="role-option"
+                                        ><input
+                                            type="checkbox"
+                                            name="roles"
+                                            value="general_vendor"
+                                        />
+                                        General Vendor</label
+                                    >
+                                    <label class="role-option"
+                                        ><input
+                                            type="checkbox"
+                                            name="roles"
+                                            value="pump_vendor"
+                                        />
+                                        Pump Vendor</label
+                                    >
                                 </div>
+                                <span class="hint"
+                                    >At least one role required. No uniqueness
+                                    across GST/PAN/mobile.</span
+                                >
                             </div>
-                            <div
+                            <fieldset
                                 class="field full"
                                 style="
                                     border: 1px dashed var(--border);
                                     border-radius: 10px;
                                     padding: 0.85rem;
+                                    margin: 0;
                                 "
                             >
-                                <strong style="font-size: 0.85rem"
-                                    >Customer attributes</strong
+                                <legend
+                                    style="
+                                        font-size: 0.85rem;
+                                        font-weight: 600;
+                                        padding: 0 0.35rem;
+                                    "
                                 >
+                                    Customer attributes
+                                </legend>
                                 <div
                                     class="form-grid"
-                                    style="padding: 0.75rem 0 0"
+                                    style="padding: 0.5rem 0 0"
                                 >
                                     <div class="field">
-                                        <label>Contact number *</label
-                                        ><input class="input" /><span
+                                        <label for="cust-contact"
+                                            >Contact number
+                                            <span aria-hidden="true"
+                                                >*</span
+                                            ></label
+                                        ><input
+                                            id="cust-contact"
+                                            class="input"
+                                            required
+                                            aria-required="true"
+                                            aria-invalid="true"
+                                            aria-describedby="cust-contact-error"
+                                        /><span
+                                            id="cust-contact-error"
                                             class="error"
-                                            >Required for Customer</span
+                                            role="alert"
+                                            >Enter a contact number</span
                                         >
                                     </div>
                                     <div class="field">
-                                        <label>State *</label
-                                        ><input class="input" />
+                                        <label for="cust-state"
+                                            >State
+                                            <span aria-hidden="true"
+                                                >*</span
+                                            ></label
+                                        ><input
+                                            id="cust-state"
+                                            class="input"
+                                            required
+                                            aria-required="true"
+                                        />
                                     </div>
                                     <div class="field">
-                                        <label>City *</label
-                                        ><input class="input" />
+                                        <label for="cust-city"
+                                            >City
+                                            <span aria-hidden="true"
+                                                >*</span
+                                            ></label
+                                        ><input
+                                            id="cust-city"
+                                            class="input"
+                                            required
+                                            aria-required="true"
+                                        />
                                     </div>
                                 </div>
-                            </div>
-                        </div>
+                            </fieldset>
+                        </fieldset>
                         <div class="form-footer">
                             <a class="btn" href="parties-list.html">Cancel</a
-                            ><button class="btn btn-primary">Save party</button>
+                            ><button type="submit" class="btn btn-primary">
+                                Save party
+                            </button>
                         </div>
-                    </div>
+                    </form>
                 </div>
             </main>
         </div>
+        <script src="shared.js?v=4"></script>
     </body>
 </html>

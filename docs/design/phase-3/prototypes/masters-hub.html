@@ -2,39 +2,105 @@
 <html lang="en">
     <head>
         <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Masters hub — Phase 3 prototype</title>
-        <link rel="stylesheet" href="shared.css" />
+        <link rel="stylesheet" href="shared.css?v=4" />
     </head>
     <body>
         <div class="shell">
-            <aside class="sidebar">
-                <div class="brand">
-                    <span class="brand-mark"></span>TruckBill
-                </div>
-                <div class="nav">
-                    <div class="nav-label">Branch</div>
-                    <a href="#">Dashboard</a>
-                    <div class="nav-label">Masters</div>
-                    <a href="masters-hub.html">Masters hub</a
-                    ><a href="parties-list.html">Parties</a
-                    ><a href="vehicles-list.html">Vehicles</a
-                    ><a href="bank-cash.html">Bank &amp; Cash</a
-                    ><a href="stations.html">Stations</a
-                    ><a href="supporting-masters.html">Supporting</a>
-                    <div class="nav-label">Settings</div>
-                    <a href="#">Branch settings</a>
-                </div>
+            <aside class="sidebar" aria-label="Branch · Masters navigation">
+                <a class="brand" href="index.html"
+                    ><span class="brand-mark" aria-hidden="true"></span
+                    >TruckBill</a
+                >
+                <nav class="nav" aria-label="Branch · Masters">
+                    <div class="nav-label">Branch · Masters</div>
+                    <a
+                        href="masters-hub.html"
+                        aria-current="page"
+                        class="active"
+                        >Masters hub</a
+                    >
+                    <a href="parties-list.html">Parties</a>
+                    <a href="vehicles-list.html">Vehicles</a>
+                    <a href="bank-cash.html">Bank & Cash</a>
+                    <a href="stations.html">Stations</a>
+                    <a href="supporting-masters.html">Supporting</a>
+                </nav>
             </aside>
+
+            <div
+                id="nav-backdrop"
+                class="nav-backdrop"
+                aria-hidden="true"
+            ></div>
+            <div
+                id="nav-sheet"
+                class="nav-sheet"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="nav-sheet-title"
+                aria-hidden="true"
+                tabindex="-1"
+            >
+                <div class="nav-sheet-header">
+                    <strong id="nav-sheet-title">Branch · Masters</strong>
+                    <button
+                        type="button"
+                        class="btn"
+                        id="nav-close"
+                        aria-label="Close navigation"
+                    >
+                        Close
+                    </button>
+                </div>
+                <nav class="nav" aria-label="Branch · Masters mobile">
+                    <div class="nav-label">Branch · Masters</div>
+                    <a
+                        href="masters-hub.html"
+                        aria-current="page"
+                        class="active"
+                        >Masters hub</a
+                    >
+                    <a href="parties-list.html">Parties</a>
+                    <a href="vehicles-list.html">Vehicles</a>
+                    <a href="bank-cash.html">Bank & Cash</a>
+                    <a href="stations.html">Stations</a>
+                    <a href="supporting-masters.html">Supporting</a>
+                </nav>
+                <p class="hint" style="padding: 0.75rem 0.6rem">
+                    Acme Logistics · Pune branch
+                </p>
+            </div>
+
             <main class="main">
                 <div class="topbar">
-                    <div class="crumbs">Branch › <strong>Masters</strong></div>
-                    <span class="context-chip">Acme Logistics · Pune</span>
+                    <div class="topbar-left">
+                        <button
+                            type="button"
+                            class="menu-toggle"
+                            id="menu-toggle"
+                            aria-expanded="false"
+                            aria-controls="nav-sheet"
+                            aria-label="Open navigation"
+                        >
+                            Menu
+                        </button>
+                        <nav class="crumbs" aria-label="Breadcrumb">
+                            <a href="index.html">Gallery</a> ›
+                            <a href="masters-hub.html">Masters</a> ›
+                            <strong>Hub</strong>
+                        </nav>
+                    </div>
+                    <span class="context-chip"
+                        >Acme Logistics · Pune branch</span
+                    >
                 </div>
                 <div class="content">
                     <p class="proto-note">
-                        BP-M-00 — Permission-dependent cards; hide cards the
-                        role cannot view.
+                        BP-M-00 — Cards omit modules the role cannot view.
+                        Tablet/mobile use Menu for navigation (breakpoint
+                        ≥1024px keeps persistent sidebar).
                     </p>
                     <div class="page-head">
                         <div>
@@ -80,5 +146,6 @@
                 </div>
             </main>
         </div>
+        <script src="shared.js?v=4"></script>
     </body>
 </html>

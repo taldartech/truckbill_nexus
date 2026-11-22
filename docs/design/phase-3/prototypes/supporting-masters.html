@@ -2,34 +2,101 @@
 <html lang="en">
     <head>
         <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Supporting masters — Phase 3 prototype</title>
-        <link rel="stylesheet" href="shared.css" />
+        <link rel="stylesheet" href="shared.css?v=4" />
     </head>
     <body>
         <div class="shell">
-            <aside class="sidebar">
-                <div class="brand">
-                    <span class="brand-mark"></span>TruckBill
-                </div>
-                <div class="nav">
-                    <a href="masters-hub.html">Masters hub</a
-                    ><a class="active" href="supporting-masters.html"
+            <aside class="sidebar" aria-label="Branch · Masters navigation">
+                <a class="brand" href="index.html"
+                    ><span class="brand-mark" aria-hidden="true"></span
+                    >TruckBill</a
+                >
+                <nav class="nav" aria-label="Branch · Masters">
+                    <div class="nav-label">Branch · Masters</div>
+                    <a href="masters-hub.html">Masters hub</a>
+                    <a href="parties-list.html">Parties</a>
+                    <a href="vehicles-list.html">Vehicles</a>
+                    <a href="bank-cash.html">Bank & Cash</a>
+                    <a href="stations.html">Stations</a>
+                    <a
+                        href="supporting-masters.html"
+                        aria-current="page"
+                        class="active"
                         >Supporting</a
                     >
-                </div>
+                </nav>
             </aside>
+            <div
+                id="nav-backdrop"
+                class="nav-backdrop"
+                aria-hidden="true"
+            ></div>
+            <div
+                id="nav-sheet"
+                class="nav-sheet"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="nav-sheet-title"
+                aria-hidden="true"
+                tabindex="-1"
+            >
+                <div class="nav-sheet-header">
+                    <strong id="nav-sheet-title">Branch · Masters</strong>
+                    <button
+                        type="button"
+                        class="btn"
+                        id="nav-close"
+                        aria-label="Close navigation"
+                    >
+                        Close
+                    </button>
+                </div>
+                <nav class="nav" aria-label="Branch · Masters mobile">
+                    <div class="nav-label">Branch · Masters</div>
+                    <a href="masters-hub.html">Masters hub</a>
+                    <a href="parties-list.html">Parties</a>
+                    <a href="vehicles-list.html">Vehicles</a>
+                    <a href="bank-cash.html">Bank & Cash</a>
+                    <a href="stations.html">Stations</a>
+                    <a
+                        href="supporting-masters.html"
+                        aria-current="page"
+                        class="active"
+                        >Supporting</a
+                    >
+                </nav>
+                <p class="hint" style="padding: 0.75rem 0.6rem">
+                    Acme Logistics · Pune branch
+                </p>
+            </div>
             <main class="main">
                 <div class="topbar">
-                    <div class="crumbs">
-                        Branch › Masters › <strong>Supporting</strong>
+                    <div class="topbar-left">
+                        <button
+                            type="button"
+                            class="menu-toggle"
+                            id="menu-toggle"
+                            aria-expanded="false"
+                            aria-controls="nav-sheet"
+                            aria-label="Open navigation"
+                        >
+                            Menu
+                        </button>
+                        <nav class="crumbs" aria-label="Breadcrumb">
+                            <a href="masters-hub.html">Masters</a> ›
+                            <strong>Supporting</strong>
+                        </nav>
                     </div>
-                    <span class="context-chip">Acme Logistics · Pune</span>
+                    <span class="context-chip"
+                        >Acme Logistics · Pune branch</span
+                    >
                 </div>
                 <div class="content">
                     <p class="proto-note">
                         BP-M-40/50 — Owner catalogues editable by Owner. Payment
-                        modes centrally seeded read-only.
+                        modes read-only.
                     </p>
                     <div class="page-head">
                         <div><h1>Supporting masters</h1></div>
@@ -63,90 +130,109 @@
                     <div class="panel">
                         <div class="panel-h">
                             <h2>Goods Type</h2>
-                            <button class="btn btn-primary">Add item</button>
+                            <button type="button" class="btn btn-primary">
+                                Add item
+                            </button>
                         </div>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Code</th>
-                                    <th>Name</th>
-                                    <th>Active</th>
-                                    <th>Sort</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>STEEL</td>
-                                    <td>Steel Coils</td>
-                                    <td>
-                                        <span class="badge badge-green"
-                                            >Yes</span
-                                        >
-                                    </td>
-                                    <td>10</td>
-                                </tr>
-                                <tr>
-                                    <td>FMCG</td>
-                                    <td>FMCG Cartons</td>
-                                    <td>
-                                        <span class="badge badge-green"
-                                            >Yes</span
-                                        >
-                                    </td>
-                                    <td>20</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <div class="desktop-table">
+                            <div class="table-wrap">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Code</th>
+                                            <th scope="col">Name</th>
+                                            <th scope="col">Active</th>
+                                            <th scope="col">Sort</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>STEEL</td>
+                                            <td>Steel Coils</td>
+                                            <td>
+                                                <span class="badge badge-green"
+                                                    >Yes</span
+                                                >
+                                            </td>
+                                            <td>10</td>
+                                        </tr>
+                                        <tr>
+                                            <td>FMCG</td>
+                                            <td>FMCG Cartons</td>
+                                            <td>
+                                                <span class="badge badge-green"
+                                                    >Yes</span
+                                                >
+                                            </td>
+                                            <td>20</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="mobile-list">
+                            <article class="mobile-card">
+                                <strong>STEEL · Steel Coils</strong>
+                                <div class="hint">Active · sort 10</div>
+                            </article>
+                            <article class="mobile-card">
+                                <strong>FMCG · FMCG Cartons</strong>
+                                <div class="hint">Active · sort 20</div>
+                            </article>
+                        </div>
                     </div>
                     <div class="panel" style="margin-top: 1rem">
                         <div class="panel-h">
                             <h2>Payment modes (central · read-only)</h2>
                         </div>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Code</th>
-                                    <th>Name</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>cash</td>
-                                    <td>Cash</td>
-                                </tr>
-                                <tr>
-                                    <td>bank_transfer</td>
-                                    <td>Bank Transfer</td>
-                                </tr>
-                                <tr>
-                                    <td>upi</td>
-                                    <td>UPI</td>
-                                </tr>
-                                <tr>
-                                    <td>cheque</td>
-                                    <td>Cheque</td>
-                                </tr>
-                                <tr>
-                                    <td>neft</td>
-                                    <td>NEFT</td>
-                                </tr>
-                                <tr>
-                                    <td>rtgs</td>
-                                    <td>RTGS</td>
-                                </tr>
-                                <tr>
-                                    <td>imps</td>
-                                    <td>IMPS</td>
-                                </tr>
-                                <tr>
-                                    <td>other</td>
-                                    <td>Other</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Code</th>
+                                        <th scope="col">Name</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>cash</td>
+                                        <td>Cash</td>
+                                    </tr>
+                                    <tr>
+                                        <td>bank_transfer</td>
+                                        <td>Bank Transfer</td>
+                                    </tr>
+                                    <tr>
+                                        <td>upi</td>
+                                        <td>UPI</td>
+                                    </tr>
+                                    <tr>
+                                        <td>cheque</td>
+                                        <td>Cheque</td>
+                                    </tr>
+                                    <tr>
+                                        <td>neft</td>
+                                        <td>NEFT</td>
+                                    </tr>
+                                    <tr>
+                                        <td>rtgs</td>
+                                        <td>RTGS</td>
+                                    </tr>
+                                    <tr>
+                                        <td>imps</td>
+                                        <td>IMPS</td>
+                                    </tr>
+                                    <tr>
+                                        <td>other</td>
+                                        <td>Other</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </main>
         </div>
+        <script src="shared.js?v=4"></script>
     </body>
 </html>

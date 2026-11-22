@@ -2,32 +2,103 @@
 <html lang="en">
     <head>
         <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Party detail — Phase 3 prototype</title>
-        <link rel="stylesheet" href="shared.css" />
+        <link rel="stylesheet" href="shared.css?v=4" />
     </head>
     <body>
         <div class="shell">
-            <aside class="sidebar">
-                <div class="brand">
-                    <span class="brand-mark"></span>TruckBill
-                </div>
-                <div class="nav">
-                    <a class="active" href="parties-list.html">Parties</a>
-                </div>
+            <aside class="sidebar" aria-label="Branch · Masters navigation">
+                <a class="brand" href="index.html"
+                    ><span class="brand-mark" aria-hidden="true"></span
+                    >TruckBill</a
+                >
+                <nav class="nav" aria-label="Branch · Masters">
+                    <div class="nav-label">Branch · Masters</div>
+                    <a href="masters-hub.html">Masters hub</a>
+                    <a
+                        href="parties-list.html"
+                        aria-current="page"
+                        class="active"
+                        >Parties</a
+                    >
+                    <a href="vehicles-list.html">Vehicles</a>
+                    <a href="bank-cash.html">Bank & Cash</a>
+                    <a href="stations.html">Stations</a>
+                    <a href="supporting-masters.html">Supporting</a>
+                </nav>
             </aside>
+            <div
+                id="nav-backdrop"
+                class="nav-backdrop"
+                aria-hidden="true"
+            ></div>
+            <div
+                id="nav-sheet"
+                class="nav-sheet"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="nav-sheet-title"
+                aria-hidden="true"
+                tabindex="-1"
+            >
+                <div class="nav-sheet-header">
+                    <strong id="nav-sheet-title">Branch · Masters</strong>
+                    <button
+                        type="button"
+                        class="btn"
+                        id="nav-close"
+                        aria-label="Close navigation"
+                    >
+                        Close
+                    </button>
+                </div>
+                <nav class="nav" aria-label="Branch · Masters mobile">
+                    <div class="nav-label">Branch · Masters</div>
+                    <a href="masters-hub.html">Masters hub</a>
+                    <a
+                        href="parties-list.html"
+                        aria-current="page"
+                        class="active"
+                        >Parties</a
+                    >
+                    <a href="vehicles-list.html">Vehicles</a>
+                    <a href="bank-cash.html">Bank & Cash</a>
+                    <a href="stations.html">Stations</a>
+                    <a href="supporting-masters.html">Supporting</a>
+                </nav>
+                <p class="hint" style="padding: 0.75rem 0.6rem">
+                    Acme Logistics · Pune branch
+                </p>
+            </div>
             <main class="main">
                 <div class="topbar">
-                    <div class="crumbs">
-                        Branch › Masters › Parties ›
-                        <strong>Acme Traders</strong>
+                    <div class="topbar-left">
+                        <button
+                            type="button"
+                            class="menu-toggle"
+                            id="menu-toggle"
+                            aria-expanded="false"
+                            aria-controls="nav-sheet"
+                            aria-label="Open navigation"
+                        >
+                            Menu
+                        </button>
+                        <nav class="crumbs" aria-label="Breadcrumb">
+                            <a href="masters-hub.html">Masters</a> ›
+                            <a href="parties-list.html">Parties</a> ›
+                            <strong>Acme Traders</strong>
+                        </nav>
                     </div>
-                    <span class="context-chip">Acme Logistics · Pune</span>
+                    <span class="context-chip"
+                        >Acme Logistics · Pune branch</span
+                    >
                 </div>
                 <div class="content">
                     <p class="proto-note">
-                        BP-M-03 + BP-D-* — Documents embed on parent. Click
-                        “Attachments” to open drawer.
+                        BP-M-03 + documents drawer — accessible dialog: focus
+                        trap, Escape, restore focus. Upload/scan actions are
+                        illustrative only.
                     </p>
                     <div class="page-head">
                         <div>
@@ -39,10 +110,18 @@
                             </p>
                         </div>
                         <div class="actions">
-                            <a class="btn" href="party-form.html">Edit</a
-                            ><button class="btn" id="openDocs">
-                                Attachments (2)</button
-                            ><button class="btn btn-danger">
+                            <a class="btn" href="party-form.html">Edit</a>
+                            <button
+                                type="button"
+                                class="btn"
+                                id="openDocs"
+                                aria-haspopup="dialog"
+                                aria-controls="drawer-panel"
+                                aria-expanded="false"
+                            >
+                                Attachments (2)
+                            </button>
+                            <button type="button" class="btn btn-danger">
                                 Soft delete…
                             </button>
                         </div>
@@ -53,23 +132,23 @@
                             <table>
                                 <tbody>
                                     <tr>
-                                        <th>Contact</th>
+                                        <th scope="row">Contact</th>
                                         <td>98765 43210</td>
                                     </tr>
                                     <tr>
-                                        <th>Email</th>
+                                        <th scope="row">Email</th>
                                         <td>ops@acme.example</td>
                                     </tr>
                                     <tr>
-                                        <th>GSTIN</th>
+                                        <th scope="row">GSTIN</th>
                                         <td>27AAAAA0000A1Z5</td>
                                     </tr>
                                     <tr>
-                                        <th>City</th>
+                                        <th scope="row">City</th>
                                         <td>Pune, Maharashtra</td>
                                     </tr>
                                     <tr>
-                                        <th>GST applicable</th>
+                                        <th scope="row">GST applicable</th>
                                         <td>Yes</td>
                                     </tr>
                                 </tbody>
@@ -78,7 +157,9 @@
                         <div class="panel">
                             <div class="panel-h">
                                 <h2>Roles</h2>
-                                <button class="btn">Add role</button>
+                                <button type="button" class="btn">
+                                    Add role
+                                </button>
                             </div>
                             <div
                                 style="
@@ -110,6 +191,7 @@
                                         justify-content: space-between;
                                         gap: 0.5rem;
                                         align-items: start;
+                                        flex-wrap: wrap;
                                     "
                                 >
                                     <div>
@@ -118,7 +200,7 @@
                                             >Active</span
                                         >
                                     </div>
-                                    <button class="btn btn-ghost">
+                                    <button type="button" class="btn">
                                         Remove…
                                     </button>
                                 </div>
@@ -126,36 +208,67 @@
                         </div>
                     </div>
 
-                    <div class="drawer-backdrop" id="drawer">
-                        <div class="drawer">
+                    <div id="drawer" class="drawer-backdrop" aria-hidden="true">
+                        <div
+                            id="drawer-panel"
+                            class="drawer"
+                            role="dialog"
+                            aria-modal="true"
+                            aria-labelledby="docs-title"
+                            aria-hidden="true"
+                            tabindex="-1"
+                        >
                             <div
                                 style="
                                     display: flex;
                                     justify-content: space-between;
                                     align-items: center;
+                                    gap: 0.5rem;
                                     margin-bottom: 0.75rem;
                                 "
                             >
-                                <h2 style="margin: 0; font-size: 1.05rem">
+                                <h2
+                                    id="docs-title"
+                                    style="margin: 0; font-size: 1.05rem"
+                                >
                                     Documents
                                 </h2>
-                                <button class="btn btn-ghost" id="closeDocs">
+                                <button
+                                    type="button"
+                                    class="btn"
+                                    id="closeDocs"
+                                >
                                     Close
                                 </button>
                             </div>
                             <p class="hint">
                                 Max 2 MB · approved formats · private storage ·
-                                scan before download
+                                scan before download. Controls are illustrative.
                             </p>
                             <div
                                 style="
                                     margin: 0.75rem 0;
                                     display: flex;
+                                    flex-wrap: wrap;
                                     gap: 0.5rem;
                                 "
                             >
-                                <button class="btn btn-primary">Upload</button
-                                ><button class="btn">Replace current</button>
+                                <button
+                                    type="button"
+                                    class="btn btn-primary"
+                                    disabled
+                                    aria-disabled="true"
+                                >
+                                    Upload (preview)
+                                </button>
+                                <button
+                                    type="button"
+                                    class="btn"
+                                    disabled
+                                    aria-disabled="true"
+                                >
+                                    Replace current (preview)
+                                </button>
                             </div>
                             <div class="panel" style="margin-bottom: 0.75rem">
                                 <div class="panel-h">
@@ -166,7 +279,7 @@
                                 </div>
                                 <div style="padding: 0.75rem 1rem" class="hint">
                                     120 KB · Counts toward storage ·
-                                    <a href="#">Download / preview</a>
+                                    <span>Download disabled in prototype</span>
                                 </div>
                             </div>
                             <div class="panel">
@@ -208,11 +321,14 @@
                                 >
                                     <span class="badge badge-amber"
                                         >Pending scan</span
-                                    ><span class="badge badge-amber"
+                                    >
+                                    <span class="badge badge-amber"
                                         >Scanning…</span
-                                    ><span class="badge badge-green"
+                                    >
+                                    <span class="badge badge-green"
                                         >Available</span
-                                    ><span class="badge badge-red"
+                                    >
+                                    <span class="badge badge-red"
                                         >Rejected</span
                                     >
                                 </div>
@@ -226,15 +342,6 @@
                 </div>
             </main>
         </div>
-        <script>
-            const d = document.getElementById('drawer');
-            document.getElementById('openDocs').onclick = () =>
-                d.classList.add('open');
-            document.getElementById('closeDocs').onclick = () =>
-                d.classList.remove('open');
-            d.onclick = (e) => {
-                if (e.target === d) d.classList.remove('open');
-            };
-        </script>
+        <script src="shared.js?v=4"></script>
     </body>
 </html>

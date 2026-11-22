@@ -2,32 +2,94 @@
 <html lang="en">
     <head>
         <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Bank & Cash — Phase 3 prototype</title>
-        <link rel="stylesheet" href="shared.css" />
+        <link rel="stylesheet" href="shared.css?v=4" />
     </head>
     <body>
         <div class="shell">
-            <aside class="sidebar">
-                <div class="brand">
-                    <span class="brand-mark"></span>TruckBill
-                </div>
-                <div class="nav">
-                    <a href="masters-hub.html">Masters hub</a
-                    ><a class="active" href="bank-cash.html">Bank &amp; Cash</a>
-                </div>
+            <aside class="sidebar" aria-label="Branch · Masters navigation">
+                <a class="brand" href="index.html"
+                    ><span class="brand-mark" aria-hidden="true"></span
+                    >TruckBill</a
+                >
+                <nav class="nav" aria-label="Branch · Masters">
+                    <div class="nav-label">Branch · Masters</div>
+                    <a href="masters-hub.html">Masters hub</a>
+                    <a href="parties-list.html">Parties</a>
+                    <a href="vehicles-list.html">Vehicles</a>
+                    <a href="bank-cash.html" aria-current="page" class="active"
+                        >Bank & Cash</a
+                    >
+                    <a href="stations.html">Stations</a>
+                    <a href="supporting-masters.html">Supporting</a>
+                </nav>
             </aside>
+            <div
+                id="nav-backdrop"
+                class="nav-backdrop"
+                aria-hidden="true"
+            ></div>
+            <div
+                id="nav-sheet"
+                class="nav-sheet"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="nav-sheet-title"
+                aria-hidden="true"
+                tabindex="-1"
+            >
+                <div class="nav-sheet-header">
+                    <strong id="nav-sheet-title">Branch · Masters</strong>
+                    <button
+                        type="button"
+                        class="btn"
+                        id="nav-close"
+                        aria-label="Close navigation"
+                    >
+                        Close
+                    </button>
+                </div>
+                <nav class="nav" aria-label="Branch · Masters mobile">
+                    <div class="nav-label">Branch · Masters</div>
+                    <a href="masters-hub.html">Masters hub</a>
+                    <a href="parties-list.html">Parties</a>
+                    <a href="vehicles-list.html">Vehicles</a>
+                    <a href="bank-cash.html" aria-current="page" class="active"
+                        >Bank & Cash</a
+                    >
+                    <a href="stations.html">Stations</a>
+                    <a href="supporting-masters.html">Supporting</a>
+                </nav>
+                <p class="hint" style="padding: 0.75rem 0.6rem">
+                    Acme Logistics · Pune branch
+                </p>
+            </div>
             <main class="main">
                 <div class="topbar">
-                    <div class="crumbs">
-                        Branch › Masters › <strong>Bank &amp; Cash</strong>
+                    <div class="topbar-left">
+                        <button
+                            type="button"
+                            class="menu-toggle"
+                            id="menu-toggle"
+                            aria-expanded="false"
+                            aria-controls="nav-sheet"
+                            aria-label="Open navigation"
+                        >
+                            Menu
+                        </button>
+                        <nav class="crumbs" aria-label="Breadcrumb">
+                            <a href="masters-hub.html">Masters</a> ›
+                            <strong>Bank &amp; Cash</strong>
+                        </nav>
                     </div>
-                    <span class="context-chip">Acme Logistics · Pune</span>
+                    <span class="context-chip"
+                        >Acme Logistics · Pune branch</span
+                    >
                 </div>
                 <div class="content">
                     <p class="proto-note">
-                        BP-M-20 — Account numbers masked. No accounting ledger /
-                        ADR-010 posting.
+                        BP-M-20 — Account numbers masked. No ADR-010 posting.
                     </p>
                     <div class="page-head">
                         <div>
@@ -38,64 +100,115 @@
                             </p>
                         </div>
                         <div class="actions">
-                            <button class="btn btn-primary">Add account</button>
+                            <button type="button" class="btn btn-primary">
+                                Add account
+                            </button>
                         </div>
                     </div>
                     <div class="panel">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Kind</th>
-                                    <th>Bank</th>
-                                    <th>Account</th>
-                                    <th>IFSC</th>
-                                    <th>Scope</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>Operating HDFC</td>
-                                    <td>
-                                        <span class="badge badge-blue"
-                                            >Bank</span
-                                        >
-                                    </td>
-                                    <td>HDFC</td>
-                                    <td><code>********9012</code></td>
-                                    <td>HDFC0001111</td>
-                                    <td>
-                                        <span class="badge">This branch</span>
-                                    </td>
-                                    <td>
-                                        <span class="badge badge-green"
-                                            >Active</span
-                                        >
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td>Petty Cash</td>
-                                    <td><span class="badge">Cash</span></td>
-                                    <td>—</td>
-                                    <td>—</td>
-                                    <td>—</td>
-                                    <td>
-                                        <span class="badge badge-green"
-                                            >Shared</span
-                                        >
-                                    </td>
-                                    <td>
-                                        <span class="badge badge-green"
-                                            >Active</span
-                                        >
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <p class="table-scroll-hint">
+                            Swipe horizontally to see all columns on tablet.
+                        </p>
+                        <div class="desktop-table">
+                            <div class="table-wrap">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Name</th>
+                                            <th scope="col">Kind</th>
+                                            <th scope="col">Bank</th>
+                                            <th scope="col">Account</th>
+                                            <th scope="col">IFSC</th>
+                                            <th scope="col">Scope</th>
+                                            <th scope="col">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>Operating HDFC</td>
+                                            <td>
+                                                <span class="badge badge-blue"
+                                                    >Bank</span
+                                                >
+                                            </td>
+                                            <td>HDFC</td>
+                                            <td><code>********9012</code></td>
+                                            <td>HDFC0001111</td>
+                                            <td>
+                                                <span class="badge"
+                                                    >This branch</span
+                                                >
+                                            </td>
+                                            <td>
+                                                <span class="badge badge-green"
+                                                    >Active</span
+                                                >
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>Petty Cash</td>
+                                            <td>
+                                                <span class="badge">Cash</span>
+                                            </td>
+                                            <td>—</td>
+                                            <td>—</td>
+                                            <td>—</td>
+                                            <td>
+                                                <span class="badge badge-green"
+                                                    >Shared</span
+                                                >
+                                            </td>
+                                            <td>
+                                                <span class="badge badge-green"
+                                                    >Active</span
+                                                >
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="mobile-list">
+                            <article class="mobile-card">
+                                <strong>Operating HDFC</strong>
+                                <div style="margin: 0.35rem 0">
+                                    <span class="badge badge-blue">Bank</span>
+                                    <span class="badge">This branch</span>
+                                    <span class="badge badge-green"
+                                        >Active</span
+                                    >
+                                </div>
+                                <div class="hint">
+                                    HDFC · ********9012 · HDFC0001111
+                                </div>
+                                <div class="mobile-card-actions">
+                                    <button type="button" class="btn">
+                                        Edit
+                                    </button>
+                                </div>
+                            </article>
+                            <article class="mobile-card">
+                                <strong>Petty Cash</strong>
+                                <div style="margin: 0.35rem 0">
+                                    <span class="badge">Cash</span>
+                                    <span class="badge badge-green"
+                                        >Shared</span
+                                    >
+                                    <span class="badge badge-green"
+                                        >Active</span
+                                    >
+                                </div>
+                                <div class="mobile-card-actions">
+                                    <button type="button" class="btn">
+                                        Edit
+                                    </button>
+                                </div>
+                            </article>
+                        </div>
                     </div>
                 </div>
             </main>
         </div>
+        <script src="shared.js?v=4"></script>
     </body>
 </html>

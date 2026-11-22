@@ -2,27 +2,96 @@
 <html lang="en">
     <head>
         <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Billing preview (gated) — Phase 3 prototype</title>
-        <link rel="stylesheet" href="shared.css" />
+        <link rel="stylesheet" href="shared.css?v=4" />
     </head>
     <body>
         <div class="shell">
-            <aside class="sidebar">
-                <div class="brand">
-                    <span class="brand-mark"></span>TruckBill
-                </div>
-                <div class="nav">
-                    <a href="subscription-overview.html">Subscription</a
-                    ><a class="active" href="billing-preview.html"
+            <aside class="sidebar" aria-label="Owner navigation">
+                <a class="brand" href="index.html"
+                    ><span class="brand-mark" aria-hidden="true"></span
+                    >TruckBill</a
+                >
+                <nav class="nav" aria-label="Owner">
+                    <div class="nav-label">Owner</div>
+                    <a href="subscription-overview.html">Subscription</a>
+                    <a href="catalogue-pricing.html">Catalogue & pricing</a>
+                    <a href="draft-contract.html">Draft contracts</a>
+                    <a href="credits-quotas.html">Credits & quotas</a>
+                    <a
+                        href="billing-preview.html"
+                        aria-current="page"
+                        class="active"
                         >Billing (gated)</a
                     >
-                </div>
+                </nav>
             </aside>
+            <div
+                id="nav-backdrop"
+                class="nav-backdrop"
+                aria-hidden="true"
+            ></div>
+            <div
+                id="nav-sheet"
+                class="nav-sheet"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="nav-sheet-title"
+                aria-hidden="true"
+                tabindex="-1"
+            >
+                <div class="nav-sheet-header">
+                    <strong id="nav-sheet-title">Owner</strong>
+                    <button
+                        type="button"
+                        class="btn"
+                        id="nav-close"
+                        aria-label="Close navigation"
+                    >
+                        Close
+                    </button>
+                </div>
+                <nav class="nav" aria-label="Owner mobile">
+                    <div class="nav-label">Owner</div>
+                    <a href="subscription-overview.html">Subscription</a>
+                    <a href="catalogue-pricing.html">Catalogue & pricing</a>
+                    <a href="draft-contract.html">Draft contracts</a>
+                    <a href="credits-quotas.html">Credits & quotas</a>
+                    <a
+                        href="billing-preview.html"
+                        aria-current="page"
+                        class="active"
+                        >Billing (gated)</a
+                    >
+                </nav>
+                <p class="hint" style="padding: 0.75rem 0.6rem">
+                    Acme Logistics · Owner panel
+                </p>
+            </div>
             <main class="main">
                 <div class="topbar">
-                    <div class="crumbs">Owner › <strong>Billing</strong></div>
-                    <span class="context-chip">Acme Logistics · Owner</span>
+                    <div class="topbar-left">
+                        <button
+                            type="button"
+                            class="menu-toggle"
+                            id="menu-toggle"
+                            aria-expanded="false"
+                            aria-controls="nav-sheet"
+                            aria-label="Open navigation"
+                        >
+                            Menu
+                        </button>
+                        <nav class="crumbs" aria-label="Breadcrumb">
+                            <a href="subscription-overview.html"
+                                >Subscription</a
+                            >
+                            › <strong>Billing</strong>
+                        </nav>
+                    </div>
+                    <span class="context-chip"
+                        >Acme Logistics · Owner panel</span
+                    >
                 </div>
                 <div class="content">
                     <div class="watermark">
@@ -42,40 +111,47 @@
                         <div class="panel-h">
                             <h2>Invoices (illustrative)</h2>
                         </div>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Number</th>
-                                    <th>Status</th>
-                                    <th>Amount</th>
-                                    <th>Period</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>—</td>
-                                    <td>
-                                        <span class="badge badge-amber"
-                                            >Draft</span
-                                        >
-                                    </td>
-                                    <td>₹ 10,260</td>
-                                    <td>2026–27</td>
-                                </tr>
-                                <tr>
-                                    <td>Pending approval</td>
-                                    <td>
-                                        <span class="badge"
-                                            >Awaiting number approval</span
-                                        >
-                                    </td>
-                                    <td>₹ 10,260</td>
-                                    <td>2026–27</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Number</th>
+                                        <th scope="col">Status</th>
+                                        <th scope="col">Amount</th>
+                                        <th scope="col">Period</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>—</td>
+                                        <td>
+                                            <span class="badge badge-amber"
+                                                >Draft</span
+                                            >
+                                        </td>
+                                        <td class="amount">₹&nbsp;10,260.00</td>
+                                        <td>2026–27</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Pending approval</td>
+                                        <td>
+                                            <span class="badge"
+                                                >Awaiting number approval</span
+                                            >
+                                        </td>
+                                        <td class="amount">₹&nbsp;10,260.00</td>
+                                        <td>2026–27</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                         <div class="form-footer">
-                            <button class="btn btn-primary" disabled>
+                            <button
+                                type="button"
+                                class="btn btn-primary"
+                                disabled
+                                aria-disabled="true"
+                            >
                                 Pay with Razorpay (blocked)
                             </button>
                         </div>
@@ -88,5 +164,6 @@
                 </div>
             </main>
         </div>
+        <script src="shared.js?v=4"></script>
     </body>
 </html>

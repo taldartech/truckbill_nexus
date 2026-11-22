@@ -2,37 +2,104 @@
 <html lang="en">
     <head>
         <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Parties — Phase 3 prototype</title>
-        <link rel="stylesheet" href="shared.css" />
+        <link rel="stylesheet" href="shared.css?v=4" />
     </head>
     <body>
         <div class="shell">
-            <aside class="sidebar">
-                <div class="brand">
-                    <span class="brand-mark"></span>TruckBill
-                </div>
-                <div class="nav">
-                    <div class="nav-label">Masters</div>
-                    <a href="masters-hub.html">Masters hub</a
-                    ><a class="active" href="parties-list.html">Parties</a
-                    ><a href="vehicles-list.html">Vehicles</a
-                    ><a href="bank-cash.html">Bank &amp; Cash</a
-                    ><a href="stations.html">Stations</a
-                    ><a href="supporting-masters.html">Supporting</a>
-                </div>
+            <aside class="sidebar" aria-label="Branch · Masters navigation">
+                <a class="brand" href="index.html"
+                    ><span class="brand-mark" aria-hidden="true"></span
+                    >TruckBill</a
+                >
+                <nav class="nav" aria-label="Branch · Masters">
+                    <div class="nav-label">Branch · Masters</div>
+                    <a href="masters-hub.html">Masters hub</a>
+                    <a
+                        href="parties-list.html"
+                        aria-current="page"
+                        class="active"
+                        >Parties</a
+                    >
+                    <a href="vehicles-list.html">Vehicles</a>
+                    <a href="bank-cash.html">Bank & Cash</a>
+                    <a href="stations.html">Stations</a>
+                    <a href="supporting-masters.html">Supporting</a>
+                </nav>
             </aside>
+
+            <div
+                id="nav-backdrop"
+                class="nav-backdrop"
+                aria-hidden="true"
+            ></div>
+            <div
+                id="nav-sheet"
+                class="nav-sheet"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="nav-sheet-title"
+                aria-hidden="true"
+                tabindex="-1"
+            >
+                <div class="nav-sheet-header">
+                    <strong id="nav-sheet-title">Branch · Masters</strong>
+                    <button
+                        type="button"
+                        class="btn"
+                        id="nav-close"
+                        aria-label="Close navigation"
+                    >
+                        Close
+                    </button>
+                </div>
+                <nav class="nav" aria-label="Branch · Masters mobile">
+                    <div class="nav-label">Branch · Masters</div>
+                    <a href="masters-hub.html">Masters hub</a>
+                    <a
+                        href="parties-list.html"
+                        aria-current="page"
+                        class="active"
+                        >Parties</a
+                    >
+                    <a href="vehicles-list.html">Vehicles</a>
+                    <a href="bank-cash.html">Bank & Cash</a>
+                    <a href="stations.html">Stations</a>
+                    <a href="supporting-masters.html">Supporting</a>
+                </nav>
+                <p class="hint" style="padding: 0.75rem 0.6rem">
+                    Acme Logistics · Pune branch
+                </p>
+            </div>
+
             <main class="main">
                 <div class="topbar">
-                    <div class="crumbs">
-                        Branch › Masters › <strong>Parties</strong>
+                    <div class="topbar-left">
+                        <button
+                            type="button"
+                            class="menu-toggle"
+                            id="menu-toggle"
+                            aria-expanded="false"
+                            aria-controls="nav-sheet"
+                            aria-label="Open navigation"
+                        >
+                            Menu
+                        </button>
+                        <nav class="crumbs" aria-label="Breadcrumb">
+                            <a href="masters-hub.html">Masters</a> ›
+                            <strong>Parties</strong>
+                        </nav>
                     </div>
-                    <span class="context-chip">Acme Logistics · Pune</span>
+                    <span class="context-chip"
+                        >Acme Logistics · Pune branch</span
+                    >
                 </div>
                 <div class="content">
                     <p class="proto-note">
-                        BP-M-01 — Searchable table, filters, pagination. Create
-                        hidden for Viewer.
+                        BP-M-01 — Desktop table; mobile card list with all
+                        sample rows and actions. Create hidden for Viewer
+                        (illustrative admin state shown).
                     </p>
                     <div class="page-head">
                         <div>
@@ -49,101 +116,218 @@
                         </div>
                     </div>
                     <div class="panel">
-                        <div class="filters">
+                        <div class="filters" role="search">
+                            <label class="sr-only" for="party-search"
+                                >Search parties</label
+                            >
                             <input
+                                id="party-search"
                                 class="input"
-                                style="flex: 1; min-width: 180px"
+                                style="flex: 1; min-width: 160px"
                                 placeholder="Search name, phone, PAN, GSTIN…"
                             />
-                            <select class="select">
+                            <label class="sr-only" for="party-role"
+                                >Filter by role</label
+                            >
+                            <select
+                                id="party-role"
+                                class="select"
+                                style="width: auto; min-width: 9rem"
+                            >
                                 <option>All roles</option>
                                 <option>Customer</option>
                                 <option>Transporter</option>
                                 <option>Driver</option>
                             </select>
-                            <select class="select">
+                            <label class="sr-only" for="party-scope"
+                                >Filter by scope</label
+                            >
+                            <select
+                                id="party-scope"
+                                class="select"
+                                style="width: auto; min-width: 9rem"
+                            >
                                 <option>All scopes</option>
                                 <option>Shared</option>
                                 <option>This branch</option>
                             </select>
-                            <button class="btn">Apply</button>
+                            <button type="button" class="btn">Apply</button>
                         </div>
-                        <div class="table-wrap">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Name</th>
-                                        <th>Roles</th>
-                                        <th>Contact</th>
-                                        <th>City</th>
-                                        <th>Scope</th>
-                                        <th></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>
-                                            <a href="party-detail.html"
-                                                >Acme Traders</a
-                                            >
-                                        </td>
-                                        <td>
-                                            <span class="badge badge-blue"
-                                                >Customer</span
-                                            >
-                                            <span class="badge">Consignor</span>
-                                        </td>
-                                        <td>98765 43210</td>
-                                        <td>Pune</td>
-                                        <td>
-                                            <span class="badge badge-green"
-                                                >Shared</span
-                                            >
-                                        </td>
-                                        <td>
-                                            <a href="party-form.html">Edit</a>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>
-                                            <a href="party-detail.html"
-                                                >Sharma Transport</a
-                                            >
-                                        </td>
-                                        <td>
-                                            <span class="badge badge-blue"
-                                                >Transporter</span
-                                            >
-                                        </td>
-                                        <td>99887 76655</td>
-                                        <td>Nashik</td>
-                                        <td>
-                                            <span class="badge"
-                                                >This branch</span
-                                            >
-                                        </td>
-                                        <td>
-                                            <a href="party-form.html">Edit</a>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>Ravi Driver</td>
-                                        <td>
-                                            <span class="badge">Driver</span>
-                                        </td>
-                                        <td>90000 11122</td>
-                                        <td>Pune</td>
-                                        <td>
-                                            <span class="badge badge-green"
-                                                >Shared</span
-                                            >
-                                        </td>
-                                        <td>
-                                            <a href="party-form.html">Edit</a>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                        <p class="table-scroll-hint">
+                            Swipe horizontally to see all columns on tablet.
+                        </p>
+                        <div class="desktop-table">
+                            <div class="table-wrap">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th scope="col">Name</th>
+                                            <th scope="col">Roles</th>
+                                            <th scope="col">Contact</th>
+                                            <th scope="col">City</th>
+                                            <th scope="col">Scope</th>
+                                            <th scope="col">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>
+                                                <a href="party-detail.html"
+                                                    >Acme Traders</a
+                                                >
+                                            </td>
+                                            <td>
+                                                <span class="badge badge-blue"
+                                                    >Customer</span
+                                                >
+                                                <span class="badge"
+                                                    >Consignor</span
+                                                >
+                                            </td>
+                                            <td>98765 43210</td>
+                                            <td>Pune</td>
+                                            <td>
+                                                <span class="badge badge-green"
+                                                    >Shared</span
+                                                >
+                                            </td>
+                                            <td>
+                                                <a href="party-form.html"
+                                                    >Edit</a
+                                                >
+                                                ·
+                                                <a href="party-detail.html"
+                                                    >View</a
+                                                >
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <a href="party-detail.html"
+                                                    >Sharma Transport</a
+                                                >
+                                            </td>
+                                            <td>
+                                                <span class="badge badge-blue"
+                                                    >Transporter</span
+                                                >
+                                            </td>
+                                            <td>99887 76655</td>
+                                            <td>Nashik</td>
+                                            <td>
+                                                <span class="badge"
+                                                    >This branch</span
+                                                >
+                                            </td>
+                                            <td>
+                                                <a href="party-form.html"
+                                                    >Edit</a
+                                                >
+                                                ·
+                                                <a href="party-detail.html"
+                                                    >View</a
+                                                >
+                                            </td>
+                                        </tr>
+                                        <tr>
+                                            <td>
+                                                <a href="party-detail.html"
+                                                    >Ravi Driver</a
+                                                >
+                                            </td>
+                                            <td>
+                                                <span class="badge"
+                                                    >Driver</span
+                                                >
+                                            </td>
+                                            <td>90000 11122</td>
+                                            <td>Pune</td>
+                                            <td>
+                                                <span class="badge badge-green"
+                                                    >Shared</span
+                                                >
+                                            </td>
+                                            <td>
+                                                <a href="party-form.html"
+                                                    >Edit</a
+                                                >
+                                                ·
+                                                <a href="party-detail.html"
+                                                    >View</a
+                                                >
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="mobile-list" aria-label="Parties card list">
+                            <article class="mobile-card">
+                                <strong
+                                    ><a href="party-detail.html"
+                                        >Acme Traders</a
+                                    ></strong
+                                >
+                                <div style="margin: 0.4rem 0">
+                                    <span class="badge badge-blue"
+                                        >Customer</span
+                                    >
+                                    <span class="badge">Consignor</span>
+                                    <span class="badge badge-green"
+                                        >Shared</span
+                                    >
+                                </div>
+                                <div class="hint">98765 43210 · Pune</div>
+                                <div class="mobile-card-actions">
+                                    <a class="btn" href="party-detail.html"
+                                        >View</a
+                                    ><a class="btn" href="party-form.html"
+                                        >Edit</a
+                                    >
+                                </div>
+                            </article>
+                            <article class="mobile-card">
+                                <strong
+                                    ><a href="party-detail.html"
+                                        >Sharma Transport</a
+                                    ></strong
+                                >
+                                <div style="margin: 0.4rem 0">
+                                    <span class="badge badge-blue"
+                                        >Transporter</span
+                                    >
+                                    <span class="badge">This branch</span>
+                                </div>
+                                <div class="hint">99887 76655 · Nashik</div>
+                                <div class="mobile-card-actions">
+                                    <a class="btn" href="party-detail.html"
+                                        >View</a
+                                    ><a class="btn" href="party-form.html"
+                                        >Edit</a
+                                    >
+                                </div>
+                            </article>
+                            <article class="mobile-card">
+                                <strong
+                                    ><a href="party-detail.html"
+                                        >Ravi Driver</a
+                                    ></strong
+                                >
+                                <div style="margin: 0.4rem 0">
+                                    <span class="badge">Driver</span>
+                                    <span class="badge badge-green"
+                                        >Shared</span
+                                    >
+                                </div>
+                                <div class="hint">90000 11122 · Pune</div>
+                                <div class="mobile-card-actions">
+                                    <a class="btn" href="party-detail.html"
+                                        >View</a
+                                    ><a class="btn" href="party-form.html"
+                                        >Edit</a
+                                    >
+                                </div>
+                            </article>
                         </div>
                         <div
                             class="panel-h"
@@ -154,48 +338,31 @@
                         >
                             <span class="hint">Showing 1–3 of 3</span>
                             <div class="actions">
-                                <button class="btn" disabled>Previous</button
-                                ><button class="btn" disabled>Next</button>
+                                <button type="button" class="btn" disabled>
+                                    Previous</button
+                                ><button type="button" class="btn" disabled>
+                                    Next
+                                </button>
                             </div>
                         </div>
                     </div>
-
-                    <h2
-                        style="
-                            font-size: 0.95rem;
-                            margin: 2rem 0 0.75rem;
-                            color: var(--muted);
-                        "
-                    >
-                        Mobile card list
-                    </h2>
-                    <div class="mobile-frame">
-                        <div class="content">
-                            <div class="mobile-card">
-                                <strong>Acme Traders</strong>
-                                <div style="margin: 0.35rem 0">
-                                    <span class="badge badge-blue"
-                                        >Customer</span
-                                    >
-                                    <span class="badge badge-green"
-                                        >Shared</span
-                                    >
-                                </div>
-                                <div class="hint">98765 43210 · Pune</div>
-                            </div>
-                            <div class="mobile-card">
-                                <strong>Sharma Transport</strong>
-                                <div style="margin: 0.35rem 0">
-                                    <span class="badge badge-blue"
-                                        >Transporter</span
-                                    >
-                                </div>
-                                <div class="hint">99887 76655 · Nashik</div>
+                    <div class="panel" style="margin-top: 1rem">
+                        <div class="panel-h"><h2>Empty state example</h2></div>
+                        <div class="empty">
+                            <strong>No parties yet</strong>Create a party to use
+                            in future consignments.
+                            <div style="margin-top: 0.75rem">
+                                <a
+                                    class="btn btn-primary"
+                                    href="party-form.html"
+                                    >Create party</a
+                                >
                             </div>
                         </div>
                     </div>
                 </div>
             </main>
         </div>
+        <script src="shared.js?v=4"></script>
     </body>
 </html>

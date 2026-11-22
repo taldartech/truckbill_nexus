@@ -2,33 +2,95 @@
 <html lang="en">
     <head>
         <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Stations — Phase 3 prototype</title>
-        <link rel="stylesheet" href="shared.css" />
+        <link rel="stylesheet" href="shared.css?v=4" />
     </head>
     <body>
         <div class="shell">
-            <aside class="sidebar">
-                <div class="brand">
-                    <span class="brand-mark"></span>TruckBill
-                </div>
-                <div class="nav">
-                    <a href="masters-hub.html">Masters hub</a
-                    ><a class="active" href="stations.html">Stations</a>
-                </div>
+            <aside class="sidebar" aria-label="Branch · Masters navigation">
+                <a class="brand" href="index.html"
+                    ><span class="brand-mark" aria-hidden="true"></span
+                    >TruckBill</a
+                >
+                <nav class="nav" aria-label="Branch · Masters">
+                    <div class="nav-label">Branch · Masters</div>
+                    <a href="masters-hub.html">Masters hub</a>
+                    <a href="parties-list.html">Parties</a>
+                    <a href="vehicles-list.html">Vehicles</a>
+                    <a href="bank-cash.html">Bank & Cash</a>
+                    <a href="stations.html" aria-current="page" class="active"
+                        >Stations</a
+                    >
+                    <a href="supporting-masters.html">Supporting</a>
+                </nav>
             </aside>
+            <div
+                id="nav-backdrop"
+                class="nav-backdrop"
+                aria-hidden="true"
+            ></div>
+            <div
+                id="nav-sheet"
+                class="nav-sheet"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="nav-sheet-title"
+                aria-hidden="true"
+                tabindex="-1"
+            >
+                <div class="nav-sheet-header">
+                    <strong id="nav-sheet-title">Branch · Masters</strong>
+                    <button
+                        type="button"
+                        class="btn"
+                        id="nav-close"
+                        aria-label="Close navigation"
+                    >
+                        Close
+                    </button>
+                </div>
+                <nav class="nav" aria-label="Branch · Masters mobile">
+                    <div class="nav-label">Branch · Masters</div>
+                    <a href="masters-hub.html">Masters hub</a>
+                    <a href="parties-list.html">Parties</a>
+                    <a href="vehicles-list.html">Vehicles</a>
+                    <a href="bank-cash.html">Bank & Cash</a>
+                    <a href="stations.html" aria-current="page" class="active"
+                        >Stations</a
+                    >
+                    <a href="supporting-masters.html">Supporting</a>
+                </nav>
+                <p class="hint" style="padding: 0.75rem 0.6rem">
+                    Acme Logistics · Pune branch
+                </p>
+            </div>
             <main class="main">
                 <div class="topbar">
-                    <div class="crumbs">
-                        Branch › Masters › <strong>Stations</strong>
+                    <div class="topbar-left">
+                        <button
+                            type="button"
+                            class="menu-toggle"
+                            id="menu-toggle"
+                            aria-expanded="false"
+                            aria-controls="nav-sheet"
+                            aria-label="Open navigation"
+                        >
+                            Menu
+                        </button>
+                        <nav class="crumbs" aria-label="Breadcrumb">
+                            <a href="masters-hub.html">Masters</a> ›
+                            <strong>Stations</strong>
+                        </nav>
                     </div>
-                    <span class="context-chip">Acme Logistics · Pune</span>
+                    <span class="context-chip"
+                        >Acme Logistics · Pune branch</span
+                    >
                 </div>
                 <div class="content">
                     <p class="proto-note">
-                        BP-M-30/32 — Owner-shared across owned companies.
-                        Cross-owner isolated. Default change does not rewrite
-                        history.
+                        BP-M-30/32 — Owner-shared. Changing default does not
+                        rewrite history.
                     </p>
                     <div class="page-head">
                         <div>
@@ -36,69 +98,88 @@
                             <p>Shared for all companies owned by you.</p>
                         </div>
                         <div class="actions">
-                            <button class="btn btn-primary">
+                            <button type="button" class="btn btn-primary">
                                 Create station
                             </button>
                         </div>
                     </div>
                     <div class="split">
                         <div class="panel">
-                            <table>
-                                <thead>
-                                    <tr>
-                                        <th>Code</th>
-                                        <th>Name</th>
-                                        <th>City</th>
-                                        <th>Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>PUNE</td>
-                                        <td>Pune Hub</td>
-                                        <td>Pune</td>
-                                        <td>
-                                            <span class="badge badge-green"
-                                                >Active</span
-                                            >
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td>NSK</td>
-                                        <td>Nashik Yard</td>
-                                        <td>Nashik</td>
-                                        <td>
-                                            <span class="badge badge-green"
-                                                >Active</span
-                                            >
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                            <div class="desktop-table">
+                                <div class="table-wrap">
+                                    <table>
+                                        <thead>
+                                            <tr>
+                                                <th scope="col">Code</th>
+                                                <th scope="col">Name</th>
+                                                <th scope="col">City</th>
+                                                <th scope="col">Status</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>PUNE</td>
+                                                <td>Pune Hub</td>
+                                                <td>Pune</td>
+                                                <td>
+                                                    <span
+                                                        class="badge badge-green"
+                                                        >Active</span
+                                                    >
+                                                </td>
+                                            </tr>
+                                            <tr>
+                                                <td>NSK</td>
+                                                <td>Nashik Yard</td>
+                                                <td>Nashik</td>
+                                                <td>
+                                                    <span
+                                                        class="badge badge-green"
+                                                        >Active</span
+                                                    >
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <div class="mobile-list">
+                                <article class="mobile-card">
+                                    <strong>PUNE · Pune Hub</strong>
+                                    <div class="hint">Pune · Active</div>
+                                </article>
+                                <article class="mobile-card">
+                                    <strong>NSK · Nashik Yard</strong>
+                                    <div class="hint">Nashik · Active</div>
+                                </article>
+                            </div>
                         </div>
                         <div class="panel">
                             <div class="panel-h">
                                 <h2>Default transporter · Pune Hub</h2>
                             </div>
-                            <div class="form-grid">
+                            <form class="form-grid" onsubmit="return false;">
                                 <div class="field full">
-                                    <label>Company</label
+                                    <label for="st-co">Company</label
                                     ><input
+                                        id="st-co"
                                         class="input"
                                         value="Acme Logistics"
                                         disabled
                                     />
                                 </div>
                                 <div class="field full">
-                                    <label>Branch (optional)</label
-                                    ><select class="select">
+                                    <label for="st-br">Branch (optional)</label
+                                    ><select id="st-br" class="select">
                                         <option>Company-wide default</option>
                                         <option>Pune</option>
                                     </select>
                                 </div>
                                 <div class="field full">
-                                    <label>Default transporter party</label
-                                    ><select class="select">
+                                    <label for="st-tr"
+                                        >Default transporter party</label
+                                    >
+                                    <select id="st-tr" class="select">
                                         <option>Sharma Transport</option>
                                         <option>— None —</option>
                                     </select>
@@ -107,9 +188,9 @@
                                         previously saved transaction data.</span
                                     >
                                 </div>
-                            </div>
+                            </form>
                             <div class="form-footer">
-                                <button class="btn btn-primary">
+                                <button type="button" class="btn btn-primary">
                                     Save default
                                 </button>
                             </div>
@@ -118,5 +199,6 @@
                 </div>
             </main>
         </div>
+        <script src="shared.js?v=4"></script>
     </body>
 </html>

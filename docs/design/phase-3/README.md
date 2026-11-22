@@ -1,6 +1,6 @@
 # Phase 3 Design Package — Masters / Documents / Subscription
 
-**Status:** **READY FOR PRODUCT OWNER DESIGN REVIEW**  
+**Status:** **READY FOR FORMAL PRODUCT OWNER DESIGN APPROVAL** (awaiting PO sign-off; not formally approved)  
 **Prepared:** 22 November 2026  
 **Authorization:** Design artefacts + static prototypes authorized under PO-P3-AUTH.  
 **Production UI:** **Blocked** until explicit Product Owner design approval. Do not wire these screens into application routes until approved.

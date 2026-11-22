@@ -2,90 +2,205 @@
 <html lang="en">
     <head>
         <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Draft contract — Phase 3 prototype</title>
-        <link rel="stylesheet" href="shared.css" />
+        <link rel="stylesheet" href="shared.css?v=4" />
     </head>
     <body>
         <div class="shell">
-            <aside class="sidebar">
-                <div class="brand">
-                    <span class="brand-mark"></span>TruckBill
-                </div>
-                <div class="nav">
-                    <a href="subscription-overview.html">Subscription</a
-                    ><a class="active" href="draft-contract.html"
+            <aside class="sidebar" aria-label="Owner navigation">
+                <a class="brand" href="index.html"
+                    ><span class="brand-mark" aria-hidden="true"></span
+                    >TruckBill</a
+                >
+                <nav class="nav" aria-label="Owner">
+                    <div class="nav-label">Owner</div>
+                    <a href="subscription-overview.html">Subscription</a>
+                    <a href="catalogue-pricing.html">Catalogue & pricing</a>
+                    <a
+                        href="draft-contract.html"
+                        aria-current="page"
+                        class="active"
                         >Draft contracts</a
                     >
-                </div>
+                    <a href="credits-quotas.html">Credits & quotas</a>
+                    <a href="billing-preview.html">Billing (gated)</a>
+                </nav>
             </aside>
+            <div
+                id="nav-backdrop"
+                class="nav-backdrop"
+                aria-hidden="true"
+            ></div>
+            <div
+                id="nav-sheet"
+                class="nav-sheet"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="nav-sheet-title"
+                aria-hidden="true"
+                tabindex="-1"
+            >
+                <div class="nav-sheet-header">
+                    <strong id="nav-sheet-title">Owner</strong>
+                    <button
+                        type="button"
+                        class="btn"
+                        id="nav-close"
+                        aria-label="Close navigation"
+                    >
+                        Close
+                    </button>
+                </div>
+                <nav class="nav" aria-label="Owner mobile">
+                    <div class="nav-label">Owner</div>
+                    <a href="subscription-overview.html">Subscription</a>
+                    <a href="catalogue-pricing.html">Catalogue & pricing</a>
+                    <a
+                        href="draft-contract.html"
+                        aria-current="page"
+                        class="active"
+                        >Draft contracts</a
+                    >
+                    <a href="credits-quotas.html">Credits & quotas</a>
+                    <a href="billing-preview.html">Billing (gated)</a>
+                </nav>
+                <p class="hint" style="padding: 0.75rem 0.6rem">
+                    Acme Logistics · Owner panel
+                </p>
+            </div>
             <main class="main">
                 <div class="topbar">
-                    <div class="crumbs">
-                        Owner › Subscription › <strong>Draft contract</strong>
+                    <div class="topbar-left">
+                        <button
+                            type="button"
+                            class="menu-toggle"
+                            id="menu-toggle"
+                            aria-expanded="false"
+                            aria-controls="nav-sheet"
+                            aria-label="Open navigation"
+                        >
+                            Menu
+                        </button>
+                        <nav class="crumbs" aria-label="Breadcrumb">
+                            <a href="subscription-overview.html"
+                                >Subscription</a
+                            >
+                            › <strong>Draft contract</strong>
+                        </nav>
                     </div>
-                    <span class="context-chip">Acme Logistics · Owner</span>
+                    <span class="context-chip"
+                        >Acme Logistics · Owner panel</span
+                    >
                 </div>
                 <div class="content">
+                    <span class="static-label"
+                        >Static illustrative preview</span
+                    >
                     <p class="proto-note">
-                        OP-S-04 — Snapshot preview. Issued contracts become
-                        immutable; draft editable until issue.
+                        OP-S-04 — Matches catalogue-pricing sample (Broker +
+                        OwnFleet, 12 months, net ₹ 10,260.00). Not a saved
+                        contract. Issue remains disabled.
                     </p>
                     <div class="page-head">
                         <div>
-                            <h1>Draft contract</h1>
+                            <h1>Draft contract preview</h1>
                             <p>
-                                <span class="badge badge-amber">Draft</span> ·
-                                Common renewal 15 Apr 2027
+                                <span class="badge badge-amber"
+                                    >Illustrative draft</span
+                                >
+                                · Common renewal 15 Apr 2027
                             </p>
                         </div>
                     </div>
                     <div class="panel">
                         <div class="panel-h">
-                            <h2>Line items (snapshot)</h2>
+                            <h2>Line items (snapshot sample)</h2>
                         </div>
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Item</th>
-                                    <th>Qty</th>
-                                    <th>Unit</th>
-                                    <th>Amount</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>Broker module · 12 mo</td>
-                                    <td>1</td>
-                                    <td>₹ 6,000</td>
-                                    <td>₹ 6,000</td>
-                                </tr>
-                                <tr>
-                                    <td>OwnFleet module · 12 mo</td>
-                                    <td>1</td>
-                                    <td>₹ 6,000</td>
-                                    <td>₹ 6,000</td>
-                                </tr>
-                                <tr>
-                                    <td>Discounts (ordered)</td>
-                                    <td></td>
-                                    <td></td>
-                                    <td>− ₹ 1,740</td>
-                                </tr>
-                                <tr>
-                                    <td><strong>Net</strong></td>
-                                    <td></td>
-                                    <td></td>
-                                    <td><strong>₹ 10,260</strong></td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <p class="table-scroll-hint">
+                            Swipe horizontally on narrow screens.
+                        </p>
+                        <div class="table-wrap">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th scope="col">Item</th>
+                                        <th scope="col">Qty</th>
+                                        <th scope="col">Unit</th>
+                                        <th scope="col">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Broker module · 12 mo</td>
+                                        <td>1</td>
+                                        <td class="amount">₹&nbsp;6,000.00</td>
+                                        <td class="amount">₹&nbsp;6,000.00</td>
+                                    </tr>
+                                    <tr>
+                                        <td>OwnFleet module · 12 mo</td>
+                                        <td>1</td>
+                                        <td class="amount">₹&nbsp;6,000.00</td>
+                                        <td class="amount">₹&nbsp;6,000.00</td>
+                                    </tr>
+                                    <tr>
+                                        <td>List / base</td>
+                                        <td></td>
+                                        <td></td>
+                                        <td class="amount">₹&nbsp;12,000.00</td>
+                                    </tr>
+                                    <tr>
+                                        <td>Bundle discount</td>
+                                        <td></td>
+                                        <td></td>
+                                        <td class="amount">
+                                            −&nbsp;₹&nbsp;600.00
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>Tenure discount</td>
+                                        <td></td>
+                                        <td></td>
+                                        <td class="amount">
+                                            −&nbsp;₹&nbsp;1,140.00
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>Renewal / coupon</td>
+                                        <td></td>
+                                        <td></td>
+                                        <td class="amount">
+                                            −&nbsp;₹&nbsp;0.00
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Net</strong></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td class="amount">
+                                            <strong>₹&nbsp;10,260.00</strong>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                         <div class="form-footer">
-                            <button class="btn">Back to calculator</button
-                            ><button class="btn">Edit draft</button
-                            ><button
+                            <a class="btn" href="catalogue-pricing.html"
+                                >Back to calculator sample</a
+                            >
+                            <button
+                                type="button"
+                                class="btn"
+                                disabled
+                                aria-disabled="true"
+                            >
+                                Edit draft (not wired)
+                            </button>
+                            <button
+                                type="button"
                                 class="btn btn-primary"
                                 disabled
+                                aria-disabled="true"
                                 title="Issue flow later"
                             >
                                 Issue (later)
@@ -95,5 +210,6 @@
                 </div>
             </main>
         </div>
+        <script src="shared.js?v=4"></script>
     </body>
 </html>

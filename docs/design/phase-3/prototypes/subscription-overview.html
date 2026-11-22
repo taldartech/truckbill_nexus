@@ -2,37 +2,99 @@
 <html lang="en">
     <head>
         <meta charset="utf-8" />
-        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
         <title>Subscription overview — Phase 3 prototype</title>
-        <link rel="stylesheet" href="shared.css" />
+        <link rel="stylesheet" href="shared.css?v=4" />
     </head>
     <body>
         <div class="shell">
-            <aside class="sidebar">
-                <div class="brand">
-                    <span class="brand-mark"></span>TruckBill
-                </div>
-                <div class="nav">
+            <aside class="sidebar" aria-label="Owner navigation">
+                <a class="brand" href="index.html"
+                    ><span class="brand-mark" aria-hidden="true"></span
+                    >TruckBill</a
+                >
+                <nav class="nav" aria-label="Owner">
                     <div class="nav-label">Owner</div>
-                    <a href="#">Dashboard</a
-                    ><a class="active" href="subscription-overview.html"
+                    <a
+                        href="subscription-overview.html"
+                        aria-current="page"
+                        class="active"
                         >Subscription</a
-                    ><a href="catalogue-pricing.html">Catalogue &amp; pricing</a
-                    ><a href="draft-contract.html">Draft contracts</a
-                    ><a href="credits-quotas.html">Credits &amp; quotas</a>
-                </div>
+                    >
+                    <a href="catalogue-pricing.html">Catalogue & pricing</a>
+                    <a href="draft-contract.html">Draft contracts</a>
+                    <a href="credits-quotas.html">Credits & quotas</a>
+                    <a href="billing-preview.html">Billing (gated)</a>
+                </nav>
             </aside>
+            <div
+                id="nav-backdrop"
+                class="nav-backdrop"
+                aria-hidden="true"
+            ></div>
+            <div
+                id="nav-sheet"
+                class="nav-sheet"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="nav-sheet-title"
+                aria-hidden="true"
+                tabindex="-1"
+            >
+                <div class="nav-sheet-header">
+                    <strong id="nav-sheet-title">Owner</strong>
+                    <button
+                        type="button"
+                        class="btn"
+                        id="nav-close"
+                        aria-label="Close navigation"
+                    >
+                        Close
+                    </button>
+                </div>
+                <nav class="nav" aria-label="Owner mobile">
+                    <div class="nav-label">Owner</div>
+                    <a
+                        href="subscription-overview.html"
+                        aria-current="page"
+                        class="active"
+                        >Subscription</a
+                    >
+                    <a href="catalogue-pricing.html">Catalogue & pricing</a>
+                    <a href="draft-contract.html">Draft contracts</a>
+                    <a href="credits-quotas.html">Credits & quotas</a>
+                    <a href="billing-preview.html">Billing (gated)</a>
+                </nav>
+                <p class="hint" style="padding: 0.75rem 0.6rem">
+                    Acme Logistics · Owner panel
+                </p>
+            </div>
             <main class="main">
                 <div class="topbar">
-                    <div class="crumbs">
-                        Owner › <strong>Subscription</strong>
+                    <div class="topbar-left">
+                        <button
+                            type="button"
+                            class="menu-toggle"
+                            id="menu-toggle"
+                            aria-expanded="false"
+                            aria-controls="nav-sheet"
+                            aria-label="Open navigation"
+                        >
+                            Menu
+                        </button>
+                        <nav class="crumbs" aria-label="Breadcrumb">
+                            <a href="index.html">Gallery</a> ›
+                            <strong>Subscription</strong>
+                        </nav>
                     </div>
-                    <span class="context-chip">Acme Logistics · Owner</span>
+                    <span class="context-chip"
+                        >Acme Logistics · Owner panel</span
+                    >
                 </div>
                 <div class="content">
                     <p class="proto-note">
-                        OP-S-00 — Confirmed subscription info only. No invented
-                        AUD-CON-006 restricted/suspended action matrix.
+                        OP-S-00 — Confirmed subscription info only. AUD-CON-006
+                        entitlement locks are Pending and not shown as controls.
                     </p>
                     <div class="page-head">
                         <div>
@@ -66,7 +128,7 @@
                         </div>
                         <div class="card-link">
                             <h3>Modules</h3>
-                            <p>Broker · OwnFleet foundations (catalogue)</p>
+                            <p>Broker · OwnFleet (catalogue sample)</p>
                         </div>
                         <div class="card-link">
                             <h3>Storage</h3>
@@ -75,7 +137,7 @@
                     </div>
                     <div class="panel">
                         <div class="panel-h">
-                            <h2>What you will not see here (Pending)</h2>
+                            <h2>Pending — not designed as locks</h2>
                         </div>
                         <div class="empty">
                             <strong>AUD-CON-006 entitlement locks</strong>Exact
@@ -83,33 +145,9 @@
                             Pending. Do not invent controls.
                         </div>
                     </div>
-
-                    <h2
-                        style="
-                            font-size: 0.95rem;
-                            margin: 2rem 0 0.75rem;
-                            color: var(--muted);
-                        "
-                    >
-                        Mobile
-                    </h2>
-                    <div class="mobile-frame">
-                        <div class="content">
-                            <div class="mobile-card">
-                                <strong>Active</strong>
-                                <div class="hint">Renewal 15 Apr 2027</div>
-                            </div>
-                            <div class="mobile-card">
-                                <strong>Storage</strong>
-                                <div class="meter" style="margin: 0.5rem 0">
-                                    <span style="width: 35%"></span>
-                                </div>
-                                <div class="hint">12.4 MB</div>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </main>
         </div>
+        <script src="shared.js?v=4"></script>
     </body>
 </html>

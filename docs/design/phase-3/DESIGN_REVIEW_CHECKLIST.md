@@ -40,3 +40,13 @@
 | Next authorization | Production UI implementation requires separate explicit approval |
 
 **Do not** mark this checklist Approved automatically.
+
+## Visual QA closure (22 November 2026)
+
+Independent cloud-browser findings QA-01…QA-09 corrected in static prototypes. See `VISUAL_QA_CLOSURE_REPORT.md`.
+
+| #   | Item                                                                      | PO decision                                      |
+| --- | ------------------------------------------------------------------------- | ------------------------------------------------ |
+| 12  | Accept corrected prototypes as visual baseline for formal design approval | ☐ Approve / ☐ Approve with exceptions / ☐ Revise |
+
+**Formal approval still Pending Product Owner sign-off.**
