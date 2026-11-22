@@ -76,9 +76,15 @@ test('local demo seeder creates isolated companies roles masters and enquiries i
     $companyA = Company::query()->where('owner_user_id', $ownerA->id)->where('name', LocalDemoWorkspaceSeeder::COMPANY_A_NAME)->firstOrFail();
     $companyB = Company::query()->where('owner_user_id', $ownerB->id)->where('name', LocalDemoWorkspaceSeeder::COMPANY_B_NAME)->firstOrFail();
 
+    $companyC = Company::query()->where('owner_user_id', $ownerA->id)->where('name', LocalDemoWorkspaceSeeder::COMPANY_C_NAME)->firstOrFail();
+    $companyD = Company::query()->where('owner_user_id', $ownerA->id)->where('name', LocalDemoWorkspaceSeeder::COMPANY_D_NAME)->firstOrFail();
+
     expect($companyA->id)->not->toBe($companyB->id)
         ->and($companyA->branches()->whereNull('deactivated_at')->count())->toBeGreaterThanOrEqual(2)
-        ->and($companyB->branches()->whereNull('deactivated_at')->count())->toBeGreaterThanOrEqual(2);
+        ->and($companyB->branches()->whereNull('deactivated_at')->count())->toBeGreaterThanOrEqual(2)
+        ->and($companyC->branches()->whereNull('deactivated_at')->count())->toBe(1)
+        ->and($companyD->deactivated_at)->not->toBeNull()
+        ->and(Company::query()->where('owner_user_id', $ownerA->id)->count())->toBeGreaterThanOrEqual(3);
 
     expect(User::query()->where('email', LocalDemoWorkspaceSeeder::MANAGER_A_EMAIL)->exists())->toBeTrue()
         ->and(User::query()->where('email', LocalDemoWorkspaceSeeder::NO_ACCESS_EMAIL)->exists())->toBeTrue();

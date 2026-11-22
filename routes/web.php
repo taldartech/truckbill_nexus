@@ -87,7 +87,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('owner.subscription.checkout.simulate');
     Route::post('/owner/companies/{company}/subscription/renew', [OwnerSubscriptionController::class, 'renew'])
         ->name('owner.subscription.renew');
-    Route::get('/owner/companies/{company}/branches', OwnerBranchesController::class)->name('owner.branches');
+    Route::get('/owner/companies/{company}/branches', [OwnerBranchesController::class, 'index'])->name('owner.branches');
+    Route::get('/owner/companies/{company}/branches/create', [OwnerBranchesController::class, 'create'])->name('owner.branches.create');
+    Route::post('/owner/companies/{company}/branches', [OwnerBranchesController::class, 'store'])->name('owner.branches.store');
+    Route::get('/owner/companies/{company}/branches/{branch}', [OwnerBranchesController::class, 'show'])
+        ->scopeBindings()
+        ->name('owner.branches.show');
+    Route::post('/owner/companies/{company}/branches/{branch}', [OwnerBranchesController::class, 'update'])
+        ->scopeBindings()
+        ->name('owner.branches.update');
+    Route::post('/owner/companies/{company}/branches/{branch}/deactivate', [OwnerBranchesController::class, 'deactivate'])
+        ->scopeBindings()
+        ->name('owner.branches.deactivate');
 
     Route::get('/owner/companies/{company}/users', [OwnerUsersController::class, 'index'])->name('owner.users');
     Route::post('/owner/companies/{company}/users/invite', [OwnerUsersController::class, 'invite'])->name('owner.users.invite');

@@ -59,6 +59,12 @@ class LocalDemoWorkspaceSeeder extends Seeder
 
     public const COMPANY_B_NAME = 'Demo Freight Beta';
 
+    /** Single-branch (HO only) company owned by Owner A — multi-company Owner fixture. */
+    public const COMPANY_C_NAME = 'Demo Solo Gamma';
+
+    /** Deactivated company owned by Owner A — limited Owner Panel fixture. */
+    public const COMPANY_D_NAME = 'Demo Suspended Delta';
+
     public const OWNER_A_EMAIL = 'owner.alpha@demo.test';
 
     public const OWNER_B_EMAIL = 'owner.beta@demo.test';
@@ -144,6 +150,28 @@ class LocalDemoWorkspaceSeeder extends Seeder
             secondBranchName: 'Surat Branch',
             withFullStaff: false,
         );
+
+        // Owner A second company: HO only (no second branch) for multi-company switcher + capacity demos.
+        $this->seedMinimalOwnedCompany(
+            workspace: $workspace,
+            ownerEmail: self::OWNER_A_EMAIL,
+            companyName: self::COMPANY_C_NAME,
+            headOfficeName: 'Gamma HO',
+            createSecondBranch: false,
+        );
+
+        // Owner A deactivated company for limited Owner Panel (admin_billing_only) demos.
+        $suspended = $this->seedMinimalOwnedCompany(
+            workspace: $workspace,
+            ownerEmail: self::OWNER_A_EMAIL,
+            companyName: self::COMPANY_D_NAME,
+            headOfficeName: 'Delta HO',
+            createSecondBranch: false,
+        );
+        if ($suspended->deactivated_at === null) {
+            $sa = $this->ensureSuperAdminUser('sa.demo.lifecycle@demo.test', 'Demo Lifecycle SA', $password);
+            $workspace->deactivateCompany($sa, $suspended, 'Local demo: suspended company fixture');
+        }
 
         $this->ensureCustomerUser(self::NO_ACCESS_EMAIL, 'Demo No Access', $password);
 
@@ -429,6 +457,66 @@ class LocalDemoWorkspaceSeeder extends Seeder
                 );
             }
         }
+    }
+
+    private function seedMinimalOwnedCompany(
+        CompanyWorkspaceService $workspace,
+        string $ownerEmail,
+        string $companyName,
+        string $headOfficeName,
+        bool $createSecondBranch,
+        ?string $secondBranchName = null,
+    ): Company {
+        $owner = User::query()->where('email', $ownerEmail)->firstOrFail();
+
+        $company = Company::query()
+            ->where('owner_user_id', $owner->id)
+            ->where('name', $companyName)
+            ->first();
+
+        if ($company === null) {
+            $company = $workspace->createCompany($owner, $companyName, $headOfficeName);
+        }
+
+        $head = $company->branches()->where('name', $headOfficeName)->whereNull('deactivated_at')->first()
+            ?? $company->branches()->whereNull('deactivated_at')->orderBy('created_at')->firstOrFail();
+
+        if ($head->name !== $headOfficeName) {
+            $head->forceFill(['name' => $headOfficeName])->save();
+        }
+
+        if ($createSecondBranch && $secondBranchName !== null) {
+            $second = $company->branches()->where('name', $secondBranchName)->whereNull('deactivated_at')->first();
+            if ($second === null) {
+                $workspace->createBranch($company, $secondBranchName, 'Local demo: create second branch');
+            }
+        }
+
+        return $company->refresh();
+    }
+
+    private function ensureSuperAdminUser(string $email, string $name, string $password): User
+    {
+        $user = User::query()->where('email', $email)->first();
+
+        if ($user === null) {
+            return User::factory()->superAdmin()->create([
+                'name' => $name,
+                'email' => $email,
+                'password' => Hash::make($password),
+                'email_verified_at' => now(),
+            ]);
+        }
+
+        $user->forceFill([
+            'name' => $name,
+            'password' => Hash::make($password),
+            'is_super_admin' => true,
+            'email_verified_at' => $user->email_verified_at ?? now(),
+            'deactivated_at' => null,
+        ])->save();
+
+        return $user->refresh();
     }
 
     private function ensureCustomerUser(string $email, string $name, string $password): User

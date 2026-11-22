@@ -64,6 +64,21 @@ export function AppSidebar() {
                             href: `/owner/companies/${activeCompanyId}/branches`,
                             icon: LayoutGrid,
                         },
+                        {
+                            title: 'Users',
+                            href: `/owner/companies/${activeCompanyId}/users`,
+                            icon: LayoutGrid,
+                        },
+                        {
+                            title: 'Settings',
+                            href: `/owner/companies/${activeCompanyId}/settings`,
+                            icon: LayoutGrid,
+                        },
+                        {
+                            title: 'Audit',
+                            href: `/owner/companies/${activeCompanyId}/audit`,
+                            icon: LayoutGrid,
+                        },
                     ]
                   : []),
               ...(activeCompanyId && activeBranchId
