@@ -185,6 +185,54 @@ final class SubscriptionLifecycleService
     }
 
     /**
+     * Extend an active subscription after verified renewal settlement (manual renewals only).
+     */
+    public function extendAfterVerifiedRenewal(
+        CompanySubscription $subscription,
+        CarbonImmutable $newPaidThrough,
+        ?User $actor = null,
+        string $remark = 'Extend after verified renewal payment',
+    ): CompanySubscription {
+        return $this->tx->run(function () use ($subscription, $newPaidThrough, $actor, $remark): CompanySubscription {
+            $company = $subscription->company()->firstOrFail();
+
+            return $this->withTenant($actor, $company, function () use ($subscription, $newPaidThrough, $actor, $remark): CompanySubscription {
+                /** @var CompanySubscription $locked */
+                $locked = CompanySubscription::query()->whereKey($subscription->id)->lockForUpdate()->firstOrFail();
+
+                if ($locked->status !== 'active') {
+                    throw new SubscriptionDomainException('Only active subscriptions can be renewed.');
+                }
+
+                $graceDays = (int) config('subscription.paid_grace.days', 10);
+                $before = $locked->toArray();
+                $locked->fill([
+                    'paid_through_date' => $newPaidThrough->toDateString(),
+                    'grace_ends_on' => $newPaidThrough->addDays($graceDays)->toDateString(),
+                    'common_renewal_date' => $newPaidThrough->toDateString(),
+                    'cancellation_requested_at' => null,
+                    'cancellation_effective_on' => null,
+                    'cancellation_requested_by' => null,
+                    'cancellation_remark' => null,
+                ]);
+                $locked->save();
+
+                $this->contracts->writeImmutableSnapshot($locked->load('items'), $actor, 'renewed_after_payment');
+                $this->audit->write(
+                    action: AuditAction::Updated,
+                    subjectType: 'company_subscription',
+                    subjectId: $locked->id,
+                    remark: $remark,
+                    before: $before,
+                    after: $locked->fresh()?->toArray(),
+                );
+
+                return $locked->fresh(['items']) ?? $locked;
+            });
+        });
+    }
+
+    /**
      * Schedule a downgrade/removal for next common renewal (not immediately entitling).
      *
      * @param  array<string, mixed>  $payload

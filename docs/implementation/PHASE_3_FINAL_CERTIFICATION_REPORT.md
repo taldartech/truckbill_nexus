@@ -20,7 +20,7 @@ Phase 3 Masters, Documents, Subscription foundations, Confirmed lifecycle enforc
 **Not** production-complete without PO decisions:
 
 - Full AUD-CON-006 fine-grained matrix (Confirmed Rules §15 subset is enforced)
-- Razorpay Test Mode / production (PO-P3-PAY / G-PAY)
+- Razorpay Test Mode sandbox evidence (PO-P3-PAY-TEST code done; G-PAY Open) and production (PO-P3-PAY-PROD Pending)
 - Legally operative invoice issuer/tax validation
 - ADR-010 accounting postings
 
@@ -28,16 +28,16 @@ Phase 3 Masters, Documents, Subscription foundations, Confirmed lifecycle enforc
 
 ## B. Workstream completion (P3-WS-0…7)
 
-| WS      | Status                                      | Notes                              |
-| ------- | ------------------------------------------- | ---------------------------------- |
-| P3-WS-0 | Complete                                    | Authorization recorded             |
-| P3-WS-1 | Complete (authorized UI)                    | Masters CRUD                       |
-| P3-WS-2 | Complete (foundations)                      | GST/TDS                            |
-| P3-WS-3 | Complete (authorized UI)                    | Documents + drawer                 |
-| P3-WS-4 | Complete (authorized UI)                    | Catalogue, drafts, credits         |
-| P3-WS-5 | **Confirmed complete; Pending cells gated** | Evaluator + EntitlementGate + jobs |
-| P3-WS-6 | **Simulated complete; live gated**          | Fake gateway; no live webhook HTTP |
-| P3-WS-7 | **This certification (exceptions)**         | Exit criteria partially gated      |
+| WS      | Status                                      | Notes                                                                   |
+| ------- | ------------------------------------------- | ----------------------------------------------------------------------- |
+| P3-WS-0 | Complete                                    | Authorization recorded                                                  |
+| P3-WS-1 | Complete (authorized UI)                    | Masters CRUD                                                            |
+| P3-WS-2 | Complete (foundations)                      | GST/TDS                                                                 |
+| P3-WS-3 | Complete (authorized UI)                    | Documents + drawer                                                      |
+| P3-WS-4 | Complete (authorized UI)                    | Catalogue, drafts, credits                                              |
+| P3-WS-5 | **Confirmed complete; Pending cells gated** | Evaluator + EntitlementGate + jobs                                      |
+| P3-WS-6 | **Test Mode code complete; G-PAY Open**     | RazorpayTestPaymentGateway + checkout/webhook; sandbox evidence pending |
+| P3-WS-7 | **This certification (exceptions)**         | Exit criteria partially gated                                           |
 
 ---
 
@@ -70,12 +70,13 @@ Phase 3 Masters, Documents, Subscription foundations, Confirmed lifecycle enforc
 
 ## D. Payment verification
 
-| Evidence type                           | Result                                       |
-| --------------------------------------- | -------------------------------------------- |
-| FakePaymentGateway + Pest               | Verified (Batch E)                           |
-| Signature reject / duplicate / mismatch | Verified                                     |
-| Razorpay Test Mode live sandbox         | **Not executed — PO-P3-PAY / G-PAY blocked** |
-| Production charges                      | **Disabled / not authorized**                |
+| Evidence type                           | Result                                    |
+| --------------------------------------- | ----------------------------------------- |
+| FakePaymentGateway + Pest               | Verified (Batch E)                        |
+| Signature reject / duplicate / mismatch | Verified                                  |
+| Razorpay Test Mode adapter + HTTP mocks | Verified (Batch F; PO-P3-PAY-TEST)        |
+| Razorpay Test Mode live sandbox         | **Not executed — G-PAY credentials Open** |
+| Production charges                      | **Disabled / not authorized**             |
 
 ---
 

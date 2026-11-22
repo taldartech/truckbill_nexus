@@ -21,18 +21,18 @@ Choose one:
 
 ### 2. Exception list to accept or reject (if Option A/B)
 
-| Exception                                                            | Accept as Phase 3 exception? |
-| -------------------------------------------------------------------- | ---------------------------- |
-| AUD-CON-006 fine-grained cells Pending; Confirmed Rules §15 enforced | Yes / No / Amend             |
-| No live Razorpay Test Mode until PO-P3-PAY / G-PAY                   | Yes / No                     |
-| No production charges                                                | Yes (required)               |
-| No legally operative production invoices until issuer/tax validated  | Yes / No                     |
-| ADR-010 accounting postings Deferred                                 | Yes / No                     |
-| Official Razorpay SDK not installed (HMAC adapter path)              | Yes / No / Install           |
+| Exception                                                               | Accept as Phase 3 exception? |
+| ----------------------------------------------------------------------- | ---------------------------- |
+| AUD-CON-006 fine-grained cells Pending; Confirmed Rules §15 enforced    | Yes / No / Amend             |
+| Batch F Test Mode code complete; actual sandbox evidence waits on G-PAY | Yes / No                     |
+| No production charges (PO-P3-PAY-PROD Pending)                          | Yes (required)               |
+| No legally operative production invoices until issuer/tax validated     | Yes / No                     |
+| ADR-010 accounting postings Deferred                                    | Yes / No                     |
+| Official Razorpay SDK not installed (HMAC adapter path)                 | Yes (Option A approved)      |
 
 ### 3. Next authorization after acceptance
 
-If Option A: authorize Batch F as **PO-P3-PAY Test Mode** workstream only after G-PAY checklist.  
+If Option A: complete **G-PAY** sandbox verification, then decide PO-P3-PAY-PROD separately.  
 If Option C: return decision package with matrix amendments.
 
 ---

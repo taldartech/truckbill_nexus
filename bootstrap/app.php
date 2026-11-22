@@ -21,6 +21,11 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
 
+        // Razorpay Test Mode webhooks authenticate via HMAC, not session CSRF.
+        $middleware->validateCsrfTokens(except: [
+            'webhooks/razorpay',
+        ]);
+
         // Global: Lifecycle must wrap Reject so context is cleared even on abort.
         // Order: ManageTenantContextLifecycle (outer) → RejectClientTenantIdentifiers (inner).
         $middleware->append([

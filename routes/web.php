@@ -22,6 +22,7 @@ use App\Http\Controllers\Owner\OwnerDashboardController;
 use App\Http\Controllers\Owner\OwnerSettingsController;
 use App\Http\Controllers\Owner\OwnerSubscriptionController;
 use App\Http\Controllers\Owner\OwnerUsersController;
+use App\Http\Controllers\Webhooks\RazorpayWebhookController;
 use App\Http\Controllers\Workspace\EnterBranchController;
 use App\Http\Controllers\Workspace\EnterCompanyController;
 use App\Http\Controllers\Workspace\SelectBranchController;
@@ -33,6 +34,8 @@ use Illuminate\Support\Facades\Route;
 Route::inertia('/', 'welcome')->name('home');
 
 Route::get('/health/ready', [HealthController::class, 'ready'])->name('health.ready');
+
+Route::post('/webhooks/razorpay', RazorpayWebhookController::class)->name('webhooks.razorpay');
 
 Route::get('/invitations/accept/{token}', [InvitationAcceptanceController::class, 'show'])
     ->name('invitations.accept');
@@ -67,6 +70,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/owner/companies/{company}/subscription/invoices', [OwnerSubscriptionController::class, 'invoices'])->name('owner.subscription.invoices');
     Route::post('/owner/companies/{company}/subscription/cancel', [OwnerSubscriptionController::class, 'requestCancellation'])->name('owner.subscription.cancel');
     Route::post('/owner/companies/{company}/subscription/cancel/withdraw', [OwnerSubscriptionController::class, 'withdrawCancellation'])->name('owner.subscription.cancel.withdraw');
+    Route::get('/owner/companies/{company}/subscription/drafts/{subscription}/checkout', [OwnerSubscriptionController::class, 'checkout'])
+        ->name('owner.subscription.checkout');
+    Route::post('/owner/companies/{company}/subscription/drafts/{subscription}/checkout/verify', [OwnerSubscriptionController::class, 'verifyCheckout'])
+        ->name('owner.subscription.checkout.verify');
+    Route::post('/owner/companies/{company}/subscription/drafts/{subscription}/checkout/simulate', [OwnerSubscriptionController::class, 'simulateCheckout'])
+        ->name('owner.subscription.checkout.simulate');
+    Route::post('/owner/companies/{company}/subscription/renew', [OwnerSubscriptionController::class, 'renew'])
+        ->name('owner.subscription.renew');
     Route::get('/owner/companies/{company}/branches', OwnerBranchesController::class)->name('owner.branches');
 
     Route::get('/owner/companies/{company}/users', [OwnerUsersController::class, 'index'])->name('owner.users');

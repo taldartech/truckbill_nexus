@@ -2,9 +2,12 @@
 
 namespace App\Domains\Subscription\Payments;
 
+use App\Domains\Subscription\Contract\CompanySubscriptionContractService;
 use App\Domains\Subscription\Exceptions\SubscriptionDomainException;
 use App\Domains\Subscription\Lifecycle\SubscriptionLifecycleService;
+use App\Domains\Subscription\Payments\Gateway\FakePaymentGateway;
 use App\Domains\Subscription\Payments\Gateway\PaymentGateway;
+use App\Domains\Subscription\Payments\Gateway\RazorpayTestPaymentGateway;
 use App\Domains\Subscription\Support\DecimalMath;
 use App\Models\CompanySubscription;
 use App\Models\PaymentGatewayEvent;
@@ -18,9 +21,10 @@ use App\Support\Tenant\TenantContext;
 use App\Support\Tenant\TenantContextHolder;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Str;
+use JsonException;
 
 /**
- * Processes verified synthetic gateway events. Production webhook HTTP endpoint stays disabled.
+ * Processes verified webhook raw bodies. Payload is always parsed from the signed bytes.
  */
 final class PaymentEventProcessor
 {
@@ -30,10 +34,44 @@ final class PaymentEventProcessor
         private readonly AuditedTransaction $tx = new AuditedTransaction,
         private readonly AuditWriter $audit = new AuditWriter,
         private readonly OutboxWriter $outbox = new OutboxWriter,
+        private readonly RazorpayWebhookNormalizer $normalizer = new RazorpayWebhookNormalizer,
+        private readonly CompanySubscriptionContractService $contracts = new CompanySubscriptionContractService,
     ) {}
 
     /**
-     * @param  array<string, mixed>  $payload
+     * Preferred entry: verify signature then parse the same raw body.
+     */
+    public function processRawWebhook(
+        string $rawBody,
+        string $signature,
+        ?string $deliveryEventId = null,
+        ?string $secret = null,
+    ): PaymentGatewayEvent {
+        $secret ??= $this->resolveWebhookSecret();
+
+        if (! $this->gateway->verifyWebhookSignature($rawBody, $signature, $secret)) {
+            return $this->recordRejected([
+                'event_id' => $deliveryEventId ?? 'unknown',
+                'event_type' => 'webhook',
+            ], 'invalid', 'Invalid webhook signature.');
+        }
+
+        try {
+            /** @var array<string, mixed> $decoded */
+            $decoded = json_decode($rawBody, true, 512, JSON_THROW_ON_ERROR);
+        } catch (JsonException $e) {
+            throw new SubscriptionDomainException('Webhook body is not valid JSON.', 0, $e);
+        }
+
+        $payload = $this->normalizeDecoded($decoded, $deliveryEventId);
+
+        return $this->processNormalizedPayload($payload);
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload  Ignored for business data — kept for API compatibility with Batch E tests.
+     *
+     * @deprecated Prefer processRawWebhook(); $payload is not trusted independently of $rawBody.
      */
     public function processVerifiedEvent(
         string $rawBody,
@@ -41,10 +79,32 @@ final class PaymentEventProcessor
         array $payload,
         string $secret,
     ): PaymentGatewayEvent {
-        if (! $this->gateway->verifyWebhookSignature($rawBody, $signature, $secret)) {
-            return $this->recordRejected($payload, 'invalid', 'Invalid webhook signature.');
+        return $this->processRawWebhook($rawBody, $signature, null, $secret);
+    }
+
+    /**
+     * @param  array<string, mixed>  $decoded
+     * @return array<string, mixed>
+     */
+    private function normalizeDecoded(array $decoded, ?string $deliveryEventId): array
+    {
+        if (isset($decoded['event']) && isset($decoded['payload'])) {
+            return $this->normalizer->normalize($decoded, $deliveryEventId);
         }
 
+        // Fake / domain-shaped events used in CI.
+        if ($deliveryEventId !== null && $deliveryEventId !== '') {
+            $decoded['event_id'] = $deliveryEventId;
+        }
+
+        return $decoded;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    private function processNormalizedPayload(array $payload): PaymentGatewayEvent
+    {
         $eventId = (string) ($payload['event_id'] ?? '');
         if ($eventId === '') {
             throw new SubscriptionDomainException('gateway event_id is required.');
@@ -112,6 +172,16 @@ final class PaymentEventProcessor
                 return $event;
             }
 
+            // Do not downgrade an already-captured payment with a delayed failure event.
+            if ($intent->status === 'paid' && $status !== 'captured' && $status !== 'paid') {
+                $event->processing_status = 'ignored';
+                $event->rejection_reason = 'Delayed non-success event after verified capture.';
+                $event->processed_at = now();
+                $event->save();
+
+                return $event;
+            }
+
             if ($status !== 'captured' && $status !== 'paid') {
                 $intent->status = 'failed';
                 $intent->verification_status = 'verified';
@@ -133,24 +203,12 @@ final class PaymentEventProcessor
             ));
 
             try {
-                $intent->gateway_payment_id = $paymentId;
+                $intent->gateway_payment_id = $paymentId !== '' ? $paymentId : $intent->gateway_payment_id;
                 $intent->status = 'paid';
                 $intent->verification_status = 'verified';
                 $intent->save();
 
-                if ($intent->company_subscription_id !== null) {
-                    $subscription = CompanySubscription::query()->whereKey($intent->company_subscription_id)->first();
-                    if ($subscription !== null && in_array($subscription->status, ['draft', 'pending_payment'], true)) {
-                        $paidThrough = CarbonImmutable::parse(
-                            $subscription->common_renewal_date?->toDateString() ?? now()->addYear()->toDateString()
-                        );
-                        $this->lifecycle->activateAfterVerifiedPayment(
-                            $subscription,
-                            $paidThrough,
-                            remark: 'Activate from verified payment event '.$eventId,
-                        );
-                    }
-                }
+                $this->fulfillPaidIntent($intent, $eventId);
 
                 $this->outbox->enqueue('subscription.payment.verified', [
                     'payment_intent_id' => $intent->id,
@@ -184,6 +242,65 @@ final class PaymentEventProcessor
         });
     }
 
+    public function fulfillPaidIntent(PaymentIntent $intent, string $reference): void
+    {
+        if ($intent->company_subscription_id !== null) {
+            $subscription = CompanySubscription::query()->whereKey($intent->company_subscription_id)->first();
+            if ($subscription !== null) {
+                if (in_array($subscription->status, ['draft', 'pending_payment'], true)) {
+                    $paidThrough = CarbonImmutable::parse(
+                        $subscription->common_renewal_date?->toDateString() ?? now()->addYear()->toDateString()
+                    );
+                    $this->lifecycle->activateAfterVerifiedPayment(
+                        $subscription,
+                        $paidThrough,
+                        remark: 'Activate from verified payment '.$reference,
+                    );
+                } elseif ($subscription->status === 'active' && $intent->purpose === 'renewal') {
+                    $current = $subscription->paid_through_date
+                        ? CarbonImmutable::parse($subscription->paid_through_date->toDateString())
+                        : CarbonImmutable::parse($subscription->common_renewal_date?->toDateString() ?? now()->toDateString());
+                    $months = max(1, (int) ($subscription->tenure === 'monthly' ? 1 : ($subscription->tenure === 'quarterly' ? 3 : ($subscription->tenure === 'half_yearly' ? 6 : 12))));
+                    if (in_array($subscription->tenure, ['three_year_full_advance', 'three_year_annual_instalments'], true)) {
+                        $months = 12;
+                    }
+                    $this->lifecycle->extendAfterVerifiedRenewal(
+                        $subscription,
+                        $current->addMonthsNoOverflow($months),
+                        remark: 'Renew from verified payment '.$reference,
+                    );
+                }
+            }
+        }
+
+        if (in_array($intent->purpose, ['credit_topup_broker', 'credit_topup_partload'], true)) {
+            $ledgerType = $intent->purpose === 'credit_topup_broker' ? 'broker' : 'partload';
+            $meta = $intent->meta ?? [];
+            $units = (string) ($meta['credit_units'] ?? $intent->amount);
+            $company = $intent->company()->firstOrFail();
+            $ledger = $this->contracts->ensureCreditLedger($company, $ledgerType);
+            $this->contracts->appendCreditEntry(
+                $ledger,
+                $units,
+                'grant',
+                'Verified '.$intent->purpose,
+                'pay:'.$intent->id,
+            );
+        }
+    }
+
+    private function resolveWebhookSecret(): string
+    {
+        if ($this->gateway instanceof RazorpayTestPaymentGateway) {
+            return $this->gateway->webhookSecret();
+        }
+        if ($this->gateway instanceof FakePaymentGateway) {
+            return $this->gateway->secret();
+        }
+
+        throw new SubscriptionDomainException('Webhook secret unavailable for gateway '.$this->gateway->name());
+    }
+
     /**
      * @param  array<string, mixed>  $payload
      */
@@ -196,7 +313,6 @@ final class PaymentEventProcessor
             'company_id' => null,
             'payment_intent_id' => null,
             'gateway' => $this->gateway->name(),
-            // Do not consume the real gateway_event_id namespace for invalid signatures.
             'gateway_event_id' => 'invalid:'.($claimedId !== '' ? $claimedId : 'unknown').':'.Str::uuid(),
             'event_type' => (string) ($payload['event_type'] ?? 'payment'),
             'processing_status' => 'rejected',

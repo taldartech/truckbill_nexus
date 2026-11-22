@@ -9,16 +9,16 @@
 
 ## Approval matrix summary
 
-| Decision ID     | Topic                                   | Status today                       | Blocks                                                           |
-| --------------- | --------------------------------------- | ---------------------------------- | ---------------------------------------------------------------- |
-| AUD-CON-006     | Exact entitlement / state-action matrix | **Pending** (proposed below)       | Fine-grained create/edit/delete cells beyond Confirmed view-only |
-| PO-P3-PAY       | Razorpay Test Mode + checkout UI        | **Pending**                        | Live Test Mode orders, checkout UI, real webhook HTTP endpoint   |
-| G-PAY           | Credentials + verified webhook approach | **Open**                           | Sandbox keys, webhook secret, production readiness later         |
-| PO-P1-DEPS      | `razorpay/razorpay` SDK                 | **CASE-BY-CASE — recommend defer** | Official SDK install (HMAC can ship without SDK)                 |
-| PO-P3-PAY-PROD  | Production monetary charges             | **Not requested**                  | Real customer charges                                            |
-| TB-TAX / issuer | Central invoice issuer + GST validation | **Pending**                        | Legally operative production invoice issuance                    |
-| ADR-010         | Accounting posting architecture         | **Pending**                        | Invoice → GL postings                                            |
-| Batch D PO      | Batch D UI acceptance                   | Ready for PO (not auto-accepted)   | Formal Batch D closure                                           |
+| Decision ID     | Topic                                   | Status today                     | Blocks                                                           |
+| --------------- | --------------------------------------- | -------------------------------- | ---------------------------------------------------------------- |
+| AUD-CON-006     | Exact entitlement / state-action matrix | **Pending** (proposed below)     | Fine-grained create/edit/delete cells beyond Confirmed view-only |
+| PO-P3-PAY-TEST  | Razorpay Test Mode + checkout + webhook | **Approved** (22 Nov 2026)       | Implemented Batch F; sandbox evidence waits on G-PAY             |
+| G-PAY           | Credentials + verified webhook approach | **Open**                         | Sandbox keys, webhook secret, HTTPS reachability                 |
+| PO-P1-DEPS      | `razorpay/razorpay` SDK                 | **Option A approved (no SDK)**   | Do not install official SDK                                      |
+| PO-P3-PAY-PROD  | Production monetary charges             | **Pending**                      | Real customer charges                                            |
+| TB-TAX / issuer | Central invoice issuer + GST validation | **Pending**                      | Legally operative production invoice issuance                    |
+| ADR-010         | Accounting posting architecture         | **Pending**                      | Invoice → GL postings                                            |
+| Batch D PO      | Batch D UI acceptance                   | Ready for PO (not auto-accepted) | Formal Batch D closure                                           |
 
 Already approved and **not** re-requested: PO-P3-AUTH, PO-P3-DESIGN-FORMAL, PO-P3-UI-AUTH (masters/documents/subscription surfaces), DEC-001…009, Phase 2 deactivation (DEC-002).
 
@@ -57,16 +57,17 @@ Cells marked **IMPLEMENTED (Confirmed)** already enforce Confirmed Rules §15. O
 
 ## F0.2 — PO-P3-PAY / G-PAY (Test Mode vs production)
 
-### Requested Test Mode authorization (sandbox only)
+### PO-P3-PAY-TEST — APPROVED (22 November 2026)
 
-| Item                          | Requested decision                                                         |
-| ----------------------------- | -------------------------------------------------------------------------- |
-| Enable Razorpay **Test Mode** | Yes / No                                                                   |
-| Env vars                      | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` (test) |
-| Webhook HTTP endpoint         | Enable signed `/webhooks/razorpay` in non-prod only                        |
-| Checkout UI                   | Owner Panel checkout using Test Mode keys                                  |
-| Activation                    | Verified Test Mode settlement may activate subscriptions in non-prod       |
-| Production charges            | **Explicitly excluded** unless separate PO-P3-PAY-PROD                     |
+| Item                   | Decision                                                                   |
+| ---------------------- | -------------------------------------------------------------------------- |
+| Razorpay **Test Mode** | **Approved**                                                               |
+| Integration method     | Laravel HTTP client + HMAC-SHA256 (**no SDK**)                             |
+| Env vars               | `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` (test) |
+| Webhook HTTP endpoint  | `/webhooks/razorpay` non-prod when flags enabled                           |
+| Checkout UI            | Owner Panel Test Mode checkout                                             |
+| Activation             | Verified Test Mode settlement may activate in non-prod only                |
+| Production charges     | **Not approved** — **PO-P3-PAY-PROD** Pending                              |
 
 ### Recommended signature approach (no inventing)
 
@@ -87,12 +88,10 @@ Cells marked **IMPLEMENTED (Confirmed)** already enforce Confirmed Rules §15. O
 
 ## F0.3 — PO-P1-DEPS recommendation
 
-| Option | Package                 | Recommendation                                                              |
-| ------ | ----------------------- | --------------------------------------------------------------------------- |
-| A      | No new package          | **Preferred for now** — implement `RazorpayPaymentGateway` with HTTP + HMAC |
-| B      | `razorpay/razorpay:2.*` | Optional convenience; PHP version support must be verified for PHP 8.5      |
-
-**Ask:** Approve Option A (no SDK) for Test Mode adapter, or Option B (install official SDK) with exact version pin after compatibility check.
+| Option | Package                 | Recommendation                                                  |
+| ------ | ----------------------- | --------------------------------------------------------------- |
+| A      | No new package          | **Approved with PO-P3-PAY-TEST** — `RazorpayTestPaymentGateway` |
+| B      | `razorpay/razorpay:2.*` | **Not approved** — do not install                               |
 
 ---
 

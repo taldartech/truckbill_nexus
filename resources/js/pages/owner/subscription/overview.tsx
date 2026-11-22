@@ -69,7 +69,10 @@ type Props = {
         invoices: string;
         cancel: string;
         withdraw_cancel: string;
+        checkout: string | null;
+        renew: string;
     };
+    payment_gateway?: string;
 };
 
 export default function SubscriptionOverview({
@@ -140,6 +143,31 @@ export default function SubscriptionOverview({
                     <Button asChild variant="outline">
                         <Link href={links.invoices}>Invoices</Link>
                     </Button>
+                    {canManage && links.checkout ? (
+                        <Button asChild>
+                            <Link href={links.checkout}>
+                                Pay / activate (Test Mode)
+                            </Link>
+                        </Button>
+                    ) : null}
+                    {canManage &&
+                    subscription?.status === 'active' &&
+                    links.renew ? (
+                        <Form
+                            action={links.renew}
+                            method="post"
+                            className="inline"
+                        >
+                            <input
+                                type="hidden"
+                                name="subscription_id"
+                                value={subscription.id}
+                            />
+                            <Button type="submit" variant="outline">
+                                Renew (Test Mode)
+                            </Button>
+                        </Form>
+                    ) : null}
                     <Button asChild variant="ghost">
                         <Link href={links.dashboard}>Owner dashboard</Link>
                     </Button>

@@ -9,6 +9,12 @@ use App\Domains\Subscription\Entitlement\SubscriptionEntitlementGate;
 use App\Domains\Subscription\Enums\SubscriptionTenure;
 use App\Domains\Subscription\Exceptions\SubscriptionDomainException;
 use App\Domains\Subscription\Lifecycle\SubscriptionLifecycleService;
+use App\Domains\Subscription\Payments\CheckoutVerificationService;
+use App\Domains\Subscription\Payments\Gateway\FakePaymentGateway;
+use App\Domains\Subscription\Payments\Gateway\PaymentGateway;
+use App\Domains\Subscription\Payments\Gateway\PaymentGatewayAuthorization;
+use App\Domains\Subscription\Payments\Gateway\RazorpayTestPaymentGateway;
+use App\Domains\Subscription\Payments\PaymentIntentService;
 use App\Domains\Subscription\Pricing\SubscriptionPricingCalculator;
 use App\Domains\Subscription\Storage\StorageReconciliationService;
 use App\Http\Controllers\Controller;
@@ -41,6 +47,10 @@ class OwnerSubscriptionController extends Controller
         private readonly CompanyAccessService $access,
         private readonly SubscriptionPricingCalculator $pricing,
         private readonly CompanySubscriptionContractService $contracts,
+        private readonly PaymentIntentService $paymentIntents,
+        private readonly CheckoutVerificationService $checkout,
+        private readonly PaymentGateway $gateway,
+        private readonly PaymentGatewayAuthorization $paymentAuth,
         private readonly SubscriptionEntitlementGate $entitlements = new SubscriptionEntitlementGate,
         private readonly SubscriptionLifecycleService $lifecycle = new SubscriptionLifecycleService,
         private readonly CompanyCapacityService $capacity = new CompanyCapacityService,
@@ -132,8 +142,165 @@ class OwnerSubscriptionController extends Controller
                 'invoices' => route('owner.subscription.invoices', $company),
                 'cancel' => route('owner.subscription.cancel', $company),
                 'withdraw_cancel' => route('owner.subscription.cancel.withdraw', $company),
+                'checkout' => $activeOrDraft !== null
+                    ? route('owner.subscription.checkout', [$company, $activeOrDraft])
+                    : null,
+                'renew' => route('owner.subscription.renew', $company),
+            ],
+            'payment_gateway' => $this->gateway->name(),
+            'razorpay_test_ready' => $this->paymentAuth->isTestModeConfigured()
+                && $this->paymentAuth->selectedGateway() === 'razorpay_test'
+                && ! app()->isProduction(),
+        ]);
+    }
+
+    public function checkout(Request $request, Company $company, CompanySubscription $subscription): Response
+    {
+        ['user' => $user, 'scope' => $scope] = $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
+        $this->assertCompanySubscription($company, $subscription);
+
+        if (! in_array($subscription->status, ['draft', 'pending_payment', 'active'], true)) {
+            abort(403, 'Subscription is not payable in its current status.');
+        }
+
+        $purpose = $subscription->status === 'active' ? 'renewal' : 'subscription_activation';
+        $amount = (string) $subscription->discounted_annual_total;
+
+        try {
+            $intent = $this->paymentIntents->create(
+                company: $company,
+                purpose: $purpose,
+                amount: $amount,
+                idempotencyKey: 'checkout:'.$subscription->id.':'.$purpose.':'.$amount,
+                subscription: $subscription,
+            );
+        } catch (SubscriptionDomainException $e) {
+            abort(403, $e->getMessage());
+        }
+
+        if ($subscription->status === 'draft') {
+            $subscription->forceFill(['status' => 'pending_payment'])->save();
+        }
+
+        $publicKey = null;
+        $mode = $this->gateway->name();
+        if ($this->gateway instanceof RazorpayTestPaymentGateway) {
+            $publicKey = $this->gateway->publicKeyId();
+        }
+
+        return Inertia::render('owner/subscription/checkout', [
+            'company' => $this->companyPayload($company),
+            'ownerPanelScope' => $scope,
+            'test_mode_banner' => 'Razorpay Test Mode — No Real Money Will Be Charged',
+            'gateway' => $mode,
+            'public_key' => $publicKey,
+            'subscription' => $this->subscriptionPayload($subscription->load('items')),
+            'payment' => [
+                'id' => $intent->id,
+                'purpose' => $intent->purpose,
+                'amount' => (string) $intent->amount,
+                'currency' => $intent->currency,
+                'status' => $intent->status,
+                'gateway_order_id' => $intent->gateway_order_id,
+            ],
+            'prefill' => [
+                'name' => $user->name,
+                'email' => $user->email,
+            ],
+            'links' => [
+                'overview' => route('owner.subscription', $company),
+                'verify' => route('owner.subscription.checkout.verify', [$company, $subscription]),
+                'simulate' => route('owner.subscription.checkout.simulate', [$company, $subscription]),
             ],
         ]);
+    }
+
+    public function verifyCheckout(Request $request, Company $company, CompanySubscription $subscription): RedirectResponse
+    {
+        ['user' => $user] = $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
+        $this->assertCompanySubscription($company, $subscription);
+
+        $validated = $request->validate([
+            'payment_intent_id' => ['required', 'uuid'],
+            'razorpay_order_id' => ['required', 'string'],
+            'razorpay_payment_id' => ['required', 'string'],
+            'razorpay_signature' => ['required', 'string'],
+        ]);
+
+        $intent = PaymentIntent::query()->whereKey($validated['payment_intent_id'])->firstOrFail();
+        if ($intent->company_subscription_id !== $subscription->id) {
+            abort(404);
+        }
+
+        try {
+            $this->checkout->verifyOwnerCallback($user, $company, $intent, $validated);
+        } catch (SubscriptionDomainException $e) {
+            return redirect()
+                ->route('owner.subscription.checkout', [$company, $subscription])
+                ->withErrors(['checkout' => $e->getMessage()]);
+        }
+
+        return redirect()
+            ->route('owner.subscription', $company)
+            ->with('success', 'Payment verified. Subscription updated from server-side verification.');
+    }
+
+    /**
+     * Deterministic fake-gateway capture for local/CI when Razorpay credentials are absent.
+     */
+    public function simulateCheckout(Request $request, Company $company, CompanySubscription $subscription): RedirectResponse
+    {
+        ['user' => $user] = $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
+        $this->assertCompanySubscription($company, $subscription);
+
+        if (! $this->gateway instanceof FakePaymentGateway) {
+            abort(403, 'Simulate capture is only available with the fake gateway.');
+        }
+
+        $validated = $request->validate([
+            'payment_intent_id' => ['required', 'uuid'],
+        ]);
+
+        $intent = PaymentIntent::query()->whereKey($validated['payment_intent_id'])->firstOrFail();
+        if ($intent->company_subscription_id !== $subscription->id || $intent->company_id !== $company->id) {
+            abort(404);
+        }
+
+        $paymentId = 'pay_fake_'.strtolower(str()->random(10));
+        $orderId = (string) $intent->gateway_order_id;
+        $signature = hash_hmac('sha256', $orderId.'|'.$paymentId, $this->gateway->secret());
+
+        try {
+            $this->checkout->verifyOwnerCallback($user, $company, $intent, [
+                'order_id' => $orderId,
+                'payment_id' => $paymentId,
+                'signature' => $signature,
+            ]);
+        } catch (SubscriptionDomainException $e) {
+            return back()->withErrors(['checkout' => $e->getMessage()]);
+        }
+
+        return redirect()
+            ->route('owner.subscription', $company)
+            ->with('success', 'Simulated Test Mode capture verified (fake gateway).');
+    }
+
+    public function renew(Request $request, Company $company): RedirectResponse
+    {
+        $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
+
+        $validated = $request->validate([
+            'subscription_id' => ['required', 'uuid'],
+        ]);
+
+        $subscription = CompanySubscription::query()->whereKey($validated['subscription_id'])->firstOrFail();
+        $this->assertCompanySubscription($company, $subscription);
+
+        if ($subscription->status !== 'active') {
+            return back()->withErrors(['subscription_id' => 'Only active subscriptions can be renewed.']);
+        }
+
+        return redirect()->route('owner.subscription.checkout', [$company, $subscription]);
     }
 
     public function catalogue(Request $request, Company $company): Response
