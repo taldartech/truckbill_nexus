@@ -3,6 +3,7 @@
 namespace App\Domains\Company;
 
 use App\Domains\Company\Exceptions\CompanyDomainException;
+use App\Domains\Subscription\Lifecycle\SubscriptionTrialService;
 use App\Models\Branch;
 use App\Models\BranchAssignment;
 use App\Models\Company;
@@ -26,6 +27,7 @@ final class CompanyWorkspaceService
         private readonly AuditedTransaction $auditedTransaction = new AuditedTransaction,
         private readonly AuditWriter $auditWriter = new AuditWriter,
         private readonly CompanyAccessService $access = new CompanyAccessService,
+        private readonly SubscriptionTrialService $trials = new SubscriptionTrialService,
     ) {}
 
     public function createCompany(User $owner, string $name, ?string $initialBranchName = 'Head Office'): Company
@@ -76,6 +78,9 @@ final class CompanyWorkspaceService
                     $this->createBranchWithinContext($company, $initialBranchName);
                 }
             });
+
+            // First-company trial only; subsequent companies return null (Rules §15).
+            $this->trials->startFirstCompanyTrial($owner, $company->refresh());
 
             return $company->refresh();
         });

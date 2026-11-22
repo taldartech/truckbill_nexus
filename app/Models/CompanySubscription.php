@@ -14,6 +14,11 @@ use Illuminate\Support\Str;
 /**
  * @property CarbonInterface|null $common_renewal_date
  * @property CarbonInterface|null $activated_at
+ * @property CarbonInterface|null $paid_through_date
+ * @property CarbonInterface|null $grace_ends_on
+ * @property CarbonInterface|null $cancellation_requested_at
+ * @property CarbonInterface|null $cancellation_effective_on
+ * @property CarbonInterface|null $cancelled_at
  */
 class CompanySubscription extends Model
 {
@@ -37,6 +42,13 @@ class CompanySubscription extends Model
         'discounted_annual_total',
         'pricing_breakdown',
         'activated_at',
+        'paid_through_date',
+        'grace_ends_on',
+        'cancellation_requested_at',
+        'cancellation_effective_on',
+        'cancellation_requested_by',
+        'cancellation_remark',
+        'cancelled_at',
     ];
 
     protected function casts(): array
@@ -49,6 +61,11 @@ class CompanySubscription extends Model
             'discounted_annual_total' => 'decimal:2',
             'pricing_breakdown' => 'array',
             'activated_at' => 'datetime',
+            'paid_through_date' => 'date',
+            'grace_ends_on' => 'date',
+            'cancellation_requested_at' => 'datetime',
+            'cancellation_effective_on' => 'date',
+            'cancelled_at' => 'datetime',
         ];
     }
 

@@ -5,6 +5,8 @@ namespace App\Providers;
 use App\Domains\Auth\Listeners\HandleWebSessionOnLogout;
 use App\Domains\Auth\WebSessionService;
 use App\Domains\Rbac\PermissionAuthorizer;
+use App\Domains\Subscription\Payments\Gateway\FakePaymentGateway;
+use App\Domains\Subscription\Payments\Gateway\PaymentGateway;
 use App\Models\User;
 use App\Policies\UserPolicy;
 use App\Support\Files\Scanning\MalwareScanner;
@@ -35,6 +37,9 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->singleton(PermissionAuthorizer::class);
         $this->app->singleton(WebSessionService::class);
+
+        // Live Razorpay adapter is blocked until PO-P3-PAY / G-PAY. Default to fake gateway.
+        $this->app->bind(PaymentGateway::class, FakePaymentGateway::class);
     }
 
     /**

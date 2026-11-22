@@ -167,7 +167,7 @@
 | UI                | Owner lifecycle/status after G-DESIGN-P3; entitlement-dependent controls wait on AUD-CON-006                                                                                                                                                                              |
 | Tests             | Trial clock; grace view-only; storage block; no invented restricted behaviours                                                                                                                                                                                            |
 | Acceptance        | Confirmed lifecycle rules tested; Pending matrix explicitly documented as blocked                                                                                                                                                                                         |
-| **Status**        | Not started                                                                                                                                                                                                                                                               |
+| **Status**        | **Batch E foundations complete (Confirmed rules only)** — evaluator/trial/grace/cancel/proposals tested; AUD-CON-006 enforcement still Pending; no blanket middleware                                                                                                     |
 
 ---
 
@@ -185,7 +185,7 @@
 | Blocked by        | G-PAY credentials/approach; package approval if SDK added; **no live charges** without explicit PO                                                                                                                                              |
 | Tests             | Signature failure reject; duplicate webhook no double credit; activation without invoice approval; refund APIs absent                                                                                                                           |
 | Acceptance        | Webhook idempotency + payment-activated subscription exit criteria                                                                                                                                                                              |
-| **Status**        | Not started                                                                                                                                                                                                                                     |
+| **Status**        | **Batch E simulated foundations complete** — FakePaymentGateway + PaymentEventProcessor + invoice state machine; live Razorpay / webhook HTTP / Owner billing UI still gated (PO-P3-PAY / G-PAY)                                                |
 
 ---
 
@@ -197,7 +197,7 @@
 | Scope         | Pricing; webhook idempotency; entitlement (Confirmed only); storage/credit reconciliation; immutable contracts; tenant/file negatives |
 | Prerequisites | P3-WS-1–6 for authorized slices                                                                                                       |
 | Acceptance    | Certification report + CI green                                                                                                       |
-| **Status**    | Not started                                                                                                                           |
+| **Status**    | **Partial (Batch E evidence)** — `PHASE_3_BATCH_E_CERTIFICATION_REPORT.md` covers WS-5/6 foundations; full Phase 3 exit still open    |
 
 ---
 
@@ -229,14 +229,14 @@ Rationale: proves commercial math early; proves master tenancy patterns; neither
 
 ## 5. Backend vs UI / design prerequisites
 
-| Workstream         | Backend without product UI   | Product UI requires                               |
-| ------------------ | ---------------------------- | ------------------------------------------------- |
-| P3-WS-1 Masters    | Yes                          | G-DESIGN-P3 master screens                        |
-| P3-WS-2 GST/TDS    | Yes                          | G-DESIGN-P3 admin/read screens                    |
-| P3-WS-3 Documents  | Yes                          | G-DESIGN-P3 upload/preview patterns (reuse shell) |
-| P3-WS-4 Foundation | Yes                          | G-DESIGN-P3 Owner subscription                    |
-| P3-WS-5 Lifecycle  | Partial (Confirmed only)     | G-DESIGN-P3 + AUD-CON-006 for Pending cells       |
-| P3-WS-6 Billing    | Webhook/domain yes (doubles) | G-DESIGN-P3 + G-PAY; no live pay without PO       |
+| Workstream         | Backend without product UI    | Product UI requires                               |
+| ------------------ | ----------------------------- | ------------------------------------------------- |
+| P3-WS-1 Masters    | Yes                           | G-DESIGN-P3 master screens                        |
+| P3-WS-2 GST/TDS    | Yes                           | G-DESIGN-P3 admin/read screens                    |
+| P3-WS-3 Documents  | Yes                           | G-DESIGN-P3 upload/preview patterns (reuse shell) |
+| P3-WS-4 Foundation | Yes                           | G-DESIGN-P3 Owner subscription                    |
+| P3-WS-5 Lifecycle  | Batch E Confirmed foundations | G-DESIGN-P3 + AUD-CON-006 for Pending cells       |
+| P3-WS-6 Billing    | Batch E doubles complete      | G-DESIGN-P3 + G-PAY; no live pay without PO       |
 
 Design artefacts: reuse Phase 2 Owner/Branch chrome, forms, tables, empty states. Produce a compact Phase 3 design package (IA + key screens for masters, documents, subscription, billing) under `docs/design/phase-3/` when authorized — do not wait for a full redesign.
 
