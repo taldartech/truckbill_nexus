@@ -140,6 +140,8 @@ test('local demo user seeder is opt-in and environment gated', function () {
     $this->seed(DatabaseSeeder::class);
     expect(User::query()->where('email', LocalDemoUserSeeder::DEMO_EMAIL)->exists())->toBeFalse();
 
+    config(['local_demo.password' => 'demo-test-password-not-for-production']);
+
     $this->seed(LocalDemoUserSeeder::class);
     expect(User::query()->where('email', LocalDemoUserSeeder::DEMO_EMAIL)->exists())->toBeTrue();
 
