@@ -82,23 +82,24 @@
 
 ### P2-WS-1 — Identity persistence and type boundaries
 
-| Field         | Content                                                                                                                   |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| Objective     | Persist global identity with mutually exclusive Internal/Customer type                                                    |
-| Scope         | Users/identity schema extensions; type enum; soft-delete/deactivation columns; protect last Super Admin scaffolding hooks |
-| Traceability  | TB-AUTH-001, TB-AUTH-002, TB-AUTH-007, TB-AUTH-008, TB-DEL-001/002; ADR-005                                               |
-| Prerequisites | P2-WS-0                                                                                                                   |
-| Dependencies  | —                                                                                                                         |
-| ADRs          | ADR-005 (Accepted product / Proposed schema → resolve schema)                                                             |
-| Schema        | Identity type; status; soft-delete; internal role flags as designed                                                       |
-| Backend       | Models, factories, policies stubs; registration remains disabled                                                          |
-| Frontend      | Minimal profile surfaces only if already in shell; no product panels                                                      |
-| Authz risks   | Type confusion (Internal acting as Customer)                                                                              |
-| Audit         | Create/update/deactivate identity with remarks                                                                            |
-| Tests         | TEST-AUTH-001; type exclusivity; no register; no self-delete                                                              |
-| Acceptance    | Identity cannot be both types; Fortify registration still off                                                             |
-| DoD           | Migrations + Pest green; Memory/traceability updated                                                                      |
-| Rollback      | Reverse migration only if no production data (non-prod first)                                                             |
+| Field              | Content                                                                                                                   |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------- |
+| Objective          | Persist global identity with mutually exclusive Internal/Customer type                                                    |
+| Scope              | Users/identity schema extensions; type enum; soft-delete/deactivation columns; protect last Super Admin scaffolding hooks |
+| Traceability       | TB-AUTH-001, TB-AUTH-002, TB-AUTH-007, TB-AUTH-008, TB-DEL-001/002; ADR-005                                               |
+| Prerequisites      | P2-WS-0                                                                                                                   |
+| Dependencies       | —                                                                                                                         |
+| ADRs               | ADR-005 (Accepted product + P2-WS-1 persistence schema)                                                                   |
+| Schema             | Identity type; deactivated_at; soft-delete; internal role flags as designed                                               |
+| Backend            | Models, factories, policies stubs; registration remains disabled                                                          |
+| Frontend           | Minimal profile surfaces only if already in shell; no product panels                                                      |
+| Authz risks        | Type confusion (Internal acting as Customer)                                                                              |
+| Audit              | Create/update/deactivate identity with remarks                                                                            |
+| Tests              | IdentityTypeBoundaryTest; type exclusivity; no register; no restore/hard-delete                                           |
+| Acceptance         | Identity cannot be both types; Fortify registration still off                                                             |
+| DoD                | Migrations + Pest green; Memory/traceability updated                                                                      |
+| Rollback           | Reverse migration only if no production data (non-prod first)                                                             |
+| **P2-WS-1 status** | **Complete** (22 November 2026) — see Memory / IdentityTypeBoundaryTest                                                   |
 
 ---
 

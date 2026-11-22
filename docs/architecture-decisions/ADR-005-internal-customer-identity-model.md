@@ -1,11 +1,11 @@
 # ADR-005: Internal and Customer Identity Model
 
-| Field  | Value                                                  |
-| ------ | ------------------------------------------------------ |
-| ADR ID | ADR-005                                                |
-| Title  | Internal and Customer Identity Model                   |
-| Status | Accepted (product model) / Proposed (technical schema) |
-| Date   | 2026-11-21                                             |
+| Field  | Value                                                                     |
+| ------ | ------------------------------------------------------------------------- |
+| ADR ID | ADR-005                                                                   |
+| Title  | Internal and Customer Identity Model                                      |
+| Status | Accepted (product model) / Accepted (P2-WS-1 identity persistence schema) |
+| Date   | 2026-11-21                                                                |
 
 ## Context
 
@@ -14,7 +14,7 @@ PRD/Rules define one global identity with mutually exclusive Internal Team or Cu
 ## Decision
 
 - Product identity model as specified in PRD §§3–6 and Rules §§2–3 is **Accepted**.
-- Technical persistence (columns, tables, Sanctum/session registry) remains **Proposed** until Phase 2 design after Phase 0 approval.
+- **P2-WS-1 technical persistence (22 November 2026):** `users.identity_type` (`internal`|`customer`), `users.internal_role` (Internal-only enum flags), `users.deactivated_at`, SoftDeletes `deleted_at`, with PostgreSQL check constraints. Company/membership/invitation/session-token tables remain later workstreams. Sanctum/mobile remain out of Phase 2 (ADR-006).
 - Email changes: authorized administration only for Internal and Customer unless a future governing requirement explicitly distinguishes them (DEC-009). Verification/notification/uniqueness/audit field details are Pending.
 
 ## Alternatives
@@ -39,3 +39,9 @@ TB-AUTH-001 … TB-AUTH-008, TB-OWN-001, TB-RBAC-001, TB-INVITE-001
 ## Related audit findings
 
 AUD-GAP-002, AUD-GAP-003, AUD-CON-003
+
+## P2-WS-1 acceptance note
+
+| Decision ID          | Decision                                                                                          | Status      | Date             | Authority                                |
+| -------------------- | ------------------------------------------------------------------------------------------------- | ----------- | ---------------- | ---------------------------------------- |
+| PO-P2-AUTH / P2-WS-1 | Persist mutually exclusive identity type + Internal role flags + deactivation/soft-delete columns | Implemented | 22 November 2026 | Product Owner authorization; engineering |
