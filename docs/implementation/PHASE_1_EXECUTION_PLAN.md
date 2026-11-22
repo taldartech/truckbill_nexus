@@ -7,7 +7,8 @@
 **Phase 0:** Formally approved and closed (PO-APPROVE-001, 21 November 2026).  
 **Authorization record:** `docs/engineering/PHASE_1_AUTHORIZATION_RECORD.md`  
 **PO-EXCEPT-001:** Pending, Deferred, Excluded and Proposed product-requirement statuses remain unchanged.  
-**Remaining Pending ADRs:** ADR-006 (no Sanctum), ADR-010 (no accounting posting architecture).
+**ADRs at Phase 1 authorization (21 Nov 2026):** ADR-006 was Pending (no Sanctum); ADR-010 Pending (no accounting posting).  
+**Status note (22 Nov 2026):** ADR-006 later **Accepted** as Phase 2 web-only Fortify/sessions (PO-P2-ADR-006); Sanctum still not installed. ADR-010 remains Pending. `PO-P1-DEPLOY` is **DEFERRED** (not waived). This Phase 1 plan’s historical Phase 1 scope language is preserved below; see `PHASE_2_AUTHORIZATION_RECORD.md` for Phase 2 authority.
 
 ---
 
@@ -30,7 +31,7 @@ Per-ADR acceptances as each workstream needs them → **WS-1** baseline + hard-d
 
 **Parallel after WS-1 (not on the critical path):** **WS-7** observability and **WS-8** technical UI shell may proceed once WS-1 starter security corrections are done; they must still join WS-9 certification.
 
-**Not Phase 1:** Phase 2 identity/membership/sessions/RBAC; Sanctum (`ADR-006` Pending); accounting posting architecture (`ADR-010` Pending); Owner/Branch product UI; Razorpay; business modules; microservices.
+**Not Phase 1 (historical plan language):** Phase 2 identity/membership/sessions/RBAC; Sanctum (`ADR-006` was Pending at Phase 1 authorization); accounting posting architecture (`ADR-010` Pending); Owner/Branch product UI; Razorpay; business modules; microservices. _(ADR-006 later Accepted web-only for Phase 2; Sanctum still forbidden in Phase 2.)_
 
 ---
 
@@ -52,33 +53,33 @@ Per-ADR acceptances as each workstream needs them → **WS-1** baseline + hard-d
 
 ### 2.2 Phase 1 vs Phase 2 (hard split)
 
-| Concern                                              | Phase 1                                | Phase 2                                                                                                                                                                 |
-| ---------------------------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Login / password reset (Fortify)                     | Keep / harden                          | Extend as needed                                                                                                                                                        |
-| Self-service account delete                          | **Remove completely**                  | Later account lifecycle only via the relevant module’s approved requirements, permissions, dependency checks and audit rules — **not** a universal soft-delete workflow |
-| Self-service email change                            | **Remove completely**                  | **Authorized administration only** (DEC-009; remaining Pending details stay Pending)                                                                                    |
-| Registration                                         | Remains off                            | Invite/provisioning (`TB-INVITE-001` Pending)                                                                                                                           |
-| Company/branch **context carrier**                   | Yes (injected/explicit)                | Yes + membership resolution                                                                                                                                             |
-| Membership, roles, Owner transfer, Permission Master | **No**                                 | **Yes**                                                                                                                                                                 |
-| Customer single-session / mobile tokens              | **No** (`ADR-006` Pending; no Sanctum) | After ADR-006                                                                                                                                                           |
-| Policies for product resources                       | Harness-only as needed                 | Full RBAC                                                                                                                                                               |
-| Owner/Branch product panels                          | **No**                                 | After Design Deliverables Gate + Phase 2                                                                                                                                |
+| Concern                                              | Phase 1                                               | Phase 2                                                                                                                                                                 |
+| ---------------------------------------------------- | ----------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Login / password reset (Fortify)                     | Keep / harden                                         | Extend as needed                                                                                                                                                        |
+| Self-service account delete                          | **Remove completely**                                 | Later account lifecycle only via the relevant module’s approved requirements, permissions, dependency checks and audit rules — **not** a universal soft-delete workflow |
+| Self-service email change                            | **Remove completely**                                 | **Authorized administration only** (DEC-009; remaining Pending details stay Pending)                                                                                    |
+| Registration                                         | Remains off                                           | Invite/provisioning (`TB-INVITE-001` Pending)                                                                                                                           |
+| Company/branch **context carrier**                   | Yes (injected/explicit)                               | Yes + membership resolution                                                                                                                                             |
+| Membership, roles, Owner transfer, Permission Master | **No**                                                | **Yes**                                                                                                                                                                 |
+| Customer single-session / mobile tokens              | **No** in Phase 1 (`ADR-006` was Pending; no Sanctum) | Phase 2 web-only per ADR-006 Accepted; mobile Deferred                                                                                                                  |
+| Policies for product resources                       | Harness-only as needed                                | Full RBAC                                                                                                                                                               |
+| Owner/Branch product panels                          | **No**                                                | After Design Deliverables Gate + Phase 2                                                                                                                                |
 
 ### 2.3 Exclusions and later-phase dependencies
 
-| Exclusion                                       | Depends on / defer to                                 |
-| ----------------------------------------------- | ----------------------------------------------------- |
-| Owner/Branch product IA & workflows             | Design Deliverables Gate (`TB-DES-002`); Phase 2+     |
-| Identity provisioning, RBAC, ownership transfer | Phase 2; `ADR-005` schema; `TB-INVITE-001`            |
-| Sanctum / mobile session registry               | Phase 2; **ADR-006 remains Pending**                  |
-| Razorpay, catalogue, entitlements               | Phase 3                                               |
-| Enquiry webhook contract detail                 | Phase 4                                               |
-| Business modules                                | Phases 4–8                                            |
-| Accounting sync vs async posting                | Phase 8; **ADR-010 remains Pending**                  |
-| Load personas / RPO-RTO                         | Phase 11; `TB-NFR-001/002` Pending                    |
-| Partload Expense Management                     | Excluded (`TB-PTL-EXP-001`)                           |
-| Microservices                                   | Forbidden (Architecture: modular monolith)            |
-| Unnecessary new dependencies                    | Require Product Owner approval at implementation time |
+| Exclusion                                       | Depends on / defer to                                                                 |
+| ----------------------------------------------- | ------------------------------------------------------------------------------------- |
+| Owner/Branch product IA & workflows             | Design Deliverables Gate (`TB-DES-002`); Phase 2+                                     |
+| Identity provisioning, RBAC, ownership transfer | Phase 2; `ADR-005` schema; `TB-INVITE-001`                                            |
+| Sanctum / mobile session registry               | Out of Phase 1; Phase 2 uses web sessions (ADR-006 Accepted); Sanctum/mobile Deferred |
+| Razorpay, catalogue, entitlements               | Phase 3                                                                               |
+| Enquiry webhook contract detail                 | Phase 4                                                                               |
+| Business modules                                | Phases 4–8                                                                            |
+| Accounting sync vs async posting                | Phase 8; **ADR-010 remains Pending**                                                  |
+| Load personas / RPO-RTO                         | Phase 11; `TB-NFR-001/002` Pending                                                    |
+| Partload Expense Management                     | Excluded (`TB-PTL-EXP-001`)                                                           |
+| Microservices                                   | Forbidden (Architecture: modular monolith)                                            |
+| Unnecessary new dependencies                    | Require Product Owner approval at implementation time                                 |
 
 ---
 
@@ -103,29 +104,29 @@ Per-ADR acceptances as each workstream needs them → **WS-1** baseline + hard-d
 
 **Each blocking ADR must be Accepted (or the Product Owner must authorize “implement this Proposed default” in writing) before that ADR’s related irreversible implementation decisions.** Unrelated preparatory work that does not lock in the ADR’s decision may proceed without waiting for every Phase 1 ADR.
 
-| Rule                  | Enforcement                                                                                                                                                      |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Proposed ≠ Accepted   | Agents/implementers must not treat Proposed as decided                                                                                                           |
-| Per-ADR, not blanket  | Accept ADR-00N before irreversible work that depends on ADR-00N; do not block unrelated prep (e.g. docs, lint wiring, UI shell without layout package decisions) |
-| Pending stays Pending | ADR-006, ADR-010 — no premature Sanctum or accounting posting architecture                                                                                       |
-| Status changes        | Product Owner / architecture authority only — not this plan                                                                                                      |
+| Rule                 | Enforcement                                                                                                                                                          |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Proposed ≠ Accepted  | Agents/implementers must not treat Proposed as decided                                                                                                               |
+| Per-ADR, not blanket | Accept ADR-00N before irreversible work that depends on ADR-00N; do not block unrelated prep (e.g. docs, lint wiring, UI shell without layout package decisions)     |
+| Pending discipline   | At Phase 1 authorization ADR-006/010 Pending (no premature Sanctum/accounting). ADR-006 later Accepted web-only; ADR-010 still Pending. Sanctum still not installed. |
+| Status changes       | Product Owner / architecture authority only — not this plan                                                                                                          |
 
 ### 4.2 ADR decision register
 
-| ADR                                          | Status                             | Blocks                      | Required before                       | Recommended decision                                                        | Latest safe point         |
-| -------------------------------------------- | ---------------------------------- | --------------------------- | ------------------------------------- | --------------------------------------------------------------------------- | ------------------------- |
-| **ADR-001** Modular monolith structure       | **Accepted** (PO-P1-ADR-001)       | App folder layout           | WS-1 structure / first domain dirs    | Accepted concrete `app/` layout                                             | Accepted 21 November 2026 |
-| **ADR-002** Tenant context propagation       | **Accepted** (PO-P1-ADR-002)       | WS-3                        | WS-3 start                            | Accepted explicit context on HTTP/jobs/events/cache/storage; RLS later only | Accepted 21 November 2026 |
-| **ADR-003** Audit log + atomic mutation      | **Accepted** (PO-P1-ADR-003)       | WS-4                        | WS-4 start                            | Accepted append-only + same-TX audit write                                  | Accepted 21 November 2026 |
-| **ADR-007** PostgreSQL + Redis local/CI      | **Accepted** (PO-P1-ADR-007)       | WS-1 env, **WS-2 CI**       | WS-1/WS-2                             | Accepted pgsql+redis baseline; document overrides                           | Accepted 21 November 2026 |
-| **ADR-008** Private files + malware scanning | **Accepted** (PO-P1-ADR-008)       | WS-5 production scan choice | WS-5 non-stub drivers                 | Accepted private storage + scan interface; CI stub OK                       | Accepted 21 November 2026 |
-| **ADR-009** Outbox + idempotency             | **Accepted** (PO-P1-ADR-009)       | WS-6                        | WS-6 start                            | Accepted outbox + idempotency primitives                                    | Accepted 21 November 2026 |
-| ADR-004 Soft delete / no restore             | Accepted                           | —                           | Follow                                | N/A                                                                         | N/A                       |
-| ADR-005 Identity model                       | Accepted product / Proposed schema | Phase 2 schema              | Do not implement Phase 2 schema in P1 | Keep                                                                        | Phase 2                   |
-| **ADR-006** Web/mobile auth                  | **Pending**                        | Sanctum/mobile              | **Do not install Sanctum**            | Leave Pending                                                               | Phase 2                   |
-| **ADR-010** Accounting posting               | **Pending**                        | Accounting architecture     | **Do not finalize**                   | Leave Pending                                                               | Phase 8                   |
-| ADR-011 Phase numbering                      | Accepted                           | Sequencing                  | Follow                                | N/A                                                                         | N/A                       |
-| ADR-012 Cursor rule versioning               | Accepted                           | Process                     | Follow                                | N/A                                                                         | N/A                       |
+| ADR                                          | Status                                                                   | Blocks                      | Required before                                  | Recommended decision                                                        | Latest safe point         |
+| -------------------------------------------- | ------------------------------------------------------------------------ | --------------------------- | ------------------------------------------------ | --------------------------------------------------------------------------- | ------------------------- |
+| **ADR-001** Modular monolith structure       | **Accepted** (PO-P1-ADR-001)                                             | App folder layout           | WS-1 structure / first domain dirs               | Accepted concrete `app/` layout                                             | Accepted 21 November 2026 |
+| **ADR-002** Tenant context propagation       | **Accepted** (PO-P1-ADR-002)                                             | WS-3                        | WS-3 start                                       | Accepted explicit context on HTTP/jobs/events/cache/storage; RLS later only | Accepted 21 November 2026 |
+| **ADR-003** Audit log + atomic mutation      | **Accepted** (PO-P1-ADR-003)                                             | WS-4                        | WS-4 start                                       | Accepted append-only + same-TX audit write                                  | Accepted 21 November 2026 |
+| **ADR-007** PostgreSQL + Redis local/CI      | **Accepted** (PO-P1-ADR-007)                                             | WS-1 env, **WS-2 CI**       | WS-1/WS-2                                        | Accepted pgsql+redis baseline; document overrides                           | Accepted 21 November 2026 |
+| **ADR-008** Private files + malware scanning | **Accepted** (PO-P1-ADR-008)                                             | WS-5 production scan choice | WS-5 non-stub drivers                            | Accepted private storage + scan interface; CI stub OK                       | Accepted 21 November 2026 |
+| **ADR-009** Outbox + idempotency             | **Accepted** (PO-P1-ADR-009)                                             | WS-6                        | WS-6 start                                       | Accepted outbox + idempotency primitives                                    | Accepted 21 November 2026 |
+| ADR-004 Soft delete / no restore             | Accepted                                                                 | —                           | Follow                                           | N/A                                                                         | N/A                       |
+| ADR-005 Identity model                       | Accepted product / Proposed schema                                       | Phase 2 schema              | Do not implement Phase 2 schema in P1            | Keep                                                                        | Phase 2                   |
+| **ADR-006** Web/mobile auth                  | Was **Pending** at Phase 1 auth; now **Accepted** web-only (22 Nov 2026) | Sanctum/mobile deferred     | **Do not install Sanctum** in Phase 1 or Phase 2 | See PO-P2-ADR-006                                                           | Phase 2 web sessions      |
+| **ADR-010** Accounting posting               | **Pending**                                                              | Accounting architecture     | **Do not finalize**                              | Leave Pending                                                               | Phase 8                   |
+| ADR-011 Phase numbering                      | Accepted                                                                 | Sequencing                  | Follow                                           | N/A                                                                         | N/A                       |
+| ADR-012 Cursor rule versioning               | Accepted                                                                 | Process                     | Follow                                           | N/A                                                                         | N/A                       |
 
 ### 4.3 Product Owner decisions (Phase 1 authorization)
 
@@ -476,16 +477,16 @@ PO-P1-AUTH
 
 ## 14. Risks and mitigations
 
-| Risk                              | Mitigation                                             |
-| --------------------------------- | ------------------------------------------------------ |
-| Treating Proposed ADR as Accepted | Per-ADR gate §4 (block related irreversible work only) |
-| Phase 2 identity creep            | §2.2 hard split                                        |
-| CI remains sqlite                 | WS-2 early mandatory                                   |
-| Hard-delete left in Wayfinder/UI  | Explicit multi-surface removal checklist in WS-1       |
-| Orphan audit/outbox               | §5 TX rules + negatives                                |
-| Product UI scope creep            | Design Deliverables Gate; WS-8 negatives               |
-| Sanctum installed “just in case”  | ADR-006 Pending — forbid                               |
-| New dependencies without approval | PO-P1-DEPS                                             |
+| Risk                              | Mitigation                                                                 |
+| --------------------------------- | -------------------------------------------------------------------------- |
+| Treating Proposed ADR as Accepted | Per-ADR gate §4 (block related irreversible work only)                     |
+| Phase 2 identity creep            | §2.2 hard split                                                            |
+| CI remains sqlite                 | WS-2 early mandatory                                                       |
+| Hard-delete left in Wayfinder/UI  | Explicit multi-surface removal checklist in WS-1                           |
+| Orphan audit/outbox               | §5 TX rules + negatives                                                    |
+| Product UI scope creep            | Design Deliverables Gate; WS-8 negatives                                   |
+| Sanctum installed “just in case”  | Forbid in Phase 1; Phase 2 ADR-006 Accepted web-only still forbids Sanctum |
+| New dependencies without approval | PO-P1-DEPS                                                                 |
 
 ---
 

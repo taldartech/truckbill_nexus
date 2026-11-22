@@ -26,7 +26,7 @@
 | -------------- | ------------------------------------------------------------------------------------------------------------ | ------------ | ---------------- | ------------- |
 | **PO-P2-AUTH** | Authorize implementation of Phase 2 — Identity / Company / Access — under the current Phase 2 Execution Plan | **APPROVED** | 22 November 2026 | Product Owner |
 
-**Implementation consequences:** Agents may implement P2-WS-1 through P2-WS-9 within the approved plan scope, sequencing, acceptance criteria and exclusions, subject to ADR-006 (web-only), the Design Deliverables Gate for P2-WS-8 product UI, and preserved Pending items that remain out of invention scope.
+**Implementation consequences:** Agents may implement P2-WS-1 through P2-WS-9 within the approved plan scope, sequencing, acceptance criteria and exclusions, subject to ADR-006 (web-only), the Design Deliverables Gate for P2-WS-8 product UI, and preserved Pending items that remain out of invention scope. **Approved policies (sessions, invitations, deactivation, file access) are not complete until implemented and tested.**
 
 **Remaining restrictions:**
 

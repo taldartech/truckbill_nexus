@@ -90,18 +90,18 @@ This satisfies the **CI green on pushed tip** exit condition for the current `ma
 
 Authority: `Phases.md` Phase 1 exit sentence + execution plan §10.
 
-| Exit condition                                                                   | Classification                       | Evidence / notes                                                   |
-| -------------------------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------ |
-| CI green (migrate, Pest on Postgres, Pint, Larastan, frontend check/types/build) | **Satisfied with evidence**          | Actions run `44970560094` on tip `f5edb9e…`                        |
-| Tenant isolation + negative tests                                                | **Satisfied with evidence**          | `TenantIsolationTest`; outbox/file suites                          |
-| Audit atomicity                                                                  | **Satisfied with evidence**          | `AuditAtomicityTest`; app-level immutability documented            |
-| Upload validation + scan-before-availability                                     | **Satisfied with evidence**          | `FileSecurity*` suites; private disk                               |
-| Queue / outbox reliability + idempotency                                         | **Satisfied with evidence**          | `OutboxIdempotencyTest`                                            |
-| Observability + runbooks                                                         | **Satisfied with evidence**          | `ObservabilityTest`; `OPERATIONS_RUNBOOK.md`                       |
-| Technical UI shell only; Design Deliverables Gate                                | **Satisfied with evidence**          | `TechnicalUiShellTest`; no Owner/Branch product routes             |
-| Non-production deployment                                                        | **Outstanding — DEFERRED**           | `PO-P1-DEPLOY` deferred 22 Nov 2026; smoke not run; **not waived** |
-| ADR-006/010 remain Pending (Sanctum / accounting posting not done)               | **Satisfied** (constraint preserved) | No Sanctum; ADR-010 not implemented                                |
-| Pending file-access semantics fail-closed                                        | **Satisfied** (constraint preserved) | Documented; denied in code/tests                                   |
+| Exit condition                                                                   | Classification                       | Evidence / notes                                                                                           |
+| -------------------------------------------------------------------------------- | ------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| CI green (migrate, Pest on Postgres, Pint, Larastan, frontend check/types/build) | **Satisfied with evidence**          | Actions run `44970560094` on tip `f5edb9e…`                                                                |
+| Tenant isolation + negative tests                                                | **Satisfied with evidence**          | `TenantIsolationTest`; outbox/file suites                                                                  |
+| Audit atomicity                                                                  | **Satisfied with evidence**          | `AuditAtomicityTest`; app-level immutability documented                                                    |
+| Upload validation + scan-before-availability                                     | **Satisfied with evidence**          | `FileSecurity*` suites; private disk                                                                       |
+| Queue / outbox reliability + idempotency                                         | **Satisfied with evidence**          | `OutboxIdempotencyTest`                                                                                    |
+| Observability + runbooks                                                         | **Satisfied with evidence**          | `ObservabilityTest`; `OPERATIONS_RUNBOOK.md`                                                               |
+| Technical UI shell only; Design Deliverables Gate                                | **Satisfied with evidence**          | `TechnicalUiShellTest`; no Owner/Branch product routes                                                     |
+| Non-production deployment                                                        | **Outstanding — DEFERRED**           | `PO-P1-DEPLOY` deferred 22 Nov 2026; smoke not run; **not waived**                                         |
+| Phase 1 constraint: no Sanctum / no accounting posting in Phase 1                | **Satisfied** (constraint preserved) | Sanctum not installed; ADR-010 not implemented. ADR-006 later Accepted web-only for Phase 2 (see addendum) |
+| Phase 1 fail-closed file-access Pending cases                                    | **Satisfied at certification**       | Denied in Phase 1 tests; later PO-P2-FILE-* decided (see addendum)                                         |
 
 ### Closure impact of deployment smoke
 
@@ -116,16 +116,16 @@ Deferral (22 November 2026) is **not** a waiver. Classification remains **operat
 
 ## 6. Outstanding Phase 1 decisions and limitations
 
-| ID / topic                              | Status                                     | Closure impact                                                     |
-| --------------------------------------- | ------------------------------------------ | ------------------------------------------------------------------ |
-| `PO-P1-DEPLOY`                          | **DEFERRED** (not waived)                  | **Blocks formal Phase 1 closure**                                  |
-| `PO-P1-DEPS` production malware engine  | Case-by-case; none approved                | Production uploads fail closed; not a WS incomplete item           |
-| Internal Team branch-scoped file access | **Blocked** (PO-P2-FILE-INTERNAL)          | Deny; no admin bypass                                              |
-| Multi-company Owner file semantics      | **Active company only** (PO-P2-FILE-MULTI) | Server-resolved context                                            |
-| Audit DB triggers                       | Not added                                  | Known limitation; app-level only                                   |
-| Stuck outbox `processing` recovery      | Manual/ops                                 | Documented in runbook                                              |
-| Playwright CI smoke                     | Recommended, not mandatory exit            | Open                                                               |
-| ADR-006 / ADR-010                       | Pending                                    | Must not be implemented under Phase 1; ADR-006 is Phase 2-relevant |
+| ID / topic                              | Status                                                                                | Closure impact                                           |
+| --------------------------------------- | ------------------------------------------------------------------------------------- | -------------------------------------------------------- |
+| `PO-P1-DEPLOY`                          | **DEFERRED** (not waived)                                                             | **Blocks formal Phase 1 closure**                        |
+| `PO-P1-DEPS` production malware engine  | Case-by-case; none approved                                                           | Production uploads fail closed; not a WS incomplete item |
+| Internal Team branch-scoped file access | **Blocked** (PO-P2-FILE-INTERNAL)                                                     | Deny; no admin bypass                                    |
+| Multi-company Owner file semantics      | **Active company only** (PO-P2-FILE-MULTI)                                            | Server-resolved context                                  |
+| Audit DB triggers                       | Not added                                                                             | Known limitation; app-level only                         |
+| Stuck outbox `processing` recovery      | Manual/ops                                                                            | Documented in runbook                                    |
+| Playwright CI smoke                     | Recommended, not mandatory exit                                                       | Open                                                     |
+| ADR-006 (at Phase 1 tip) / ADR-010      | Was Pending at tip `f5edb9e…`; ADR-006 later Accepted web-only; ADR-010 still Pending | Phase 1 correctly excluded both; see addendum            |
 
 ---
 
@@ -150,4 +150,22 @@ Verified constraints preserved:
 | Is Phase 1 fully closed per `Phases.md`?       | **No** — non-production deployment outstanding                                                 |
 | Recommended Product Owner action for closure   | End `PO-P1-DEPLOY` deferral, run smoke (or explicit waiver), then record formal Phase 1 closed |
 
-**Do not authorize Phase 2 implementation solely on the basis of implementation completeness.** Phase 2 requires separate explicit Product Owner authorization (`Phases.md` gates; DEC-004 pattern).
+Phase 1 operational closure remains pending on deployment smoke. **Phase 2 authorization is separately APPROVED** (`PO-P2-AUTH`, 22 November 2026) and does not close Phase 1.
+
+---
+
+## 9. Addendum — subsequent Product Owner decisions (22 November 2026)
+
+**Historical assessment tip remains** `f5edb9e56465825a8dc2a00193a9935dc787c673`. This addendum does not rewrite that evidence.
+
+| Topic                              | Status after P2-WS-0                                                                                                       |
+| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| ADR-006                            | **Accepted** web-only Fortify + Laravel sessions for Phase 2 (PO-P2-ADR-006); Sanctum/mobile deferred; still not installed |
+| ADR-010                            | Still **Pending**                                                                                                          |
+| Internal Team customer-file access | **Blocked** (PO-P2-FILE-INTERNAL) — policy approved; Phase 2 must still implement/verify on all paths                      |
+| Multi-company file access          | **Active company context only** (PO-P2-FILE-MULTI) — policy approved; Phase 2 must still implement/verify                  |
+| PO-P2-AUTH                         | **APPROVED** — see `PHASE_2_AUTHORIZATION_RECORD.md`                                                                       |
+| PO-P1-DEPLOY                       | **DEFERRED** (not waived); Phase 1 formal/operational closure still pending                                                |
+| Design artefacts                   | Gate requirement approved; artefacts **Not Started**                                                                       |
+
+Authority: `docs/engineering/PHASE_2_AUTHORIZATION_RECORD.md`.

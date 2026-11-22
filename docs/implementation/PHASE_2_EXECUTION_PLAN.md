@@ -62,21 +62,21 @@
 
 ### P2-WS-0 — Authorization, decisions and design intake
 
-| Field               | Content                                                                                        |
-| ------------------- | ---------------------------------------------------------------------------------------------- |
-| Objective           | Obtain PO authorization; lock ADR-006; collect design artefacts; freeze Pending exceptions     |
-| Scope               | Decision register closure for blockers; design package intake; no product schema yet           |
-| Traceability        | DEC-004 pattern; ADR-006; Design.md §14                                                        |
-| Prerequisites       | Phase 1 implementation tip green; PO awareness of `PO-P1-DEPLOY` outstanding                   |
-| Dependencies        | None                                                                                           |
-| ADRs / PO decisions | ADR-006; invite lifecycle; design artefacts; optional `PO-P1-DEPLOY` parallel                  |
-| Schema / API / FE   | None                                                                                           |
-| Authz / audit risks | N/A                                                                                            |
-| Test strategy       | Documentation review only                                                                      |
-| Acceptance          | Written `PO-P2-AUTH`; ADR-006 Accepted (web-only); design inventory listed; decisions recorded |
-| Definition of done  | Authorization record committed under `docs/engineering/`                                       |
-| Rollback            | N/A                                                                                            |
-| **P2-WS-0 status**  | **Complete** (22 November 2026) — see authorization record and decision register               |
+| Field               | Content                                                                                                      |
+| ------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Objective           | Record PO-P2-AUTH and binding decisions; Accept ADR-006 (web-only); inventory design gate                    |
+| Scope               | Authorization record; decision register; ADR-006; design register; Memory consistency; **no** product schema |
+| Traceability        | DEC-004 pattern; ADR-006; Design.md §14; PO-P2-*                                                             |
+| Prerequisites       | Phase 1 implementation tip green; `PO-P1-DEPLOY` acknowledged (deferred)                                     |
+| Dependencies        | None                                                                                                         |
+| ADRs / PO decisions | All binding decisions in `PHASE_2_AUTHORIZATION_RECORD.md`                                                   |
+| Schema / API / FE   | None                                                                                                         |
+| Authz / audit risks | N/A                                                                                                          |
+| Test strategy       | Documentation consistency review only                                                                        |
+| Acceptance          | Written `PO-P2-AUTH`; ADR-006 Accepted (web-only); design inventory listed; decisions recorded               |
+| Definition of done  | Authorization record committed under `docs/engineering/`                                                     |
+| Rollback            | N/A                                                                                                          |
+| **P2-WS-0 status**  | **Complete** (22 November 2026) — authorization granted; P2-WS-1+ authorized within plan                     |
 
 ---
 
@@ -104,22 +104,22 @@
 
 ### P2-WS-2 — Company, branch and membership
 
-| Field         | Content                                                                                                  |
-| ------------- | -------------------------------------------------------------------------------------------------------- |
-| Objective     | Company/branch tenancy with explicit membership and Owner designation                                    |
-| Scope         | Companies, branches, memberships, Owner uniqueness, Owner future-branch access, multi-company membership |
-| Traceability  | TB-OWN-001, TB-OWN-007, TB-OWN-008, TB-SEC-001/002; ADR-002                                              |
-| Prerequisites | P2-WS-1                                                                                                  |
-| Dependencies  | P2-WS-1                                                                                                  |
-| Schema        | companies, branches, company_memberships, branch_assignments, owner designation                          |
-| Backend       | Resolve tenant from membership — never from client IDs                                                   |
-| Frontend      | Workspace switcher scaffolding only if design allows; else API/Inertia props only                        |
-| Authz risks   | Cross-company leakage; Owner vs member confusion                                                         |
-| Audit         | Company/branch/membership mutations                                                                      |
-| Tests         | Cross-company/branch negatives; Owner sees future branches; non-Owner explicit only                      |
-| Acceptance    | Exactly one Owner per company; spoofed IDs rejected with real memberships                                |
-| DoD           | Isolation suite extended and green                                                                       |
-| Rollback      | Soft-deactivate entities; no hard delete                                                                 |
+| Field         | Content                                                                                                                                                                     |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Objective     | Company/branch tenancy with explicit membership and Owner designation                                                                                                       |
+| Scope         | Companies, branches, memberships, Owner uniqueness, Owner future-branch access, multi-company membership                                                                    |
+| Traceability  | TB-OWN-001, TB-OWN-007, TB-OWN-008, TB-SEC-001/002; ADR-002                                                                                                                 |
+| Prerequisites | P2-WS-1                                                                                                                                                                     |
+| Dependencies  | P2-WS-1                                                                                                                                                                     |
+| Schema        | companies, branches, company_memberships, branch_assignments, owner designation                                                                                             |
+| Backend       | Resolve tenant from membership — never from client IDs                                                                                                                      |
+| Frontend      | Workspace switcher scaffolding only if design allows; else API/Inertia props only                                                                                           |
+| Authz risks   | Cross-company leakage; Owner vs member confusion; file access must use active company context (PO-P2-FILE-MULTI); Internal Team customer files denied (PO-P2-FILE-INTERNAL) |
+| Audit         | Company/branch/membership mutations                                                                                                                                         |
+| Tests         | Cross-company/branch negatives; Owner sees future branches; non-Owner explicit only                                                                                         |
+| Acceptance    | Exactly one Owner per company; spoofed IDs rejected with real memberships                                                                                                   |
+| DoD           | Isolation suite extended and green                                                                                                                                          |
+| Rollback      | Soft-deactivate entities; no hard delete                                                                                                                                    |
 
 ---
 
@@ -174,15 +174,15 @@
 | Objective     | Admin/invite provisioning without public registration; never overwrite passwords on identity reuse          |
 | Scope         | Invite create/accept; Internal user creation by Super Admin; email uniqueness/verification per PO decisions |
 | Traceability  | TB-AUTH-002, TB-AUTH-003; AUD-GAP-003; ADR-005                                                              |
-| Prerequisites | Invite lifecycle PO decisions; P2-WS-1; P2-WS-4 for session on accept                                       |
+| Prerequisites | **PO-P2-INVITE Approved**; P2-WS-1; P2-WS-4 for session on accept                                           |
 | Dependencies  | P2-WS-1, P2-WS-2 (membership attach), P2-WS-4                                                               |
-| Schema        | invitations table; expiry; status                                                                           |
-| Backend       | Outbox for invite email (reuse ADR-009)                                                                     |
-| Frontend      | Invite accept pages within shell/design                                                                     |
+| Schema        | invitations table; expiry; status; single-use token                                                         |
+| Backend       | Outbox email (ADR-009); revoke; expire; replay/concurrency protection; no password overwrite on reuse       |
+| Frontend      | Invite accept pages within shell/design (product chrome only until design gate for related screens)         |
 | Authz risks   | Invite token leakage; privilege escalation on accept                                                        |
-| Audit         | Invite issued/accepted/revoked                                                                              |
-| Tests         | Password unchanged on reuse; expired invite denied                                                          |
-| Acceptance    | No public register; invite-only join paths                                                                  |
+| Audit         | Create, delivery, acceptance, expiry, revocation                                                            |
+| Tests         | Password unchanged on reuse; expired/revoked/replay denied; concurrent accept safe                          |
+| Acceptance    | No public register; invite-only join paths; PO-P2-INVITE behaviour proven                                   |
 | DoD           | Outbox-backed invites; Pest coverage                                                                        |
 | Rollback      | Expire invites; deactivate memberships                                                                      |
 
@@ -190,22 +190,22 @@
 
 ### P2-WS-6 — Deactivation, suspension and Owner Panel exception
 
-| Field         | Content                                                                                                                          |
-| ------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Objective     | Company/identity deactivation and suspension rules including DEC-002 Owner Panel exception                                       |
-| Scope         | Company deactivate; Branch Panel blocked; Owner Panel admin/billing visibility; identity deactivate; last Super Admin protection |
-| Traceability  | TB-OWN-002–005, TB-OWN-006 (Pending — do not invent), TB-AUTH-008, TB-DEL-*                                                      |
-| Prerequisites | P2-WS-2, P2-WS-3, P2-WS-4                                                                                                        |
-| Dependencies  | P2-WS-2–4                                                                                                                        |
-| Schema        | Status enums; effective dates                                                                                                    |
-| Backend       | Middleware/policies for panel access                                                                                             |
-| Frontend      | Deactivated banners; Owner Panel limited surface **per design + Pending TB-OWN-006**                                             |
-| Authz risks   | Blanket Owner deny incorrectly blocking Owner Panel                                                                              |
-| Audit         | All deactivation transitions                                                                                                     |
-| Tests         | TEST-OWN-002–005; Branch blocked; Owner Panel allowed for stated scope                                                           |
-| Acceptance    | DEC-002 behavior proven                                                                                                          |
-| DoD           | Negative + positive panel tests green                                                                                            |
-| Rollback      | Reactivate only via authorized admin (not “restore deleted”)                                                                     |
+| Field         | Content                                                                                                                                    |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Objective     | Company/identity deactivation and suspension rules including DEC-002 Owner Panel exception                                                 |
+| Scope         | Company deactivate; Branch Panel blocked; Owner Panel admin/billing visibility; identity deactivate; last Super Admin protection           |
+| Traceability  | TB-OWN-002–005; TB-OWN-006 Phase 2 scope Resolved (admin/billing info only); PO-P2-DEACT-_; TB-AUTH-008; TB-DEL-_                          |
+| Prerequisites | P2-WS-2, P2-WS-3, P2-WS-4                                                                                                                  |
+| Dependencies  | P2-WS-2–4                                                                                                                                  |
+| Schema        | Status enums; effective dates                                                                                                              |
+| Backend       | Middleware/policies: company vs Owner identity deactivation; Branch Panel blocked; limited Owner Panel; session revoke on Owner deactivate |
+| Frontend      | Deactivated banners; Owner Panel limited to admin/billing info (**product UI** still gated by design artefacts)                            |
+| Authz risks   | Blanket Owner deny incorrectly blocking Owner Panel                                                                                        |
+| Audit         | All deactivation transitions                                                                                                               |
+| Tests         | TEST-OWN-002–005; Branch blocked; Owner Panel allowed for stated scope                                                                     |
+| Acceptance    | DEC-002 behavior proven                                                                                                                    |
+| DoD           | Negative + positive panel tests green                                                                                                      |
+| Rollback      | Reactivate only via authorized admin (not “restore deleted”)                                                                               |
 
 ---
 
@@ -253,17 +253,17 @@
 
 ### P2-WS-9 — Phase 2 exit certification
 
-| Field         | Content                                                                                                                                    |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| Objective     | Prove Phase 2 exit criteria and document closure                                                                                           |
-| Scope         | Full negative isolation; Owner isolation; session revocation; immediate permission invalidation; Memory/traceability; certification report |
-| Traceability  | All Phase 2 TB-AUTH/OWN/RBAC/SEC IDs in scope                                                                                              |
-| Prerequisites | P2-WS-1–8 complete for authorized scope                                                                                                    |
-| Dependencies  | All prior                                                                                                                                  |
-| Tests         | Dedicated Phase 2 certification suite                                                                                                      |
-| Acceptance    | Phases.md exit sentence satisfied                                                                                                          |
-| DoD           | `PHASE_2_FINAL_CERTIFICATION_REPORT.md` (future) + CI green                                                                                |
-| Rollback      | N/A                                                                                                                                        |
+| Field         | Content                                                                                                                                                                                                                                             |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Objective     | Prove Phase 2 exit criteria with **implementation and test evidence** (approved policy alone is insufficient)                                                                                                                                       |
+| Scope         | Cross-company/branch negatives; Owner isolation; web session revocation; immediate permission invalidation; invite/deactivation/transfer matrices; file-access Internal Blocked + active-company scoping; Memory/traceability; certification report |
+| Traceability  | All Phase 2 TB-AUTH/OWN/RBAC/SEC/DOC IDs in scope                                                                                                                                                                                                   |
+| Prerequisites | P2-WS-1–8 complete for authorized scope (P2-WS-8 only where design-approved)                                                                                                                                                                        |
+| Dependencies  | All prior                                                                                                                                                                                                                                           |
+| Tests         | Dedicated Phase 2 certification suite — must execute and pass                                                                                                                                                                                       |
+| Acceptance    | Phases.md exit sentence satisfied with recorded evidence                                                                                                                                                                                            |
+| DoD           | `PHASE_2_FINAL_CERTIFICATION_REPORT.md` (future) + CI green                                                                                                                                                                                         |
+| Rollback      | N/A                                                                                                                                                                                                                                                 |
 
 ---
 
@@ -314,13 +314,13 @@ with **`P2-WS-4` joining before transfer/session-dependent features**.
 For every implementing workstream:
 
 1. Cross-tenant negative tests for any new HTTP/job/file path
-2. Authorization on API, jobs, reports, exports, files
+2. Authorization on API, jobs, reports, exports, files — including **Internal Team customer-file denial** and **active-company-only** multi-company file access
 3. Audit atomicity for mutations (`AuditedTransaction`)
 4. No hard delete/restore
-5. Immediate permission/session invalidation where applicable
+5. Immediate permission/session invalidation where applicable (Laravel **web** sessions)
 6. CI: Postgres migrate + Pest, Pint, Larastan, frontend checks
 
-Phase 2 exit suite must explicitly cover Phases.md exit bullets.
+Phase 2 exit suite must explicitly cover Phases.md exit bullets with executed tests — not policy checklists alone.
 
 ---
 

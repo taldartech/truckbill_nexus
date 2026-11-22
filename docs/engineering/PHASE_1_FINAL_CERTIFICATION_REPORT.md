@@ -55,7 +55,7 @@ Verified via `TenantIsolationTest`, outbox/job tests, file security tests:
 - HTTP client tenant spoofing rejected.
 - Jobs fail closed without tenant context; context cleared after success/failure.
 - Cache keys tenant-scoped.
-- Storage metadata fail-closed for cross-company/cross-branch; Internal Team branch access and multi-company Owner semantics remain **Pending PO** and denied.
+- Storage metadata fail-closed for cross-company/cross-branch; at certification time Internal Team branch access and multi-company Owner semantics were **Pending PO** and **denied** (fail-closed). Subsequent PO decisions (22 Nov 2026): Internal Team customer-file access **Blocked** (PO-P2-FILE-INTERNAL); multi-company access **active company only** (PO-P2-FILE-MULTI). Phase 2 must still implement and verify these policies on all access paths — not claimed complete by this Phase 1 report.
 - Outbox enqueue/consume tenant-checked; job company mismatch denied.
 
 ## 6. Audit review
@@ -75,7 +75,7 @@ Verified via `FileSecurityTest` + `FileSecurityRemediationTest`:
 - Private disk; not publicly served; 2 MiB; MIME/extension validation.
 - Scan lifecycle fail-closed; production refuses `pass`/`fake`/`reject`.
 - Safe replace post-commit cleanup; discard retains metadata on object-delete failure.
-- Pending PO access cases remain fail-closed.
+- At certification: Pending PO access cases remained fail-closed. Later PO-P2-FILE-* decisions supersede the Pending status for **policy**; Phase 2 implementation/verification still required.
 
 ## 8. Outbox and queue review
 
@@ -151,6 +151,8 @@ Phase 1 engineering foundation is complete for authorized scope. Remote CI on th
 
 1. ~~Product Owner confirms GitHub Actions green for the tip SHA.~~ **Done** — run `44970560094` on `f5edb9e…`.
 2. `PO-P1-DEPLOY` deferral ended and non-production smoke executed (or explicitly waived). **Outstanding — mandatory exit (deferred, not waived).**
-3. Pending access/ADR items remain fail-closed until decided (no silent reinterpretation).
+3. ~~Pending file-access/ADR-006 items~~ — **Policy decisions later recorded** (ADR-006 Accepted web-only; PO-P2-FILE-INTERNAL/MULTI). Phase 1 fail-closed behaviour at tip `f5edb9e…` remains the historical certification evidence. Phase 2 must implement/verify file policies; Sanctum remains not installed.
 
-See `docs/engineering/PHASE_1_CLOSURE_ASSESSMENT.md` for the independent closure classification.
+See `docs/engineering/PHASE_1_CLOSURE_ASSESSMENT.md` (including 22 Nov 2026 addendum) and `PHASE_2_AUTHORIZATION_RECORD.md`.
+
+**Historical note:** This certification was performed against Phase 1 tip `f5edb9e…`. Later commits (including P2-WS-0 documentation) do not alter the Phase 1 CI evidence or claim Phase 2 controls are implemented.

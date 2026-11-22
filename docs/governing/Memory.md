@@ -10,7 +10,7 @@ TruckBill by Taldar Tech Consultancy. Tagline “Transport. Billing. Simplified.
 
 ## Technical baseline
 
-Laravel 13; React + Inertia; PostgreSQL; Redis/Valkey; AWS; S3; Razorpay; Sanctum where appropriate; Reverb/evaluated equivalent; Terraform; GitHub Actions; Pest; Playwright; k6; CloudWatch; Sentry; OpenTelemetry. Proposed ECS Fargate, ALB, CloudFront/WAF, RDS Multi-AZ, ElastiCache and SQS require validation. Modular monolith.
+Laravel 13; React + Inertia; PostgreSQL; Redis/Valkey; AWS; S3; Razorpay; Sanctum where appropriate (**deferred** — ADR-006 Accepted Phase 2 as **web-only** Fortify/sessions; Sanctum **not** installed); Reverb/evaluated equivalent; Terraform; GitHub Actions; Pest; Playwright; k6; CloudWatch; Sentry; OpenTelemetry. Proposed ECS Fargate, ALB, CloudFront/WAF, RDS Multi-AZ, ElastiCache and SQS require validation. Modular monolith.
 
 ## Brand
 
@@ -22,7 +22,8 @@ Global identity, mutually exclusive Internal/Customer. No public self-registrati
 **Email changes** only via authorized administration — no self-service email change (DEC-009).  
 **No self-service account deletion** (DEC-006).  
 **No hard delete or restore** for identities, companies, branches, business/financial/document/audit records (DEC-003). Use controlled deactivation or soft deletion where permitted.  
-**Owner identity deactivation** (cannot log in) is distinct from **company deactivation**. Company deactivation: Branch Panel blocked for Owner and all company users; Owner Panel remains for company-level administrative and billing information for an active Owner; authorization must not blanket-deny Owner Panel; data preserved (DEC-002). Exhaustive Owner Panel actions while deactivated remain Pending.
+**Owner identity deactivation** (cannot log in) is distinct from **company deactivation**. Company deactivation: Branch Panel blocked for Owner and all company users; active Owner retains limited Owner Panel access for **company administration and billing information only** (DEC-002; PO-P2-DEACT-COMPANY; TB-OWN-006 Phase 2 scope Resolved — do not invent further actions). Owner identity deactivation blocks login and Owner Panel and revokes applicable sessions (PO-P2-DEACT-OWNER).  
+**Files:** Internal Team access to customer-uploaded files is **Blocked** (PO-P2-FILE-INTERNAL). Multi-company file access is **active company context only** (PO-P2-FILE-MULTI). Policy approved ≠ path-by-path enforcement complete until Phase 2 implements and tests it.
 
 ## Global rules
 
@@ -152,4 +153,5 @@ Record date, fact, reason, affected modules and ADR/PR/issue when technology/ver
 | 2026-11-22 | Independent Phase 1 closure assessment: **implementation complete, operational closure pending** — non-production deployment later **DEFERRED** (not waived)                                              | PHASE_1_CLOSURE_ASSESSMENT.md; PO-P1-DEPLOY                            |
 | 2026-11-22 | Phase 2 readiness docs drafted (execution plan, readiness assessment, PO decision register)                                                                                                               | PHASE_2_* docs                                                         |
 | 2026-11-22 | **P2-WS-0 complete:** PO-P2-AUTH approved; ADR-006 Accepted (web-only); invite/deactivation/file/design/deploy decisions recorded; Sanctum not installed; ADR-010 still Pending                           | PHASE_2_AUTHORIZATION_RECORD.md                                        |
+| 2026-11-22 | Documentation consistency remediation across Phase 0–2 decision records (policy vs implementation distinguished; stale Pending statuses corrected)                                                        | docs reconcile commit                                                  |
 | 2026-11-22 | Prior Pending Internal Team branch file access and multi-company Owner file semantics **decided**: Internal Blocked; active-company scoping only                                                          | PO-P2-FILE-INTERNAL; PO-P2-FILE-MULTI                                  |

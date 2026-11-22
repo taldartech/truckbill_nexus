@@ -25,11 +25,13 @@ Approval is **subject to** accepted Pending, Deferred and Proposed exceptions (P
 - `docs/engineering/PHASE_0_FINALIZATION_REPORT.md` (historical; 75-row stats superseded)
 - `docs/engineering/PHASE_0_FINAL_CONSISTENCY_REPORT.md`
 - `docs/engineering/PHASE_0_APPROVAL_READINESS_REPORT.md` (records formal approval)
-- `docs/architecture-decisions/` (ADR-001–ADR-012; ADR-001/002/003/007/008/009 Accepted under PO-P1-ADR-*; ADR-006/010 remain Pending)
+- `docs/architecture-decisions/` (ADR-001–ADR-012; ADR-001/002/003/007/008/009 Accepted under PO-P1-ADR-*; **ADR-006 Accepted** web-only under PO-P2-ADR-006; ADR-010 remains Pending)
 - `docs/engineering/PHASE_1_AUTHORIZATION_RECORD.md`
+- `docs/engineering/PHASE_2_AUTHORIZATION_RECORD.md` (PO-P2-AUTH APPROVED)
 - `docs/implementation/PHASE_1_EXECUTION_PLAN.md` (Approved — Phase 1 Implementation Authorized)
+- `docs/implementation/PHASE_2_EXECUTION_PLAN.md` (Authorized — Phase 2 Implementation)
 - `docs/testing/TEST_STRATEGY.md`
-- `docs/implementation/PHASE_0_DELIVERABLES.md` (artefacts remain Not Started)
+- `docs/implementation/PHASE_0_DELIVERABLES.md` (artefacts remain Not Started; see also `PHASE_2_DESIGN_DELIVERABLES.md`)
 
 ## Source authority
 

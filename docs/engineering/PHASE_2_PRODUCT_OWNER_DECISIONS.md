@@ -3,7 +3,8 @@
 **Date:** 22 November 2026 (updated with Product Owner approvals)  
 **Purpose:** Consolidated Phase 2 decisions.  
 **Authority:** Product Owner approvals recorded in `docs/engineering/PHASE_2_AUTHORIZATION_RECORD.md`.  
-**Rule:** Do not change Pending / Deferred / Proposed / Excluded / Accepted statuses without explicit Product Owner authority.
+**Rule:** Do not change Pending / Deferred / Proposed / Excluded / Accepted statuses without explicit Product Owner authority.  
+**Important:** Approval of a policy does **not** mean implementation or testing is complete. Phase 2 workstreams must still build and prove each approved behaviour.
 
 ---
 

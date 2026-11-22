@@ -131,20 +131,20 @@ No open document-vs-document contradictions remain for the DEC-001–009 topics.
 
 Location: `docs/architecture-decisions/`
 
-| ADR     | Title                                     | Status                                 |
-| ------- | ----------------------------------------- | -------------------------------------- |
-| ADR-001 | Modular Monolith Structure                | Proposed                               |
-| ADR-002 | Tenant Context Propagation                | Proposed                               |
-| ADR-003 | Audit Log and Atomic Mutation             | Proposed                               |
-| ADR-004 | Soft Delete, Deactivation and No-Restore  | **Accepted**                           |
-| ADR-005 | Internal and Customer Identity Model      | Accepted (product) / Proposed (schema) |
-| ADR-006 | Web and Mobile Authentication Strategy    | **Pending**                            |
-| ADR-007 | PostgreSQL and Redis Local/CI Strategy    | Proposed                               |
-| ADR-008 | Private File Storage and Malware Scanning | Proposed                               |
-| ADR-009 | Transactional Outbox and Idempotency      | Proposed                               |
-| ADR-010 | Accounting Posting Consistency            | **Pending**                            |
-| ADR-011 | Delivery Phase Numbering                  | **Accepted**                           |
-| ADR-012 | Cursor Project Rule Versioning            | **Accepted**                           |
+| ADR     | Title                                     | Status                                                                                   |
+| ------- | ----------------------------------------- | ---------------------------------------------------------------------------------------- |
+| ADR-001 | Modular Monolith Structure                | Proposed                                                                                 |
+| ADR-002 | Tenant Context Propagation                | Proposed                                                                                 |
+| ADR-003 | Audit Log and Atomic Mutation             | Proposed                                                                                 |
+| ADR-004 | Soft Delete, Deactivation and No-Restore  | **Accepted**                                                                             |
+| ADR-005 | Internal and Customer Identity Model      | Accepted (product) / Proposed (schema)                                                   |
+| ADR-006 | Web and Mobile Authentication Strategy    | **Pending** (at Phase 0 finalization; later Accepted web-only 22 Nov 2026 — see ADR-006) |
+| ADR-007 | PostgreSQL and Redis Local/CI Strategy    | Proposed                                                                                 |
+| ADR-008 | Private File Storage and Malware Scanning | Proposed                                                                                 |
+| ADR-009 | Transactional Outbox and Idempotency      | Proposed                                                                                 |
+| ADR-010 | Accounting Posting Consistency            | **Pending**                                                                              |
+| ADR-011 | Delivery Phase Numbering                  | **Accepted**                                                                             |
+| ADR-012 | Cursor Project Rule Versioning            | **Accepted**                                                                             |
 
 ---
 
