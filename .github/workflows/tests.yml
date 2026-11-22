@@ -97,3 +97,10 @@ jobs:
 
       - name: Pest (PostgreSQL)
         run: php artisan test --compact
+
+      # Disposable CI PostgreSQL only — never run against production/customer DBs.
+      - name: Verify fresh database seeding
+        run: php artisan migrate:fresh --seed --force --no-interaction
+
+      - name: Verify database seeding idempotency
+        run: php artisan db:seed --force --no-interaction

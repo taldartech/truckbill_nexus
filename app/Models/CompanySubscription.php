@@ -2,18 +2,18 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Database\Factories\CompanySubscriptionFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 /**
- * @property Carbon|null $common_renewal_date
- * @property Carbon|null $activated_at
+ * @property CarbonInterface|null $common_renewal_date
+ * @property CarbonInterface|null $activated_at
  */
 class CompanySubscription extends Model
 {

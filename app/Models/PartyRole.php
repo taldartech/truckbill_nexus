@@ -2,19 +2,19 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Database\Factories\PartyRoleFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 /**
  * @property array<string, mixed>|null $role_attributes
- * @property Carbon|null $deactivated_at
- * @property Carbon|null $created_at
- * @property Carbon|null $updated_at
+ * @property CarbonInterface|null $deactivated_at
+ * @property CarbonInterface|null $created_at
+ * @property CarbonInterface|null $updated_at
  */
 class PartyRole extends Model
 {

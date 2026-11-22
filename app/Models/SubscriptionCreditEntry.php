@@ -3,15 +3,15 @@
 namespace App\Models;
 
 use App\Domains\Subscription\Exceptions\SubscriptionDomainException;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 /**
  * Append-only credit ledger entry.
  *
- * @property Carbon|null $created_at
+ * @property CarbonInterface|null $created_at
  */
 class SubscriptionCreditEntry extends Model
 {
