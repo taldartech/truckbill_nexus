@@ -92,5 +92,5 @@ Password reset Fortify feature is enabled; those tests run.
 
 ## Automated results (closure)
 
-- Full suite: **282 tests, 280 passed, 2 skipped** (pre-fix baseline) → re-run after fixes must remain green.
+- Full suite (post-fix): **284 tests, 282 passed, 2 skipped**, 1155 assertions.
 - Frontend: `npm run build` green after fixes.
