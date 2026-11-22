@@ -23,10 +23,11 @@ type Props = {
         gateway_order_id: string | null;
     };
     prefill: { name: string; email: string };
+    allow_fake_simulate?: boolean;
     links: {
         overview: string;
         verify: string;
-        simulate: string;
+        simulate: string | null;
     };
 };
 
@@ -53,6 +54,7 @@ export default function SubscriptionCheckout({
     subscription,
     payment,
     prefill,
+    allow_fake_simulate = false,
     links,
 }: Props) {
     const { errors } = usePage<{ errors?: { checkout?: string } }>().props;
@@ -315,7 +317,9 @@ export default function SubscriptionCheckout({
                                   : 'Loading checkout…'}
                         </Button>
                     ) : null}
-                    {gateway === 'fake' ? (
+                    {gateway === 'fake' &&
+                    allow_fake_simulate &&
+                    links.simulate ? (
                         <Form action={links.simulate} method="post">
                             <input
                                 type="hidden"

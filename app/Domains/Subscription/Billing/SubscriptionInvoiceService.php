@@ -35,7 +35,22 @@ final class SubscriptionInvoiceService
             throw new SubscriptionDomainException('Draft invoices require a verified paid payment intent.');
         }
 
+        $existing = SubscriptionInvoice::query()
+            ->where('payment_intent_id', $intent->id)
+            ->first();
+        if ($existing !== null) {
+            return $existing;
+        }
+
         return $this->tx->run(function () use ($intent, $lineItems): SubscriptionInvoice {
+            $race = SubscriptionInvoice::query()
+                ->where('payment_intent_id', $intent->id)
+                ->lockForUpdate()
+                ->first();
+            if ($race !== null) {
+                return $race;
+            }
+
             $company = Company::query()->whereKey($intent->company_id)->firstOrFail();
             $fy = $this->financialYear(CarbonImmutable::now());
             $proposed = $this->proposeNumber($company, $fy);
@@ -96,8 +111,30 @@ final class SubscriptionInvoiceService
         }, 'Submit invoice for number approval');
     }
 
+    /**
+     * After verified payment: ensure a draft exists and queue it for number approval.
+     * Idempotent. Does not issue legally operative production tax invoices (issuer/GST Pending).
+     *
+     * @param  list<array<string, mixed>>|null  $lineItems
+     */
+    public function ensureDraftQueuedAfterPayment(PaymentIntent $intent, ?array $lineItems = null): SubscriptionInvoice
+    {
+        $invoice = $this->createDraftFromPayment($intent, $lineItems);
+        if ($invoice->status === 'draft') {
+            return $this->submitForNumberApproval($invoice);
+        }
+
+        return $invoice;
+    }
+
     public function approveNumber(User $actor, SubscriptionInvoice $invoice, ?string $finalNumber = null): SubscriptionInvoice
     {
+        if (! $actor->isSuperAdmin()) {
+            throw new SubscriptionDomainException(
+                'Invoice-number approval requires Super Admin until additional approver roles are Product Owner approved.'
+            );
+        }
+
         return $this->mutate($invoice, function (SubscriptionInvoice $locked) use ($actor, $finalNumber): void {
             if ($locked->status !== 'awaiting_number_approval') {
                 throw new SubscriptionDomainException('Invoice is not awaiting number approval.');

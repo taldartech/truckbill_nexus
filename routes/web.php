@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\IdentityLifecycleController;
 use App\Http\Controllers\Admin\InternalUserController;
 use App\Http\Controllers\Admin\InvitationController;
 use App\Http\Controllers\Admin\OwnershipTransferController;
+use App\Http\Controllers\Admin\SubscriptionInvoiceController;
 use App\Http\Controllers\Branch\BankCashAccountController;
 use App\Http\Controllers\Branch\BranchDashboardController;
 use App\Http\Controllers\Branch\BranchSettingsController;
@@ -226,6 +227,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('admin.identities.deactivate');
     Route::post('/admin/identities/{user}/reactivate', [IdentityLifecycleController::class, 'reactivate'])
         ->name('admin.identities.reactivate');
+
+    Route::get('/admin/subscription-invoices', [SubscriptionInvoiceController::class, 'index'])
+        ->name('admin.subscription-invoices');
+    Route::post('/admin/subscription-invoices/{invoice}/approve', [SubscriptionInvoiceController::class, 'approve'])
+        ->name('admin.subscription-invoices.approve');
 });
 
 require __DIR__.'/settings.php';

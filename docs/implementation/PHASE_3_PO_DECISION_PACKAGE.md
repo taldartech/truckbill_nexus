@@ -9,16 +9,16 @@
 
 ## Approval matrix summary
 
-| Decision ID     | Topic                                   | Status today                     | Blocks                                                           |
-| --------------- | --------------------------------------- | -------------------------------- | ---------------------------------------------------------------- |
-| AUD-CON-006     | Exact entitlement / state-action matrix | **Pending** (proposed below)     | Fine-grained create/edit/delete cells beyond Confirmed view-only |
-| PO-P3-PAY-TEST  | Razorpay Test Mode + checkout + webhook | **Approved** (22 Nov 2026)       | Implemented Batch F; sandbox evidence waits on G-PAY             |
-| G-PAY           | Credentials + verified webhook approach | **Open**                         | Sandbox keys, webhook secret, HTTPS reachability                 |
-| PO-P1-DEPS      | Official `razorpay/razorpay` SDK        | **Approved** (SDK case only)     | Custom HTTP adapter superseded; no third-party wrappers          |
-| PO-P3-PAY-PROD  | Production monetary charges             | **Pending**                      | Real customer charges                                            |
-| TB-TAX / issuer | Central invoice issuer + GST validation | **Pending**                      | Legally operative production invoice issuance                    |
-| ADR-010         | Accounting posting architecture         | **Pending**                      | Invoice → GL postings                                            |
-| Batch D PO      | Batch D UI acceptance                   | Ready for PO (not auto-accepted) | Formal Batch D closure                                           |
+| Decision ID     | Topic                                   | Status today                     | Blocks                                                                        |
+| --------------- | --------------------------------------- | -------------------------------- | ----------------------------------------------------------------------------- |
+| AUD-CON-006     | Exact entitlement / state-action matrix | **Pending** (proposed below)     | Fine-grained create/edit/delete cells beyond Confirmed view-only              |
+| PO-P3-PAY-TEST  | Razorpay Test Mode + checkout + webhook | **Approved** (22 Nov 2026)       | SDK + Owner checkout implemented; full card/webhook matrix waits on G-PAY ops |
+| G-PAY           | Credentials + verified webhook approach | **Open** (keys present locally)  | Dashboard webhook subscription + public HTTPS tunnel delivery                 |
+| PO-P1-DEPS      | Official `razorpay/razorpay` SDK        | **Approved** (SDK case only)     | `razorpay/razorpay` 2.9.3 installed; custom HTTP removed                      |
+| PO-P3-PAY-PROD  | Production monetary charges             | **Pending**                      | Real customer charges                                                         |
+| TB-TAX / issuer | Central invoice issuer + GST validation | **Pending**                      | Legally operative production invoice issuance                                 |
+| ADR-010         | Accounting posting architecture         | **Pending**                      | Invoice → GL postings                                                         |
+| Batch D PO      | Batch D UI acceptance                   | Ready for PO (not auto-accepted) | Formal Batch D closure                                                        |
 
 Already approved and **not** re-requested: PO-P3-AUTH, PO-P3-DESIGN-FORMAL, PO-P3-UI-AUTH (masters/documents/subscription surfaces), DEC-001…009, Phase 2 deactivation (DEC-002).
 

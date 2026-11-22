@@ -1,6 +1,7 @@
 <?php
 
 use App\Domains\Company\CompanyWorkspaceService;
+use App\Domains\Subscription\Billing\SubscriptionInvoiceService;
 use App\Domains\Subscription\Contract\CompanySubscriptionContractService;
 use App\Domains\Subscription\Enums\SubscriptionTenure;
 use App\Domains\Subscription\Exceptions\SubscriptionDomainException;
@@ -16,6 +17,7 @@ use App\Domains\Subscription\Payments\RazorpayWebhookNormalizer;
 use App\Domains\Subscription\Payments\Support\RazorpayMoney;
 use App\Models\PaymentIntent;
 use App\Models\SubscriptionCatalogueVersion;
+use App\Models\SubscriptionInvoice;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
 use App\Support\Tenant\TenantContextHolder;
@@ -267,6 +269,7 @@ test('owner checkout simulate activates subscription with fake gateway', functio
         ->assertInertia(fn ($page) => $page
             ->component('owner/subscription/checkout')
             ->where('gateway', 'fake')
+            ->where('allow_fake_simulate', true)
             ->where('test_mode_banner', 'Razorpay Test Mode — No Real Money Will Be Charged'));
 
     $intent = PaymentIntent::query()->where('company_id', $company->id)->latest('created_at')->firstOrFail();
@@ -528,4 +531,66 @@ test('sdk order creation failures are wrapped safely', function () {
     expect(fn () => (new PaymentIntentService($gateway, app(PaymentGatewayAuthorization::class)))
         ->create($company, 'subscription_activation', '100.00', 'sdk-fail', subscription: $draft))
         ->toThrow(SubscriptionDomainException::class);
+});
+
+test('verified payment queues a draft invoice for number approval', function () {
+    ['owner' => $owner, 'company' => $company, 'draft' => $draft] = batchFOwnerDraft();
+    $gateway = new FakePaymentGateway;
+    $intent = (new PaymentIntentService($gateway))->create(
+        $company,
+        'subscription_activation',
+        '100.00',
+        'inv-after-pay',
+        subscription: $draft,
+    );
+    $paymentId = 'pay_inv_auto';
+    $sig = hash_hmac('sha256', $intent->gateway_order_id.'|'.$paymentId, $gateway->secret());
+
+    (new CheckoutVerificationService($gateway, new PaymentEventProcessor($gateway)))
+        ->verifyOwnerCallback($owner, $company, $intent, [
+            'order_id' => $intent->gateway_order_id,
+            'payment_id' => $paymentId,
+            'signature' => $sig,
+        ]);
+
+    $invoice = SubscriptionInvoice::query()
+        ->where('payment_intent_id', $intent->id)
+        ->first();
+
+    expect($invoice)->not->toBeNull()
+        ->and($invoice->status)->toBe('awaiting_number_approval')
+        ->and($draft->fresh()->status)->toBe('active');
+});
+
+test('super admin can approve subscription invoice numbers via admin route', function () {
+    ['company' => $company, 'draft' => $draft] = batchFOwnerDraft();
+    $gateway = new FakePaymentGateway;
+    $intent = (new PaymentIntentService($gateway))->create($company, 'subscription_activation', '50.00', 'sa-inv', subscription: $draft);
+    $intent->forceFill(['status' => 'paid', 'verification_status' => 'verified'])->save();
+    $invoice = app(SubscriptionInvoiceService::class)
+        ->ensureDraftQueuedAfterPayment($intent);
+
+    $sa = User::factory()->superAdmin()->create();
+    test()->actingAs($sa);
+
+    $this->post(route('admin.subscription-invoices.approve', $invoice), [
+        'approved_number' => $invoice->proposed_number,
+    ])->assertRedirect();
+
+    expect($invoice->fresh()->status)->toBe('approved')
+        ->and($invoice->fresh()->approved_number)->toBe($invoice->proposed_number);
+});
+
+test('owner cannot approve invoice numbers', function () {
+    ['owner' => $owner, 'company' => $company, 'draft' => $draft] = batchFOwnerDraft();
+    $gateway = new FakePaymentGateway;
+    $intent = (new PaymentIntentService($gateway))->create($company, 'subscription_activation', '50.00', 'own-inv', subscription: $draft);
+    $intent->forceFill(['status' => 'paid', 'verification_status' => 'verified'])->save();
+    $invoice = app(SubscriptionInvoiceService::class)
+        ->ensureDraftQueuedAfterPayment($intent);
+
+    batchFLogin($owner);
+    $this->post(route('admin.subscription-invoices.approve', $invoice), [
+        'approved_number' => $invoice->proposed_number,
+    ])->assertForbidden();
 });

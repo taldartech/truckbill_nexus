@@ -2,6 +2,7 @@
 
 namespace App\Domains\Subscription\Payments;
 
+use App\Domains\Subscription\Billing\SubscriptionInvoiceService;
 use App\Domains\Subscription\Contract\CompanySubscriptionContractService;
 use App\Domains\Subscription\Exceptions\SubscriptionDomainException;
 use App\Domains\Subscription\Lifecycle\SubscriptionLifecycleService;
@@ -20,8 +21,10 @@ use App\Support\Outbox\OutboxWriter;
 use App\Support\Tenant\TenantContext;
 use App\Support\Tenant\TenantContextHolder;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use JsonException;
+use Throwable;
 
 /**
  * Processes verified webhook raw bodies. Payload is always parsed from the signed bytes.
@@ -36,6 +39,7 @@ final class PaymentEventProcessor
         private readonly OutboxWriter $outbox = new OutboxWriter,
         private readonly RazorpayWebhookNormalizer $normalizer = new RazorpayWebhookNormalizer,
         private readonly CompanySubscriptionContractService $contracts = new CompanySubscriptionContractService,
+        private readonly SubscriptionInvoiceService $invoices = new SubscriptionInvoiceService,
     ) {}
 
     /**
@@ -286,6 +290,16 @@ final class PaymentEventProcessor
                 'Verified '.$intent->purpose,
                 'pay:'.$intent->id,
             );
+        }
+
+        // Payment activation is independent of invoice-number approval / email (Rules §15).
+        try {
+            $this->invoices->ensureDraftQueuedAfterPayment($intent);
+        } catch (Throwable $e) {
+            Log::warning('subscription.invoice_after_payment_failed', [
+                'payment_intent_id' => $intent->id,
+                'message' => $e->getMessage(),
+            ]);
         }
     }
 

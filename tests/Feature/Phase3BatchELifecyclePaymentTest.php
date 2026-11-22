@@ -295,7 +295,8 @@ test('failed payment does not activate subscription', function () {
 });
 
 test('invoice number approval is immutable and email failure does not reverse approval', function () {
-    ['owner' => $owner, 'company' => $company] = batchEOwnerCompany('Invoice Co');
+    ['company' => $company] = batchEOwnerCompany('Invoice Co');
+    $approver = User::factory()->superAdmin()->create();
     $gateway = new FakePaymentGateway;
     $intent = (new PaymentIntentService($gateway))->create($company, 'renewal', '250.00', 'inv-pay-1');
     $intent->forceFill([
@@ -307,7 +308,7 @@ test('invoice number approval is immutable and email failure does not reverse ap
     $invoices = app(SubscriptionInvoiceService::class);
     $draft = $invoices->createDraftFromPayment($intent);
     $awaiting = $invoices->submitForNumberApproval($draft, 'TB/2026-2027/0009');
-    $approved = $invoices->approveNumber($owner, $awaiting, 'TB/2026-2027/0009');
+    $approved = $invoices->approveNumber($approver, $awaiting, 'TB/2026-2027/0009');
     expect($approved->status)->toBe('approved')
         ->and($approved->approved_number)->toBe('TB/2026-2027/0009');
 

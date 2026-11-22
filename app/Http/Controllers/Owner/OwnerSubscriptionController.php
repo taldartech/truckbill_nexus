@@ -184,8 +184,18 @@ class OwnerSubscriptionController extends Controller
             $subscription->forceFill(['status' => 'pending_payment'])->save();
         }
 
-        $publicKey = null;
         $mode = $this->gateway->name();
+        $publicKey = null;
+        $allowFakeSimulate = app()->environment('testing');
+
+        if ($mode === 'fake' && ! $allowFakeSimulate) {
+            return redirect()
+                ->route('owner.subscription', $company)
+                ->withErrors([
+                    'checkout' => 'Razorpay Test Mode credentials are required for Owner checkout. Configure RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, and RAZORPAY_WEBHOOK_SECRET (rzp_test_* only).',
+                ]);
+        }
+
         if ($this->gateway instanceof RazorpayTestPaymentGateway) {
             $publicKey = $this->gateway->publicKeyId();
         }
@@ -209,10 +219,13 @@ class OwnerSubscriptionController extends Controller
                 'name' => $user->name,
                 'email' => $user->email,
             ],
+            'allow_fake_simulate' => $allowFakeSimulate,
             'links' => [
                 'overview' => route('owner.subscription', $company),
                 'verify' => route('owner.subscription.checkout.verify', [$company, $subscription]),
-                'simulate' => route('owner.subscription.checkout.simulate', [$company, $subscription]),
+                'simulate' => $allowFakeSimulate
+                    ? route('owner.subscription.checkout.simulate', [$company, $subscription])
+                    : null,
             ],
         ]);
     }
@@ -254,6 +267,10 @@ class OwnerSubscriptionController extends Controller
     {
         ['user' => $user] = $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
         $this->assertCompanySubscription($company, $subscription);
+
+        if (! app()->environment('testing')) {
+            abort(403, 'Fake payment simulation is restricted to the testing environment.');
+        }
 
         if (! $this->gateway instanceof FakePaymentGateway) {
             abort(403, 'Simulate capture is only available with the fake gateway.');
