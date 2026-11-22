@@ -389,7 +389,7 @@ PO-P1-AUTH
 - [x] **ADR-001, 002, 003, 007, 008, 009** Accepted (PO-P1-ADR-*) — 21 November 2026
 - [x] **ADR-006** still Pending; Sanctum **not** installed
 - [x] **ADR-010** still Pending; accounting posting architecture **not** finalized
-- [ ] CI green: **PostgreSQL migrate + Pest**, Pint, Larastan, frontend build/types — **local equivalent green 22 Nov 2026**; remote Actions URL pending PO push
+- [x] CI green: **PostgreSQL migrate + Pest**, Pint, Larastan, frontend build/types — tip `f5edb9e56465825a8dc2a00193a9935dc787c673`; Actions run [`44970560094`](https://github.com/taldartech/truckbill_nexus/actions/runs/44970560094) **success** (22 Nov 2026)
 - [x] Cross-OS setup doc published (`docs/engineering/LOCAL_SETUP.md`)
 - [x] Profile **hard-delete** removed from routes, controller, UI, tests (Wayfinder regenerated locally)
 - [x] Self-service **email change** removed

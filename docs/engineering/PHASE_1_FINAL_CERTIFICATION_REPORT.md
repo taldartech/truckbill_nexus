@@ -7,9 +7,9 @@
 
 ## 1. Executive summary
 
-Phase 1 Engineering Foundation workstreams WS-1 through WS-8 are implemented and locally verified on PostgreSQL. WS-9 certification finds no blocking functional defects in the authorized Phase 1 scope. Remote GitHub Actions CI and non-production deployment smoke remain dependent on Product Owner push / `PO-P1-DEPLOY`.
+Phase 1 Engineering Foundation workstreams WS-1 through WS-8 are implemented and verified on PostgreSQL. WS-9 certification finds no blocking functional defects in the authorized Phase 1 scope. Remote GitHub Actions CI is **green** on tip `f5edb9e56465825a8dc2a00193a9935dc787c673` (run `44970560094`). Non-production deployment smoke remains blocked by undecided `PO-P1-DEPLOY`. Independent closure assessment: **implementation complete, operational closure pending** (`PHASE_1_CLOSURE_ASSESSMENT.md`).
 
-**Outcome: CONDITIONALLY CERTIFIED — DOCUMENTED NON-BLOCKING ITEMS REMAIN**
+**Outcome: CONDITIONALLY CERTIFIED — OPERATIONAL CLOSURE PENDING (DEPLOYMENT SMOKE)**
 
 ## 2. Scope completed
 
@@ -114,11 +114,11 @@ Verified via `TechnicalUiShellTest` + build:
 | `npm run types:check`         | pass                      |
 | `npm run build`               | pass (Poppins)            |
 
-**Remote CI:** Not claimed. Product Owner must push commits and record Actions run URLs.
+**Remote CI (verified 22 November 2026):** tip `f5edb9e56465825a8dc2a00193a9935dc787c673` — Actions run [`44970560094`](https://github.com/taldartech/truckbill_nexus/actions/runs/44970560094) **success** (PostgreSQL migrate, Wayfinder, frontend check/types/build, Pint, Larastan, Pest).
 
 ## 12. Commit history (Phase 1 implementation tip)
 
-Local `main` includes WS-6..WS-9 commits ahead of `origin/main`. No `git push` was performed by the agent.
+`main` / `origin/main` tip: `f5edb9e56465825a8dc2a00193a9935dc787c673`. Remote CI condition from original certification is **satisfied**. Deployment smoke remains outstanding.
 
 ## 13. Remaining Product Owner decisions
 
@@ -141,14 +141,16 @@ Non-production deployment smoke is **blocked** until `PO-P1-DEPLOY` supplies the
 - Outbox stuck-`processing` recovery is operational/manual (runbook).
 - Real production scanner requires PO-P1-DEPS.
 - Playwright CI smoke recommended, not mandatory.
-- Remote CI green status pending push.
+- Remote CI green on tip `f5edb9e…` (run `44970560094`) — verified.
 
 ## 16. Final certification decision
 
-**CONDITIONALLY CERTIFIED — DOCUMENTED NON-BLOCKING ITEMS REMAIN**
+**CONDITIONALLY CERTIFIED — OPERATIONAL CLOSURE PENDING (DEPLOYMENT SMOKE)**
 
-Phase 1 engineering foundation is complete for authorized scope under local verification. Conditions before treating Phase 1 as fully closed operationally:
+Phase 1 engineering foundation is complete for authorized scope. Remote CI on the pushed tip is green. Conditions before treating Phase 1 as **fully closed** per `Phases.md`:
 
-1. Product Owner pushes commits and confirms GitHub Actions green for the tip SHA.
-2. `PO-P1-DEPLOY` decided and smoke executed (or explicitly waived).
+1. ~~Product Owner confirms GitHub Actions green for the tip SHA.~~ **Done** — run `44970560094` on `f5edb9e…`.
+2. `PO-P1-DEPLOY` decided and non-production smoke executed (or explicitly waived). **Outstanding — mandatory exit.**
 3. Pending access/ADR items remain fail-closed until decided (no silent reinterpretation).
+
+See `docs/engineering/PHASE_1_CLOSURE_ASSESSMENT.md` for the independent closure classification.
