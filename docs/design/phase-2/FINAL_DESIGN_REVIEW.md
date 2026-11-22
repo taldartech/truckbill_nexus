@@ -2,6 +2,7 @@
 
 **Review date:** 22 November 2026  
 **Baseline HEAD reviewed:** `cb68ec14a2ebde77d56fb40ca3b3908b1cbafcdc`  
+**Review documentation commit:** `28362e7bdd5dbc2ac6d23891655d344f1d7113e7`  
 **Roles:** Principal Software Architect; Senior UI/UX Architect; Product Business Analyst; QA & Compliance Lead; Engineering Governance Reviewer  
 **Scope:** Design review and documentation alignment only. **No** product UI implementation. **No** formal design approval granted by this document.
 
