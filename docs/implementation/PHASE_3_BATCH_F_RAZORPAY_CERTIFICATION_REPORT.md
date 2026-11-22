@@ -4,7 +4,7 @@
 **Authority:** PO-P3-PAY-TEST **APPROVED** · PO-P1-DEPS **APPROVED** for official `razorpay/razorpay` SDK only  
 **Initial Batch F HEAD:** `1a383ebdecba7d87f54669c176b88dabdb28671e`  
 **SDK refactor baseline:** `a58f032d9cbb9ef44d01c72e84065df041e0f7c5`  
-**Final HEAD:** _(recorded after local commit)_  
+**Final HEAD:** `d2f5ce723a614cf2a074b9a1836b61f4d4a002d0`  
 **Verdict:** **IMPLEMENTATION COMPLETE — G-PAY SANDBOX EVIDENCE PENDING**
 
 No push. No deployment. No production charges. Phase 3 is not auto-accepted.
