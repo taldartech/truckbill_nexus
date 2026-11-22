@@ -49,14 +49,18 @@ final class PaymentIntentService
             throw new SubscriptionDomainException('Payment amount must be positive.');
         }
 
-        $existing = PaymentIntent::query()->where('idempotency_key', $idempotencyKey)->first();
-        if ($existing !== null) {
+        // Always scope by gateway so a prior fake order cannot be opened in Razorpay Checkout.
+        $idempotencyKey = $this->gatewayScopedIdempotencyKey($idempotencyKey);
+        $existing = $this->findReusableIntent($idempotencyKey);
+
+        if ($existing !== null && $existing->gateway_order_id !== null) {
             return $existing;
         }
 
         // Persist intent without holding a DB lock across outbound HTTP.
-        $intent = $this->tx->run(function () use ($company, $purpose, $amount, $idempotencyKey, $currency, $subscription, $proposal, $meta): PaymentIntent {
-            $race = PaymentIntent::query()->where('idempotency_key', $idempotencyKey)->lockForUpdate()->first();
+        $intent = $existing ?? $this->tx->run(function () use ($company, $purpose, $amount, &$idempotencyKey, $currency, $subscription, $proposal, $meta): PaymentIntent {
+            // Re-resolve under lock in case a concurrent request created the row.
+            $race = $this->findReusableIntent($idempotencyKey, lock: true);
             if ($race !== null) {
                 return $race;
             }
@@ -147,5 +151,52 @@ final class PaymentIntentService
                 }
             }
         });
+    }
+
+    /**
+     * Prevent cross-gateway reuse (e.g. fake order_id opened in Razorpay Checkout).
+     */
+    private function gatewayScopedIdempotencyKey(string $idempotencyKey): string
+    {
+        $suffix = '|gw:'.$this->gateway->name();
+        if (str_contains($idempotencyKey, '|gw:')) {
+            return $idempotencyKey;
+        }
+
+        return $idempotencyKey.$suffix;
+    }
+
+    /**
+     * Locate an intent that may still be used for checkout. Failed/cancelled intents
+     * are superseded with a deterministic retry key so refresh cannot revive them.
+     */
+    private function findReusableIntent(string &$idempotencyKey, bool $lock = false): ?PaymentIntent
+    {
+        $query = PaymentIntent::query()->where('idempotency_key', $idempotencyKey);
+        if ($lock) {
+            $query->lockForUpdate();
+        }
+
+        /** @var PaymentIntent|null $existing */
+        $existing = $query->first();
+        if ($existing === null) {
+            return null;
+        }
+
+        if ($existing->gateway !== $this->gateway->name()) {
+            // Should not happen when keys are gateway-scoped; never reuse mismatched rows.
+            $base = (string) preg_replace('/\|gw:[^|]+/', '', $idempotencyKey);
+            $idempotencyKey = $this->gatewayScopedIdempotencyKey($base).'|supersede:'.$existing->id;
+
+            return $this->findReusableIntent($idempotencyKey, $lock);
+        }
+
+        if (in_array($existing->status, ['failed', 'cancelled'], true)) {
+            $idempotencyKey = $idempotencyKey.'|after:'.$existing->id;
+
+            return $this->findReusableIntent($idempotencyKey, $lock);
+        }
+
+        return $existing;
     }
 }

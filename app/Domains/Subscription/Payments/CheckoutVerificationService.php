@@ -5,9 +5,12 @@ namespace App\Domains\Subscription\Payments;
 use App\Domains\Subscription\Exceptions\SubscriptionDomainException;
 use App\Domains\Subscription\Payments\Gateway\PaymentGateway;
 use App\Domains\Subscription\Payments\Gateway\RazorpayTestPaymentGateway;
+use App\Domains\Subscription\Payments\Support\RazorpayMoney;
+use App\Domains\Subscription\Support\DecimalMath;
 use App\Models\Company;
 use App\Models\PaymentGatewayEvent;
 use App\Models\PaymentIntent;
+use App\Models\PaymentReconciliation;
 use App\Models\User;
 use App\Support\Audit\AuditAction;
 use App\Support\Audit\AuditedTransaction;
@@ -64,15 +67,7 @@ final class CheckoutVerificationService
         }
 
         if ($this->gateway instanceof RazorpayTestPaymentGateway) {
-            $remote = $this->gateway->fetchPayment($paymentId);
-            $remoteStatus = (string) ($remote['status'] ?? '');
-            $remoteOrder = (string) ($remote['order_id'] ?? '');
-            if ($remoteOrder !== $orderId) {
-                throw new SubscriptionDomainException('Remote payment order mismatch.');
-            }
-            if (! in_array($remoteStatus, ['captured', 'authorized'], true)) {
-                throw new SubscriptionDomainException('Remote payment is not captured.');
-            }
+            $this->assertRemoteCapturedPayment($intent, $orderId, $paymentId);
         }
 
         return $this->tx->run(function () use ($intent, $paymentId, $orderId): PaymentIntent {
@@ -81,6 +76,10 @@ final class CheckoutVerificationService
 
             if ($locked->status === 'paid' && $locked->gateway_payment_id === $paymentId) {
                 return $locked;
+            }
+
+            if ($locked->status === 'paid' && $locked->gateway_payment_id !== null && $locked->gateway_payment_id !== $paymentId) {
+                throw new SubscriptionDomainException('Payment intent was already fulfilled with a different payment id.');
             }
 
             $previous = TenantContextHolder::get();
@@ -119,6 +118,74 @@ final class CheckoutVerificationService
                 }
             }
         });
+    }
+
+    private function assertRemoteCapturedPayment(PaymentIntent $intent, string $orderId, string $paymentId): void
+    {
+        /** @var RazorpayTestPaymentGateway $gateway */
+        $gateway = $this->gateway;
+        $remote = $gateway->fetchPayment($paymentId);
+        $remoteStatus = strtolower((string) ($remote['status'] ?? ''));
+        $remoteOrder = (string) ($remote['order_id'] ?? '');
+
+        if ($remoteOrder !== $orderId) {
+            throw new SubscriptionDomainException('Remote payment order mismatch.');
+        }
+
+        $remoteAmountPaise = (int) ($remote['amount'] ?? -1);
+        $expectedPaise = RazorpayMoney::toPaise((string) $intent->amount);
+        $remoteCurrency = strtoupper((string) ($remote['currency'] ?? ''));
+
+        if ($remoteAmountPaise !== $expectedPaise || $remoteCurrency !== strtoupper($intent->currency)) {
+            PaymentReconciliation::query()->create([
+                'id' => (string) Str::uuid(),
+                'payment_intent_id' => $intent->id,
+                'gateway_event_id' => null,
+                'outcome' => 'mismatch',
+                'details' => [
+                    'source' => 'checkout_verify',
+                    'expected_amount' => (string) $intent->amount,
+                    'expected_paise' => $expectedPaise,
+                    'actual_paise' => $remoteAmountPaise,
+                    'expected_currency' => $intent->currency,
+                    'actual_currency' => $remoteCurrency,
+                    'payment_id' => $paymentId,
+                ],
+                'created_at' => now(),
+            ]);
+
+            throw new SubscriptionDomainException('Remote payment amount or currency does not match the payable.');
+        }
+
+        if ($remoteStatus === 'authorized') {
+            PaymentReconciliation::query()->create([
+                'id' => (string) Str::uuid(),
+                'payment_intent_id' => $intent->id,
+                'gateway_event_id' => null,
+                'outcome' => 'delayed',
+                'details' => [
+                    'source' => 'checkout_verify',
+                    'status' => 'authorized',
+                    'payment_id' => $paymentId,
+                    'order_id' => $orderId,
+                    'note' => 'Authorized but uncaptured — awaiting capture before fulfillment.',
+                ],
+                'created_at' => now(),
+            ]);
+
+            throw new SubscriptionDomainException(
+                'Payment is authorized but not captured. Fulfillment waits for capture confirmation.'
+            );
+        }
+
+        if ($remoteStatus !== 'captured') {
+            throw new SubscriptionDomainException('Remote payment is not captured.');
+        }
+
+        // Defensive: decimal form must also match stored payable.
+        if (DecimalMath::compare(RazorpayMoney::fromPaise($remoteAmountPaise), (string) $intent->amount, 2) !== 0) {
+            throw new SubscriptionDomainException('Remote payment amount does not match the payable.');
+        }
     }
 
     private function recordCheckoutEvent(PaymentIntent $intent, string $orderId, string $paymentId): void

@@ -92,7 +92,7 @@ export default function SubscriptionOverview({
 }: Props) {
     const { flash, errors } = usePage<{
         flash?: { success?: string | null };
-        errors?: { remark?: string };
+        errors?: { remark?: string; checkout?: string };
     }>().props;
 
     return (
@@ -125,6 +125,11 @@ export default function SubscriptionOverview({
                         className="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm"
                     >
                         {flash.success}
+                    </p>
+                ) : null}
+                {errors?.checkout ? (
+                    <p className="text-sm text-destructive" role="alert">
+                        {errors.checkout}
                     </p>
                 ) : null}
                 <div className="flex flex-wrap gap-2">

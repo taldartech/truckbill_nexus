@@ -154,13 +154,15 @@ class OwnerSubscriptionController extends Controller
         ]);
     }
 
-    public function checkout(Request $request, Company $company, CompanySubscription $subscription): Response
+    public function checkout(Request $request, Company $company, CompanySubscription $subscription): Response|RedirectResponse
     {
         ['user' => $user, 'scope' => $scope] = $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
         $this->assertCompanySubscription($company, $subscription);
 
         if (! in_array($subscription->status, ['draft', 'pending_payment', 'active'], true)) {
-            abort(403, 'Subscription is not payable in its current status.');
+            return redirect()
+                ->route('owner.subscription', $company)
+                ->withErrors(['checkout' => 'Subscription is not payable in its current status.']);
         }
 
         $purpose = $subscription->status === 'active' ? 'renewal' : 'subscription_activation';
@@ -175,7 +177,9 @@ class OwnerSubscriptionController extends Controller
                 subscription: $subscription,
             );
         } catch (SubscriptionDomainException $e) {
-            abort(403, $e->getMessage());
+            return redirect()
+                ->route('owner.subscription', $company)
+                ->withErrors(['checkout' => $e->getMessage()]);
         }
 
         if ($subscription->status === 'draft') {

@@ -1,5 +1,5 @@
 import { Form, Head, Link, router, usePage } from '@inertiajs/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 
 type Props = {
@@ -30,11 +30,17 @@ type Props = {
     };
 };
 
+type RazorpayInstance = {
+    open: () => void;
+    on: (
+        event: string,
+        handler: (response: Record<string, unknown>) => void,
+    ) => void;
+};
+
 declare global {
     interface Window {
-        Razorpay?: new (options: Record<string, unknown>) => {
-            open: () => void;
-        };
+        Razorpay?: new (options: Record<string, unknown>) => RazorpayInstance;
     }
 }
 
@@ -52,67 +58,157 @@ export default function SubscriptionCheckout({
     const { errors } = usePage<{ errors?: { checkout?: string } }>().props;
     const [busy, setBusy] = useState(false);
     const [scriptReady, setScriptReady] = useState(false);
+    const [scriptError, setScriptError] = useState<string | null>(null);
+    const [localError, setLocalError] = useState<string | null>(null);
+    const [pendingVerify, setPendingVerify] = useState(false);
+    const pendingVerifyRef = useRef(false);
 
     useEffect(() => {
         if (gateway !== 'razorpay_test' || !public_key) {
             return;
         }
+
         const existing = document.querySelector(
             'script[data-razorpay-checkout]',
-        );
+        ) as HTMLScriptElement | null;
+
         if (existing) {
-            setScriptReady(true);
+            if (window.Razorpay) {
+                setScriptReady(true);
+            } else {
+                existing.addEventListener('load', () => setScriptReady(true));
+                existing.addEventListener('error', () =>
+                    setScriptError(
+                        'Unable to load Razorpay Checkout. Check your network and retry.',
+                    ),
+                );
+            }
             return;
         }
+
         const script = document.createElement('script');
         script.src = 'https://checkout.razorpay.com/v1/checkout.js';
         script.async = true;
         script.dataset.razorpayCheckout = '1';
         script.onload = () => setScriptReady(true);
+        script.onerror = () =>
+            setScriptError(
+                'Unable to load Razorpay Checkout. Check your network and retry.',
+            );
         document.body.appendChild(script);
     }, [gateway, public_key]);
 
     const openRazorpay = () => {
-        if (!window.Razorpay || !public_key || !payment.gateway_order_id) {
+        setLocalError(null);
+
+        if (!window.Razorpay) {
+            setLocalError(
+                'Razorpay Checkout is not ready yet. Wait a moment and try again.',
+            );
             return;
         }
+
+        if (!public_key || !payment.gateway_order_id) {
+            setLocalError(
+                'Checkout is not ready. Refresh the page to create a new Test Mode order.',
+            );
+            return;
+        }
+
+        if (payment.gateway_order_id.startsWith('order_fake_')) {
+            setLocalError(
+                'This page still references a simulated order. Refresh checkout to create a Razorpay Test Mode order.',
+            );
+            return;
+        }
+
         setBusy(true);
-        const rzp = new window.Razorpay({
-            key: public_key,
-            amount: undefined,
-            currency: payment.currency,
-            name: 'TruckBill',
-            description: `Test Mode · ${payment.purpose}`,
-            order_id: payment.gateway_order_id,
-            prefill: {
-                name: prefill.name,
-                email: prefill.email,
-            },
-            notes: {
-                payment_intent_id: payment.id,
-                company_id: company.id,
-            },
-            theme: { color: '#0f766e' },
-            handler(response: {
-                razorpay_order_id: string;
-                razorpay_payment_id: string;
-                razorpay_signature: string;
-            }) {
-                router.post(links.verify, {
-                    payment_intent_id: payment.id,
-                    razorpay_order_id: response.razorpay_order_id,
-                    razorpay_payment_id: response.razorpay_payment_id,
-                    razorpay_signature: response.razorpay_signature,
-                });
-            },
-            modal: {
-                ondismiss() {
-                    setBusy(false);
+
+        try {
+            const rzp = new window.Razorpay({
+                key: public_key,
+                currency: payment.currency,
+                name: 'TruckBill',
+                description: `Test Mode · ${payment.purpose}`,
+                order_id: payment.gateway_order_id,
+                prefill: {
+                    name: prefill.name,
+                    email: prefill.email,
                 },
-            },
-        });
-        rzp.open();
+                notes: {
+                    payment_intent_id: payment.id,
+                    company_id: company.id,
+                },
+                theme: { color: '#0f766e' },
+                handler(response: {
+                    razorpay_order_id: string;
+                    razorpay_payment_id: string;
+                    razorpay_signature: string;
+                }) {
+                    pendingVerifyRef.current = true;
+                    setPendingVerify(true);
+                    setLocalError(null);
+                    router.post(
+                        links.verify,
+                        {
+                            payment_intent_id: payment.id,
+                            razorpay_order_id: response.razorpay_order_id,
+                            razorpay_payment_id: response.razorpay_payment_id,
+                            razorpay_signature: response.razorpay_signature,
+                        },
+                        {
+                            onError: () => {
+                                pendingVerifyRef.current = false;
+                                setPendingVerify(false);
+                                setBusy(false);
+                                setLocalError(
+                                    'Payment could not be verified on the server. If money was not captured, you can retry safely.',
+                                );
+                            },
+                            onFinish: () => {
+                                setBusy(false);
+                            },
+                        },
+                    );
+                },
+                modal: {
+                    ondismiss() {
+                        if (!pendingVerifyRef.current) {
+                            setBusy(false);
+                            setLocalError(
+                                'Checkout was cancelled. No payment was recorded.',
+                            );
+                        }
+                    },
+                },
+            });
+
+            rzp.on('payment.failed', (response) => {
+                setBusy(false);
+                pendingVerifyRef.current = false;
+                setPendingVerify(false);
+                const description =
+                    typeof response?.error === 'object' &&
+                    response.error !== null &&
+                    'description' in response.error &&
+                    typeof (response.error as { description?: unknown })
+                        .description === 'string'
+                        ? (response.error as { description: string })
+                              .description
+                        : 'The Test Mode payment did not complete.';
+                setLocalError(description);
+            });
+
+            rzp.open();
+        } catch {
+            setBusy(false);
+            setLocalError(
+                'Unable to open Razorpay Checkout. Refresh and try again.',
+            );
+        }
     };
+
+    const alertMessage = errors?.checkout || scriptError || localError;
 
     return (
         <>
@@ -135,9 +231,18 @@ export default function SubscriptionCheckout({
                 >
                     {test_mode_banner}
                 </p>
-                {errors?.checkout ? (
+                {pendingVerify ? (
+                    <p
+                        role="status"
+                        className="rounded-xl border border-border px-4 py-3 text-sm"
+                    >
+                        Verifying payment with the server. Do not close this
+                        page…
+                    </p>
+                ) : null}
+                {alertMessage ? (
                     <p className="text-sm text-destructive" role="alert">
-                        {errors.checkout}
+                        {alertMessage}
                     </p>
                 ) : null}
                 <section className="grid gap-4 rounded-xl border border-border p-4 lg:grid-cols-2">
@@ -186,7 +291,8 @@ export default function SubscriptionCheckout({
                         </ul>
                         <p className="mt-4 text-sm text-muted-foreground">
                             Browser success is not trusted. The server verifies
-                            the signature and payment status before activation.
+                            the signature and captured payment status before
+                            activation.
                         </p>
                     </div>
                 </section>
@@ -194,12 +300,19 @@ export default function SubscriptionCheckout({
                     {gateway === 'razorpay_test' && public_key ? (
                         <Button
                             type="button"
-                            disabled={busy || !scriptReady}
+                            disabled={
+                                busy ||
+                                pendingVerify ||
+                                !scriptReady ||
+                                Boolean(scriptError)
+                            }
                             onClick={openRazorpay}
                         >
-                            {scriptReady
-                                ? 'Pay with Razorpay Test Mode'
-                                : 'Loading checkout…'}
+                            {pendingVerify
+                                ? 'Verifying…'
+                                : scriptReady
+                                  ? 'Pay with Razorpay Test Mode'
+                                  : 'Loading checkout…'}
                         </Button>
                     ) : null}
                     {gateway === 'fake' ? (
