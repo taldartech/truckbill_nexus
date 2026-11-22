@@ -11,16 +11,17 @@
 
 ## 1. Readiness classification
 
-**Ready to plan. Not ready to implement without Product Owner Phase 2 authorization and ADR-006 resolution for mobile/single-session paths.**
+**Authorized to implement (PO-P2-AUTH, 22 November 2026).** P2-WS-0 complete. Next: P2-WS-1. P2-WS-8 product UI remains blocked until design artefacts are approved.
 
-| Dimension                                              | Classification                                                |
-| ------------------------------------------------------ | ------------------------------------------------------------- |
-| Engineering foundation reuse                           | Ready                                                         |
-| Product model clarity (ADR-005 Accepted product model) | Ready for design/schema proposals                             |
-| Authentication stack (ADR-006)                         | **Blocked** for mobile + cross-channel single-session         |
-| Owner/Branch product UI                                | **Blocked** until Design Deliverables Gate artefacts reviewed |
-| Invitation lifecycle (AUD-GAP-003)                     | Gaps must be decided before onboarding coding                 |
-| ADR-010 accounting posting                             | **Not a Phase 2 blocker** — defer to Phase 8                  |
+| Dimension                                              | Classification                                                          |
+| ------------------------------------------------------ | ----------------------------------------------------------------------- |
+| Engineering foundation reuse                           | Ready                                                                   |
+| Product model clarity (ADR-005 Accepted product model) | Ready                                                                   |
+| Authentication stack (ADR-006)                         | **Accepted web-only**; mobile/Sanctum deferred                          |
+| Owner/Branch product UI                                | **Blocked** until design artefacts reviewed (gate requirement approved) |
+| Invitation lifecycle (AUD-GAP-003)                     | **Approved** (PO-P2-INVITE)                                             |
+| File access (Internal / multi-company)                 | **Decided** — Internal blocked; active-company scoping                  |
+| ADR-010 accounting posting                             | **Not a Phase 2 blocker** — defer to Phase 8                            |
 
 ---
 
@@ -125,11 +126,7 @@ Do **not** invent UI workflows where design artefacts or PO decisions are Pendin
 
 ## 5. ADR-006 relevance (summary)
 
-Full decision brief: `PHASE_2_PRODUCT_OWNER_DECISIONS.md`.
-
-- **Blocks:** Customer single-session across mobile; mobile token lifecycle; unified revocation for ownership transfer / password change across channels.
-- **Does not block:** Company/branch schema design drafts; Permission Master modelling; web Fortify login hardening proposals; many negative isolation test designs.
-- **Must not:** Install Sanctum (or alternate) until ADR-006 is **Accepted**.
+**Accepted (PO-P2-ADR-006):** web-only Fortify + Laravel sessions. Customer single **web** session; Internal multi-session; revoke on security events. Sanctum/mobile deferred. See ADR-006 and `PHASE_2_PRODUCT_OWNER_DECISIONS.md`.
 
 ---
 

@@ -139,7 +139,7 @@ Per-ADR acceptances as each workstream needs them → **WS-1** baseline + hard-d
 | **PO-P1-ADR-008** | Accept ADR-008                                       | **ACCEPTED**                           |
 | **PO-P1-ADR-009** | Accept ADR-009                                       | **ACCEPTED**                           |
 | **PO-P1-DEPS**    | Approve any new packages when requested              | **CASE-BY-CASE** (no blanket approval) |
-| **PO-P1-DEPLOY**  | Name non-production deployment target for exit smoke | **NOT DECIDED** (smoke blocked)        |
+| **PO-P1-DEPLOY**  | Name non-production deployment target for exit smoke | **DEFERRED** (22 Nov 2026; not waived) |
 
 ---
 
@@ -387,7 +387,7 @@ PO-P1-AUTH
 ### Mandatory
 
 - [x] **ADR-001, 002, 003, 007, 008, 009** Accepted (PO-P1-ADR-*) — 21 November 2026
-- [x] **ADR-006** still Pending; Sanctum **not** installed
+- [x] **ADR-006** later Accepted web-only for Phase 2 (PO-P2-ADR-006); Sanctum **not** installed in Phase 1 or Phase 2
 - [x] **ADR-010** still Pending; accounting posting architecture **not** finalized
 - [x] CI green: **PostgreSQL migrate + Pest**, Pint, Larastan, frontend build/types — tip `f5edb9e56465825a8dc2a00193a9935dc787c673`; Actions run [`44970560094`](https://github.com/taldartech/truckbill_nexus/actions/runs/44970560094) **success** (22 Nov 2026)
 - [x] Cross-OS setup doc published (`docs/engineering/LOCAL_SETUP.md`)
@@ -400,7 +400,7 @@ PO-P1-AUTH
 - [x] Upload validation + scan-before-availability verified; no public files (`FileSecurity*`)
 - [x] Technical UI shell only; Design Deliverables Gate not violated (`TechnicalUiShellTest`)
 - [x] Security gates (§12) complete for Phase 1 foundation scope
-- [ ] Non-production deployment smoke verified — **BLOCKED** until **PO-P1-DEPLOY** decided
+- [ ] Non-production deployment smoke verified — **DEFERRED** (PO-P1-DEPLOY, 22 Nov 2026; not waived; Phase 1 formal closure still pending)
 - [x] Runbooks present (`OPERATIONS_RUNBOOK.md`)
 - [x] Memory updated with verified facts only
 - [x] Traceability acceptance-test IDs filled for implemented Phase 1 reqs **without** changing Pending/Deferred/Excluded/Proposed statuses
@@ -491,13 +491,14 @@ PO-P1-AUTH
 
 ## 15. Outstanding Product Owner decisions
 
-| Decision ID                                     | Status                          | Notes                                          |
-| ----------------------------------------------- | ------------------------------- | ---------------------------------------------- |
-| **PO-P1-AUTH**                                  | **APPROVED** (21 November 2026) | Phase 1 implementation authorized              |
-| **PO-P1-ADR-001 / 002 / 003 / 007 / 008 / 009** | **ACCEPTED**                    | See authorization record                       |
-| **ADR-006 / ADR-010**                           | **Pending** (confirmed)         | No Sanctum; no accounting posting architecture |
-| **PO-P1-DEPS**                                  | **CASE-BY-CASE**                | No blanket dependency approval                 |
-| **PO-P1-DEPLOY**                                | **NOT DECIDED**                 | Exit smoke blocked until target supplied       |
+| Decision ID                                     | Status                              | Notes                                               |
+| ----------------------------------------------- | ----------------------------------- | --------------------------------------------------- |
+| **PO-P1-AUTH**                                  | **APPROVED** (21 November 2026)     | Phase 1 implementation authorized                   |
+| **PO-P1-ADR-001 / 002 / 003 / 007 / 008 / 009** | **ACCEPTED**                        | See authorization record                            |
+| **ADR-006**                                     | **Accepted web-only** (22 Nov 2026) | Phase 2; Sanctum still not installed                |
+| **ADR-010**                                     | **Pending**                         | No accounting posting architecture                  |
+| **PO-P1-DEPS**                                  | **CASE-BY-CASE**                    | No blanket dependency approval                      |
+| **PO-P1-DEPLOY**                                | **DEFERRED** (not waived)           | Exit smoke outstanding; Phase 1 not formally closed |
 
 ---
 

@@ -9,10 +9,10 @@
 >
 > - **PO-P1-AUTH:** APPROVED — Phase 1 Engineering Foundation implementation authorized under the current Phase 1 Execution Plan. This satisfies the separate implementation authorization requirement under DEC-004.
 > - **PO-P1-ADR-001 … 003, 007 … 009:** ACCEPTED — see table below.
-> - **ADR-006:** remains **Pending** — do not install or implement Sanctum.
+> - **ADR-006:** later **Accepted** for Phase 2 web-only (PO-P2-ADR-006, 22 November 2026) — Sanctum still not installed; see ADR-006.
 > - **ADR-010:** remains **Pending** — do not finalize accounting posting architecture.
 > - **PO-P1-DEPS:** CASE-BY-CASE — no blanket dependency approval.
-> - **PO-P1-DEPLOY:** NOT DECIDED — non-production deployment smoke remains blocked until the Product Owner supplies a target.
+> - **PO-P1-DEPLOY:** **DEFERRED** (22 November 2026) — not waived; Phase 1 formal closure still pending; see Phase 2 authorization record.
 
 ---
 
@@ -45,10 +45,10 @@ Each ADR document carries its own Acceptance record. Rationale, scope, consequen
 
 ## 3. ADRs that remain Pending
 
-| ADR                                         | Status      | Restriction                                  |
-| ------------------------------------------- | ----------- | -------------------------------------------- |
-| **ADR-006** Web/mobile authentication       | **Pending** | Do not install or implement Sanctum          |
-| **ADR-010** Accounting posting architecture | **Pending** | Do not finalize an accounting posting design |
+| ADR                                         | Status                                            | Restriction                                          |
+| ------------------------------------------- | ------------------------------------------------- | ---------------------------------------------------- |
+| **ADR-006** Web/mobile authentication       | **Accepted (Phase 2 web-only)** as of 22 Nov 2026 | See ADR-006 / PO-P2-ADR-006; Sanctum not for Phase 2 |
+| **ADR-010** Accounting posting architecture | **Pending**                                       | Do not finalize an accounting posting design         |
 
 No other ADR statuses were changed by this authorization.
 
@@ -72,11 +72,11 @@ Before adding any package, library, external service client or infrastructure de
 
 ## 5. Deployment target
 
-| Decision ID      | Decision                                                | Status          | Date             | Authority     |
-| ---------------- | ------------------------------------------------------- | --------------- | ---------------- | ------------- |
-| **PO-P1-DEPLOY** | Non-production deployment target for Phase 1 exit smoke | **NOT DECIDED** | 21 November 2026 | Product Owner |
+| Decision ID      | Decision                                                | Status                         | Date             | Authority     |
+| ---------------- | ------------------------------------------------------- | ------------------------------ | ---------------- | ------------- |
+| **PO-P1-DEPLOY** | Non-production deployment target for Phase 1 exit smoke | **DEFERRED** (was NOT DECIDED) | 22 November 2026 | Product Owner |
 
-Continue local implementation and testing. Phase 1 deployment smoke certification remains **blocked** until the Product Owner supplies the target. Do not invent or select a target.
+Phase 1 deployment smoke remains **outstanding**. Deferral is **not** a waiver: do not provision staging, do not claim smoke passed, and do not mark Phase 1 formally closed. Authorized Phase 2 development may proceed in parallel (`PO-P2-AUTH`).
 
 ---
 

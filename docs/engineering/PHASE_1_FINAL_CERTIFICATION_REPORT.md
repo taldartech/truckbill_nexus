@@ -7,22 +7,22 @@
 
 ## 1. Executive summary
 
-Phase 1 Engineering Foundation workstreams WS-1 through WS-8 are implemented and verified on PostgreSQL. WS-9 certification finds no blocking functional defects in the authorized Phase 1 scope. Remote GitHub Actions CI is **green** on tip `f5edb9e56465825a8dc2a00193a9935dc787c673` (run `44970560094`). Non-production deployment smoke remains blocked by undecided `PO-P1-DEPLOY`. Independent closure assessment: **implementation complete, operational closure pending** (`PHASE_1_CLOSURE_ASSESSMENT.md`).
+Phase 1 Engineering Foundation workstreams WS-1 through WS-8 are implemented and verified on PostgreSQL. WS-9 certification finds no blocking functional defects in the authorized Phase 1 scope. Remote GitHub Actions CI is **green** on tip `f5edb9e56465825a8dc2a00193a9935dc787c673` (run `44970560094`). Non-production deployment smoke remains outstanding: `PO-P1-DEPLOY` is **DEFERRED** (not waived). Independent closure assessment: **implementation complete, operational closure pending** (`PHASE_1_CLOSURE_ASSESSMENT.md`).
 
 **Outcome: CONDITIONALLY CERTIFIED — OPERATIONAL CLOSURE PENDING (DEPLOYMENT SMOKE)**
 
 ## 2. Scope completed
 
-| In scope                                   | Out of scope (preserved)                          |
-| ------------------------------------------ | ------------------------------------------------- |
-| Modular monolith layout                    | Phase 2 identity/membership/RBAC                  |
-| PostgreSQL + Redis baseline + CI workflow  | Sanctum (ADR-006 Pending)                         |
-| Tenant context primitives                  | Accounting posting architecture (ADR-010 Pending) |
-| Append-only audit                          | Owner/Branch product UI                           |
-| Private files + scan interface             | Broker/OwnFleet/Partload modules                  |
-| Outbox + idempotency + queues              | Razorpay / messaging integrations                 |
-| Observability + runbooks                   | Microservices / unapproved packages               |
-| Technical UI shell (Poppins, brand tokens) | Production deployment                             |
+| In scope                                   | Out of scope (preserved)                                 |
+| ------------------------------------------ | -------------------------------------------------------- |
+| Modular monolith layout                    | Phase 2 identity/membership/RBAC                         |
+| PostgreSQL + Redis baseline + CI workflow  | Sanctum (ADR-006 Accepted web-only; still not installed) |
+| Tenant context primitives                  | Accounting posting architecture (ADR-010 Pending)        |
+| Append-only audit                          | Owner/Branch product UI                                  |
+| Private files + scan interface             | Broker/OwnFleet/Partload modules                         |
+| Outbox + idempotency + queues              | Razorpay / messaging integrations                        |
+| Observability + runbooks                   | Microservices / unapproved packages                      |
+| Technical UI shell (Poppins, brand tokens) | Production deployment                                    |
 
 ## 3. Workstream results
 
@@ -42,7 +42,7 @@ Phase 1 Engineering Foundation workstreams WS-1 through WS-8 are implemented and
 
 - Modular monolith under `app/Domains` + `app/Support`; no microservices.
 - Fortify registration remains disabled; self-service email change and account deletion absent.
-- ADR-006 / ADR-010 remain Pending; Sanctum not installed; accounting posting not finalized.
+- ADR-006 Accepted web-only for Phase 2 (Sanctum not installed); ADR-010 remains Pending; accounting posting not finalized.
 - No unexpected Composer/NPM packages added for WS-6–8.
 - `.env` is not tracked; `.env.example` has no secrets.
 - `.cursor/rules/truckbill-project.mdc` and `AGENTS.md` preserved.
@@ -122,18 +122,18 @@ Verified via `TechnicalUiShellTest` + build:
 
 ## 13. Remaining Product Owner decisions
 
-| ID           | Item                               | Impact                                         |
-| ------------ | ---------------------------------- | ---------------------------------------------- |
-| ADR-006      | Web/mobile auth strategy           | Sanctum not installed                          |
-| ADR-010      | Accounting posting                 | Not finalized                                  |
-| PO-P1-DEPS   | Case-by-case packages              | No production malware engine yet (fail-closed) |
-| PO-P1-DEPLOY | Non-production deploy target       | Deployment smoke **blocked**                   |
-| Pending      | Internal Team branch file access   | Fail closed                                    |
-| Pending      | Multi-company Owner file semantics | Fail closed                                    |
+| ID           | Item                                | Impact                                         |
+| ------------ | ----------------------------------- | ---------------------------------------------- |
+| ADR-006      | Web-only Fortify/sessions (Phase 2) | Accepted PO-P2-ADR-006; Sanctum not installed  |
+| ADR-010      | Accounting posting                  | Not finalized                                  |
+| PO-P1-DEPS   | Case-by-case packages               | No production malware engine yet (fail-closed) |
+| PO-P1-DEPLOY | Non-production deploy target        | Deployment smoke **DEFERRED** (not waived)     |
+| Pending      | Internal Team branch file access    | Fail closed                                    |
+| Pending      | Multi-company Owner file semantics  | Fail closed                                    |
 
 ## 14. Deployment smoke limitation
 
-Non-production deployment smoke is **blocked** until `PO-P1-DEPLOY` supplies the target. All other certification work that does not depend on the target is complete locally.
+Non-production deployment smoke is **DEFERRED** under `PO-P1-DEPLOY` (not waived). All other certification work that does not depend on the target is complete locally.
 
 ## 15. Known risks and deferred items
 
@@ -150,7 +150,7 @@ Non-production deployment smoke is **blocked** until `PO-P1-DEPLOY` supplies the
 Phase 1 engineering foundation is complete for authorized scope. Remote CI on the pushed tip is green. Conditions before treating Phase 1 as **fully closed** per `Phases.md`:
 
 1. ~~Product Owner confirms GitHub Actions green for the tip SHA.~~ **Done** — run `44970560094` on `f5edb9e…`.
-2. `PO-P1-DEPLOY` decided and non-production smoke executed (or explicitly waived). **Outstanding — mandatory exit.**
+2. `PO-P1-DEPLOY` deferral ended and non-production smoke executed (or explicitly waived). **Outstanding — mandatory exit (deferred, not waived).**
 3. Pending access/ADR items remain fail-closed until decided (no silent reinterpretation).
 
 See `docs/engineering/PHASE_1_CLOSURE_ASSESSMENT.md` for the independent closure classification.

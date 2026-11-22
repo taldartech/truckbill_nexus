@@ -36,9 +36,14 @@
 | Design Guideline PDF in repository               | Source brand PDF availability                                        | Not Started | Pending assignment | AUD-GOV-004 — PDF not present under docs/governing                |
 | Design review status                             | Formal design review against artefacts                               | Not Started | Product owner      | Cannot complete until artefacts exist                             |
 
+### Phase 2 product surfaces (cross-reference)
+
+PO-P2-DESIGN (22 November 2026) **approves the gate requirement** to prepare and review IA/key screens for Owner Panel, Branch Panel, workspace selection, Owner Dashboard and Branch Dashboard before product UI. Artefacts remain **Not Started**. Detailed Phase 2 register: `docs/engineering/PHASE_2_DESIGN_DELIVERABLES.md`. Do not treat gate-requirement approval as screen-design approval.
+
 ## Related documentation
 
 - `docs/governing/Design.md` §14
-- `docs/governing/Phases.md` Phase 0 / Phase 1
+- `docs/governing/Phases.md` Phase 0 / Phase 1 / Phase 2
+- `docs/engineering/PHASE_2_DESIGN_DELIVERABLES.md`
 - `docs/testing/TEST_STRATEGY.md` (frontend/Playwright layers)
 - Traceability: TB-DES-001, TB-DES-002

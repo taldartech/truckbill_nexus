@@ -18,7 +18,7 @@ Gradient #2FB36F→#2D8CFF. Light backgrounds. Official TruckBill logo. **Produc
 
 ## Identity/access
 
-Global identity, mutually exclusive Internal/Customer. No public self-registration. Exactly one Company Owner/company. Owner Panel Owner-only. Customer branch access explicit; Owner auto-access all company branches. Customer single active session across web/mobile; Internal Team multi-session. Internal/customer permissions separate. Last active Super Admin protected.  
+Global identity, mutually exclusive Internal/Customer. No public self-registration. Exactly one Company Owner/company. Owner Panel Owner-only. Customer branch access explicit; Owner auto-access all company branches. Customer single active session across web/mobile (Phase 2 implements **web** single-session per ADR-006; mobile Deferred); Internal Team multi-session. Internal/customer permissions separate. Last active Super Admin protected.  
 **Email changes** only via authorized administration — no self-service email change (DEC-009).  
 **No self-service account deletion** (DEC-006).  
 **No hard delete or restore** for identities, companies, branches, business/financial/document/audit records (DEC-003). Use controlled deactivation or soft deletion where permitted.  
@@ -27,7 +27,7 @@ Global identity, mutually exclusive Internal/Customer. No public self-registrati
 ## Global rules
 
 Shared PostgreSQL tenancy. Company/branch scope server-enforced. Edit/delete remarks. Audit mutation atomic. Posted financial entries immutable and corrected by reversal. Access requires entitlement, feature, permission and business eligibility. Reports deferred until source workflows work.  
-**Coding gate (DEC-004):** Phase 0 formal approval prerequisite is **satisfied** (PO-APPROVE-001). **PO-P1-AUTH APPROVED** (21 November 2026) — Phase 1 Engineering Foundation implementation is authorized under `docs/implementation/PHASE_1_EXECUTION_PLAN.md`. Implementation must still follow `Phases.md` sequencing and plan exclusions.  
+**Coding gate (DEC-004):** Phase 0 formal approval prerequisite is **satisfied** (PO-APPROVE-001). **PO-P1-AUTH APPROVED** (21 November 2026) — Phase 1 Engineering Foundation. **PO-P2-AUTH APPROVED** (22 November 2026) — Phase 2 Identity / Company / Access under `docs/implementation/PHASE_2_EXECUTION_PLAN.md`. Implementation must still follow `Phases.md` sequencing and plan exclusions.  
 **Phase numbering (DEC-001):** `Phases.md` is the sole authority. Phase 1 = engineering foundation. Initial manual Razorpay renewals = Phase 3.  
 **Design gates:** Completing design artefacts was not mandatory for Phase 0 approval. Product-specific UI still requires the Design Deliverables Gate; Phase 1 may implement a technical UI shell only under the authorized plan (`Design.md` §14; `Phases.md`).
 
@@ -58,7 +58,7 @@ Tyres/batteries individually tracked with installation/removal history. Maintena
 
 ## Agent protocol
 
-Before work, read all six governing docs and ADRs. Identify acceptance criteria, dependencies, permissions, entitlements, tenant scope, audit/deletion, accounting, documents and events. Add tests. Do not invent policy where specified. Do not convert Pending/Deferred/Proposed items to Confirmed without Product Owner decision. Record assumptions. Ask product owner only for consequential decisions. Phase 0 is approved. Phase 1 implementation is authorized (PO-P1-AUTH); Phase 1 formal closure remains pending PO-P1-DEPLOY. Phase 2 readiness documentation exists but **Phase 2 implementation is not authorized**. Do not start Phase 2+ code or Pending ADR work (ADR-006 Sanctum; ADR-010 accounting posting) without separate Product Owner authorization.
+Before work, read all six governing docs and ADRs. Identify acceptance criteria, dependencies, permissions, entitlements, tenant scope, audit/deletion, accounting, documents and events. Add tests. Do not invent policy where specified. Do not convert Pending/Deferred/Proposed items to Confirmed without Product Owner decision. Record assumptions. Ask product owner only for consequential decisions. Phase 0 is approved. Phase 1 implementation is authorized (PO-P1-AUTH); Phase 1 formal closure remains pending PO-P1-DEPLOY (**DEFERRED**, not waived). **PO-P2-AUTH APPROVED** (22 November 2026) — Phase 2 Identity / Company / Access is authorized under `docs/implementation/PHASE_2_EXECUTION_PLAN.md`. ADR-006 Accepted as **web-only** Fortify/session auth — do **not** install Sanctum or implement mobile tokens in Phase 2. ADR-010 remains Pending. P2-WS-8 product UI requires approved design artefacts (`PHASE_2_DESIGN_DELIVERABLES.md`). Do not start Phase 3+.
 
 ## Update protocol
 
@@ -72,11 +72,13 @@ Record date, fact, reason, affected modules and ADR/PR/issue when technology/ver
 - PO-HIST-001 **accepted**: historical discussion residual risk accepted; no additional sampling review required.
 - DEC-004 Phase 0 approval prerequisite is **satisfied**.
 - **PO-P1-AUTH APPROVED** (21 November 2026): Phase 1 Engineering Foundation implementation is authorized under `docs/implementation/PHASE_1_EXECUTION_PLAN.md`.
-- ADR-001, 002, 003, 007, 008, 009 **Accepted** (PO-P1-ADR-*). ADR-006 and ADR-010 remain **Pending**.
-- **PO-P1-DEPS** = CASE-BY-CASE. **PO-P1-DEPLOY** = NOT DECIDED (exit smoke blocked).
-- Design deliverables remain **Not Started** and are required before product-specific UI (Design Deliverables Gate).
+- ADR-001, 002, 003, 007, 008, 009 **Accepted** (PO-P1-ADR-*). **ADR-006 Accepted** (PO-P2-ADR-006, web-only). ADR-010 remains **Pending**.
+- **PO-P1-DEPS** = CASE-BY-CASE. **PO-P1-DEPLOY** = **DEFERRED** (22 November 2026; not waived; Phase 1 operational closure still pending).
+- **PO-P2-AUTH APPROVED** (22 November 2026): Phase 2 authorized under `docs/implementation/PHASE_2_EXECUTION_PLAN.md`. Record: `docs/engineering/PHASE_2_AUTHORIZATION_RECORD.md`.
+- Design deliverables for Owner/Branch/workspace/dashboards remain **Not Started**; PO-P2-DESIGN approves the **gate requirement** only (`PHASE_2_DESIGN_DELIVERABLES.md`).
+- Internal Team customer-file access **Blocked** (PO-P2-FILE-INTERNAL). Multi-company files: active company context only (PO-P2-FILE-MULTI).
 - Legacy migration remains future work.
-- Authorization record: `docs/engineering/PHASE_1_AUTHORIZATION_RECORD.md`. Phase 0 approval record: `docs/engineering/PHASE_0_APPROVAL_READINESS_REPORT.md`.
+- Authorization records: `PHASE_1_AUTHORIZATION_RECORD.md`, `PHASE_2_AUTHORIZATION_RECORD.md`. Phase 0: `PHASE_0_APPROVAL_READINESS_REPORT.md`.
 
 ### Phase 0 decision log (documentation)
 
@@ -108,7 +110,20 @@ Record date, fact, reason, affected modules and ADR/PR/issue when technology/ver
 | 2026-11-21 | Accept transactional outbox and idempotency                      | PO-P1-ADR-009 / ADR-009 |
 | 2026-11-21 | New dependencies require case-by-case approval (no blanket)      | PO-P1-DEPS              |
 | 2026-11-21 | Non-production deployment target not decided; exit smoke blocked | PO-P1-DEPLOY            |
-| 2026-11-21 | ADR-006 and ADR-010 remain Pending                               | Product Owner           |
+| 2026-11-21 | ADR-006 and ADR-010 remain Pending (ADR-006 later Accepted)      | Product Owner           |
+
+### Phase 2 decision log
+
+| Date       | Decision                                                                                                       | Source                  |
+| ---------- | -------------------------------------------------------------------------------------------------------------- | ----------------------- |
+| 2026-11-22 | Phase 2 Identity / Company / Access implementation authorized                                                  | PO-P2-AUTH              |
+| 2026-11-22 | ADR-006 Accepted: web-only Fortify + sessions; no Sanctum/mobile in Phase 2                                    | PO-P2-ADR-006 / ADR-006 |
+| 2026-11-22 | Invitation lifecycle approved (single-use, outbox, no password overwrite)                                      | PO-P2-INVITE            |
+| 2026-11-22 | Company vs Owner deactivation policies approved; Owner Panel limited to admin/billing when company deactivated | PO-P2-DEACT-* / DEC-002 |
+| 2026-11-22 | Internal Team access to customer files Blocked                                                                 | PO-P2-FILE-INTERNAL     |
+| 2026-11-22 | Multi-company file access = active company context only                                                        | PO-P2-FILE-MULTI        |
+| 2026-11-22 | Design gate requirement approved; screen artefacts Not Started                                                 | PO-P2-DESIGN            |
+| 2026-11-22 | PO-P1-DEPLOY Deferred (not waived); Phase 1 formal closure still pending                                       | PO-P1-DEPLOY            |
 
 ### Phase 1 verified implementation facts
 
@@ -122,11 +137,11 @@ Record date, fact, reason, affected modules and ADR/PR/issue when technology/ver
 | 2026-11-21 | WS-2 CI: GitHub Actions uses PostgreSQL 18 service; migrate + Pint + Larastan + Pest + frontend check/types/build                                                                                         | ADR-007                                                                |
 | 2026-11-21 | WS-3 tenant context carrier + RejectClientTenantIdentifiers + job/cache/storage helpers; TenantIsolationTest green                                                                                        | ADR-002 / TB-SEC-001–004                                               |
 | 2026-11-21 | WS-3 remediation: queue restore-before-validate + finally clear; global HTTP reject+lifecycle; full cache key dims; fail-closed branch file metadata                                                      | Independent review                                                     |
-| 2026-11-21 | **Pending PO:** whether Internal Team (non-Owner-scope) may access branch-scoped files without matching branch_id                                                                                         | Storage metadata                                                       |
-| 2026-11-21 | **Pending PO:** owner_id ↔ company ↔ branch file semantics for multi-company Owners beyond same-company Owner-scope + matching owner_id                                                                   | Storage metadata                                                       |
+| 2026-11-21 | Internal Team branch-scoped customer file access was Pending (later **Blocked**, PO-P2-FILE-INTERNAL)                                                                                                     | Storage metadata; PO-P2-FILE-INTERNAL                                  |
+| 2026-11-21 | Multi-company Owner file semantics was Pending (later **active company only**, PO-P2-FILE-MULTI)                                                                                                          | Storage metadata; PO-P2-FILE-MULTI                                     |
 | 2026-11-21 | WS-4 audit foundation: `audit_entries`, AuditWriter, AuditedTransaction, append-only model, harness, AuditAtomicityTest                                                                                   | ADR-003 / TB-AUD-001–003                                               |
 | 2026-11-22 | WS-5 private files: `stored_files`, `private_files` disk, validation (2 MiB + MIME/ext), scan lifecycle interface (`pass`/`fake`/`reject`), safe replace, FileSecurityTest                                | ADR-008 / TB-DOC-001–002                                               |
-| 2026-11-22 | WS-5 access: Internal Team branch access and multi-company Owner file semantics remain **Pending PO** and fail closed                                                                                     | Storage metadata                                                       |
+| 2026-11-22 | WS-5 access: Internal Team / multi-company Owner file cases fail closed pending PO (later decided Blocked / active-company)                                                                               | Storage metadata                                                       |
 | 2026-11-22 | WS-5 remediation: production refuses pass/fake/reject; scanner exceptions fail closed; replace cleanup is post-commit + retryable `pending_cleanup`                                                       | Independent review                                                     |
 | 2026-11-22 | WS-5 final remediation: discardRejectedUpload retains metadata/path on object-delete failure (no orphan objects)                                                                                          | Independent review                                                     |
 | 2026-11-22 | WS-6 outbox/idempotency: `outbox_messages`, `idempotency_records`, dispatcher SKIP LOCKED, ProcessOutboxMessageJob, OutboxIdempotencyTest                                                                 | ADR-009 / TB-EVT-001                                                   |
@@ -134,6 +149,7 @@ Record date, fact, reason, affected modules and ADR/PR/issue when technology/ver
 | 2026-11-22 | WS-8 technical UI shell: Poppins, TruckBill tokens/logo, light-first shell, workspace empty state, TechnicalUiShellTest                                                                                   | DEC-007 / TB-DES-001                                                   |
 | 2026-11-22 | WS-9 Phase 1 certification: CONDITIONALLY CERTIFIED; local suite green; remote CI later verified on tip                                                                                                   | PHASE_1_FINAL_CERTIFICATION_REPORT                                     |
 | 2026-11-22 | Tip `f5edb9e56465825a8dc2a00193a9935dc787c673` on `main`/`origin/main`; GitHub Actions run `44970560094` **success** (migrate, Wayfinder, frontend check/types/build, Pint, Larastan, Pest on PostgreSQL) | https://github.com/taldartech/truckbill_nexus/actions/runs/44970560094 |
-| 2026-11-22 | Independent Phase 1 closure assessment: **implementation complete, operational closure pending** — mandatory non-production deployment still blocked by PO-P1-DEPLOY (not waived)                         | PHASE_1_CLOSURE_ASSESSMENT.md                                          |
-| 2026-11-22 | Phase 2 readiness docs drafted (execution plan, readiness assessment, PO decision register); **Phase 2 implementation not authorized**                                                                    | PHASE_2_* docs                                                         |
-| 2026-11-22 | ADR-006 remains Pending (Sanctum not installed); ADR-010 remains Pending and is **not** a Phase 2 identity/access blocker                                                                                 | ADR-006; ADR-010                                                       |
+| 2026-11-22 | Independent Phase 1 closure assessment: **implementation complete, operational closure pending** — non-production deployment later **DEFERRED** (not waived)                                              | PHASE_1_CLOSURE_ASSESSMENT.md; PO-P1-DEPLOY                            |
+| 2026-11-22 | Phase 2 readiness docs drafted (execution plan, readiness assessment, PO decision register)                                                                                                               | PHASE_2_* docs                                                         |
+| 2026-11-22 | **P2-WS-0 complete:** PO-P2-AUTH approved; ADR-006 Accepted (web-only); invite/deactivation/file/design/deploy decisions recorded; Sanctum not installed; ADR-010 still Pending                           | PHASE_2_AUTHORIZATION_RECORD.md                                        |
+| 2026-11-22 | Prior Pending Internal Team branch file access and multi-company Owner file semantics **decided**: Internal Blocked; active-company scoping only                                                          | PO-P2-FILE-INTERNAL; PO-P2-FILE-MULTI                                  |

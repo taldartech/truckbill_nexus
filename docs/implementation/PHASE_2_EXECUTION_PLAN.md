@@ -1,11 +1,12 @@
 # Phase 2 Execution Plan — Identity / Company / Access
 
-**Status:** DRAFT — awaiting Product Owner authorization  
+**Status:** **AUTHORIZED** — PO-P2-AUTH APPROVED (22 November 2026)  
 **Authority:** `docs/governing/Phases.md` (sole phase-numbering and Phase 2 scope authority)  
-**Related:** `docs/engineering/PHASE_2_READINESS_ASSESSMENT.md`, `docs/engineering/PHASE_2_PRODUCT_OWNER_DECISIONS.md`  
+**Authorization record:** `docs/engineering/PHASE_2_AUTHORIZATION_RECORD.md`  
+**Related:** `docs/engineering/PHASE_2_READINESS_ASSESSMENT.md`, `docs/engineering/PHASE_2_PRODUCT_OWNER_DECISIONS.md`, `docs/engineering/PHASE_2_DESIGN_DELIVERABLES.md`  
 **Baseline tip at planning:** `f5edb9e56465825a8dc2a00193a9935dc787c673`
 
-**Do not begin implementation until the Product Owner issues explicit Phase 2 authorization** (same pattern as PO-P1-AUTH). Phase 1 formal closure pending `PO-P1-DEPLOY` does not by itself authorize Phase 2; PO may authorize Phase 2 planning/implementation separately, but must acknowledge the outstanding Phase 1 deploy smoke.
+**PO-P2-AUTH APPROVED.** Implementation of P2-WS-1+ may proceed under this plan. ADR-006 Accepted as **web-only** Fortify/session auth (no Sanctum/mobile in Phase 2). P2-WS-8 product UI remains gated on design artefact approval (`PO-P2-DESIGN`). Phase 1 `PO-P1-DEPLOY` is **DEFERRED** (not waived) and does not block Phase 2.
 
 ---
 
@@ -47,13 +48,13 @@
 
 ## 2. Authorization gate
 
-| Gate      | Requirement                                                                                                              |
-| --------- | ------------------------------------------------------------------------------------------------------------------------ |
-| G-P2-AUTH | Explicit Product Owner Phase 2 authorization record (proposed ID: `PO-P2-AUTH`)                                          |
-| G-ADR-006 | ADR-006 **Accepted** before mobile token / cross-channel single-session implementation                                   |
-| G-DESIGN  | Design Deliverables Gate satisfied for Owner Panel / Branch Panel / dashboard product screens before those UIs are built |
-| G-INVITE  | Invitation lifecycle decisions resolved before onboarding coding (AUD-GAP-003)                                           |
-| G-CI      | Every workstream: migrate + Pest (Postgres) + Pint + Larastan + frontend check/types/build as applicable                 |
+| Gate      | Requirement                                                                                              | Status (22 Nov 2026)                                   |
+| --------- | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| G-P2-AUTH | Explicit Product Owner Phase 2 authorization record (`PO-P2-AUTH`)                                       | **Satisfied**                                          |
+| G-ADR-006 | ADR-006 **Accepted** for Phase 2 auth approach                                                           | **Satisfied** (web-only; Sanctum/mobile deferred)      |
+| G-DESIGN  | Design artefacts reviewed before Owner/Branch/dashboard **product UI**                                   | **Open** — requirement approved; artefacts Not Started |
+| G-INVITE  | Invitation lifecycle decisions resolved before onboarding coding                                         | **Satisfied** (PO-P2-INVITE)                           |
+| G-CI      | Every workstream: migrate + Pest (Postgres) + Pint + Larastan + frontend check/types/build as applicable | Ongoing                                                |
 
 ---
 
@@ -61,20 +62,21 @@
 
 ### P2-WS-0 — Authorization, decisions and design intake
 
-| Field               | Content                                                                                                    |
-| ------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Objective           | Obtain PO authorization; lock ADR-006; collect design artefacts; freeze Pending exceptions                 |
-| Scope               | Decision register closure for blockers; design package intake; no product schema yet                       |
-| Traceability        | DEC-004 pattern; ADR-006; Design.md §14                                                                    |
-| Prerequisites       | Phase 1 implementation tip green; PO awareness of `PO-P1-DEPLOY` outstanding                               |
-| Dependencies        | None                                                                                                       |
-| ADRs / PO decisions | ADR-006; invite lifecycle; design artefacts; optional `PO-P1-DEPLOY` parallel                              |
-| Schema / API / FE   | None                                                                                                       |
-| Authz / audit risks | N/A                                                                                                        |
-| Test strategy       | Documentation review only                                                                                  |
-| Acceptance          | Written `PO-P2-AUTH`; ADR-006 Accepted or explicitly deferred with narrowed scope; design inventory listed |
-| Definition of done  | Authorization record committed under `docs/engineering/`                                                   |
-| Rollback            | N/A                                                                                                        |
+| Field               | Content                                                                                        |
+| ------------------- | ---------------------------------------------------------------------------------------------- |
+| Objective           | Obtain PO authorization; lock ADR-006; collect design artefacts; freeze Pending exceptions     |
+| Scope               | Decision register closure for blockers; design package intake; no product schema yet           |
+| Traceability        | DEC-004 pattern; ADR-006; Design.md §14                                                        |
+| Prerequisites       | Phase 1 implementation tip green; PO awareness of `PO-P1-DEPLOY` outstanding                   |
+| Dependencies        | None                                                                                           |
+| ADRs / PO decisions | ADR-006; invite lifecycle; design artefacts; optional `PO-P1-DEPLOY` parallel                  |
+| Schema / API / FE   | None                                                                                           |
+| Authz / audit risks | N/A                                                                                            |
+| Test strategy       | Documentation review only                                                                      |
+| Acceptance          | Written `PO-P2-AUTH`; ADR-006 Accepted (web-only); design inventory listed; decisions recorded |
+| Definition of done  | Authorization record committed under `docs/engineering/`                                       |
+| Rollback            | N/A                                                                                            |
+| **P2-WS-0 status**  | **Complete** (22 November 2026) — see authorization record and decision register               |
 
 ---
 
@@ -142,26 +144,26 @@
 
 ---
 
-### P2-WS-4 — Authentication, sessions and single-session (ADR-006)
+### P2-WS-4 — Authentication and session enforcement (ADR-006 web-only)
 
-| Field         | Content                                                                                                                                 |
-| ------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| Objective     | Enforce TB-AUTH-004/005 and revocation rules across approved channels                                                                   |
-| Scope         | Session/token registry per Accepted ADR-006; customer single active session; Internal multi-session; password/deactivation invalidation |
-| Traceability  | TB-AUTH-004, TB-AUTH-005; ADR-006                                                                                                       |
-| Prerequisites | P2-WS-0 (ADR-006 Accepted); P2-WS-1                                                                                                     |
-| Dependencies  | Soft-depends on P2-WS-2 for membership-aware login redirects                                                                            |
-| Schema        | sessions/tokens/device registry as decided                                                                                              |
-| Backend       | Login hooks; revocation service; CSRF/cookie/token storage per ADR                                                                      |
-| Frontend      | Auth UI; mobile client contract if in scope                                                                                             |
-| Authz risks   | Session fixation; token theft; incomplete revocation                                                                                    |
-| Audit         | Login anomalies optional; revocation on admin actions audited                                                                           |
-| Tests         | TEST-AUTH-004/005; new customer login revokes prior; Internal concurrent OK                                                             |
-| Acceptance    | Phase 2 exit session-revocation proofs for auth events                                                                                  |
-| DoD           | ADR-006 Accepted artefacts implemented; Sanctum (or alternate) only if Approved                                                         |
-| Rollback      | Feature-flag new registry; retain Fortify web path                                                                                      |
+| Field         | Content                                                                                                                                    |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Objective     | Enforce TB-AUTH-004 (web) / TB-AUTH-005 and revocation on Laravel sessions                                                                 |
+| Scope         | Fortify + session auth; Customer one active web session; Internal multi-session; password/deactivation invalidation; **no** Sanctum/mobile |
+| Traceability  | TB-AUTH-004 (web portion), TB-AUTH-005; ADR-006 Accepted                                                                                   |
+| Prerequisites | P2-WS-0 (complete); P2-WS-1                                                                                                                |
+| Dependencies  | Soft-depends on P2-WS-2 for membership-aware login redirects                                                                               |
+| Schema        | Session tracking for Customer single-session as needed; **no** mobile device token tables                                                  |
+| Backend       | Login hooks; revocation service; CSRF; secure cookies; session fixation controls                                                           |
+| Frontend      | Auth UI within shell; **no** mobile client contract                                                                                        |
+| Authz risks   | Session fixation; incomplete web revocation                                                                                                |
+| Audit         | Revocation on admin/security actions audited where required                                                                                |
+| Tests         | TEST-AUTH-004/005 (web); new Customer login revokes prior web session; Internal concurrent OK                                              |
+| Acceptance    | Phase 2 exit session-revocation proofs for web auth events                                                                                 |
+| DoD           | Web-only ADR-006 behaviour implemented; Sanctum **not** installed                                                                          |
+| Rollback      | Retain Fortify web path                                                                                                                    |
 
-**Parallel note:** Schema design for P2-WS-1–3 may proceed after P2-WS-0 **without** installing auth packages; **implementation of mobile/single-session** waits for ADR-006.
+**Parallel note:** P2-WS-1–3 may proceed after P2-WS-0. Mobile/Sanctum remain out of scope until a future ADR revision.
 
 ---
 
@@ -293,15 +295,17 @@ with **`P2-WS-4` joining before transfer/session-dependent features**.
 - `PO-P1-DEPLOY` smoke (Phase 1 closure) // Phase 2 planning
 - Permission Master seed data design // membership model
 
-### Decision blockers
+### Decision blockers (updated 22 November 2026)
 
-| Decision                                        | Blocks                                                                |
-| ----------------------------------------------- | --------------------------------------------------------------------- |
-| ADR-006                                         | P2-WS-4; parts of P2-WS-5/7 session effects; mobile                   |
-| Invite lifecycle                                | P2-WS-5                                                               |
-| Design artefacts                                | P2-WS-8 product screens                                               |
-| TB-OWN-006 exhaustive deactivated Owner actions | Full Owner Panel deactivated UX (minimal DEC-002 still implementable) |
-| Internal Team / multi-Owner file semantics      | File features touching those cases (keep fail-closed)                 |
+| Decision                                     | Status                                       | Blocks                                                           |
+| -------------------------------------------- | -------------------------------------------- | ---------------------------------------------------------------- |
+| ADR-006 web-only                             | **Accepted**                                 | Mobile/Sanctum only (future); P2-WS-4 unblocked for web sessions |
+| Invite lifecycle                             | **Approved**                                 | —                                                                |
+| Design artefacts (screen approval)           | **Not Started**                              | P2-WS-8 product screens                                          |
+| Deactivated Owner Panel beyond admin/billing | **Resolved** — limited to admin/billing info | Inventing extra actions                                          |
+| Internal Team customer files                 | **Blocked** by PO                            | Any Internal access path (enforce deny)                          |
+| Multi-company file access                    | **Approved** — active company only           | Cross-company access                                             |
+| PO-P1-DEPLOY                                 | **Deferred** (not waived)                    | Phase 1 formal closure only                                      |
 
 ---
 
@@ -323,7 +327,7 @@ Phase 2 exit suite must explicitly cover Phases.md exit bullets.
 ## 6. Dependency approvals
 
 - Any new Composer/NPM package: case-by-case PO approval (same as PO-P1-DEPS).
-- Sanctum or alternate: **only** after ADR-006 Accepted.
+- Sanctum or mobile token packages: **forbidden in Phase 2**; require a future ADR revision / Product Owner authorization.
 
 ---
 
