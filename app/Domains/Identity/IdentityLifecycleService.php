@@ -2,6 +2,7 @@
 
 namespace App\Domains\Identity;
 
+use App\Domains\Auth\WebSessionService;
 use App\Domains\Identity\Enums\IdentityType;
 use App\Domains\Identity\Exceptions\IdentityTypeBoundaryException;
 use App\Domains\Identity\Exceptions\LastSuperAdminProtectedException;
@@ -16,12 +17,14 @@ use InvalidArgumentException;
  *
  * Super Admin is a protected system privilege. Ordinary Internal/Customer role
  * definitions and assignments belong to P2-WS-3 (Permission Master).
+ * Session revocation on deactivate/soft-delete uses P2-WS-4 WebSessionService.
  */
 final class IdentityLifecycleService
 {
     public function __construct(
         private readonly AuditedTransaction $auditedTransaction = new AuditedTransaction,
         private readonly AuditWriter $auditWriter = new AuditWriter,
+        private readonly WebSessionService $webSessions = new WebSessionService,
     ) {}
 
     /**
@@ -71,7 +74,7 @@ final class IdentityLifecycleService
             );
         }
 
-        return $this->auditedTransaction->run(function () use ($user, $remark): User {
+        $user = $this->auditedTransaction->run(function () use ($user, $remark): User {
             $before = $this->auditableSnapshot($user);
 
             $user->forceFill([
@@ -89,6 +92,13 @@ final class IdentityLifecycleService
 
             return $user;
         });
+
+        $this->webSessions->revokeAllSessionsForIdentityLifecycle(
+            $user,
+            'Identity deactivated; all web sessions revoked',
+        );
+
+        return $user;
     }
 
     public function softDelete(User $user, string $remark): User
@@ -99,7 +109,7 @@ final class IdentityLifecycleService
             );
         }
 
-        return $this->auditedTransaction->run(function () use ($user, $remark): User {
+        $trashed = $this->auditedTransaction->run(function () use ($user, $remark): User {
             $before = $this->auditableSnapshot($user);
             $userId = $user->id;
 
@@ -118,6 +128,13 @@ final class IdentityLifecycleService
 
             return $trashed;
         });
+
+        $this->webSessions->revokeAllSessionsForIdentityLifecycle(
+            $trashed,
+            'Identity soft-deleted; all web sessions revoked',
+        );
+
+        return $trashed;
     }
 
     /**

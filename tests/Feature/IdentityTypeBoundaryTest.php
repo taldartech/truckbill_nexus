@@ -204,9 +204,16 @@ test('lifecycle deactivate requires remark and protects last super admin', funct
     $entry = AuditEntry::query()
         ->where('subject_id', (string) $onlySuperAdmin->id)
         ->where('action', AuditAction::Updated->value)
+        ->where('remark', 'Second Super Admin exists')
         ->sole();
 
     expect($entry->remark)->toBe('Second Super Admin exists');
+
+    expect(AuditEntry::query()
+        ->where('subject_id', (string) $onlySuperAdmin->id)
+        ->where('action', AuditAction::Updated->value)
+        ->where('remark', 'Identity deactivated; all web sessions revoked')
+        ->exists())->toBeTrue();
 
     expect(fn () => $service->deactivate($second, 'Would leave zero Super Admins'))
         ->toThrow(LastSuperAdminProtectedException::class);

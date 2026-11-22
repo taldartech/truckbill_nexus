@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers\Settings;
 
+use App\Domains\Auth\WebSessionService;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\PasswordUpdateRequest;
 use App\Http\Requests\Settings\TwoFactorAuthenticationRequest;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Validation\Rules\Password;
 use Inertia\Inertia;
@@ -25,13 +27,22 @@ class SecurityController extends Controller
     }
 
     /**
-     * Update the user's password.
+     * Update the user's password and revoke other web sessions (P2-WS-4).
      */
-    public function update(PasswordUpdateRequest $request): RedirectResponse
+    public function update(PasswordUpdateRequest $request, WebSessionService $webSessions): RedirectResponse
     {
-        $request->user()->update([
+        /** @var User $user */
+        $user = $request->user();
+
+        $user->update([
             'password' => $request->password,
         ]);
+
+        $webSessions->revokeOtherSessionsForSecurityEvent(
+            $user,
+            $request->session()->getId(),
+            'Password changed; other web sessions revoked',
+        );
 
         Inertia::flash('toast', ['type' => 'success', 'message' => __('Password updated.')]);
 

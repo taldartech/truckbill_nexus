@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Middleware\AssignCorrelationId;
+use App\Http\Middleware\EnforceWebSessionPolicy;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\ManageTenantContextLifecycle;
@@ -32,6 +33,7 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleAppearance::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
+            EnforceWebSessionPolicy::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

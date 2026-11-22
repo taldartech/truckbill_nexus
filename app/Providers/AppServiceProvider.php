@@ -2,14 +2,18 @@
 
 namespace App\Providers;
 
+use App\Domains\Auth\Listeners\HandleWebSessionOnLogout;
+use App\Domains\Auth\WebSessionService;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Models\User;
 use App\Policies\UserPolicy;
 use App\Support\Files\Scanning\MalwareScanner;
 use App\Support\Files\Scanning\MalwareScannerFactory;
 use Carbon\CarbonImmutable;
+use Illuminate\Auth\Events\Logout;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
@@ -30,6 +34,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         $this->app->singleton(PermissionAuthorizer::class);
+        $this->app->singleton(WebSessionService::class);
     }
 
     /**
@@ -38,6 +43,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
+        $this->configureWebSessionListeners();
 
         Gate::policy(User::class, UserPolicy::class);
 
@@ -76,5 +82,10 @@ class AppServiceProvider extends ServiceProvider
                 ->uncompromised()
             : null,
         );
+    }
+
+    protected function configureWebSessionListeners(): void
+    {
+        Event::listen(Logout::class, HandleWebSessionOnLogout::class);
     }
 }

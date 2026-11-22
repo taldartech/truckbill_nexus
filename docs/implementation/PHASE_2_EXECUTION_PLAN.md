@@ -165,8 +165,15 @@
 | Acceptance    | Phase 2 exit session-revocation proofs for web auth events                                                                                 |
 | DoD           | Web-only ADR-006 behaviour implemented; Sanctum **not** installed                                                                          |
 | Rollback      | Retain Fortify web path                                                                                                                    |
+| **P2-WS-4 status** | **Complete** (22 November 2026) — PostgreSQL `customer_web_sessions` registry (session id only); `WebSessionService` with cache lock + `lockForUpdate` Customer replace; Internal multi-session (no registry destroy); Fortify `authenticateThrough` registers after `PrepareAuthenticatedSession`; `EnforceWebSessionPolicy` fail-closed; password change revokes others / reset+lifecycle revoke all; Sanctum **not** installed; `SessionPolicyTest` + full Pest suite green |
 
 **Parallel note:** P2-WS-1–3 may proceed after P2-WS-0. Mobile/Sanctum remain out of scope until a future ADR revision.
+
+**P2-WS-4 evidence (22 November 2026):**
+- Persistence: `customer_web_sessions` (UUID PK, unique `user_id`, `session_id` fingerprint — not raw session secrets). Laravel session store remains payload authority; registry is the Customer active-session pointer.
+- Failure behaviour: Customer validity DB errors / missing registry / mismatched id → fail closed (logout + redirect/401). Cache lock acquisition failure aborts login registration.
+- Concurrency: serialized via `Cache::lock` + row `lockForUpdate`. True multi-process HTTP race not load-certified in Pest; lock/replacement unit path covered in `SessionPolicyTest`.
+- Tests: `tests/Feature/SessionPolicyTest.php` (Customer replace, failed-login non-revoke, stale logout, Internal/Super Admin multi-session, password change/reset revocation, identity ineligibility, fixation/CSRF/registration negatives). Full suite 214 passed / 2 skipped.
 
 ---
 

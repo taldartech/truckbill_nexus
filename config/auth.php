@@ -114,4 +114,18 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    /*
+    |--------------------------------------------------------------------------
+    | Customer Session Test Claim
+    |--------------------------------------------------------------------------
+    |
+    | When true, EnforceWebSessionPolicy may claim a missing Customer active-session
+    | registry row (supports Pest actingAs without the Fortify login pipeline).
+    | Must remain false outside the test suite — production fail-closes on missing
+    | registry entries.
+    |
+    */
+
+    'customer_session_test_claim' => (bool) env('AUTH_CUSTOMER_SESSION_TEST_CLAIM', false),
+
 ];
