@@ -14,7 +14,7 @@ PRD/Rules define one global identity with mutually exclusive Internal Team or Cu
 ## Decision
 
 - Product identity model as specified in PRD §§3–6 and Rules §§2–3 is **Accepted**.
-- **P2-WS-1 technical persistence (22 November 2026):** `users.identity_type` (`internal`|`customer`), `users.internal_role` (Internal-only enum flags), `users.deactivated_at`, SoftDeletes `deleted_at`, with PostgreSQL check constraints. Company/membership/invitation/session-token tables remain later workstreams. Sanctum/mobile remain out of Phase 2 (ADR-006).
+- **P2-WS-1 technical persistence (22 November 2026; corrected same day):** `users.identity_type` (`internal`|`customer`), `users.is_super_admin` (protected system privilege, Internal-only), `users.deactivated_at`, SoftDeletes `deleted_at`, with PostgreSQL check constraints. The premature fixed `internal_role` enum (`admin`/`sales_executive`/`support_executive`/`super_admin`) was removed so ordinary Internal/Customer roles remain **database-managed via Permission Master (P2-WS-3)**. Company/membership/invitation/session-token tables remain later workstreams. Sanctum/mobile remain out of Phase 2 (ADR-006).
 - Email changes: authorized administration only for Internal and Customer unless a future governing requirement explicitly distinguishes them (DEC-009). Verification/notification/uniqueness/audit field details are Pending.
 
 ## Alternatives
@@ -42,6 +42,7 @@ AUD-GAP-002, AUD-GAP-003, AUD-CON-003
 
 ## P2-WS-1 acceptance note
 
-| Decision ID          | Decision                                                                                          | Status      | Date             | Authority                                |
-| -------------------- | ------------------------------------------------------------------------------------------------- | ----------- | ---------------- | ---------------------------------------- |
-| PO-P2-AUTH / P2-WS-1 | Persist mutually exclusive identity type + Internal role flags + deactivation/soft-delete columns | Implemented | 22 November 2026 | Product Owner authorization; engineering |
+| Decision ID          | Decision                                                                                                   | Status      | Date             | Authority                                |
+| -------------------- | ---------------------------------------------------------------------------------------------------------- | ----------- | ---------------- | ---------------------------------------- |
+| PO-P2-AUTH / P2-WS-1 | Persist mutually exclusive identity type + Super Admin system privilege + deactivation/soft-delete columns | Implemented | 22 November 2026 | Product Owner authorization; engineering |
+| P2-WS-1 correction   | Replace fixed `internal_role` enum with `is_super_admin`; defer configurable roles to P2-WS-3              | Implemented | 22 November 2026 | Architecture correction                  |

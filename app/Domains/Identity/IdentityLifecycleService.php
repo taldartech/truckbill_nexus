@@ -3,7 +3,6 @@
 namespace App\Domains\Identity;
 
 use App\Domains\Identity\Enums\IdentityType;
-use App\Domains\Identity\Enums\InternalRole;
 use App\Domains\Identity\Exceptions\IdentityTypeBoundaryException;
 use App\Domains\Identity\Exceptions\LastSuperAdminProtectedException;
 use App\Models\User;
@@ -15,7 +14,8 @@ use InvalidArgumentException;
 /**
  * Controlled identity create / deactivate / soft-delete helpers for P2-WS-1.
  *
- * Does not expose HTTP/admin UI. Invitation and session enforcement are later workstreams.
+ * Super Admin is a protected system privilege. Ordinary Internal/Customer role
+ * definitions and assignments belong to P2-WS-3 (Permission Master).
  */
 final class IdentityLifecycleService
 {
@@ -25,23 +25,23 @@ final class IdentityLifecycleService
     ) {}
 
     /**
-     * @param  array{name: string, email: string, password: string, identity_type: IdentityType, internal_role?: InternalRole|null}  $attributes
+     * @param  array{name: string, email: string, password: string, identity_type: IdentityType, is_super_admin?: bool}  $attributes
      */
     public function create(array $attributes): User
     {
         $type = $attributes['identity_type'];
-        $role = $attributes['internal_role'] ?? null;
+        $isSuperAdmin = (bool) ($attributes['is_super_admin'] ?? false);
 
-        $this->assertTypeRoleConsistency($type, $role);
+        $this->assertSuperAdminConsistency($type, $isSuperAdmin);
 
-        return $this->auditedTransaction->run(function () use ($attributes, $type, $role): User {
+        return $this->auditedTransaction->run(function () use ($attributes, $type, $isSuperAdmin): User {
             $user = new User;
             $user->forceFill([
                 'name' => $attributes['name'],
                 'email' => $attributes['email'],
                 'password' => $attributes['password'],
                 'identity_type' => $type,
-                'internal_role' => $role,
+                'is_super_admin' => $isSuperAdmin,
                 'deactivated_at' => null,
             ]);
             $user->save();
@@ -121,29 +121,31 @@ final class IdentityLifecycleService
     }
 
     /**
-     * Demotion scaffolding only — does not implement full role administration UI.
+     * Revoke Super Admin system privilege (demotion scaffolding).
+     *
+     * Does not assign a Permission Master Internal role — that is P2-WS-3.
      */
-    public function changeInternalRole(User $user, InternalRole $role, string $remark): User
+    public function revokeSuperAdminPrivilege(User $user, string $remark): User
     {
         if (! $user->isInternal()) {
-            throw new IdentityTypeBoundaryException('Only Internal identities have internal roles.');
+            throw new IdentityTypeBoundaryException('Only Internal identities can hold Super Admin privilege.');
         }
 
-        if (
-            $user->internal_role === InternalRole::SuperAdmin
-            && $role !== InternalRole::SuperAdmin
-            && $user->isLastActiveSuperAdmin()
-        ) {
+        if (! $user->isSuperAdmin()) {
+            throw new InvalidArgumentException('Identity is not a Super Admin.');
+        }
+
+        if ($user->isLastActiveSuperAdmin()) {
             throw new LastSuperAdminProtectedException(
                 'The last active Super Admin cannot be demoted (TB-AUTH-008).'
             );
         }
 
-        return $this->auditedTransaction->run(function () use ($user, $role, $remark): User {
+        return $this->auditedTransaction->run(function () use ($user, $remark): User {
             $before = $this->auditableSnapshot($user);
 
             $user->forceFill([
-                'internal_role' => $role,
+                'is_super_admin' => false,
             ])->save();
 
             $this->auditWriter->write(
@@ -160,8 +162,39 @@ final class IdentityLifecycleService
     }
 
     /**
-     * Preserve credentials when reusing an existing identity (TB-AUTH-003 preparation).
-     *
+     * Grant Super Admin system privilege (scaffolding). Independent of Permission Master.
+     */
+    public function grantSuperAdminPrivilege(User $user, string $remark): User
+    {
+        if (! $user->isInternal()) {
+            throw new IdentityTypeBoundaryException('Only Internal identities can hold Super Admin privilege.');
+        }
+
+        if ($user->isSuperAdmin()) {
+            return $user;
+        }
+
+        return $this->auditedTransaction->run(function () use ($user, $remark): User {
+            $before = $this->auditableSnapshot($user);
+
+            $user->forceFill([
+                'is_super_admin' => true,
+            ])->save();
+
+            $this->auditWriter->write(
+                AuditAction::Updated,
+                User::class,
+                $user->id,
+                remark: $remark,
+                before: $before,
+                after: $this->auditableSnapshot($user->refresh()),
+            );
+
+            return $user;
+        });
+    }
+
+    /**
      * @param  array{name?: string, password?: string}  $attributes
      */
     public function updateWithoutOverwritingCredentials(User $existing, array $attributes = []): User
@@ -199,14 +232,12 @@ final class IdentityLifecycleService
         });
     }
 
-    private function assertTypeRoleConsistency(IdentityType $type, ?InternalRole $role): void
+    private function assertSuperAdminConsistency(IdentityType $type, bool $isSuperAdmin): void
     {
-        if ($type === IdentityType::Customer && $role !== null) {
-            throw new IdentityTypeBoundaryException('Customer identities cannot have an internal role.');
-        }
-
-        if ($type === IdentityType::Internal && $role === null) {
-            throw new IdentityTypeBoundaryException('Internal identities require an internal role.');
+        if ($type === IdentityType::Customer && $isSuperAdmin) {
+            throw new IdentityTypeBoundaryException(
+                'Customer identities cannot hold Super Admin privilege.'
+            );
         }
     }
 
@@ -220,7 +251,7 @@ final class IdentityLifecycleService
             'name' => $user->name,
             'email' => $user->email,
             'identity_type' => $user->identity_type instanceof IdentityType ? $user->identity_type->value : null,
-            'internal_role' => $user->internal_role instanceof InternalRole ? $user->internal_role->value : null,
+            'is_super_admin' => $user->is_super_admin,
             'deactivated_at' => $user->deactivated_at?->toISOString(),
             'deleted_at' => $user->deleted_at?->toISOString(),
         ];

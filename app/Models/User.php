@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use App\Domains\Identity\Enums\IdentityType;
-use App\Domains\Identity\Enums\InternalRole;
 use App\Domains\Identity\Exceptions\IdentityHardDeleteProhibitedException;
 use App\Domains\Identity\Exceptions\IdentityRestoreProhibitedException;
 use App\Domains\Identity\Exceptions\IdentityTypeBoundaryException;
@@ -20,11 +19,14 @@ use Illuminate\Support\Carbon;
 /**
  * Global login identity (ADR-005). Mutually exclusive Internal / Customer type.
  *
+ * Super Admin is a protected system privilege (`is_super_admin`), independent of
+ * Permission Master. Ordinary Internal/Customer roles are database-managed in P2-WS-3.
+ *
  * @property int $id
  * @property string $name
  * @property string $email
  * @property IdentityType|null $identity_type
- * @property InternalRole|null $internal_role
+ * @property bool $is_super_admin
  * @property Carbon|null $email_verified_at
  * @property string $password
  * @property string|null $remember_token
@@ -41,6 +43,13 @@ class User extends Authenticatable
     use HasFactory, Notifiable, SoftDeletes;
 
     /**
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'is_super_admin' => false,
+    ];
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array
@@ -49,7 +58,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'identity_type' => IdentityType::class,
-            'internal_role' => InternalRole::class,
+            'is_super_admin' => 'boolean',
             'deactivated_at' => 'datetime',
             'deleted_at' => 'datetime',
         ];
@@ -82,13 +91,16 @@ class User extends Authenticatable
         return ! $this->isDeactivated() && ! $this->trashed();
     }
 
+    /**
+     * Protected system privilege — not a Permission Master / configurable role record.
+     */
     public function isSuperAdmin(): bool
     {
-        return $this->isInternal() && $this->internal_role === InternalRole::SuperAdmin;
+        return $this->isInternal() && $this->is_super_admin === true;
     }
 
     /**
-     * Company Owner is a protected company designation (P2-WS-2), not an identity type or InternalRole.
+     * Company Owner is a protected company designation (P2-WS-2), not an identity type or role.
      */
     public function isCompanyOwnerDesignation(): bool
     {
@@ -153,7 +165,7 @@ class User extends Authenticatable
     {
         return $query
             ->where('identity_type', IdentityType::Internal->value)
-            ->where('internal_role', InternalRole::SuperAdmin->value);
+            ->where('is_super_admin', true);
     }
 
     public function restore(): bool
@@ -176,12 +188,10 @@ class User extends Authenticatable
             throw new IdentityTypeBoundaryException('Identity type is required.');
         }
 
-        if ($this->identity_type === IdentityType::Customer && $this->internal_role !== null) {
-            throw new IdentityTypeBoundaryException('Customer identities cannot have an internal role.');
-        }
-
-        if ($this->identity_type === IdentityType::Internal && $this->internal_role === null) {
-            throw new IdentityTypeBoundaryException('Internal identities require an internal role.');
+        if ($this->identity_type === IdentityType::Customer && $this->is_super_admin === true) {
+            throw new IdentityTypeBoundaryException(
+                'Customer identities cannot hold Super Admin privilege.'
+            );
         }
     }
 }

@@ -82,24 +82,24 @@
 
 ### P2-WS-1 — Identity persistence and type boundaries
 
-| Field              | Content                                                                                                                   |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------- |
-| Objective          | Persist global identity with mutually exclusive Internal/Customer type                                                    |
-| Scope              | Users/identity schema extensions; type enum; soft-delete/deactivation columns; protect last Super Admin scaffolding hooks |
-| Traceability       | TB-AUTH-001, TB-AUTH-002, TB-AUTH-007, TB-AUTH-008, TB-DEL-001/002; ADR-005                                               |
-| Prerequisites      | P2-WS-0                                                                                                                   |
-| Dependencies       | —                                                                                                                         |
-| ADRs               | ADR-005 (Accepted product + P2-WS-1 persistence schema)                                                                   |
-| Schema             | Identity type; deactivated_at; soft-delete; internal role flags as designed                                               |
-| Backend            | Models, factories, policies stubs; registration remains disabled                                                          |
-| Frontend           | Minimal profile surfaces only if already in shell; no product panels                                                      |
-| Authz risks        | Type confusion (Internal acting as Customer)                                                                              |
-| Audit              | Create/update/deactivate identity with remarks                                                                            |
-| Tests              | IdentityTypeBoundaryTest; type exclusivity; no register; no restore/hard-delete                                           |
-| Acceptance         | Identity cannot be both types; Fortify registration still off                                                             |
-| DoD                | Migrations + Pest green; Memory/traceability updated                                                                      |
-| Rollback           | Reverse migration only if no production data (non-prod first)                                                             |
-| **P2-WS-1 status** | **Complete** (22 November 2026) — see Memory / IdentityTypeBoundaryTest                                                   |
+| Field              | Content                                                                                                                          |
+| ------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| Objective          | Persist global identity with mutually exclusive Internal/Customer type                                                           |
+| Scope              | Identity type; soft-delete/deactivation; protected Super Admin privilege (`is_super_admin`) — **not** a fixed Internal role enum |
+| Traceability       | TB-AUTH-001, TB-AUTH-002, TB-AUTH-007, TB-AUTH-008, TB-DEL-001/002, TB-RBAC-003; ADR-005                                         |
+| Prerequisites      | P2-WS-0                                                                                                                          |
+| Dependencies       | Ordinary Internal/Customer **role definitions** deferred to **P2-WS-3** (Permission Master)                                      |
+| ADRs               | ADR-005 (Accepted product + P2-WS-1 persistence; role-enum corrected)                                                            |
+| Schema             | Identity type; `is_super_admin`; deactivated_at; soft-delete — no `internal_role` enum column                                    |
+| Backend            | Models, factories, policies stubs; registration remains disabled                                                                 |
+| Frontend           | Minimal profile surfaces only if already in shell; no product panels                                                             |
+| Authz risks        | Type confusion (Internal acting as Customer)                                                                                     |
+| Audit              | Create/update/deactivate identity with remarks                                                                                   |
+| Tests              | IdentityTypeBoundaryTest; type exclusivity; SA privilege; no register; no restore/hard-delete                                    |
+| Acceptance         | Identity cannot be both types; Fortify registration still off; SA independent of PM                                              |
+| DoD                | Migrations + Pest green; Memory/traceability updated                                                                             |
+| Rollback           | Forward correction migration; enum rollback blocked if Internal non-SA users lack restoreable enum roles                         |
+| **P2-WS-1 status** | **Complete** + **role-model correction** (22 November 2026) — `is_super_admin` replaces `internal_role`                          |
 
 ---
 
@@ -126,22 +126,22 @@
 
 ### P2-WS-3 — Permission Master and branch roles
 
-| Field         | Content                                                                                            |
-| ------------- | -------------------------------------------------------------------------------------------------- |
-| Objective     | Separate Internal/Customer permission domains; branch-specific roles; explicit Delete              |
-| Scope         | Permission Master CRUD (Internal-managed); roles; branch role assignment; cache invalidation hooks |
-| Traceability  | TB-RBAC-001; PRD §6; Rules §3                                                                      |
-| Prerequisites | P2-WS-2                                                                                            |
-| Dependencies  | P2-WS-2                                                                                            |
-| Schema        | permissions, roles, role_permissions, branch_role_assignments                                      |
-| Backend       | Gates/policies; immediate invalidation of permission caches                                        |
-| Frontend      | Admin Permission Master UI **after** design gate for those screens                                 |
-| Authz risks   | Inferred Delete; stale permission caches                                                           |
-| Audit         | Role/permission/assignment changes with remarks                                                    |
-| Tests         | TEST-RBAC-001; Delete explicit; deactivated role/permission rules                                  |
-| Acceptance    | Server denies unauthorized actions; changes apply immediately                                      |
-| DoD           | Matrix tests green; no client-only authz                                                           |
-| Rollback      | Deactivate roles/permissions; retain history                                                       |
+| Field         | Content                                                                                                                                                                                                             |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Objective     | Separate Internal/Customer permission domains; branch-specific roles; explicit Delete                                                                                                                               |
+| Scope         | Permission Master CRUD (Internal-managed); **database-managed** Internal and Customer roles; branch role assignment; cache invalidation; Super Admin remains system privilege (`is_super_admin`), not a PM role row |
+| Traceability  | TB-RBAC-001; TB-RBAC-003; PRD §6; Rules §3                                                                                                                                                                          |
+| Prerequisites | P2-WS-2                                                                                                                                                                                                             |
+| Dependencies  | P2-WS-2; builds on P2-WS-1 identity type + `is_super_admin`                                                                                                                                                         |
+| Schema        | permissions, roles (Internal domain + Customer domain), role_permissions, branch_role_assignments                                                                                                                   |
+| Backend       | Gates/policies; immediate invalidation of permission caches                                                                                                                                                         |
+| Frontend      | Admin Permission Master UI **after** design gate for those screens                                                                                                                                                  |
+| Authz risks   | Inferred Delete; stale permission caches                                                                                                                                                                            |
+| Audit         | Role/permission/assignment changes with remarks                                                                                                                                                                     |
+| Tests         | TEST-RBAC-001; Delete explicit; deactivated role/permission rules                                                                                                                                                   |
+| Acceptance    | Server denies unauthorized actions; changes apply immediately                                                                                                                                                       |
+| DoD           | Matrix tests green; no client-only authz                                                                                                                                                                            |
+| Rollback      | Deactivate roles/permissions; retain history                                                                                                                                                                        |
 
 ---
 

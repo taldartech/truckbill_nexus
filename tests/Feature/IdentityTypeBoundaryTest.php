@@ -16,6 +16,7 @@ use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 
 beforeEach(function () {
     TenantContextHolder::clear();
@@ -32,33 +33,37 @@ afterEach(function () {
     TenantContextHolder::clear();
 });
 
-test('customer identity persists with customer type and no internal role', function () {
+test('customer identity persists without super admin privilege', function () {
     $user = User::factory()->customer()->create();
 
     expect($user->identity_type)->toBe(IdentityType::Customer)
-        ->and($user->internal_role)->toBeNull()
+        ->and($user->is_super_admin)->toBeFalse()
         ->and($user->isCustomer())->toBeTrue()
         ->and($user->isInternal())->toBeFalse()
+        ->and($user->isSuperAdmin())->toBeFalse()
         ->and($user->isActive())->toBeTrue();
 });
 
-test('internal identity persists with internal type and required role', function () {
-    $user = User::factory()->internal(InternalRole::Admin)->create();
+test('ordinary internal identity persists without fixed enum role or super admin', function () {
+    $user = User::factory()->internal()->create();
 
     expect($user->identity_type)->toBe(IdentityType::Internal)
-        ->and($user->internal_role)->toBe(InternalRole::Admin)
+        ->and($user->is_super_admin)->toBeFalse()
         ->and($user->isInternal())->toBeTrue()
-        ->and($user->isCustomer())->toBeFalse();
+        ->and($user->isSuperAdmin())->toBeFalse()
+        ->and(Schema::hasColumn('users', 'internal_role'))->toBeFalse()
+        ->and(class_exists(InternalRole::class))->toBeFalse();
 });
 
-test('identity type enum casts serialize correctly', function () {
+test('super admin privilege is independent of permission master role records', function () {
     $user = User::factory()->superAdmin()->create();
 
     $fresh = User::query()->findOrFail($user->id);
 
-    expect($fresh->identity_type)->toBeInstanceOf(IdentityType::class)
-        ->and($fresh->identity_type->value)->toBe('internal')
-        ->and($fresh->internal_role)->toBe(InternalRole::SuperAdmin);
+    expect($fresh->identity_type)->toBe(IdentityType::Internal)
+        ->and($fresh->is_super_admin)->toBeTrue()
+        ->and($fresh->isSuperAdmin())->toBeTrue()
+        ->and($fresh->getAttributes())->not->toHaveKey('internal_role');
 });
 
 test('null identity type cannot be persisted', function () {
@@ -68,16 +73,9 @@ test('null identity type cannot be persisted', function () {
     $user->save();
 })->throws(IdentityTypeBoundaryException::class);
 
-test('customer cannot be assigned an internal role', function () {
+test('customer cannot hold super admin privilege', function () {
     $user = User::factory()->customer()->make();
-    $user->internal_role = InternalRole::Admin;
-
-    $user->save();
-})->throws(IdentityTypeBoundaryException::class);
-
-test('internal identity requires an internal role', function () {
-    $user = User::factory()->internal()->make();
-    $user->internal_role = null;
+    $user->is_super_admin = true;
 
     $user->save();
 })->throws(IdentityTypeBoundaryException::class);
@@ -88,19 +86,19 @@ test('database rejects invalid identity type values', function () {
         'email' => 'invalid-type-'.uniqid('', true).'@example.com',
         'password' => Hash::make('password'),
         'identity_type' => 'both',
-        'internal_role' => null,
+        'is_super_admin' => false,
         'created_at' => now(),
         'updated_at' => now(),
     ]))->toThrow(QueryException::class);
 });
 
-test('database rejects customer rows with internal roles', function () {
+test('database rejects customer super admin rows', function () {
     expect(fn () => DB::table('users')->insert([
-        'name' => 'Invalid Customer Role',
-        'email' => 'invalid-customer-role-'.uniqid('', true).'@example.com',
+        'name' => 'Invalid Customer SA',
+        'email' => 'invalid-customer-sa-'.uniqid('', true).'@example.com',
         'password' => Hash::make('password'),
         'identity_type' => 'customer',
-        'internal_role' => 'admin',
+        'is_super_admin' => true,
         'created_at' => now(),
         'updated_at' => now(),
     ]))->toThrow(QueryException::class);
@@ -117,6 +115,15 @@ test('scopes do not mix identity domains', function () {
     expect(User::query()->internal()->pluck('email')->all())
         ->toContain('scope-internal@example.com')
         ->not->toContain('scope-customer@example.com');
+});
+
+test('super admin scope does not include ordinary internal users', function () {
+    User::factory()->internal()->create(['email' => 'ordinary-internal@example.com']);
+    User::factory()->superAdmin()->create(['email' => 'sa-internal@example.com']);
+
+    expect(User::query()->superAdmins()->pluck('email')->all())
+        ->toContain('sa-internal@example.com')
+        ->not->toContain('ordinary-internal@example.com');
 });
 
 test('deactivated identity state is represented correctly', function () {
@@ -153,19 +160,14 @@ test('identity type alone does not grant company owner designation', function ()
         ->and(Gate::forUser($internal)->allows('actAsCompanyOwner', $internal))->toBeFalse();
 });
 
-test('policy denies treating customer as internal administration subject', function () {
+test('policy separates internal and customer administration domains', function () {
     $actor = User::factory()->internal()->create();
-    $customer = User::factory()->customer()->create();
-
-    expect(Gate::forUser($actor)->allows('administerInternal', $customer))->toBeFalse()
-        ->and(Gate::forUser($actor)->allows('administerCustomer', $customer))->toBeTrue();
-});
-
-test('policy denies customer administering internal identities', function () {
     $customer = User::factory()->customer()->create();
     $internal = User::factory()->internal()->create();
 
-    expect(Gate::forUser($customer)->allows('administerInternal', $internal))->toBeFalse()
+    expect(Gate::forUser($actor)->allows('administerInternal', $customer))->toBeFalse()
+        ->and(Gate::forUser($actor)->allows('administerCustomer', $customer))->toBeTrue()
+        ->and(Gate::forUser($customer)->allows('administerInternal', $internal))->toBeFalse()
         ->and(Gate::forUser($customer)->allows('administerCustomer', $internal))->toBeFalse();
 });
 
@@ -179,7 +181,8 @@ test('lifecycle create writes audit without remark and persists type', function 
         'identity_type' => IdentityType::Customer,
     ]);
 
-    expect($user->isCustomer())->toBeTrue();
+    expect($user->isCustomer())->toBeTrue()
+        ->and($user->isSuperAdmin())->toBeFalse();
 
     $entry = AuditEntry::query()->where('subject_id', (string) $user->id)->sole();
     expect($entry->action)->toBe(AuditAction::Created->value)
@@ -209,12 +212,18 @@ test('lifecycle deactivate requires remark and protects last super admin', funct
         ->toThrow(LastSuperAdminProtectedException::class);
 });
 
-test('lifecycle demotion of last super admin is blocked', function () {
+test('lifecycle demotion of last super admin is blocked without assigning enum roles', function () {
     $service = new IdentityLifecycleService;
     $only = User::factory()->superAdmin()->create();
 
-    expect(fn () => $service->changeInternalRole($only, InternalRole::Admin, 'Demote last SA'))
+    expect(fn () => $service->revokeSuperAdminPrivilege($only, 'Demote last SA'))
         ->toThrow(LastSuperAdminProtectedException::class);
+
+    $second = User::factory()->superAdmin()->create();
+    $service->revokeSuperAdminPrivilege($only, 'Second Super Admin exists');
+
+    expect($only->fresh()->isSuperAdmin())->toBeFalse()
+        ->and($only->fresh()->isInternal())->toBeTrue();
 });
 
 test('existing identity password is not overwritten by lifecycle helper', function () {

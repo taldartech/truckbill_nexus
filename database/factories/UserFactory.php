@@ -3,7 +3,6 @@
 namespace Database\Factories;
 
 use App\Domains\Identity\Enums\IdentityType;
-use App\Domains\Identity\Enums\InternalRole;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Hash;
@@ -14,9 +13,6 @@ use Illuminate\Support\Str;
  */
 class UserFactory extends Factory
 {
-    /**
-     * The current password being used by the factory.
-     */
     protected static ?string $password;
 
     /**
@@ -31,7 +27,7 @@ class UserFactory extends Factory
             'password' => static::$password ??= Hash::make('password'),
             'remember_token' => Str::random(10),
             'identity_type' => IdentityType::Customer,
-            'internal_role' => null,
+            'is_super_admin' => false,
             'deactivated_at' => null,
         ];
     }
@@ -47,21 +43,28 @@ class UserFactory extends Factory
     {
         return $this->state(fn (array $attributes) => [
             'identity_type' => IdentityType::Customer,
-            'internal_role' => null,
+            'is_super_admin' => false,
         ]);
     }
 
-    public function internal(?InternalRole $role = InternalRole::SupportExecutive): static
+    /**
+     * Ordinary Internal identity without Super Admin privilege.
+     * Configurable Internal roles are assigned in P2-WS-3.
+     */
+    public function internal(): static
     {
         return $this->state(fn (array $attributes) => [
             'identity_type' => IdentityType::Internal,
-            'internal_role' => $role,
+            'is_super_admin' => false,
         ]);
     }
 
     public function superAdmin(): static
     {
-        return $this->internal(InternalRole::SuperAdmin);
+        return $this->state(fn (array $attributes) => [
+            'identity_type' => IdentityType::Internal,
+            'is_super_admin' => true,
+        ]);
     }
 
     public function deactivated(): static
