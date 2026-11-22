@@ -187,9 +187,8 @@ test('super admin follows internal multi-session behaviour', function () {
 
 test('password change revokes other sessions but keeps current', function () {
     $user = User::factory()->customer()->create();
+    $versionBefore = (int) $user->web_session_version;
     $current = loginUser($user);
-
-    insertSessionRow('other-customer-device', $user->id);
 
     $this->put(route('user-password.update'), [
         'current_password' => 'password',
@@ -197,17 +196,21 @@ test('password change revokes other sessions but keeps current', function () {
         'password_confirmation' => 'new-password-123',
     ])->assertRedirect();
 
-    expect(Hash::check('new-password-123', $user->fresh()->password))->toBeTrue()
-        ->and(DB::table('sessions')->where('id', 'other-customer-device')->exists())->toBeFalse()
+    $user->refresh();
+
+    expect(Hash::check('new-password-123', $user->password))->toBeTrue()
+        ->and((int) $user->web_session_version)->toBe($versionBefore + 1)
+        ->and(session(WebSessionService::SESSION_VERSION_KEY))->toBe((int) $user->web_session_version)
         ->and(CustomerWebSession::query()->where('user_id', $user->id)->value('session_id'))->toBe($current)
         ->and(AuditEntry::query()->where('remark', 'Password changed; other web sessions revoked')->exists())->toBeTrue();
+
+    $this->get(route('dashboard'))->assertOk();
 });
 
 test('failed password change does not revoke sessions', function () {
     $user = User::factory()->customer()->create();
     $sessionId = loginUser($user);
-
-    insertSessionRow('other-session', $user->id);
+    $version = (int) $user->fresh()->web_session_version;
 
     $this->from(route('security.edit'))
         ->put(route('user-password.update'), [
@@ -217,7 +220,7 @@ test('failed password change does not revoke sessions', function () {
         ])
         ->assertSessionHasErrors('current_password');
 
-    expect(DB::table('sessions')->where('id', 'other-session')->exists())->toBeTrue()
+    expect((int) $user->fresh()->web_session_version)->toBe($version)
         ->and(CustomerWebSession::query()->where('user_id', $user->id)->value('session_id'))->toBe($sessionId);
 });
 
@@ -226,8 +229,8 @@ test('successful password reset revokes all sessions', function () {
     Notification::fake();
 
     $user = User::factory()->customer()->create();
+    $versionBefore = (int) $user->web_session_version;
 
-    insertSessionRow('pre-reset-session', $user->id);
     CustomerWebSession::query()->updateOrCreate(
         ['user_id' => $user->id],
         ['session_id' => 'pre-reset-session'],
@@ -235,7 +238,7 @@ test('successful password reset revokes all sessions', function () {
 
     $this->post(route('password.email'), ['email' => $user->email]);
 
-    Notification::assertSentTo($user, ResetPassword::class, function ($notification) use ($user) {
+    Notification::assertSentTo($user, ResetPassword::class, function ($notification) use ($user, $versionBefore) {
         $this->post(route('password.update'), [
             'token' => $notification->token,
             'email' => $user->email,
@@ -243,7 +246,7 @@ test('successful password reset revokes all sessions', function () {
             'password_confirmation' => 'reset-password-123',
         ])->assertRedirect(route('login'));
 
-        expect(DB::table('sessions')->where('id', 'pre-reset-session')->exists())->toBeFalse()
+        expect((int) $user->fresh()->web_session_version)->toBe($versionBefore + 1)
             ->and(CustomerWebSession::query()->where('user_id', $user->id)->exists())->toBeFalse();
 
         return true;
@@ -254,8 +257,8 @@ test('failed password reset does not revoke sessions', function () {
     $this->skipUnlessFortifyHas(Features::resetPasswords());
 
     $user = User::factory()->customer()->create();
+    $version = (int) $user->web_session_version;
 
-    insertSessionRow('keep-on-failed-reset', $user->id);
     CustomerWebSession::query()->updateOrCreate(
         ['user_id' => $user->id],
         ['session_id' => 'keep-on-failed-reset'],
@@ -268,17 +271,15 @@ test('failed password reset does not revoke sessions', function () {
         'password_confirmation' => 'reset-password-123',
     ])->assertSessionHasErrors('email');
 
-    expect(DB::table('sessions')->where('id', 'keep-on-failed-reset')->exists())->toBeTrue()
+    expect((int) $user->fresh()->web_session_version)->toBe($version)
         ->and(CustomerWebSession::query()->where('user_id', $user->id)->value('session_id'))->toBe('keep-on-failed-reset');
 });
 
 test('explicit security revocation invalidates customer and internal sessions', function () {
     $customer = User::factory()->customer()->create();
     $internal = User::factory()->internal()->create();
-
-    insertSessionRow('customer-revocation-session', $customer->id);
-    insertSessionRow('internal-revocation-session', $internal->id);
-    insertSessionRow('internal-other', $internal->id);
+    $customerVersion = (int) $customer->web_session_version;
+    $internalVersion = (int) $internal->web_session_version;
 
     CustomerWebSession::query()->updateOrCreate(
         ['user_id' => $customer->id],
@@ -295,8 +296,8 @@ test('explicit security revocation invalidates customer and internal sessions', 
     );
 
     expect(CustomerWebSession::query()->where('user_id', $customer->id)->exists())->toBeFalse()
-        ->and(DB::table('sessions')->where('user_id', $customer->id)->exists())->toBeFalse()
-        ->and(DB::table('sessions')->where('user_id', $internal->id)->exists())->toBeFalse();
+        ->and((int) $customer->fresh()->web_session_version)->toBe($customerVersion + 1)
+        ->and((int) $internal->fresh()->web_session_version)->toBe($internalVersion + 1);
 });
 
 test('deactivated and soft-deleted identities cannot authenticate', function () {
@@ -388,6 +389,91 @@ test('superseded customer session cannot access authenticated routes', function 
     CustomerWebSession::query()->where('user_id', $user->id)->update([
         'session_id' => 'some-other-active-session',
     ]);
+
+    $this->get(route('dashboard'))->assertRedirect(route('login'));
+    $this->assertGuest();
+});
+
+test('session revocation is driver-agnostic via web_session_version without sessions table', function () {
+    expect(config('session.driver'))->toBe('array');
+
+    $internal = User::factory()->internal()->create();
+    loginUser($internal);
+    $versionAfterLogin = (int) $internal->fresh()->web_session_version;
+
+    expect(session(WebSessionService::SESSION_VERSION_KEY))->toBe($versionAfterLogin);
+
+    // Simulate a second concurrent Internal session holding the prior stamp.
+    session([WebSessionService::SESSION_VERSION_KEY => $versionAfterLogin]);
+
+    app(WebSessionService::class)->revokeAllSessionsForSecurityEvent(
+        $internal->fresh(),
+        'Driver-agnostic internal revocation',
+    );
+
+    expect((int) $internal->fresh()->web_session_version)->toBe($versionAfterLogin + 1);
+
+    // Stale stamp must fail closed even though array driver has no sessions table rows.
+    session([WebSessionService::SESSION_VERSION_KEY => $versionAfterLogin]);
+    $this->actingAs($internal->fresh())->get(route('dashboard'))->assertRedirect(route('login'));
+});
+
+test('internal password reset bumps web_session_version for all sessions', function () {
+    $this->skipUnlessFortifyHas(Features::resetPasswords());
+    Notification::fake();
+
+    $user = User::factory()->internal()->create();
+    $before = (int) $user->web_session_version;
+
+    $this->post(route('password.email'), ['email' => $user->email]);
+
+    Notification::assertSentTo($user, ResetPassword::class, function ($notification) use ($user, $before) {
+        $this->post(route('password.update'), [
+            'token' => $notification->token,
+            'email' => $user->email,
+            'password' => 'reset-password-123',
+            'password_confirmation' => 'reset-password-123',
+        ])->assertRedirect(route('login'));
+
+        expect((int) $user->fresh()->web_session_version)->toBe($before + 1);
+
+        return true;
+    });
+});
+
+test('deactivated internal identity cannot continue authenticated access', function () {
+    $user = User::factory()->internal()->create();
+    loginUser($user);
+
+    TenantContextHolder::inject(new TenantContext(
+        companyId: null,
+        branchId: null,
+        ownerId: null,
+        isInternal: true,
+    ));
+
+    app(IdentityLifecycleService::class)->deactivate($user, 'Deactivate authenticated internal');
+
+    expect($user->fresh()->isDeactivated())->toBeTrue()
+        ->and((int) $user->fresh()->web_session_version)->toBeGreaterThan(0)
+        ->and((int) session(WebSessionService::SESSION_VERSION_KEY))->not->toBe((int) $user->fresh()->web_session_version);
+
+    $this->get(route('dashboard'))->assertRedirect(route('login'));
+    $this->assertGuest();
+});
+
+test('stale web_session_version fails closed for customer after password change on another device', function () {
+    $user = User::factory()->customer()->create();
+    loginUser($user);
+    $staleVersion = (int) session(WebSessionService::SESSION_VERSION_KEY);
+
+    app(WebSessionService::class)->revokeOtherSessionsForSecurityEvent(
+        $user->fresh(),
+        'keep-this-session-id-elsewhere',
+        'Simulated password change on another device',
+    );
+
+    session([WebSessionService::SESSION_VERSION_KEY => $staleVersion]);
 
     $this->get(route('dashboard'))->assertRedirect(route('login'));
     $this->assertGuest();

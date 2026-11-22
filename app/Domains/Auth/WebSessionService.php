@@ -13,22 +13,23 @@ use App\Support\Tenant\TenantContextHolder;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Session;
 use Throwable;
 
 /**
- * Web session policy enforcement (ADR-006 / P2-WS-4).
+ * Web session policy enforcement (ADR-006 / P2-WS-4 + driver-safe follow-up).
  *
- * Customer: exactly one active web session (DB registry + Laravel session destroy).
- * Internal: multiple concurrent web sessions; security events may revoke all/others.
+ * Customer: one active web session via PostgreSQL `customer_web_sessions` + version stamp.
+ * Internal: concurrent sessions allowed until a security event bumps `users.web_session_version`.
  *
- * Persistence rationale: PostgreSQL `customer_web_sessions` is the Customer active-session
- * source of truth (works with redis/database/array session drivers). Laravel session store
- * remains authoritative for session payloads; the registry only stores the session id.
- * Atomic replacement uses a cache lock plus row lock. Fail closed when validity cannot
- * be established for Customer identities.
+ * Session stores (Redis/array/database/file) are not enumerated for revocation. Bumping
+ * `web_session_version` invalidates every session that does not carry the new stamp.
+ * Known Customer session ids are still destroyed via the active session handler when available.
  */
 final class WebSessionService
 {
+    public const SESSION_VERSION_KEY = 'web_session_version';
+
     private const LOCK_SECONDS = 10;
 
     private const LOCK_WAIT_SECONDS = 5;
@@ -48,13 +49,25 @@ final class WebSessionService
             throw new WebSessionException('Cannot register an empty session id.');
         }
 
+        $this->stampSessionVersion($user);
+
         if ($user->isCustomer()) {
             $this->replaceCustomerActiveSession($user, $sessionId);
+        }
+    }
 
-            return;
+    public function stampSessionVersion(User $user): void
+    {
+        Session::put(self::SESSION_VERSION_KEY, (int) $user->web_session_version);
+    }
+
+    public function isSessionVersionValid(User $user): bool
+    {
+        if (! Session::has(self::SESSION_VERSION_KEY)) {
+            return false;
         }
 
-        // Internal Team: no single-session registry; concurrent sessions remain valid.
+        return (int) Session::get(self::SESSION_VERSION_KEY) === (int) $user->web_session_version;
     }
 
     public function isCustomerSessionValid(User $user, string $sessionId): bool
@@ -78,7 +91,6 @@ final class WebSessionService
             return false;
         }
 
-        // Fail closed: missing registry means the session is not authorized.
         if ($active === null) {
             return false;
         }
@@ -211,20 +223,24 @@ final class WebSessionService
     {
         $this->auditedTransaction->run(function () use ($user, $keepSessionId, $remark, $keepCurrent): void {
             $this->withSecurityAuditContext($user, function () use ($user, $keepSessionId, $remark, $keepCurrent): void {
-                $query = DB::table(config('session.table', 'sessions'))
-                    ->where('user_id', $user->id);
+                // Driver-agnostic invalidation (Redis/array/file/database).
+                $user->forceFill([
+                    'web_session_version' => (int) $user->web_session_version + 1,
+                ])->save();
+                $user->refresh();
 
-                if ($keepCurrent && $keepSessionId !== null && $keepSessionId !== '') {
-                    $query->where('id', '!=', $keepSessionId);
-                }
-
-                $ids = $query->pluck('id');
-
-                foreach ($ids as $id) {
-                    $this->destroyLaravelSession((string) $id);
+                if ($keepCurrent) {
+                    $this->stampSessionVersion($user);
                 }
 
                 if ($user->isCustomer()) {
+                    $prior = CustomerWebSession::query()->where('user_id', $user->id)->first();
+
+                    if ($prior !== null
+                        && (! $keepCurrent || $keepSessionId === null || ! hash_equals($prior->session_id, $keepSessionId))) {
+                        $this->destroyLaravelSession($prior->session_id);
+                    }
+
                     if ($keepCurrent && $keepSessionId !== null && $keepSessionId !== '') {
                         CustomerWebSession::query()->updateOrCreate(
                             ['user_id' => $user->id],
@@ -234,6 +250,10 @@ final class WebSessionService
                         CustomerWebSession::query()->where('user_id', $user->id)->delete();
                     }
                 }
+
+                // Best-effort cleanup when the database session driver is in use.
+                // Must not be the sole revocation mechanism (Redis/array have no user_id index).
+                $this->bestEffortDestroyDatabaseSessions($user, $keepSessionId, $keepCurrent);
 
                 $this->auditWriter->write(
                     AuditAction::Updated,
@@ -247,10 +267,36 @@ final class WebSessionService
                     after: [
                         'session_revocation' => 'completed',
                         'kept_current' => $keepCurrent,
+                        'web_session_version' => (int) $user->web_session_version,
                     ],
                 );
             });
         });
+    }
+
+    private function bestEffortDestroyDatabaseSessions(User $user, ?string $keepSessionId, bool $keepCurrent): void
+    {
+        if (config('session.driver') !== 'database') {
+            return;
+        }
+
+        try {
+            $query = DB::table(config('session.table', 'sessions'))
+                ->where('user_id', $user->id);
+
+            if ($keepCurrent && $keepSessionId !== null && $keepSessionId !== '') {
+                $query->where('id', '!=', $keepSessionId);
+            }
+
+            foreach ($query->pluck('id') as $id) {
+                $this->destroyLaravelSession((string) $id);
+            }
+        } catch (Throwable $e) {
+            Log::warning('database_session_cleanup_failed', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     private function destroyLaravelSession(string $sessionId): void
@@ -267,12 +313,12 @@ final class WebSessionService
             ]);
         }
 
-        // Ensure database-driver rows are removed even if the handler is not database-backed
-        // in the current process (e.g. tests switching drivers).
+        // Best-effort row cleanup when a sessions table exists (database driver / test fixtures).
+        // Enumeration by user_id is never used as the sole revocation path.
         try {
             DB::table(config('session.table', 'sessions'))->where('id', $sessionId)->delete();
         } catch (Throwable) {
-            // Session table may be unavailable for non-database drivers; handler destroy is primary.
+            // Handler destroy is primary for Redis/array/file stores.
         }
     }
 
@@ -291,7 +337,6 @@ final class WebSessionService
     {
         $previous = TenantContextHolder::get();
 
-        // Security-plane audit context (non-empty). Not a Customer tenant claim.
         TenantContextHolder::inject(new TenantContext(
             companyId: null,
             branchId: null,

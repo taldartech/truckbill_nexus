@@ -30,6 +30,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $email_verified_at
  * @property string $password
  * @property string|null $remember_token
+ * @property int $web_session_version
  * @property Carbon|null $deactivated_at
  * @property Carbon|null $deleted_at
  * @property Carbon|null $created_at
@@ -47,6 +48,7 @@ class User extends Authenticatable
      */
     protected $attributes = [
         'is_super_admin' => false,
+        'web_session_version' => 0,
     ];
 
     /**
@@ -59,6 +61,7 @@ class User extends Authenticatable
             'password' => 'hashed',
             'identity_type' => IdentityType::class,
             'is_super_admin' => 'boolean',
+            'web_session_version' => 'integer',
             'deactivated_at' => 'datetime',
             'deleted_at' => 'datetime',
         ];

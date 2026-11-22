@@ -12,10 +12,11 @@ use Symfony\Component\HttpFoundation\Response;
 use Throwable;
 
 /**
- * Server-side web session policy (P2-WS-4).
+ * Server-side web session policy (P2-WS-4 + driver-safe follow-up).
  *
- * Guests and Internal concurrent sessions pass through.
- * Customer requests fail closed when the active-session registry does not match.
+ * All identities: web_session_version stamp must match (driver-agnostic revocation).
+ * Customers: active-session registry must also match.
+ * Guests pass through. Inactive identities are expired.
  */
 final class EnforceWebSessionPolicy
 {
@@ -34,39 +35,53 @@ final class EnforceWebSessionPolicy
             return $next($request);
         }
 
+        // Reload lifecycle/version attributes — Auth may hold a stale in-memory model.
+        $user->refresh();
+
         if (! $user->isActive()) {
             return $this->expire($request);
         }
 
-        if ($user->isInternal()) {
-            return $next($request);
-        }
+        try {
+            if (! $this->webSessions->isSessionVersionValid($user)) {
+                // Testing-only: actingAs without Fortify login has no stamp yet.
+                // Never bootstrap when a stamp already exists (stale after revocation).
+                if (config('auth.customer_session_test_claim')
+                    && ! $request->session()->has(WebSessionService::SESSION_VERSION_KEY)) {
+                    $this->webSessions->stampSessionVersion($user);
+                } else {
+                    return $this->expire($request);
+                }
+            }
 
-        if ($user->isCustomer()) {
-            $sessionId = $request->session()->getId();
+            if ($user->isInternal()) {
+                return $next($request);
+            }
 
-            try {
+            if ($user->isCustomer()) {
+                $sessionId = $request->session()->getId();
+
                 if ($this->webSessions->isCustomerSessionValid($user, $sessionId)) {
                     return $next($request);
                 }
 
-                // Testing-only: actingAs authenticates without the Fortify login pipeline.
-                // Production always fail-closes when the registry is missing or mismatched.
                 if (config('auth.customer_session_test_claim')
                     && $this->webSessions->claimMissingCustomerSession($user, $sessionId)) {
                     return $next($request);
                 }
-            } catch (Throwable $e) {
-                Log::warning('customer_session_policy_enforcement_failed', [
-                    'user_id' => $user->id,
-                    'error' => $e->getMessage(),
-                ]);
+
+                return $this->expire($request);
             }
+        } catch (Throwable $e) {
+            Log::warning('web_session_policy_enforcement_failed', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage(),
+            ]);
 
             return $this->expire($request);
         }
 
-        return $next($request);
+        return $this->expire($request);
     }
 
     private function expire(Request $request): Response
