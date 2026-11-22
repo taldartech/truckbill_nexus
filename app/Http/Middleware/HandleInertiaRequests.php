@@ -83,9 +83,16 @@ class HandleInertiaRequests extends Middleware
             ? $routeCompany->id
             : WorkspaceSession::companyId($request);
 
-        $activeBranchId = $routeBranch instanceof Branch
-            ? $routeBranch->id
-            : WorkspaceSession::branchId($request);
+        // Owner Panel is company-scoped. Clear any prior Branch Panel session branch
+        // before sharing props so Owner chrome is not overridden by a stale branch.
+        if ($request->routeIs('owner.*')) {
+            $request->session()->forget(WorkspaceSession::BRANCH_KEY);
+            $activeBranchId = null;
+        } else {
+            $activeBranchId = $routeBranch instanceof Branch
+                ? $routeBranch->id
+                : WorkspaceSession::branchId($request);
+        }
 
         return [
             'companies' => $navigation->accessibleCompanies($user)->values(),

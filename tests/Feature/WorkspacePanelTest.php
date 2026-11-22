@@ -300,6 +300,26 @@ test('unavailable modules are not exposed on branch dashboard', function () {
             ->where('modules', []));
 });
 
+test('returning to owner panel clears active branch chrome after branch visit', function () {
+    ['owner' => $owner, 'company' => $company, 'headOffice' => $headOffice] = createOwnerWorkspace();
+
+    loginCustomer($owner);
+
+    $this->get(route('branch.dashboard', [
+        'company' => $company,
+        'branch' => $headOffice,
+    ]))->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('workspace.active_branch_id', $headOffice->id));
+
+    $this->get(route('owner.dashboard', ['company' => $company]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('owner/dashboard')
+            ->where('workspace.active_company_id', $company->id)
+            ->where('workspace.active_branch_id', null));
+});
+
 test('login redirects customers to workspace landing', function () {
     ['owner' => $owner] = createOwnerWorkspace();
 
