@@ -1,6 +1,6 @@
 # F — Access Restriction / State Matrix
 
-**Status:** Draft — Awaiting Product Owner Review  
+**Status:** **Approved with documented exceptions** — 22 November 2026 (PO-P2-DESIGN-FORMAL; exact restricted/trial/grace entitlements remain Pending — AUD-CON-006)  
 **Traceability:** PRD §§3–5; Rules §2; Design.md §2; DEC-002/003; ADR-002/006; PO-P2-DEACT-_; PO-P2-FILE-_; PO-P2-DESIGN-SWITCHER; PO-P2-DESIGN-LANDING; PO-P2-DESIGN-DEACT-VIEW; PO-P2-DESIGN-SUB-UX; TB-OWN-_; TB-SEC-_; TB-DEL-002; P2-WS-4/6/7
 
 **Rule:** Do not invent access exceptions. Nav visibility ≠ authorization.
@@ -81,11 +81,11 @@ Do **not** invent or infer exact trial/grace/restricted permissions beyond gover
 | --------- | -------------------------------------------------------------------------------- | --------------------- |
 | OQ-AX-02  | Unified switcher lists all accessible companies with Owner vs Member distinction | PO-P2-DESIGN-SWITCHER |
 
-## 7. Remaining Pending
+## 7. Remaining Pending (explicitly not fully approved)
 
-| ID                     | Question                                                              |
-| ---------------------- | --------------------------------------------------------------------- |
-| OQ-AX-01 / AUD-CON-006 | Exact entitlement permissions for trial, grace, and restricted states |
+| ID                     | Question                                                              | Binding decision                                                          |
+| ---------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| OQ-AX-01 / AUD-CON-006 | Exact entitlement permissions for trial, grace, and restricted states | PO-DEC-P2-REVIEW-001 — **APPROVED WITH EXCEPTION** (defer; do not invent) |
 
 ## 8. Out of scope
 

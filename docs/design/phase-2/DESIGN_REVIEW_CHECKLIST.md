@@ -1,68 +1,77 @@
 # G — Formal Product Owner Design Approval Package
 
-**Status:** Draft — Awaiting Formal Design Package Approval  
+**Status:** **APPROVED WITH DOCUMENTED EXCEPTIONS** — 22 November 2026  
 **Package path:** `docs/design/phase-2/`  
-**Gate:** PO-P2-DESIGN requires artefact review before P2-WS-8 product UI  
-**Instruction:** Baseline workspace decisions (D11–D16) are **APPROVED**. Formal approval of each design artefact is still required before product UI. Do **not** mark artefacts Approved until the Product Owner completes this checklist. Engineering must not start product UI from Draft status alone.
+**Gate:** PO-P2-DESIGN; formal artefact approval recorded herein  
+**Instruction:** Formal design sign-off is recorded below. P2-WS-8 product UI remains **not started** and requires a **separate** Product Owner implementation authorization. Entitlement-dependent UI remains blocked (AUD-CON-006 / TB-SUB-STATE-001). P2-WS-9 remains unauthorized.
 
 ## 1. Gate distinction (mandatory)
 
-| Checkpoint                                                                                           | Status                                                     |
-| ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| Product Owner decisions approved (PO-P2-DESIGN-SWITCHER, LANDING, DEACT-VIEW, DASH, MODULES, SUB-UX) | **Done** — recorded 22 November 2026                       |
-| Design artefacts updated to reflect those decisions                                                  | **Done** — this package revision                           |
-| Cross-document consistency verified (switcher, Owner vs Member, deactivation distinctions)           | **Done** — engineering consistency pass + final review     |
-| Final design review completed                                                                        | **Done** — `FINAL_DESIGN_REVIEW.md` (22 November 2026)     |
-| Engineering readiness verdict                                                                        | **READY WITH DOCUMENTED EXCEPTIONS** — not formal approval |
-| Remaining Pending decisions documented                                                               | **Yes** — see §3 and `FINAL_DESIGN_REVIEW.md` §6           |
-| Formal design package / per-artefact approval                                                        | **Still required** — Product Owner sign-off below          |
-| P2-WS-8 product UI implementation                                                                    | **Blocked** until formal artefact approval                 |
-| P2-WS-9 certification                                                                                | **Not complete** / not started                             |
+| Checkpoint                                                                                           | Status                                                                          |
+| ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Product Owner decisions approved (PO-P2-DESIGN-SWITCHER, LANDING, DEACT-VIEW, DASH, MODULES, SUB-UX) | **Done** — recorded 22 November 2026                                            |
+| Design artefacts updated to reflect those decisions                                                  | **Done**                                                                        |
+| Cross-document consistency verified                                                                  | **Done** — final review + this sign-off                                         |
+| Final design review completed                                                                        | **Done** — `FINAL_DESIGN_REVIEW.md`                                             |
+| Engineering readiness verdict                                                                        | Was **READY WITH DOCUMENTED EXCEPTIONS**                                        |
+| Formal design package / per-artefact approval                                                        | **APPROVED WITH DOCUMENTED EXCEPTIONS** — 22 November 2026                      |
+| PO-DEC-P2-REVIEW-001…006                                                                             | **Recorded** — see §3 and `PHASE_2_PRODUCT_OWNER_DECISIONS.md` D17–D23          |
+| P2-WS-8 product UI implementation                                                                    | **Eligible for separate authorization only** — not started; not auto-authorized |
+| Entitlement-dependent UI / interactions                                                              | **Blocked** — AUD-CON-006 / TB-SUB-STATE-001                                    |
+| P2-WS-9 certification                                                                                | **Unauthorized** / not started                                                  |
 
 ## 2. Package contents
 
-| Artefact ID | Name                                  | Document                      | Draft date       |
-| ----------- | ------------------------------------- | ----------------------------- | ---------------- |
-| A           | Owner Panel information architecture  | `OWNER_PANEL_IA.md`           | 22 November 2026 |
-| B           | Branch Panel information architecture | `BRANCH_PANEL_IA.md`          | 22 November 2026 |
-| C           | Workspace / company selection flow    | `WORKSPACE_SELECTION_FLOW.md` | 22 November 2026 |
-| D           | Owner Dashboard key-screen design     | `OWNER_DASHBOARD_SPEC.md`     | 22 November 2026 |
-| E           | Branch Dashboard key-screen design    | `BRANCH_DASHBOARD_SPEC.md`    | 22 November 2026 |
-| F           | Access restriction / state matrix     | `ACCESS_STATE_MATRIX.md`      | 22 November 2026 |
-| G           | This approval checklist               | `DESIGN_REVIEW_CHECKLIST.md`  | 22 November 2026 |
+| Artefact ID | Name                                  | Document                      | Formal status                           |
+| ----------- | ------------------------------------- | ----------------------------- | --------------------------------------- |
+| A           | Owner Panel information architecture  | `OWNER_PANEL_IA.md`           | **Approved with documented exceptions** |
+| B           | Branch Panel information architecture | `BRANCH_PANEL_IA.md`          | **Approved**                            |
+| C           | Workspace / company selection flow    | `WORKSPACE_SELECTION_FLOW.md` | **Approved**                            |
+| D           | Owner Dashboard key-screen design     | `OWNER_DASHBOARD_SPEC.md`     | **Approved with documented exceptions** |
+| E           | Branch Dashboard key-screen design    | `BRANCH_DASHBOARD_SPEC.md`    | **Approved**                            |
+| F           | Access restriction / state matrix     | `ACCESS_STATE_MATRIX.md`      | **Approved with documented exceptions** |
+| G           | This approval checklist               | `DESIGN_REVIEW_CHECKLIST.md`  | **Approved** (process record)           |
 
 Index: `README.md`  
-Decision register: `docs/engineering/PHASE_2_PRODUCT_OWNER_DECISIONS.md` (D11–D16)
+Decision register: `docs/engineering/PHASE_2_PRODUCT_OWNER_DECISIONS.md` (D11–D16 baselines; D17–D23 formal approval decisions)  
+Review: `FINAL_DESIGN_REVIEW.md`
 
-## 3. Remaining Pending decisions (not invented)
+## 3. Product Owner decisions recorded at formal approval
 
-Full register with options and recommendations: `FINAL_DESIGN_REVIEW.md` §6 (PO-DEC-P2-REVIEW-001…006). Recommendations are **not** approvals.
+| ID                   | Topic                               | Status                                | Notes                                                                 |
+| -------------------- | ----------------------------------- | ------------------------------------- | --------------------------------------------------------------------- |
+| PO-DEC-P2-REVIEW-001 | Subscription entitlement matrix     | **APPROVED WITH EXCEPTION**           | High-level SUB-UX only; AUD-CON-006 / TB-SUB-STATE-001 remain Pending |
+| PO-DEC-P2-REVIEW-002 | Zero-access UX (OQ-WS-02)           | **APPROVED**                          | Dedicated no-access screen for authenticated Customer with no company |
+| PO-DEC-P2-REVIEW-003 | Company/branch selection (OQ-WS-03) | **APPROVED**                          | Sequential Company → Branch; server-validated                         |
+| PO-DEC-P2-REVIEW-004 | Branch Settings (OQ-BP-02)          | **APPROVED**                          | Branch-scoped preferences only                                        |
+| PO-DEC-P2-REVIEW-005 | Mobile Owner control (OQ-BD-03)     | **APPROVED**                          | Owner access must remain discoverable on mobile                       |
+| PO-DEC-P2-REVIEW-006 | MRU persistence                     | **ACCEPT ENGINEERING RECOMMENDATION** | Server-side; revalidate; never client-authorize                       |
 
-| ID                                        | Review ID            | Decision needed                                                          | Blocks formal A–G (with exceptions)? | Classification                          |
-| ----------------------------------------- | -------------------- | ------------------------------------------------------------------------ | ------------------------------------ | --------------------------------------- |
-| AUD-CON-006 / TB-SUB-STATE-001 / OQ-AX-01 | PO-DEC-P2-REVIEW-001 | Exact trial, grace, and restricted entitlement permissions               | No if §5.1 exception accepted        | Product Owner decision required         |
-| OQ-WS-02                                  | PO-DEC-P2-REVIEW-002 | Zero-access screen vs immediate logout                                   | No                                   | Product Owner decision / interpretation |
-| OQ-WS-03                                  | PO-DEC-P2-REVIEW-003 | Combined vs split company/branch selection screen                        | No                                   | Product Owner decision / interpretation |
-| OQ-BP-02                                  | PO-DEC-P2-REVIEW-004 | Branch Settings: prefs only vs limited company read-only links for Owner | No                                   | Product Owner decision / interpretation |
-| OQ-BD-03                                  | PO-DEC-P2-REVIEW-005 | Owner Panel control on mobile sticky header                              | No                                   | Design interpretation                   |
-| —                                         | PO-DEC-P2-REVIEW-006 | Persistence mechanism for MRU owned company                              | No                                   | Engineering implementation detail       |
+### Documented exceptions / unresolved dependencies (not fully approved)
+
+| Dependency                               | Owner                  | Status       | Affects                                                                               |
+| ---------------------------------------- | ---------------------- | ------------ | ------------------------------------------------------------------------------------- |
+| AUD-CON-006 / TB-SUB-STATE-001           | Product Owner          | **Pending**  | Exact trial/grace/restricted/expired entitlements; entitlement-dependent interactions |
+| Internal Team product UI                 | Design / Product Owner | Out of scope | Not in this package                                                                   |
+| Broker / OwnFleet / Partload ops         | Later phases           | Out of scope | Module screens beyond hide/nav principles                                             |
+| Undecided subscription-dependent actions | Product Owner          | **Blocked**  | Must not be inferred from high-level SUB-UX                                           |
 
 ## 4. Per-artefact review records
 
-Complete one block per artefact. Status values: `Draft` | `Changes requested` | `Approved` | `Rejected`.
+Status values: `Draft` | `Changes requested` | `Approved` | `Approved with documented exceptions` | `Rejected`.
 
 ### Artefact A — Owner Panel IA
 
-| Field                          | Value                                                                                    |
-| ------------------------------ | ---------------------------------------------------------------------------------------- |
-| Document                       | `docs/design/phase-2/OWNER_PANEL_IA.md`                                                  |
-| Scope covered                  | Owner boundary; unified switcher; landing; admin/billing/audit; deactivated view surface |
-| Governing / decisions followed | PRD §§4–5/19; DEC-002; PO-P2-DEACT-COMPANY; PO-P2-DESIGN-SWITCHER; LANDING; DEACT-VIEW   |
-| Open questions                 | AUD-CON-006; MRU persistence implementation                                              |
-| Approval status                | Draft — Awaiting Formal Design Approval                                                  |
-| Review date                    | _YYYY-MM-DD_                                                                             |
-| Product Owner sign-off         | _Name / initials_                                                                        |
-| Notes                          |                                                                                          |
+| Field                          | Value                                                                                                        |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------ |
+| Document                       | `docs/design/phase-2/OWNER_PANEL_IA.md`                                                                      |
+| Scope covered                  | Owner boundary; unified switcher; landing; admin/billing/audit; deactivated view surface                     |
+| Governing / decisions followed | PRD §§4–5/19; DEC-002; PO-P2-DEACT-COMPANY; PO-P2-DESIGN-SWITCHER; LANDING; DEACT-VIEW; PO-DEC-P2-REVIEW-006 |
+| Open / excluded                | Exact trial/grace/restricted entitlements (AUD-CON-006) — **not** approved for implementation                |
+| Approval status                | **Approved with documented exceptions**                                                                      |
+| Review date                    | 22 November 2026                                                                                             |
+| Product Owner sign-off         | Product Owner — formal instruction recorded this date                                                        |
+| Notes                          | High-level subscription presentation only; no invented write capabilities                                    |
 
 ### Artefact B — Branch Panel IA
 
@@ -70,38 +79,38 @@ Complete one block per artefact. Status values: `Draft` | `Changes requested` | 
 | ------------------------------ | ----------------------------------------------------------------------------------------------------- |
 | Document                       | `docs/design/phase-2/BRANCH_PANEL_IA.md`                                                              |
 | Scope covered                  | Branch chrome; Design.md §2 groups; hide undeveloped modules; unified switcher; return to Owner Panel |
-| Governing / decisions followed | Design.md §2; TB-OWN-007/008; PO-P2-DESIGN-SWITCHER; MODULES; DASH                                    |
-| Open questions                 | OQ-BP-02                                                                                              |
-| Approval status                | Draft — Awaiting Formal Design Approval                                                               |
-| Review date                    | _YYYY-MM-DD_                                                                                          |
-| Product Owner sign-off         | _Name / initials_                                                                                     |
-| Notes                          |                                                                                                       |
+| Governing / decisions followed | Design.md §2; TB-OWN-007/008; PO-P2-DESIGN-SWITCHER; MODULES; DASH; PO-DEC-P2-REVIEW-004; 005         |
+| Open / excluded                | Operational Broker/OwnFleet/Partload screens — Out of scope                                           |
+| Approval status                | **Approved**                                                                                          |
+| Review date                    | 22 November 2026                                                                                      |
+| Product Owner sign-off         | Product Owner — formal instruction recorded this date                                                 |
+| Notes                          | Branch Settings = branch-scoped preferences only                                                      |
 
 ### Artefact C — Workspace selection flow
 
-| Field                          | Value                                                                         |
-| ------------------------------ | ----------------------------------------------------------------------------- |
-| Document                       | `docs/design/phase-2/WORKSPACE_SELECTION_FLOW.md`                             |
-| Scope covered                  | Ten journeys; unified switcher; landing; security against client tenant trust |
-| Governing / decisions followed | PRD §5; TB-SEC-002; PO-P2-DESIGN-SWITCHER; LANDING; P2-WS-7                   |
-| Open questions                 | OQ-WS-02; OQ-WS-03                                                            |
-| Approval status                | Draft — Awaiting Formal Design Approval                                       |
-| Review date                    | _YYYY-MM-DD_                                                                  |
-| Product Owner sign-off         | _Name / initials_                                                             |
-| Notes                          |                                                                               |
+| Field                          | Value                                                                              |
+| ------------------------------ | ---------------------------------------------------------------------------------- |
+| Document                       | `docs/design/phase-2/WORKSPACE_SELECTION_FLOW.md`                                  |
+| Scope covered                  | Journeys; unified switcher; landing; zero-access; sequential selection             |
+| Governing / decisions followed | PRD §5; TB-SEC-002; PO-P2-DESIGN-SWITCHER; LANDING; PO-DEC-P2-REVIEW-002; 003; 006 |
+| Open / excluded                | Internal Team workspace routing — Out of scope                                     |
+| Approval status                | **Approved**                                                                       |
+| Review date                    | 22 November 2026                                                                   |
+| Product Owner sign-off         | Product Owner — formal instruction recorded this date                              |
+| Notes                          | Dedicated no-access screen; Company → Branch sequential; server MRU                |
 
 ### Artefact D — Owner Dashboard
 
-| Field                          | Value                                                       |
-| ------------------------------ | ----------------------------------------------------------- |
-| Document                       | `docs/design/phase-2/OWNER_DASHBOARD_SPEC.md`               |
-| Scope covered                  | Approved admin/billing regions only; no charts/KPIs         |
-| Governing / decisions followed | Design.md §§1/3/8/13; PO-P2-DESIGN-DASH; DEACT-VIEW; SUB-UX |
-| Open questions                 | AUD-CON-006                                                 |
-| Approval status                | Draft — Awaiting Formal Design Approval                     |
-| Review date                    | _YYYY-MM-DD_                                                |
-| Product Owner sign-off         | _Name / initials_                                           |
-| Notes                          |                                                             |
+| Field                          | Value                                                                                 |
+| ------------------------------ | ------------------------------------------------------------------------------------- |
+| Document                       | `docs/design/phase-2/OWNER_DASHBOARD_SPEC.md`                                         |
+| Scope covered                  | Approved admin/billing regions only; no charts/KPIs                                   |
+| Governing / decisions followed | Design.md §§1/3/8/13; PO-P2-DESIGN-DASH; DEACT-VIEW; SUB-UX; PO-DEC-P2-REVIEW-001     |
+| Open / excluded                | Exact entitlement chrome (AUD-CON-006) — **Pending**; not approved for implementation |
+| Approval status                | **Approved with documented exceptions**                                               |
+| Review date                    | 22 November 2026                                                                      |
+| Product Owner sign-off         | Product Owner — formal instruction recorded this date                                 |
+| Notes                          | Do not invent trial/grace/restricted permissions or actions                           |
 
 ### Artefact E — Branch Dashboard
 
@@ -109,61 +118,63 @@ Complete one block per artefact. Status values: `Draft` | `Changes requested` | 
 | ------------------------------ | ----------------------------------------------------------------------- |
 | Document                       | `docs/design/phase-2/BRANCH_DASHBOARD_SPEC.md`                          |
 | Scope covered                  | Context + available module shortcuts; hide undeveloped modules; no KPIs |
-| Governing / decisions followed | PO-P2-DESIGN-DASH; MODULES                                              |
-| Open questions                 | OQ-BD-03                                                                |
-| Approval status                | Draft — Awaiting Formal Design Approval                                 |
-| Review date                    | _YYYY-MM-DD_                                                            |
-| Product Owner sign-off         | _Name / initials_                                                       |
-| Notes                          |                                                                         |
+| Governing / decisions followed | PO-P2-DESIGN-DASH; MODULES; PO-DEC-P2-REVIEW-005                        |
+| Open / excluded                | Module operational screens — Out of scope                               |
+| Approval status                | **Approved**                                                            |
+| Review date                    | 22 November 2026                                                        |
+| Product Owner sign-off         | Product Owner — formal instruction recorded this date                   |
+| Notes                          | Owner control must remain discoverable on mobile                        |
 
 ### Artefact F — Access state matrix
 
-| Field                          | Value                                                                                                   |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------- |
-| Document                       | `docs/design/phase-2/ACCESS_STATE_MATRIX.md`                                                            |
-| Scope covered                  | Owner/member/Internal/multi-company/deactivation/transfer/file/session; unified switcher row consistent |
-| Governing / decisions followed | DEC-002; PO-P2-DEACT-_; FILE-_; DESIGN-SWITCHER; LANDING; DEACT-VIEW; SUB-UX                            |
-| Open questions                 | AUD-CON-006                                                                                             |
-| Approval status                | Draft — Awaiting Formal Design Approval                                                                 |
-| Review date                    | _YYYY-MM-DD_                                                                                            |
-| Product Owner sign-off         | _Name / initials_                                                                                       |
-| Notes                          |                                                                                                         |
+| Field                          | Value                                                                                                       |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| Document                       | `docs/design/phase-2/ACCESS_STATE_MATRIX.md`                                                                |
+| Scope covered                  | Owner/member/Internal/multi-company/deactivation/transfer/file/session; unified switcher; high-level SUB-UX |
+| Governing / decisions followed | DEC-002; PO-P2-DEACT-_; FILE-_; DESIGN-SWITCHER; LANDING; DEACT-VIEW; SUB-UX; PO-DEC-P2-REVIEW-001          |
+| Open / excluded                | Exact trial/grace/restricted entitlement cells — **Pending** (AUD-CON-006); not marked fully approved       |
+| Approval status                | **Approved with documented exceptions**                                                                     |
+| Review date                    | 22 November 2026                                                                                            |
+| Product Owner sign-off         | Product Owner — formal instruction recorded this date                                                       |
+| Notes                          | Suspended/deactivated rows remain approved; restricted exact permissions do not                             |
 
 ### Artefact G — Checklist process
 
-| Field                          | Value                                                               |
-| ------------------------------ | ------------------------------------------------------------------- |
-| Document                       | `docs/design/phase-2/DESIGN_REVIEW_CHECKLIST.md`                    |
-| Scope covered                  | Distinguishes baseline decisions vs formal artefact approval        |
-| Governing / decisions followed | Design.md §14; PO-P2-DESIGN; D11–D16                                |
-| Open questions                 | Whether partial artefact approval may unlock partial P2-WS-8 slices |
-| Approval status                | Draft — Awaiting Formal Design Approval                             |
-| Review date                    | _YYYY-MM-DD_                                                        |
-| Product Owner sign-off         | _Name / initials_                                                   |
-| Notes                          |                                                                     |
+| Field                          | Value                                                              |
+| ------------------------------ | ------------------------------------------------------------------ |
+| Document                       | `docs/design/phase-2/DESIGN_REVIEW_CHECKLIST.md`                   |
+| Scope covered                  | Formal approval record; baselines vs formal approval distinguished |
+| Governing / decisions followed | Design.md §14; PO-P2-DESIGN; D11–D23                               |
+| Open / excluded                | P2-WS-8 implementation still requires separate PO authorization    |
+| Approval status                | **Approved** (process / gate record)                               |
+| Review date                    | 22 November 2026                                                   |
+| Product Owner sign-off         | Product Owner — formal instruction recorded this date              |
+| Notes                          | This document records formal design approval with exceptions       |
 
 ## 5. Package-level gate statement
 
-| Item                            | Status                                                                                   |
-| ------------------------------- | ---------------------------------------------------------------------------------------- |
-| Baseline PO decisions (D11–D16) | **APPROVED**                                                                             |
-| Artefacts produced / updated    | Yes — Draft reflecting D11–D16                                                           |
-| Final design review             | **READY WITH DOCUMENTED EXCEPTIONS** — see `FINAL_DESIGN_REVIEW.md`                      |
-| Formal PO artefact approval     | **Not Approved** — awaiting sign-off below (accept exceptions in review §5 if approving) |
-| P2-WS-8 product UI              | **Blocked**                                                                              |
-| P2-WS-9 certification           | **Not complete**                                                                         |
-| Backend non-UI work             | May continue under Phase 2 plan without these screens                                    |
+| Item                            | Status                                                                                                                                                                                                         |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Baseline PO decisions (D11–D16) | **APPROVED**                                                                                                                                                                                                   |
+| Formal design approval          | **APPROVED WITH DOCUMENTED EXCEPTIONS** — 22 November 2026                                                                                                                                                     |
+| Approval scope                  | Shared layouts; unified switcher; Owner/Member nav; company/branch selection; landing; Owner/Branch Settings boundaries; admin/context dashboards; module nav principles; high-level subscription presentation |
+| Explicitly excluded             | Exact trial/grace/restricted entitlements; undecided subscription-dependent actions; Internal Team UI; Broker/OwnFleet/Partload ops outside Phase 2                                                            |
+| P2-WS-8 product UI              | **Eligible for separate implementation authorization** — **not started**; not auto-authorized                                                                                                                  |
+| Entitlement-dependent work      | **Blocked**                                                                                                                                                                                                    |
+| P2-WS-9 certification           | **Unauthorized**                                                                                                                                                                                               |
+| Backend non-UI work             | May continue under Phase 2 plan without these screens                                                                                                                                                          |
 
 ## 6. Sign-off summary (package)
 
-| Field                             | Value                                                       |
-| --------------------------------- | ----------------------------------------------------------- |
-| Package review date               | _YYYY-MM-DD_                                                |
-| Product Owner                     | _Name_                                                      |
-| Outcome                           | _Approve all / Approve subset / Changes requested / Reject_ |
-| Approved artefact IDs (if subset) | _A–G_                                                       |
-| Signature / initials              |                                                             |
+| Field                     | Value                                            |
+| ------------------------- | ------------------------------------------------ |
+| Package review date       | 22 November 2026                                 |
+| Product Owner             | Product Owner                                    |
+| Outcome                   | **Approve all (A–G) with documented exceptions** |
+| Approved artefact IDs     | A–G (A, D, F with exceptions as noted)           |
+| Signature / initials      | Product Owner formal instruction (this session)  |
+| Formal design approval ID | **PO-P2-DESIGN-FORMAL**                          |
 
 ---
 
-_Engineering must update `PHASE_2_DESIGN_DELIVERABLES.md` to Approved only after this checklist records actual Product Owner formal approval. Baseline decision approval alone does not unlock product UI._
+_Engineering must not start P2-WS-8 product UI until a separate Product Owner implementation authorization is recorded. Formal design approval with exceptions does not authorize entitlement-dependent interactions or P2-WS-9._

@@ -1,6 +1,6 @@
 # E — Branch Dashboard Key-Screen Design
 
-**Status:** Draft — Awaiting Product Owner Review  
+**Status:** **Approved** — 22 November 2026 (PO-P2-DESIGN-FORMAL)  
 **Traceability:** Design.md §§1–3, 2, 13; PRD §5; TB-OWN-007/008; DEC-002
 
 ## 1. Purpose
@@ -108,11 +108,11 @@ Link to notification centre; unread badge only if server provides count. Mandato
 | OQ-BD-01  | No summary KPIs/charts in Phase 2; context + module shortcuts only | PO-P2-DESIGN-DASH    |
 | OQ-BD-02  | Hide unavailable modules                                           | PO-P2-DESIGN-MODULES |
 
-## 9. Remaining Pending
+## 9. Resolved at formal approval
 
-| ID       | Question                                                                                        |
-| -------- | ----------------------------------------------------------------------------------------------- |
-| OQ-BD-03 | Show Owner Panel control on mobile sticky header? (**Design interpretation** allowed; optional) |
+| Former ID | Resolution                                                                                              | Decision ID          |
+| --------- | ------------------------------------------------------------------------------------------------------- | -------------------- |
+| OQ-BD-03  | Owner access must remain discoverable on mobile; presentation pattern may vary without behaviour change | PO-DEC-P2-REVIEW-005 |
 
 ## 10. Out of scope
 

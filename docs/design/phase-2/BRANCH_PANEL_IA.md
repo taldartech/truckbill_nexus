@@ -1,6 +1,6 @@
 # B — Branch Panel Information Architecture
 
-**Status:** Draft — Awaiting Product Owner Review  
+**Status:** **Approved** — 22 November 2026 (PO-P2-DESIGN-FORMAL)  
 **Traceability:** Design.md §2; PRD §§5–6; Rules §2–3; TB-OWN-007/008; TB-RBAC-*; DEC-002
 
 ## 1. Purpose and context
@@ -52,15 +52,15 @@ flowchart TB
 
 ### Group notes
 
-| Group                                                | Phase 2 design treatment                                                                  | Label                                                                  |
-| ---------------------------------------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| Dashboard                                            | Entry hub; see Branch Dashboard spec (context + available module shortcuts only)          | **Approved requirement** (PO-P2-DESIGN-DASH)                           |
-| Enquiry / Operations / Accounting / Assets / Masters | IA labels per Design.md §2; **hide** groups/modules not yet available                     | **Approved requirement** (PO-P2-DESIGN-MODULES)                        |
-| Module screens                                       | Detailed business screens                                                                 | **Out of scope** for Phase 2 design depth (later phases)               |
-| Undeveloped modules                                  | Hide from nav; no misleading disabled items; “Coming soon” only if delivery plan approved | **Approved requirement** (PO-P2-DESIGN-MODULES)                        |
-| Notifications                                        | Bell + centre patterns in Design.md §9                                                    | **Approved requirement** for entry; full centre **Out of scope** depth |
-| Settings                                             | Branch-scoped user preferences that do not include self email change or account delete    | **Approved requirement** (DEC-006/009)                                 |
-| Partload Expense Management UI                       | Explicitly out of scope                                                                   | **Out of scope** (DEC-005)                                             |
+| Group                                                | Phase 2 design treatment                                                                    | Label                                                                  |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Dashboard                                            | Entry hub; see Branch Dashboard spec (context + available module shortcuts only)            | **Approved requirement** (PO-P2-DESIGN-DASH)                           |
+| Enquiry / Operations / Accounting / Assets / Masters | IA labels per Design.md §2; **hide** groups/modules not yet available                       | **Approved requirement** (PO-P2-DESIGN-MODULES)                        |
+| Module screens                                       | Detailed business screens                                                                   | **Out of scope** for Phase 2 design depth (later phases)               |
+| Undeveloped modules                                  | Hide from nav; no misleading disabled items; “Coming soon” only if delivery plan approved   | **Approved requirement** (PO-P2-DESIGN-MODULES)                        |
+| Notifications                                        | Bell + centre patterns in Design.md §9                                                      | **Approved requirement** for entry; full centre **Out of scope** depth |
+| Settings                                             | Branch-scoped preferences only; no company ownership/billing/subscription admin duplication | **Approved requirement** (DEC-006/009; PO-DEC-P2-REVIEW-004)           |
+| Partload Expense Management UI                       | Explicitly out of scope                                                                     | **Out of scope** (DEC-005)                                             |
 
 ## 4. Role / permission-dependent visibility
 
@@ -111,11 +111,15 @@ flowchart LR
 | OQ-BP-01  | Unified workspace switcher is available from Branch Panel chrome | PO-P2-DESIGN-SWITCHER |
 | OQ-BP-03  | Hide unavailable modules; no misleading disabled items           | PO-P2-DESIGN-MODULES  |
 
-## 8. Remaining Pending
+## 8. Resolved at formal approval
 
-| ID       | Question                                                                                      | Affects        |
-| -------- | --------------------------------------------------------------------------------------------- | -------------- |
-| OQ-BP-02 | Whether “Settings” is branch prefs only or includes limited company read-only links for Owner | Settings group |
+| Former ID | Resolution                                                         | Decision ID          |
+| --------- | ------------------------------------------------------------------ | -------------------- |
+| OQ-BP-02  | Branch Settings = branch-scoped preferences only; company admin OP | PO-DEC-P2-REVIEW-004 |
+
+## 8a. Remaining Pending
+
+None for Branch Panel IA within Phase 2 Customer scope. Operational module screens remain Out of scope.
 
 ## 9. Out of scope
 

@@ -4,7 +4,8 @@
 **Baseline HEAD reviewed:** `cb68ec14a2ebde77d56fb40ca3b3908b1cbafcdc`  
 **Review documentation commit:** `28362e7bdd5dbc2ac6d23891655d344f1d7113e7`  
 **Roles:** Principal Software Architect; Senior UI/UX Architect; Product Business Analyst; QA & Compliance Lead; Engineering Governance Reviewer  
-**Scope:** Design review and documentation alignment only. **No** product UI implementation. **No** formal design approval granted by this document.
+**Scope:** Design review and documentation alignment only. **No** product UI implementation by this review document.  
+**Formal design approval (later same day):** **APPROVED WITH DOCUMENTED EXCEPTIONS** — see §11 and `DESIGN_REVIEW_CHECKLIST.md` (PO-P2-DESIGN-FORMAL).
 
 ---
 
@@ -278,17 +279,29 @@ Recommendations below are **not** approvals. Product Owner must decide.
 
 ## 9. Exact next action required from Product Owner
 
-1. Review artefacts A–G under `docs/design/phase-2/`.
-2. Accept or reject the **documented exceptions** in §5 (especially AUD-CON-006 deferral for Phase 2 panel surfaces).
-3. Optionally decide PO-DEC-P2-REVIEW-002…005 now, or defer as non-blocking.
-4. Complete sign-off fields in `DESIGN_REVIEW_CHECKLIST.md` (Approve all / Approve subset / Changes requested / Reject).
-5. Do **not** treat this review document as formal approval.
-6. After formal sign-off only, authorize a separate P2-WS-8 product UI implementation task.
+~~Historical review ask (completed 22 November 2026):~~ Formal sign-off recorded — see §11.
+
+**Current next action:** Issue a **separate** Product Owner authorization for P2-WS-8 product UI implementation within the approved scope only. Do not auto-start. Keep entitlement-dependent work and P2-WS-9 blocked.
 
 ---
 
-## 10. Reviewer confirmation
+## 10. Reviewer confirmation (engineering readiness pass)
 
-- No application code, migrations, routes, or product UI were changed by this review task beyond documentation updates listed in the accompanying commit.
-- No formal design approval was granted.
-- P2-WS-8 and P2-WS-9 remain blocked / not started.
+- No application code, migrations, routes, or product UI were changed by the readiness review beyond documentation.
+- Readiness verdict was READY WITH DOCUMENTED EXCEPTIONS; formal approval is recorded separately in §11.
+
+---
+
+## 11. Formal Product Owner approval addendum (22 November 2026)
+
+| Field                    | Value                                                                                          |
+| ------------------------ | ---------------------------------------------------------------------------------------------- |
+| Decision ID              | **PO-P2-DESIGN-FORMAL**                                                                        |
+| Outcome                  | **APPROVED WITH DOCUMENTED EXCEPTIONS**                                                        |
+| Decisions recorded       | PO-DEC-P2-REVIEW-001 (with exception); 002–005 APPROVED; 006 accept engineering recommendation |
+| Checklist                | `DESIGN_REVIEW_CHECKLIST.md` signed                                                            |
+| P2-WS-8                  | Eligible for **separate** implementation authorization only — **not started**                  |
+| Entitlement-dependent UI | **Blocked** (AUD-CON-006 / TB-SUB-STATE-001)                                                   |
+| P2-WS-9                  | **Unauthorized**                                                                               |
+
+This addendum does not convert Pending entitlement matrix cells into Approved requirements.

@@ -1,6 +1,6 @@
 # D — Owner Dashboard Key-Screen Design
 
-**Status:** Draft — Awaiting Product Owner Review  
+**Status:** **Approved with documented exceptions** — 22 November 2026 (PO-P2-DESIGN-FORMAL; AUD-CON-006 entitlement chrome Pending)  
 **Traceability:** Design.md §§1–3, 8, 13; PRD §§5, 19; DEC-002; TB-DES-001
 
 ## 1. Purpose

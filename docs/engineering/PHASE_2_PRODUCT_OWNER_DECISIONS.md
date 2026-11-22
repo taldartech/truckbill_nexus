@@ -10,27 +10,33 @@
 
 ## Decision index (current)
 
-| ID                               | Topic                                            | Status                                                               | Blocks                                                   |
-| -------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------- | -------------------------------------------------------- |
-| PO-P2-AUTH                       | Phase 2 implementation authorization             | **APPROVED**                                                         | — (implementation authorized)                            |
-| ADR-006 / PO-P2-ADR-006          | Web authentication strategy                      | **Accepted** (web-only)                                              | Mobile/Sanctum deferred                                  |
-| PO-P2-INVITE                     | Invitation lifecycle                             | **APPROVED**                                                         | —                                                        |
-| PO-P2-DEACT-COMPANY              | Company deactivation                             | **APPROVED**                                                         | —                                                        |
-| PO-P2-DEACT-OWNER                | Owner identity deactivation                      | **APPROVED**                                                         | —                                                        |
-| PO-P2-FILE-INTERNAL              | Internal Team customer-file access               | **APPROVED — BLOCKED**                                               | —                                                        |
-| PO-P2-FILE-MULTI                 | Multi-company file access                        | **APPROVED** (active company only)                                   | —                                                        |
-| PO-P2-DESIGN                     | Design gate requirement                          | **APPROVED** (requirement); artefacts Draft awaiting formal approval | P2-WS-8 product UI                                       |
-| PO-P2-DESIGN-SWITCHER            | Unified company / workspace switcher             | **APPROVED**                                                         | Design package A/C/F                                     |
-| PO-P2-DESIGN-LANDING             | Default Owner Panel landing                      | **APPROVED**                                                         | Design package C                                         |
-| PO-P2-DESIGN-DEACT-VIEW          | Deactivated company Owner Panel view             | **APPROVED**                                                         | Clarifies PO-P2-DEACT-COMPANY                            |
-| PO-P2-DESIGN-DASH                | Phase 2 dashboard content limits                 | **APPROVED**                                                         | Design package D/E                                       |
-| PO-P2-DESIGN-MODULES             | Undeveloped module navigation                    | **APPROVED**                                                         | Design package B/E                                       |
-| PO-P2-DESIGN-SUB-UX              | Subscription entitlement presentation principles | **APPROVED** (high-level only)                                       | Exact trial/grace/restricted entitlements remain Pending |
-| PO-P1-DEPLOY                     | Phase 1 non-prod smoke                           | **DEFERRED** (not waived)                                            | Phase 1 formal closure                                   |
-| ADR-010                          | Accounting posting                               | **Pending**                                                          | Phase 8 only                                             |
-| Email change verification polish | Admin email details                              | **Pending**                                                          | Polish only                                              |
-| AUD-CON-006 / TB-SUB-STATE-001   | Exact trial/grace/restricted entitlement matrix  | **Pending**                                                          | Subscription chrome detail                               |
-| PO-DEC-P2-REVIEW-001…006         | Final design review open items                   | **Pending** (recommendations only)                                   | See `docs/design/phase-2/FINAL_DESIGN_REVIEW.md` §6      |
+| ID                               | Topic                                            | Status                                  | Blocks                                                   |
+| -------------------------------- | ------------------------------------------------ | --------------------------------------- | -------------------------------------------------------- |
+| PO-P2-AUTH                       | Phase 2 implementation authorization             | **APPROVED**                            | — (implementation authorized)                            |
+| ADR-006 / PO-P2-ADR-006          | Web authentication strategy                      | **Accepted** (web-only)                 | Mobile/Sanctum deferred                                  |
+| PO-P2-INVITE                     | Invitation lifecycle                             | **APPROVED**                            | —                                                        |
+| PO-P2-DEACT-COMPANY              | Company deactivation                             | **APPROVED**                            | —                                                        |
+| PO-P2-DEACT-OWNER                | Owner identity deactivation                      | **APPROVED**                            | —                                                        |
+| PO-P2-FILE-INTERNAL              | Internal Team customer-file access               | **APPROVED — BLOCKED**                  | —                                                        |
+| PO-P2-FILE-MULTI                 | Multi-company file access                        | **APPROVED** (active company only)      | —                                                        |
+| PO-P2-DESIGN                     | Design gate requirement                          | **APPROVED** (requirement)              | —                                                        |
+| PO-P2-DESIGN-FORMAL              | Formal design artefact approval                  | **APPROVED WITH DOCUMENTED EXCEPTIONS** | P2-WS-8 needs separate impl authorization                |
+| PO-P2-DESIGN-SWITCHER            | Unified company / workspace switcher             | **APPROVED**                            | Design package A/C/F                                     |
+| PO-P2-DESIGN-LANDING             | Default Owner Panel landing                      | **APPROVED**                            | Design package C                                         |
+| PO-P2-DESIGN-DEACT-VIEW          | Deactivated company Owner Panel view             | **APPROVED**                            | Clarifies PO-P2-DEACT-COMPANY                            |
+| PO-P2-DESIGN-DASH                | Phase 2 dashboard content limits                 | **APPROVED**                            | Design package D/E                                       |
+| PO-P2-DESIGN-MODULES             | Undeveloped module navigation                    | **APPROVED**                            | Design package B/E                                       |
+| PO-P2-DESIGN-SUB-UX              | Subscription entitlement presentation principles | **APPROVED** (high-level only)          | Exact trial/grace/restricted entitlements remain Pending |
+| PO-DEC-P2-REVIEW-001             | Subscription entitlement matrix exception        | **APPROVED WITH EXCEPTION**             | AUD-CON-006 / TB-SUB-STATE-001 remain Pending            |
+| PO-DEC-P2-REVIEW-002             | Zero-access UX                                   | **APPROVED**                            | Dedicated no-access screen                               |
+| PO-DEC-P2-REVIEW-003             | Company → Branch selection                       | **APPROVED**                            | Sequential selection                                     |
+| PO-DEC-P2-REVIEW-004             | Branch Settings scope                            | **APPROVED**                            | Branch prefs only                                        |
+| PO-DEC-P2-REVIEW-005             | Mobile Owner control                             | **APPROVED**                            | Discoverable on mobile                                   |
+| PO-DEC-P2-REVIEW-006             | MRU persistence                                  | **ACCEPT ENGINEERING RECOMMENDATION**   | Server-side; revalidate                                  |
+| PO-P1-DEPLOY                     | Phase 1 non-prod smoke                           | **DEFERRED** (not waived)               | Phase 1 formal closure                                   |
+| ADR-010                          | Accounting posting                               | **Pending**                             | Phase 8 only                                             |
+| Email change verification polish | Admin email details                              | **Pending**                             | Polish only                                              |
+| AUD-CON-006 / TB-SUB-STATE-001   | Exact trial/grace/restricted entitlement matrix  | **Pending**                             | Entitlement-dependent UI blocked                         |
 
 ---
 
@@ -288,17 +294,141 @@ High-level presentation principles:
 
 ---
 
+## D17 — PO-P2-DESIGN-FORMAL: Formal design artefact approval
+
+### PO Decision — **APPROVED WITH DOCUMENTED EXCEPTIONS**
+
+**Date:** 22 November 2026  
+**Decision ID:** PO-P2-DESIGN-FORMAL  
+**Authority:** Product Owner formal instruction
+
+**Approval scope:**
+
+- Shared workspace layouts
+- Unified company switcher
+- Owner/Member navigation
+- Company and branch selection
+- Approved landing behaviour
+- Owner Panel and Branch Settings boundaries
+- Admin/context-focused dashboards
+- Module navigation principles (hide unavailable)
+- High-level subscription UI presentation (PO-P2-DESIGN-SUB-UX)
+
+**Explicitly excluded / not approved for implementation:**
+
+- Exact trial / grace / restricted / expired entitlement behaviour (AUD-CON-006 / TB-SUB-STATE-001)
+- Undecided subscription-dependent actions or write capabilities inferred from high-level states
+- Internal Team UI outside this package
+- Operational Broker / OwnFleet / Partload modules outside Phase 2 scope
+- Any other unresolved dependency identified in `FINAL_DESIGN_REVIEW.md`
+
+**Artefacts:** A–G under `docs/design/phase-2/` — A, D, F approved **with documented exceptions** for Pending entitlement cells; B, C, E, G approved within scope above.
+
+**Implementation gate:** Formal design approval does **not** start P2-WS-8. P2-WS-8 is eligible only for a **separate** Product Owner implementation authorization and must exclude entitlement-dependent interactions until AUD-CON-006 is resolved. P2-WS-9 remains unauthorized. Do not weaken existing authorization enforcement.
+
+---
+
+## D18 — PO-DEC-P2-REVIEW-001: Subscription entitlement matrix
+
+### PO Decision — **APPROVED WITH EXCEPTION**
+
+**Date:** 22 November 2026  
+**Decision ID:** PO-DEC-P2-REVIEW-001
+
+- Accept documented high-level subscription UX principles (PO-P2-DESIGN-SUB-UX).
+- Defer the detailed trial, grace, restricted, and expired entitlement matrix.
+- Do not infer permissions or write capabilities.
+- Do not implement entitlement-dependent interactions without separate approval.
+- Do not weaken any existing authorization enforcement.
+- Maintain **AUD-CON-006 / TB-SUB-STATE-001** as unresolved dependencies.
+
+---
+
+## D19 — PO-DEC-P2-REVIEW-002: Zero-access UX
+
+### PO Decision — **APPROVED**
+
+**Date:** 22 November 2026  
+**Decision ID:** PO-DEC-P2-REVIEW-002  
+**Resolves:** OQ-WS-02
+
+- Display a dedicated no-access screen for an authenticated Customer who has no accessible company.
+- Do not allow unauthorized company or branch access.
+- Provide appropriate recovery/navigation actions.
+- Follow existing authentication behaviour when the user identity or session is no longer valid.
+
+---
+
+## D20 — PO-DEC-P2-REVIEW-003: Company and branch selection
+
+### PO Decision — **APPROVED**
+
+**Date:** 22 November 2026  
+**Decision ID:** PO-DEC-P2-REVIEW-003  
+**Resolves:** OQ-WS-03
+
+- Use sequential selection: Company → Branch.
+- Validate company access server-side.
+- Validate branch access within the selected company.
+- Preserve approved Owner/Member distinctions.
+- Do not bypass access checks through remembered selections.
+
+---
+
+## D21 — PO-DEC-P2-REVIEW-004: Branch Settings
+
+### PO Decision — **APPROVED**
+
+**Date:** 22 November 2026  
+**Decision ID:** PO-DEC-P2-REVIEW-004  
+**Resolves:** OQ-BP-02
+
+- Branch Settings covers branch-scoped preferences only.
+- Company-level administration belongs to the Owner Panel.
+- Do not duplicate company ownership, billing, or subscription administration inside Branch Settings.
+- Respect existing access permissions.
+
+---
+
+## D22 — PO-DEC-P2-REVIEW-005: Mobile Owner control
+
+### PO Decision — **APPROVED**
+
+**Date:** 22 November 2026  
+**Decision ID:** PO-DEC-P2-REVIEW-005  
+**Resolves:** OQ-BD-03
+
+- Owner access must remain discoverable and accessible on mobile.
+- Do not hide essential Owner controls behind an inaccessible or ambiguous interface.
+- Responsive implementation may choose the appropriate presentation pattern without changing the approved access behaviour.
+
+---
+
+## D23 — PO-DEC-P2-REVIEW-006: MRU persistence
+
+### PO Decision — **ACCEPT ENGINEERING RECOMMENDATION**
+
+**Date:** 22 November 2026  
+**Decision ID:** PO-DEC-P2-REVIEW-006
+
+- Persist the most recently used eligible company on the server.
+- Revalidate ownership and access when restoring context.
+- Fall back safely when the remembered company becomes inaccessible.
+- Do not allow client-stored values to authorize access.
+
+---
+
 ## Consistency checklist (P2-WS-0)
 
-| Document                           | Updated for PO decisions                                      |
-| ---------------------------------- | ------------------------------------------------------------- |
-| PHASE_2_AUTHORIZATION_RECORD.md    | Yes                                                           |
-| ADR-006                            | Accepted web-only                                             |
-| PHASE_2_PRODUCT_OWNER_DECISIONS.md | This file                                                     |
-| PHASE_2_EXECUTION_PLAN.md          | Authorized                                                    |
-| PHASE_2_READINESS_ASSESSMENT.md    | Reflects decisions                                            |
-| PHASE_2_DESIGN_DELIVERABLES.md     | Gate requirement; artefacts Draft; D11–D16 baselines recorded |
-| PHASE_0_DELIVERABLES.md            | Cross-reference Phase 2 register                              |
-| Memory.md                          | Verified facts + decision log                                 |
-| PHASE_1_* deploy status            | Deferred, not waived                                          |
-| truckbill-project.mdc              | Phase 2 authorized; Sanctum still forbidden                   |
+| Document                           | Updated for PO decisions                        |
+| ---------------------------------- | ----------------------------------------------- |
+| PHASE_2_AUTHORIZATION_RECORD.md    | Yes — formal design approval with exceptions    |
+| ADR-006                            | Accepted web-only                               |
+| PHASE_2_PRODUCT_OWNER_DECISIONS.md | This file — D17–D23                             |
+| PHASE_2_EXECUTION_PLAN.md          | P2-WS-8 eligible for separate auth; not started |
+| PHASE_2_READINESS_ASSESSMENT.md    | Reflects decisions                              |
+| PHASE_2_DESIGN_DELIVERABLES.md     | Artefacts Approved with documented exceptions   |
+| PHASE_0_DELIVERABLES.md            | Cross-reference Phase 2 register                |
+| Memory.md                          | Verified facts + decision log                   |
+| PHASE_1_* deploy status            | Deferred, not waived                            |
+| truckbill-project.mdc              | Phase 2 authorized; Sanctum still forbidden     |

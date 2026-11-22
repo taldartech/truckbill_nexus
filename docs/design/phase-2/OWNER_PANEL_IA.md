@@ -1,6 +1,6 @@
 # A — Owner Panel Information Architecture
 
-**Status:** Draft — Awaiting Product Owner Review  
+**Status:** **Approved with documented exceptions** — 22 November 2026 (PO-P2-DESIGN-FORMAL; AUD-CON-006 cells remain Pending)  
 **Traceability:** PRD §§4–5, 19; Rules §2; Design.md §§2, 8; DEC-002; PO-P2-DEACT-COMPANY; TB-OWN-001–005
 
 ## 1. Purpose and user boundary
@@ -164,10 +164,15 @@ Distinct from company deactivation (**Approved requirement**, DEC-002 / PO-P2-DE
 
 ## 8. Remaining Pending (do not invent)
 
-| ID          | Topic                                                        | Notes                                                   |
-| ----------- | ------------------------------------------------------------ | ------------------------------------------------------- |
-| AUD-CON-006 | Exact trial/grace/restricted entitlement permissions         | High-level presentation only via PO-P2-DESIGN-SUB-UX    |
-| —           | Persistence mechanism for “most recently used owned company” | Implementation detail deferred; behaviour rule approved |
+| ID          | Topic                                                | Notes                                                                 |
+| ----------- | ---------------------------------------------------- | --------------------------------------------------------------------- |
+| AUD-CON-006 | Exact trial/grace/restricted entitlement permissions | High-level only (PO-P2-DESIGN-SUB-UX; PO-DEC-P2-REVIEW-001 exception) |
+
+## 8a. Resolved at formal approval
+
+| Former topic                  | Resolution                                      | Decision ID          |
+| ----------------------------- | ----------------------------------------------- | -------------------- |
+| MRU owned-company persistence | Server-side; revalidate; never client-authorize | PO-DEC-P2-REVIEW-006 |
 
 ## 9. Out of scope for this artefact
 

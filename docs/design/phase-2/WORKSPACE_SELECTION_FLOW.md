@@ -1,6 +1,6 @@
 # C — Workspace / Company Selection Flow
 
-**Status:** Draft — Awaiting Product Owner Review  
+**Status:** **Approved** — 22 November 2026 (PO-P2-DESIGN-FORMAL)  
 **Traceability:** PRD §§3–5; Design.md §2; ADR-002; TB-SEC-001/002; DEC-002; PO-P2-DEACT-*; PO-P2-FILE-MULTI; PO-P2-DESIGN-SWITCHER; PO-P2-DESIGN-LANDING; P2-WS-7 ownership transfer
 
 ## 1. Security rule (must appear in every selection UI)
@@ -149,11 +149,20 @@ Same as 4.1 for that company. If multiple companies but one branch total → com
 
 ### 4.10 User with no remaining active company/branch access
 
-| Cause                                                           | Behaviour                                                         | Label                                          |
-| --------------------------------------------------------------- | ----------------------------------------------------------------- | ---------------------------------------------- |
-| Memberships revoked / ownership transferred away / soft-deleted | Login denied or post-auth “no workspace” then fail closed         | **Approved requirement** (TB-DEL-002; P2-WS-7) |
-| Only deactivated companies as member                            | No Branch Panel; if not Owner of those companies → no Owner Panel | **Approved requirement**                       |
-| Only deactivated companies as Owner                             | Limited Owner Panel for those companies; no Branch Panel          | **Approved requirement**                       |
+| Cause                                              | Behaviour                                                                                                    | Label                                           |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------- |
+| Authenticated Customer with no accessible company  | Dedicated no-access screen; no unauthorized company/branch context; recovery/navigation actions; fail closed | **Approved requirement** (PO-DEC-P2-REVIEW-002) |
+| Soft-deleted / identity or session no longer valid | Follow existing authentication behaviour (login denied / re-auth); do not invent tenant context              | **Approved requirement** (TB-DEL-002; P2-WS-4)  |
+| Only deactivated companies as member               | No Branch Panel; if not Owner of those companies → no Owner Panel                                            | **Approved requirement**                        |
+| Only deactivated companies as Owner                | Limited Owner Panel for those companies; no Branch Panel                                                     | **Approved requirement**                        |
+
+### 4.11 Sequential company and branch selection
+
+| Rule   | Behaviour                                                                               | Label                                                |
+| ------ | --------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| Order  | Company first, then Branch                                                              | **Approved requirement** (PO-DEC-P2-REVIEW-003)      |
+| Authz  | Server validates company access, then branch within that company                        | **Approved requirement**                             |
+| Memory | Remembered selections must not bypass access checks; MRU is server-side and revalidated | **Approved requirement** (PO-DEC-P2-REVIEW-003; 006) |
 
 ## 5. Ownership transfer effects on workspace flow
 
@@ -187,13 +196,17 @@ Same as 4.1 for that company. If multiple companies but one branch total → com
 | ---------------------- | -------------------------------------- | ------------------------------------------- |
 | OQ-WS-01 / OQ-OP-01/02 | Unified switcher + landing rules above | PO-P2-DESIGN-SWITCHER; PO-P2-DESIGN-LANDING |
 
-## 9. Remaining Pending
+## 9. Resolved at formal approval
 
-| ID       | Question                                                               | Affects               |
-| -------- | ---------------------------------------------------------------------- | --------------------- |
-| OQ-WS-02 | Exact “no workspace” screen vs immediate logout for zero access        | 4.10                  |
-| OQ-WS-03 | Whether company selection and branch selection are one combined screen | Selection UI          |
-| —        | Storage of MRU owned company                                           | Implementation detail |
+| Former ID | Resolution                                               | Decision ID          |
+| --------- | -------------------------------------------------------- | -------------------- |
+| OQ-WS-02  | Dedicated no-access screen for authenticated zero-access | PO-DEC-P2-REVIEW-002 |
+| OQ-WS-03  | Sequential Company → Branch selection                    | PO-DEC-P2-REVIEW-003 |
+| MRU store | Server-side persistence; revalidate; never client authz  | PO-DEC-P2-REVIEW-006 |
+
+## 9a. Remaining Pending
+
+None for workspace selection within approved Customer scope. Internal Team routing remains Out of scope.
 
 ## 10. Out of scope
 
