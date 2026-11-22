@@ -1,11 +1,11 @@
 # Phase 3 Execution Plan — Masters / Documents / Subscription
 
-**Status:** **NOT AUTHORIZED** — planning package only (awaiting **PO-P3-AUTH**)  
+**Status:** **AUTHORIZED** — PO-P3-AUTH APPROVED (22 November 2026); subject to per-workstream gates  
 **Authority:** `docs/governing/Phases.md` (sole phase-numbering and Phase 3 scope authority)  
 **Related:** `docs/engineering/PHASE_3_READINESS_SUMMARY.md`, `docs/engineering/PHASE_2_ACCEPTANCE_RECORD.md` (PO-P2-FINAL-ACCEPT)  
 **Baseline tip at planning:** `020b55509c40171dc8d2b93829670ab3cb24a712` (+ CI format correction commit)
 
-**Do not implement application functionality under this document until Product Owner records PO-P3-AUTH.** Preserve Phase 2 exceptions (AUD-CON-006 Pending; legal/tax company fields Pending; visibility/numbering/documents settings Deferred; membership reactivation UI Deferred; PO-P1-DEPLOY Deferred). Do not invent subscription entitlements.
+**PO-P3-AUTH APPROVED.** Implement within this plan and per-workstream gates. Preserve Phase 2 exceptions (AUD-CON-006 Pending; legal/tax company fields Pending; visibility/numbering/documents settings Deferred; membership reactivation UI Deferred; PO-P1-DEPLOY Deferred). Do not invent subscription entitlements.
 
 ---
 
@@ -58,7 +58,7 @@
 
 | Gate          | Requirement                                                                                        | Status                      |
 | ------------- | -------------------------------------------------------------------------------------------------- | --------------------------- |
-| G-P3-AUTH     | Explicit **PO-P3-AUTH** authorizing this plan                                                      | **Open**                    |
+| G-P3-AUTH     | Explicit **PO-P3-AUTH** authorizing this plan                                                      | **Satisfied**               |
 | G-DESIGN-P3   | Design artefacts for Phase 3 product UI reviewed/approved before those screens                     | **Open**                    |
 | G-AUD-CON-006 | Exact trial/grace/restricted/suspended entitlement matrix (TB-SUB-STATE-001)                       | **Pending** — do not invent |
 | G-PAY         | Razorpay non-prod credentials + webhook verification approach for manual renewals                  | **Open**                    |
@@ -83,7 +83,7 @@
 | Blocked by        | PO-P3-AUTH                                                                                                      |
 | Tests             | Documentation consistency only                                                                                  |
 | Acceptance        | Written PO-P3-AUTH; design inventory listed; Pending items not reclassified                                     |
-| **Status**        | **Planning complete — awaiting PO-P3-AUTH**                                                                     |
+| **Status**        | **Complete** — PO-P3-AUTH recorded (`PHASE_3_AUTHORIZATION_RECORD.md`)                                          |
 
 ---
 
@@ -101,7 +101,7 @@
 | UI                | Master list/form screens after G-DESIGN-P3                                                                                                                           |
 | Tests             | Tenant isolation; visibility Shared vs Branch-restricted; Station Owner-share; duplicate Party across branches allowed; soft-delete no restore                       |
 | Acceptance        | Masters enforce Rules §5 ownership/visibility; cross-tenant negatives pass                                                                                           |
-| **Status**        | Not started                                                                                                                                                          |
+| **Status**        | **In progress** — Party Master backend + HTTP + Pest (Batch A); remaining masters Batch B                                                                            |
 
 ---
 
@@ -152,7 +152,7 @@
 | Blocked / partial | Entitlement **UX/enforcement matrix** for grace/restricted/suspended details → AUD-CON-006 Pending; implement only Confirmed Rules §15 behaviours; leave Pending matrix behind feature flags / informational states                                                       |
 | Tests             | Discount order vectors; proration leap/boundary; immutable snapshot; common renewal date uniqueness per company                                                                                                                                                           |
 | Acceptance        | Pricing calculation exit criterion met for Confirmed rules                                                                                                                                                                                                                |
-| **Status**        | Not started                                                                                                                                                                                                                                                               |
+| **Status**        | **In progress** — catalogue, pricing calculator, draft contracts, immutable snapshots, credit ledger foundations + Pest (Batch A)                                                                                                                                         |
 
 ---
 

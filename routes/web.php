@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\InvitationController;
 use App\Http\Controllers\Admin\OwnershipTransferController;
 use App\Http\Controllers\Branch\BranchDashboardController;
 use App\Http\Controllers\Branch\BranchSettingsController;
+use App\Http\Controllers\Branch\PartyController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\InvitationAcceptanceController;
 use App\Http\Controllers\Owner\OwnerAuditController;
@@ -81,6 +82,25 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/branch/companies/{company}/branches/{branch}/settings', BranchSettingsController::class)
         ->scopeBindings()
         ->name('branch.settings');
+
+    Route::get('/branch/companies/{company}/branches/{branch}/parties', [PartyController::class, 'index'])
+        ->scopeBindings()
+        ->name('branch.parties.index');
+    Route::post('/branch/companies/{company}/branches/{branch}/parties', [PartyController::class, 'store'])
+        ->scopeBindings()
+        ->name('branch.parties.store');
+    Route::patch('/branch/companies/{company}/branches/{branch}/parties/{party}', [PartyController::class, 'update'])
+        ->scopeBindings()
+        ->name('branch.parties.update');
+    Route::post('/branch/companies/{company}/branches/{branch}/parties/{party}/roles', [PartyController::class, 'assignRole'])
+        ->scopeBindings()
+        ->name('branch.parties.roles.assign');
+    Route::post('/branch/companies/{company}/branches/{branch}/parties/{party}/roles/{partyRole}/remove', [PartyController::class, 'removeRole'])
+        ->scopeBindings()
+        ->name('branch.parties.roles.remove');
+    Route::delete('/branch/companies/{company}/branches/{branch}/parties/{party}', [PartyController::class, 'destroy'])
+        ->scopeBindings()
+        ->name('branch.parties.destroy');
 
     // Company/branch come from route model binding (server-resolved), never request body
     // — RejectClientTenantIdentifiers forbids client-supplied company_id/branch_id.
