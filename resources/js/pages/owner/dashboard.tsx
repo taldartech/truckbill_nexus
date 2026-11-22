@@ -84,11 +84,13 @@ export default function OwnerDashboard({
                         body={
                             isDeactivated
                                 ? 'Branch entry is blocked while the company is deactivated.'
-                                : `${branches.length} accessible branch${branches.length === 1 ? '' : 'es'}.`
+                                : `${branches.length} accessible branch${branches.length === 1 ? '' : 'es'}. Create, edit, and deactivate from Branches.`
                         }
                         action={
                             <Button asChild variant="secondary" size="sm">
-                                <Link href={links.branches}>View branches</Link>
+                                <Link href={links.branches}>
+                                    Manage branches
+                                </Link>
                             </Button>
                         }
                     />
@@ -154,7 +156,12 @@ export default function OwnerDashboard({
                 {branches.length === 0 && !isDeactivated ? (
                     <ShellEmptyState
                         title="No active branches available"
-                        description="No active branches are available for this company. Branch creation is not part of this P2-WS-8 UI slice."
+                        description="No active branches are available for this company. Open Branches to create one when capacity allows."
+                        action={
+                            <Button asChild>
+                                <Link href={links.branches}>Open Branches</Link>
+                            </Button>
+                        }
                     />
                 ) : null}
             </div>

@@ -84,3 +84,9 @@ Historical Phase 2 acceptance is unchanged; this is a **management completeness*
 4. Owner sidebar Users / Settings / Audit links.
 5. Local demo fixtures: multi-company Owner, HO-only company, deactivated company.
 6. Pest `OwnerBranchAdministrationTest`.
+
+---
+
+## 6. Reconciliation with parallel read-only audit
+
+A concurrent codebase audit ([Phase 2 management audit](09fa20e9-ce36-4502-921f-ed357d8b5072)) captured the **pre-follow-on** state (enter-only `OwnerBranchesController`, sidebar missing Users/Settings/Audit, no Customer company-create HTTP). Those findings match this document’s pre-work baseline. Items already closed by the management feature commit (`9b20a79…`) must not be treated as still Missing. Remaining open items in that audit (PRD §7 create, membership/branch reactivation, Internal lifecycle UI) remain **Pending/Deferred/gated** as listed above. Owner dashboard empty-state copy that still claimed “branch creation is not part of P2-WS-8” was corrected in a follow-up commit.
