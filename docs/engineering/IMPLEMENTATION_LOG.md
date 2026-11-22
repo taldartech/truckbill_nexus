@@ -95,4 +95,4 @@ Dated workstream records with verified local commit SHAs. Living product Memory 
     - `8d2b867` docs(design): complete phase 4 enquiry visual review
     - `a2fa349` docs(qa): certify UI and local demo dataset
 
-| 2026-11-23 | P2 management follow-on | _(tip after commit)_ | Owner branch admin full-stack; gap audit; company create PO package; Internal lifecycle design package; demo C/D companies; Pest; management scope not fully complete while gated. See `PHASE_2_MANAGEMENT_CERTIFICATION_REPORT.md`. |
+| 2026-11-23 | P2 management follow-on | `9b20a79b747d29dd5a1f30a6670a2bb4b1d3ffdd` | Owner branch admin full-stack; gap audit; company create PO package; Internal lifecycle design package; demo C/D companies; Pest; management scope not fully complete while gated. See `PHASE_2_MANAGEMENT_CERTIFICATION_REPORT.md`. |

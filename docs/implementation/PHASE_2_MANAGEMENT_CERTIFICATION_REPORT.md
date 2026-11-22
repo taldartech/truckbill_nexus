@@ -2,7 +2,7 @@
 
 **Date:** 23 November 2026  
 **Initial HEAD:** `434c32c34d34cd7544bde3846d1b1b073c8f9d5f`  
-**Final HEAD:** _(recorded after local commit)_  
+**Final HEAD:** `9b20a79b747d29dd5a1f30a6670a2bb4b1d3ffdd`  
 **No push / no deploy / no live Razorpay.**
 
 ---
