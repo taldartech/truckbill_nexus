@@ -39,7 +39,10 @@ This package supports formal design sign-off for **Batch B Enquiry product UI on
 | Unassigned queue | Owner / users with company-wide enquiry read          | Never expose company-wide unassigned list to Branch-only users |
 | Sidebar          | No Enquiry entry until `PO-P4-DESIGN-FORMAL` Approved | Current app correctly omits                                    |
 
-**Permission keys (existing seed):** `enquiry.view`, `enquiry.create`, `enquiry.update`, `enquiry.assign` (assign unused until Batch C).
+**Permission keys (authoritative catalogue):** `enquiry.view`, `enquiry.create`, `enquiry.edit`, `enquiry.assign` (assign unused until Batch C).  
+**Do not invent `enquiry.update`** — Batch B / `PermissionCodes::ENQUIRY_EDIT` use `enquiry.edit`.
+
+**Visual prototypes:** `docs/design/phase-4/prototypes/enquiry-batch-b.html` (static review only).
 
 ---
 
@@ -159,7 +162,7 @@ A11y: labelled inputs; focus rings; dialogs; status not by colour alone; `aria-b
 
 ## 8. Permission / action matrix
 
-| Action         | `enquiry.view`      | `enquiry.create` | `enquiry.update`   | Branch-scoped user          |
+| Action         | `enquiry.view`      | `enquiry.create` | `enquiry.edit`     | Branch-scoped user          |
 | -------------- | ------------------- | ---------------- | ------------------ | --------------------------- |
 | List (branch)  | Yes (own branch)    | —                | —                  | Yes                         |
 | List (company) | Yes if company-wide | —                | —                  | No unassigned company queue |

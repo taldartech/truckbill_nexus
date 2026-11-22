@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>TruckBill — Phase 4 Enquiry UI Review Prototypes</title>
+        <link
+            rel="stylesheet"
+            href="https://fonts.bunny.net/css?family=poppins:400,500,600,700"
+        />
+        <style>
+            :root {
+                --brand-green: #2fb36f;
+                --brand-blue: #2d8cff;
+                --brand-surface: #f8f9fa;
+                --brand-surface-muted: #f5f7fa;
+                --brand-ink: #212529;
+                --border: #e5e7eb;
+                --muted: #6b7280;
+                --white: #ffffff;
+                --danger: #b91c1c;
+                --gradient: linear-gradient(135deg, #2fb36f 0%, #2d8cff 100%);
+            }
+            * {
+                box-sizing: border-box;
+            }
+            body {
+                margin: 0;
+                font-family: Poppins, system-ui, sans-serif;
+                color: var(--brand-ink);
+                background: var(--brand-surface);
+            }
+            header.top {
+                background: var(--white);
+                border-bottom: 1px solid var(--border);
+                padding: 1rem 1.5rem;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 1rem;
+                align-items: center;
+                justify-content: space-between;
+            }
+            .brand {
+                display: flex;
+                align-items: center;
+                gap: 0.75rem;
+            }
+            .brand-mark {
+                width: 2.5rem;
+                height: 2.5rem;
+                border-radius: 0.75rem;
+                background: var(--gradient);
+            }
+            .badge {
+                display: inline-flex;
+                align-items: center;
+                border-radius: 999px;
+                padding: 0.15rem 0.6rem;
+                font-size: 0.75rem;
+                font-weight: 600;
+                background: #ecfdf5;
+                color: #047857;
+                border: 1px solid #a7f3d0;
+            }
+            .badge.warn {
+                background: #fffbeb;
+                color: #b45309;
+                border-color: #fde68a;
+            }
+            .badge.muted {
+                background: var(--brand-surface-muted);
+                color: var(--muted);
+                border-color: var(--border);
+            }
+            nav.tabs {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+                padding: 1rem 1.5rem 0;
+            }
+            nav.tabs button {
+                border: 1px solid var(--border);
+                background: var(--white);
+                border-radius: 999px;
+                padding: 0.45rem 0.9rem;
+                font: inherit;
+                cursor: pointer;
+            }
+            nav.tabs button[aria-selected='true'] {
+                border-color: transparent;
+                color: white;
+                background: var(--gradient);
+            }
+            main {
+                padding: 1rem 1.5rem 3rem;
+            }
+            .screen {
+                display: none;
+                background: var(--white);
+                border: 1px solid var(--border);
+                border-radius: 1rem;
+                padding: 1.25rem;
+                box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+            }
+            .screen.active {
+                display: block;
+            }
+            .page-head {
+                display: flex;
+                flex-wrap: wrap;
+                justify-content: space-between;
+                gap: 1rem;
+                margin-bottom: 1.25rem;
+            }
+            h1 {
+                margin: 0.25rem 0 0;
+                font-size: 1.5rem;
+            }
+            .eyebrow {
+                margin: 0;
+                font-size: 0.75rem;
+                letter-spacing: 0.04em;
+                text-transform: uppercase;
+                color: var(--muted);
+                font-weight: 600;
+            }
+            .toolbar {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 0.75rem;
+                margin-bottom: 1rem;
+            }
+            input,
+            select,
+            textarea {
+                font: inherit;
+                border: 1px solid var(--border);
+                border-radius: 0.65rem;
+                padding: 0.55rem 0.75rem;
+                background: var(--white);
+                width: 100%;
+            }
+            label {
+                display: grid;
+                gap: 0.35rem;
+                font-size: 0.875rem;
+                font-weight: 500;
+            }
+            .grid {
+                display: grid;
+                gap: 1rem;
+            }
+            @media (min-width: 768px) {
+                .grid.cols-2 {
+                    grid-template-columns: 1fr 1fr;
+                }
+                .grid.cols-3 {
+                    grid-template-columns: repeat(3, 1fr);
+                }
+            }
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 0.875rem;
+            }
+            th,
+            td {
+                text-align: left;
+                padding: 0.75rem 0.5rem;
+                border-bottom: 1px solid var(--border);
+                vertical-align: top;
+            }
+            th {
+                color: var(--muted);
+                font-weight: 600;
+                font-size: 0.75rem;
+                text-transform: uppercase;
+                letter-spacing: 0.03em;
+            }
+            .btn {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 0.65rem;
+                border: 1px solid transparent;
+                padding: 0.55rem 0.9rem;
+                font: inherit;
+                font-weight: 600;
+                cursor: pointer;
+                text-decoration: none;
+            }
+            .btn.primary {
+                color: white;
+                background: var(--gradient);
+            }
+            .btn.ghost {
+                background: var(--white);
+                border-color: var(--border);
+                color: var(--brand-ink);
+            }
+            .btn:disabled {
+                opacity: 0.5;
+                cursor: not-allowed;
+            }
+            .empty {
+                padding: 2rem;
+                text-align: center;
+                color: var(--muted);
+                background: var(--brand-surface-muted);
+                border-radius: 0.75rem;
+            }
+            .goods-card {
+                border: 1px solid var(--border);
+                border-radius: 0.75rem;
+                padding: 1rem;
+                background: var(--brand-surface-muted);
+            }
+            .note {
+                margin-top: 1rem;
+                padding: 0.85rem 1rem;
+                border-radius: 0.75rem;
+                background: #eff6ff;
+                border: 1px solid #bfdbfe;
+                color: #1e3a8a;
+                font-size: 0.875rem;
+            }
+            .danger {
+                color: var(--danger);
+                font-size: 0.8rem;
+            }
+            .stack {
+                display: grid;
+                gap: 0.75rem;
+            }
+            footer.review {
+                margin: 0 1.5rem 2rem;
+                padding: 1rem;
+                border-radius: 0.75rem;
+                border: 1px dashed #f59e0b;
+                background: #fffbeb;
+                color: #92400e;
+                font-size: 0.875rem;
+            }
+        </style>
+    </head>
+    <body>
+        <header class="top">
+            <div class="brand">
+                <div class="brand-mark" aria-hidden="true"></div>
+                <div>
+                    <strong>TruckBill</strong>
+                    <div style="font-size: 0.8rem; color: var(--muted)">
+                        Transport. Billing. Simplified.
+                    </div>
+                </div>
+            </div>
+            <div class="stack" style="justify-items: end">
+                <span class="badge warn"
+                    >PO-P4-DESIGN-FORMAL — Pending (not Approved)</span
+                >
+                <span class="badge muted"
+                    >Static review prototype · not production UI</span
+                >
+            </div>
+        </header>
+
+        <nav class="tabs" aria-label="Prototype screens">
+            <button type="button" data-screen="list" aria-selected="true">
+                Enquiry List
+            </button>
+            <button type="button" data-screen="create" aria-selected="false">
+                Create
+            </button>
+            <button type="button" data-screen="edit" aria-selected="false">
+                Edit
+            </button>
+            <button type="button" data-screen="detail" aria-selected="false">
+                Detail
+            </button>
+            <button
+                type="button"
+                data-screen="unassigned"
+                aria-selected="false"
+            >
+                Unassigned Queue
+            </button>
+            <button type="button" data-screen="mobile" aria-selected="false">
+                Mobile List
+            </button>
+        </nav>
+
+        <main>
+            <section id="list" class="screen active" aria-label="Enquiry List">
+                <div class="page-head">
+                    <div>
+                        <p class="eyebrow">Branch Panel · Enquiries</p>
+                        <h1>All enquiries</h1>
+                    </div>
+                    <button class="btn primary" type="button">
+                        Create enquiry
+                    </button>
+                </div>
+                <div class="toolbar">
+                    <input
+                        style="max-width: 16rem"
+                        placeholder="Search number or customer"
+                        aria-label="Search"
+                    />
+                    <select aria-label="Status" style="max-width: 10rem">
+                        <option>All statuses</option>
+                        <option>New</option>
+                        <option>Under review</option>
+                    </select>
+                    <select aria-label="Source" style="max-width: 10rem">
+                        <option>All sources</option>
+                        <option>Manual</option>
+                        <option>Website</option>
+                    </select>
+                </div>
+                <div style="overflow-x: auto">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Number</th>
+                                <th>Customer</th>
+                                <th>Route</th>
+                                <th>Vehicle</th>
+                                <th>Status</th>
+                                <th>Source</th>
+                                <th>Loading</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>ENQ-000142</td>
+                                <td>Alpha Retail Customer</td>
+                                <td>Mumbai Dock → Nashik Market</td>
+                                <td>Tata 407 × 1</td>
+                                <td><span class="badge">New</span></td>
+                                <td>Manual</td>
+                                <td>2026-12-01</td>
+                                <td><a href="#">View</a></td>
+                            </tr>
+                            <tr>
+                                <td>ENQ-000143</td>
+                                <td>Website Lead</td>
+                                <td>Website Pickup → Delivery Gate</td>
+                                <td>Tata 407 × 1</td>
+                                <td><span class="badge">New</span></td>
+                                <td>Website</td>
+                                <td>2026-12-03</td>
+                                <td><a href="#">View</a></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <p class="note">
+                    Server-side pagination/filters only. Permission:
+                    <code>enquiry.view</code>. Actions gated by
+                    <code>enquiry.create</code> / <code>enquiry.edit</code> (not
+                    <code>enquiry.update</code>).
+                </p>
+            </section>
+
+            <section id="create" class="screen" aria-label="Create Enquiry">
+                <div class="page-head">
+                    <div>
+                        <p class="eyebrow">Branch Panel · Enquiries</p>
+                        <h1>Create enquiry</h1>
+                    </div>
+                </div>
+                <div class="cols-2 grid">
+                    <label
+                        >Customer party
+                        <select>
+                            <option>Alpha Retail Customer</option>
+                        </select></label
+                    >
+                    <label
+                        >Expected loading date
+                        <input type="date" value="2026-12-01"
+                    /></label>
+                    <label>Pickup location <input value="Mumbai Dock" /></label>
+                    <label
+                        >Delivery location <input value="Nashik Market"
+                    /></label>
+                    <label
+                        >Truck type
+                        <select>
+                            <option>Tata 407</option>
+                        </select></label
+                    >
+                    <label
+                        >Vehicle quantity <input type="number" value="1"
+                    /></label>
+                </div>
+                <h2 style="font-size: 1.05rem; margin: 1.5rem 0 0.75rem">
+                    Goods rows
+                </h2>
+                <div class="stack">
+                    <div class="goods-card cols-3 grid">
+                        <label
+                            >Goods type
+                            <select>
+                                <option>General Cargo</option>
+                            </select></label
+                        >
+                        <label
+                            >Package type
+                            <select>
+                                <option>Bag</option>
+                            </select></label
+                        >
+                        <label
+                            >Package qty <input type="number" value="10"
+                        /></label>
+                        <label
+                            >Actual weight <input type="number" value="100"
+                        /></label>
+                        <label
+                            >Charged weight <input type="number" value="110"
+                        /></label>
+                        <label
+                            >Description <input value="Demo FMCG cartons"
+                        /></label>
+                    </div>
+                    <button class="btn ghost" type="button">
+                        Add goods row
+                    </button>
+                </div>
+                <label style="margin-top: 1rem"
+                    >Instructions
+                    <textarea rows="3">Handle with care</textarea>
+                </label>
+                <div class="toolbar" style="margin-top: 1rem">
+                    <button class="btn primary" type="button">
+                        Save enquiry
+                    </button>
+                    <button class="btn ghost" type="button">Cancel</button>
+                </div>
+            </section>
+
+            <section id="edit" class="screen" aria-label="Edit Enquiry">
+                <div class="page-head">
+                    <div>
+                        <p class="eyebrow">Branch Panel · Enquiries</p>
+                        <h1>Edit ENQ-000142</h1>
+                    </div>
+                    <span class="badge">New · editable</span>
+                </div>
+                <label
+                    >Edit remark (required)
+                    <input placeholder="Why is this enquiry changing?"
+                /></label>
+                <p class="danger">
+                    Validation sample: Edit remark is required.
+                </p>
+                <p class="note">
+                    Active goods grid only. Soft-deleted prior goods rows remain
+                    in history (DEC-003). Terminal statuses disable Save.
+                </p>
+                <div class="toolbar">
+                    <button class="btn primary" type="button">
+                        Save changes
+                    </button>
+                </div>
+            </section>
+
+            <section id="detail" class="screen" aria-label="Enquiry Detail">
+                <div class="page-head">
+                    <div>
+                        <p class="eyebrow">Branch Panel · Enquiries</p>
+                        <h1>ENQ-000142</h1>
+                    </div>
+                    <div class="toolbar">
+                        <button class="btn ghost" type="button">Edit</button>
+                        <button class="btn ghost" type="button" disabled>
+                            Assignment (later)
+                        </button>
+                        <button class="btn ghost" type="button" disabled>
+                            Quotations (later)
+                        </button>
+                        <button class="btn ghost" type="button" disabled>
+                            Convert (later)
+                        </button>
+                    </div>
+                </div>
+                <div class="cols-2 grid">
+                    <div class="goods-card">
+                        <strong>Customer</strong>
+                        <div>Alpha Retail Customer</div>
+                        <div style="color: var(--muted); font-size: 0.875rem">
+                            Source: Manual
+                        </div>
+                    </div>
+                    <div class="goods-card">
+                        <strong>Route / vehicle</strong>
+                        <div>Mumbai Dock → Nashik Market</div>
+                        <div>Tata 407 × 1 · Loading 2026-12-01</div>
+                    </div>
+                </div>
+                <h2 style="font-size: 1.05rem; margin: 1.5rem 0 0.75rem">
+                    Goods
+                </h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Goods</th>
+                            <th>Package</th>
+                            <th>Qty</th>
+                            <th>Actual</th>
+                            <th>Charged</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>1</td>
+                            <td>General Cargo</td>
+                            <td>Bag</td>
+                            <td>10</td>
+                            <td>100</td>
+                            <td>110</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+
+            <section
+                id="unassigned"
+                class="screen"
+                aria-label="Unassigned Queue"
+            >
+                <div class="page-head">
+                    <div>
+                        <p class="eyebrow">Company · Enquiries</p>
+                        <h1>Unassigned website enquiries</h1>
+                    </div>
+                    <span class="badge warn"
+                        >Company-wide · enquiry.assign viewers only</span
+                    >
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Received</th>
+                            <th>External ref</th>
+                            <th>Customer</th>
+                            <th>Route</th>
+                            <th>Vehicle</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>2026-11-23 10:12</td>
+                            <td>demo-web-alpha-001</td>
+                            <td>Website Lead</td>
+                            <td>Pickup Yard → Delivery Gate</td>
+                            <td>Tata 407 × 1</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="empty" style="margin-top: 1rem">
+                    Empty state copy: “No unassigned website enquiries.”
+                </div>
+                <p class="note">
+                    Branch-only users must not see this company-wide queue.
+                    Assignment actions remain Batch C.
+                </p>
+            </section>
+
+            <section id="mobile" class="screen" aria-label="Mobile List">
+                <div class="page-head">
+                    <div>
+                        <p class="eyebrow">≤480px critical path</p>
+                        <h1>Enquiries</h1>
+                    </div>
+                </div>
+                <div class="stack">
+                    <article class="goods-card">
+                        <div
+                            style="
+                                display: flex;
+                                justify-content: space-between;
+                                gap: 0.5rem;
+                            "
+                        >
+                            <strong>ENQ-000142</strong>
+                            <span class="badge">New</span>
+                        </div>
+                        <div>Alpha Retail Customer</div>
+                        <div style="color: var(--muted); font-size: 0.85rem">
+                            Mumbai Dock → Nashik Market · Tata 407 × 1
+                        </div>
+                    </article>
+                    <article class="goods-card">
+                        <div
+                            style="
+                                display: flex;
+                                justify-content: space-between;
+                                gap: 0.5rem;
+                            "
+                        >
+                            <strong>ENQ-000143</strong>
+                            <span class="badge">New</span>
+                        </div>
+                        <div>Website Lead</div>
+                        <div style="color: var(--muted); font-size: 0.85rem">
+                            Website route · Website source
+                        </div>
+                    </article>
+                </div>
+            </section>
+        </main>
+
+        <footer class="review">
+            Review-only artefact for Product Owner formal design decision
+            <strong>PO-P4-DESIGN-FORMAL</strong>. Do not treat this HTML as an
+            approved or wired production screen. After approval, implement
+            Inertia pages against Batch B Enquiry services immediately (do not
+            wait for Batch G).
+        </footer>
+
+        <script>
+            const buttons = document.querySelectorAll('nav.tabs button');
+            const screens = document.querySelectorAll('.screen');
+            buttons.forEach((button) => {
+                button.addEventListener('click', () => {
+                    const id = button.getAttribute('data-screen');
+                    buttons.forEach((b) =>
+                        b.setAttribute('aria-selected', String(b === button)),
+                    );
+                    screens.forEach((screen) => {
+                        screen.classList.toggle('active', screen.id === id);
+                    });
+                });
+            });
+        </script>
+    </body>
+</html>

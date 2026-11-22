@@ -213,12 +213,12 @@ Deep links from future notifications must respect permissions (Design §9).
 
 ## 5. Design artefacts for PO review
 
-| Artefact                                                              | Purpose                                                                           |
-| --------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| This specification                                                    | Interaction + field contracts                                                     |
-| `docs/design/phase-4/PHASE_4_UI_REVIEW.md`                            | Batch B Enquiry UI formal review package + PO approval request (**not Approved**) |
-| Optional wireframes / static HTML prototypes (post-auth design batch) | Visual QA before PO-P4-DESIGN-FORMAL                                              |
-| Permission label map                                                  | Align G-PERM with UI affordances                                                  |
+| Artefact                                              | Purpose                                                                           |
+| ----------------------------------------------------- | --------------------------------------------------------------------------------- |
+| This specification                                    | Interaction + field contracts                                                     |
+| `docs/design/phase-4/PHASE_4_UI_REVIEW.md`            | Batch B Enquiry UI formal review package + PO approval request (**not Approved**) |
+| `docs/design/phase-4/prototypes/enquiry-batch-b.html` | High-fidelity static visual prototypes for Batch B screens                        |
+| Permission label map                                  | Align G-PERM with UI affordances                                                  |
 
 **Do not** treat this draft or the review package as approved until formal **PO-P4-DESIGN-FORMAL**.
 
