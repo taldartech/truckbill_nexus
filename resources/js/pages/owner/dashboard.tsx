@@ -95,7 +95,7 @@ export default function OwnerDashboard({
                     <PanelCard
                         icon={Users}
                         title="Users & memberships"
-                        body="Owner Panel entry point. Full invite and membership screens are deferred beyond this P2-WS-8 slice."
+                        body="Invite users, review memberships, assign branch access and Customer roles."
                         action={
                             <Button asChild variant="secondary" size="sm">
                                 <Link href={links.users}>Open users</Link>
@@ -105,7 +105,7 @@ export default function OwnerDashboard({
                     <PanelCard
                         icon={Settings}
                         title="Company settings"
-                        body="Company settings hub entry point. Detailed profile editing is deferred beyond this P2-WS-8 slice."
+                        body="View company status and edit the company display name. Additional master fields remain deferred."
                         action={
                             <Button asChild variant="secondary" size="sm">
                                 <Link href={links.settings}>Open settings</Link>
@@ -115,7 +115,7 @@ export default function OwnerDashboard({
                     <PanelCard
                         icon={FileSearch}
                         title="Company audit"
-                        body="Audit entry point. Read-oriented audit screen is deferred beyond this P2-WS-8 slice."
+                        body="Read-only company activity history with search and pagination."
                         action={
                             <Button asChild variant="secondary" size="sm">
                                 <Link href={links.audit}>Open audit</Link>

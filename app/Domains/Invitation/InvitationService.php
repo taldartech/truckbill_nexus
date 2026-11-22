@@ -24,7 +24,8 @@ use InvalidArgumentException;
 /**
  * Customer invitation lifecycle (P2-WS-5 / PO-P2-INVITE).
  *
- * Super Admin creates/revokes. Acceptance is public via single-use token.
+ * Active Super Admin or Company Owner may create/revoke for that company.
+ * Acceptance is public via single-use token.
  * Existing Customer identities are reused without password overwrite.
  */
 final class InvitationService
@@ -44,7 +45,7 @@ final class InvitationService
      */
     public function create(User $actor, Company $company, string $email, ?Branch $branch = null): array
     {
-        $this->assertSuperAdmin($actor);
+        $this->assertCanManageCompanyInvitations($actor, $company);
 
         $email = strtolower(trim($email));
         if ($email === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -118,13 +119,12 @@ final class InvitationService
 
     public function revoke(User $actor, Invitation $invitation, string $remark): Invitation
     {
-        $this->assertSuperAdmin($actor);
-
         if (trim($remark) === '') {
             throw new InvalidArgumentException('A remark is required when revoking an invitation.');
         }
 
         $company = Company::query()->findOrFail($invitation->company_id);
+        $this->assertCanManageCompanyInvitations($actor, $company);
 
         return $this->auditedTransaction->run(function () use ($invitation, $remark, $company): Invitation {
             return $this->withCompanyContext($company, function () use ($invitation, $remark): Invitation {
@@ -397,11 +397,23 @@ final class InvitationService
         );
     }
 
-    private function assertSuperAdmin(User $actor): void
+    private function assertCanManageCompanyInvitations(User $actor, Company $company): void
     {
-        if (! $actor->isSuperAdmin() || ! $actor->isActive()) {
-            throw new InvitationException('Only an active Super Admin may manage invitations.');
+        if (! $actor->isActive()) {
+            throw new InvitationException('Only an active authorized administrator may manage invitations.');
         }
+
+        if ($actor->isSuperAdmin()) {
+            return;
+        }
+
+        if ($this->access->isCompanyOwner($actor, $company)) {
+            return;
+        }
+
+        throw new InvitationException(
+            'Only the Company Owner or an active Super Admin may manage invitations for this company.'
+        );
     }
 
     /**

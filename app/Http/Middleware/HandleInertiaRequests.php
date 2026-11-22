@@ -57,6 +57,9 @@ class HandleInertiaRequests extends Middleware
                     'updated_at' => $user->updated_at,
                 ],
             ],
+            'flash' => [
+                'success' => $request->session()->get('success'),
+            ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'workspace' => $this->workspaceShare($request, $user),
         ];

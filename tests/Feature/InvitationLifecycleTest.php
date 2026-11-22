@@ -87,7 +87,7 @@ test('super admin can create invitation with hashed token and outbox email', fun
 });
 
 test('unauthorized users cannot create invitations', function () {
-    ['company' => $company] = inviteOwnedCompany();
+    ['company' => $company, 'owner' => $owner] = inviteOwnedCompany();
     $customer = User::factory()->customer()->create();
     $internal = User::factory()->internal()->create();
 
@@ -96,6 +96,10 @@ test('unauthorized users cannot create invitations', function () {
 
     expect(fn () => invitations()->create($internal, $company, 'y@example.com'))
         ->toThrow(InvitationException::class);
+
+    // Company Owner is an authorized invitation administrator for their company.
+    $owned = invitations()->create($owner, $company, 'owner.created@example.com');
+    expect($owned['invitation']->invited_by_user_id)->toBe($owner->id);
 
     $this->actingAs($customer)
         ->post(route('admin.invitations.store', $company), [

@@ -5,7 +5,8 @@
 **Design baseline:** `99f7a0a3c6785ed6166271350e79a274c9b8329a`  
 **Initial implementation commit:** `3c2e8c9abf687aaeb502cb22be0dbec1f42568d8`  
 **Closure matrix:** `docs/engineering/P2_WS_8_CLOSURE_MATRIX.md`  
-**Acceptance-readiness verdict:** **READY WITH DOCUMENTED EXCEPTIONS** (engineering; Product Owner acceptance not granted)
+**Core workspace:** Product Owner accepted with documented exceptions (22 November 2026).  
+**Owner Panel follow-on:** See `P2_WS_8_OWNER_PANEL_FOLLOWON_EVIDENCE.md` (engineering complete for authorized slice; follow-on PO acceptance not granted here).
 
 ## Scope delivered
 

@@ -227,7 +227,7 @@ test('subscription presentation does not invent entitlement actions', function (
             ->where('subscription.presentation', 'unavailable'));
 });
 
-test('owner dashboard exposes deferred Region B entry points without inventing CRUD', function () {
+test('owner dashboard exposes Region B management entry points', function () {
     ['owner' => $owner, 'company' => $company] = createOwnerWorkspace();
 
     loginCustomer($owner);
@@ -243,20 +243,21 @@ test('owner dashboard exposes deferred Region B entry points without inventing C
     $this->get(route('owner.users', ['company' => $company]))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('owner/deferred')
-            ->where('section.status', 'deferred')
-            ->where('section.key', 'users'));
+            ->component('owner/users/index')
+            ->where('canManage', true));
 
     $this->get(route('owner.settings', ['company' => $company]))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->where('section.key', 'settings'));
+        ->assertInertia(fn ($page) => $page
+            ->component('owner/settings')
+            ->where('canEditProfile', true));
 
     $this->get(route('owner.audit', ['company' => $company]))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->where('section.key', 'audit'));
+        ->assertInertia(fn ($page) => $page->component('owner/audit'));
 });
 
-test('member cannot open deferred owner entry points', function () {
+test('member cannot open owner management entry points', function () {
     ['company' => $company, 'headOffice' => $headOffice] = createOwnerWorkspace();
     $member = User::factory()->customer()->create([
         'password' => Hash::make('member-secret'),

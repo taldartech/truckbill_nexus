@@ -9,10 +9,12 @@ use App\Http\Controllers\Branch\BranchDashboardController;
 use App\Http\Controllers\Branch\BranchSettingsController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\InvitationAcceptanceController;
+use App\Http\Controllers\Owner\OwnerAuditController;
 use App\Http\Controllers\Owner\OwnerBranchesController;
 use App\Http\Controllers\Owner\OwnerDashboardController;
-use App\Http\Controllers\Owner\OwnerDeferredController;
+use App\Http\Controllers\Owner\OwnerSettingsController;
 use App\Http\Controllers\Owner\OwnerSubscriptionController;
+use App\Http\Controllers\Owner\OwnerUsersController;
 use App\Http\Controllers\Workspace\EnterBranchController;
 use App\Http\Controllers\Workspace\EnterCompanyController;
 use App\Http\Controllers\Workspace\SelectBranchController;
@@ -47,9 +49,31 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/owner/companies/{company}', OwnerDashboardController::class)->name('owner.dashboard');
     Route::get('/owner/companies/{company}/subscription', OwnerSubscriptionController::class)->name('owner.subscription');
     Route::get('/owner/companies/{company}/branches', OwnerBranchesController::class)->name('owner.branches');
-    Route::get('/owner/companies/{company}/users', [OwnerDeferredController::class, 'users'])->name('owner.users');
-    Route::get('/owner/companies/{company}/settings', [OwnerDeferredController::class, 'settings'])->name('owner.settings');
-    Route::get('/owner/companies/{company}/audit', [OwnerDeferredController::class, 'audit'])->name('owner.audit');
+
+    Route::get('/owner/companies/{company}/users', [OwnerUsersController::class, 'index'])->name('owner.users');
+    Route::post('/owner/companies/{company}/users/invite', [OwnerUsersController::class, 'invite'])->name('owner.users.invite');
+    Route::post('/owner/companies/{company}/branches/{branch}/users/invite', [OwnerUsersController::class, 'inviteForBranch'])
+        ->scopeBindings()
+        ->name('owner.users.invite-for-branch');
+    Route::post('/owner/companies/{company}/users/invitations/{invitation}/revoke', [OwnerUsersController::class, 'revokeInvitation'])
+        ->name('owner.users.invitations.revoke');
+    Route::get('/owner/companies/{company}/users/{membership}', [OwnerUsersController::class, 'show'])
+        ->scopeBindings()
+        ->name('owner.users.show');
+    Route::post('/owner/companies/{company}/users/{membership}/deactivate', [OwnerUsersController::class, 'deactivateMembership'])
+        ->scopeBindings()
+        ->name('owner.users.deactivate');
+    // Branch is company-scoped (not membership-scoped); controllers verify both parents.
+    Route::post('/owner/companies/{company}/users/{membership}/branches/{branch}/assign', [OwnerUsersController::class, 'assignBranch'])
+        ->name('owner.users.assign-branch');
+    Route::post('/owner/companies/{company}/users/{membership}/branches/{branch}/roles', [OwnerUsersController::class, 'assignRole'])
+        ->name('owner.users.assign-role');
+    Route::post('/owner/companies/{company}/users/roles/{roleAssignment}/revoke', [OwnerUsersController::class, 'revokeRole'])
+        ->name('owner.users.roles.revoke');
+
+    Route::get('/owner/companies/{company}/settings', [OwnerSettingsController::class, 'show'])->name('owner.settings');
+    Route::post('/owner/companies/{company}/settings', [OwnerSettingsController::class, 'update'])->name('owner.settings.update');
+    Route::get('/owner/companies/{company}/audit', OwnerAuditController::class)->name('owner.audit');
 
     Route::get('/branch/companies/{company}/branches/{branch}', BranchDashboardController::class)
         ->scopeBindings()
