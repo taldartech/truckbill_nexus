@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -31,6 +32,7 @@ use Illuminate\Support\Carbon;
  * @property string $password
  * @property string|null $remember_token
  * @property int $web_session_version
+ * @property string|null $mru_owned_company_id
  * @property Carbon|null $deactivated_at
  * @property Carbon|null $deleted_at
  * @property Carbon|null $created_at
@@ -108,6 +110,16 @@ class User extends Authenticatable
     public function isCompanyOwnerDesignation(): bool
     {
         return false;
+    }
+
+    /**
+     * Server-side MRU owned company preference (PO-DEC-P2-REVIEW-006). Not authorization.
+     *
+     * @return BelongsTo<Company, $this>
+     */
+    public function mruOwnedCompany(): BelongsTo
+    {
+        return $this->belongsTo(Company::class, 'mru_owned_company_id');
     }
 
     public function isLastActiveSuperAdmin(): bool

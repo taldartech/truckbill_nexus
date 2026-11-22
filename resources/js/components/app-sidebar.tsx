@@ -1,7 +1,7 @@
-import { Link } from '@inertiajs/react';
-import { BookOpen, FolderGit2, LayoutGrid } from 'lucide-react';
+import { Link, usePage } from '@inertiajs/react';
+import { LayoutGrid } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
-import { NavFooter } from '@/components/nav-footer';
+import { CompanySwitcher } from '@/components/company-switcher';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import {
@@ -15,41 +15,90 @@ import {
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
 import type { NavItem } from '@/types';
+import type { WorkspaceShare } from '@/types/workspace';
 
-const mainNavItems: NavItem[] = [
-    {
-        title: 'Dashboard',
-        href: dashboard(),
-        icon: LayoutGrid,
-    },
-];
-
-const footerNavItems: NavItem[] = [
-    {
-        title: 'Repository',
-        href: 'https://github.com/laravel/react-starter-kit',
-        icon: FolderGit2,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#react',
-        icon: BookOpen,
-    },
-];
+type PageProps = {
+    auth: { user: { identity_type?: string | null } | null };
+    workspace: WorkspaceShare;
+};
 
 export function AppSidebar() {
+    const { auth, workspace } = usePage<PageProps>().props;
+    const isCustomer = auth.user?.identity_type === 'customer';
+    const activeCompanyId = workspace?.active_company_id ?? null;
+    const activeBranchId = workspace?.active_branch_id ?? null;
+    const activeCompany = workspace?.companies.find((c) => c.id === activeCompanyId);
+    const isOwnerContext = activeCompany?.is_owner === true && activeBranchId === null;
+
+    const mainNavItems: NavItem[] = isCustomer
+        ? [
+              {
+                  title: 'Workspace',
+                  href: '/workspace',
+                  icon: LayoutGrid,
+              },
+              ...(isOwnerContext && activeCompanyId
+                  ? [
+                        {
+                            title: 'Owner Dashboard',
+                            href: `/owner/companies/${activeCompanyId}`,
+                            icon: LayoutGrid,
+                        },
+                        {
+                            title: 'Subscription',
+                            href: `/owner/companies/${activeCompanyId}/subscription`,
+                            icon: LayoutGrid,
+                        },
+                        {
+                            title: 'Branches',
+                            href: `/owner/companies/${activeCompanyId}/branches`,
+                            icon: LayoutGrid,
+                        },
+                    ]
+                  : []),
+              ...(activeCompanyId && activeBranchId
+                  ? [
+                        {
+                            title: 'Branch Dashboard',
+                            href: `/branch/companies/${activeCompanyId}/branches/${activeBranchId}`,
+                            icon: LayoutGrid,
+                        },
+                        {
+                            title: 'Branch Settings',
+                            href: `/branch/companies/${activeCompanyId}/branches/${activeBranchId}/settings`,
+                            icon: LayoutGrid,
+                        },
+                    ]
+                  : []),
+          ]
+        : [
+              {
+                  title: 'Dashboard',
+                  href: dashboard(),
+                  icon: LayoutGrid,
+              },
+          ];
+
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
-                            <Link href={dashboard()} prefetch>
+                            <Link
+                                href={isCustomer ? '/workspace' : dashboard()}
+                                prefetch
+                            >
                                 <AppLogo />
                             </Link>
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>
+                {isCustomer ? (
+                    <div className="px-2 pt-2 group-data-[collapsible=icon]:hidden">
+                        <CompanySwitcher />
+                    </div>
+                ) : null}
             </SidebarHeader>
 
             <SidebarContent>
@@ -57,7 +106,6 @@ export function AppSidebar() {
             </SidebarContent>
 
             <SidebarFooter>
-                <NavFooter items={footerNavItems} className="mt-auto" />
                 <NavUser />
             </SidebarFooter>
         </Sidebar>

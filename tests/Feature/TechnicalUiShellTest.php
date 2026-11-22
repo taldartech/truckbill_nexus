@@ -9,15 +9,12 @@ test('official truckbill logo assets are present', function () {
     expect(File::exists(public_path('brand/truckbill-logo.png')))->toBeTrue();
 });
 
-test('product panel and business module routes are absent', function () {
+test('operational business module routes remain absent', function () {
     $forbidden = [
-        'owner.panel',
-        'branch.panel',
         'broker.',
         'ownfleet.',
         'partload.',
         'accounting.',
-        'subscription.',
         'permission.master',
     ];
 
@@ -28,6 +25,10 @@ test('product panel and business module routes are absent', function () {
             $names->contains(fn (?string $name): bool => $name !== null && str_contains($name, $needle))
         )->toBeFalse();
     }
+
+    expect(Route::has('owner.dashboard'))->toBeTrue()
+        ->and(Route::has('branch.dashboard'))->toBeTrue()
+        ->and(Route::has('workspace.landing'))->toBeTrue();
 });
 
 test('profile settings omit self-service email change and account deletion controls', function () {
@@ -55,8 +56,8 @@ test('css brand tokens include truckbill palette and poppins', function () {
     expect($css)->toContain('--brand-gradient');
 });
 
-test('authenticated workspace shell renders technical empty state component', function () {
-    $user = User::factory()->create();
+test('authenticated internal dashboard remains a technical shell', function () {
+    $user = User::factory()->internal()->create();
 
     $this->actingAs($user)
         ->get(route('dashboard'))
@@ -64,9 +65,8 @@ test('authenticated workspace shell renders technical empty state component', fu
         ->assertInertia(fn ($page) => $page->component('dashboard'));
 
     $source = File::get(resource_path('js/pages/dashboard.tsx'));
-    expect($source)->toContain('No product modules yet');
     expect($source)->toContain('ShellEmptyState');
-    expect($source)->toContain('technical shell only');
+    expect($source)->toContain('Internal Team');
 });
 
 test('vite font configuration uses poppins', function () {

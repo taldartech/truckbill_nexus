@@ -2,6 +2,9 @@
 
 namespace App\Http\Middleware;
 
+use App\Domains\Company\WorkspaceNavigationService;
+use App\Models\User;
+use App\Support\Workspace\WorkspaceSession;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -35,13 +38,43 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        /** @var User|null $user */
+        $user = $request->user();
+
         return [
             ...parent::share($request),
             'name' => config('app.name'),
             'auth' => [
-                'user' => $request->user(),
+                'user' => $user === null ? null : [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'email_verified_at' => $user->email_verified_at,
+                    'identity_type' => $user->identity_type?->value,
+                    'created_at' => $user->created_at,
+                    'updated_at' => $user->updated_at,
+                ],
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
+            'workspace' => $this->workspaceShare($request, $user),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function workspaceShare(Request $request, ?User $user): ?array
+    {
+        if ($user === null || ! $user->isCustomer() || ! $user->isActive()) {
+            return null;
+        }
+
+        $navigation = app(WorkspaceNavigationService::class);
+
+        return [
+            'companies' => $navigation->accessibleCompanies($user)->values(),
+            'active_company_id' => WorkspaceSession::companyId($request),
+            'active_branch_id' => WorkspaceSession::branchId($request),
         ];
     }
 }

@@ -5,8 +5,19 @@ use App\Http\Controllers\Admin\IdentityLifecycleController;
 use App\Http\Controllers\Admin\InternalUserController;
 use App\Http\Controllers\Admin\InvitationController;
 use App\Http\Controllers\Admin\OwnershipTransferController;
+use App\Http\Controllers\Branch\BranchDashboardController;
+use App\Http\Controllers\Branch\BranchSettingsController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\InvitationAcceptanceController;
+use App\Http\Controllers\Owner\OwnerBranchesController;
+use App\Http\Controllers\Owner\OwnerDashboardController;
+use App\Http\Controllers\Owner\OwnerSubscriptionController;
+use App\Http\Controllers\Workspace\EnterBranchController;
+use App\Http\Controllers\Workspace\EnterCompanyController;
+use App\Http\Controllers\Workspace\SelectBranchController;
+use App\Http\Controllers\Workspace\SelectCompanyController;
+use App\Http\Controllers\Workspace\WorkspaceLandingController;
+use App\Http\Controllers\Workspace\WorkspaceNoAccessController;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
@@ -19,7 +30,29 @@ Route::post('/invitations/accept/{token}', [InvitationAcceptanceController::clas
     ->name('invitations.accept.store');
 
 Route::middleware(['auth', 'verified'])->group(function () {
+    // Technical shell for Internal Team (Customer workspace is under /workspace).
     Route::inertia('dashboard', 'dashboard')->name('dashboard');
+
+    // P2-WS-8 Customer workspace — company/branch from route model binding only.
+    Route::get('/workspace', WorkspaceLandingController::class)->name('workspace.landing');
+    Route::get('/workspace/no-access', WorkspaceNoAccessController::class)->name('workspace.no-access');
+    Route::get('/workspace/companies/select', SelectCompanyController::class)->name('workspace.companies.select');
+    Route::post('/workspace/companies/{company}/enter', EnterCompanyController::class)->name('workspace.companies.enter');
+    Route::get('/workspace/companies/{company}/branches/select', SelectBranchController::class)->name('workspace.branches.select');
+    Route::post('/workspace/companies/{company}/branches/{branch}/enter', EnterBranchController::class)
+        ->scopeBindings()
+        ->name('workspace.branches.enter');
+
+    Route::get('/owner/companies/{company}', OwnerDashboardController::class)->name('owner.dashboard');
+    Route::get('/owner/companies/{company}/subscription', OwnerSubscriptionController::class)->name('owner.subscription');
+    Route::get('/owner/companies/{company}/branches', OwnerBranchesController::class)->name('owner.branches');
+
+    Route::get('/branch/companies/{company}/branches/{branch}', BranchDashboardController::class)
+        ->scopeBindings()
+        ->name('branch.dashboard');
+    Route::get('/branch/companies/{company}/branches/{branch}/settings', BranchSettingsController::class)
+        ->scopeBindings()
+        ->name('branch.settings');
 
     // Company/branch come from route model binding (server-resolved), never request body
     // — RejectClientTenantIdentifiers forbids client-supplied company_id/branch_id.
