@@ -248,6 +248,7 @@
 | Acceptance    | Exactly one Owner after transfer; history immutable                                                                                                                                            |
 | DoD           | Transfer feature tests green                                                                                                                                                                   |
 | Rollback      | Compensating transfer only via new authorized transfer (no hard undo)                                                                                                                          |
+| **P2-WS-7 status** | **Complete** (22 November 2026) — `OwnershipTransferService` atomic transfer (company `lockForUpdate`); initiator Internal Super Admin or `internal.admin`; target existing active Customer only; `companies.owner_user_id` via `Company::withoutEvents`; previous Owner company access revoked; new Owner ordinary membership removed (designation replaces membership); `isCompanyOwner` designation-only; new Owner sessions revoked via `web_session_version`; previous Owner soft-deleted when zero memberships/ownerships remain (TB-DEL-002); immutable `ownership_transfers` + audit; HTTP `admin.companies.ownership-transfers.store` (no product UI — P2-WS-8 gate); `OwnershipTransferTest` 14 passed; full suite 257 passed / 2 skipped. Subscription tables not yet implemented — company commercial fields preserved. |
 
 ---
 
