@@ -30,6 +30,7 @@
 | ADR-010                          | Accounting posting                               | **Pending**                                                          | Phase 8 only                                             |
 | Email change verification polish | Admin email details                              | **Pending**                                                          | Polish only                                              |
 | AUD-CON-006 / TB-SUB-STATE-001   | Exact trial/grace/restricted entitlement matrix  | **Pending**                                                          | Subscription chrome detail                               |
+| PO-DEC-P2-REVIEW-001…006         | Final design review open items                   | **Pending** (recommendations only)                                   | See `docs/design/phase-2/FINAL_DESIGN_REVIEW.md` §6      |
 
 ---
 

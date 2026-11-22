@@ -79,14 +79,14 @@ Deferral means: no staging provision, no smoke execution, no claim of pass, **no
 
 ## 5. Explicitly unchanged
 
-| Item                                                           | Status                                                                           |
-| -------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| ADR-010                                                        | Pending                                                                          |
-| PO-P1-DEPS                                                     | Case-by-case                                                                     |
-| Admin email-change verification field details (DEC-009 polish) | Pending                                                                          |
-| Mobile portion of TB-AUTH-004 (cross-channel with mobile app)  | Deferred to a future phase after mobile auth ADR revision                        |
-| Formal approval of Owner/Branch/dashboard design artefacts     | Still required (artefacts Draft; baselines D11–D16 recorded; product UI blocked) |
-| Exact trial/grace/restricted subscription entitlements         | Pending (AUD-CON-006 / TB-SUB-STATE-001)                                         |
+| Item                                                           | Status                                                                                                                                                                                     |
+| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| ADR-010                                                        | Pending                                                                                                                                                                                    |
+| PO-P1-DEPS                                                     | Case-by-case                                                                                                                                                                               |
+| Admin email-change verification field details (DEC-009 polish) | Pending                                                                                                                                                                                    |
+| Mobile portion of TB-AUTH-004 (cross-channel with mobile app)  | Deferred to a future phase after mobile auth ADR revision                                                                                                                                  |
+| Formal approval of Owner/Branch/dashboard design artefacts     | Still required (artefacts Draft; baselines D11–D16 recorded; engineering readiness READY WITH DOCUMENTED EXCEPTIONS in `FINAL_DESIGN_REVIEW.md` — not formal approval; product UI blocked) |
+| Exact trial/grace/restricted subscription entitlements         | Pending (AUD-CON-006 / TB-SUB-STATE-001)                                                                                                                                                   |
 
 ---
 

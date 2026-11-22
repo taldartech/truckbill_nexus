@@ -71,6 +71,8 @@ flowchart TD
 | Suspended           | Branch Panel blocked; Owner billing and subscription information remains accessible                 | **Approved requirement** (Rules §15; PO-P2-DESIGN-SUB-UX)                                           |
 | Company deactivated | Branch Panel blocked; Owner Panel limited to approved company administration and billing visibility | **Approved requirement** (DEC-002; PO-P2-DESIGN-DEACT-VIEW)                                         |
 
+**Clarification (design handoff):** Do not invent a separate panel mode named “Expired.” End of paid period maps through Rules §15 grace → restriction / suspension behaviour. Exact restricted entitlements remain **Pending** (AUD-CON-006).
+
 Do **not** invent or infer exact trial/grace/restricted permissions beyond governing text. Keep unresolved cells out of implementation scope.
 
 ## 6. Resolved baseline decisions

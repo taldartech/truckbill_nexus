@@ -7,15 +7,17 @@
 
 ## 1. Gate distinction (mandatory)
 
-| Checkpoint                                                                                           | Status                                     |
-| ---------------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| Product Owner decisions approved (PO-P2-DESIGN-SWITCHER, LANDING, DEACT-VIEW, DASH, MODULES, SUB-UX) | **Done** — recorded 22 November 2026       |
-| Design artefacts updated to reflect those decisions                                                  | **Done** — this package revision           |
-| Cross-document consistency verified (switcher, Owner vs Member, deactivation distinctions)           | **Done** — engineering consistency pass    |
-| Remaining Pending decisions documented                                                               | **Yes** — see §3                           |
-| Formal design package / per-artefact approval                                                        | **Still required**                         |
-| P2-WS-8 product UI implementation                                                                    | **Blocked** until formal artefact approval |
-| P2-WS-9 certification                                                                                | **Not complete** / not started             |
+| Checkpoint                                                                                           | Status                                                     |
+| ---------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| Product Owner decisions approved (PO-P2-DESIGN-SWITCHER, LANDING, DEACT-VIEW, DASH, MODULES, SUB-UX) | **Done** — recorded 22 November 2026                       |
+| Design artefacts updated to reflect those decisions                                                  | **Done** — this package revision                           |
+| Cross-document consistency verified (switcher, Owner vs Member, deactivation distinctions)           | **Done** — engineering consistency pass + final review     |
+| Final design review completed                                                                        | **Done** — `FINAL_DESIGN_REVIEW.md` (22 November 2026)     |
+| Engineering readiness verdict                                                                        | **READY WITH DOCUMENTED EXCEPTIONS** — not formal approval |
+| Remaining Pending decisions documented                                                               | **Yes** — see §3 and `FINAL_DESIGN_REVIEW.md` §6           |
+| Formal design package / per-artefact approval                                                        | **Still required** — Product Owner sign-off below          |
+| P2-WS-8 product UI implementation                                                                    | **Blocked** until formal artefact approval                 |
+| P2-WS-9 certification                                                                                | **Not complete** / not started                             |
 
 ## 2. Package contents
 
@@ -34,14 +36,16 @@ Decision register: `docs/engineering/PHASE_2_PRODUCT_OWNER_DECISIONS.md` (D11–
 
 ## 3. Remaining Pending decisions (not invented)
 
-| ID                                        | Decision needed                                                          | Blocks                                                             |
-| ----------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------------ |
-| AUD-CON-006 / TB-SUB-STATE-001 / OQ-AX-01 | Exact trial, grace, and restricted entitlement permissions               | Detailed subscription chrome beyond PO-P2-DESIGN-SUB-UX principles |
-| OQ-WS-02                                  | Zero-access screen vs immediate logout                                   | Edge UX only                                                       |
-| OQ-WS-03                                  | Combined vs split company/branch selection screen                        | Selection UI layout                                                |
-| OQ-BP-02                                  | Branch Settings: prefs only vs limited company read-only links for Owner | Settings group                                                     |
-| OQ-BD-03                                  | Owner Panel control on mobile sticky header                              | Mobile chrome (optional)                                           |
-| —                                         | Persistence mechanism for MRU owned company                              | Implementation detail; behaviour rule already approved             |
+Full register with options and recommendations: `FINAL_DESIGN_REVIEW.md` §6 (PO-DEC-P2-REVIEW-001…006). Recommendations are **not** approvals.
+
+| ID                                        | Review ID            | Decision needed                                                          | Blocks formal A–G (with exceptions)? | Classification                          |
+| ----------------------------------------- | -------------------- | ------------------------------------------------------------------------ | ------------------------------------ | --------------------------------------- |
+| AUD-CON-006 / TB-SUB-STATE-001 / OQ-AX-01 | PO-DEC-P2-REVIEW-001 | Exact trial, grace, and restricted entitlement permissions               | No if §5.1 exception accepted        | Product Owner decision required         |
+| OQ-WS-02                                  | PO-DEC-P2-REVIEW-002 | Zero-access screen vs immediate logout                                   | No                                   | Product Owner decision / interpretation |
+| OQ-WS-03                                  | PO-DEC-P2-REVIEW-003 | Combined vs split company/branch selection screen                        | No                                   | Product Owner decision / interpretation |
+| OQ-BP-02                                  | PO-DEC-P2-REVIEW-004 | Branch Settings: prefs only vs limited company read-only links for Owner | No                                   | Product Owner decision / interpretation |
+| OQ-BD-03                                  | PO-DEC-P2-REVIEW-005 | Owner Panel control on mobile sticky header                              | No                                   | Design interpretation                   |
+| —                                         | PO-DEC-P2-REVIEW-006 | Persistence mechanism for MRU owned company                              | No                                   | Engineering implementation detail       |
 
 ## 4. Per-artefact review records
 
@@ -140,14 +144,15 @@ Complete one block per artefact. Status values: `Draft` | `Changes requested` | 
 
 ## 5. Package-level gate statement
 
-| Item                            | Status                                                |
-| ------------------------------- | ----------------------------------------------------- |
-| Baseline PO decisions (D11–D16) | **APPROVED**                                          |
-| Artefacts produced / updated    | Yes — Draft reflecting D11–D16                        |
-| Formal PO artefact approval     | **Not Approved** — awaiting sign-off below            |
-| P2-WS-8 product UI              | **Blocked**                                           |
-| P2-WS-9 certification           | **Not complete**                                      |
-| Backend non-UI work             | May continue under Phase 2 plan without these screens |
+| Item                            | Status                                                                                   |
+| ------------------------------- | ---------------------------------------------------------------------------------------- |
+| Baseline PO decisions (D11–D16) | **APPROVED**                                                                             |
+| Artefacts produced / updated    | Yes — Draft reflecting D11–D16                                                           |
+| Final design review             | **READY WITH DOCUMENTED EXCEPTIONS** — see `FINAL_DESIGN_REVIEW.md`                      |
+| Formal PO artefact approval     | **Not Approved** — awaiting sign-off below (accept exceptions in review §5 if approving) |
+| P2-WS-8 product UI              | **Blocked**                                                                              |
+| P2-WS-9 certification           | **Not complete**                                                                         |
+| Backend non-UI work             | May continue under Phase 2 plan without these screens                                    |
 
 ## 6. Sign-off summary (package)
 

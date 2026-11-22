@@ -2,13 +2,14 @@
 
 **Status:** Draft — Awaiting Formal Design Package Approval  
 **Prepared / revised:** 22 November 2026  
+**Final review:** `FINAL_DESIGN_REVIEW.md` — verdict **READY WITH DOCUMENTED EXCEPTIONS** (not formal approval)  
 **Scope:** Design and documentation only. No product UI or backend implementation is authorized by this package.
 
 ## Purpose
 
 This package prepares the Design Deliverables Gate artefacts required before P2-WS-8 product UI implementation (`docs/engineering/PHASE_2_DESIGN_DELIVERABLES.md`, Design.md §14, PO-P2-DESIGN).
 
-**PO-P2-DESIGN** approved the _requirement_ to prepare and review these artefacts. Baseline workspace decisions **PO-P2-DESIGN-SWITCHER**, **LANDING**, **DEACT-VIEW**, **DASH**, **MODULES**, and **SUB-UX** are **APPROVED** and incorporated here. Formal per-artefact design approval is **still required** before product UI. Sign off via `DESIGN_REVIEW_CHECKLIST.md`.
+**PO-P2-DESIGN** approved the _requirement_ to prepare and review these artefacts. Baseline workspace decisions **PO-P2-DESIGN-SWITCHER**, **LANDING**, **DEACT-VIEW**, **DASH**, **MODULES**, and **SUB-UX** are **APPROVED** and incorporated here. Formal per-artefact design approval is **still required** before product UI. Sign off via `DESIGN_REVIEW_CHECKLIST.md` after reviewing `FINAL_DESIGN_REVIEW.md`.
 
 ## Artefacts
 
@@ -21,6 +22,7 @@ This package prepares the Design Deliverables Gate artefacts required before P2-
 | E   | Branch Dashboard key-screen design    | `BRANCH_DASHBOARD_SPEC.md`    |
 | F   | Access restriction / state matrix     | `ACCESS_STATE_MATRIX.md`      |
 | G   | Formal PO design approval package     | `DESIGN_REVIEW_CHECKLIST.md`  |
+| —   | Final design review (readiness)       | `FINAL_DESIGN_REVIEW.md`      |
 
 ## Label legend
 
@@ -65,6 +67,13 @@ Technical shell (layouts, tokens, logo, empty states) is foundation only — not
 
 Full text: `docs/engineering/PHASE_2_PRODUCT_OWNER_DECISIONS.md` D11–D16.
 
+## Explicit out of scope (this package)
+
+- Internal Team product IA / landing (Phase 0 Internal Team IA remains Not Started)
+- Broker / OwnFleet / Partload operational screens (later phases)
+- Exact trial / grace / restricted entitlement matrices (AUD-CON-006 / TB-SUB-STATE-001 Pending)
+- Subscription checkout, proration UI, and Phase 3 billing delivery
+
 ## Implementation gate
 
-P2-WS-8 product React pages, Inertia controllers, dashboard queries and product navigation **must not start** until the relevant artefacts are formally Approved in `DESIGN_REVIEW_CHECKLIST.md`. Baseline decision approval alone is insufficient.
+P2-WS-8 product React pages, Inertia controllers, dashboard queries and product navigation **must not start** until the relevant artefacts are formally Approved in `DESIGN_REVIEW_CHECKLIST.md`. Baseline decision approval alone is insufficient. Final review readiness is not formal approval.
