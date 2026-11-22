@@ -2,7 +2,7 @@
 
 **Date:** 23 November 2026  
 **Initial HEAD:** `06ead4bd09730741e3c406ce90e128b8aeccbae7`  
-**Stage 0 tip:** _(recorded after docs commit)_  
+**Stage 0 tip:** _`594739fb7f7954b90724bb1d8f5f61cefb097de4`_  
 **No push · No deploy · No live Razorpay · No invented PO approvals**
 
 ---
