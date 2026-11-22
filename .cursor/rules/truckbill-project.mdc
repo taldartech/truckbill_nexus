@@ -46,6 +46,7 @@ Follow `Architecture.md` for the complete architecture direction.
 - Test meaningful behavior changes.
 - Update implementation memory and requirements traceability.
 - Record significant architectural decisions as ADRs.
+- **Clean Code (mandatory):** Follow `.cursor/rules/truckbill-clean-code.mdc` and `docs/engineering/CODING_STANDARDS.md` on every task. Workflow: Understand → Inspect Existing Code → Design Minimally → Implement → **Review Clean Code** → Test → Refactor Safely → Document → Format → Validate → Commit → Verify. Clean Code review is required before every local commit.
 
 ## Documentation
 Preserve governing document intent; do not silently invent requirements.
