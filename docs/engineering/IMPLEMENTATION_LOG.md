@@ -78,4 +78,4 @@ Dated workstream records with verified local commit SHAs. Living product Memory 
 - Removed orphan `resources/js/components/documents/document-drawer.tsx`
 - Deferred: `company_record` document UI (Owner settings reserved); Phase 4 Enquiry UI
 - Tests: TechnicalUiShellTest extended (9 passed)
-- Commit: recorded after validation
+- Commit: `bb05267bdbfb81e5f174efa8d7fe314250026eba`
