@@ -79,3 +79,13 @@ Dated workstream records with verified local commit SHAs. Living product Memory 
 - Deferred: `company_record` document UI (Owner settings reserved); Phase 4 Enquiry UI
 - Tests: TechnicalUiShellTest extended (9 passed)
 - Commit: `bb05267bdbfb81e5f174efa8d7fe314250026eba`
+
+## 2026-11-23 — UI design polish + local demo workspace
+
+- Starting HEAD: `124072f8270afc138927a3ac0ccde17b6f4b68d1`
+- `LocalDemoWorkspaceSeeder` (local/testing only; env password; dual company; demo roles; masters; draft sub; enquiries)
+- Auth shell brand polish; Phase 4 Enquiry HTML prototypes; design docs corrected to `enquiry.edit`
+- Tests: LocalDemoWorkspaceSeederTest
+- Docs: `LOCAL_DEMO_DATA_SETUP.md`, `UI_DESIGN_AND_INTEGRATION_REPORT.md`, `UI_DEMO_DATA_CERTIFICATION_REPORT.md`
+- Verdict: UI & DEMO DATA COMPLETE WITH DOCUMENTED GATES
+- Commits: recorded after validation

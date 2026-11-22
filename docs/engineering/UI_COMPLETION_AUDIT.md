@@ -17,7 +17,7 @@
 | 4 A–B | Enquiry foundations + backend             | Backend complete               | DEC-003 goods soft-delete **fixed** this task     | Product Enquiry UI until `PO-P4-DESIGN-FORMAL`                           |
 | 4 C+  | Not started                               | —                              | —                                                 | Not authorized                                                           |
 
-**Conclusion:** Authorized Phase 1–3 product UI from prior formal approvals is present and wired. This backfill does **not** invent new Phase 2/3 screens. Phase 4 product UI remains gated.
+**Conclusion:** Authorized Phase 1–3 product UI from prior formal approvals is present and wired. Auth shell polish + local demo seeder added (23 Nov follow-on). Phase 4 product UI remains gated; visual prototypes are review-only.
 
 ---
 
