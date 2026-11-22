@@ -156,3 +156,7 @@ Module operations entitlement cells in AUD-CON-006 remain **PROPOSED** — Phase
 Formal ask: `PHASE_4_AUTHORIZATION_REQUEST.md`.
 
 **Verdict:** PO-P4-AUTH and scoped decisions recorded. Remaining Pending: **PO-P4-CNV-CARDINALITY**, **PO-P4-DESIGN-FORMAL**. See `PHASE_4_AUTHORIZATION_RECORD.md` and `PHASE_4_CONVERSION_CARDINALITY_DECISION_PROPOSAL.md`.
+
+## Batch B authorization
+
+**PO-P4-BATCH-B-AUTH — APPROVED** (23 November 2026). Backend webhook + manual enquiry implemented; no UI.

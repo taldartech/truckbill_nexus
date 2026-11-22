@@ -108,3 +108,15 @@ Company-scoped hashed bearer tokens; create/rotate/revoke; idempotent processing
 - Execution plan: `PHASE_4_EXECUTION_PLAN.md`
 - Cardinality proposal: `PHASE_4_CONVERSION_CARDINALITY_DECISION_PROPOSAL.md`
 - Batch A certification: `PHASE_4_BATCH_A_CERTIFICATION_REPORT.md` (after implementation)
+
+---
+
+## 7. Batch B authorization (23 November 2026)
+
+| Decision ID            | Status       | Scope                                                                                                                                                                                    |
+| ---------------------- | ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **PO-P4-BATCH-B-AUTH** | **APPROVED** | Phase 4 Batch B backend: website webhook V1, manual enquiry create/edit, goods persistence, numbering, durable dedup, idempotency, replay, rate limit, audit/outbox, Pest, certification |
+
+**Does not authorize:** product UI, Batch C+, quotations, conversion, LR ops, Phase 5–7, live payments, push/deploy.
+
+Remaining Pending unchanged: PO-P4-CNV-CARDINALITY, PO-P4-DESIGN-FORMAL, Phase 3 EX-01…EX-07.
