@@ -42,7 +42,8 @@ Party/Vehicle/Bank/Station/other masters; GST/TDS masters; common document servi
 ## Phase 4 — Enquiry and unified LR
 
 Website webhook, manual enquiry, assignment, follow-up, quotation broadcast/entry/selection, whole conversion, unified LR, goods/EWB/numbering. Exit: duplicate conversion prevention, scope, numbering concurrency, edit/cancel/delete dependency tests.  
-**Authorization status:** **Not authorized** for implementation. Requires a separate Product Owner Phase 4 authorization decision.
+**Kickoff package (22 November 2026):** Planning artefacts prepared under `docs/implementation/PHASE_4_*.md` (execution plan, traceability, architecture, UI draft, test strategy, PO decision package, authorization request). Kickoff tip `193e6dc68b2509e90de4aa2990b1136260e80746`.  
+**Authorization status:** **Not authorized** for implementation. **PO-P4-AUTH** remains open. Design draft is **not** formally approved. No application code or migrations until explicit Product Owner authorization.
 
 ## Phase 5 — OwnFleet operations
 
