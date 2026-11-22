@@ -1,0 +1,217 @@
+<?php
+
+namespace App\Http\Controllers\Branch;
+
+use App\Domains\Company\CompanyAccessService;
+use App\Domains\Document\DocumentAttachmentService;
+use App\Domains\Document\Exceptions\DocumentDomainException;
+use App\Domains\Master\Exceptions\MasterDomainException;
+use App\Domains\Rbac\PermissionAuthorizer;
+use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
+use App\Http\Controllers\Controller;
+use App\Models\Branch;
+use App\Models\Company;
+use App\Models\DocumentAttachment;
+use App\Models\User;
+use App\Support\Files\Exceptions\FileNotAvailableException;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+
+class DocumentAttachmentController extends Controller
+{
+    use AuthorizesBranchPanel;
+
+    public const MAX_UPLOAD_BYTES = 2_097_152;
+
+    public function __construct(
+        private readonly CompanyAccessService $access,
+        private readonly PermissionAuthorizer $authorizer,
+        private readonly DocumentAttachmentService $documents,
+    ) {}
+
+    public function index(Request $request, Company $company, Branch $branch, string $parentType, string $parentId): Response
+    {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $permissions = $this->masterPermissions($actor, $company, $branch, $this->access, $this->authorizer);
+
+        $this->assertParentType($parentType);
+
+        try {
+            $attachments = $this->documents->listForParent(
+                $actor,
+                $company,
+                $branch,
+                $parentType,
+                $parentId,
+                currentOnly: false,
+            );
+            $usage = $this->documents->storageUsage($company);
+        } catch (MasterDomainException|DocumentDomainException $e) {
+            abort(403, $e->getMessage());
+        }
+
+        $attachments->load('storedFile');
+
+        return Inertia::render('branch/masters/documents/index', [
+            'company' => $this->companyPayload($company),
+            'branch' => $this->branchPayload($branch),
+            'permissions' => $permissions,
+            'parent' => [
+                'type' => $parentType,
+                'id' => $parentId,
+            ],
+            'storage' => $usage,
+            'max_upload_bytes' => self::MAX_UPLOAD_BYTES,
+            'attachments' => $attachments->map(fn (DocumentAttachment $attachment): array => $this->presentAttachment($attachment))->values()->all(),
+            'links' => [
+                'hub' => route('branch.masters.index', [$company, $branch]),
+                'upload' => route('branch.documents.store', [
+                    'company' => $company,
+                    'branch' => $branch,
+                    'parentType' => $parentType,
+                    'parentId' => $parentId,
+                ]),
+            ],
+        ]);
+    }
+
+    public function store(Request $request, Company $company, Branch $branch, string $parentType, string $parentId): RedirectResponse
+    {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertParentType($parentType);
+
+        $validated = $request->validate([
+            'file' => ['required', 'file', 'max:2048', 'mimes:pdf,jpg,jpeg,png,webp'],
+            'document_type' => ['nullable', 'string', 'max:100'],
+            'label' => ['nullable', 'string', 'max:255'],
+            'remark' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        try {
+            $this->documents->uploadAndAttach(
+                $actor,
+                $company,
+                $branch,
+                $parentType,
+                $parentId,
+                $validated['file'],
+                $validated['document_type'] ?? null,
+                $validated['label'] ?? null,
+                $validated['remark'] ?? 'Upload and attach document',
+            );
+        } catch (MasterDomainException|DocumentDomainException|FileNotAvailableException $e) {
+            abort(403, $e->getMessage());
+        }
+
+        return back()->with('success', 'Document uploaded.');
+    }
+
+    public function replace(Request $request, Company $company, Branch $branch, DocumentAttachment $attachment): RedirectResponse
+    {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertAttachment($company, $attachment);
+
+        $validated = $request->validate([
+            'file' => ['required', 'file', 'max:2048', 'mimes:pdf,jpg,jpeg,png,webp'],
+            'remark' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        try {
+            $this->documents->replace(
+                $actor,
+                $attachment,
+                $validated['file'],
+                $validated['remark'] ?? 'Replace document',
+            );
+        } catch (MasterDomainException|DocumentDomainException|FileNotAvailableException $e) {
+            abort(403, $e->getMessage());
+        }
+
+        return back()->with('success', 'Document replaced.');
+    }
+
+    public function download(Request $request, Company $company, Branch $branch, DocumentAttachment $attachment): StreamedResponse
+    {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertAttachment($company, $attachment);
+
+        try {
+            return $this->documents->download($actor, $attachment);
+        } catch (MasterDomainException|DocumentDomainException|FileNotAvailableException $e) {
+            abort(403, $e->getMessage());
+        }
+    }
+
+    public function destroy(Request $request, Company $company, Branch $branch, DocumentAttachment $attachment): RedirectResponse
+    {
+        $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertAttachment($company, $attachment);
+
+        /** @var User $actor */
+        $actor = $request->user();
+
+        $validated = $request->validate([
+            'remark' => ['required', 'string', 'max:1000'],
+        ]);
+
+        try {
+            $this->documents->softDelete($actor, $attachment, $validated['remark']);
+        } catch (MasterDomainException|DocumentDomainException $e) {
+            abort(403, $e->getMessage());
+        }
+
+        return back()->with('success', 'Document deleted.');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function presentAttachment(DocumentAttachment $attachment): array
+    {
+        $file = $attachment->storedFile;
+
+        return [
+            'id' => $attachment->id,
+            'document_type' => $attachment->document_type,
+            'label' => $attachment->label,
+            'version' => $attachment->version,
+            'is_current' => (bool) $attachment->is_current,
+            'counts_toward_storage' => (bool) $attachment->counts_toward_storage,
+            'supersedes_attachment_id' => $attachment->supersedes_attachment_id,
+            'created_at' => $attachment->created_at?->toIso8601String(),
+            'file' => $file === null ? null : [
+                'id' => $file->id,
+                'original_name' => $file->original_name,
+                'mime_type' => $file->mime_type,
+                'size_bytes' => $file->size_bytes,
+                'scan_status' => $file->scan_status,
+                'is_downloadable' => $file->isDownloadable(),
+                'available_at' => $file->available_at?->toIso8601String(),
+            ],
+            'download_url' => $file !== null && $file->isDownloadable()
+                ? route('branch.documents.download', [
+                    'company' => $attachment->company_id,
+                    'branch' => $attachment->branch_id ?? request()->route('branch'),
+                    'attachment' => $attachment->id,
+                ])
+                : null,
+        ];
+    }
+
+    private function assertParentType(string $parentType): void
+    {
+        if (! in_array($parentType, ['party', 'vehicle', 'bank_cash_account', 'station', 'company_record'], true)) {
+            abort(404);
+        }
+    }
+
+    private function assertAttachment(Company $company, DocumentAttachment $attachment): void
+    {
+        if ($attachment->company_id !== $company->id) {
+            abort(404);
+        }
+    }
+}

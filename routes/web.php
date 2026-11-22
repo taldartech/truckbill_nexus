@@ -5,9 +5,15 @@ use App\Http\Controllers\Admin\IdentityLifecycleController;
 use App\Http\Controllers\Admin\InternalUserController;
 use App\Http\Controllers\Admin\InvitationController;
 use App\Http\Controllers\Admin\OwnershipTransferController;
+use App\Http\Controllers\Branch\BankCashAccountController;
 use App\Http\Controllers\Branch\BranchDashboardController;
 use App\Http\Controllers\Branch\BranchSettingsController;
+use App\Http\Controllers\Branch\CatalogueController;
+use App\Http\Controllers\Branch\DocumentAttachmentController;
+use App\Http\Controllers\Branch\MastersHubController;
 use App\Http\Controllers\Branch\PartyController;
+use App\Http\Controllers\Branch\StationController;
+use App\Http\Controllers\Branch\VehicleController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\InvitationAcceptanceController;
 use App\Http\Controllers\Owner\OwnerAuditController;
@@ -48,7 +54,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('workspace.branches.enter');
 
     Route::get('/owner/companies/{company}', OwnerDashboardController::class)->name('owner.dashboard');
-    Route::get('/owner/companies/{company}/subscription', OwnerSubscriptionController::class)->name('owner.subscription');
+    Route::get('/owner/companies/{company}/subscription', [OwnerSubscriptionController::class, 'overview'])->name('owner.subscription');
+    Route::get('/owner/companies/{company}/subscription/catalogue', [OwnerSubscriptionController::class, 'catalogue'])->name('owner.subscription.catalogue');
+    Route::get('/owner/companies/{company}/subscription/drafts', [OwnerSubscriptionController::class, 'drafts'])->name('owner.subscription.drafts');
+    Route::post('/owner/companies/{company}/subscription/drafts', [OwnerSubscriptionController::class, 'storeDraft'])->name('owner.subscription.drafts.store');
+    Route::get('/owner/companies/{company}/subscription/credits', [OwnerSubscriptionController::class, 'credits'])->name('owner.subscription.credits');
     Route::get('/owner/companies/{company}/branches', OwnerBranchesController::class)->name('owner.branches');
 
     Route::get('/owner/companies/{company}/users', [OwnerUsersController::class, 'index'])->name('owner.users');
@@ -83,24 +93,98 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->scopeBindings()
         ->name('branch.settings');
 
+    Route::get('/branch/companies/{company}/branches/{branch}/masters', MastersHubController::class)
+        ->scopeBindings()
+        ->name('branch.masters.index');
+
     Route::get('/branch/companies/{company}/branches/{branch}/parties', [PartyController::class, 'index'])
-        ->scopeBindings()
         ->name('branch.parties.index');
+    Route::get('/branch/companies/{company}/branches/{branch}/parties/create', [PartyController::class, 'create'])
+        ->name('branch.parties.create');
     Route::post('/branch/companies/{company}/branches/{branch}/parties', [PartyController::class, 'store'])
-        ->scopeBindings()
         ->name('branch.parties.store');
+    Route::get('/branch/companies/{company}/branches/{branch}/parties/{party}', [PartyController::class, 'show'])
+        ->name('branch.parties.show');
+    Route::get('/branch/companies/{company}/branches/{branch}/parties/{party}/edit', [PartyController::class, 'edit'])
+        ->name('branch.parties.edit');
     Route::patch('/branch/companies/{company}/branches/{branch}/parties/{party}', [PartyController::class, 'update'])
-        ->scopeBindings()
         ->name('branch.parties.update');
     Route::post('/branch/companies/{company}/branches/{branch}/parties/{party}/roles', [PartyController::class, 'assignRole'])
-        ->scopeBindings()
         ->name('branch.parties.roles.assign');
     Route::post('/branch/companies/{company}/branches/{branch}/parties/{party}/roles/{partyRole}/remove', [PartyController::class, 'removeRole'])
-        ->scopeBindings()
         ->name('branch.parties.roles.remove');
     Route::delete('/branch/companies/{company}/branches/{branch}/parties/{party}', [PartyController::class, 'destroy'])
-        ->scopeBindings()
         ->name('branch.parties.destroy');
+
+    Route::get('/branch/companies/{company}/branches/{branch}/vehicles', [VehicleController::class, 'index'])
+        ->name('branch.vehicles.index');
+    Route::get('/branch/companies/{company}/branches/{branch}/vehicles/create', [VehicleController::class, 'create'])
+        ->name('branch.vehicles.create');
+    Route::post('/branch/companies/{company}/branches/{branch}/vehicles', [VehicleController::class, 'store'])
+        ->name('branch.vehicles.store');
+    Route::get('/branch/companies/{company}/branches/{branch}/vehicles/{vehicle}', [VehicleController::class, 'show'])
+        ->name('branch.vehicles.show');
+    Route::get('/branch/companies/{company}/branches/{branch}/vehicles/{vehicle}/edit', [VehicleController::class, 'edit'])
+        ->name('branch.vehicles.edit');
+    Route::patch('/branch/companies/{company}/branches/{branch}/vehicles/{vehicle}', [VehicleController::class, 'update'])
+        ->name('branch.vehicles.update');
+    Route::delete('/branch/companies/{company}/branches/{branch}/vehicles/{vehicle}', [VehicleController::class, 'destroy'])
+        ->name('branch.vehicles.destroy');
+
+    Route::get('/branch/companies/{company}/branches/{branch}/bank-cash', [BankCashAccountController::class, 'index'])
+        ->name('branch.bank-cash.index');
+    Route::get('/branch/companies/{company}/branches/{branch}/bank-cash/create', [BankCashAccountController::class, 'create'])
+        ->name('branch.bank-cash.create');
+    Route::post('/branch/companies/{company}/branches/{branch}/bank-cash', [BankCashAccountController::class, 'store'])
+        ->name('branch.bank-cash.store');
+    Route::get('/branch/companies/{company}/branches/{branch}/bank-cash/{bankCashAccount}', [BankCashAccountController::class, 'show'])
+        ->name('branch.bank-cash.show');
+    Route::get('/branch/companies/{company}/branches/{branch}/bank-cash/{bankCashAccount}/edit', [BankCashAccountController::class, 'edit'])
+        ->name('branch.bank-cash.edit');
+    Route::patch('/branch/companies/{company}/branches/{branch}/bank-cash/{bankCashAccount}', [BankCashAccountController::class, 'update'])
+        ->name('branch.bank-cash.update');
+    Route::delete('/branch/companies/{company}/branches/{branch}/bank-cash/{bankCashAccount}', [BankCashAccountController::class, 'destroy'])
+        ->name('branch.bank-cash.destroy');
+
+    Route::get('/branch/companies/{company}/branches/{branch}/stations', [StationController::class, 'index'])
+        ->name('branch.stations.index');
+    Route::get('/branch/companies/{company}/branches/{branch}/stations/create', [StationController::class, 'create'])
+        ->name('branch.stations.create');
+    Route::post('/branch/companies/{company}/branches/{branch}/stations', [StationController::class, 'store'])
+        ->name('branch.stations.store');
+    Route::get('/branch/companies/{company}/branches/{branch}/stations/{station}', [StationController::class, 'show'])
+        ->name('branch.stations.show');
+    Route::get('/branch/companies/{company}/branches/{branch}/stations/{station}/edit', [StationController::class, 'edit'])
+        ->name('branch.stations.edit');
+    Route::patch('/branch/companies/{company}/branches/{branch}/stations/{station}', [StationController::class, 'update'])
+        ->name('branch.stations.update');
+    Route::delete('/branch/companies/{company}/branches/{branch}/stations/{station}', [StationController::class, 'destroy'])
+        ->name('branch.stations.destroy');
+    Route::post('/branch/companies/{company}/branches/{branch}/stations/{station}/default-transporter', [StationController::class, 'setDefaultTransporter'])
+        ->name('branch.stations.default-transporter');
+
+    Route::get('/branch/companies/{company}/branches/{branch}/catalogues', [CatalogueController::class, 'index'])
+        ->name('branch.catalogues.index');
+    Route::post('/branch/companies/{company}/branches/{branch}/catalogues', [CatalogueController::class, 'store'])
+        ->name('branch.catalogues.store');
+    Route::patch('/branch/companies/{company}/branches/{branch}/catalogues/{catalogueItem}', [CatalogueController::class, 'update'])
+        ->name('branch.catalogues.update');
+    Route::delete('/branch/companies/{company}/branches/{branch}/catalogues/{catalogueItem}', [CatalogueController::class, 'destroy'])
+        ->name('branch.catalogues.destroy');
+
+    // Attachment is company-scoped in the controller; not a nested Branch relation.
+    Route::post('/branch/companies/{company}/branches/{branch}/documents/attachments/{attachment}/replace', [DocumentAttachmentController::class, 'replace'])
+        ->name('branch.documents.replace');
+    Route::get('/branch/companies/{company}/branches/{branch}/documents/attachments/{attachment}/download', [DocumentAttachmentController::class, 'download'])
+        ->name('branch.documents.download');
+    Route::delete('/branch/companies/{company}/branches/{branch}/documents/attachments/{attachment}', [DocumentAttachmentController::class, 'destroy'])
+        ->name('branch.documents.destroy');
+    Route::get('/branch/companies/{company}/branches/{branch}/documents/{parentType}/{parentId}', [DocumentAttachmentController::class, 'index'])
+        ->where('parentType', 'party|vehicle|bank_cash_account|station|company_record')
+        ->name('branch.documents.index');
+    Route::post('/branch/companies/{company}/branches/{branch}/documents/{parentType}/{parentId}', [DocumentAttachmentController::class, 'store'])
+        ->where('parentType', 'party|vehicle|bank_cash_account|station|company_record')
+        ->name('branch.documents.store');
 
     // Company/branch come from route model binding (server-resolved), never request body
     // — RejectClientTenantIdentifiers forbids client-supplied company_id/branch_id.

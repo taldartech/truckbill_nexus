@@ -5,10 +5,13 @@ namespace App\Models;
 use App\Domains\Subscription\Exceptions\SubscriptionDomainException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 /**
  * Immutable contract snapshot (Rules §15). Updates and deletes are rejected.
+ *
+ * @property Carbon|null $created_at
  */
 class CompanySubscriptionSnapshot extends Model
 {

@@ -67,6 +67,11 @@ export function AppSidebar() {
                             icon: LayoutGrid,
                         },
                         {
+                            title: 'Masters',
+                            href: `/branch/companies/${activeCompanyId}/branches/${activeBranchId}/masters`,
+                            icon: LayoutGrid,
+                        },
+                        {
                             title: 'Branch Settings',
                             href: `/branch/companies/${activeCompanyId}/branches/${activeBranchId}/settings`,
                             icon: LayoutGrid,

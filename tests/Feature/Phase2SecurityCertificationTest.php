@@ -343,7 +343,10 @@ test('deactivated company blocks branch panel and owner write routes while audit
     $this->get(route('owner.audit', ['company' => $company]))->assertOk();
     $this->get(route('owner.subscription', ['company' => $company]))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->where('subscription.actions_allowed', false));
+        ->assertInertia(fn ($page) => $page
+            ->component('owner/subscription/overview')
+            ->where('canManage', false)
+            ->has('entitlement_note'));
 });
 
 test('member cannot escalate to owner panel or assign customer roles', function () {

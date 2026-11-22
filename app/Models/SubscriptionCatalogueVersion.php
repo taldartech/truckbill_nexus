@@ -6,8 +6,12 @@ use Database\Factories\SubscriptionCatalogueVersionFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
+/**
+ * @property Carbon|null $effective_from
+ */
 class SubscriptionCatalogueVersion extends Model
 {
     /** @use HasFactory<SubscriptionCatalogueVersionFactory> */

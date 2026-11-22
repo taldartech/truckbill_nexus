@@ -222,9 +222,9 @@ test('subscription presentation does not invent entitlement actions', function (
     $this->get(route('owner.subscription', ['company' => $company]))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('owner/subscription')
-            ->where('subscription.actions_allowed', false)
-            ->where('subscription.presentation', 'unavailable'));
+            ->component('owner/subscription/overview')
+            ->has('entitlement_note')
+            ->where('subscription', null));
 });
 
 test('owner dashboard exposes Region B management entry points', function () {
