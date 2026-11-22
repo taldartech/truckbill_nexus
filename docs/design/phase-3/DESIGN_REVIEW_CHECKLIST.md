@@ -1,7 +1,7 @@
 # I — Phase 3 Design Review Checklist
 
 **Package status:** READY FOR PRODUCT OWNER DESIGN REVIEW  
-**Formal approval:** _Not granted_ — awaiting Product Owner sign-off  
+**Formal approval:** **APPROVED** (PO-P3-DESIGN-FORMAL, 22 November 2026) — awaiting Product Owner sign-off  
 **Production UI:** Remains blocked until formal design approval + separate implementation authorization
 
 ## Review items
@@ -50,3 +50,7 @@ Independent cloud-browser findings QA-01…QA-09 corrected in static prototypes.
 | 12  | Accept corrected prototypes as visual baseline for formal design approval | ☐ Approve / ☐ Approve with exceptions / ☐ Revise |
 
 **Formal approval still Pending Product Owner sign-off.**
+
+## UI implementation authorization
+
+**PO-P3-UI-AUTH APPROVED** — see `docs/engineering/PHASE_3_DESIGN_AND_UI_AUTHORIZATION.md`.

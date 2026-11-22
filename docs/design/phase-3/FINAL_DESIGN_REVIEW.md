@@ -2,7 +2,7 @@
 
 **Verdict:** **READY FOR FORMAL PRODUCT OWNER DESIGN APPROVAL** (engineering recommendation; not auto-approved)  
 **Date:** 22 November 2026  
-**Not formally approved.** Production product screens must not be integrated until the Product Owner approves this package.
+**Formally approved** — PO-P3-DESIGN-FORMAL (22 November 2026). Production UI authorized under PO-P3-UI-AUTH.
 
 ## Summary
 
