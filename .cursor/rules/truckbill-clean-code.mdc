@@ -1,0 +1,49 @@
+---
+description: Mandatory Clean Code, SOLID, DRY, KISS, Laravel, React, PostgreSQL, maintainability and code review standards for TruckBill
+alwaysApply: true
+---
+
+# TruckBill Clean Code (Mandatory)
+
+Detailed standards: `docs/engineering/CODING_STANDARDS.md`.  
+This rule applies to **every** agent task (implementation, maintenance, refactor, bug-fix), every module and phase.
+
+## Permanent workflow
+
+**Understand → Inspect Existing Code → Design Minimally → Implement → Review Clean Code → Test → Refactor Safely → Document → Format → Validate → Commit → Verify**
+
+Inspect existing implementations before creating new classes or services. Clean Code review is **mandatory before every local commit**. Absolute **no-push** policy remains.
+
+## Principles (non-negotiable)
+
+- **SOLID** — SRP; extend via focused contracts when needed; honour interfaces; small interfaces; DIP at boundaries. No unnecessary interfaces.
+- **DRY** — One implementation of each business rule; reuse domain/shared services. No premature abstraction of differently-meaning code.
+- **KISS** — Simplest design that meets approved requirements.
+- **YAGNI** — No speculative features; respect phase boundaries; extension seams only where architecture requires.
+- **Readability** — Clear names, cohesive methods, explicit types, minimal hidden side effects.
+
+## Laravel / PHP
+
+- Controllers: authorize/context → validate → domain service → response. No heavy domain logic in controllers.
+- Domain rules stay in bounded contexts; cross-context via approved services/events.
+- Models: persistence/relationships/casts — not oversized app services.
+- Server-side validation always; Form Requests / project conventions.
+- Explicit transactions for atomic multi-writes (audit, idempotency, locking).
+- **Exceptions:** never `catch (Throwable)` to rewrite unrelated failures as business conflicts. Catch specific expected exceptions (e.g. unique constraint races). Preserve causes; no secret leakage.
+- Strict types; enums/DTOs when they clarify. No new Composer packages without PO approval.
+
+## React / TypeScript (when UI authorized)
+
+Strict TS, reusable components, typed props, server-authoritative business rules, accessible loading/error states. No unjustified `any`, giant pages, or duplicated backend calculations. Follow existing Inertia/design conventions. Do not implement gated UI without the applicable design authorization.
+
+## PostgreSQL
+
+Tenant-safe FKs/relationships; precise numerics; constraints for critical invariants; indexes; safe concurrency; no avoidable N+1. Prefer application services over opaque DB procedures. Forward migrations — do not blindly rewrite applied migrations. Never destructive migrate/seed against production/shared data DBs.
+
+## Pre-commit checklist
+
+Review the task diff for: SOLID, DRY, KISS, YAGNI, naming, separation of concerns, exceptions, transactions/concurrency, tenant isolation, authz/security, testability, architecture fit. Remove self-introduced duplication/dead code/accidental complexity. No large unrelated refactors; no behaviour change for style alone.
+
+## Compatibility
+
+Does not override governing PRD/Rules/Architecture/ADRs or Product Owner decisions. Prefer existing project patterns when they already satisfy these standards.

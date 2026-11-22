@@ -13,6 +13,7 @@ use App\Domains\Numbering\DocumentNumberAllocator;
 use App\Domains\Numbering\Enums\DocumentNumberScopeType;
 use App\Domains\Numbering\Enums\DocumentNumberType;
 use App\Domains\Numbering\Exceptions\DocumentNumberConflictException;
+use App\Domains\Numbering\Exceptions\DocumentNumberValidationException;
 use App\Domains\Rbac\PermissionCodes;
 use App\Models\Branch;
 use App\Models\Company;
@@ -272,7 +273,9 @@ test('webhook credentials store hashed tokens and support revoke and rotation', 
     $rotated = $service->rotate($existing['credential'], revokeExistingImmediately: true);
     expect($service->findUsableByPlainToken($existing['plain_token']))->toBeNull()
         ->and($service->findUsableByPlainToken($rotated['plain_token']))->not->toBeNull()
-        ->and($rotated['credential']->replaces_credential_id)->toBe($existing['credential']->id);
+        ->and($rotated['credential']->replaces_credential_id)->toBe($existing['credential']->id)
+        ->and($service->findUsableByPlainToken(''))->toBeNull()
+        ->and($service->findUsableByPlainToken('short'))->toBeNull();
 });
 
 test('external references are durable and unique per company', function () {
@@ -357,6 +360,56 @@ test('document numbering allocates unique company and branch scoped numbers conc
         $numbers[] = $allocator->allocateNext($company->id, DocumentNumberType::Enquiry, DocumentNumberScopeType::Company)['number'];
     });
     expect($numbers[0])->not->toBe($numbers[1]);
+});
+
+test('document numbering validation errors are distinct from uniqueness conflicts', function () {
+    $company = Company::factory()->create();
+    $allocator = new DocumentNumberAllocator;
+    $actor = User::factory()->customer()->create();
+
+    expect(fn () => $allocator->allocateManual(
+        $company->id,
+        DocumentNumberType::Enquiry,
+        DocumentNumberScopeType::Company,
+        '   ',
+    ))->toThrow(DocumentNumberValidationException::class);
+
+    expect(fn () => $allocator->allocateNext(
+        $company->id,
+        DocumentNumberType::LorryReceipt,
+        DocumentNumberScopeType::Branch,
+        null,
+    ))->toThrow(DocumentNumberValidationException::class);
+
+    $allocated = $allocator->allocateNext($company->id, DocumentNumberType::Enquiry, DocumentNumberScopeType::Company);
+
+    expect(fn () => $allocator->adjustSequence($allocated['sequence'], 0, $actor, 'bad'))
+        ->toThrow(DocumentNumberValidationException::class);
+
+    expect(fn () => $allocator->adjustSequence($allocated['sequence'], 5, $actor, '  '))
+        ->toThrow(DocumentNumberValidationException::class);
+});
+
+test('document numbering does not disguise foreign-key failures as conflicts', function () {
+    $allocator = new DocumentNumberAllocator;
+    $invalidCompanyId = (string) Str::uuid();
+
+    $caught = null;
+    try {
+        $allocator->allocateManual(
+            $invalidCompanyId,
+            DocumentNumberType::Enquiry,
+            DocumentNumberScopeType::Company,
+            'MANUAL-1',
+        );
+    } catch (DocumentNumberConflictException $e) {
+        $caught = $e;
+    } catch (QueryException $e) {
+        $caught = $e;
+    }
+
+    expect($caught)->toBeInstanceOf(QueryException::class)
+        ->and($caught)->not->toBeInstanceOf(DocumentNumberConflictException::class);
 });
 
 test('composite dependency guard aggregates registered blockers and ignores empty registry', function () {

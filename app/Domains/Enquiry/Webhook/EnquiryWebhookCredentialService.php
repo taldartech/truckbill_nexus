@@ -52,7 +52,8 @@ final class EnquiryWebhookCredentialService
         ?string $label = null,
     ): array {
         return DB::transaction(function () use ($existing, $actor, $revokeExistingImmediately, $label): array {
-            $created = $this->create($existing->company, $actor, $label ?? $existing->label);
+            $company = Company::query()->findOrFail($existing->company_id);
+            $created = $this->create($company, $actor, $label ?? $existing->label);
             $created['credential']->forceFill([
                 'replaces_credential_id' => $existing->id,
             ])->save();
@@ -79,6 +80,10 @@ final class EnquiryWebhookCredentialService
 
     public function findUsableByPlainToken(string $plainToken): ?CompanyEnquiryWebhookCredential
     {
+        if ($plainToken === '' || strlen($plainToken) < 12) {
+            return null;
+        }
+
         $prefix = substr($plainToken, 0, 12);
         $hash = $this->hashToken($plainToken);
 

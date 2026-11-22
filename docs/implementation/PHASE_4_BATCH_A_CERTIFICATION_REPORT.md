@@ -108,6 +108,21 @@ Registered Customer-domain codes per PO-P4-PERM via `RbacSeeder::seedCustomerPha
 
 ---
 
+## 9b. Clean Code quality audit (23 November 2026)
+
+Permanent standards: `.cursor/rules/truckbill-clean-code.mdc`, `docs/engineering/CODING_STANDARDS.md`.
+
+| Finding                                                                                                                                                 | Severity | Status                                                                                                           |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------- |
+| `DocumentNumberAllocator::persistAllocation` / `lockSequence` used broad `catch (Throwable)` and could disguise FK/infrastructure failures as conflicts | **High** | **Fixed** — catch `UniqueConstraintViolationException` only; validation uses `DocumentNumberValidationException` |
+| Webhook `rotate` relied on lazy `company` relation                                                                                                      | **Low**  | **Fixed** — resolve company by id inside transaction                                                             |
+| Empty/short token lookup                                                                                                                                | **Low**  | **Fixed** — early null return                                                                                    |
+| Domain boundaries / permissions / cardinality neutrality                                                                                                | —        | **Accepted** — no change required                                                                                |
+
+Focused Pest coverage added for validation-vs-conflict and non-unique FK failure behaviour.
+
+---
+
 ## 10. Remaining gates
 
 - Batch B: implement webhook endpoint + manual enquiry under approved V1

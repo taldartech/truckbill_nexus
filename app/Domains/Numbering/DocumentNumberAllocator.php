@@ -6,13 +6,14 @@ use App\Domains\Numbering\Enums\DocumentNumberAllocationMode;
 use App\Domains\Numbering\Enums\DocumentNumberScopeType;
 use App\Domains\Numbering\Enums\DocumentNumberType;
 use App\Domains\Numbering\Exceptions\DocumentNumberConflictException;
+use App\Domains\Numbering\Exceptions\DocumentNumberValidationException;
 use App\Models\DocumentNumberAdjustment;
 use App\Models\DocumentNumberAllocation;
 use App\Models\DocumentNumberSequence;
 use App\Models\User;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
-use Throwable;
 
 /**
  * Concurrency-safe document number allocation primitives (Batch A / Batch E workflows).
@@ -32,13 +33,7 @@ final class DocumentNumberAllocator
         ?string $allocatedToId = null,
         ?string $allocatedToType = null,
     ): array {
-        if ($scopeType === DocumentNumberScopeType::Branch && $branchId === null) {
-            throw new DocumentNumberConflictException('Branch scope requires branch_id.');
-        }
-
-        if ($scopeType === DocumentNumberScopeType::Company) {
-            $branchId = null;
-        }
+        $branchId = $this->normalizeBranchId($scopeType, $branchId);
 
         return DB::transaction(function () use ($companyId, $documentType, $scopeType, $branchId, $allocatedToId, $allocatedToType): array {
             $sequence = $this->lockSequence($companyId, $documentType, $scopeType, $branchId);
@@ -78,16 +73,10 @@ final class DocumentNumberAllocator
     ): DocumentNumberAllocation {
         $number = trim($number);
         if ($number === '') {
-            throw new DocumentNumberConflictException('Manual number is required.');
+            throw new DocumentNumberValidationException('Manual number is required.');
         }
 
-        if ($scopeType === DocumentNumberScopeType::Branch && $branchId === null) {
-            throw new DocumentNumberConflictException('Branch scope requires branch_id.');
-        }
-
-        if ($scopeType === DocumentNumberScopeType::Company) {
-            $branchId = null;
-        }
+        $branchId = $this->normalizeBranchId($scopeType, $branchId);
 
         return DB::transaction(function () use ($companyId, $documentType, $scopeType, $branchId, $number, $allocatedToId, $allocatedToType): DocumentNumberAllocation {
             return $this->persistAllocation(
@@ -110,12 +99,12 @@ final class DocumentNumberAllocator
         string $remark,
     ): DocumentNumberAdjustment {
         if ($newNextValue < 1) {
-            throw new DocumentNumberConflictException('Sequence next value must be >= 1.');
+            throw new DocumentNumberValidationException('Sequence next value must be >= 1.');
         }
 
         $remark = trim($remark);
         if ($remark === '') {
-            throw new DocumentNumberConflictException('Sequence adjustment requires a remark.');
+            throw new DocumentNumberValidationException('Sequence adjustment requires a remark.');
         }
 
         return DB::transaction(function () use ($sequence, $newNextValue, $actor, $remark): DocumentNumberAdjustment {
@@ -143,6 +132,19 @@ final class DocumentNumberAllocator
 
             return $adjustment;
         });
+    }
+
+    private function normalizeBranchId(DocumentNumberScopeType $scopeType, ?string $branchId): ?string
+    {
+        if ($scopeType === DocumentNumberScopeType::Branch && $branchId === null) {
+            throw new DocumentNumberValidationException('Branch scope requires branch_id.');
+        }
+
+        if ($scopeType === DocumentNumberScopeType::Company) {
+            return null;
+        }
+
+        return $branchId;
     }
 
     private function lockSequence(
@@ -180,11 +182,11 @@ final class DocumentNumberAllocator
 
         try {
             $sequence->save();
-        } catch (Throwable) {
-            /** @var DocumentNumberSequence $existing */
-            $existing = $query->lockForUpdate()->firstOrFail();
+        } catch (UniqueConstraintViolationException) {
+            /** @var DocumentNumberSequence $raced */
+            $raced = $query->lockForUpdate()->firstOrFail();
 
-            return $existing;
+            return $raced;
         }
 
         /** @var DocumentNumberSequence $locked */
@@ -221,7 +223,7 @@ final class DocumentNumberAllocator
 
         try {
             $allocation->save();
-        } catch (Throwable $e) {
+        } catch (UniqueConstraintViolationException $e) {
             throw new DocumentNumberConflictException(
                 'Document number is already allocated in this scope.',
                 previous: $e,
