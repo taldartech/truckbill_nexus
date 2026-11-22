@@ -75,6 +75,10 @@ test('default database seeder seeds rbac with valid uuids and expected customer 
         ->and(Role::query()->where('domain', PermissionDomain::Internal->value)->where('is_default', true)->count())->toBe(3)
         ->and(Permission::query()->where('code', PermissionCodes::PLATFORM_DELETE)->exists())->toBeTrue();
 
+    foreach (PermissionCodes::customerPhase4Catalogue() as $code) {
+        expect(Permission::query()->where('code', $code)->exists())->toBeTrue($code);
+    }
+
     $adminCodes = rolePermissionCodes('customer.admin');
     expect($adminCodes)->toEqualCanonicalizing(expectedAdminPermissionCodes())
         ->and($adminCodes)->not->toContain(PermissionCodes::PLATFORM_DELETE);
@@ -109,6 +113,9 @@ test('default database seeder seeds rbac with valid uuids and expected customer 
             ->get()
             ->pluck('permission.code');
         expect($codes)->not->toContain(PermissionCodes::PLATFORM_DELETE);
+        foreach (PermissionCodes::customerPhase4Catalogue() as $phase4Code) {
+            expect($codes)->not->toContain($phase4Code);
+        }
     }
 });
 

@@ -23,6 +23,7 @@ class RbacSeeder extends Seeder
     {
         DB::transaction(function (): void {
             $this->seedCustomerPlatformPermissions();
+            $this->seedCustomerPhase4Permissions();
             $this->seedInternalRoles();
             $this->seedCustomerDefaultRoles();
             $this->seedCustomerDefaultMatrix();
@@ -48,6 +49,43 @@ class RbacSeeder extends Seeder
                 domain: PermissionDomain::Customer,
                 module: 'platform',
                 submodule: 'operations',
+                name: $name,
+                code: $code,
+                description: $description,
+            );
+        }
+    }
+
+    /**
+     * PO-P4-PERM: register Enquiry/Quotation/LR codes without blanket role grants.
+     */
+    private function seedCustomerPhase4Permissions(): void
+    {
+        $definitions = [
+            [PermissionCodes::ENQUIRY_VIEW, 'enquiry', null, 'View enquiries', 'View company/branch enquiries'],
+            [PermissionCodes::ENQUIRY_CREATE, 'enquiry', null, 'Create enquiries', 'Create enquiries'],
+            [PermissionCodes::ENQUIRY_EDIT, 'enquiry', null, 'Edit enquiries', 'Edit enquiries'],
+            [PermissionCodes::ENQUIRY_ASSIGN, 'enquiry', null, 'Assign enquiries', 'Assign enquiries to branch/user'],
+            [PermissionCodes::ENQUIRY_CONVERT, 'enquiry', null, 'Convert enquiries', 'Convert enquiries to Unified LR'],
+            [PermissionCodes::ENQUIRY_DELETE, 'enquiry', null, 'Delete enquiries', 'Soft-delete enquiries (explicit only)'],
+            [PermissionCodes::QUOTATION_VIEW, 'quotation', null, 'View quotations', 'View enquiry quotations'],
+            [PermissionCodes::QUOTATION_CREATE, 'quotation', null, 'Create quotations', 'Create enquiry quotations'],
+            [PermissionCodes::QUOTATION_EDIT, 'quotation', null, 'Edit quotations', 'Edit enquiry quotations'],
+            [PermissionCodes::QUOTATION_SELECT, 'quotation', null, 'Select quotations', 'Select preferred quotation'],
+            [PermissionCodes::QUOTATION_BROADCAST, 'quotation', null, 'Broadcast quotation requests', 'Enqueue quotation broadcast requests'],
+            [PermissionCodes::LR_VIEW, 'lr', null, 'View LRs', 'View Unified Lorry Receipts'],
+            [PermissionCodes::LR_CREATE, 'lr', null, 'Create LRs', 'Create Unified Lorry Receipts'],
+            [PermissionCodes::LR_EDIT, 'lr', null, 'Edit LRs', 'Edit Unified Lorry Receipts'],
+            [PermissionCodes::LR_CANCEL, 'lr', null, 'Cancel LRs', 'Cancel Unified Lorry Receipts'],
+            [PermissionCodes::LR_DELETE, 'lr', null, 'Delete LRs', 'Soft-delete Unified Lorry Receipts (explicit only)'],
+            [PermissionCodes::LR_NUMBER_ADJUST, 'lr', 'numbering', 'Adjust LR numbering', 'Adjust LR number sequences (restricted)'],
+        ];
+
+        foreach ($definitions as [$code, $module, $submodule, $name, $description]) {
+            $this->upsertPermission(
+                domain: PermissionDomain::Customer,
+                module: $module,
+                submodule: $submodule,
                 name: $name,
                 code: $code,
                 description: $description,
