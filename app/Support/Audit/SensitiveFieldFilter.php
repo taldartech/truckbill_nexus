@@ -27,6 +27,10 @@ final class SensitiveFieldFilter
         'credit_card',
         'card_number',
         'cvv',
+        'token_hash',
+        'plain_token',
+        'invitation_token',
+        'session_id',
     ];
 
     /**

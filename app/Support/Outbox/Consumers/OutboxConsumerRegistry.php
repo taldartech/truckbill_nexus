@@ -15,6 +15,7 @@ class OutboxConsumerRegistry
         if ($this->consumers === []) {
             $this->consumers = [
                 'outbox.harness.effect' => new HarnessEffectConsumer,
+                'invitation.email' => new InvitationEmailConsumer,
             ];
         }
     }
