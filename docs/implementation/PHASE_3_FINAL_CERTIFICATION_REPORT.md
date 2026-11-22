@@ -155,7 +155,7 @@ See `PHASE_3_PO_DECISION_PACKAGE.md`:
 | Item         | Value                                      |
 | ------------ | ------------------------------------------ |
 | Initial HEAD | `74a7d4e4da4e693963e8c179745cee434ce537db` |
-| Final HEAD   | _(after commit)_                           |
+| Final HEAD   | `2325c57a7643abf06cff8ffe3fc848f3d9d27eed` |
 | Push         | **None**                                   |
 | Deployment   | **None**                                   |
 | Live charges | **None**                                   |
