@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Party detail — Phase 3 prototype</title>
+        <link rel="stylesheet" href="shared.css" />
+    </head>
+    <body>
+        <div class="shell">
+            <aside class="sidebar">
+                <div class="brand">
+                    <span class="brand-mark"></span>TruckBill
+                </div>
+                <div class="nav">
+                    <a class="active" href="parties-list.html">Parties</a>
+                </div>
+            </aside>
+            <main class="main">
+                <div class="topbar">
+                    <div class="crumbs">
+                        Branch › Masters › Parties ›
+                        <strong>Acme Traders</strong>
+                    </div>
+                    <span class="context-chip">Acme Logistics · Pune</span>
+                </div>
+                <div class="content">
+                    <p class="proto-note">
+                        BP-M-03 + BP-D-* — Documents embed on parent. Click
+                        “Attachments” to open drawer.
+                    </p>
+                    <div class="page-head">
+                        <div>
+                            <h1>Acme Traders</h1>
+                            <p>
+                                <span class="badge badge-green">Shared</span>
+                                <span class="badge badge-blue">Customer</span>
+                                <span class="badge">Consignor</span>
+                            </p>
+                        </div>
+                        <div class="actions">
+                            <a class="btn" href="party-form.html">Edit</a
+                            ><button class="btn" id="openDocs">
+                                Attachments (2)</button
+                            ><button class="btn btn-danger">
+                                Soft delete…
+                            </button>
+                        </div>
+                    </div>
+                    <div class="split">
+                        <div class="panel">
+                            <div class="panel-h"><h2>Profile</h2></div>
+                            <table>
+                                <tbody>
+                                    <tr>
+                                        <th>Contact</th>
+                                        <td>98765 43210</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Email</th>
+                                        <td>ops@acme.example</td>
+                                    </tr>
+                                    <tr>
+                                        <th>GSTIN</th>
+                                        <td>27AAAAA0000A1Z5</td>
+                                    </tr>
+                                    <tr>
+                                        <th>City</th>
+                                        <td>Pune, Maharashtra</td>
+                                    </tr>
+                                    <tr>
+                                        <th>GST applicable</th>
+                                        <td>Yes</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="panel">
+                            <div class="panel-h">
+                                <h2>Roles</h2>
+                                <button class="btn">Add role</button>
+                            </div>
+                            <div
+                                style="
+                                    padding: 1rem;
+                                    display: flex;
+                                    flex-direction: column;
+                                    gap: 0.65rem;
+                                "
+                            >
+                                <div
+                                    style="
+                                        border: 1px solid var(--border);
+                                        border-radius: 10px;
+                                        padding: 0.75rem;
+                                    "
+                                >
+                                    <strong>Customer</strong>
+                                    <span class="badge badge-green"
+                                        >Active</span
+                                    >
+                                    <div class="hint">Contact 98765 43210</div>
+                                </div>
+                                <div
+                                    style="
+                                        border: 1px solid var(--border);
+                                        border-radius: 10px;
+                                        padding: 0.75rem;
+                                        display: flex;
+                                        justify-content: space-between;
+                                        gap: 0.5rem;
+                                        align-items: start;
+                                    "
+                                >
+                                    <div>
+                                        <strong>Consignor</strong>
+                                        <span class="badge badge-green"
+                                            >Active</span
+                                        >
+                                    </div>
+                                    <button class="btn btn-ghost">
+                                        Remove…
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="drawer-backdrop" id="drawer">
+                        <div class="drawer">
+                            <div
+                                style="
+                                    display: flex;
+                                    justify-content: space-between;
+                                    align-items: center;
+                                    margin-bottom: 0.75rem;
+                                "
+                            >
+                                <h2 style="margin: 0; font-size: 1.05rem">
+                                    Documents
+                                </h2>
+                                <button class="btn btn-ghost" id="closeDocs">
+                                    Close
+                                </button>
+                            </div>
+                            <p class="hint">
+                                Max 2 MB · approved formats · private storage ·
+                                scan before download
+                            </p>
+                            <div
+                                style="
+                                    margin: 0.75rem 0;
+                                    display: flex;
+                                    gap: 0.5rem;
+                                "
+                            >
+                                <button class="btn btn-primary">Upload</button
+                                ><button class="btn">Replace current</button>
+                            </div>
+                            <div class="panel" style="margin-bottom: 0.75rem">
+                                <div class="panel-h">
+                                    <h2>GST certificate.pdf</h2>
+                                    <span class="badge badge-green"
+                                        >Available · v2</span
+                                    >
+                                </div>
+                                <div style="padding: 0.75rem 1rem" class="hint">
+                                    120 KB · Counts toward storage ·
+                                    <a href="#">Download / preview</a>
+                                </div>
+                            </div>
+                            <div class="panel">
+                                <div class="panel-h">
+                                    <h2>Version history</h2>
+                                </div>
+                                <table>
+                                    <tbody>
+                                        <tr>
+                                            <td>v2 current</td>
+                                            <td>
+                                                <span class="badge badge-green"
+                                                    >Available</span
+                                                >
+                                            </td>
+                                            <td>Today</td>
+                                        </tr>
+                                        <tr>
+                                            <td>v1 superseded</td>
+                                            <td>
+                                                <span class="badge"
+                                                    >Retained</span
+                                                >
+                                            </td>
+                                            <td>Yesterday</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="panel" style="margin-top: 0.75rem">
+                                <div class="panel-h"><h2>Scan states</h2></div>
+                                <div
+                                    style="
+                                        padding: 0.75rem;
+                                        display: flex;
+                                        flex-wrap: wrap;
+                                        gap: 0.35rem;
+                                    "
+                                >
+                                    <span class="badge badge-amber"
+                                        >Pending scan</span
+                                    ><span class="badge badge-amber"
+                                        >Scanning…</span
+                                    ><span class="badge badge-green"
+                                        >Available</span
+                                    ><span class="badge badge-red"
+                                        >Rejected</span
+                                    >
+                                </div>
+                            </div>
+                            <p class="hint" style="margin-top: 0.75rem">
+                                Storage for this company: 12.4 MB counted ·
+                                soft-deleted retained included when flagged.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+        <script>
+            const d = document.getElementById('drawer');
+            document.getElementById('openDocs').onclick = () =>
+                d.classList.add('open');
+            document.getElementById('closeDocs').onclick = () =>
+                d.classList.remove('open');
+            d.onclick = (e) => {
+                if (e.target === d) d.classList.remove('open');
+            };
+        </script>
+    </body>
+</html>

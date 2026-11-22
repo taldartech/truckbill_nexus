@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Bank & Cash — Phase 3 prototype</title>
+        <link rel="stylesheet" href="shared.css" />
+    </head>
+    <body>
+        <div class="shell">
+            <aside class="sidebar">
+                <div class="brand">
+                    <span class="brand-mark"></span>TruckBill
+                </div>
+                <div class="nav">
+                    <a href="masters-hub.html">Masters hub</a
+                    ><a class="active" href="bank-cash.html">Bank &amp; Cash</a>
+                </div>
+            </aside>
+            <main class="main">
+                <div class="topbar">
+                    <div class="crumbs">
+                        Branch › Masters › <strong>Bank &amp; Cash</strong>
+                    </div>
+                    <span class="context-chip">Acme Logistics · Pune</span>
+                </div>
+                <div class="content">
+                    <p class="proto-note">
+                        BP-M-20 — Account numbers masked. No accounting ledger /
+                        ADR-010 posting.
+                    </p>
+                    <div class="page-head">
+                        <div>
+                            <h1>Bank &amp; cash accounts</h1>
+                            <p>
+                                Company/branch ownership with activation
+                                controls.
+                            </p>
+                        </div>
+                        <div class="actions">
+                            <button class="btn btn-primary">Add account</button>
+                        </div>
+                    </div>
+                    <div class="panel">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Kind</th>
+                                    <th>Bank</th>
+                                    <th>Account</th>
+                                    <th>IFSC</th>
+                                    <th>Scope</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Operating HDFC</td>
+                                    <td>
+                                        <span class="badge badge-blue"
+                                            >Bank</span
+                                        >
+                                    </td>
+                                    <td>HDFC</td>
+                                    <td><code>********9012</code></td>
+                                    <td>HDFC0001111</td>
+                                    <td>
+                                        <span class="badge">This branch</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-green"
+                                            >Active</span
+                                        >
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Petty Cash</td>
+                                    <td><span class="badge">Cash</span></td>
+                                    <td>—</td>
+                                    <td>—</td>
+                                    <td>—</td>
+                                    <td>
+                                        <span class="badge badge-green"
+                                            >Shared</span
+                                        >
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-green"
+                                            >Active</span
+                                        >
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </body>
+</html>

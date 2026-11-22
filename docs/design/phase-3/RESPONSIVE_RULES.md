@@ -1,8 +1,34 @@
-# Phase 3 Responsive Rules (Draft)
+# F — Responsive Rules
 
-Reuse Phase 2:
+**Status:** Proposed for Product Owner design review  
+**Reuse:** Phase 2 sidebar collapse, sheet mobile nav, stacked headers.
 
-- Desktop: persistent sidebar; tables with filters
-- Tablet: collapsible sidebar; stacked forms
-- Mobile: toggle sidebar; Owner/subscription entry must remain discoverable (PO-DEC-P2-REVIEW-005 pattern)
-- No entitlement chips inventing AUD-CON-006 states — use approved high-level subscription presentation until matrix resolved
+## Breakpoints
+
+| Viewport | Width      | Layout                                                                                     |
+| -------- | ---------- | ------------------------------------------------------------------------------------------ |
+| Desktop  | ≥1024px    | Persistent sidebar; full tables; dual-column forms (label left / fields right optional)    |
+| Tablet   | 768–1023px | Collapsible sidebar; tables with horizontal scroll; forms single column                    |
+| Mobile   | <768px     | Sheet nav; stacked page header; card-list alternative for dense tables; sticky primary CTA |
+
+## Patterns
+
+| Pattern           | Desktop                        | Mobile                                           |
+| ----------------- | ------------------------------ | ------------------------------------------------ |
+| Master lists      | Full table + filter bar        | Card list: primary field + chips + overflow menu |
+| Filters           | Inline row                     | Sheet “Filters”                                  |
+| Party role panels | Side-by-side tabs              | Accordion                                        |
+| Document drawer   | Right drawer 420px             | Full-screen sheet                                |
+| Pricing breakdown | Two columns (inputs / summary) | Stacked summary first                            |
+| Confirmations     | Center dialog                  | Bottom sheet or full dialog                      |
+
+## Touch / a11y
+
+- Hit targets ≥44px on mobile actions
+- Focus rings visible (Design.md §13)
+- Status never by colour alone
+- Tables: `scope` headers; sortable columns keyboard reachable when implemented
+
+## Prototype frames
+
+Static prototypes include desktop canvas (~1280) and a “Mobile frame” toggle section on key screens (parties list, subscription overview, documents).

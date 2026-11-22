@@ -56,14 +56,14 @@
 
 ## 2. Authorization and design gates
 
-| Gate          | Requirement                                                                                        | Status                      |
-| ------------- | -------------------------------------------------------------------------------------------------- | --------------------------- |
-| G-P3-AUTH     | Explicit **PO-P3-AUTH** authorizing this plan                                                      | **Satisfied**               |
-| G-DESIGN-P3   | Design artefacts for Phase 3 product UI reviewed/approved before those screens                     | **Open**                    |
-| G-AUD-CON-006 | Exact trial/grace/restricted/suspended entitlement matrix (TB-SUB-STATE-001)                       | **Pending** — do not invent |
-| G-PAY         | Razorpay non-prod credentials + webhook verification approach for manual renewals                  | **Open**                    |
-| G-DEPS        | New packages (e.g. Razorpay SDK) via PO-P1-DEPS                                                    | **Case-by-case**            |
-| G-CI          | Every workstream: migrate + Pest (Postgres) + Pint + Larastan + FE check/types/build as applicable | Ongoing                     |
+| Gate          | Requirement                                                                                        | Status                                 |
+| ------------- | -------------------------------------------------------------------------------------------------- | -------------------------------------- |
+| G-P3-AUTH     | Explicit **PO-P3-AUTH** authorizing this plan                                                      | **Satisfied**                          |
+| G-DESIGN-P3   | Design artefacts for Phase 3 product UI reviewed/approved before those screens                     | **Ready for PO review** (not approved) |
+| G-AUD-CON-006 | Exact trial/grace/restricted/suspended entitlement matrix (TB-SUB-STATE-001)                       | **Pending** — do not invent            |
+| G-PAY         | Razorpay non-prod credentials + webhook verification approach for manual renewals                  | **Open**                               |
+| G-DEPS        | New packages (e.g. Razorpay SDK) via PO-P1-DEPS                                                    | **Case-by-case**                       |
+| G-CI          | Every workstream: migrate + Pest (Postgres) + Pint + Larastan + FE check/types/build as applicable | Ongoing                                |
 
 **Backend-before-UI rule:** Schema, domain services, policies, jobs, and Pest suites for a workstream may proceed after **PO-P3-AUTH** without product UI, except where the workstream’s acceptance explicitly requires UI. Product screens require G-DESIGN-P3 for that surface.
 

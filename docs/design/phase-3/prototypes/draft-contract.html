@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Draft contract — Phase 3 prototype</title>
+        <link rel="stylesheet" href="shared.css" />
+    </head>
+    <body>
+        <div class="shell">
+            <aside class="sidebar">
+                <div class="brand">
+                    <span class="brand-mark"></span>TruckBill
+                </div>
+                <div class="nav">
+                    <a href="subscription-overview.html">Subscription</a
+                    ><a class="active" href="draft-contract.html"
+                        >Draft contracts</a
+                    >
+                </div>
+            </aside>
+            <main class="main">
+                <div class="topbar">
+                    <div class="crumbs">
+                        Owner › Subscription › <strong>Draft contract</strong>
+                    </div>
+                    <span class="context-chip">Acme Logistics · Owner</span>
+                </div>
+                <div class="content">
+                    <p class="proto-note">
+                        OP-S-04 — Snapshot preview. Issued contracts become
+                        immutable; draft editable until issue.
+                    </p>
+                    <div class="page-head">
+                        <div>
+                            <h1>Draft contract</h1>
+                            <p>
+                                <span class="badge badge-amber">Draft</span> ·
+                                Common renewal 15 Apr 2027
+                            </p>
+                        </div>
+                    </div>
+                    <div class="panel">
+                        <div class="panel-h">
+                            <h2>Line items (snapshot)</h2>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Item</th>
+                                    <th>Qty</th>
+                                    <th>Unit</th>
+                                    <th>Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Broker module · 12 mo</td>
+                                    <td>1</td>
+                                    <td>₹ 6,000</td>
+                                    <td>₹ 6,000</td>
+                                </tr>
+                                <tr>
+                                    <td>OwnFleet module · 12 mo</td>
+                                    <td>1</td>
+                                    <td>₹ 6,000</td>
+                                    <td>₹ 6,000</td>
+                                </tr>
+                                <tr>
+                                    <td>Discounts (ordered)</td>
+                                    <td></td>
+                                    <td></td>
+                                    <td>− ₹ 1,740</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Net</strong></td>
+                                    <td></td>
+                                    <td></td>
+                                    <td><strong>₹ 10,260</strong></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="form-footer">
+                            <button class="btn">Back to calculator</button
+                            ><button class="btn">Edit draft</button
+                            ><button
+                                class="btn btn-primary"
+                                disabled
+                                title="Issue flow later"
+                            >
+                                Issue (later)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </body>
+</html>

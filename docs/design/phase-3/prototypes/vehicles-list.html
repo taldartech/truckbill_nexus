@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Vehicles — Phase 3 prototype</title>
+        <link rel="stylesheet" href="shared.css" />
+    </head>
+    <body>
+        <div class="shell">
+            <aside class="sidebar">
+                <div class="brand">
+                    <span class="brand-mark"></span>TruckBill
+                </div>
+                <div class="nav">
+                    <a href="masters-hub.html">Masters hub</a
+                    ><a class="active" href="vehicles-list.html">Vehicles</a>
+                </div>
+            </aside>
+            <main class="main">
+                <div class="topbar">
+                    <div class="crumbs">
+                        Branch › Masters › <strong>Vehicles</strong>
+                    </div>
+                    <span class="context-chip">Acme Logistics · Pune</span>
+                </div>
+                <div class="content">
+                    <p class="proto-note">
+                        BP-M-10/11 — No OwnFleet trips/maintenance/tyre/battery
+                        UI.
+                    </p>
+                    <div class="page-head">
+                        <div>
+                            <h1>Vehicles</h1>
+                            <p>
+                                Identification, classification, scope, active
+                                status.
+                            </p>
+                        </div>
+                        <div class="actions">
+                            <button class="btn btn-primary">
+                                Create vehicle
+                            </button>
+                        </div>
+                    </div>
+                    <div class="panel">
+                        <div class="filters">
+                            <input
+                                class="input"
+                                style="flex: 1"
+                                placeholder="Search registration, make, chassis…"
+                            />
+                            <select class="select">
+                                <option>All types</option>
+                                <option>Truck</option>
+                            </select>
+                            <select class="select">
+                                <option>Active</option>
+                                <option>Inactive</option>
+                                <option>All</option>
+                            </select>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Registration</th>
+                                    <th>Type</th>
+                                    <th>Make / model</th>
+                                    <th>Capacity</th>
+                                    <th>Scope</th>
+                                    <th>Status</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>MH12AB1234</td>
+                                    <td>Truck</td>
+                                    <td>Ashok / 1618</td>
+                                    <td>12.500 MT</td>
+                                    <td>
+                                        <span class="badge badge-green"
+                                            >Shared</span
+                                        >
+                                    </td>
+                                    <td>
+                                        <span class="badge badge-green"
+                                            >Active</span
+                                        >
+                                    </td>
+                                    <td><a href="#">Edit</a></td>
+                                </tr>
+                                <tr>
+                                    <td>MH14CD5678</td>
+                                    <td>Truck</td>
+                                    <td>Tata / 407</td>
+                                    <td>5.000 MT</td>
+                                    <td>
+                                        <span class="badge">This branch</span>
+                                    </td>
+                                    <td><span class="badge">Inactive</span></td>
+                                    <td><a href="#">Edit</a></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="panel" style="margin-top: 1rem">
+                        <div class="panel-h">
+                            <h2>Create vehicle (inline pattern)</h2>
+                        </div>
+                        <div class="form-grid">
+                            <div class="field">
+                                <label>Registration *</label
+                                ><input
+                                    class="input"
+                                    placeholder="MH12AB1234"
+                                /><span class="hint"
+                                    >Stored uppercase; unique per company</span
+                                >
+                            </div>
+                            <div class="field">
+                                <label>Vehicle type</label
+                                ><input class="input" />
+                            </div>
+                            <div class="field">
+                                <label>Make</label><input class="input" />
+                            </div>
+                            <div class="field">
+                                <label>Model</label><input class="input" />
+                            </div>
+                            <div class="field">
+                                <label>Capacity (MT)</label
+                                ><input class="input" />
+                            </div>
+                            <div class="field">
+                                <label>Scope</label
+                                ><select class="select">
+                                    <option>Shared</option>
+                                    <option>This branch</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-footer">
+                            <button class="btn">Cancel</button
+                            ><button class="btn btn-primary">Save</button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </body>
+</html>

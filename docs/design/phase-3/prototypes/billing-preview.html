@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Billing preview (gated) — Phase 3 prototype</title>
+        <link rel="stylesheet" href="shared.css" />
+    </head>
+    <body>
+        <div class="shell">
+            <aside class="sidebar">
+                <div class="brand">
+                    <span class="brand-mark"></span>TruckBill
+                </div>
+                <div class="nav">
+                    <a href="subscription-overview.html">Subscription</a
+                    ><a class="active" href="billing-preview.html"
+                        >Billing (gated)</a
+                    >
+                </div>
+            </aside>
+            <main class="main">
+                <div class="topbar">
+                    <div class="crumbs">Owner › <strong>Billing</strong></div>
+                    <span class="context-chip">Acme Logistics · Owner</span>
+                </div>
+                <div class="content">
+                    <div class="watermark">
+                        FUTURE DESIGN ONLY — IMPLEMENTATION REQUIRES PO-P3-PAY /
+                        G-PAY. Not part of authorized UI build yet.
+                    </div>
+                    <div class="page-head">
+                        <div>
+                            <h1>Billing overview</h1>
+                            <p>
+                                Invoices, manual renewal payment, invoice-number
+                                approval.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="panel">
+                        <div class="panel-h">
+                            <h2>Invoices (illustrative)</h2>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Number</th>
+                                    <th>Status</th>
+                                    <th>Amount</th>
+                                    <th>Period</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>—</td>
+                                    <td>
+                                        <span class="badge badge-amber"
+                                            >Draft</span
+                                        >
+                                    </td>
+                                    <td>₹ 10,260</td>
+                                    <td>2026–27</td>
+                                </tr>
+                                <tr>
+                                    <td>Pending approval</td>
+                                    <td>
+                                        <span class="badge"
+                                            >Awaiting number approval</span
+                                        >
+                                    </td>
+                                    <td>₹ 10,260</td>
+                                    <td>2026–27</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <div class="form-footer">
+                            <button class="btn btn-primary" disabled>
+                                Pay with Razorpay (blocked)
+                            </button>
+                        </div>
+                    </div>
+                    <p class="hint">
+                        Payment activation is independent of invoice-number
+                        approval (Rules §15). No auto-renew. No in-system
+                        refunds.
+                    </p>
+                </div>
+            </main>
+        </div>
+    </body>
+</html>

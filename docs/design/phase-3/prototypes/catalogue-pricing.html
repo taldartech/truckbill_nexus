@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Catalogue & pricing — Phase 3 prototype</title>
+        <link rel="stylesheet" href="shared.css" />
+    </head>
+    <body>
+        <div class="shell">
+            <aside class="sidebar">
+                <div class="brand">
+                    <span class="brand-mark"></span>TruckBill
+                </div>
+                <div class="nav">
+                    <a href="subscription-overview.html">Subscription</a
+                    ><a class="active" href="catalogue-pricing.html"
+                        >Catalogue &amp; pricing</a
+                    >
+                </div>
+            </aside>
+            <main class="main">
+                <div class="topbar">
+                    <div class="crumbs">
+                        Owner › Subscription › <strong>Pricing</strong>
+                    </div>
+                    <span class="context-chip">Acme Logistics · Owner</span>
+                </div>
+                <div class="content">
+                    <p class="proto-note">
+                        OP-S-01/03 — Discount order: base → bundle → tenure →
+                        renewal → coupon; 30% monetary cap.
+                    </p>
+                    <div class="page-head">
+                        <div><h1>Catalogue &amp; pricing calculator</h1></div>
+                    </div>
+                    <div class="split">
+                        <div class="panel">
+                            <div class="panel-h">
+                                <h2>Select modules &amp; add-ons</h2>
+                            </div>
+                            <div
+                                style="
+                                    padding: 1rem;
+                                    display: flex;
+                                    flex-direction: column;
+                                    gap: 0.65rem;
+                                "
+                            >
+                                <label
+                                    style="
+                                        display: flex;
+                                        gap: 0.5rem;
+                                        align-items: center;
+                                    "
+                                    ><input type="checkbox" checked /> Broker
+                                    module</label
+                                >
+                                <label
+                                    style="
+                                        display: flex;
+                                        gap: 0.5rem;
+                                        align-items: center;
+                                    "
+                                    ><input type="checkbox" checked /> OwnFleet
+                                    module</label
+                                >
+                                <label
+                                    style="
+                                        display: flex;
+                                        gap: 0.5rem;
+                                        align-items: center;
+                                    "
+                                    ><input type="checkbox" /> Partload
+                                    module</label
+                                >
+                                <label
+                                    style="
+                                        display: flex;
+                                        gap: 0.5rem;
+                                        align-items: center;
+                                    "
+                                    ><input type="checkbox" /> Extra branch
+                                    capacity +1</label
+                                >
+                                <label
+                                    style="
+                                        display: flex;
+                                        gap: 0.5rem;
+                                        align-items: center;
+                                    "
+                                    ><input type="checkbox" /> Extra storage
+                                    pack</label
+                                >
+                                <div class="field">
+                                    <label>Tenure</label
+                                    ><select class="select">
+                                        <option>12 months</option>
+                                        <option>6 months</option>
+                                        <option>1 month</option>
+                                    </select>
+                                </div>
+                                <div class="field">
+                                    <label>Coupon (optional)</label
+                                    ><input class="input" placeholder="CODE" />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="panel">
+                            <div class="panel-h"><h2>Breakdown</h2></div>
+                            <table>
+                                <tbody>
+                                    <tr>
+                                        <th>List / base</th>
+                                        <td style="text-align: right">
+                                            ₹ 12,000.00
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>Bundle discount</th>
+                                        <td style="text-align: right">
+                                            − ₹ 600.00
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>Tenure discount</th>
+                                        <td style="text-align: right">
+                                            − ₹ 1,140.00
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>Renewal discount</th>
+                                        <td style="text-align: right">
+                                            − ₹ 0.00
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>Coupon</th>
+                                        <td style="text-align: right">
+                                            − ₹ 0.00
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th>Monetary cap note</th>
+                                        <td
+                                            style="text-align: right"
+                                            class="hint"
+                                        >
+                                            ≤ 30% of list
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th><strong>Net</strong></th>
+                                        <td style="text-align: right">
+                                            <strong>₹ 10,260.00</strong>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                            <div class="form-footer">
+                                <button class="btn">Recalculate</button
+                                ><a
+                                    class="btn btn-primary"
+                                    href="draft-contract.html"
+                                    >Save as draft contract</a
+                                >
+                            </div>
+                        </div>
+                    </div>
+                    <p class="hint" style="margin-top: 1rem">
+                        No Pay now — live Razorpay awaits PO-P3-PAY.
+                    </p>
+                </div>
+            </main>
+        </div>
+    </body>
+</html>

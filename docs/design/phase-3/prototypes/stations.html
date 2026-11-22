@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Stations — Phase 3 prototype</title>
+        <link rel="stylesheet" href="shared.css" />
+    </head>
+    <body>
+        <div class="shell">
+            <aside class="sidebar">
+                <div class="brand">
+                    <span class="brand-mark"></span>TruckBill
+                </div>
+                <div class="nav">
+                    <a href="masters-hub.html">Masters hub</a
+                    ><a class="active" href="stations.html">Stations</a>
+                </div>
+            </aside>
+            <main class="main">
+                <div class="topbar">
+                    <div class="crumbs">
+                        Branch › Masters › <strong>Stations</strong>
+                    </div>
+                    <span class="context-chip">Acme Logistics · Pune</span>
+                </div>
+                <div class="content">
+                    <p class="proto-note">
+                        BP-M-30/32 — Owner-shared across owned companies.
+                        Cross-owner isolated. Default change does not rewrite
+                        history.
+                    </p>
+                    <div class="page-head">
+                        <div>
+                            <h1>Stations</h1>
+                            <p>Shared for all companies owned by you.</p>
+                        </div>
+                        <div class="actions">
+                            <button class="btn btn-primary">
+                                Create station
+                            </button>
+                        </div>
+                    </div>
+                    <div class="split">
+                        <div class="panel">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Code</th>
+                                        <th>Name</th>
+                                        <th>City</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>PUNE</td>
+                                        <td>Pune Hub</td>
+                                        <td>Pune</td>
+                                        <td>
+                                            <span class="badge badge-green"
+                                                >Active</span
+                                            >
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td>NSK</td>
+                                        <td>Nashik Yard</td>
+                                        <td>Nashik</td>
+                                        <td>
+                                            <span class="badge badge-green"
+                                                >Active</span
+                                            >
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="panel">
+                            <div class="panel-h">
+                                <h2>Default transporter · Pune Hub</h2>
+                            </div>
+                            <div class="form-grid">
+                                <div class="field full">
+                                    <label>Company</label
+                                    ><input
+                                        class="input"
+                                        value="Acme Logistics"
+                                        disabled
+                                    />
+                                </div>
+                                <div class="field full">
+                                    <label>Branch (optional)</label
+                                    ><select class="select">
+                                        <option>Company-wide default</option>
+                                        <option>Pune</option>
+                                    </select>
+                                </div>
+                                <div class="field full">
+                                    <label>Default transporter party</label
+                                    ><select class="select">
+                                        <option>Sharma Transport</option>
+                                        <option>— None —</option>
+                                    </select>
+                                    <span class="hint"
+                                        >Changing this default does not modify
+                                        previously saved transaction data.</span
+                                    >
+                                </div>
+                            </div>
+                            <div class="form-footer">
+                                <button class="btn btn-primary">
+                                    Save default
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </body>
+</html>

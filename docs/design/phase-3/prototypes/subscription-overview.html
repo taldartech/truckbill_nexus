@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Subscription overview — Phase 3 prototype</title>
+        <link rel="stylesheet" href="shared.css" />
+    </head>
+    <body>
+        <div class="shell">
+            <aside class="sidebar">
+                <div class="brand">
+                    <span class="brand-mark"></span>TruckBill
+                </div>
+                <div class="nav">
+                    <div class="nav-label">Owner</div>
+                    <a href="#">Dashboard</a
+                    ><a class="active" href="subscription-overview.html"
+                        >Subscription</a
+                    ><a href="catalogue-pricing.html">Catalogue &amp; pricing</a
+                    ><a href="draft-contract.html">Draft contracts</a
+                    ><a href="credits-quotas.html">Credits &amp; quotas</a>
+                </div>
+            </aside>
+            <main class="main">
+                <div class="topbar">
+                    <div class="crumbs">
+                        Owner › <strong>Subscription</strong>
+                    </div>
+                    <span class="context-chip">Acme Logistics · Owner</span>
+                </div>
+                <div class="content">
+                    <p class="proto-note">
+                        OP-S-00 — Confirmed subscription info only. No invented
+                        AUD-CON-006 restricted/suspended action matrix.
+                    </p>
+                    <div class="page-head">
+                        <div>
+                            <h1>Subscription</h1>
+                            <p>
+                                Company-wide common renewal and catalogue
+                                summary.
+                            </p>
+                        </div>
+                        <div class="actions">
+                            <a class="btn" href="catalogue-pricing.html"
+                                >Pricing calculator</a
+                            ><a
+                                class="btn btn-primary"
+                                href="draft-contract.html"
+                                >View draft contract</a
+                            >
+                        </div>
+                    </div>
+                    <div class="grid-cards" style="margin-bottom: 1rem">
+                        <div class="card-link">
+                            <h3>Status</h3>
+                            <p>
+                                <span class="badge badge-green">Active</span> ·
+                                informational only
+                            </p>
+                        </div>
+                        <div class="card-link">
+                            <h3>Common renewal</h3>
+                            <p>15 Apr 2027</p>
+                        </div>
+                        <div class="card-link">
+                            <h3>Modules</h3>
+                            <p>Broker · OwnFleet foundations (catalogue)</p>
+                        </div>
+                        <div class="card-link">
+                            <h3>Storage</h3>
+                            <p>12.4 MB counted · see quotas</p>
+                        </div>
+                    </div>
+                    <div class="panel">
+                        <div class="panel-h">
+                            <h2>What you will not see here (Pending)</h2>
+                        </div>
+                        <div class="empty">
+                            <strong>AUD-CON-006 entitlement locks</strong>Exact
+                            trial / grace / restricted / suspended UX is
+                            Pending. Do not invent controls.
+                        </div>
+                    </div>
+
+                    <h2
+                        style="
+                            font-size: 0.95rem;
+                            margin: 2rem 0 0.75rem;
+                            color: var(--muted);
+                        "
+                    >
+                        Mobile
+                    </h2>
+                    <div class="mobile-frame">
+                        <div class="content">
+                            <div class="mobile-card">
+                                <strong>Active</strong>
+                                <div class="hint">Renewal 15 Apr 2027</div>
+                            </div>
+                            <div class="mobile-card">
+                                <strong>Storage</strong>
+                                <div class="meter" style="margin: 0.5rem 0">
+                                    <span style="width: 35%"></span>
+                                </div>
+                                <div class="hint">12.4 MB</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </body>
+</html>
