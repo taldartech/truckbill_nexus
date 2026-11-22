@@ -163,6 +163,9 @@ final class InvitationService
     {
         $tokenHash = $this->hashToken($plainToken);
 
+        // Persist expiry in its own transaction so rejection cannot roll back the status.
+        $this->persistExpiryIfNeeded($tokenHash);
+
         return $this->auditedTransaction->run(function () use ($tokenHash, $credentials): User {
             /** @var Invitation|null $invitation */
             $invitation = Invitation::query()
@@ -183,12 +186,6 @@ final class InvitationService
             }
 
             if ($invitation->status === InvitationStatus::Expired || $invitation->isExpired()) {
-                if ($invitation->status === InvitationStatus::Pending) {
-                    $invitation->forceFill([
-                        'status' => InvitationStatus::Expired,
-                    ])->save();
-                }
-
                 throw new InvitationException('Invitation has expired.');
             }
 
@@ -243,6 +240,48 @@ final class InvitationService
     public function hashToken(string $plainToken): string
     {
         return hash('sha256', $plainToken);
+    }
+
+    /**
+     * Atomically mark a pending invitation expired when its expires_at has passed.
+     * Safe to call repeatedly — no duplicate status transitions or audits.
+     */
+    public function persistExpiryIfNeeded(string $tokenHash): void
+    {
+        $this->auditedTransaction->run(function () use ($tokenHash): void {
+            /** @var Invitation|null $invitation */
+            $invitation = Invitation::query()
+                ->where('token_hash', $tokenHash)
+                ->lockForUpdate()
+                ->first();
+
+            if ($invitation === null) {
+                return;
+            }
+
+            if ($invitation->status !== InvitationStatus::Pending || ! $invitation->isExpired()) {
+                return;
+            }
+
+            $company = Company::query()->findOrFail($invitation->company_id);
+
+            $this->withCompanyContext($company, function () use ($invitation): void {
+                $before = $this->auditableSnapshot($invitation);
+
+                $invitation->forceFill([
+                    'status' => InvitationStatus::Expired,
+                ])->save();
+
+                $this->auditWriter->write(
+                    AuditAction::Updated,
+                    Invitation::class,
+                    $invitation->id,
+                    remark: 'Invitation expired',
+                    before: $before,
+                    after: $this->auditableSnapshot($invitation->refresh()),
+                );
+            });
+        });
     }
 
     public function findPendingByPlainToken(string $plainToken): ?Invitation

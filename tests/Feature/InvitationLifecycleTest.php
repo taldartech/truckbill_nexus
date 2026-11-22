@@ -160,11 +160,50 @@ test('internal identity cannot be reused as customer invitation', function () {
         ->toThrow(InvitationException::class);
 });
 
-test('expired revoked accepted and invalid tokens are rejected', function () {
+test('expired pending invitation is persisted as expired and acceptance is rejected', function () {
     ['company' => $company] = inviteOwnedCompany();
     $sa = User::factory()->superAdmin()->create();
 
     $expired = invitations()->create($sa, $company, 'expired@example.com');
+    $expired['invitation']->forceFill([
+        'expires_at' => now()->subMinute(),
+    ])->save();
+
+    expect(fn () => invitations()->accept($expired['plain_token'], [
+        'name' => 'X',
+        'password' => 'password-12345',
+        'password_confirmation' => 'password-12345',
+    ]))->toThrow(InvitationException::class);
+
+    $invitation = $expired['invitation']->fresh();
+    expect($invitation->status)->toBe(InvitationStatus::Expired);
+
+    expect(AuditEntry::query()
+        ->where('subject_type', Invitation::class)
+        ->where('subject_id', $invitation->id)
+        ->where('action', AuditAction::Updated->value)
+        ->where('remark', 'Invitation expired')
+        ->count())->toBe(1);
+
+    // Repeated attempt: still rejected, no duplicate expiry audit.
+    expect(fn () => invitations()->accept($expired['plain_token'], [
+        'name' => 'X',
+        'password' => 'password-12345',
+        'password_confirmation' => 'password-12345',
+    ]))->toThrow(InvitationException::class);
+
+    expect(AuditEntry::query()
+        ->where('subject_type', Invitation::class)
+        ->where('subject_id', $invitation->id)
+        ->where('remark', 'Invitation expired')
+        ->count())->toBe(1);
+});
+
+test('expired revoked accepted and invalid tokens are rejected', function () {
+    ['company' => $company] = inviteOwnedCompany();
+    $sa = User::factory()->superAdmin()->create();
+
+    $expired = invitations()->create($sa, $company, 'expired-legacy@example.com');
     $expired['invitation']->forceFill([
         'expires_at' => now()->subMinute(),
     ])->save();
