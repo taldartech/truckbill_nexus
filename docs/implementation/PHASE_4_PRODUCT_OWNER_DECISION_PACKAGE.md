@@ -4,7 +4,7 @@
 **Kickoff baseline tip:** `193e6dc68b2509e90de4aa2990b1136260e80746` (Actions SUCCESS on tip)  
 **Phase 3 accepted baseline:** `68d11b1ecc267e91d3adb37825d94def71334a3a` (PO-P3-FINAL-ACCEPT; Actions #60)  
 **Purpose:** Identify **only genuinely unresolved** decisions required to authorize and freeze Phase 4 delivery.  
-**Status:** Awaiting Product Owner decisions — **PO-P4-AUTH not granted**
+**Status:** Decisions recorded 23 November 2026 — see `PHASE_4_AUTHORIZATION_RECORD.md`
 
 Phase 3 exceptions EX-01…EX-07 remain unchanged and are **not** reopened here.
 
@@ -33,16 +33,16 @@ Phase 3 exceptions EX-01…EX-07 remain unchanged and are **not** reopened here.
 
 ## 2. Decision register (Phase 4)
 
-| Decision ID                       | Topic                                                 | Options / recommendation                        | Status                                    | Blocks                                         |
-| --------------------------------- | ----------------------------------------------------- | ----------------------------------------------- | ----------------------------------------- | ---------------------------------------------- |
-| **PO-P4-AUTH**                    | Authorize Phase 4 implementation under execution plan | Approve / Defer / Reject                        | **Open**                                  | All code/migrations                            |
-| **PO-P4-DESIGN-FORMAL**           | Formal design approval for product UI                 | Approve / Approve with exceptions / Defer UI    | **Open** (draft spec ready)               | Batch G product UI; optional earlier UI slices |
-| **PO-P4-WEBHOOK** (G-WEBHOOK)     | Website enquiry webhook contract                      | See §3                                          | **Open**                                  | Batch B contract freeze                        |
-| **PO-P4-BROADCAST** (G-BROADCAST) | Quotation broadcast vs Phase 9                        | **Recommend Option A** — enqueue + history only | **Open**                                  | Batch D                                        |
-| **PO-P4-CONVERT** (G-CONVERT)     | Conversion downstream boundary                        | **Recommend Option A** — Unified LR only        | **Open** (strongly recommended Confirmed) | Batch F                                        |
-| **PO-P4-PERM** (G-PERM)           | Enquiry/LR permission codes                           | See §6                                          | **Open**                                  | Policy seed finalize                           |
-| **PO-P4-NUMBER** (G-NUMBER)       | Numbering scope vs Data Visibility                    | See §7                                          | **Open / Deferred interaction**           | Batch E freeze                                 |
-| **PO-P4-CNV-CARDINALITY**         | LR count when vehicle_quantity > 1                    | **Recommend N LRs** (one per vehicle unit)      | **Open** if not implicit                  | Batch F schema                                 |
+| Decision ID                       | Topic                                                 | Options / recommendation                     | Status                  | Blocks                |
+| --------------------------------- | ----------------------------------------------------- | -------------------------------------------- | ----------------------- | --------------------- |
+| **PO-P4-AUTH**                    | Authorize Phase 4 implementation under execution plan | Approve / Defer / Reject                     | **APPROVED**            | Batch A+ backend      |
+| **PO-P4-DESIGN-FORMAL**           | Formal design approval for product UI                 | Approve / Approve with exceptions / Defer UI | **PENDING**             | Product UI            |
+| **PO-P4-WEBHOOK** (G-WEBHOOK)     | Website enquiry webhook contract                      | V1 principles approved                       | **APPROVED — V1**       | Batch B endpoint      |
+| **PO-P4-BROADCAST** (G-BROADCAST) | Quotation broadcast vs Phase 9                        | Option A — enqueue + history only            | **APPROVED — Option A** | Batch D               |
+| **PO-P4-CONVERT** (G-CONVERT)     | Conversion downstream boundary                        | Option A — Unified LR only                   | **APPROVED — Option A** | Batch F               |
+| **PO-P4-PERM** (G-PERM)           | Enquiry/LR permission codes                           | Catalogue approved                           | **APPROVED**            | No blanket grants     |
+| **PO-P4-NUMBER** (G-NUMBER)       | Numbering scope vs Data Visibility                    | Enquiry company; LR Shared/Restricted        | **APPROVED**            | Batch E workflows     |
+| **PO-P4-CNV-CARDINALITY**         | LR count when vehicle_quantity > 1                    | See cardinality proposal                     | **PENDING**             | Conversion allocation |
 
 ---
 
@@ -62,7 +62,7 @@ Phase 3 exceptions EX-01…EX-07 remain unchanged and are **not** reopened here.
 | Rotation        | Dual-token grace 24h                                                                                                            |
 | Website project | Sibling `website/` changes out of Nexus scope; contract published for website team                                              |
 
-**PO action:** Approve recommended contract **or** specify deltas before Batch B.
+**Status:** V1 principles **APPROVED**. Token overlap duration, exact retry limits, and similar operational parameters remain technical implementation details (not misrepresented as PO policy). Public endpoint = Batch B.
 
 ---
 
@@ -74,7 +74,7 @@ Phase 3 exceptions EX-01…EX-07 remain unchanged and are **not** reopened here.
 | B      | Phase 4 implements one provider (requires Phase 9 pull-forward + credentials)                                                                                                            | Not recommended                           |
 | C      | Omit broadcast UI entirely until Phase 9                                                                                                                                                 | Weaker vs PRD “broadcast… retain history” |
 
-**PO action:** Confirm Option A (or alternate).
+**Status:** **APPROVED — Option A** (ADR-013).
 
 ---
 
@@ -155,4 +155,4 @@ Module operations entitlement cells in AUD-CON-006 remain **PROPOSED** — Phase
 
 Formal ask: `PHASE_4_AUTHORIZATION_REQUEST.md`.
 
-**Verdict for this package:** Decisions listed above are ready for Product Owner review. No decision is auto-approved.
+**Verdict:** PO-P4-AUTH and scoped decisions recorded. Remaining Pending: **PO-P4-CNV-CARDINALITY**, **PO-P4-DESIGN-FORMAL**. See `PHASE_4_AUTHORIZATION_RECORD.md` and `PHASE_4_CONVERSION_CARDINALITY_DECISION_PROPOSAL.md`.

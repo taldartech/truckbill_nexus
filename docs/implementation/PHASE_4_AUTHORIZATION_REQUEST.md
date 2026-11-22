@@ -2,7 +2,9 @@
 
 **Request date:** 22 November 2026  
 **Requested decision:** **PO-P4-AUTH** — Authorize Phase 4 Enquiry Management & Unified LR implementation  
-**Document status:** Request only — **do not treat as Approved**
+**Document status:** **FULFILLED** — see `PHASE_4_AUTHORIZATION_RECORD.md`
+
+**PO-P4-AUTH:** **APPROVED** (23 November 2026). Immediate scope: Batch A only.
 
 ---
 
@@ -102,6 +104,6 @@ Record approvals in Memory + a future `PHASE_4_AUTHORIZATION_RECORD.md` **only a
 
 ## 7. Current formal status
 
-**PO-P4-AUTH: NOT APPROVED**
+**PO-P4-AUTH: APPROVED** (23 November 2026).
 
-Phase 4 kickoff package is ready for Product Owner review. Application implementation must not begin until explicit authorization is recorded.
+Record: `PHASE_4_AUTHORIZATION_RECORD.md`. Batch A authorized. Batch B+ not auto-started. `PO-P4-CNV-CARDINALITY` and `PO-P4-DESIGN-FORMAL` remain **Pending**.

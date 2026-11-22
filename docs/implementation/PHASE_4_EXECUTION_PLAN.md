@@ -1,9 +1,9 @@
 # Phase 4 Execution Plan — Enquiry Management & Unified LR
 
-**Status:** **NOT AUTHORIZED** — kickoff / planning package only  
-**Decision required:** **PO-P4-AUTH** (explicit Product Owner implementation authorization)  
+**Status:** **PO-P4-AUTH APPROVED** (23 November 2026) — backend/domain authorized; **Batch A COMPLETE** — ready for Batch B review (not auto-started)  
 **Authority:** `docs/governing/Phases.md` (sole phase-numbering and Phase 4 scope authority)  
-**Baseline tip at kickoff:** `193e6dc68b2509e90de4aa2990b1136260e80746` (Actions SUCCESS on tip)  
+**Authorization record:** `PHASE_4_AUTHORIZATION_RECORD.md`  
+**Kickoff tip:** `193e6dc68b2509e90de4aa2990b1136260e80746` · Auth baseline tip: `2c3f351444ac7e80ffd0a723475c4b5e8a3234f5` (Actions #62)  
 **Phase 3 accepted baseline:** `68d11b1ecc267e91d3adb37825d94def71334a3a` (PO-P3-FINAL-ACCEPT; Actions #60)
 
 **Related:**
@@ -16,13 +16,14 @@
 - `PHASE_4_AUTHORIZATION_REQUEST.md`
 - `docs/implementation/PHASE_3_ACCEPTANCE_RECORD.md`
 
-**Hard rules until PO-P4-AUTH + applicable design approval:**
+**Hard rules under PO-P4-AUTH:**
 
-- Do **not** write production application code or create database migrations.
-- Do **not** modify Phase 3 functionality.
-- Do **not** install unapproved dependencies.
-- Do **not** invent AUD-CON-006 unresolved cells.
-- Do **not** start Phase 5–7 operational workflows (Trip, Lorry Hire, Partload Challan/DR).
+- Backend Batches A–F authorized subject to remaining gates; **do not auto-start Batch B** after A.
+- Do **not** implement product UI until **PO-P4-DESIGN-FORMAL** (Pending).
+- Do **not** implement conversion cardinality behaviour until **PO-P4-CNV-CARDINALITY** (Pending).
+- Do **not** modify Phase 3 accepted behaviour except shared infrastructure hooks.
+- Do **not** install unapproved dependencies; do not invent AUD-CON-006 cells.
+- Do **not** start Phase 5–7 operational workflows.
 - Preserve Phase 3 accepted exceptions EX-01…EX-07 unchanged.
 
 ---
@@ -78,18 +79,19 @@
 
 ## 2. Authorization and design gates
 
-| Gate          | Requirement                                                                    | Status                                       |
-| ------------- | ------------------------------------------------------------------------------ | -------------------------------------------- |
-| G-P4-AUTH     | Explicit **PO-P4-AUTH** authorizing this plan                                  | **Open** — request prepared                  |
-| G-DESIGN-P4   | Design artefacts for Phase 4 product UI reviewed/approved before those screens | **Draft ready for PO review** — not approved |
-| G-WEBHOOK     | Website enquiry webhook contract (auth, payload, idempotency)                  | **Pending PO decision**                      |
-| G-BROADCAST   | Quotation broadcast integration boundary vs Phase 9                            | **Recommended Pending boundary**             |
-| G-CONVERT     | Conversion creates Unified LR only; Trip/LH/Partload ops deferred              | **Recommended Confirmed boundary**           |
-| G-PERM        | Module permission codes for Enquiry/LR (vs platform.\* reuse)                  | **Pending PO decision**                      |
-| G-NUMBER      | Numbering scope vs Data Visibility settings (Deferred from Phase 2)            | **Pending / Deferred interaction**           |
-| G-AUD-CON-006 | Fine-grained entitlements                                                      | **Pending** — do not invent (Phase 3 EX-01)  |
-| G-DEPS        | New packages                                                                   | **Case-by-case PO-P1-DEPS**                  |
-| G-CI          | Migrate + Pest + Pint + Larastan + FE check/types/build                        | Required after auth                          |
+| Gate          | Requirement                                                                    | Status                                      |
+| ------------- | ------------------------------------------------------------------------------ | ------------------------------------------- |
+| G-P4-AUTH     | Explicit **PO-P4-AUTH** authorizing this plan                                  | **APPROVED** (23 Nov 2026)                  |
+| G-DESIGN-P4   | Design artefacts for Phase 4 product UI reviewed/approved before those screens | **PENDING** — draft only                    |
+| G-WEBHOOK     | Website enquiry webhook contract (auth, payload, idempotency)                  | **APPROVED — V1** (Batch B endpoint)        |
+| G-BROADCAST   | Quotation broadcast integration boundary vs Phase 9                            | **APPROVED — Option A** (ADR-013)           |
+| G-CONVERT     | Conversion creates Unified LR only; Trip/LH/Partload ops deferred              | **APPROVED — Option A** (ADR-014)           |
+| G-PERM        | Module permission codes for Enquiry/LR (vs platform.\* reuse)                  | **APPROVED** (no blanket grants)            |
+| G-NUMBER      | Numbering scope vs Data Visibility settings (Deferred from Phase 2)            | **APPROVED**                                |
+| G-CNV-CARD    | Multi-vehicle LR cardinality / allocation                                      | **PENDING**                                 |
+| G-AUD-CON-006 | Fine-grained entitlements                                                      | **Pending** — do not invent (Phase 3 EX-01) |
+| G-DEPS        | New packages                                                                   | **Case-by-case PO-P1-DEPS**                 |
+| G-CI          | Migrate + Pest + Pint + Larastan + FE check/types/build                        | Required after auth                         |
 
 **Backend-before-UI rule:** After **PO-P4-AUTH**, schema/domain/Pest may proceed without product UI. Product screens additionally require **G-DESIGN-P4** for that surface.
 
@@ -277,6 +279,6 @@ PO-P4-AUTH ──► Batch A (schema/domain)
 
 ---
 
-## 8. Explicit non-authorization statement
+## 8. Authorization statement
 
-This plan is **ready for Product Owner review**. It does **not** record PO-P4-AUTH as Approved. Phase 4 application implementation begins only after explicit Product Owner authorization and applicable design approval.
+**PO-P4-AUTH APPROVED** (23 November 2026). See `PHASE_4_AUTHORIZATION_RECORD.md`. Batch A is the immediate implementation scope. Product UI remains gated by **PO-P4-DESIGN-FORMAL** (Pending). Conversion cardinality remains gated by **PO-P4-CNV-CARDINALITY** (Pending).
