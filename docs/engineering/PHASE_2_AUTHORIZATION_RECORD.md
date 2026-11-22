@@ -15,7 +15,9 @@
 > - **PO-P2-FILE-MULTI:** APPROVED — multi-company file access scoped to server-resolved active company context only.
 > - **PO-P2-DESIGN:** APPROVED as a **gate requirement** — IA and key screen designs for Owner/Branch panels, workspace selection and dashboards must be prepared and Product Owner–approved before product UI implementation.
 > - **PO-P2-DESIGN-FORMAL:** **APPROVED WITH DOCUMENTED EXCEPTIONS** (22 November 2026) — artefacts A–G formally signed off within approved scope; AUD-CON-006 / TB-SUB-STATE-001 exact entitlements remain Pending; Internal Team UI and module ops excluded.
-> - **P2-WS-8 product UI:** **Authorized and implemented** (22 November 2026) within approved design exceptions — evidence in `P2_WS_8_IMPLEMENTATION_EVIDENCE.md`. Entitlement-dependent UI remains blocked. P2-WS-9 unauthorized.
+> - **P2-WS-8 product UI:** **Authorized and implemented** (22 November 2026) within approved design exceptions — evidence in `P2_WS_8_IMPLEMENTATION_EVIDENCE.md`. Entitlement-dependent UI remains blocked.
+> - **PO-P2-WS8-ACCEPT:** **APPROVED WITH DOCUMENTED EXCEPTIONS** (22 November 2026) — accepts P2-WS-8 core workspace and Owner Panel follow-on for implemented/tested/approved scope; open exceptions retained (legal/tax fields, visibility/numbering/documents, membership reactivation, AUD-CON-006, unexecuted interactive browser QA).
+> - **PO-P2-WS9-AUTH:** **APPROVED** (22 November 2026) — P2-WS-9 security and Phase 2 exit certification authorized (dedicated security tests + confirmed Phase 2 defect fixes). Does not authorize Phase 3 or deferred product functionality.
 > - **PO-DEC-P2-REVIEW-001…006:** Recorded (001 with exception; 002–005 APPROVED; 006 accept engineering recommendation).
 > - **PO-P1-DEPLOY:** **DEFERRED** — do not provision staging; do not claim smoke passed; Phase 1 remains conditionally certified with operational closure pending. Deferral is **not** a waiver.
 > - **ADR-010:** remains **Pending** — not a Phase 2 blocker; do not implement accounting posting architecture.
@@ -89,16 +91,16 @@ Deferral means: no staging provision, no smoke execution, no claim of pass, **no
 
 ## 5. Explicitly unchanged
 
-| Item                                                           | Status                                                                                                                          |
-| -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| ADR-010                                                        | Pending                                                                                                                         |
-| PO-P1-DEPS                                                     | Case-by-case                                                                                                                    |
-| Admin email-change verification field details (DEC-009 polish) | Pending                                                                                                                         |
-| Mobile portion of TB-AUTH-004 (cross-channel with mobile app)  | Deferred to a future phase after mobile auth ADR revision                                                                       |
-| Formal approval of Owner/Branch/dashboard design artefacts     | **Complete** — PO-P2-DESIGN-FORMAL APPROVED WITH DOCUMENTED EXCEPTIONS (22 November 2026); see `DESIGN_REVIEW_CHECKLIST.md`     |
-| P2-WS-8 product UI start                                       | **Authorized and implemented** (22 November 2026) — within approved design exceptions; see `P2_WS_8_IMPLEMENTATION_EVIDENCE.md` |
-| P2-WS-9 certification                                          | **Unauthorized**                                                                                                                |
-| Exact trial/grace/restricted subscription entitlements         | Pending (AUD-CON-006 / TB-SUB-STATE-001) — entitlement-dependent UI blocked                                                     |
+| Item                                                           | Status                                                                                                                      |
+| -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| ADR-010                                                        | Pending                                                                                                                     |
+| PO-P1-DEPS                                                     | Case-by-case                                                                                                                |
+| Admin email-change verification field details (DEC-009 polish) | Pending                                                                                                                     |
+| Mobile portion of TB-AUTH-004 (cross-channel with mobile app)  | Deferred to a future phase after mobile auth ADR revision                                                                   |
+| Formal approval of Owner/Branch/dashboard design artefacts     | **Complete** — PO-P2-DESIGN-FORMAL APPROVED WITH DOCUMENTED EXCEPTIONS (22 November 2026); see `DESIGN_REVIEW_CHECKLIST.md` |
+| P2-WS-8 product UI start                                       | **Accepted WITH DOCUMENTED EXCEPTIONS** (PO-P2-WS8-ACCEPT, 22 November 2026) — see `P2_WS_8_*` evidence                     |
+| P2-WS-9 certification                                          | **Authorized** (PO-P2-WS9-AUTH, 22 November 2026) — see `PHASE_2_FINAL_CERTIFICATION_REPORT.md`                             |
+| Exact trial/grace/restricted subscription entitlements         | Pending (AUD-CON-006 / TB-SUB-STATE-001) — entitlement-dependent UI blocked                                                 |
 
 ---
 

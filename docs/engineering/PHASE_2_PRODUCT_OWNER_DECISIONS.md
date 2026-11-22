@@ -37,6 +37,8 @@
 | ADR-010                          | Accounting posting                               | **Pending**                             | Phase 8 only                                             |
 | Email change verification polish | Admin email details                              | **Pending**                             | Polish only                                              |
 | AUD-CON-006 / TB-SUB-STATE-001   | Exact trial/grace/restricted entitlement matrix  | **Pending**                             | Entitlement-dependent UI blocked                         |
+| PO-P2-WS8-ACCEPT                 | Accept P2-WS-8 + Owner Panel follow-on           | **APPROVED WITH DOCUMENTED EXCEPTIONS** | Exceptions retained; not a waiver                        |
+| PO-P2-WS9-AUTH                   | Authorize P2-WS-9 security certification         | **APPROVED**                            | Phase 3 / deferred product still blocked                 |
 
 ---
 
@@ -415,6 +417,38 @@ High-level presentation principles:
 - Revalidate ownership and access when restoring context.
 - Fall back safely when the remembered company becomes inaccessible.
 - Do not allow client-stored values to authorize access.
+
+---
+
+## D24 — PO-P2-WS8-ACCEPT: Accept P2-WS-8 and Owner Panel follow-on
+
+### PO Decision — **APPROVED WITH DOCUMENTED EXCEPTIONS**
+
+**Date:** 22 November 2026  
+**Decision ID:** PO-P2-WS8-ACCEPT
+
+Accepts P2-WS-8 core workspace and Owner Panel follow-on for implemented, tested, approved scope.
+
+**Retained open exceptions (not waived):**
+
+- Legal/tax/contact company fields — schema/policy not approved
+- Visibility, numbering, and document settings — deferred
+- Membership reactivation — API/policy not approved
+- AUD-CON-006 / TB-SUB-STATE-001 — Pending
+- Unexecuted interactive browser QA — verification outstanding
+
+---
+
+## D25 — PO-P2-WS9-AUTH: Authorize P2-WS-9 certification
+
+### PO Decision — **APPROVED**
+
+**Date:** 22 November 2026  
+**Decision ID:** PO-P2-WS9-AUTH
+
+Authorizes P2-WS-9 security and Phase 2 exit certification, including dedicated security tests and corrections of confirmed Phase 2 defects.
+
+Does **not** authorize Phase 3, Broker/OwnFleet/Partload operations, deferred settings masters, checkout/proration, or invented subscription entitlements.
 
 ---
 
