@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+import { Form, Head, Link } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 
 type Props = {
@@ -117,6 +117,22 @@ export default function SubscriptionInvoices({
                                                 >
                                                     HTML
                                                 </a>
+                                                {invoice.email_url ? (
+                                                    <Form
+                                                        action={
+                                                            invoice.email_url
+                                                        }
+                                                        method="post"
+                                                        className="inline"
+                                                    >
+                                                        <button
+                                                            type="submit"
+                                                            className="text-sm underline-offset-2 hover:underline"
+                                                        >
+                                                            Email
+                                                        </button>
+                                                    </Form>
+                                                ) : null}
                                             </div>
                                         </td>
                                     </tr>

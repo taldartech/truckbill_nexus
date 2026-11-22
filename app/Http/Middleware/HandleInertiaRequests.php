@@ -53,6 +53,7 @@ class HandleInertiaRequests extends Middleware
                     'email' => $user->email,
                     'email_verified_at' => $user->email_verified_at,
                     'identity_type' => $user->identity_type?->value,
+                    'is_super_admin' => $user->isSuperAdmin(),
                     'created_at' => $user->created_at,
                     'updated_at' => $user->updated_at,
                 ],

@@ -21,8 +21,8 @@ export default function Dashboard() {
                 </div>
 
                 <ShellEmptyState
-                    title="No Internal Team product modules yet"
-                    description="Customer Owner Panel and Branch Panel are available under Workspace for Customer identities. Internal Team IA remains out of Phase 2 Customer panel scope."
+                    title="Platform administration"
+                    description="Use the sidebar for GST rates, TDS rules, and (Super Admin) subscription invoice number approval. Broader Internal Team CRM remains out of the Phase 2 Customer Owner/Branch package."
                 />
             </div>
         </>

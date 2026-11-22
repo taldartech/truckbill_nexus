@@ -14,17 +14,24 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
+import { gstRates, subscriptionInvoices, tdsRules } from '@/routes/admin';
 import type { NavItem } from '@/types';
 import type { WorkspaceShare } from '@/types/workspace';
 
 type PageProps = {
-    auth: { user: { identity_type?: string | null } | null };
+    auth: {
+        user: {
+            identity_type?: string | null;
+            is_super_admin?: boolean;
+        } | null;
+    };
     workspace: WorkspaceShare;
 };
 
 export function AppSidebar() {
     const { auth, workspace } = usePage<PageProps>().props;
     const isCustomer = auth.user?.identity_type === 'customer';
+    const isSuperAdmin = auth.user?.is_super_admin === true;
     const activeCompanyId = workspace?.active_company_id ?? null;
     const activeBranchId = workspace?.active_branch_id ?? null;
     const activeCompany = workspace?.companies.find(
@@ -85,6 +92,25 @@ export function AppSidebar() {
                   href: dashboard(),
                   icon: LayoutGrid,
               },
+              {
+                  title: 'GST rates',
+                  href: gstRates.url(),
+                  icon: LayoutGrid,
+              },
+              {
+                  title: 'TDS rules',
+                  href: tdsRules.url(),
+                  icon: LayoutGrid,
+              },
+              ...(isSuperAdmin
+                  ? [
+                        {
+                            title: 'Subscription invoices',
+                            href: subscriptionInvoices.url(),
+                            icon: LayoutGrid,
+                        },
+                    ]
+                  : []),
           ];
 
     return (

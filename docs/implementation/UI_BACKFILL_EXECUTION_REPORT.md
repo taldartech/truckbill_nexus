@@ -44,6 +44,20 @@ No Phase 4 product Inertia pages were added (design gate).
 
 ---
 
+## 3b. Follow-up from executable audit (post-certification)
+
+Source: local UI coverage audit agent (`66e86b9d-e529-4f67-a997-7c99c7905d7b`).
+
+| Finding                                   | Action                                                       |
+| ----------------------------------------- | ------------------------------------------------------------ |
+| Internal sidebar missing Batch G links    | Added GST/TDS (+ Super Admin invoice approval) via Wayfinder |
+| Unused `email_url` on Owner invoices list | Wired Form POST Email control                                |
+| Orphan `documents/document-drawer.tsx`    | Deleted                                                      |
+| `company_record` document UI              | Left deferred (Owner settings reserved)                      |
+| Phase 4 Enquiry UI                        | Still blocked on `PO-P4-DESIGN-FORMAL`                       |
+
+---
+
 ## 4. Explicit non-actions
 
 - Did **not** mark `PO-P4-DESIGN-FORMAL` Approved

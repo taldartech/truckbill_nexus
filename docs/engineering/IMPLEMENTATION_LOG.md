@@ -69,3 +69,13 @@ Dated workstream records with verified local commit SHAs. Living product Memory 
     - `6a2c362` docs(standards): require production-ready fullstack delivery
     - `7827805` docs(design): prepare phase 4 UI approval package
     - `aa134a4` docs(qa): certify completed UI backfill
+    - `d4f4f66` docs(qa): record UI backfill certification commit SHA
+
+## 2026-11-23 — UI backfill follow-up (audit gaps)
+
+- Internal sidebar: GST rates, TDS rules; Super Admin subscription invoices (`is_super_admin` shared)
+- Owner subscription invoices list: wire `email_url` Form POST
+- Removed orphan `resources/js/components/documents/document-drawer.tsx`
+- Deferred: `company_record` document UI (Owner settings reserved); Phase 4 Enquiry UI
+- Tests: TechnicalUiShellTest extended (9 passed)
+- Commit: recorded after validation
