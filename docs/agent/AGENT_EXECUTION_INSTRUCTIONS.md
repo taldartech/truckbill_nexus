@@ -110,6 +110,22 @@ For each task:
 8. Verify the resulting commit and working-tree status.
 9. Report the commit SHA and explicitly confirm that no push or remote publication occurred.
 
+### Batch completion order (mandatory — CI formatting gate)
+
+Documentation edits after validation have repeatedly broken GitHub Actions `npm run check` / `vp check`. For every development batch, follow this order exactly:
+
+1. Implement functionality.
+2. Run focused tests for the change.
+3. Update implementation records and certification documents.
+4. Finish all documentation, including commit SHA references where required (prefer recording SHAs in the same docs pass before validation, or use a follow-up docs commit that still completes steps 5–9).
+5. Run formatting across **all** changed files (`npx vp check --fix` and `vendor/bin/pint --dirty` as applicable).
+6. Run the full validation pipeline (`npm run check`, `npm run types:check`, `npm run build`, Pint test, Larastan, `php artisan test --compact`).
+7. Verify the working tree and staged content.
+8. Commit locally.
+9. Re-run formatting validation (`npm run check`) against the **final committed** state. If docs or other files were touched after step 6, restart from step 5 — never leave unformatted markdown in HEAD.
+
+Do **not** weaken or remove the CI formatting gate. Never modify documentation after the final validation without rerunning the formatter and `npm run check`.
+
 If the local branch is behind or diverged from its upstream, do not reset, rebase, overwrite or discard user work. Report the discrepancy and request direction before proceeding with any operation that could affect existing history.
 
 This policy is consistent with `.cursor/rules/truckbill-project.mdc`.

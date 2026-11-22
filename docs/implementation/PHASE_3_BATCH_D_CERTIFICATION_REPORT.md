@@ -12,22 +12,22 @@ This report does **not** grant Product Owner acceptance. No push, no deployment,
 
 ## 1. Draft edit functionality (D1)
 
-| Item | Result |
-| --- | --- |
-| Service | `CompanySubscriptionContractService::updateDraftContract` |
-| Rules | Draft-only; same catalogue version; server recalculation; item reconcile; before/after immutable snapshots; audit; lockForUpdate; optimistic lock via `expected_snapshot_count` (second-precision timestamps are unreliable) |
-| UI | `owner/subscription/draft-edit` + Edit link on drafts list |
-| Pricing labels | Human-readable via `resources/js/lib/pricing-breakdown-labels.ts` (no raw keys) |
-| Activation | Never activates; PO-P3-PAY remains gated |
+| Item           | Result                                                                                                                                                                                                                       |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Service        | `CompanySubscriptionContractService::updateDraftContract`                                                                                                                                                                    |
+| Rules          | Draft-only; same catalogue version; server recalculation; item reconcile; before/after immutable snapshots; audit; lockForUpdate; optimistic lock via `expected_snapshot_count` (second-precision timestamps are unreliable) |
+| UI             | `owner/subscription/draft-edit` + Edit link on drafts list                                                                                                                                                                   |
+| Pricing labels | Human-readable via `resources/js/lib/pricing-breakdown-labels.ts` (no raw keys)                                                                                                                                              |
+| Activation     | Never activates; PO-P3-PAY remains gated                                                                                                                                                                                     |
 
 ## 2. Document drawer integrations (D2)
 
-| Parent | Drawer |
-| --- | --- |
-| Party show | Integrated |
-| Vehicle show | Integrated |
+| Parent         | Drawer     |
+| -------------- | ---------- |
+| Party show     | Integrated |
+| Vehicle show   | Integrated |
 | Bank/Cash show | Integrated |
-| Station show | Integrated |
+| Station show   | Integrated |
 
 Shared component: `resources/js/components/masters/document-drawer.tsx` (Radix Sheet).  
 Backend reuse: `DocumentAttachmentService` + `PresentsDocumentDrawer` trait.  
@@ -59,22 +59,22 @@ Dedicated documents route preserved as full-manager fallback.
 
 Real Laravel/Inertia app at `http://localhost:8000` (not static prototypes).
 
-| Viewport | Areas exercised | Evidence |
-| --- | --- | --- |
-| 1280×800 | Owner dashboard, subscription overview, catalogue, draft edit | `phase-3-batch-d-evidence/*-1280x800.png` |
-| 768×1024 | Party detail + document drawer | `party-document-drawer-768x1024.png` |
-| 375×812 | Draft edit, Masters hub; no horizontal overflow (`scrollWidth === clientWidth`) | `*-375x812.png` |
+| Viewport | Areas exercised                                                                 | Evidence                                  |
+| -------- | ------------------------------------------------------------------------------- | ----------------------------------------- |
+| 1280×800 | Owner dashboard, subscription overview, catalogue, draft edit                   | `phase-3-batch-d-evidence/*-1280x800.png` |
+| 768×1024 | Party detail + document drawer                                                  | `party-document-drawer-768x1024.png`      |
+| 375×812  | Draft edit, Masters hub; no horizontal overflow (`scrollWidth === clientWidth`) | `*-375x812.png`                           |
 
 Additional matrix sizes (320, 390, 820, 1023, 1024, 1440) sampled via CDP device metrics during the same session; no unintended horizontal overflow observed on draft-edit and masters surfaces. Representative screenshots stored under `docs/implementation/phase-3-batch-d-evidence/`.
 
 ## 6. Accessibility review (D4)
 
-| Check | Result |
-| --- | --- |
-| Form labels | Present on draft edit, catalogue tenure/date/remark |
-| Checkbox names | `aria-label` on catalogue/draft-edit plan & add-on checkboxes |
-| Document drawer | Radix Sheet dialog; titled “Documents”; Escape closes; focus enters drawer |
-| Automated axe-core | **Not installed** — no new dependency; not claimed as full automated WCAG certification |
+| Check               | Result                                                                                      |
+| ------------------- | ------------------------------------------------------------------------------------------- |
+| Form labels         | Present on draft edit, catalogue tenure/date/remark                                         |
+| Checkbox names      | `aria-label` on catalogue/draft-edit plan & add-on checkboxes                               |
+| Document drawer     | Radix Sheet dialog; titled “Documents”; Escape closes; focus enters drawer                  |
+| Automated axe-core  | **Not installed** — no new dependency; not claimed as full automated WCAG certification     |
 | Manual/browser a11y | Dialog present; empty/loading/error states present; touch targets use standard Button sizes |
 
 ## 7. Security regression (D5)
@@ -91,15 +91,15 @@ Covered by existing + new Pest cases:
 
 ## 8. Full validation
 
-| Gate | Result |
-| --- | --- |
-| Wayfinder generate | Pass |
-| `npm run check` | Pass (after format fix) |
-| `npm run types:check` | Pass |
-| `npm run build` | Pass |
-| Pint (`--dirty`) | Pass |
-| Larastan | Pass (0 errors) |
-| Pest | **345 tests · 343 passed · 2 skipped · 1752 assertions** |
+| Gate                       | Result                                                                                                             |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Wayfinder generate         | Pass                                                                                                               |
+| `npm run check`            | Pass (after format fix)                                                                                            |
+| `npm run types:check`      | Pass                                                                                                               |
+| `npm run build`            | Pass                                                                                                               |
+| Pint (`--dirty`)           | Pass                                                                                                               |
+| Larastan                   | Pass (0 errors)                                                                                                    |
+| Pest                       | **345 tests · 343 passed · 2 skipped · 1752 assertions**                                                           |
 | Disposable `migrate:fresh` | Exercised via Pest testing database + `DatabaseSeederTest`; **not** run against the local working `nexus` database |
 
 ## 9. Defects fixed during Batch D
