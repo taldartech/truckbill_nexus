@@ -46,3 +46,4 @@ AUD-GAP-002, AUD-GAP-003, AUD-CON-003
 | -------------------- | ---------------------------------------------------------------------------------------------------------- | ----------- | ---------------- | ---------------------------------------- |
 | PO-P2-AUTH / P2-WS-1 | Persist mutually exclusive identity type + Super Admin system privilege + deactivation/soft-delete columns | Implemented | 22 November 2026 | Product Owner authorization; engineering |
 | P2-WS-1 correction   | Replace fixed `internal_role` enum with `is_super_admin`; defer configurable roles to P2-WS-3              | Implemented | 22 November 2026 | Architecture correction                  |
+| P2-WS-3              | Database-managed Internal/Customer roles + Permission Master; Super Admin remains `is_super_admin` only    | Implemented | 22 November 2026 | Permission Master / branch roles         |

@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Domains\Rbac\PermissionAuthorizer;
 use App\Models\User;
 use App\Policies\UserPolicy;
 use App\Support\Files\Scanning\MalwareScanner;
@@ -27,6 +28,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(MalwareScanner::class, function ($app): MalwareScanner {
             return $app->make(MalwareScannerFactory::class)->make();
         });
+
+        $this->app->singleton(PermissionAuthorizer::class);
     }
 
     /**
@@ -37,6 +40,20 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
 
         Gate::policy(User::class, UserPolicy::class);
+
+        // Super Admin is a protected system privilege, independent of Permission Master.
+        // Owner designation remains a company-level designation and is never granted here.
+        Gate::before(function (?User $user, string $ability): ?bool {
+            if (! $user instanceof User || ! $user->isSuperAdmin()) {
+                return null;
+            }
+
+            if ($ability === 'actAsCompanyOwner') {
+                return null;
+            }
+
+            return true;
+        });
     }
 
     /**
