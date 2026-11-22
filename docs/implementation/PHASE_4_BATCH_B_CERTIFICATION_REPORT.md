@@ -3,7 +3,8 @@
 **Decision:** PO-P4-BATCH-B-AUTH — **APPROVED** (23 November 2026)  
 **Scope:** Secure website enquiry webhook + manual Branch enquiry backend  
 **Baseline HEAD (pre-Batch B):** `71150767612ae67aeb276e9d3279248468e5d463`  
-**Implementation HEAD:** `44322ed9248f336d19fee4b2a2953954cb2c85eb`  
+**Implementation commit:** `44322ed9248f336d19fee4b2a2953954cb2c85eb`  
+**Certification docs commit:** `64d4afac7a6c2c48f620fba950a3e53745dd5b30`  
 **Status:** **BATCH B COMPLETE — READY FOR BATCH C REVIEW**
 
 ---
