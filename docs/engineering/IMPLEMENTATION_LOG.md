@@ -88,4 +88,9 @@ Dated workstream records with verified local commit SHAs. Living product Memory 
 - Tests: LocalDemoWorkspaceSeederTest
 - Docs: `LOCAL_DEMO_DATA_SETUP.md`, `UI_DESIGN_AND_INTEGRATION_REPORT.md`, `UI_DEMO_DATA_CERTIFICATION_REPORT.md`
 - Verdict: UI & DEMO DATA COMPLETE WITH DOCUMENTED GATES
-- Commits: recorded after validation
+- Commits:
+    - `8c0686a` feat(dev): add realistic local demo workspace seeders
+    - `ace82e8` test(dev): certify demo data and tenant isolation
+    - `0ed7dc6` refactor(ui): unify auth shell with TruckBill brand surfaces
+    - `8d2b867` docs(design): complete phase 4 enquiry visual review
+    - `a2fa349` docs(qa): certify UI and local demo dataset

@@ -2,6 +2,7 @@
 
 **Date:** 23 November 2026  
 **Starting HEAD:** `124072f8270afc138927a3ac0ccde17b6f4b68d1`  
+**Certification docs commit:** `a2fa349`  
 **Verdict:** **UI & DEMO DATA COMPLETE WITH DOCUMENTED GATES**
 
 ---
