@@ -103,6 +103,72 @@ test('owner subscription overview catalogue drafts and credits screens render', 
             ->where('ledgers.0.is_cash_wallet', false));
 });
 
+test('owner can open and update draft contract from subscription UI', function () {
+    ['owner' => $owner, 'company' => $company] = subscriptionUiOwner();
+    if (auth()->check()) {
+        test()->post(route('logout'));
+    }
+    test()->flushSession();
+    $login = test()->post(route('login.store'), ['email' => $owner->email, 'password' => 'owner-secret']);
+    $login->assertRedirect();
+    foreach ($login->headers->getCookies() as $cookie) {
+        test()->withUnencryptedCookie($cookie->getName(), $cookie->getValue());
+    }
+
+    $catalogue = SubscriptionCatalogueVersion::query()->where('is_active', true)->firstOrFail();
+    $plans = SubscriptionPlan::query()
+        ->where('catalogue_version_id', $catalogue->id)
+        ->where('is_active', true)
+        ->get()
+        ->unique('module')
+        ->take(2)
+        ->values();
+
+    $this->post(route('owner.subscription.drafts.store', $company), [
+        'catalogue_version_id' => $catalogue->id,
+        'plan_ids' => [$plans->first()->id],
+        'tenure' => SubscriptionTenure::Monthly->value,
+        'common_renewal_date' => CarbonImmutable::now()->addYear()->toDateString(),
+        'remark' => 'Draft for edit UI',
+    ])->assertRedirect();
+
+    $draft = CompanySubscription::query()->where('company_id', $company->id)->where('status', 'draft')->firstOrFail();
+
+    $this->get(route('owner.subscription.drafts.edit', [$company, $draft]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('owner/subscription/draft-edit')
+            ->where('draft.id', $draft->id)
+            ->where('catalogue.id', $catalogue->id)
+            ->has('before_breakdown'));
+
+    $snapshotCount = $draft->snapshots()->count();
+
+    $this->put(route('owner.subscription.drafts.update', [$company, $draft]), [
+        'plan_ids' => $plans->pluck('id')->all(),
+        'tenure' => SubscriptionTenure::Yearly->value,
+        'common_renewal_date' => CarbonImmutable::now()->addMonths(14)->toDateString(),
+        'renewal_eligible' => true,
+        'expected_snapshot_count' => $snapshotCount,
+        'remark' => 'UI draft update',
+    ])->assertRedirect(route('owner.subscription.drafts.edit', [$company, $draft]));
+
+    $draft->refresh();
+    expect($draft->tenure)->toBe(SubscriptionTenure::Yearly->value)
+        ->and($draft->renewal_eligible)->toBeTrue()
+        ->and($draft->items()->count())->toBe(2)
+        ->and($draft->status)->toBe('draft')
+        ->and($draft->activated_at)->toBeNull();
+
+    $this->put(route('owner.subscription.drafts.update', [$company, $draft]), [
+        'plan_ids' => $plans->pluck('id')->all(),
+        'tenure' => SubscriptionTenure::Monthly->value,
+        'common_renewal_date' => CarbonImmutable::now()->addYear()->toDateString(),
+        'expected_snapshot_count' => $snapshotCount,
+        'remark' => 'Stale edit',
+    ])->assertForbidden();
+});
+
 test('non-owner cannot open owner subscription screens', function () {
     $workspace = app(CompanyWorkspaceService::class);
     $owner = User::factory()->customer()->create();
@@ -121,4 +187,62 @@ test('non-owner cannot open owner subscription screens', function () {
 
     $this->get(route('owner.subscription', $company))->assertForbidden();
     $this->get(route('owner.subscription.catalogue', $company))->assertForbidden();
+
+    $catalogue = SubscriptionCatalogueVersion::query()->where('is_active', true)->firstOrFail();
+    $plan = SubscriptionPlan::query()->where('catalogue_version_id', $catalogue->id)->where('is_active', true)->firstOrFail();
+    $draft = app(CompanySubscriptionContractService::class)->createDraftContract(
+        actor: $owner,
+        company: $company,
+        catalogue: $catalogue,
+        planIds: [$plan->id],
+        tenure: SubscriptionTenure::Yearly,
+        commonRenewalDate: CarbonImmutable::now()->addYear(),
+    );
+
+    $this->get(route('owner.subscription.drafts.edit', [$company, $draft]))->assertForbidden();
+    $this->put(route('owner.subscription.drafts.update', [$company, $draft]), [
+        'plan_ids' => [$plan->id],
+        'tenure' => SubscriptionTenure::Yearly->value,
+        'common_renewal_date' => CarbonImmutable::now()->addYear()->toDateString(),
+        'expected_snapshot_count' => $draft->snapshots()->count(),
+        'remark' => 'cross actor',
+    ])->assertForbidden();
+});
+
+test('cross-company draft edit routes are rejected', function () {
+    $workspace = app(CompanyWorkspaceService::class);
+    $ownerA = User::factory()->customer()->create(['password' => Hash::make('owner-secret')]);
+    $ownerB = User::factory()->customer()->create(['password' => Hash::make('owner-secret')]);
+    $companyA = $workspace->createCompany($ownerA, 'Company A');
+    $companyB = $workspace->createCompany($ownerB, 'Company B');
+    $catalogue = SubscriptionCatalogueVersion::query()->where('is_active', true)->firstOrFail();
+    $plan = SubscriptionPlan::query()->where('catalogue_version_id', $catalogue->id)->where('is_active', true)->firstOrFail();
+
+    $draftA = app(CompanySubscriptionContractService::class)->createDraftContract(
+        actor: $ownerA,
+        company: $companyA,
+        catalogue: $catalogue,
+        planIds: [$plan->id],
+        tenure: SubscriptionTenure::Yearly,
+        commonRenewalDate: CarbonImmutable::now()->addYear(),
+    );
+
+    if (auth()->check()) {
+        test()->post(route('logout'));
+    }
+    test()->flushSession();
+    $login = test()->post(route('login.store'), ['email' => $ownerB->email, 'password' => 'owner-secret']);
+    $login->assertRedirect();
+    foreach ($login->headers->getCookies() as $cookie) {
+        test()->withUnencryptedCookie($cookie->getName(), $cookie->getValue());
+    }
+
+    $this->get(route('owner.subscription.drafts.edit', [$companyB, $draftA]))->assertNotFound();
+    $this->put(route('owner.subscription.drafts.update', [$companyB, $draftA]), [
+        'plan_ids' => [$plan->id],
+        'tenure' => SubscriptionTenure::Yearly->value,
+        'common_renewal_date' => CarbonImmutable::now()->addYear()->toDateString(),
+        'expected_snapshot_count' => $draftA->snapshots()->count(),
+        'remark' => 'cross company',
+    ])->assertNotFound();
 });

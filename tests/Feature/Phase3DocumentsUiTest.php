@@ -88,6 +88,16 @@ test('authorized users can open document manager for a party parent', function (
             ->where('parent.type', 'party')
             ->where('parent.id', $party->id)
             ->where('max_upload_bytes', 2_097_152));
+
+    $this->get(route('branch.parties.show', [$company, $branch, $party]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('branch/masters/parties/show')
+            ->where('documentDrawer.parent.type', 'party')
+            ->where('documentDrawer.parent.id', $party->id)
+            ->has('documentDrawer.attachments')
+            ->has('documentDrawer.storage')
+            ->has('documentDrawer.links.upload'));
 });
 
 test('document upload download authorization respects company isolation and scan gate', function () {

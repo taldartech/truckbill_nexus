@@ -1,5 +1,10 @@
 import { Form, Head, Link, router, usePage } from '@inertiajs/react';
+import { useState } from 'react';
 import InputError from '@/components/input-error';
+import {
+    DocumentDrawer,
+    type DocumentDrawerProps,
+} from '@/components/masters/document-drawer';
 import { MasterPageHeader } from '@/components/masters/master-page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +24,10 @@ type Props = {
         is_active: boolean;
         default_transporter_party_id: string | null;
     };
+    documentDrawer: Omit<
+        DocumentDrawerProps,
+        'open' | 'onOpenChange' | 'title'
+    > | null;
     links: {
         hub: string;
         index: string;
@@ -34,9 +43,11 @@ export default function StationShow({
     canManageOwnerStations,
     permissions,
     station,
+    documentDrawer,
     links,
 }: Props) {
     const { flash } = usePage<{ flash?: { success?: string | null } }>().props;
+    const [docsOpen, setDocsOpen] = useState(false);
     return (
         <>
             <Head title={station.name} />
@@ -66,9 +77,19 @@ export default function StationShow({
                             <Link href={links.edit}>Edit</Link>
                         </Button>
                     ) : null}
-                    <Button asChild variant="outline">
-                        <Link href={links.documents}>Documents</Link>
-                    </Button>
+                    {documentDrawer ? (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setDocsOpen(true)}
+                        >
+                            Documents
+                        </Button>
+                    ) : (
+                        <Button asChild variant="outline">
+                            <Link href={links.documents}>Documents</Link>
+                        </Button>
+                    )}
                     {canManageOwnerStations && permissions.can_delete ? (
                         <Button
                             type="button"
@@ -167,6 +188,13 @@ export default function StationShow({
                     </Form>
                 ) : null}
             </div>
+            {documentDrawer ? (
+                <DocumentDrawer
+                    open={docsOpen}
+                    onOpenChange={setDocsOpen}
+                    {...documentDrawer}
+                />
+            ) : null}
         </>
     );
 }

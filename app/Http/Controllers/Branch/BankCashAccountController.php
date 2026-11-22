@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Branch;
 
 use App\Domains\Company\CompanyAccessService;
+use App\Domains\Document\DocumentAttachmentService;
 use App\Domains\Master\BankCash\BankCashAccountService;
 use App\Domains\Master\Exceptions\MasterDomainException;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
+use App\Http\Controllers\Branch\Concerns\PresentsDocumentDrawer;
 use App\Http\Controllers\Controller;
 use App\Models\BankCashAccount;
 use App\Models\Branch;
@@ -21,11 +23,13 @@ use Inertia\Response;
 class BankCashAccountController extends Controller
 {
     use AuthorizesBranchPanel;
+    use PresentsDocumentDrawer;
 
     public function __construct(
         private readonly CompanyAccessService $access,
         private readonly PermissionAuthorizer $authorizer,
         private readonly BankCashAccountService $accounts,
+        private readonly DocumentAttachmentService $documents,
     ) {}
 
     public function index(Request $request, Company $company, Branch $branch): Response
@@ -144,6 +148,15 @@ class BankCashAccountController extends Controller
             'branch' => $this->branchPayload($branch),
             'permissions' => $permissions,
             'account' => $this->accounts->present($bankCashAccount),
+            'documentDrawer' => $this->documentDrawerPayload(
+                $actor,
+                $company,
+                $branch,
+                'bank_cash_account',
+                $bankCashAccount->id,
+                $this->documents,
+                $permissions,
+            ),
             'links' => [
                 'hub' => route('branch.masters.index', [$company, $branch]),
                 'index' => route('branch.bank-cash.index', [$company, $branch]),

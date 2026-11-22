@@ -8,6 +8,7 @@ use App\Domains\Document\Exceptions\DocumentDomainException;
 use App\Domains\Master\Exceptions\MasterDomainException;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
+use App\Http\Controllers\Branch\Concerns\PresentsDocumentDrawer;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Company;
@@ -23,6 +24,7 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class DocumentAttachmentController extends Controller
 {
     use AuthorizesBranchPanel;
+    use PresentsDocumentDrawer;
 
     public const MAX_UPLOAD_BYTES = 2_097_152;
 
@@ -65,9 +67,15 @@ class DocumentAttachmentController extends Controller
             ],
             'storage' => $usage,
             'max_upload_bytes' => self::MAX_UPLOAD_BYTES,
-            'attachments' => $attachments->map(fn (DocumentAttachment $attachment): array => $this->presentAttachment($attachment))->values()->all(),
+            'attachments' => $attachments->map(fn (DocumentAttachment $attachment): array => $this->presentDocumentAttachment($attachment, $company, $branch))->values()->all(),
             'links' => [
                 'hub' => route('branch.masters.index', [$company, $branch]),
+                'manager' => route('branch.documents.index', [
+                    'company' => $company,
+                    'branch' => $branch,
+                    'parentType' => $parentType,
+                    'parentId' => $parentId,
+                ]),
                 'upload' => route('branch.documents.store', [
                     'company' => $company,
                     'branch' => $branch,
@@ -164,41 +172,6 @@ class DocumentAttachmentController extends Controller
         }
 
         return back()->with('success', 'Document deleted.');
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function presentAttachment(DocumentAttachment $attachment): array
-    {
-        $file = $attachment->storedFile;
-
-        return [
-            'id' => $attachment->id,
-            'document_type' => $attachment->document_type,
-            'label' => $attachment->label,
-            'version' => $attachment->version,
-            'is_current' => (bool) $attachment->is_current,
-            'counts_toward_storage' => (bool) $attachment->counts_toward_storage,
-            'supersedes_attachment_id' => $attachment->supersedes_attachment_id,
-            'created_at' => $attachment->created_at?->toIso8601String(),
-            'file' => $file === null ? null : [
-                'id' => $file->id,
-                'original_name' => $file->original_name,
-                'mime_type' => $file->mime_type,
-                'size_bytes' => $file->size_bytes,
-                'scan_status' => $file->scan_status,
-                'is_downloadable' => $file->isDownloadable(),
-                'available_at' => $file->available_at?->toIso8601String(),
-            ],
-            'download_url' => $file !== null && $file->isDownloadable()
-                ? route('branch.documents.download', [
-                    'company' => $attachment->company_id,
-                    'branch' => $attachment->branch_id ?? request()->route('branch'),
-                    'attachment' => $attachment->id,
-                ])
-                : null,
-        ];
     }
 
     private function assertParentType(string $parentType): void

@@ -1,6 +1,10 @@
 import { Form, Head, Link, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import InputError from '@/components/input-error';
+import {
+    DocumentDrawer,
+    type DocumentDrawerProps,
+} from '@/components/masters/document-drawer';
 import { MasterPageHeader } from '@/components/masters/master-page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,6 +43,10 @@ type Props = {
         updated_at: string | null;
     };
     roleOptions: { value: string; label: string }[];
+    documentDrawer: Omit<
+        DocumentDrawerProps,
+        'open' | 'onOpenChange' | 'title'
+    > | null;
     links: {
         hub: string;
         index: string;
@@ -55,6 +63,7 @@ export default function PartyShow({
     permissions,
     party,
     roleOptions,
+    documentDrawer,
     links,
 }: Props) {
     const { flash } = usePage<{ flash?: { success?: string | null } }>().props;
@@ -89,13 +98,19 @@ export default function PartyShow({
                             <Link href={links.edit}>Edit</Link>
                         </Button>
                     ) : null}
-                    <Button
-                        type="button"
-                        variant="outline"
-                        onClick={() => setDocsOpen(true)}
-                    >
-                        Documents
-                    </Button>
+                    {documentDrawer ? (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setDocsOpen(true)}
+                        >
+                            Documents
+                        </Button>
+                    ) : (
+                        <Button asChild variant="outline">
+                            <Link href={links.documents}>Documents</Link>
+                        </Button>
+                    )}
                     {permissions.can_delete ? (
                         <Button
                             type="button"
@@ -234,34 +249,12 @@ export default function PartyShow({
                 </section>
             </div>
 
-            {docsOpen ? (
-                <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 p-4 sm:items-center">
-                    <div
-                        role="dialog"
-                        aria-modal="true"
-                        className="w-full max-w-md rounded-xl border border-border bg-background p-4"
-                    >
-                        <h2 className="text-lg font-semibold">Documents</h2>
-                        <p className="mt-2 text-sm text-muted-foreground">
-                            Open the document manager for upload, scan status,
-                            download and version history.
-                        </p>
-                        <div className="mt-4 flex gap-2">
-                            <Button asChild>
-                                <Link href={links.documents}>
-                                    Open documents
-                                </Link>
-                            </Button>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                onClick={() => setDocsOpen(false)}
-                            >
-                                Close
-                            </Button>
-                        </div>
-                    </div>
-                </div>
+            {documentDrawer ? (
+                <DocumentDrawer
+                    open={docsOpen}
+                    onOpenChange={setDocsOpen}
+                    {...documentDrawer}
+                />
             ) : null}
         </>
     );

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
+import { pricingBreakdownRows } from '@/lib/pricing-breakdown-labels';
 
 type Plan = {
     id: string;
@@ -151,6 +152,7 @@ export default function SubscriptionCatalogue({
                                                     )
                                                 }
                                                 className="mt-1"
+                                                aria-label={`Select ${plan.name}`}
                                             />
                                             <div className="flex-1">
                                                 <p className="font-medium">
@@ -192,6 +194,7 @@ export default function SubscriptionCatalogue({
                                                     )
                                                 }
                                                 className="mt-1"
+                                                aria-label={`Select ${addon.name}`}
                                             />
                                             <div>
                                                 <p className="font-medium">
@@ -274,25 +277,21 @@ export default function SubscriptionCatalogue({
                                 </p>
                             ) : (
                                 <dl className="space-y-2 text-sm">
-                                    {Object.entries(breakdown)
-                                        .filter(
-                                            ([k]) =>
-                                                typeof breakdown[k] !==
-                                                'object',
-                                        )
-                                        .map(([key, value]) => (
+                                    {pricingBreakdownRows(breakdown).map(
+                                        (row) => (
                                             <div
-                                                key={key}
+                                                key={row.key}
                                                 className="flex justify-between gap-3"
                                             >
                                                 <dt className="text-muted-foreground">
-                                                    {key.replaceAll('_', ' ')}
+                                                    {row.label}
                                                 </dt>
                                                 <dd className="font-medium">
-                                                    {String(value)}
+                                                    {row.value}
                                                 </dd>
                                             </div>
-                                        ))}
+                                        ),
+                                    )}
                                 </dl>
                             )}
                             {canManage && catalogue && planIds.length > 0 ? (

@@ -1,4 +1,9 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
+import { useState } from 'react';
+import {
+    DocumentDrawer,
+    type DocumentDrawerProps,
+} from '@/components/masters/document-drawer';
 import { MasterPageHeader } from '@/components/masters/master-page-header';
 import { Button } from '@/components/ui/button';
 
@@ -19,6 +24,10 @@ type Props = {
     branch: { id: string; name: string; status: string };
     permissions: { can_edit: boolean; can_delete: boolean };
     account: Account;
+    documentDrawer: Omit<
+        DocumentDrawerProps,
+        'open' | 'onOpenChange' | 'title'
+    > | null;
     links: {
         hub: string;
         index: string;
@@ -33,9 +42,11 @@ export default function BankCashShow({
     branch,
     permissions,
     account,
+    documentDrawer,
     links,
 }: Props) {
     const { flash } = usePage<{ flash?: { success?: string | null } }>().props;
+    const [docsOpen, setDocsOpen] = useState(false);
     return (
         <>
             <Head title={account.name} />
@@ -65,9 +76,19 @@ export default function BankCashShow({
                             <Link href={links.edit}>Edit</Link>
                         </Button>
                     ) : null}
-                    <Button asChild variant="outline">
-                        <Link href={links.documents}>Documents</Link>
-                    </Button>
+                    {documentDrawer ? (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setDocsOpen(true)}
+                        >
+                            Documents
+                        </Button>
+                    ) : (
+                        <Button asChild variant="outline">
+                            <Link href={links.documents}>Documents</Link>
+                        </Button>
+                    )}
                     {permissions.can_delete ? (
                         <Button
                             type="button"
@@ -105,6 +126,13 @@ export default function BankCashShow({
                     ))}
                 </dl>
             </div>
+            {documentDrawer ? (
+                <DocumentDrawer
+                    open={docsOpen}
+                    onOpenChange={setDocsOpen}
+                    {...documentDrawer}
+                />
+            ) : null}
         </>
     );
 }

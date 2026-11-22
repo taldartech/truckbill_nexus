@@ -152,7 +152,7 @@
 | Blocked / partial | Entitlement **UX/enforcement matrix** for grace/restricted/suspended details → AUD-CON-006 Pending; implement only Confirmed Rules §15 behaviours; leave Pending matrix behind feature flags / informational states                                                       |
 | Tests             | Discount order vectors; proration leap/boundary; immutable snapshot; common renewal date uniqueness per company                                                                                                                                                           |
 | Acceptance        | Pricing calculation exit criterion met for Confirmed rules                                                                                                                                                                                                                |
-| **Status**        | **In progress** — catalogue, pricing calculator, draft contracts, immutable snapshots, credit ledger foundations + Pest (Batch A)                                                                                                                                         |
+| **Status**        | **Complete for authorized UI scope (Batch D)** — catalogue, pricing calculator, draft create/edit with immutable snapshots, credit ledgers, Owner subscription UI; payment/issuance remain gated (PO-P3-PAY); AUD-CON-006 Pending                                                                                                      |
 
 ---
 

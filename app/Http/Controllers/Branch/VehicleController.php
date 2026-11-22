@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Branch;
 
 use App\Domains\Company\CompanyAccessService;
+use App\Domains\Document\DocumentAttachmentService;
 use App\Domains\Master\Exceptions\MasterDomainException;
 use App\Domains\Master\Vehicle\VehicleService;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
+use App\Http\Controllers\Branch\Concerns\PresentsDocumentDrawer;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Company;
@@ -21,11 +23,13 @@ use Inertia\Response;
 class VehicleController extends Controller
 {
     use AuthorizesBranchPanel;
+    use PresentsDocumentDrawer;
 
     public function __construct(
         private readonly CompanyAccessService $access,
         private readonly PermissionAuthorizer $authorizer,
         private readonly VehicleService $vehicles,
+        private readonly DocumentAttachmentService $documents,
     ) {}
 
     public function index(Request $request, Company $company, Branch $branch): Response
@@ -147,6 +151,15 @@ class VehicleController extends Controller
             'branch' => $this->branchPayload($branch),
             'permissions' => $permissions,
             'vehicle' => $this->vehiclePayload($vehicle),
+            'documentDrawer' => $this->documentDrawerPayload(
+                $actor,
+                $company,
+                $branch,
+                'vehicle',
+                $vehicle->id,
+                $this->documents,
+                $permissions,
+            ),
             'links' => [
                 'hub' => route('branch.masters.index', [$company, $branch]),
                 'index' => route('branch.vehicles.index', [$company, $branch]),

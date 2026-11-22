@@ -10,10 +10,15 @@ use App\Models\SubscriptionAddon;
 use App\Models\SubscriptionCatalogueVersion;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
+use App\Support\Audit\AuditedTransaction;
+use App\Support\Audit\AuditWriter;
 use App\Support\Tenant\TenantContextHolder;
 use Carbon\CarbonImmutable;
 use Database\Seeders\SubscriptionCatalogueSeeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
+use Mockery;
+use RuntimeException;
 
 beforeEach(function () {
     TenantContextHolder::clear();
@@ -163,4 +168,208 @@ test('catalogue seeder is idempotent with configurable starting prices', functio
     expect(SubscriptionPlan::query()->count())->toBe(11)
         ->and(SubscriptionAddon::query()->count())->toBe(12)
         ->and(SubscriptionCatalogueVersion::query()->where('code', 'v2026-initial')->count())->toBe(1);
+});
+
+test('draft contract update recalculates prices preserves catalogue and records history', function () {
+    $owner = User::factory()->customer()->create(['password' => Hash::make('secret')]);
+    $company = app(CompanyWorkspaceService::class)->createCompany($owner, 'Draft Edit Co');
+    $catalogue = SubscriptionCatalogueVersion::query()->where('code', 'v2026-initial')->firstOrFail();
+    $plans = SubscriptionPlan::query()
+        ->where('catalogue_version_id', $catalogue->id)
+        ->whereIn('code', ['micro', 'lite'])
+        ->whereIn('module', ['broker', 'ownfleet'])
+        ->get();
+    $addon = SubscriptionAddon::query()
+        ->where('catalogue_version_id', $catalogue->id)
+        ->where('is_active', true)
+        ->firstOrFail();
+
+    $this->actingAs($owner);
+    $contracts = app(CompanySubscriptionContractService::class);
+
+    $draft = $contracts->createDraftContract(
+        actor: $owner,
+        company: $company,
+        catalogue: $catalogue,
+        planIds: [$plans->first()->id],
+        tenure: SubscriptionTenure::Monthly,
+        commonRenewalDate: now()->addYear(),
+        renewalEligible: false,
+    );
+
+    $beforeTotal = (string) $draft->discounted_annual_total;
+    $beforeSnapshots = $draft->snapshots()->count();
+
+    $updated = $contracts->updateDraftContract(
+        actor: $owner,
+        subscription: $draft,
+        planIds: $plans->pluck('id')->all(),
+        tenure: SubscriptionTenure::Yearly,
+        commonRenewalDate: now()->addMonths(18),
+        renewalEligible: true,
+        addonIds: [$addon->id],
+        expectedSnapshotCount: $beforeSnapshots,
+    );
+
+    expect($updated->status)->toBe('draft')
+        ->and($updated->catalogue_version_id)->toBe($catalogue->id)
+        ->and($updated->tenure)->toBe(SubscriptionTenure::Yearly->value)
+        ->and($updated->renewal_eligible)->toBeTrue()
+        ->and($updated->items)->toHaveCount(3)
+        ->and((string) $updated->discounted_annual_total)->not->toBe($beforeTotal)
+        ->and($updated->snapshots()->count())->toBe($beforeSnapshots + 2)
+        ->and($updated->snapshots()->where('reason', 'draft_before_update')->exists())->toBeTrue()
+        ->and($updated->snapshots()->where('reason', 'draft_updated')->exists())->toBeTrue()
+        ->and($updated->activated_at)->toBeNull();
+
+    $calc = (new SubscriptionPricingCalculator)->calculate(
+        coreModuleAnnualPrices: array_values($plans->pluck('annual_price')->map(fn ($p) => (string) $p)->all()),
+        tenure: SubscriptionTenure::Yearly,
+        renewalEligible: true,
+    );
+    expect((string) $updated->list_annual_total)->toBe($calc['base_annual'])
+        ->and((string) $updated->discounted_annual_total)->toBe($calc['after_bundle']);
+});
+
+test('draft update rejects finalized contracts unauthorized actors invalid selections and stale concurrency', function () {
+    $owner = User::factory()->customer()->create();
+    $stranger = User::factory()->customer()->create();
+    $company = app(CompanyWorkspaceService::class)->createCompany($owner, 'Guard Co');
+    $otherCompany = app(CompanyWorkspaceService::class)->createCompany($stranger, 'Other Co');
+    $catalogue = SubscriptionCatalogueVersion::query()->where('code', 'v2026-initial')->firstOrFail();
+    $plan = SubscriptionPlan::query()
+        ->where('catalogue_version_id', $catalogue->id)
+        ->where('is_active', true)
+        ->firstOrFail();
+    $this->actingAs($owner);
+    $contracts = app(CompanySubscriptionContractService::class);
+    $draft = $contracts->createDraftContract(
+        actor: $owner,
+        company: $company,
+        catalogue: $catalogue,
+        planIds: [$plan->id],
+        tenure: SubscriptionTenure::Yearly,
+        commonRenewalDate: now()->addYear(),
+    );
+
+    expect(fn () => $contracts->updateDraftContract(
+        actor: $stranger,
+        subscription: $draft,
+        planIds: [$plan->id],
+        tenure: SubscriptionTenure::Yearly,
+        commonRenewalDate: now()->addYear(),
+        expectedSnapshotCount: $draft->snapshots()->count(),
+    ))->toThrow(SubscriptionDomainException::class);
+
+    expect(fn () => $contracts->updateDraftContract(
+        actor: $owner,
+        subscription: $draft,
+        planIds: [(string) Str::uuid()],
+        tenure: SubscriptionTenure::Yearly,
+        commonRenewalDate: now()->addYear(),
+        expectedSnapshotCount: $draft->snapshots()->count(),
+    ))->toThrow(SubscriptionDomainException::class);
+
+    $sameModulePlans = SubscriptionPlan::query()
+        ->where('catalogue_version_id', $catalogue->id)
+        ->where('module', $plan->module)
+        ->where('is_active', true)
+        ->take(2)
+        ->get();
+    if ($sameModulePlans->count() === 2) {
+        expect(fn () => $contracts->updateDraftContract(
+            actor: $owner,
+            subscription: $draft->fresh(),
+            planIds: $sameModulePlans->pluck('id')->all(),
+            tenure: SubscriptionTenure::Yearly,
+            commonRenewalDate: now()->addYear(),
+            expectedSnapshotCount: $draft->snapshots()->count(),
+        ))->toThrow(SubscriptionDomainException::class);
+    }
+
+    $staleCount = $draft->fresh()->snapshots()->count();
+    $contracts->updateDraftContract(
+        actor: $owner,
+        subscription: $draft->fresh(),
+        planIds: [$plan->id],
+        tenure: SubscriptionTenure::Quarterly,
+        commonRenewalDate: now()->addYear(),
+        expectedSnapshotCount: $staleCount,
+    );
+
+    expect(fn () => $contracts->updateDraftContract(
+        actor: $owner,
+        subscription: $draft->fresh(),
+        planIds: [$plan->id],
+        tenure: SubscriptionTenure::Yearly,
+        commonRenewalDate: now()->addYear(),
+        expectedSnapshotCount: $staleCount,
+    ))->toThrow(SubscriptionDomainException::class);
+
+    $finalized = $draft->fresh();
+    $finalized->forceFill(['status' => 'active'])->save();
+    expect(fn () => $contracts->updateDraftContract(
+        actor: $owner,
+        subscription: $finalized,
+        planIds: [$plan->id],
+        tenure: SubscriptionTenure::Yearly,
+        commonRenewalDate: now()->addYear(),
+        expectedSnapshotCount: $finalized->snapshots()->count(),
+    ))->toThrow(SubscriptionDomainException::class);
+
+    expect($otherCompany->id)->not->toBe($company->id);
+});
+
+test('draft update rolls back atomically when audit write fails', function () {
+    $owner = User::factory()->customer()->create();
+    $company = app(CompanyWorkspaceService::class)->createCompany($owner, 'Atomic Co');
+    $catalogue = SubscriptionCatalogueVersion::query()->where('code', 'v2026-initial')->firstOrFail();
+    $plan = SubscriptionPlan::query()
+        ->where('catalogue_version_id', $catalogue->id)
+        ->where('is_active', true)
+        ->firstOrFail();
+    $otherPlan = SubscriptionPlan::query()
+        ->where('catalogue_version_id', $catalogue->id)
+        ->where('is_active', true)
+        ->where('id', '!=', $plan->id)
+        ->where('module', '!=', $plan->module)
+        ->firstOrFail();
+
+    $this->actingAs($owner);
+    $draft = app(CompanySubscriptionContractService::class)->createDraftContract(
+        actor: $owner,
+        company: $company,
+        catalogue: $catalogue,
+        planIds: [$plan->id],
+        tenure: SubscriptionTenure::Yearly,
+        commonRenewalDate: now()->addYear(),
+    );
+
+    $itemCountBefore = $draft->items()->count();
+    $snapshotCountBefore = $draft->snapshots()->count();
+    $tenureBefore = $draft->tenure;
+
+    $failingAudit = Mockery::mock(AuditWriter::class);
+    $failingAudit->shouldReceive('write')->andThrow(new RuntimeException('forced audit failure'));
+
+    $service = new CompanySubscriptionContractService(
+        pricing: new SubscriptionPricingCalculator,
+        auditedTransaction: new AuditedTransaction,
+        audit: $failingAudit,
+    );
+
+    expect(fn () => $service->updateDraftContract(
+        actor: $owner,
+        subscription: $draft,
+        planIds: [$otherPlan->id],
+        tenure: SubscriptionTenure::Monthly,
+        commonRenewalDate: now()->addMonths(6),
+        expectedSnapshotCount: $snapshotCountBefore,
+    ))->toThrow(RuntimeException::class);
+
+    $fresh = $draft->fresh(['items']);
+    expect($fresh->tenure)->toBe($tenureBefore)
+        ->and($fresh->items()->count())->toBe($itemCountBefore)
+        ->and($fresh->items()->first()->plan_id)->toBe($plan->id)
+        ->and($fresh->snapshots()->count())->toBe($snapshotCountBefore);
 });

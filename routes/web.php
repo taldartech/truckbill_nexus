@@ -58,6 +58,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/owner/companies/{company}/subscription/catalogue', [OwnerSubscriptionController::class, 'catalogue'])->name('owner.subscription.catalogue');
     Route::get('/owner/companies/{company}/subscription/drafts', [OwnerSubscriptionController::class, 'drafts'])->name('owner.subscription.drafts');
     Route::post('/owner/companies/{company}/subscription/drafts', [OwnerSubscriptionController::class, 'storeDraft'])->name('owner.subscription.drafts.store');
+    Route::get('/owner/companies/{company}/subscription/drafts/{subscription}/edit', [OwnerSubscriptionController::class, 'editDraft'])
+        ->name('owner.subscription.drafts.edit');
+    Route::put('/owner/companies/{company}/subscription/drafts/{subscription}', [OwnerSubscriptionController::class, 'updateDraft'])
+        ->name('owner.subscription.drafts.update');
     Route::get('/owner/companies/{company}/subscription/credits', [OwnerSubscriptionController::class, 'credits'])->name('owner.subscription.credits');
     Route::get('/owner/companies/{company}/branches', OwnerBranchesController::class)->name('owner.branches');
 

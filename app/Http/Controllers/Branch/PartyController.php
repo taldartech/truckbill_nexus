@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Branch;
 
 use App\Domains\Company\CompanyAccessService;
+use App\Domains\Document\DocumentAttachmentService;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Party\Exceptions\PartyDomainException;
 use App\Domains\Master\Party\PartyService;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
+use App\Http\Controllers\Branch\Concerns\PresentsDocumentDrawer;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Company;
@@ -28,11 +30,13 @@ use Inertia\Response;
 class PartyController extends Controller
 {
     use AuthorizesBranchPanel;
+    use PresentsDocumentDrawer;
 
     public function __construct(
         private readonly CompanyAccessService $access,
         private readonly PermissionAuthorizer $authorizer,
         private readonly PartyService $parties,
+        private readonly DocumentAttachmentService $documents,
     ) {}
 
     public function index(Request $request, Company $company, Branch $branch): Response|JsonResponse
@@ -183,6 +187,15 @@ class PartyController extends Controller
                 'value' => $role->value,
                 'label' => str_replace('_', ' ', ucfirst($role->value)),
             ])->values()->all(),
+            'documentDrawer' => $this->documentDrawerPayload(
+                $actor,
+                $company,
+                $branch,
+                'party',
+                $party->id,
+                $this->documents,
+                $permissions,
+            ),
             'links' => [
                 'hub' => route('branch.masters.index', [$company, $branch]),
                 'index' => route('branch.parties.index', [$company, $branch]),

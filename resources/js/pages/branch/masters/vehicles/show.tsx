@@ -1,4 +1,9 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
+import { useState } from 'react';
+import {
+    DocumentDrawer,
+    type DocumentDrawerProps,
+} from '@/components/masters/document-drawer';
 import { MasterPageHeader } from '@/components/masters/master-page-header';
 import { Button } from '@/components/ui/button';
 
@@ -10,6 +15,10 @@ type Props = {
         id: string;
         registration_number: string;
     };
+    documentDrawer: Omit<
+        DocumentDrawerProps,
+        'open' | 'onOpenChange' | 'title'
+    > | null;
     links: {
         hub: string;
         index: string;
@@ -24,9 +33,12 @@ export default function VehicleShow({
     branch,
     permissions,
     vehicle,
+    documentDrawer,
     links,
 }: Props) {
     const { flash } = usePage<{ flash?: { success?: string | null } }>().props;
+    const [docsOpen, setDocsOpen] = useState(false);
+
     return (
         <>
             <Head title={String(vehicle.registration_number)} />
@@ -56,9 +68,19 @@ export default function VehicleShow({
                             <Link href={links.edit}>Edit</Link>
                         </Button>
                     ) : null}
-                    <Button asChild variant="outline">
-                        <Link href={links.documents}>Documents</Link>
-                    </Button>
+                    {documentDrawer ? (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setDocsOpen(true)}
+                        >
+                            Documents
+                        </Button>
+                    ) : (
+                        <Button asChild variant="outline">
+                            <Link href={links.documents}>Documents</Link>
+                        </Button>
+                    )}
                     {permissions.can_delete ? (
                         <Button
                             type="button"
@@ -98,6 +120,13 @@ export default function VehicleShow({
                         ))}
                 </dl>
             </div>
+            {documentDrawer ? (
+                <DocumentDrawer
+                    open={docsOpen}
+                    onOpenChange={setDocsOpen}
+                    {...documentDrawer}
+                />
+            ) : null}
         </>
     );
 }

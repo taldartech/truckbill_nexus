@@ -3,10 +3,12 @@
 namespace App\Http\Controllers\Branch;
 
 use App\Domains\Company\CompanyAccessService;
+use App\Domains\Document\DocumentAttachmentService;
 use App\Domains\Master\Exceptions\MasterDomainException;
 use App\Domains\Master\Station\StationService;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
+use App\Http\Controllers\Branch\Concerns\PresentsDocumentDrawer;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Company;
@@ -22,11 +24,13 @@ use Inertia\Response;
 class StationController extends Controller
 {
     use AuthorizesBranchPanel;
+    use PresentsDocumentDrawer;
 
     public function __construct(
         private readonly CompanyAccessService $access,
         private readonly PermissionAuthorizer $authorizer,
         private readonly StationService $stations,
+        private readonly DocumentAttachmentService $documents,
     ) {}
 
     public function index(Request $request, Company $company, Branch $branch): Response
@@ -171,6 +175,15 @@ class StationController extends Controller
                 'is_active' => (bool) $station->is_active,
                 'default_transporter_party_id' => $default?->default_transporter_party_id,
             ],
+            'documentDrawer' => $this->documentDrawerPayload(
+                $actor,
+                $company,
+                $branch,
+                'station',
+                $station->id,
+                $this->documents,
+                $permissions,
+            ),
             'links' => [
                 'hub' => route('branch.masters.index', [$company, $branch]),
                 'index' => route('branch.stations.index', [$company, $branch]),

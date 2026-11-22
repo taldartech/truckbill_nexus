@@ -208,6 +208,9 @@ class OwnerSubscriptionController extends Controller
                 'catalogue' => route('owner.subscription.catalogue', $company),
                 'store' => route('owner.subscription.drafts.store', $company),
             ],
+            'editLinks' => $drafts->mapWithKeys(fn (CompanySubscription $draft): array => [
+                $draft->id => route('owner.subscription.drafts.edit', [$company, $draft]),
+            ])->all(),
         ]);
     }
 
@@ -248,6 +251,154 @@ class OwnerSubscriptionController extends Controller
         return redirect()
             ->route('owner.subscription.drafts', $company)
             ->with('success', 'Draft contract created (not activated).');
+    }
+
+    public function editDraft(Request $request, Company $company, CompanySubscription $subscription): Response
+    {
+        ['user' => $user, 'scope' => $scope] = $this->authorizeOwnerPanel($request, $company, $this->access);
+        $this->assertCompanySubscription($company, $subscription);
+
+        if ($subscription->status !== 'draft') {
+            abort(403, 'Only draft contracts may be edited.');
+        }
+
+        $subscription->load(['items', 'snapshots']);
+
+        $catalogue = SubscriptionCatalogueVersion::query()
+            ->whereKey($subscription->catalogue_version_id)
+            ->firstOrFail();
+
+        $plans = SubscriptionPlan::query()
+            ->where('catalogue_version_id', $catalogue->id)
+            ->where('is_active', true)
+            ->orderBy('module')
+            ->orderBy('annual_price')
+            ->get();
+
+        $addons = SubscriptionAddon::query()
+            ->where('catalogue_version_id', $catalogue->id)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        $selectedPlanIds = array_values(array_filter((array) $request->input(
+            'plan_ids',
+            $subscription->items->where('item_type', 'plan')->pluck('plan_id')->filter()->values()->all(),
+        )));
+        $selectedAddonIds = array_values(array_filter((array) $request->input(
+            'addon_ids',
+            $subscription->items->where('item_type', 'addon')->pluck('addon_id')->filter()->values()->all(),
+        )));
+        $tenureValue = (string) $request->input('tenure', $subscription->tenure);
+        $tenure = SubscriptionTenure::tryFrom($tenureValue) ?? SubscriptionTenure::from((string) $subscription->tenure);
+        $renewalEligible = $request->has('renewal_eligible')
+            ? $request->boolean('renewal_eligible')
+            : (bool) $subscription->renewal_eligible;
+
+        $previewBreakdown = null;
+        if ($selectedPlanIds !== []) {
+            $selectedPlans = $plans->whereIn('id', $selectedPlanIds);
+            if ($selectedPlans->count() === count(array_unique($selectedPlanIds))) {
+                $prices = array_values($selectedPlans->pluck('annual_price')->map(fn ($p) => (string) $p)->all());
+                $previewBreakdown = $this->pricing->calculate(
+                    coreModuleAnnualPrices: $prices,
+                    tenure: $tenure,
+                    renewalEligible: $renewalEligible,
+                );
+            }
+        }
+
+        $canManage = $scope === CompanyAccessService::OWNER_PANEL_FULL && $company->isOwnedBy($user);
+
+        return Inertia::render('owner/subscription/draft-edit', [
+            'company' => $this->companyPayload($company),
+            'ownerPanelScope' => $scope,
+            'canManage' => $canManage,
+            'catalogue' => [
+                'id' => $catalogue->id,
+                'code' => $catalogue->code,
+                'name' => $catalogue->name,
+            ],
+            'draft' => $this->subscriptionPayload($subscription, includeSnapshots: true),
+            'plans' => $plans->map(fn (SubscriptionPlan $plan): array => [
+                'id' => $plan->id,
+                'module' => $plan->module,
+                'code' => $plan->code,
+                'name' => $plan->name,
+                'annual_price' => (string) $plan->annual_price,
+                'display_list_price' => $this->pricing->displayListPrice((string) $plan->annual_price),
+                'capacity_units' => $plan->capacity_units,
+            ])->values()->all(),
+            'addons' => $addons->map(fn (SubscriptionAddon $addon): array => [
+                'id' => $addon->id,
+                'code' => $addon->code,
+                'name' => $addon->name,
+                'annual_price' => (string) $addon->annual_price,
+            ])->values()->all(),
+            'tenureOptions' => collect(SubscriptionTenure::cases())->map(fn (SubscriptionTenure $t): array => [
+                'value' => $t->value,
+                'label' => str_replace('_', ' ', ucfirst($t->value)),
+                'months' => $t->months(),
+                'discount_percent' => $t->discountPercent(),
+            ])->values()->all(),
+            'selection' => [
+                'plan_ids' => $selectedPlanIds,
+                'addon_ids' => $selectedAddonIds,
+                'tenure' => $tenure->value,
+                'renewal_eligible' => $renewalEligible,
+                'common_renewal_date' => $request->input(
+                    'common_renewal_date',
+                    $subscription->common_renewal_date?->toDateString(),
+                ),
+            ],
+            'before_breakdown' => $subscription->pricing_breakdown,
+            'preview_breakdown' => $previewBreakdown,
+            'edit_note' => 'Editing updates the draft only. Catalogue version is locked to this draft. Payment and activation remain gated (PO-P3-PAY).',
+            'links' => [
+                'drafts' => route('owner.subscription.drafts', $company),
+                'preview' => route('owner.subscription.drafts.edit', [$company, $subscription]),
+                'update' => route('owner.subscription.drafts.update', [$company, $subscription]),
+                'overview' => route('owner.subscription', $company),
+            ],
+        ]);
+    }
+
+    public function updateDraft(Request $request, Company $company, CompanySubscription $subscription): RedirectResponse
+    {
+        ['user' => $user] = $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
+        $this->assertCompanySubscription($company, $subscription);
+
+        $validated = $request->validate([
+            'plan_ids' => ['required', 'array', 'min:1'],
+            'plan_ids.*' => ['uuid'],
+            'addon_ids' => ['nullable', 'array'],
+            'addon_ids.*' => ['uuid'],
+            'tenure' => ['required', Rule::enum(SubscriptionTenure::class)],
+            'common_renewal_date' => ['required', 'date'],
+            'renewal_eligible' => ['sometimes', 'boolean'],
+            'expected_snapshot_count' => ['required', 'integer', 'min:0'],
+            'remark' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        try {
+            $updated = $this->contracts->updateDraftContract(
+                actor: $user,
+                subscription: $subscription,
+                planIds: $validated['plan_ids'],
+                tenure: SubscriptionTenure::from($validated['tenure']),
+                commonRenewalDate: CarbonImmutable::parse($validated['common_renewal_date']),
+                renewalEligible: (bool) ($validated['renewal_eligible'] ?? false),
+                addonIds: $validated['addon_ids'] ?? [],
+                remark: $validated['remark'] ?? 'Update subscription draft contract',
+                expectedSnapshotCount: (int) $validated['expected_snapshot_count'],
+            );
+        } catch (SubscriptionDomainException $e) {
+            abort(403, $e->getMessage());
+        }
+
+        return redirect()
+            ->route('owner.subscription.drafts.edit', [$company, $updated])
+            ->with('success', 'Draft contract updated (not activated).');
     }
 
     public function credits(Request $request, Company $company): Response
@@ -308,6 +459,7 @@ class OwnerSubscriptionController extends Controller
         $payload = [
             'id' => $subscription->id,
             'status' => $subscription->status,
+            'catalogue_version_id' => $subscription->catalogue_version_id,
             'tenure' => $subscription->tenure,
             'common_renewal_date' => $subscription->common_renewal_date?->toDateString(),
             'renewal_eligible' => (bool) $subscription->renewal_eligible,
@@ -315,10 +467,16 @@ class OwnerSubscriptionController extends Controller
             'list_annual_total' => (string) $subscription->list_annual_total,
             'discounted_annual_total' => (string) $subscription->discounted_annual_total,
             'pricing_breakdown' => $subscription->pricing_breakdown,
+            'updated_at' => $subscription->updated_at?->toIso8601String(),
+            'snapshot_count' => $subscription->relationLoaded('snapshots')
+                ? $subscription->snapshots->count()
+                : $subscription->snapshots()->count(),
             'items' => $subscription->relationLoaded('items')
                 ? $subscription->items->map(fn ($item): array => [
                     'id' => $item->id,
                     'item_type' => $item->item_type,
+                    'plan_id' => $item->plan_id,
+                    'addon_id' => $item->addon_id,
                     'module' => $item->module,
                     'code' => $item->code,
                     'name' => $item->name,
@@ -337,6 +495,13 @@ class OwnerSubscriptionController extends Controller
         }
 
         return $payload;
+    }
+
+    private function assertCompanySubscription(Company $company, CompanySubscription $subscription): void
+    {
+        if ($subscription->company_id !== $company->id) {
+            abort(404);
+        }
     }
 
     private function creditUnitLabel(string $ledgerType): string

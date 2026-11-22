@@ -2,6 +2,7 @@ import { Head, Link, usePage } from '@inertiajs/react';
 import { CompanySwitcher } from '@/components/company-switcher';
 import ShellEmptyState from '@/components/shell-empty-state';
 import { Button } from '@/components/ui/button';
+import { pricingBreakdownRows } from '@/lib/pricing-breakdown-labels';
 
 type Draft = {
     id: string;
@@ -22,16 +23,20 @@ type Draft = {
 type Props = {
     company: { id: string; name: string; status: string };
     ownerPanelScope: string;
+    canManage: boolean;
     drafts: Draft[];
     activation_note: string;
     links: { overview: string; catalogue: string };
+    editLinks: Record<string, string>;
 };
 
 export default function SubscriptionDrafts({
     company,
+    canManage,
     drafts,
     activation_note,
     links,
+    editLinks,
 }: Props) {
     const { flash } = usePage<{ flash?: { success?: string | null } }>().props;
     return (
@@ -79,59 +84,86 @@ export default function SubscriptionDrafts({
                     />
                 ) : (
                     <ul className="space-y-4">
-                        {drafts.map((draft) => (
-                            <li
-                                key={draft.id}
-                                className="rounded-xl border border-border p-4"
-                            >
-                                <div className="flex flex-wrap items-start justify-between gap-3">
-                                    <div>
-                                        <p className="font-semibold">
-                                            {draft.status} · {draft.tenure}
-                                        </p>
-                                        <p className="text-sm text-muted-foreground">
-                                            Renewal{' '}
-                                            {draft.common_renewal_date || '—'} ·
-                                            ₹{draft.discounted_annual_total}
-                                        </p>
+                        {drafts.map((draft) => {
+                            const rows = pricingBreakdownRows(
+                                draft.pricing_breakdown,
+                            );
+                            return (
+                                <li
+                                    key={draft.id}
+                                    className="rounded-xl border border-border p-4"
+                                >
+                                    <div className="flex flex-wrap items-start justify-between gap-3">
+                                        <div>
+                                            <p className="font-semibold">
+                                                {draft.status} · {draft.tenure}
+                                            </p>
+                                            <p className="text-sm text-muted-foreground">
+                                                Renewal{' '}
+                                                {draft.common_renewal_date ||
+                                                    '—'}{' '}
+                                                · ₹
+                                                {draft.discounted_annual_total}
+                                            </p>
+                                        </div>
+                                        <div className="flex flex-col items-end gap-2">
+                                            <p className="text-xs text-muted-foreground">
+                                                ID {draft.id}
+                                            </p>
+                                            {canManage &&
+                                            editLinks[draft.id] ? (
+                                                <Button asChild size="sm">
+                                                    <Link
+                                                        href={
+                                                            editLinks[draft.id]
+                                                        }
+                                                    >
+                                                        Edit draft
+                                                    </Link>
+                                                </Button>
+                                            ) : null}
+                                        </div>
                                     </div>
-                                    <p className="text-xs text-muted-foreground">
-                                        ID {draft.id}
-                                    </p>
-                                </div>
-                                <ul className="mt-3 space-y-1 text-sm">
-                                    {draft.items.map((item, i) => (
-                                        <li
-                                            key={`${item.name}-${i}`}
-                                            className="flex justify-between gap-3"
-                                        >
-                                            <span>{item.name}</span>
-                                            <span>
-                                                ₹{item.annual_price_snapshot}
-                                            </span>
-                                        </li>
-                                    ))}
-                                </ul>
-                                {draft.pricing_breakdown ? (
-                                    <dl className="mt-3 grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
-                                        {Object.entries(draft.pricing_breakdown)
-                                            .filter(
-                                                ([, v]) =>
-                                                    typeof v !== 'object',
-                                            )
-                                            .map(([k, v]) => (
+                                    <ul className="mt-3 space-y-1 text-sm">
+                                        {draft.items.map((item, i) => (
+                                            <li
+                                                key={`${item.name}-${i}`}
+                                                className="flex justify-between gap-3"
+                                            >
+                                                <span>{item.name}</span>
+                                                <span>
+                                                    ₹
+                                                    {item.annual_price_snapshot}
+                                                </span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                    {rows.length > 0 ? (
+                                        <dl className="mt-3 grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
+                                            {rows.map((row) => (
                                                 <div
-                                                    key={k}
+                                                    key={row.key}
                                                     className="flex justify-between gap-2"
                                                 >
-                                                    <dt>{k}</dt>
-                                                    <dd>{String(v)}</dd>
+                                                    <dt>{row.label}</dt>
+                                                    <dd>{row.value}</dd>
                                                 </div>
                                             ))}
-                                    </dl>
-                                ) : null}
-                            </li>
-                        ))}
+                                        </dl>
+                                    ) : null}
+                                    {draft.snapshots &&
+                                    draft.snapshots.length > 0 ? (
+                                        <p className="mt-2 text-xs text-muted-foreground">
+                                            {draft.snapshots.length} immutable
+                                            snapshot
+                                            {draft.snapshots.length === 1
+                                                ? ''
+                                                : 's'}
+                                        </p>
+                                    ) : null}
+                                </li>
+                            );
+                        })}
                     </ul>
                 )}
             </div>
