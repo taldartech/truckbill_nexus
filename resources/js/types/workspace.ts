@@ -2,7 +2,7 @@ export type WorkspaceCompany = {
     id: string;
     name: string;
     status: string;
-    relationship: 'Owner' | 'Member' | string;
+    relationship: 'Owner' | 'Member';
     is_owner: boolean;
 };
 

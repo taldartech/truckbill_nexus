@@ -31,7 +31,11 @@ export default function WorkspaceNoAccess({
                     action={
                         <Form {...logout.form()} className="mt-2">
                             {({ processing }) => (
-                                <Button type="submit" variant="outline" disabled={processing}>
+                                <Button
+                                    type="submit"
+                                    variant="outline"
+                                    disabled={processing}
+                                >
                                     Sign out
                                 </Button>
                             )}

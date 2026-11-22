@@ -25,7 +25,11 @@ type OwnerUsersShowProps = {
         role_assignments: Array<{
             id: string;
             status: string;
-            role: { id: string | null; name: string | null; slug: string | null };
+            role: {
+                id: string | null;
+                name: string | null;
+                slug: string | null;
+            };
             branch: { id: string | null; name: string | null };
         }>;
     };
@@ -86,11 +90,13 @@ export default function OwnerUsersShow({
 
     return (
         <>
-            <Head title={`${membership.user.name ?? 'User'} · ${company.name}`} />
+            <Head
+                title={`${membership.user.name ?? 'User'} · ${company.name}`}
+            />
             <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="space-y-2">
-                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                             Owner Panel · Membership
                         </p>
                         <h1 className="text-2xl font-semibold tracking-tight">
@@ -166,14 +172,16 @@ export default function OwnerUsersShow({
                                             }
                                             className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs"
                                         >
-                                            {assignableBranches.map((branch) => (
-                                                <option
-                                                    key={branch.id}
-                                                    value={branch.id}
-                                                >
-                                                    {branch.name}
-                                                </option>
-                                            ))}
+                                            {assignableBranches.map(
+                                                (branch) => (
+                                                    <option
+                                                        key={branch.id}
+                                                        value={branch.id}
+                                                    >
+                                                        {branch.name}
+                                                    </option>
+                                                ),
+                                            )}
                                         </select>
                                     </div>
                                     <div className="grid gap-2">
@@ -302,10 +310,7 @@ export default function OwnerUsersShow({
                                                                 .id ?? ''
                                                         }
                                                     >
-                                                        {
-                                                            assignment.branch
-                                                                .name
-                                                        }
+                                                        {assignment.branch.name}
                                                     </option>
                                                 ),
                                             )}

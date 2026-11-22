@@ -124,7 +124,7 @@ class OwnerUsersController extends Controller
                 'id' => $invitation->id,
                 'email' => $invitation->email,
                 'branch_name' => $invitation->branch?->name,
-                'expires_at' => $invitation->expires_at?->toIso8601String(),
+                'expires_at' => $invitation->expires_at->toIso8601String(),
             ])->values(),
             'branches' => $branches->map(fn (Branch $branch): array => [
                 'id' => $branch->id,
@@ -352,7 +352,7 @@ class OwnerUsersController extends Controller
             ]);
         }
 
-        $role = Role::query()->findOrFail($validated['role_id']);
+        $role = Role::query()->whereKey($validated['role_id'])->firstOrFail();
 
         try {
             $this->roles->assignCustomerBranchRole(

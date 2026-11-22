@@ -31,7 +31,7 @@ export default function BranchDashboard({
             <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="space-y-2">
-                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                             Branch Panel
                         </p>
                         <h1 className="text-2xl font-semibold tracking-tight">
@@ -60,7 +60,9 @@ export default function BranchDashboard({
                     className="flex flex-wrap gap-2"
                 >
                     <Button asChild size="sm" variant="secondary">
-                        <Link href={`/branch/companies/${company.id}/branches/${branch.id}`}>
+                        <Link
+                            href={`/branch/companies/${company.id}/branches/${branch.id}`}
+                        >
                             Dashboard
                         </Link>
                     </Button>
@@ -69,7 +71,9 @@ export default function BranchDashboard({
                     </Button>
                     {links.select_branch ? (
                         <Button asChild size="sm" variant="outline">
-                            <Link href={links.select_branch}>Switch branch</Link>
+                            <Link href={links.select_branch}>
+                                Switch branch
+                            </Link>
                         </Button>
                     ) : null}
                 </nav>
@@ -83,8 +87,14 @@ export default function BranchDashboard({
                     <ul className="grid gap-3 md:grid-cols-2">
                         {modules.map((module) => (
                             <li key={module.key}>
-                                <Button asChild variant="outline" className="w-full justify-start">
-                                    <Link href={module.href}>{module.label}</Link>
+                                <Button
+                                    asChild
+                                    variant="outline"
+                                    className="w-full justify-start"
+                                >
+                                    <Link href={module.href}>
+                                        {module.label}
+                                    </Link>
                                 </Button>
                             </li>
                         ))}

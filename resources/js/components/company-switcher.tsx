@@ -72,7 +72,8 @@ export function CompanySwitcher() {
                                             {company.name}
                                         </span>
                                         <span className="block text-xs text-muted-foreground">
-                                            {company.relationship} · {company.status}
+                                            {company.relationship} ·{' '}
+                                            {company.status}
                                         </span>
                                     </span>
                                 </Button>

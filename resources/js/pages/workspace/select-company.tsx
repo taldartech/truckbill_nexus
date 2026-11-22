@@ -23,13 +23,15 @@ export default function SelectCompany({
             <Head title={heading} />
             <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 p-6">
                 <div className="space-y-1">
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                         {mode === 'owned' ? 'Owner Panel landing' : 'Workspace'}
                     </p>
                     <h1 className="text-2xl font-semibold tracking-tight">
                         {heading}
                     </h1>
-                    <p className="text-sm text-muted-foreground">{description}</p>
+                    <p className="text-sm text-muted-foreground">
+                        {description}
+                    </p>
                 </div>
 
                 <ul className="space-y-3" role="list">
@@ -52,7 +54,9 @@ export default function SelectCompany({
                                                 {company.name}
                                             </span>
                                             <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                                                <span>{company.relationship}</span>
+                                                <span>
+                                                    {company.relationship}
+                                                </span>
                                                 <WorkspaceStatusBadge
                                                     status={company.status}
                                                 />

@@ -66,7 +66,7 @@ export default function OwnerAudit({
             <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="space-y-2">
-                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                             Owner Panel · Company audit
                         </p>
                         <h1 className="text-2xl font-semibold tracking-tight">

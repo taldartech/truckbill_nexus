@@ -79,7 +79,7 @@ class OwnerAuditController extends Controller
                         'actor_type' => $entry->actor_type,
                         'actor_id' => $entry->actor_id,
                         'is_owner_scope' => $entry->is_owner_scope,
-                        'created_at' => $entry->created_at?->toIso8601String(),
+                        'created_at' => $entry->created_at->toIso8601String(),
                     ];
                 })->values(),
                 'links' => $entries->linkCollection()->toArray(),

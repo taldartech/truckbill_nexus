@@ -27,8 +27,11 @@ export function AppSidebar() {
     const isCustomer = auth.user?.identity_type === 'customer';
     const activeCompanyId = workspace?.active_company_id ?? null;
     const activeBranchId = workspace?.active_branch_id ?? null;
-    const activeCompany = workspace?.companies.find((c) => c.id === activeCompanyId);
-    const isOwnerContext = activeCompany?.is_owner === true && activeBranchId === null;
+    const activeCompany = workspace?.companies.find(
+        (c) => c.id === activeCompanyId,
+    );
+    const isOwnerContext =
+        activeCompany?.is_owner === true && activeBranchId === null;
 
     const mainNavItems: NavItem[] = isCustomer
         ? [

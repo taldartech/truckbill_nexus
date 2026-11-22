@@ -21,7 +21,7 @@ export default function SelectBranch({ company, branches }: SelectBranchProps) {
             <Head title="Select branch" />
             <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 p-6">
                 <div className="space-y-1">
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                         Step 2 of 2 · Branch
                     </p>
                     <h1 className="text-2xl font-semibold tracking-tight">

@@ -27,7 +27,7 @@ export default function OwnerBranches({
             <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="space-y-2">
-                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                             Owner Panel · Branches
                         </p>
                         <h1 className="text-2xl font-semibold tracking-tight">
@@ -59,7 +59,9 @@ export default function OwnerBranches({
                             >
                                 <div>
                                     <p className="font-medium">{branch.name}</p>
-                                    <WorkspaceStatusBadge status={branch.status} />
+                                    <WorkspaceStatusBadge
+                                        status={branch.status}
+                                    />
                                 </div>
                                 {canEnterBranch ? (
                                     <Form
@@ -69,7 +71,10 @@ export default function OwnerBranches({
                                         })}
                                     >
                                         {({ processing }) => (
-                                            <Button type="submit" disabled={processing}>
+                                            <Button
+                                                type="submit"
+                                                disabled={processing}
+                                            >
                                                 Enter Branch Panel
                                             </Button>
                                         )}

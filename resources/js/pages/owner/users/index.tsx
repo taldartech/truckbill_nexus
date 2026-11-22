@@ -86,7 +86,7 @@ export default function OwnerUsersIndex({
             <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
                 <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                     <div className="space-y-2">
-                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                             Owner Panel · Users & memberships
                         </p>
                         <h1 className="text-2xl font-semibold tracking-tight">
@@ -246,7 +246,11 @@ export default function OwnerUsersIndex({
                                             status={membership.status}
                                         />
                                     </div>
-                                    <Button asChild variant="secondary" size="sm">
+                                    <Button
+                                        asChild
+                                        variant="secondary"
+                                        size="sm"
+                                    >
                                         <Link href={membership.show_url}>
                                             View
                                         </Link>
