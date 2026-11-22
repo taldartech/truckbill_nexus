@@ -2,6 +2,7 @@
 
 **Date:** 23 November 2026  
 **Starting HEAD:** `ea66c3aac070c3feb3f65e56dcbeb687ebe39b1d`  
+**Certification docs commit:** `aa134a4`  
 **Verdict:** **UI BACKFILL COMPLETE WITH DOCUMENTED GATES**  
 **Phase 4 design approval readiness:** Review package ready — **PO-P4-DESIGN-FORMAL still Pending (not Approved)**
 

@@ -68,4 +68,4 @@ Dated workstream records with verified local commit SHAs. Living product Memory 
     - `4287b4a` fix(phase4): preserve enquiry goods history on edit
     - `6a2c362` docs(standards): require production-ready fullstack delivery
     - `7827805` docs(design): prepare phase 4 UI approval package
-    - (certification commit follows)
+    - `aa134a4` docs(qa): certify completed UI backfill
