@@ -16,9 +16,10 @@
 > - **PO-P2-DESIGN:** APPROVED as a **gate requirement** — IA and key screen designs for Owner/Branch panels, workspace selection and dashboards must be prepared and Product Owner–approved before product UI implementation.
 > - **PO-P2-DESIGN-FORMAL:** **APPROVED WITH DOCUMENTED EXCEPTIONS** (22 November 2026) — artefacts A–G formally signed off within approved scope; AUD-CON-006 / TB-SUB-STATE-001 exact entitlements remain Pending; Internal Team UI and module ops excluded.
 > - **P2-WS-8 product UI:** **Authorized and implemented** (22 November 2026) within approved design exceptions — evidence in `P2_WS_8_IMPLEMENTATION_EVIDENCE.md`. Entitlement-dependent UI remains blocked.
-> - **PO-P2-WS8-ACCEPT:** **APPROVED WITH DOCUMENTED EXCEPTIONS** (22 November 2026) — accepts P2-WS-8 core workspace and Owner Panel follow-on for implemented/tested/approved scope; open exceptions retained (legal/tax fields, visibility/numbering/documents, membership reactivation, AUD-CON-006, unexecuted interactive browser QA).
+> - **PO-P2-WS8-ACCEPT:** **APPROVED WITH DOCUMENTED EXCEPTIONS** (22 November 2026) — accepts P2-WS-8 core workspace and Owner Panel follow-on for implemented/tested/approved scope; open exceptions retained (legal/tax fields, visibility/numbering/documents, membership reactivation UI, AUD-CON-006). Interactive browser QA completed in Final QA.
 > - **PO-P2-WS9-AUTH:** **APPROVED** (22 November 2026) — P2-WS-9 security and Phase 2 exit certification authorized (dedicated security tests + confirmed Phase 2 defect fixes). Does not authorize Phase 3 or deferred product functionality.
-> - **Phase 2 Final QA (engineering):** Interactive browser QA completed; Owner Panel branch-chrome defect fixed; remote Actions #43 green on `aa05471…`. Engineering status **READY FOR FINAL PRODUCT OWNER ACCEPTANCE** — see `PHASE_2_ACCEPTANCE_RECORD.md`. **Product Owner final acceptance is not granted by engineering.** Phase 3 remains unauthorized.
+> - **Phase 2 Final QA (engineering):** Interactive browser QA completed; Owner Panel branch-chrome defect fixed; Actions #43 previously verified on `aa05471…`.
+> - **PO-P2-FINAL-ACCEPT:** **APPROVED WITH DOCUMENTED EXCEPTIONS** (22 November 2026) — Phase 2 formally closed. P2-WS-8 / Owner follow-on accepted with exceptions; P2-WS-9 certified and accepted within approved scope. Final QA tip remote CI **unverified** (one-time). Phase 3 **not authorized**.
 > - **PO-DEC-P2-REVIEW-001…006:** Recorded (001 with exception; 002–005 APPROVED; 006 accept engineering recommendation).
 > - **PO-P1-DEPLOY:** **DEFERRED** — do not provision staging; do not claim smoke passed; Phase 1 remains conditionally certified with operational closure pending. Deferral is **not** a waiver.
 > - **ADR-010:** remains **Pending** — not a Phase 2 blocker; do not implement accounting posting architecture.
@@ -100,10 +101,10 @@ Deferral means: no staging provision, no smoke execution, no claim of pass, **no
 | Mobile portion of TB-AUTH-004 (cross-channel with mobile app)  | Deferred to a future phase after mobile auth ADR revision                                                                   |
 | Formal approval of Owner/Branch/dashboard design artefacts     | **Complete** — PO-P2-DESIGN-FORMAL APPROVED WITH DOCUMENTED EXCEPTIONS (22 November 2026); see `DESIGN_REVIEW_CHECKLIST.md` |
 | P2-WS-8 product UI start                                       | **Accepted WITH DOCUMENTED EXCEPTIONS** (PO-P2-WS8-ACCEPT, 22 November 2026) — see `P2_WS_8_*` evidence                     |
-| P2-WS-9 certification                                          | **Authorized** (PO-P2-WS9-AUTH, 22 November 2026) — see `PHASE_2_FINAL_CERTIFICATION_REPORT.md`                             |
-| Phase 2 Final QA / PO acceptance                               | Engineering **READY FOR FINAL PO ACCEPTANCE**; PO acceptance **not granted** — see `PHASE_2_ACCEPTANCE_RECORD.md`           |
+| P2-WS-9 certification                                          | **Certified and accepted** within approved scope (PO-P2-FINAL-ACCEPT) — see `PHASE_2_FINAL_CERTIFICATION_REPORT.md`         |
+| Phase 2 Final QA / PO acceptance                               | **PO-P2-FINAL-ACCEPT APPROVED WITH DOCUMENTED EXCEPTIONS** — see `PHASE_2_ACCEPTANCE_RECORD.md`                             |
 | Exact trial/grace/restricted subscription entitlements         | Pending (AUD-CON-006 / TB-SUB-STATE-001) — entitlement-dependent UI blocked                                                 |
-| Phase 3 implementation                                         | **Not authorized** — readiness summary only (`PHASE_3_READINESS_SUMMARY.md`)                                                |
+| Phase 3 implementation                                         | **Not authorized** — see `PHASE_3_READINESS_SUMMARY.md`                                                                     |
 
 ---
 

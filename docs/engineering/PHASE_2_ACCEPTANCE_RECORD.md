@@ -3,99 +3,84 @@
 **Date prepared:** 22 November 2026  
 **Repository:** `/Users/ttc/Sites/truckbill/nexus`  
 **Branch:** `main`  
-**Prepared by:** Engineering (Final QA / P2-WS-9 closure)  
-**Product Owner acceptance:** **NOT GRANTED** — awaiting explicit Product Owner decision
+**HEAD at acceptance recording:** `1e7baec7b59fcf61dacf299dd04359604ee3a5d0` (Final QA tip; PO confirmed pushed)  
+**Product Owner acceptance:** **APPROVED WITH DOCUMENTED EXCEPTIONS** (PO-P2-FINAL-ACCEPT, 22 November 2026)
 
 ---
 
-## 1. Engineering status
+## 1. Acceptance decision
 
-| Item                       | Value                                                          |
-| -------------------------- | -------------------------------------------------------------- |
-| Engineering recommendation | **READY FOR FINAL PRODUCT OWNER ACCEPTANCE**                   |
-| Pushed security baseline   | `aa0547162a5538f313f49e012445214a31177d27`                     |
-| Remote CI                  | GitHub Actions **#43** SUCCESS (PO-confirmed)                  |
-| Certification report       | `docs/engineering/PHASE_2_FINAL_CERTIFICATION_REPORT.md`       |
-| Authorization              | PO-P2-AUTH; PO-P2-WS8-ACCEPT (with exceptions); PO-P2-WS9-AUTH |
-
----
-
-## 2. Successfully certified functionality
-
-| Area                                                                                         | Status                             |
-| -------------------------------------------------------------------------------------------- | ---------------------------------- |
-| Fortify web auth; Customer single session; Internal multi-session                            | Certified                          |
-| Company / branch tenancy; Owner designation                                                  | Certified                          |
-| Owner Panel (dashboard, name settings, users/invites/roles, read-only audit, branches entry) | Certified                          |
-| Branch Panel shell (no operational modules)                                                  | Certified                          |
-| Workspace landing, company switcher, MRU, zero-access screen                                 | Certified                          |
-| Invitation lifecycle (Owner + Super Admin paths as approved)                                 | Certified                          |
-| Ownership transfer + session revoke + soft-delete rules                                      | Certified                          |
-| Company / Owner deactivation restrictions (DEC-002)                                          | Certified                          |
-| Permission Master + immediate invalidation                                                   | Certified                          |
-| File access PO-P2-FILE-INTERNAL / PO-P2-FILE-MULTI                                           | Certified                          |
-| Cross-company / unauthorized URL denial                                                      | Certified                          |
-| Interactive browser QA (desktop / tablet / mobile)                                           | Certified                          |
-| Automated + local CI-equivalent gates                                                        | Certified (299 passed / 2 skipped) |
+| Item        | Value                                                                   |
+| ----------- | ----------------------------------------------------------------------- |
+| Decision ID | **PO-P2-FINAL-ACCEPT**                                                  |
+| Status      | **APPROVED WITH DOCUMENTED EXCEPTIONS**                                 |
+| Date        | 22 November 2026                                                        |
+| Authority   | Product Owner                                                           |
+| Basis       | `PHASE_2_FINAL_CERTIFICATION_REPORT.md`; this record; Final QA evidence |
+| Phase 3     | **Not authorized** by this acceptance                                   |
 
 ---
 
-## 3. Accepted exceptions (already recorded; not waived)
+## 2. Accepted workstream outcomes
 
-These remain open product exceptions from prior PO decisions. Final QA does **not** convert them to Accepted scope.
-
-| Exception                                         | Prior decision |
-| ------------------------------------------------- | -------------- |
-| AUD-CON-006 / TB-SUB-STATE-001 exact entitlements | Pending        |
-| Legal/tax/contact company master fields           | Not approved   |
-| Visibility / numbering / documents settings       | Deferred       |
-| Membership reactivation UI/API                    | Not approved   |
-| PO-P2-DESIGN-FORMAL documented design exceptions  | Retained       |
+| Workstream                            | Status                                           |
+| ------------------------------------- | ------------------------------------------------ |
+| P2-WS-8 core workspace / panels       | **Accepted with documented exceptions**          |
+| P2-WS-8 Owner Panel follow-on         | **Accepted with documented exceptions**          |
+| P2-WS-9 security / exit certification | **Certified and accepted** within approved scope |
+| Phase 2 overall                       | **Formally accepted with documented exceptions** |
 
 ---
 
-## 4. Outstanding defects
+## 3. Accepted scope (implemented Phase 2)
 
-| Defect                                             | Status                                                  |
-| -------------------------------------------------- | ------------------------------------------------------- |
-| Blocking defects in certified Phase 2 scope        | **None**                                                |
-| Owner Panel stale Branch chrome after Branch visit | **Fixed** in Final QA (local commit; regression tested) |
+- Global identity and authentication (ADR-006 web-only)
+- Company and branch management
+- Ownership and membership management
+- Permission Masters and branch-specific roles
+- Web session security and revocation
+- Invitation lifecycle
+- Deactivation and company/identity reactivation (as implemented); membership reactivation UI remains deferred
+- Ownership transfer
+- Owner Panel and Branch Panel
+- Workspace selection and MRU
+- Owner administration UI
+- Security and tenant-isolation certification
+- Responsive workspace browser QA
 
----
+Evidence references: certification report; Final QA local validation **299 passed / 2 skipped**; interactive browser QA complete; Actions **#43** previously verified on `aa05471…`.
 
-## 5. Deferred requirements (future-phase ownership)
-
-| Item                                                                 | Owner phase                        |
-| -------------------------------------------------------------------- | ---------------------------------- |
-| Party/Vehicle/Bank/Station and other masters                         | Phase 3                            |
-| GST/TDS masters                                                      | Phase 3                            |
-| Common document service                                              | Phase 3                            |
-| Catalogue, contracts, entitlements, trial, capacity, quotas, credits | Phase 3                            |
-| Initial manual Razorpay renewals (no auto-renew)                     | Phase 3                            |
-| Owner billing product flows                                          | Phase 3                            |
-| Broker / OwnFleet / Partload operational modules                     | Phases 4–7                         |
-| Sanctum / mobile token auth                                          | Future (ADR-006 revision)          |
-| Accounting posting architecture                                      | Future (ADR-010 Pending)           |
-| PO-P1-DEPLOY staging smoke                                           | Operational (Deferred, not waived) |
+**Remote CI on Final QA tip after PO push:** **Unverified** for this acceptance (one-time exception — not recorded as passed; does not change future CI requirements).
 
 ---
 
-## 6. Product Owner decisions required
+## 4. Preserved exceptions (not waived)
 
-1. **Grant or withhold** final Phase 2 certification acceptance (this record).
-2. Optionally push Final-QA chrome-fix commit and confirm Actions green.
-3. **Do not** treat this record as Phase 3 authorization — Phase 3 requires separate PO authorization under `Phases.md` / DEC-004.
+| Exception                                         | Status                               |
+| ------------------------------------------------- | ------------------------------------ |
+| AUD-CON-006 / TB-SUB-STATE-001 exact entitlements | **Pending**                          |
+| Legal/tax/contact company fields                  | **Pending** schema/policy approval   |
+| Visibility / numbering / document settings        | **Deferred**                         |
+| Membership reactivation UI                        | **Deferred** pending API/policy      |
+| Remaining future-phase functionality              | **Not implemented**                  |
+| PO-P1-DEPLOY Phase 1 deployment deferral          | **Unchanged** (Deferred, not waived) |
+
+Acceptance of Phase 2 does **not** accept unresolved subscription entitlements.
 
 ---
 
-## 7. Acceptance signature block (Product Owner only)
+## 5. Outstanding defects
 
-| Field                   | Value                                                                                                                                                                                                 |
-| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Decision                | ☐ ACCEPT Phase 2 implemented scope WITH documented exceptions<br>☐ ACCEPT Phase 2 implemented scope WITHOUT exceptions (not recommended — exceptions remain open)<br>☐ WITHHOLD / REQUEST REMEDIATION |
-| Decision ID (suggested) | PO-P2-FINAL-ACCEPT                                                                                                                                                                                    |
-| Date                    | _Pending_                                                                                                                                                                                             |
-| Authority               | Product Owner                                                                                                                                                                                         |
-| Notes                   | _Pending_                                                                                                                                                                                             |
+None blocking within the certified and accepted Phase 2 scope.
 
-**Engineering must not tick or date the signature block.**
+---
+
+## 6. Signature
+
+| Field       | Value                                                                         |
+| ----------- | ----------------------------------------------------------------------------- |
+| Decision    | ☑ ACCEPT Phase 2 implemented scope **WITH documented exceptions**             |
+| Decision ID | PO-P2-FINAL-ACCEPT                                                            |
+| Date        | 22 November 2026                                                              |
+| Authority   | Product Owner                                                                 |
+| Notes       | Formal closure of authorized Phase 2; Phase 3 requires separate authorization |

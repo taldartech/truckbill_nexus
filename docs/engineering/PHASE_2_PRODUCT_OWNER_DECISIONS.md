@@ -39,6 +39,7 @@
 | AUD-CON-006 / TB-SUB-STATE-001   | Exact trial/grace/restricted entitlement matrix  | **Pending**                             | Entitlement-dependent UI blocked                         |
 | PO-P2-WS8-ACCEPT                 | Accept P2-WS-8 + Owner Panel follow-on           | **APPROVED WITH DOCUMENTED EXCEPTIONS** | Exceptions retained; not a waiver                        |
 | PO-P2-WS9-AUTH                   | Authorize P2-WS-9 security certification         | **APPROVED**                            | Phase 3 / deferred product still blocked                 |
+| PO-P2-FINAL-ACCEPT               | Formal Phase 2 acceptance                        | **APPROVED WITH DOCUMENTED EXCEPTIONS** | Phase 3 still requires separate auth                     |
 
 ---
 
@@ -449,6 +450,23 @@ Accepts P2-WS-8 core workspace and Owner Panel follow-on for implemented, tested
 Authorizes P2-WS-9 security and Phase 2 exit certification, including dedicated security tests and corrections of confirmed Phase 2 defects.
 
 Does **not** authorize Phase 3, Broker/OwnFleet/Partload operations, deferred settings masters, checkout/proration, or invented subscription entitlements.
+
+---
+
+## D26 — PO-P2-FINAL-ACCEPT: Formal Phase 2 acceptance
+
+### PO Decision — **APPROVED WITH DOCUMENTED EXCEPTIONS**
+
+**Date:** 22 November 2026  
+**Decision ID:** PO-P2-FINAL-ACCEPT
+
+Formally accepts the implemented and certified Phase 2 Identity / Company / Access scope, including P2-WS-8 (with documented exceptions), Owner Panel follow-on (with documented exceptions), and P2-WS-9 certification within approved scope.
+
+**Preserved exceptions (not waived):** AUD-CON-006 / TB-SUB-STATE-001 Pending; legal/tax/contact fields Pending schema/policy; visibility/numbering/documents Deferred; membership reactivation UI Deferred pending API/policy; future-phase work Not implemented; PO-P1-DEPLOY unchanged.
+
+**Remote CI:** Final QA tip recorded as **unverified** for this acceptance (one-time exception). Actions #43 remains historical evidence for `aa05471…`.
+
+Does **not** authorize Phase 3 or accept unresolved subscription entitlements.
 
 ---
 

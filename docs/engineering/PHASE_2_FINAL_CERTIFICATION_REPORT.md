@@ -3,8 +3,8 @@
 **Date:** 22 November 2026  
 **Workstream:** P2-WS-9 — Phase 2 exit certification + Final interactive QA closure  
 **Authorization:** PO-P2-WS9-AUTH **APPROVED**; PO-P2-WS8-ACCEPT **APPROVED WITH DOCUMENTED EXCEPTIONS**  
-**Engineering recommendation:** **READY FOR FINAL PRODUCT OWNER ACCEPTANCE**  
-**Product Owner certification acceptance:** **Not granted** by this document — awaits explicit PO decision
+**Engineering recommendation:** **READY FOR FINAL PRODUCT OWNER ACCEPTANCE** (superseded by formal acceptance)  
+**Product Owner certification acceptance:** **APPROVED WITH DOCUMENTED EXCEPTIONS** (PO-P2-FINAL-ACCEPT, 22 November 2026) — see `PHASE_2_ACCEPTANCE_RECORD.md`
 
 ---
 
@@ -70,17 +70,17 @@ No blocking security defect remained after the chrome fix. AUD-CON-006 entitleme
 
 ## 5. Excluded / deferred (not waived)
 
-| Exception                                         | Status                     |
-| ------------------------------------------------- | -------------------------- |
-| Legal/tax/contact company master fields           | Schema/policy not approved |
-| Visibility / numbering / documents settings       | Deferred IA depth          |
-| Membership reactivation UI/API                    | Not approved               |
-| AUD-CON-006 / TB-SUB-STATE-001 exact entitlements | Pending                    |
-| Sanctum / mobile auth                             | Out of Phase 2 (ADR-006)   |
-| Phase 3 Broker/OwnFleet/Partload / checkout       | Out of scope               |
-| Phase 3 masters / document service / Razorpay     | Deferred to Phase 3        |
-| ADR-010 accounting posting                        | Pending                    |
-| PO-P1-DEPLOY staging smoke                        | Deferred (not waived)      |
+| Exception                                         | Status                         |
+| ------------------------------------------------- | ------------------------------ |
+| Legal/tax/contact company master fields           | Pending schema/policy approval |
+| Visibility / numbering / documents settings       | Deferred                       |
+| Membership reactivation UI                        | Deferred pending API/policy    |
+| AUD-CON-006 / TB-SUB-STATE-001 exact entitlements | Pending                        |
+| Sanctum / mobile auth                             | Out of Phase 2 (ADR-006)       |
+| Phase 3 Broker/OwnFleet/Partload / checkout       | Out of scope                   |
+| Phase 3 masters / document service / Razorpay     | Deferred to Phase 3            |
+| ADR-010 accounting posting                        | Pending                        |
+| PO-P1-DEPLOY staging smoke                        | Deferred (not waived)          |
 
 Interactive browser QA for Owner follow-on is **complete** (see §6) and is no longer an outstanding verification exception.
 
@@ -130,39 +130,40 @@ Executed against the same checks as `.github/workflows/tests.yml`:
 
 ## 8. Remote CI status
 
-| Item                     | Status                                                                                            |
-| ------------------------ | ------------------------------------------------------------------------------------------------- |
-| Baseline `aa05471…`      | **SUCCESS** — GitHub Actions run **#43** (Product Owner confirmed)                                |
-| Post Final-QA fix commit | **Local green** — absolute no-push policy; Product Owner must push and confirm Actions if desired |
+| Item                       | Status                                                                              |
+| -------------------------- | ----------------------------------------------------------------------------------- |
+| Baseline `aa05471…`        | **SUCCESS** — GitHub Actions run **#43** (Product Owner confirmed earlier)          |
+| Final QA tip after PO push | **Unverified** for PO-P2-FINAL-ACCEPT (one-time exception — not recorded as passed) |
 
 ---
 
 ## 9. Phase 2 exit criteria matrix
 
-| Exit criterion                                    | Status | Evidence                                                  |
-| ------------------------------------------------- | ------ | --------------------------------------------------------- |
-| Cross-company isolation enforced                  | Met    | Tenant + certification Owner HTTP matrix + browser 403s   |
-| Cross-branch isolation enforced                   | Met    | FileSecurity + PermissionMaster + CompanyBranchMembership |
-| Owner access protected                            | Met    | WorkspacePanel + OwnerPanel + certification + browser     |
-| Session revocation works                          | Met    | SessionPolicy + OwnershipTransfer + Deactivation          |
-| Permission changes immediate                      | Met    | PermissionMaster + certification revoke case              |
-| Invitations follow approved lifecycle             | Met    | InvitationLifecycleTest + browser                         |
-| Deactivation restrictions work                    | Met    | DeactivationLifecycle + certification + browser           |
-| Ownership transfer secure                         | Met    | OwnershipTransferTest + MRU certification                 |
-| File restrictions work                            | Met    | FileSecurity + certification multi-company/internal       |
-| Interactive browser QA                            | Met    | §6 evidence                                               |
-| No known critical/high defects in certified scope | Met    | Chrome defect fixed; no blockers remain                   |
-| Automated tests pass (local)                      | Met    | 299/301 (+2 skipped)                                      |
-| Frontend/static validation pass (local)           | Met    | check / types / build / pint / stan                       |
-| Remaining exceptions documented                   | Met    | This report §5; acceptance record                         |
-| Remote CI green on pushed baseline                | Met    | Actions **#43** on `aa05471…`                             |
+| Exit criterion                                    | Status     | Evidence                                                  |
+| ------------------------------------------------- | ---------- | --------------------------------------------------------- |
+| Cross-company isolation enforced                  | Met        | Tenant + certification Owner HTTP matrix + browser 403s   |
+| Cross-branch isolation enforced                   | Met        | FileSecurity + PermissionMaster + CompanyBranchMembership |
+| Owner access protected                            | Met        | WorkspacePanel + OwnerPanel + certification + browser     |
+| Session revocation works                          | Met        | SessionPolicy + OwnershipTransfer + Deactivation          |
+| Permission changes immediate                      | Met        | PermissionMaster + certification revoke case              |
+| Invitations follow approved lifecycle             | Met        | InvitationLifecycleTest + browser                         |
+| Deactivation restrictions work                    | Met        | DeactivationLifecycle + certification + browser           |
+| Ownership transfer secure                         | Met        | OwnershipTransferTest + MRU certification                 |
+| File restrictions work                            | Met        | FileSecurity + certification multi-company/internal       |
+| Interactive browser QA                            | Met        | §6 evidence                                               |
+| No known critical/high defects in certified scope | Met        | Chrome defect fixed; no blockers remain                   |
+| Automated tests pass (local)                      | Met        | 299/301 (+2 skipped)                                      |
+| Frontend/static validation pass (local)           | Met        | check / types / build / pint / stan                       |
+| Remaining exceptions documented                   | Met        | This report §5; acceptance record                         |
+| Remote CI green on security baseline              | Met        | Actions **#43** on `aa05471…` (historical)                |
+| Remote CI on Final QA tip (acceptance)            | Unverified | One-time exception per PO-P2-FINAL-ACCEPT                 |
 
 ---
 
 ## 10. Remaining risks
 
 1. **AUD-CON-006 Pending** — subscription entitlement UI must stay informational only until PO resolves exact entitlements.
-2. **Final-QA fix not yet on remote** until Product Owner pushes the local chrome-fix commit (local suite green).
+2. **Final QA tip remote CI unverified** at acceptance (one-time exception per PO).
 3. **No HTTP file download routes** — file policy certified at `PrivateFileService` layer; future HTTP surfaces must re-test.
 4. **PO-P1-DEPLOY** remains Deferred — not a Phase 2 functional blocker; not waived.
 
@@ -170,17 +171,8 @@ Executed against the same checks as `.github/workflows/tests.yml`:
 
 ## 11. Final engineering verdict
 
-### READY FOR FINAL PRODUCT OWNER ACCEPTANCE
+### FORMALLY ACCEPTED WITH DOCUMENTED EXCEPTIONS (PO-P2-FINAL-ACCEPT)
 
-Phase 2 authorized Identity / Company / Access scope is evidenced by automated suites, remote CI #43 on the security baseline, interactive browser QA, and the Owner Panel branch-chrome fix with regression coverage.
+Phase 2 authorized Identity / Company / Access scope is closed under Product Owner acceptance with preserved exceptions. Phase 3 remains **unauthorized**.
 
-Remaining items are **documented exceptions / deferred requirements**, not blocking defects in the certified Phase 2 scope.
-
-**This document does not grant Product Owner acceptance.**
-
-**Await Product Owner:**
-
-1. Review `PHASE_2_ACCEPTANCE_RECORD.md`
-2. Push Final-QA fix commit(s) if desired and confirm Actions (optional if accepting on local + baseline #43)
-3. Explicitly grant or withhold final Phase 2 certification acceptance
-4. Separately authorize Phase 3 before any Phase 3 implementation
+See `PHASE_2_ACCEPTANCE_RECORD.md` and `PHASE_3_READINESS_SUMMARY.md`.
