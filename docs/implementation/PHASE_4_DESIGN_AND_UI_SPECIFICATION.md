@@ -213,13 +213,16 @@ Deep links from future notifications must respect permissions (Design §9).
 
 ## 5. Design artefacts for PO review
 
-| Artefact                                                              | Purpose                              |
-| --------------------------------------------------------------------- | ------------------------------------ |
-| This specification                                                    | Interaction + field contracts        |
-| Optional wireframes / static HTML prototypes (post-auth design batch) | Visual QA before PO-P4-DESIGN-FORMAL |
-| Permission label map                                                  | Align G-PERM with UI affordances     |
+| Artefact                                                              | Purpose                                                                           |
+| --------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| This specification                                                    | Interaction + field contracts                                                     |
+| `docs/design/phase-4/PHASE_4_UI_REVIEW.md`                            | Batch B Enquiry UI formal review package + PO approval request (**not Approved**) |
+| Optional wireframes / static HTML prototypes (post-auth design batch) | Visual QA before PO-P4-DESIGN-FORMAL                                              |
+| Permission label map                                                  | Align G-PERM with UI affordances                                                  |
 
-**Do not** treat HTML prototypes as approved until formal design decision.
+**Do not** treat this draft or the review package as approved until formal **PO-P4-DESIGN-FORMAL**.
+
+**Batch assignment note:** After design formal for Batch B surfaces, implement Enquiry List/Create/Edit/Detail/Unassigned UI immediately (do not wait for Batch G). Batches C–F ship backend + UI in the same batch under the full-stack delivery standard.
 
 ---
 

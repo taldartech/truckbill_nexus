@@ -1,0 +1,78 @@
+# UI Completion Audit — Phases 1–4
+
+**Date:** 23 November 2026  
+**Baseline HEAD:** `ea66c3aac070c3feb3f65e56dcbeb687ebe39b1d`  
+**Method:** Executable routes/controllers/Inertia pages + governing design/acceptance records  
+**Authority:** Design approvals and Product Owner decisions override filenames
+
+---
+
+## 1. Summary
+
+| Phase | Screens reviewed                          | Complete                       | Needs work                                    | Blocked / deferred                                                       |
+| ----- | ----------------------------------------- | ------------------------------ | --------------------------------------------- | ------------------------------------------------------------------------ |
+| 1     | Shell, auth foundation                    | Yes (technical shell)          | None material                                 | —                                                                        |
+| 2     | Workspace, Owner, Branch                  | Yes (accepted with exceptions) | None newly found                              | Membership reactivation UI; Internal Team IA; AUD-CON-006 entitlement UI |
+| 3     | Masters, documents, subscription, GST/TDS | Yes (accepted with exceptions) | None newly found                              | EX-01…EX-07 production/payment/PDF/issuer items                          |
+| 4 A–B | Enquiry foundations + backend             | Backend complete               | DEC-003 goods soft-delete **fixed** this task | Product Enquiry UI until `PO-P4-DESIGN-FORMAL`                           |
+| 4 C+  | Not started                               | —                              | —                                             | Not authorized                                                           |
+
+**Conclusion:** Authorized Phase 1–3 product UI from prior formal approvals is present and wired. This backfill does **not** invent new Phase 2/3 screens. Phase 4 product UI remains gated.
+
+---
+
+## 2. Coverage matrix
+
+| Phase | Module             | Screen                                                             | Design                                             | Backend         | Frontend                                 | Integration       | AuthZ               | Tests        | Status                 | Action                                |
+| ----- | ------------------ | ------------------------------------------------------------------ | -------------------------------------------------- | --------------- | ---------------------------------------- | ----------------- | ------------------- | ------------ | ---------------------- | ------------------------------------- |
+| 1     | Shell              | App / Owner / Branch shells, header, sidebar, switcher             | Approved (brand DEC-007)                           | N/A             | Complete                                 | Connected         | Session policy      | Existing     | **Complete**           | None                                  |
+| 1     | Auth               | Login, forgot/reset password                                       | Approved                                           | Complete        | Complete                                 | Connected         | Fortify             | Existing     | **Complete**           | None                                  |
+| 2     | Workspace          | Landing, company/branch select, no-access                          | PO-P2-DESIGN-FORMAL                                | Complete        | Complete                                 | Connected         | CompanyAccess       | Existing     | **Complete**           | None                                  |
+| 2     | Owner              | Dashboard, branches, users, settings, audit                        | PO-P2-DESIGN-FORMAL                                | Complete        | Complete                                 | Connected         | Owner scope         | Existing     | **Complete**           | None                                  |
+| 2     | Branch             | Dashboard, settings                                                | PO-P2-DESIGN-FORMAL                                | Complete        | Complete                                 | Connected         | Branch panel        | Existing     | **Complete**           | None                                  |
+| 2     | Internal Admin     | Identity/company lifecycle, ownership transfer                     | Internal IA **out of scope** (P2 design exception) | Complete (HTTP) | **No product UI** (authorized exception) | API/redirect only | SA / internal.admin | Pest         | **Blocked / deferred** | Do not invent Internal CRM UI         |
+| 2     | Memberships        | Reactivation UI                                                    | Deferred in acceptance                             | Partial         | Missing by design                        | —                 | —                   | —            | **Deferred**           | Wait for API/policy                   |
+| 3     | Party              | List/create/edit/show + roles                                      | PO-P3-DESIGN-FORMAL + UI-AUTH                      | Complete        | Complete                                 | Connected         | platform.*          | Pest         | **Complete**           | None                                  |
+| 3     | Vehicle            | List/create/edit/show                                              | Same                                               | Complete        | Complete                                 | Connected         | platform.*          | Pest         | **Complete**           | None                                  |
+| 3     | Bank/Cash          | List/create/edit/show                                              | Same                                               | Complete        | Complete                                 | Connected         | platform.*          | Pest         | **Complete**           | None                                  |
+| 3     | Station            | List/create/edit/show + default transporter                        | Same                                               | Complete        | Complete                                 | Connected         | platform.*          | Pest         | **Complete**           | None                                  |
+| 3     | Catalogues         | Goods/Truck/Package/etc. hub                                       | Same                                               | Complete        | Complete                                 | Connected         | Owner               | Pest         | **Complete**           | None                                  |
+| 3     | Documents          | Shared drawer + documents index                                    | Same                                               | Complete        | Complete                                 | Connected         | Parent authZ        | Pest         | **Complete**           | None                                  |
+| 3     | Subscription       | Overview, catalogue, drafts, checkout, credits, payments, invoices | Same                                               | Complete        | Complete                                 | Connected         | Owner               | Pest         | **Complete**           | Preserve EX-01…07                     |
+| 3     | Admin tax          | GST rates, TDS rules                                               | Same                                               | Complete        | Complete                                 | Connected         | Internal            | Pest         | **Complete**           | None                                  |
+| 3     | Admin invoices     | Subscription invoice approval                                      | Same                                               | Complete        | Complete                                 | Connected         | Internal            | Pest         | **Complete**           | Sample/non-production only            |
+| 4     | Enquiry API        | Manual create/edit JSON + webhook                                  | Backend auth                                       | Complete        | N/A (backend-only exception Batch B)     | —                 | enquiry.* / token   | Pest Batch B | **Complete (backend)** | UI blocked                            |
+| 4     | Enquiry product UI | List/create/edit/detail/unassigned                                 | **PO-P4-DESIGN-FORMAL Pending**                    | Ready           | Missing                                  | —                 | —                   | —            | **Blocked**            | Formal design approval then implement |
+| 4     | Assignment+        | Batch C+ screens                                                   | Pending design per surface                         | Missing         | Missing                                  | —                 | —                   | —            | **Blocked**            | Full-stack Batch C+                   |
+
+---
+
+## 3. Defects found this audit
+
+| ID         | Severity | Finding                                                                                                                            | Resolution                                                                         |
+| ---------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| UI-DEF-001 | **P0**   | Enquiry edit used `forceDelete()` on goods rows (DEC-003 conflict); full unique `(enquiry_id, position)` blocked soft-delete reuse | Forward migration → active-only unique index; soft-delete on edit; regression Pest |
+| UI-DEF-002 | Info     | `lr_goods_rows` still has full unique on position — same class of risk when Batch E implements LR edit                             | Document for Batch E; do not invent LR edit now                                    |
+| UI-DEF-003 | Gate     | Phase 4 Enquiry nav intentionally absent from sidebar until design formal                                                          | Keep hidden                                                                        |
+
+No additional authorized Phase 1–3 product screens were found missing relative to accepted design packages.
+
+---
+
+## 4. Testing tooling note
+
+- Pest feature suite: available and used
+- Dedicated frontend unit/component runner (Vitest / Testing Library): **not installed**
+- Playwright / browser plugin: **not installed**
+
+Do not invent browser/e2e results. Critical-path browser QA remains a future tooling/authorization item.
+
+---
+
+## 5. Product Owner gates (unchanged)
+
+- `PO-P4-DESIGN-FORMAL` — **Pending**
+- `PO-P4-CNV-CARDINALITY` — **Pending**
+- Phase 3 EX-01…EX-07 — unchanged
+- Membership reactivation UI — Deferred
+- Internal Team IA — out of Phase 2 Customer package scope
