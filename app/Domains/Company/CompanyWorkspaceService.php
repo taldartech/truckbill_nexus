@@ -18,7 +18,7 @@ use InvalidArgumentException;
 /**
  * Company / branch / membership mutations with atomic audit (P2-WS-2).
  *
- * Ownership transfer is P2-WS-7. Permission Master roles are P2-WS-3.
+ * Ownership transfer: OwnershipTransferService (P2-WS-7). Permission Master roles are P2-WS-3.
  */
 final class CompanyWorkspaceService
 {

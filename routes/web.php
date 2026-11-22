@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\CompanyLifecycleController;
 use App\Http\Controllers\Admin\IdentityLifecycleController;
 use App\Http\Controllers\Admin\InternalUserController;
 use App\Http\Controllers\Admin\InvitationController;
+use App\Http\Controllers\Admin\OwnershipTransferController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\InvitationAcceptanceController;
 use Illuminate\Support\Facades\Route;
@@ -35,6 +36,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('admin.companies.deactivate');
     Route::post('/admin/companies/{company}/reactivate', [CompanyLifecycleController::class, 'reactivate'])
         ->name('admin.companies.reactivate');
+    Route::post('/admin/companies/{company}/ownership-transfers', [OwnershipTransferController::class, 'store'])
+        ->name('admin.companies.ownership-transfers.store');
     Route::post('/admin/identities/{user}/deactivate', [IdentityLifecycleController::class, 'deactivate'])
         ->name('admin.identities.deactivate');
     Route::post('/admin/identities/{user}/reactivate', [IdentityLifecycleController::class, 'reactivate'])

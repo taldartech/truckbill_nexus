@@ -31,12 +31,16 @@ final class CompanyAccessService
             ->first();
     }
 
+    /**
+     * Owner is a protected company designation (`companies.owner_user_id`).
+     * Ordinary membership is not required — Owner designation replaces it (P2-WS-7).
+     */
     public function isCompanyOwner(User $user, Company $company): bool
     {
         return $user->isCustomer()
             && $user->isActive()
-            && $company->isOwnedBy($user)
-            && $this->activeMembership($user, $company) !== null;
+            && ! $user->trashed()
+            && $company->isOwnedBy($user);
     }
 
     /**

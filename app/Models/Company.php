@@ -59,7 +59,7 @@ class Company extends Model
         static::updating(function (Company $company): void {
             if ($company->isDirty('owner_user_id')) {
                 throw new CompanyDomainException(
-                    'Owner designation cannot be changed here; ownership transfer is P2-WS-7.'
+                    'Owner designation cannot be changed here; use OwnershipTransferService.'
                 );
             }
         });
@@ -102,6 +102,14 @@ class Company extends Model
     public function memberships(): HasMany
     {
         return $this->hasMany(CompanyMembership::class);
+    }
+
+    /**
+     * @return HasMany<OwnershipTransfer, $this>
+     */
+    public function ownershipTransfers(): HasMany
+    {
+        return $this->hasMany(OwnershipTransfer::class);
     }
 
     public function restore(): bool
