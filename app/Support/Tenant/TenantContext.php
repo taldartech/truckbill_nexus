@@ -5,8 +5,8 @@ namespace App\Support\Tenant;
 /**
  * Explicit tenant context carrier (ADR-002).
  *
- * Phase 1: context is injected by trusted server code / harnesses.
- * Full membership resolution is Phase 2. Client-supplied tenant IDs are never trusted.
+ * Trusted server injection only. Membership/Owner resolution is CompanyAccessService (P2-WS-2).
+ * Client-supplied tenant IDs are never trusted as authorization authority.
  */
 final class TenantContext
 {

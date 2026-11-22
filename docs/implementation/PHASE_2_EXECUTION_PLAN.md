@@ -105,22 +105,23 @@
 
 ### P2-WS-2 — Company, branch and membership
 
-| Field         | Content                                                                                                                                                                     |
-| ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Objective     | Company/branch tenancy with explicit membership and Owner designation                                                                                                       |
-| Scope         | Companies, branches, memberships, Owner uniqueness, Owner future-branch access, multi-company membership                                                                    |
-| Traceability  | TB-OWN-001, TB-OWN-007, TB-OWN-008, TB-SEC-001/002; ADR-002                                                                                                                 |
-| Prerequisites | P2-WS-1                                                                                                                                                                     |
-| Dependencies  | P2-WS-1                                                                                                                                                                     |
-| Schema        | companies, branches, company_memberships, branch_assignments, owner designation                                                                                             |
-| Backend       | Resolve tenant from membership — never from client IDs                                                                                                                      |
-| Frontend      | Workspace switcher scaffolding only if design allows; else API/Inertia props only                                                                                           |
-| Authz risks   | Cross-company leakage; Owner vs member confusion; file access must use active company context (PO-P2-FILE-MULTI); Internal Team customer files denied (PO-P2-FILE-INTERNAL) |
-| Audit         | Company/branch/membership mutations                                                                                                                                         |
-| Tests         | Cross-company/branch negatives; Owner sees future branches; non-Owner explicit only                                                                                         |
-| Acceptance    | Exactly one Owner per company; spoofed IDs rejected with real memberships                                                                                                   |
-| DoD           | Isolation suite extended and green                                                                                                                                          |
-| Rollback      | Soft-deactivate entities; no hard delete                                                                                                                                    |
+| Field              | Content                                                                                                                                                                                                                                           |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Objective          | Company/branch tenancy with explicit membership and Owner designation                                                                                                                                                                             |
+| Scope              | Companies, branches, memberships, Owner uniqueness, Owner future-branch access, multi-company membership                                                                                                                                          |
+| Traceability       | TB-OWN-001, TB-OWN-007, TB-OWN-008, TB-SEC-001/002; ADR-002                                                                                                                                                                                       |
+| Prerequisites      | P2-WS-1                                                                                                                                                                                                                                           |
+| Dependencies       | P2-WS-1                                                                                                                                                                                                                                           |
+| Schema             | companies, branches, company_memberships, branch_assignments, owner designation                                                                                                                                                                   |
+| Backend            | Resolve tenant from membership — never from client IDs                                                                                                                                                                                            |
+| Frontend           | Workspace switcher scaffolding only if design allows; else API/Inertia props only                                                                                                                                                                 |
+| Authz risks        | Cross-company leakage; Owner vs member confusion; file access must use active company context (PO-P2-FILE-MULTI); Internal Team customer files denied (PO-P2-FILE-INTERNAL)                                                                       |
+| Audit              | Company/branch/membership mutations                                                                                                                                                                                                               |
+| Tests              | Cross-company/branch negatives; Owner sees future branches; non-Owner explicit only                                                                                                                                                               |
+| Acceptance         | Exactly one Owner per company; spoofed IDs rejected with real memberships                                                                                                                                                                         |
+| DoD                | Isolation suite extended and green                                                                                                                                                                                                                |
+| Rollback           | Soft-deactivate entities; no hard delete                                                                                                                                                                                                          |
+| **P2-WS-2 status** | **Complete** (22 November 2026) — companies/branches/memberships/assignments; Owner via `companies.owner_user_id`; `CompanyAccessService` + `CompanyWorkspaceService`; Internal file deny; `CompanyBranchMembershipTest` + regression suite green |
 
 ---
 

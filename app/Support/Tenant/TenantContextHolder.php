@@ -19,7 +19,8 @@ final class TenantContextHolder
     }
 
     /**
-     * Trusted server-side injection helper (Phase 1 — no membership resolution).
+     * Trusted server-side injection helper.
+     * Prefer CompanyAccessService::activateContext() when resolving from membership/Owner.
      */
     public static function inject(TenantContext $context): void
     {

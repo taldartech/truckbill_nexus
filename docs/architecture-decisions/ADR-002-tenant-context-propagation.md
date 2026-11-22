@@ -28,6 +28,7 @@ Propagate explicit company/branch (and owner where required) context on HTTP req
 - Phase 1 must deliver tenant context primitives before business modules.
 - All factories/tests need multi-tenant fixtures and negative tests.
 - Concrete middleware/context object design is implemented under WS-3 within this Accepted decision.
+- P2-WS-2 adds membership/Owner-aware resolution via `CompanyAccessService::resolveCompanyContext()` / `activateContext()`; client-supplied tenant IDs remain non-authoritative.
 
 ## Security implications
 

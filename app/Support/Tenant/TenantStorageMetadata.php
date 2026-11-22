@@ -5,18 +5,18 @@ namespace App\Support\Tenant;
 use RuntimeException;
 
 /**
- * Tenant metadata helpers for private file storage (TB-SEC-001 / TB-DOC-001 prep).
+ * Tenant metadata helpers for private file storage (TB-SEC-001 / TB-DOC-001 / PO-P2-FILE-*).
  *
- * Phase 1 rules (fail closed; no invented membership / Internal Team privileges):
+ * Rules (fail closed):
+ * - Internal Team is blocked from customer-uploaded files (PO-P2-FILE-INTERNAL).
  * - Different company → deny.
+ * - Active company context must be server-resolved (PO-P2-FILE-MULTI).
  * - When metadata carries owner_id, context.owner_id must match (Owner-specific artefacts).
  * - Branch-scoped metadata requires matching branch_id, or Owner-scope with matching owner identity.
  * - Company-scoped metadata (branch_id null) is Shared Data: same-company contexts may access
  *   when owner_id constraints (if present) also match.
  * - Company-level context (no branch, not Owner-scope) may NOT access branch-scoped metadata.
  * - Owner-scope without owner_id → deny for branch-scoped access (fail closed).
- *
- * Pending PO: whether Internal Team may access branch-scoped files without matching branch/owner.
  */
 final class TenantStorageMetadata
 {
@@ -26,6 +26,10 @@ final class TenantStorageMetadata
     public static function forCurrentContext(): array
     {
         $context = TenantContextHolder::require();
+
+        if ($context->isInternal) {
+            abort(403, 'Internal Team access to customer files is blocked.');
+        }
 
         if ($context->companyId === null || $context->companyId === '') {
             throw new RuntimeException('Company tenant identity is required for private file storage.');
@@ -44,6 +48,11 @@ final class TenantStorageMetadata
     public static function assertSameTenant(array $metadata): void
     {
         $context = TenantContextHolder::require();
+
+        if ($context->isInternal) {
+            abort(403, 'Internal Team access to customer files is blocked.');
+        }
+
         $metaCompany = $metadata['company_id'] ?? null;
         $metaBranch = array_key_exists('branch_id', $metadata) ? $metadata['branch_id'] : null;
         $metaOwner = array_key_exists('owner_id', $metadata) ? $metadata['owner_id'] : null;

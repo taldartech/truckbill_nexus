@@ -182,7 +182,7 @@ test('owner-scope access without owner identity is denied', function () {
         ->toThrow(HttpException::class);
 });
 
-test('internal team without matching branch cannot download branch-scoped file', function () {
+test('internal team is blocked from customer file download', function () {
     $file = app(PrivateFileService::class)->store(pdfUpload());
 
     TenantContextHolder::inject(new TenantContext(
