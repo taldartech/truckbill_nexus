@@ -63,18 +63,13 @@ Cards or link groups matching Design.md §2:
 | Notifications | Centre entry                                                       | Design.md §9           |
 | Settings      | Branch/user settings without banned self-service actions           | DEC-006/009            |
 
-Undeveloped modules may show “Coming in a later phase” (**Design interpretation**) or be hidden (**Proposal** — OQ-BP-03).
+**Undeveloped modules (PO-P2-DESIGN-MODULES):** Hide modules that are not yet available. Do not show misleading disabled items. Use “Coming soon” only where a delivery plan has been explicitly approved.
 
 ### Region C — Operational summary
 
-| Widget                  | Status                                                                 |
-| ----------------------- | ---------------------------------------------------------------------- |
-| Open enquiries count    | **Proposal — Product Owner decision required**                         |
-| In-progress trips / LRs | **Proposal — Product Owner decision required**                         |
-| Charts                  | **Not approved** — omit                                                |
-| Empty placeholder       | “Branch summaries appear here when metrics are approved and available” | **Design interpretation** |
+**Approved requirement (PO-P2-DESIGN-DASH):** Branch Dashboard may show current company/branch context and available module navigation shortcuts only. Do **not** introduce operational charts, KPIs, fabricated figures, placeholder metrics, or unapproved business reporting in Phase 2.
 
-No fabricated values in review materials.
+Omit Region C summary widgets from Phase 2.
 
 ### Region D — Notifications entry (**Design interpretation**)
 
@@ -82,12 +77,12 @@ Link to notification centre; unread badge only if server provides count. Mandato
 
 ## 5. Permission-restricted behaviour
 
-| Case                             | UX                                 | Label                                           |
-| -------------------------------- | ---------------------------------- | ----------------------------------------------- |
-| Module not permitted             | Group hidden or disabled with text | **Approved requirement** (hide) + server deny   |
-| Company deactivated              | Page unreachable                   | **Approved requirement**                        |
-| Branch deactivated / unassigned  | Deny                               | **Approved requirement**                        |
-| Subscription blocks Branch Panel | Unavailable whole panel            | **Approved requirement** (Rules §15 suspension) |
+| Case                               | UX                                          | Label                                                         |
+| ---------------------------------- | ------------------------------------------- | ------------------------------------------------------------- |
+| Module not permitted / unavailable | Hide from nav (no misleading disabled item) | **Approved requirement** (PO-P2-DESIGN-MODULES) + server deny |
+| Company deactivated                | Page unreachable                            | **Approved requirement**                                      |
+| Branch deactivated / unassigned    | Deny                                        | **Approved requirement**                                      |
+| Subscription blocks Branch Panel   | Unavailable whole panel                     | **Approved requirement** (Rules §15 suspension)               |
 
 ## 6. Responsive layout
 
@@ -106,16 +101,22 @@ Link to notification centre; unread badge only if server provides count. Mandato
 | Error         | Retry without inventing KPIs                            | **Design interpretation** |
 | Access denied | Standard denial                                         | **Approved requirement**  |
 
-## 8. Open questions
+## 8. Resolved baseline decisions
 
-| ID       | Question                                                    |
-| -------- | ----------------------------------------------------------- |
-| OQ-BD-01 | Which, if any, summary widgets are approved for Phase 2 UI? |
-| OQ-BD-02 | Hide vs “coming later” for undeveloped module groups        |
-| OQ-BD-03 | Show Owner Panel control on mobile sticky header?           |
+| Former ID | Resolution                                                         | Decision ID          |
+| --------- | ------------------------------------------------------------------ | -------------------- |
+| OQ-BD-01  | No summary KPIs/charts in Phase 2; context + module shortcuts only | PO-P2-DESIGN-DASH    |
+| OQ-BD-02  | Hide unavailable modules                                           | PO-P2-DESIGN-MODULES |
 
-## 9. Out of scope
+## 9. Remaining Pending
+
+| ID       | Question                                                                                        |
+| -------- | ----------------------------------------------------------------------------------------------- |
+| OQ-BD-03 | Show Owner Panel control on mobile sticky header? (**Design interpretation** allowed; optional) |
+
+## 10. Out of scope
 
 - Dashboard query services, aggregations, seed data
 - Detailed module screens
 - Product React implementation
+- Charts, KPIs, fabricated or placeholder metrics

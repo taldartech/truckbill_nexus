@@ -73,32 +73,27 @@ Links only (no fabricated counts):
 
 ### Region C — Subscription / billing visibility (**Approved requirement** for presence)
 
-| Element                                                            | Notes                                                                  | Label                                   |
-| ------------------------------------------------------------------ | ---------------------------------------------------------------------- | --------------------------------------- |
-| Contract / renewal date                                            | Show when data exists; otherwise empty state                           | **Approved requirement** (Design.md §8) |
-| Modules / add-ons summary                                          | Names/status text only when available                                  | **Approved requirement**                |
-| Capacity / storage / credits                                       | Visibility reserved; no invented numbers                               | **Approved requirement**                |
-| Trial / grace / restricted / suspended / deactivated commercial UX | Consolidated matrix still **Pending** (AUD-CON-006 / TB-SUB-STATE-001) | **Pending**                             |
+| Element                                                           | Notes                                                                                                              | Label                                                                    |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------ |
+| Contract / renewal date                                           | Show when data exists; otherwise empty state                                                                       | **Approved requirement** (Design.md §8)                                  |
+| Modules / add-ons summary                                         | Names/status text only when available                                                                              | **Approved requirement**                                                 |
+| Capacity / storage / credits                                      | Visibility reserved; no invented numbers                                                                           | **Approved requirement**                                                 |
+| Trial / grace / restricted / suspended / deactivated presentation | High-level principles per PO-P2-DESIGN-SUB-UX; exact trial/grace/restricted entitlements **Pending** (AUD-CON-006) | **Approved requirement** (principles) + **Pending** (exact entitlements) |
 
 ### Region D — Metrics / charts / recent activity
 
-| Widget                          | Status                                                                                                     |
-| ------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| Revenue / trip / enquiry charts | **Not approved** — leave empty or omit                                                                     |
-| “Recent activity” feed          | **Proposal — Product Owner decision required** (needs event list definition)                               |
-| Seat/branch usage gauges        | **Proposal — Product Owner decision required** (may mirror subscription capacity once Phase 3 data exists) |
-| Placeholder panel               | “Insights will appear here when approved”                                                                  | **Design interpretation** for empty |
+**Approved requirement (PO-P2-DESIGN-DASH):** Do **not** introduce operational charts, KPIs, fabricated figures, placeholder metrics, or unapproved business reporting in Phase 2.
 
-**Do not** seed fabricated metrics in design review materials presented as real.
+Omit Region D from Phase 2 UI.
 
 ## 5. Deactivated company variant
 
-| Element             | Behaviour                                                                                                      | Label                                  |
-| ------------------- | -------------------------------------------------------------------------------------------------------------- | -------------------------------------- |
-| Banner              | “Company is Deactivated. Branch Panel is unavailable. Administrative and billing information remains visible.” | **Approved requirement** (DEC-002)     |
-| Enter Branch Panel  | Disabled + text reason                                                                                         | **Approved requirement**               |
-| Regions A–C         | Limited to admin/billing information                                                                           | **Approved requirement**               |
-| Extra write actions | None invented                                                                                                  | **Pending** exhaustive list (OQ-OP-03) |
+| Element             | Behaviour                                                                                                      | Label                                              |
+| ------------------- | -------------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
+| Banner              | “Company is Deactivated. Branch Panel is unavailable. Administrative and billing information remains visible.” | **Approved requirement** (DEC-002)                 |
+| Enter Branch Panel  | Disabled + text reason                                                                                         | **Approved requirement**                           |
+| Regions A–C         | Limited to admin/billing information                                                                           | **Approved requirement**                           |
+| Extra write actions | None — view identity/status + subscription/billing/invoices only                                               | **Approved requirement** (PO-P2-DESIGN-DEACT-VIEW) |
 
 ## 6. Responsive layout
 
@@ -110,24 +105,31 @@ Links only (no fabricated counts):
 
 ## 7. States
 
-| State                   | Spec                                                                          | Label                                   |
-| ----------------------- | ----------------------------------------------------------------------------- | --------------------------------------- |
-| Loading                 | Skeleton for regions A–C; no fake numbers                                     | **Design interpretation**               |
-| Empty subscription data | Explicit empty copy in Region C                                               | **Design interpretation**               |
-| Error                   | Page-level error with retry                                                   | **Design interpretation**               |
-| Unavailable             | Entitlement/suspension messaging without inventing matrix cells still Pending | **Pending** + **Design interpretation** |
-| Access denied           | Non-Owner never reaches this page                                             | **Approved requirement**                |
+| State                   | Spec                                                                                 | Label                                         |
+| ----------------------- | ------------------------------------------------------------------------------------ | --------------------------------------------- |
+| Loading                 | Skeleton for regions A–C; no fake numbers                                            | **Design interpretation**                     |
+| Empty subscription data | Explicit empty copy in Region C                                                      | **Design interpretation**                     |
+| Error                   | Page-level error with retry                                                          | **Design interpretation**                     |
+| Unavailable             | Use PO-P2-DESIGN-SUB-UX principles; do not invent trial/grace/restricted permissions | **Approved requirement** + **Pending** detail |
+| Access denied           | Non-Owner never reaches this page                                                    | **Approved requirement**                      |
 
-## 8. Open questions
+## 8. Resolved baseline decisions
 
-| ID       | Question                                                                       |
-| -------- | ------------------------------------------------------------------------------ |
-| OQ-OD-01 | Approve any dashboard widget beyond admin shortcuts + subscription visibility? |
-| OQ-OD-02 | Same as OQ-OP-03 for deactivated write actions reachable from dashboard        |
-| OQ-OD-03 | Is Owner Dashboard distinct from a “Companies list” home?                      |
+| Former ID | Resolution                                                                                                   | Decision ID                 |
+| --------- | ------------------------------------------------------------------------------------------------------------ | --------------------------- |
+| OQ-OD-01  | Owner Dashboard limited to identity/status, branch/users/settings entry points, subscription/billing summary | PO-P2-DESIGN-DASH           |
+| OQ-OD-02  | Deactivated: view-only identity/status + subscription/billing/invoices; no extra writes                      | PO-P2-DESIGN-DEACT-VIEW     |
+| OQ-OD-03  | Owner Dashboard is the Owner Panel home with the approved regions above                                      | PO-P2-DESIGN-DASH / LANDING |
 
-## 9. Out of scope
+## 9. Remaining Pending
+
+| ID          | Topic                                                |
+| ----------- | ---------------------------------------------------- |
+| AUD-CON-006 | Exact trial/grace/restricted entitlement permissions |
+
+## 10. Out of scope
 
 - Dashboard aggregation APIs, queries, seed data
 - React page implementation
 - Phase 3 checkout UI detail
+- Charts, KPIs, fabricated or placeholder metrics

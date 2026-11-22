@@ -49,15 +49,21 @@ See `docs/architecture-decisions/ADR-006-web-mobile-authentication-strategy.md`.
 
 ## 3. Binding product decisions (Phase 2)
 
-| Decision ID             | Topic                                       | Status                     | Summary                                                                                                                       |
-| ----------------------- | ------------------------------------------- | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| **PO-P2-INVITE**        | Customer invitation lifecycle               | **APPROVED**               | Time-limited single-use links; outbox email; revoke; no password overwrite on identity reuse; audit trail                     |
-| **PO-P2-DEACT-COMPANY** | Company deactivation                        | **APPROVED**               | Branch Panel blocked; active Owner retains limited Owner Panel (admin/billing info only); Owner identity not auto-deactivated |
-| **PO-P2-DEACT-OWNER**   | Owner identity deactivation                 | **APPROVED**               | Login and Owner Panel blocked; sessions revoked; distinct from company deactivation                                           |
-| **PO-P2-FILE-INTERNAL** | Internal Team → customer files              | **APPROVED — BLOCKED**     | No administrative or ordinary interface access; enforce server-side on all paths                                              |
-| **PO-P2-FILE-MULTI**    | Multi-company Owner/member file access      | **APPROVED**               | Active company context only; never trust client company_id                                                                    |
-| **PO-P2-DESIGN**        | Design Deliverables Gate for Phase 2 panels | **APPROVED (requirement)** | Prepare IA + key screens; PO must approve artefacts before product UI; backend may proceed                                    |
-| **TB-OWN-006 (scope)**  | Exhaustive deactivated Owner Panel actions  | **Resolved for Phase 2**   | Limited to company administration and billing information only; do not invent further actions                                 |
+| Decision ID                 | Topic                                       | Status                     | Summary                                                                                                                        |
+| --------------------------- | ------------------------------------------- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| **PO-P2-INVITE**            | Customer invitation lifecycle               | **APPROVED**               | Time-limited single-use links; outbox email; revoke; no password overwrite on identity reuse; audit trail                      |
+| **PO-P2-DEACT-COMPANY**     | Company deactivation                        | **APPROVED**               | Branch Panel blocked; active Owner retains limited Owner Panel (admin/billing info only); Owner identity not auto-deactivated  |
+| **PO-P2-DEACT-OWNER**       | Owner identity deactivation                 | **APPROVED**               | Login and Owner Panel blocked; sessions revoked; distinct from company deactivation                                            |
+| **PO-P2-FILE-INTERNAL**     | Internal Team → customer files              | **APPROVED — BLOCKED**     | No administrative or ordinary interface access; enforce server-side on all paths                                               |
+| **PO-P2-FILE-MULTI**        | Multi-company Owner/member file access      | **APPROVED**               | Active company context only; never trust client company_id                                                                     |
+| **PO-P2-DESIGN**            | Design Deliverables Gate for Phase 2 panels | **APPROVED (requirement)** | Prepare IA + key screens; PO must approve artefacts before product UI; backend may proceed                                     |
+| **PO-P2-DESIGN-SWITCHER**   | Unified workspace company switcher          | **APPROVED**               | All accessible companies; Owner vs Member distinction; server-validated selection                                              |
+| **PO-P2-DESIGN-LANDING**    | Default Owner Panel landing                 | **APPROVED**               | Single owned → that OP; multiple owned → MRU owned; never default member-only as OP                                            |
+| **PO-P2-DESIGN-DEACT-VIEW** | Deactivated company Owner Panel view        | **APPROVED**               | View identity/status + subscription/billing/invoices; no Branch/ops; no extra writes                                           |
+| **PO-P2-DESIGN-DASH**       | Phase 2 dashboard content limits            | **APPROVED**               | Admin/billing entry points and context only; no charts/KPIs/fabricated metrics                                                 |
+| **PO-P2-DESIGN-MODULES**    | Undeveloped module navigation               | **APPROVED**               | Hide unavailable modules; no misleading disabled items                                                                         |
+| **PO-P2-DESIGN-SUB-UX**     | Subscription entitlement UX principles      | **APPROVED** (high-level)  | Active/Trial/Grace/Restricted/Suspended/Deactivated presentation principles; exact trial/grace/restricted entitlements Pending |
+| **TB-OWN-006 (scope)**      | Exhaustive deactivated Owner Panel actions  | **Resolved for Phase 2**   | Limited to company administration and billing information only; do not invent further actions (see PO-P2-DESIGN-DEACT-VIEW)    |
 
 ---
 
@@ -73,13 +79,14 @@ Deferral means: no staging provision, no smoke execution, no claim of pass, **no
 
 ## 5. Explicitly unchanged
 
-| Item                                                           | Status                                                    |
-| -------------------------------------------------------------- | --------------------------------------------------------- |
-| ADR-010                                                        | Pending                                                   |
-| PO-P1-DEPS                                                     | Case-by-case                                              |
-| Admin email-change verification field details (DEC-009 polish) | Pending                                                   |
-| Mobile portion of TB-AUTH-004 (cross-channel with mobile app)  | Deferred to a future phase after mobile auth ADR revision |
-| Unreviewed Owner/Branch/dashboard screen designs               | Not approved (artefacts Not Started)                      |
+| Item                                                           | Status                                                                           |
+| -------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| ADR-010                                                        | Pending                                                                          |
+| PO-P1-DEPS                                                     | Case-by-case                                                                     |
+| Admin email-change verification field details (DEC-009 polish) | Pending                                                                          |
+| Mobile portion of TB-AUTH-004 (cross-channel with mobile app)  | Deferred to a future phase after mobile auth ADR revision                        |
+| Formal approval of Owner/Branch/dashboard design artefacts     | Still required (artefacts Draft; baselines D11–D16 recorded; product UI blocked) |
+| Exact trial/grace/restricted subscription entitlements         | Pending (AUD-CON-006 / TB-SUB-STATE-001)                                         |
 
 ---
 

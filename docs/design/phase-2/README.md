@@ -1,14 +1,14 @@
 # Phase 2 Design Package — Owner / Branch Panels
 
-**Status:** Draft — Awaiting Product Owner Review  
-**Prepared:** 22 November 2026  
+**Status:** Draft — Awaiting Formal Design Package Approval  
+**Prepared / revised:** 22 November 2026  
 **Scope:** Design and documentation only. No product UI or backend implementation is authorized by this package.
 
 ## Purpose
 
 This package prepares the Design Deliverables Gate artefacts required before P2-WS-8 product UI implementation (`docs/engineering/PHASE_2_DESIGN_DELIVERABLES.md`, Design.md §14, PO-P2-DESIGN).
 
-Product Owner approval of **PO-P2-DESIGN** approved the _requirement_ to prepare and review these artefacts. It does **not** approve any screen in this package. Each artefact must be reviewed and signed via `DESIGN_REVIEW_CHECKLIST.md`.
+**PO-P2-DESIGN** approved the _requirement_ to prepare and review these artefacts. Baseline workspace decisions **PO-P2-DESIGN-SWITCHER**, **LANDING**, **DEACT-VIEW**, **DASH**, **MODULES**, and **SUB-UX** are **APPROVED** and incorporated here. Formal per-artefact design approval is **still required** before product UI. Sign off via `DESIGN_REVIEW_CHECKLIST.md`.
 
 ## Artefacts
 
@@ -52,6 +52,19 @@ Technical shell (layouts, tokens, logo, empty states) is foundation only — not
 4. Internal Team has no customer-uploaded file access (PO-P2-FILE-INTERNAL).
 5. Multi-company file access is active-company context only (PO-P2-FILE-MULTI).
 
+## Approved baseline decisions (concise)
+
+| ID                      | Topic                                                                                |
+| ----------------------- | ------------------------------------------------------------------------------------ |
+| PO-P2-DESIGN-SWITCHER   | Unified switcher: all accessible companies; Owner vs Member; server-validated        |
+| PO-P2-DESIGN-LANDING    | Default OP: one owned / MRU owned / owned selection; never member-only as OP default |
+| PO-P2-DESIGN-DEACT-VIEW | Deactivated company: view identity/status + billing; no Branch/ops; no extra writes  |
+| PO-P2-DESIGN-DASH       | Phase 2 dashboards: admin/context shortcuts only; no charts/KPIs                     |
+| PO-P2-DESIGN-MODULES    | Hide unavailable modules; no misleading disabled items                               |
+| PO-P2-DESIGN-SUB-UX     | High-level entitlement presentation; exact trial/grace/restricted still Pending      |
+
+Full text: `docs/engineering/PHASE_2_PRODUCT_OWNER_DECISIONS.md` D11–D16.
+
 ## Implementation gate
 
-P2-WS-8 product React pages, Inertia controllers, dashboard queries and product navigation **must not start** until the relevant artefacts are Approved in `DESIGN_REVIEW_CHECKLIST.md`.
+P2-WS-8 product React pages, Inertia controllers, dashboard queries and product navigation **must not start** until the relevant artefacts are formally Approved in `DESIGN_REVIEW_CHECKLIST.md`. Baseline decision approval alone is insufficient.

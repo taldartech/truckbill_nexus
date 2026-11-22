@@ -24,8 +24,7 @@ flowchart TD
 ```
 
 - **Approved requirement:** Owner always lands in Owner Panel (PRD §5).
-- **Design interpretation:** “Land in Owner Panel” means the post-login default route for Owner identities is the Owner Panel shell for a server-selected default company (see workspace flow).
-- **Pending:** Exact default-company selection rule when an Owner owns multiple companies (most recently used vs alphabetical vs explicit preference).
+- **Approved requirement (PO-P2-DESIGN-LANDING):** If the user owns exactly one company → that company's Owner Panel. If the user owns multiple companies → most recently used owned company. If no previous owned-company selection exists → owned-company selection screen. Member-only companies must never be the default Owner Panel context.
 
 ## 3. Navigation hierarchy
 
@@ -43,16 +42,17 @@ flowchart LR
   OP --> EnterBranch[Enter Branch Panel]
 ```
 
-### 3.1 Company switcher and multi-company context
+### 3.1 Unified company / workspace switcher
 
-| Element          | Behaviour                                                                                                                                     | Label                                                |
-| ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| Switcher content | Lists companies where the identity is the designated Owner (and optionally companies where the identity is only a member — see open question) | **Design interpretation** / **Pending**              |
-| Selection effect | Requests server to activate company context; UI never treats selected id as authority                                                         | **Approved requirement** (TB-SEC-002)                |
-| Active indicator | Show active company name + status text (Active / Deactivated) with non-colour status                                                          | **Approved requirement** + **Design interpretation** |
-| File access      | Customer-uploaded files scoped to server-resolved active company only                                                                         | **Approved requirement** (PO-P2-FILE-MULTI)          |
-
-**Open question OQ-OP-01:** Should the Owner Panel company switcher list only companies the user _owns_, or also companies where they are a non-Owner member (with clear Owner vs Member badge)? Affects switcher IA and post-login routing.
+| Element                    | Behaviour                                                                                               | Label                                                        |
+| -------------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| Switcher content           | Lists **all** companies the signed-in Customer can access                                               | **Approved requirement** (PO-P2-DESIGN-SWITCHER)             |
+| Owner vs Member            | Clearly distinguish designated Owner companies from membership-only companies                           | **Approved requirement** (PO-P2-DESIGN-SWITCHER)             |
+| Select owned company       | Opens that company's Owner Panel                                                                        | **Approved requirement** (PO-P2-DESIGN-SWITCHER)             |
+| Select member-only company | Proceeds to Branch Panel access for an explicitly accessible branch; never exposes Owner Panel controls | **Approved requirement** (PO-P2-DESIGN-SWITCHER)             |
+| Selection effect           | Server validates every company/branch selection; UI never treats client ids as authority                | **Approved requirement** (TB-SEC-002; PO-P2-DESIGN-SWITCHER) |
+| Active indicator           | Show active company name + status text (Active / Deactivated) with non-colour status                    | **Approved requirement** + **Design interpretation**         |
+| File access                | Customer-uploaded files scoped to server-resolved active company only                                   | **Approved requirement** (PO-P2-FILE-MULTI)                  |
 
 ### 3.2 Company administration
 
@@ -118,13 +118,13 @@ Do not imply auto-renewal for the initial manual renewal delivery (**Approved re
 
 ### Limited Owner Panel while company deactivated
 
-**Approved requirement:** administrative and billing information visibility only.
+**Approved requirement (PO-P2-DEACT-COMPANY; PO-P2-DESIGN-DEACT-VIEW):**
 
-**Pending (do not invent):** exhaustive action list while deactivated (PRD §4; Rules §2). Until Product Owner resolves this list, design must:
-
-- Show company status, billing/subscription information and administrative read surfaces already stated.
-- Not invent operational reactivation of Branch Panel features.
-- Mark any additional write actions as **Proposal** only if explicitly requested for review — none are proposed here beyond visibility of admin/billing information.
+- Permit viewing company identity and status information.
+- Permit viewing subscription, billing, and invoice information.
+- Block Branch Panel and operational modules.
+- Do **not** introduce additional write actions unless separately approved.
+- Do **not** confuse company deactivation with Owner identity deactivation.
 
 ### Owner identity deactivation
 
@@ -136,33 +136,40 @@ Distinct from company deactivation (**Approved requirement**, DEC-002 / PO-P2-DE
 
 ## 5. Page relationships (Owner Panel)
 
-| From            | To                                                 | How                                                  | Label                                   |
-| --------------- | -------------------------------------------------- | ---------------------------------------------------- | --------------------------------------- |
-| Owner Dashboard | Branches / Users / Settings / Subscription / Audit | Primary nav                                          | **Design interpretation**               |
-| Owner Panel     | Branch Panel                                       | Explicit “Open branch” / branch picker; no new login | **Approved requirement**                |
-| Branch Panel    | Owner Panel                                        | Persistent “Owner Panel” control for Owners          | **Approved requirement** (Design.md §2) |
-| Owner Panel     | Another owned company                              | Company switcher → server context switch             | **Approved requirement**                |
+| From            | To                                                 | How                                                              | Label                                            |
+| --------------- | -------------------------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------ |
+| Owner Dashboard | Branches / Users / Settings / Subscription / Audit | Primary nav                                                      | **Design interpretation**                        |
+| Owner Panel     | Branch Panel                                       | Explicit “Open branch” / branch picker; no new login             | **Approved requirement**                         |
+| Branch Panel    | Owner Panel                                        | Persistent “Owner Panel” control for Owners                      | **Approved requirement** (Design.md §2)          |
+| Owner Panel     | Another accessible company                         | Unified switcher → owned opens OP; member-only opens Branch path | **Approved requirement** (PO-P2-DESIGN-SWITCHER) |
 
 ## 6. Empty / loading / error / denied states
 
-| State               | Owner Panel behaviour                                                                         | Label                                    |
-| ------------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------- |
-| Loading             | Skeleton shell; retain brand light surface                                                    | **Design interpretation** (Design.md §3) |
-| Empty companies     | Message that no owned company is available; contact support / Internal Team path as copy only | **Design interpretation**                |
-| Access denied       | Non-Owner hitting Owner routes → deny; no Owner chrome                                        | **Approved requirement**                 |
-| Server error        | Recoverable error with retry; no fabricated data                                              | **Design interpretation**                |
-| Deactivated company | Banner + limited nav; Branch entry disabled with text reason                                  | **Approved requirement**                 |
+| State                 | Owner Panel behaviour                                                                              | Label                                           |
+| --------------------- | -------------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| Loading               | Skeleton shell; retain brand light surface                                                         | **Design interpretation** (Design.md §3)        |
+| Empty owned companies | If user has no owned companies, do not land in Owner Panel; use member Branch path or no-workspace | **Approved requirement** (PO-P2-DESIGN-LANDING) |
+| Access denied         | Non-Owner hitting Owner routes → deny; no Owner chrome                                             | **Approved requirement**                        |
+| Server error          | Recoverable error with retry; no fabricated data                                                   | **Design interpretation**                       |
+| Deactivated company   | Banner + limited nav; Branch entry disabled with text reason                                       | **Approved requirement**                        |
 
-## 7. Open questions
+## 7. Resolved baseline decisions (this artefact)
 
-| ID       | Question                                                       | Affects                    |
-| -------- | -------------------------------------------------------------- | -------------------------- |
-| OQ-OP-01 | Switcher: owned companies only vs owned + member companies     | Company switcher; landing  |
-| OQ-OP-02 | Default company when Owner owns many                           | Post-login landing         |
-| OQ-OP-03 | Exhaustive deactivated-company Owner Panel action list         | Limited Owner Panel chrome |
-| OQ-OP-04 | Whether Owner Dashboard is a distinct home vs company hub list | Owner Dashboard artefact D |
+| Former ID | Resolution                                                                                                 | Decision ID             |
+| --------- | ---------------------------------------------------------------------------------------------------------- | ----------------------- |
+| OQ-OP-01  | Unified switcher lists all accessible companies with Owner vs Member distinction                           | PO-P2-DESIGN-SWITCHER   |
+| OQ-OP-02  | One owned → that OP; many owned → MRU owned; else owned-company selection; never member-only as OP default | PO-P2-DESIGN-LANDING    |
+| OQ-OP-03  | Deactivated company: view identity/status + subscription/billing/invoices; no extra writes; Branch blocked | PO-P2-DESIGN-DEACT-VIEW |
+| OQ-OP-04  | Owner Dashboard content limited to approved admin/billing regions                                          | PO-P2-DESIGN-DASH       |
 
-## 8. Out of scope for this artefact
+## 8. Remaining Pending (do not invent)
+
+| ID          | Topic                                                        | Notes                                                   |
+| ----------- | ------------------------------------------------------------ | ------------------------------------------------------- |
+| AUD-CON-006 | Exact trial/grace/restricted entitlement permissions         | High-level presentation only via PO-P2-DESIGN-SUB-UX    |
+| —           | Persistence mechanism for “most recently used owned company” | Implementation detail deferred; behaviour rule approved |
+
+## 9. Out of scope for this artefact
 
 - Internal Team IA
 - Detailed subscription checkout screens (Phase 3)

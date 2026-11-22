@@ -52,14 +52,15 @@ flowchart TB
 
 ### Group notes
 
-| Group                                                | Phase 2 design treatment                                                               | Label                                                                            |
-| ---------------------------------------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| Dashboard                                            | Entry hub; see Branch Dashboard spec                                                   | **Approved requirement** (nav); content widgets largely **Proposal**/placeholder |
-| Enquiry / Operations / Accounting / Assets / Masters | Navigation groups reserved per Design.md §2                                            | **Approved requirement** for IA labels                                           |
-| Module screens                                       | Detailed business screens                                                              | **Out of scope** for Phase 2 design depth (later phases)                         |
-| Notifications                                        | Bell + centre patterns in Design.md §9                                                 | **Approved requirement** for entry; full centre **Out of scope** depth           |
-| Settings                                             | Branch-scoped user preferences that do not include self email change or account delete | **Approved requirement** (DEC-006/009)                                           |
-| Partload Expense Management UI                       | Explicitly out of scope                                                                | **Out of scope** (DEC-005)                                                       |
+| Group                                                | Phase 2 design treatment                                                                  | Label                                                                  |
+| ---------------------------------------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| Dashboard                                            | Entry hub; see Branch Dashboard spec (context + available module shortcuts only)          | **Approved requirement** (PO-P2-DESIGN-DASH)                           |
+| Enquiry / Operations / Accounting / Assets / Masters | IA labels per Design.md §2; **hide** groups/modules not yet available                     | **Approved requirement** (PO-P2-DESIGN-MODULES)                        |
+| Module screens                                       | Detailed business screens                                                                 | **Out of scope** for Phase 2 design depth (later phases)               |
+| Undeveloped modules                                  | Hide from nav; no misleading disabled items; “Coming soon” only if delivery plan approved | **Approved requirement** (PO-P2-DESIGN-MODULES)                        |
+| Notifications                                        | Bell + centre patterns in Design.md §9                                                    | **Approved requirement** for entry; full centre **Out of scope** depth |
+| Settings                                             | Branch-scoped user preferences that do not include self email change or account delete    | **Approved requirement** (DEC-006/009)                                 |
+| Partload Expense Management UI                       | Explicitly out of scope                                                                   | **Out of scope** (DEC-005)                                             |
 
 ## 4. Role / permission-dependent visibility
 
@@ -86,11 +87,11 @@ flowchart LR
   OwnerReturn -->|No| NoOwnerLink[No Owner Panel control]
 ```
 
-| Control                              | Who sees it                                                                        | Label                                   |
-| ------------------------------------ | ---------------------------------------------------------------------------------- | --------------------------------------- |
-| Branch switcher                      | Users with >1 accessible branch in the active company                              | **Approved requirement** (PRD §5)       |
-| Return to Owner Panel                | Company Owner only                                                                 | **Approved requirement** (Design.md §2) |
-| Company switcher inside Branch Panel | **Proposal:** Owners may switch company only via Owner Panel to keep context clear | **Proposal**                            |
+| Control                  | Who sees it                                                                                                                                                                            | Label                                            |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ |
+| Branch switcher          | Users with >1 accessible branch in the active company                                                                                                                                  | **Approved requirement** (PRD §5)                |
+| Return to Owner Panel    | Company Owner only                                                                                                                                                                     | **Approved requirement** (Design.md §2)          |
+| Unified company switcher | Lists all accessible companies (Owner vs Member). Owned → Owner Panel; member-only → Branch path for an accessible branch. Never exposes Owner Panel on member-only. Server validates. | **Approved requirement** (PO-P2-DESIGN-SWITCHER) |
 
 ## 6. Empty / unavailable / access-denied states
 
@@ -103,15 +104,20 @@ flowchart LR
 | No branch assignment               | Non-Owner cannot open Branch Panel for that branch                                            | **Approved requirement**                                                                          |
 | Permission denied                  | Inline or page-level denial; no leak of protected record data                                 | **Approved requirement**                                                                          |
 
-## 7. Open questions
+## 7. Resolved baseline decisions
 
-| ID       | Question                                                                                      | Affects                               |
-| -------- | --------------------------------------------------------------------------------------------- | ------------------------------------- |
-| OQ-BP-01 | Company switcher inside Branch Panel vs Owner Panel only                                      | Header chrome                         |
-| OQ-BP-02 | Whether “Settings” is branch prefs only or includes limited company read-only links for Owner | Settings group                        |
-| OQ-BP-03 | Which Phase 2 modules show as “Coming later” vs hidden entirely in nav                        | Nav inventory for undeveloped modules |
+| Former ID | Resolution                                                       | Decision ID           |
+| --------- | ---------------------------------------------------------------- | --------------------- |
+| OQ-BP-01  | Unified workspace switcher is available from Branch Panel chrome | PO-P2-DESIGN-SWITCHER |
+| OQ-BP-03  | Hide unavailable modules; no misleading disabled items           | PO-P2-DESIGN-MODULES  |
 
-## 8. Out of scope
+## 8. Remaining Pending
+
+| ID       | Question                                                                                      | Affects        |
+| -------- | --------------------------------------------------------------------------------------------- | -------------- |
+| OQ-BP-02 | Whether “Settings” is branch prefs only or includes limited company read-only links for Owner | Settings group |
+
+## 9. Out of scope
 
 - Detailed Enquiry/LR/Broker/OwnFleet/Partload/Accounting/Asset screen designs
 - Internal Team CRM navigation

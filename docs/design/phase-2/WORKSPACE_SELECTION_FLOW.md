@@ -1,7 +1,7 @@
 # C — Workspace / Company Selection Flow
 
 **Status:** Draft — Awaiting Product Owner Review  
-**Traceability:** PRD §§3–5; Design.md §2; ADR-002; TB-SEC-001/002; DEC-002; PO-P2-DEACT-*; PO-P2-FILE-MULTI; P2-WS-7 ownership transfer
+**Traceability:** PRD §§3–5; Design.md §2; ADR-002; TB-SEC-001/002; DEC-002; PO-P2-DEACT-*; PO-P2-FILE-MULTI; PO-P2-DESIGN-SWITCHER; PO-P2-DESIGN-LANDING; P2-WS-7 ownership transfer
 
 ## 1. Security rule (must appear in every selection UI)
 
@@ -28,23 +28,32 @@
 flowchart TD
   Start[Authenticated Customer session] --> Active{Identity active and not soft-deleted?}
   Active -->|No| DenyLogin[Login / session fail closed]
-  Active -->|Yes| Owns{Is Owner of one or more companies?}
-  Owns -->|Yes| OP[Owner Panel landing]
+  Active -->|Yes| Owns{Owns one or more companies?}
+  Owns -->|Exactly one| OP1[Owner Panel for that company]
+  Owns -->|Multiple| MRU{MRU owned company known?}
+  MRU -->|Yes| OPmru[Owner Panel for MRU owned company]
+  MRU -->|No| OwnSelect[Owned-company selection screen]
+  OwnSelect --> OP1
   Owns -->|No| Members{Has active memberships?}
   Members -->|No| NoAccess[No workspace access state]
   Members -->|Yes| CoCount{Accessible companies count}
   CoCount -->|1| BrCount{Accessible branches in that company}
-  CoCount -->|Many| CoSelect[Company selection]
-  CoSelect --> BrCount
+  CoCount -->|Many| CoSelect[Unified company switcher / selection]
+  CoSelect --> MemberPath{Selected company role}
+  MemberPath -->|Owner| OP1
+  MemberPath -->|Member-only| BrCount
   BrCount -->|0| NoBranch[No branch access state]
   BrCount -->|1| BP[Branch Panel]
   BrCount -->|Many| BrSelect[Branch selection]
   BrSelect --> BP
-  OP --> EnterBr[Owner chooses company branch]
+  OP1 --> EnterBr[Owner chooses company branch]
+  OPmru --> EnterBr
   EnterBr --> BP
-  BP --> BackOP{Owner?}
-  BackOP -->|Yes| OP
+  BP --> BackOP{Owner of active company?}
+  BackOP -->|Yes| OP1
 ```
+
+**Unified switcher (PO-P2-DESIGN-SWITCHER):** available wherever company context may change; lists all accessible companies with Owner vs Member distinction; owned → Owner Panel; member-only → Branch path (explicit accessible branch required); never expose Owner Panel controls on member-only access; server validates every selection.
 
 ## 4. Scenario catalogue
 
@@ -60,13 +69,13 @@ flowchart TD
 
 ### 4.2 Customer with multiple companies
 
-| Step              | Screen / state                                                       | Label                                                                                                  |
-| ----------------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| 1                 | Login                                                                |                                                                                                        |
-| 2                 | If Owner of any → Owner Panel (see 4.3); else company selection list | **Approved requirement** + **Pending** default when also Owner of some and member of others (OQ-OP-01) |
-| 3                 | User selects company → server validates                              | **Approved requirement**                                                                               |
-| 4                 | Branch path per branch count                                         | **Approved requirement**                                                                               |
-| Context indicator | Active company name after selection                                  | **Design interpretation**                                                                              |
+| Step              | Screen / state                                                                                | Label                                                      |
+| ----------------- | --------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| 1                 | Login                                                                                         |                                                            |
+| 2                 | If owns any company → Owner Panel landing per PO-P2-DESIGN-LANDING; else unified company list | **Approved requirement** (PO-P2-DESIGN-LANDING / SWITCHER) |
+| 3                 | Unified switcher lists all accessible companies with Owner vs Member labels; server validates | **Approved requirement** (PO-P2-DESIGN-SWITCHER)           |
+| 4                 | Owned selection → Owner Panel; member-only → Branch path (explicit branch required)           | **Approved requirement** (PO-P2-DESIGN-SWITCHER)           |
+| Context indicator | Active company name + Owner/Member mode after selection                                       | **Design interpretation**                                  |
 
 ```mermaid
 sequenceDiagram
@@ -87,11 +96,11 @@ sequenceDiagram
 
 ### 4.3 Company Owner entering Owner Panel
 
-| Step        | Behaviour                               | Label                                                         |
-| ----------- | --------------------------------------- | ------------------------------------------------------------- |
-| Post-login  | Owner Panel for default owned company   | **Approved requirement**; default rule **Pending** (OQ-OP-02) |
-| Multi-owned | Company switcher inside Owner Panel     | **Approved requirement**                                      |
-| Denied      | Non-Owner never sees Owner Panel chrome | **Approved requirement**                                      |
+| Step        | Behaviour                                                                                | Label                                                      |
+| ----------- | ---------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| Post-login  | Exactly one owned → that OP; multiple owned → MRU owned OP; else owned-company selection | **Approved requirement** (PO-P2-DESIGN-LANDING)            |
+| Multi-owned | Unified switcher remains available; member-only never default OP context                 | **Approved requirement** (PO-P2-DESIGN-LANDING / SWITCHER) |
+| Denied      | Non-Owner never sees Owner Panel chrome                                                  | **Approved requirement**                                   |
 
 ### 4.4 Owner selects company and enters Branch Panel
 
@@ -165,21 +174,28 @@ Same as 4.1 for that company. If multiple companies but one branch total → com
 
 ## 7. Context indicators (chrome)
 
-| Indicator                    | Where                                              | Label                     |
-| ---------------------------- | -------------------------------------------------- | ------------------------- |
-| Active company name + status | Owner Panel header; Branch Panel header            | **Design interpretation** |
-| Active branch name           | Branch Panel header                                | **Design interpretation** |
-| Owner vs Branch mode         | Subtle mode label (“Owner Panel” / “Branch Panel”) | **Proposal**              |
+| Indicator                    | Where                                                                   | Label                                                                       |
+| ---------------------------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Active company name + status | Owner Panel header; Branch Panel header                                 | **Design interpretation**                                                   |
+| Active branch name           | Branch Panel header                                                     | **Design interpretation**                                                   |
+| Owner vs Branch mode         | Clear mode label (“Owner Panel” / “Branch Panel”); preserve distinction | **Approved requirement** (PO-P2-DESIGN-LANDING) + **Design interpretation** |
+| Owner vs Member in switcher  | Badge/label on each company row                                         | **Approved requirement** (PO-P2-DESIGN-SWITCHER)                            |
 
-## 8. Open questions
+## 8. Resolved baseline decisions
 
-| ID       | Question                                                                      | Affects      |
-| -------- | ----------------------------------------------------------------------------- | ------------ |
-| OQ-WS-01 | Same as OQ-OP-01/02 — multi-company Owner default and switcher membership mix | Landing      |
-| OQ-WS-02 | Exact “no workspace” screen vs immediate logout for zero access               | 4.10         |
-| OQ-WS-03 | Whether company selection and branch selection are one combined screen        | Selection UI |
+| Former ID              | Resolution                             | Decision ID                                 |
+| ---------------------- | -------------------------------------- | ------------------------------------------- |
+| OQ-WS-01 / OQ-OP-01/02 | Unified switcher + landing rules above | PO-P2-DESIGN-SWITCHER; PO-P2-DESIGN-LANDING |
 
-## 9. Out of scope
+## 9. Remaining Pending
+
+| ID       | Question                                                               | Affects               |
+| -------- | ---------------------------------------------------------------------- | --------------------- |
+| OQ-WS-02 | Exact “no workspace” screen vs immediate logout for zero access        | 4.10                  |
+| OQ-WS-03 | Whether company selection and branch selection are one combined screen | Selection UI          |
+| —        | Storage of MRU owned company                                           | Implementation detail |
+
+## 10. Out of scope
 
 - Internal Team workspace routing
 - Mobile app selection (ADR-006 web-only in Phase 2)
