@@ -2,7 +2,8 @@
 
 **Date:** 23 November 2026  
 **Initial HEAD:** `434c32c34d34cd7544bde3846d1b1b073c8f9d5f`  
-**Final HEAD:** `9b20a79b747d29dd5a1f30a6670a2bb4b1d3ffdd`  
+**Feature commit:** `9b20a79b747d29dd5a1f30a6670a2bb4b1d3ffdd`  
+**Final HEAD (docs SHA record):** `78a3169b3ca195f7afd54511034d3c9f9785adfc`  
 **No push / no deploy / no live Razorpay.**
 
 ---
