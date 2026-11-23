@@ -111,7 +111,7 @@ final class EnquiryAssignmentService
             throw new EnquiryAuthorizationException('Enquiry is not visible in this branch context.');
         }
 
-        if ($canSeeUnassigned && $enquiry->branch_id === null && $toBranch === null) {
+        if ($canSeeUnassigned && $toBranchId === null) {
             throw ValidationException::withMessages(['to_branch_id' => 'Unassigned enquiry requires a branch assignment.']);
         }
 

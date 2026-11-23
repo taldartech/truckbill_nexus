@@ -22,8 +22,12 @@ use App\Models\BranchAssignment;
 use App\Models\Company;
 use App\Models\CompanyMembership;
 use App\Models\Enquiry;
+use App\Models\EnquiryAssignmentHistory;
 use App\Models\EnquiryFollowUp;
+use App\Models\EnquiryGoodsRow;
 use App\Models\EnquiryQuotation;
+use App\Models\EnquiryQuotationBroadcastRequest;
+use App\Models\EnquiryStatusHistory;
 use App\Models\OwnerCatalogueItem;
 use App\Models\Party;
 use App\Models\PartyRole;
@@ -570,7 +574,7 @@ class EnquiryController extends Controller
      */
     private function branchOptions(Company $company): array
     {
-        return Branch::query()
+        $rows = Branch::query()
             ->where('company_id', $company->id)
             ->whereNull('deactivated_at')
             ->whereNull('deleted_at')
@@ -579,6 +583,8 @@ class EnquiryController extends Controller
             ->map(fn (Branch $row): array => ['id' => $row->id, 'name' => $row->name])
             ->values()
             ->all();
+
+        return array_values($rows);
     }
 
     /**
@@ -597,7 +603,7 @@ class EnquiryController extends Controller
             ->whereNull('deactivated_at')
             ->pluck('user_id');
 
-        return User::query()
+        $rows = User::query()
             ->whereIn('id', $userIds)
             ->whereNull('deactivated_at')
             ->orderBy('name')
@@ -609,6 +615,8 @@ class EnquiryController extends Controller
             ])
             ->values()
             ->all();
+
+        return array_values($rows);
     }
 
     /**
@@ -623,7 +631,7 @@ class EnquiryController extends Controller
             ->whereNull('deleted_at')
             ->pluck('party_id');
 
-        return Party::query()
+        $rows = Party::query()
             ->where('company_id', $company->id)
             ->whereIn('id', $partyIds)
             ->whereNull('deleted_at')
@@ -633,6 +641,8 @@ class EnquiryController extends Controller
             ->map(fn (Party $party): array => ['id' => $party->id, 'name' => $party->name])
             ->values()
             ->all();
+
+        return array_values($rows);
     }
 
     /**
@@ -640,7 +650,7 @@ class EnquiryController extends Controller
      */
     private function vehicleOptions(Company $company): array
     {
-        return Vehicle::query()
+        $rows = Vehicle::query()
             ->where('company_id', $company->id)
             ->whereNull('deleted_at')
             ->orderBy('registration_number')
@@ -652,6 +662,8 @@ class EnquiryController extends Controller
             ])
             ->values()
             ->all();
+
+        return array_values($rows);
     }
 
     private function assertPermission(User $actor, Company $company, Branch $branch, string $code): void
@@ -745,7 +757,7 @@ class EnquiryController extends Controller
             'expected_loading_date' => $enquiry->expected_loading_date?->toDateString(),
             'instructions' => $enquiry->instructions,
             'goods' => $enquiry->relationLoaded('goodsRows')
-                ? $enquiry->goodsRows->map(fn ($row): array => [
+                ? $enquiry->goodsRows->map(fn (EnquiryGoodsRow $row): array => [
                     'id' => $row->id,
                     'position' => $row->position,
                     'goods_type_id' => $row->goods_type_id,
@@ -761,7 +773,7 @@ class EnquiryController extends Controller
                 ? $enquiry->assignedUser->name
                 : null,
             'status_history' => $enquiry->relationLoaded('statusHistories')
-                ? $enquiry->statusHistories->map(fn ($row): array => [
+                ? $enquiry->statusHistories->map(fn (EnquiryStatusHistory $row): array => [
                     'from_status' => $row->from_status?->value,
                     'to_status' => $row->to_status->value,
                     'remark' => $row->remark,
@@ -771,7 +783,7 @@ class EnquiryController extends Controller
             'assignment_history' => $enquiry->relationLoaded('assignmentHistories')
                 ? $enquiry->assignmentHistories
                     ->sortByDesc('assigned_at')
-                    ->map(fn ($row): array => [
+                    ->map(fn (EnquiryAssignmentHistory $row): array => [
                         'from_branch_id' => $row->from_branch_id,
                         'to_branch_id' => $row->to_branch_id,
                         'from_assigned_user_id' => $row->from_assigned_user_id,
@@ -783,15 +795,15 @@ class EnquiryController extends Controller
             'follow_ups' => $enquiry->relationLoaded('followUps')
                 ? $enquiry->followUps
                     ->sortByDesc('follow_up_at')
-                    ->map(fn ($row): array => [
+                    ->map(fn (EnquiryFollowUp $row): array => [
                         'id' => $row->id,
-                        'follow_up_at' => $row->follow_up_at?->toIso8601String(),
+                        'follow_up_at' => $row->follow_up_at->toIso8601String(),
                         'remarks' => $row->remarks,
                         'completed_at' => $row->completed_at?->toIso8601String(),
                     ])->values()->all()
                 : [],
             'quotations' => $enquiry->relationLoaded('quotations')
-                ? $enquiry->quotations->map(fn ($row): array => [
+                ? $enquiry->quotations->map(fn (EnquiryQuotation $row): array => [
                     'id' => $row->id,
                     'transporter_party_id' => $row->transporter_party_id,
                     'transporter_name' => $row->relationLoaded('transporter') ? $row->transporter?->name : null,
@@ -804,18 +816,18 @@ class EnquiryController extends Controller
             'broadcast_requests' => $enquiry->relationLoaded('broadcastRequests')
                 ? $enquiry->broadcastRequests
                     ->sortByDesc('requested_at')
-                    ->map(fn ($row): array => [
+                    ->map(fn (EnquiryQuotationBroadcastRequest $row): array => [
                         'id' => $row->id,
                         'status' => $row->status->value,
                         'channels' => $row->channels,
                         'target_count' => $row->relationLoaded('targets') ? $row->targets->count() : 0,
-                        'requested_at' => $row->requested_at?->toIso8601String(),
+                        'requested_at' => $row->requested_at->toIso8601String(),
                     ])->values()->all()
                 : [],
             'conversion' => $enquiry->relationLoaded('conversion') && $enquiry->conversion
                 ? [
                     'id' => $enquiry->conversion->id,
-                    'converted_at' => $enquiry->conversion->converted_at?->toIso8601String(),
+                    'converted_at' => $enquiry->conversion->converted_at->toIso8601String(),
                     'lorry_receipt_ids' => $enquiry->conversion->relationLoaded('lorryReceiptLinks')
                         ? $enquiry->conversion->lorryReceiptLinks->pluck('lorry_receipt_id')->all()
                         : [],

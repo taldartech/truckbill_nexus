@@ -76,6 +76,7 @@ final class CrmDashboardService
             ])
             ->values()
             ->all();
+        $recentLeads = array_values($recentLeads);
 
         $recentTickets = (clone $ticketQuery)
             ->orderByDesc('created_at')
@@ -89,6 +90,7 @@ final class CrmDashboardService
             ])
             ->values()
             ->all();
+        $recentTickets = array_values($recentTickets);
 
         return [
             'scope' => $isAdmin ? 'team' : 'assigned',

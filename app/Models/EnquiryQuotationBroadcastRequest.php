@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Domains\Enquiry\Enums\BroadcastRequestStatus;
+use Carbon\CarbonImmutable;
 use Database\Factories\EnquiryQuotationBroadcastRequestFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -10,6 +11,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
+/**
+ * @property BroadcastRequestStatus $status
+ * @property CarbonImmutable $requested_at
+ */
 class EnquiryQuotationBroadcastRequest extends Model
 {
     /** @use HasFactory<EnquiryQuotationBroadcastRequestFactory> */

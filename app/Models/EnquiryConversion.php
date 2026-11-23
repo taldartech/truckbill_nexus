@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Database\Factories\EnquiryConversionFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -11,6 +12,8 @@ use Illuminate\Support\Str;
 
 /**
  * Cardinality-neutral conversion header (PO-P4-CNV-CARDINALITY Pending).
+ *
+ * @property CarbonImmutable $converted_at
  */
 class EnquiryConversion extends Model
 {

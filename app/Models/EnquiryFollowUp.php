@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Database\Factories\EnquiryFollowUpFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -9,6 +10,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
+/**
+ * @property CarbonImmutable $follow_up_at
+ * @property CarbonImmutable|null $completed_at
+ */
 class EnquiryFollowUp extends Model
 {
     /** @use HasFactory<EnquiryFollowUpFactory> */

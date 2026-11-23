@@ -10,6 +10,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
+/**
+ * @property QuotationSelectionStatus $selection_status
+ * @property string|null $quoted_freight
+ * @property string|null $extra_charges_amount
+ */
 class EnquiryQuotation extends Model
 {
     /** @use HasFactory<EnquiryQuotationFactory> */

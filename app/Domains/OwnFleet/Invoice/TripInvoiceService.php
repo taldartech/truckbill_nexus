@@ -248,7 +248,7 @@ final class TripInvoiceService
         $this->assertCanEditCharges($actor, $company, $branch);
         $this->assertOwnFleetEntitled($company);
 
-        $remark = trim((string) ($payload['edit_remark'] ?? ''));
+        $remark = trim($payload['edit_remark']);
         if ($remark === '') {
             throw ValidationException::withMessages(['edit_remark' => 'Edit reason is required.']);
         }

@@ -1676,9 +1676,6 @@ class LocalDemoWorkspaceSeeder extends Seeder
         ]);
     }
 
-    /**
-     * @param  array{truck: OwnerCatalogueItem, goods: OwnerCatalogueItem, package: OwnerCatalogueItem}  $catalogues
-     */
     private function ensureEnquiryCdfDemoFixtures(
         CompanyAccessService $access,
         EnquiryAssignmentService $assignments,
@@ -1743,14 +1740,18 @@ class LocalDemoWorkspaceSeeder extends Seeder
                     'workflow_context' => LrWorkflowContext::Broker->value,
                     'vehicle_id' => $marketVehicle->id,
                     'idempotency_key' => 'demo-convert-'.$convertCandidate->id,
-                    'vehicles' => collect($preview['suggested_vehicles'])->map(fn (array $vehicle): array => [
-                        'goods' => $vehicle['goods'],
-                    ])->all(),
+                    'vehicles' => array_map(
+                        fn (array $vehicle): array => ['goods' => $vehicle['goods']],
+                        array_values(is_array($preview['suggested_vehicles'] ?? null) ? $preview['suggested_vehicles'] : []),
+                    ),
                 ]);
             }
         }
     }
 
+    /**
+     * @param  array{truck: OwnerCatalogueItem, goods: OwnerCatalogueItem, package: OwnerCatalogueItem}  $catalogues
+     */
     private function ensureWebsiteEnquiry(
         EnquiryService $enquiries,
         Company $company,

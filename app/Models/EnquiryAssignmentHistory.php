@@ -2,12 +2,16 @@
 
 namespace App\Models;
 
+use Carbon\CarbonImmutable;
 use Database\Factories\EnquiryAssignmentHistoryFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
+/**
+ * @property CarbonImmutable|null $assigned_at
+ */
 class EnquiryAssignmentHistory extends Model
 {
     /** @use HasFactory<EnquiryAssignmentHistoryFactory> */

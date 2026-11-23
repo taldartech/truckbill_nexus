@@ -119,7 +119,7 @@ final class EnquiryConversionService
             ]);
         }
 
-        $this->assertAllocationsReconcile($enquiry, $vehicles);
+        $this->assertAllocationsReconcile($enquiry, array_values($vehicles));
 
         $freightPerVehicle = $this->splitFreightAcrossVehicles($preferred, count($vehicles));
         $remark = trim((string) ($payload['remark'] ?? 'Enquiry converted to Unified LR(s).'));
@@ -261,7 +261,6 @@ final class EnquiryConversionService
     }
 
     /**
-     * @param  list<array<string, mixed>>  $vehicles
      * @return list<string>
      */
     private function splitFreightAcrossVehicles(?EnquiryQuotation $preferred, int $n): array
@@ -270,16 +269,16 @@ final class EnquiryConversionService
             return [];
         }
 
-        $total = '0.00';
+        $total = $this->decimalMoney(null);
         if ($preferred !== null) {
             $total = bcadd(
-                (string) $preferred->quoted_freight,
-                (string) ($preferred->extra_charges_amount ?? '0'),
+                $this->decimalMoney($preferred->quoted_freight),
+                $this->decimalMoney($preferred->extra_charges_amount),
                 2,
             );
         }
 
-        if (bccomp($total, '0', 2) <= 0) {
+        if (bccomp($total, '0.00', 2) <= 0) {
             return array_fill(0, $n, '0.00');
         }
 
@@ -287,11 +286,11 @@ final class EnquiryConversionService
         $parts = array_fill(0, $n, $base);
         $allocated = bcmul($base, (string) $n, 2);
         $remainder = bcsub($total, $allocated, 2);
-        if (bccomp($remainder, '0', 2) !== 0) {
+        if (bccomp($remainder, '0.00', 2) !== 0) {
             $parts[$n - 1] = bcadd($parts[$n - 1], $remainder, 2);
         }
 
-        return $parts;
+        return array_values($parts);
     }
 
     /**
@@ -319,18 +318,19 @@ final class EnquiryConversionService
         return $vehicles;
     }
 
-    private function splitDecimal(?string $value, int $n, int $index): ?string
+    private function splitDecimal(string|float|int|null $value, int $n, int $index): ?string
     {
         if ($value === null) {
             return null;
         }
 
         $scale = 3;
-        $base = bcdiv((string) $value, (string) $n, $scale);
+        $normalized = $this->decimalQuantity($value);
+        $base = bcdiv($normalized, (string) $n, $scale);
         if ($index === $n - 1) {
             $allocated = bcmul($base, (string) ($n - 1), $scale);
 
-            return bcsub((string) $value, $allocated, $scale);
+            return bcsub($normalized, $allocated, $scale);
         }
 
         return $base;
@@ -344,9 +344,9 @@ final class EnquiryConversionService
         $totals = [];
         foreach ($enquiry->goodsRows as $row) {
             $totals[$row->id] = [
-                'package_count' => $this->decimalOrZero($row->package_count),
-                'actual_weight' => $this->decimalOrZero($row->actual_weight),
-                'charged_weight' => $this->decimalOrZero($row->charged_weight),
+                'package_count' => $this->decimalQuantity($row->package_count),
+                'actual_weight' => $this->decimalQuantity($row->actual_weight),
+                'charged_weight' => $this->decimalQuantity($row->charged_weight),
             ];
         }
 
@@ -382,11 +382,11 @@ final class EnquiryConversionService
 
         foreach ($totals as $rowId => $expected) {
             foreach (['package_count', 'actual_weight', 'charged_weight'] as $field) {
-                if (bccomp($expected[$field], '0', 3) === 0) {
+                if (bccomp($expected[$field], '0.000', 3) === 0) {
                     continue;
                 }
-                $actual = $sums[$rowId][$field] ?? '0';
-                if (bccomp($actual, $expected[$field], 3) !== 0) {
+                $actual = $sums[$rowId][$field] ?? '0.000';
+                if (bccomp($this->decimalQuantity($actual), $expected[$field], 3) !== 0) {
                     throw ValidationException::withMessages([
                         'vehicles' => 'Goods '.$field.' allocations must reconcile to enquiry totals.',
                     ]);
@@ -402,18 +402,18 @@ final class EnquiryConversionService
      */
     private function reconciliationTotals(Enquiry $enquiry, array $vehicles, array $freightPerVehicle): array
     {
-        $chargedSum = '0';
+        $chargedSum = '0.000';
         foreach ($vehicles as $vehicle) {
             foreach ($vehicle['goods'] as $row) {
                 if ($row['charged_weight'] !== null) {
-                    $chargedSum = bcadd($chargedSum, (string) $row['charged_weight'], 3);
+                    $chargedSum = bcadd($chargedSum, $this->decimalQuantity($row['charged_weight']), 3);
                 }
             }
         }
 
         $freightSum = '0.00';
         foreach ($freightPerVehicle as $part) {
-            $freightSum = bcadd($freightSum, $part, 2);
+            $freightSum = bcadd($freightSum, $this->decimalMoney($part), 2);
         }
 
         return [
@@ -459,6 +459,7 @@ final class EnquiryConversionService
     }
 
     /**
+     * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
      */
     private function baseLrPayload(Enquiry $enquiry, LrWorkflowContext $context, array $payload): array
@@ -573,14 +574,28 @@ final class EnquiryConversionService
         $links = $conversion->lorryReceiptLinks()->orderBy('position')->get();
         $ids = $links->pluck('lorry_receipt_id')->all();
 
-        return LorryReceipt::query()->whereIn('id', $ids)->get()->all();
+        return array_values(LorryReceipt::query()->whereIn('id', $ids)->get()->all());
     }
 
-    private function decimalOrZero(?string $value): string
+    /**
+     * @return numeric-string
+     */
+    private function decimalMoney(string|float|int|null $value): string
     {
-        if ($value === null) {
-            return '0';
+        if ($value === null || $value === '') {
+            return '0.00';
+        }
 
+        return number_format((float) $value, 2, '.', '');
+    }
+
+    /**
+     * @return numeric-string
+     */
+    private function decimalQuantity(string|float|int|null $value): string
+    {
+        if ($value === null || $value === '') {
+            return '0.000';
         }
 
         return number_format((float) $value, 3, '.', '');

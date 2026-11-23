@@ -186,12 +186,12 @@ class LeadController extends Controller
             ],
             'follow_ups' => $lead->followUps->map(fn (LeadFollowUp $followUp): array => [
                 'id' => $followUp->id,
-                'due_at' => $followUp->due_at?->timezone('Asia/Kolkata')->format('d-m-Y H:i'),
+                'due_at' => $followUp->due_at->timezone('Asia/Kolkata')->format('d-m-Y H:i'),
                 'notes' => $followUp->notes,
                 'completed_at' => $followUp->completed_at?->timezone('Asia/Kolkata')->format('d-m-Y H:i'),
                 'completion_notes' => $followUp->completion_notes,
                 'assignee' => $followUp->assignee?->email,
-                'is_overdue' => $followUp->completed_at === null && $followUp->due_at !== null && $followUp->due_at->isPast(),
+                'is_overdue' => $followUp->completed_at === null && $followUp->due_at->isPast(),
                 'complete_url' => $followUp->completed_at === null
                     ? route('admin.crm.leads.follow-ups.complete', [$lead, $followUp])
                     : null,
