@@ -103,7 +103,19 @@
 | Blocks             | Mandatory E2E/perf certification in this prompt                                                                                        |
 | Independent work   | Pest expansion; Stage 0 READMEs under `tests/e2e` and `tests/performance/k6`                                                           |
 
-### D8 — Preserved Phase 3 financial gates (unchanged)
+### D8 — Phase 2A Internal CRM (new)
+
+| Field              | Value                                                                                                 |
+| ------------------ | ----------------------------------------------------------------------------------------------------- |
+| IDs                | `PO-P2A-AUTH`, `PO-P2A-DESIGN-FORMAL`, plus lifecycle IDs in `PHASE_2A_AUTHORIZATION_REQUEST.md`      |
+| Evidence           | `Phases.md` Phase 2A (**Pending** auth); PRD §5–§6; `docs/design/phase-2a/PHASE_2A_DESIGN_PACKAGE.md` |
+| Current            | **Not authorized** — no CRM tables/UI                                                                 |
+| **Recommendation** | Approve AUTH + DESIGN-FORMAL together with lead/ticket status and conversion rules (see request)      |
+| Blocks             | All Lead / Sales / Onboarding / Support product delivery                                              |
+| Independent work   | Phase 2 Owner/Branch (done); Phase 3 EX preserve; DEC-003 `lr_goods_rows` active unique (shipped)     |
+| Hard gate          | Must **not** bypass D1 company §7 during onboarding                                                   |
+
+### D9 — Preserved Phase 3 financial gates (unchanged)
 
 | ID                              | Status   | Note                       |
 | ------------------------------- | -------- | -------------------------- |
@@ -119,13 +131,13 @@
 
 ## 2. Safe parallel work while waiting
 
-| Workstream                                            | Why safe                         |
-| ----------------------------------------------------- | -------------------------------- |
-| Stage 0 docs / cert honesty                           | No policy invention              |
-| Pest for existing authorized surfaces                 | Already approved                 |
-| Demo seeder within existing modules                   | Local-only guard                 |
-| Branch/Owner polish without schema invention          | Already authorized               |
-| Document `lr_goods_rows` soft-delete plan for Batch E | Preventive, no premature LR edit |
+| Workstream                                       | Why safe                                                     |
+| ------------------------------------------------ | ------------------------------------------------------------ |
+| Stage 0 docs / cert honesty                      | No policy invention                                          |
+| Pest for existing authorized surfaces            | Already approved                                             |
+| Demo seeder within existing modules              | Local-only guard                                             |
+| Branch/Owner polish without schema invention     | Already authorized                                           |
+| `lr_goods_rows` active-position unique (DEC-003) | **Implemented** — Batch A schema hardening; no LR product UI |
 
 ---
 

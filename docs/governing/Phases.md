@@ -42,6 +42,7 @@ Global identity, internal/customer separation, auth, customer single session, co
 ### Scope
 
 **Lead Management**
+
 - Lead creation and capture from approved sources.
 - Lead status, source and interested product.
 - Lead assignment to Sales Executives.
@@ -49,17 +50,20 @@ Global identity, internal/customer separation, auth, customer single session, co
 - Lead conversion tracking and duplicate prevention.
 
 **Customer Onboarding**
+
 - Convert qualified leads into Customer identities.
 - Reuse existing identities without overwriting credentials.
 - Create and associate companies through approved Company Management services.
 - Integrate company onboarding with subscription and trial eligibility.
 
 **Sales Management**
+
 - Sales pipeline and conversion tracking.
 - Assigned leads and scheduled follow-ups.
 - Sales activities and performance dashboards.
 
 **Support Management**
+
 - Support tickets with category, priority, status and assignee.
 - Ticket lifecycle, overdue tracking and resolution history.
 - Assigned-to-me and team-level support views.
