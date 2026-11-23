@@ -13,6 +13,8 @@ use App\Domains\OwnFleet\Invoice\TripInvoicePaymentService;
 use App\Domains\OwnFleet\Invoice\TripInvoiceService;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
+use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
+use App\Domains\Subscription\Enums\SubscriptionModule;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
@@ -39,6 +41,7 @@ class TripInvoiceController extends Controller
         private readonly TripInvoiceService $invoices,
         private readonly TripInvoicePaymentService $payments,
         private readonly FreightAmountPresentation $freightPresentation,
+        private readonly CoreModuleEntitlementResolver $moduleEntitlements = new CoreModuleEntitlementResolver,
     ) {}
 
     public function index(Request $request, Company $company, Branch $branch): Response
@@ -527,6 +530,10 @@ class TripInvoiceController extends Controller
 
     private function assertPermission(User $actor, Company $company, Branch $branch, string $code): void
     {
+        if (! $this->moduleEntitlements->isEntitled($company, SubscriptionModule::OwnFleet)) {
+            abort(403, 'OwnFleet module is not entitled for this company.');
+        }
+
         if (! $this->authorizer->allowsCustomer($actor, $code, $company, $branch)) {
             abort(403);
         }

@@ -49,6 +49,7 @@ function noFreightViewerForBranch(array $ctx): User
         'LR_VIEW',
         'TRIP_VIEW',
         'INVOICE_VIEW',
+        'INVOICE_PRINT',
         'PAYMENT_VIEW',
     ] as $suffix) {
         tripGrant('customer.viewer_no_freight', constant('App\\Domains\\Rbac\\PermissionCodes::'.$suffix));
@@ -111,6 +112,23 @@ test('no-freight role receives redacted trip invoice and trip profit props', fun
         ->assertInertia(fn ($page) => $page
             ->where('permissions.can_view_freight', false)
             ->where('lorryReceipt.freight_total', null));
+
+    branchHttpAs($viewer, $ctx);
+    $this->get(route('branch.trip-invoices.print', [$invoice]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('invoice.invoice_total', null)
+            ->where('invoice.base_freight_total', null));
+
+    branchHttpAs($viewer, $ctx);
+    $this->get(route('branch.payments.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('permissions.can_view_freight', false)
+            ->where('payments', fn ($rows) => collect($rows)->every(
+                fn ($row) => ($row['amount_received'] ?? null) === null
+                    && ($row['settlement_amount'] ?? null) === null,
+            )));
 });
 
 test('admin member still receives freight amounts on trip invoice show', function () {
