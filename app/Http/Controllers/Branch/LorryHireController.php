@@ -9,6 +9,7 @@ use App\Domains\Broker\Exceptions\BrokerAuthorizationException;
 use App\Domains\Broker\Exceptions\BrokerConflictException;
 use App\Domains\Broker\Exceptions\BrokerDomainException;
 use App\Domains\Broker\LorryHire\LorryHireCalculationService;
+use App\Domains\Broker\LorryHire\LorryHireCancellationService;
 use App\Domains\Broker\LorryHire\LorryHireService;
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Consignment\Enums\LrWorkflowContext;
@@ -41,6 +42,7 @@ class LorryHireController extends Controller
         private readonly CompanyAccessService $access,
         private readonly PermissionAuthorizer $authorizer,
         private readonly LorryHireService $lorryHires,
+        private readonly LorryHireCancellationService $cancellations,
         private readonly LorryHireCalculationService $calculations,
         private readonly BrokerAdjustmentService $adjustments,
         private readonly FreightAmountPresentation $freightPresentation,
@@ -197,8 +199,12 @@ class LorryHireController extends Controller
         $adjustmentRows = $this->adjustments->listForHire($company, $branch, $lorryHire);
         $lorryHire->loadMissing(['lorryReceipt.delivery', 'delivery']);
 
+        $canCancel = $this->canCancelLorryHire($actor, $company, $branch)
+            && $lorryHire->status !== LorryHireStatus::Cancelled;
+
         return Inertia::render('broker/lorry-hires/show', [
             'lorryHire' => $this->detailPayload($lorryHire, $maySeeFreight, $summary),
+            'cancelPreview' => $canCancel ? $this->cancellations->preview($lorryHire) : null,
             'adjustments' => $adjustmentRows->map(fn ($row): array => [
                 'id' => $row->id,
                 'type' => $row->type->value,
@@ -224,8 +230,47 @@ class LorryHireController extends Controller
                 'lr_show' => route('branch.lorry-receipts.show', [$lorryHire->lorry_receipt_id], absolute: false),
                 'adjustment_store' => route('branch.broker.lorry-hires.adjustments.store', [$lorryHire], absolute: false),
                 'deliveries' => route('branch.broker.deliveries.index', absolute: false),
+                'cancel' => $canCancel
+                    ? route('branch.broker.lorry-hires.cancel', [$lorryHire], absolute: false)
+                    : null,
             ],
         ]);
+    }
+
+    public function cancel(
+        Request $request,
+        LorryHire $lorryHire,
+        Company $company,
+        Branch $branch,
+    ): RedirectResponse {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertLorryHire($lorryHire, $company, $branch);
+
+        if (! $this->canCancelLorryHire($actor, $company, $branch)) {
+            abort(403, 'Not authorized to cancel Broker Lorry Hires.');
+        }
+
+        $validated = $request->validate([
+            'reason' => ['required', 'string', 'max:2000'],
+            'settle_outstanding' => ['required', 'boolean'],
+            'cancelled_at' => ['nullable', 'date'],
+        ]);
+
+        try {
+            $this->cancellations->cancel($lorryHire, $actor, $validated);
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (BrokerAuthorizationException $e) {
+            abort(403, $e->getMessage());
+        } catch (BrokerConflictException $e) {
+            throw ValidationException::withMessages(['reason' => $e->getMessage()]);
+        } catch (BrokerDomainException $e) {
+            throw ValidationException::withMessages(['reason' => $e->getMessage()]);
+        }
+
+        return redirect()
+            ->route('branch.broker.lorry-hires.show', [$lorryHire])
+            ->with('success', 'Broker Lorry Hire cancelled.');
     }
 
     private function assertLorryHire(LorryHire $lorryHire, Company $company, Branch $branch): void
@@ -304,7 +349,7 @@ class LorryHireController extends Controller
             'can_view' => $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_LORRY_HIRE_VIEW, $company, $branch),
             'can_create' => $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_LORRY_HIRE_CREATE, $company, $branch),
             'can_edit' => $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_LORRY_HIRE_EDIT, $company, $branch),
-            'can_cancel' => $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_LORRY_HIRE_CANCEL, $company, $branch),
+            'can_cancel' => $this->canCancelLorryHire($actor, $company, $branch),
             'can_view_freight' => $maySeeFreight,
         ];
     }
@@ -348,7 +393,10 @@ class LorryHireController extends Controller
      *         declaration_status: string,
      *         explanation: string
      *     }|null,
-     *     created_at: string|null
+     *     created_at: string|null,
+     *     cancelled_at: string|null,
+     *     cancellation_remark: string|null,
+     *     settle_outstanding: bool|null
      * }
      */
     private function detailPayload(LorryHire $hire, bool $maySeeFreight, array $summary): array
@@ -367,6 +415,9 @@ class LorryHireController extends Controller
             'transporter_name' => $hire->transporter?->name,
             'declaration_type' => $hire->declaration_type,
             'remarks' => $hire->remarks,
+            'cancelled_at' => $hire->cancelled_at?->format('d-m-Y H:i'),
+            'cancellation_remark' => $hire->cancellation_remark,
+            'settle_outstanding' => $hire->settle_outstanding,
             'freight_total' => $this->freightPresentation->presentAmount($summary['freight_total'], $maySeeFreight),
             'tds_percent' => $hire->tds_percent,
             'tds_amount' => $this->freightPresentation->presentAmount($summary['tds_amount'], $maySeeFreight),
@@ -391,6 +442,20 @@ class LorryHireController extends Controller
             ] : null,
             'created_at' => $hire->created_at?->format('d-m-Y H:i'),
         ];
+    }
+
+    private function canCancelLorryHire(User $actor, Company $company, Branch $branch): bool
+    {
+        if ($actor->id === $company->owner_user_id) {
+            return true;
+        }
+
+        return $this->authorizer->allowsCustomer(
+            $actor,
+            PermissionCodes::BROKER_LORRY_HIRE_CANCEL,
+            $company,
+            $branch,
+        );
     }
 
     /**

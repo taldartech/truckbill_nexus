@@ -30,6 +30,8 @@ final class TransporterBookBalanceService
 {
     public const SOURCE_VOUCHER_ADJUST = 'transporter_voucher_adjust';
 
+    public const SOURCE_LORRY_HIRE_CANCEL = 'lorry_hire_cancellation';
+
     public function __construct(
         private readonly AuditedTransaction $auditedTransaction = new AuditedTransaction,
         private readonly AuditWriter $audit = new AuditWriter,

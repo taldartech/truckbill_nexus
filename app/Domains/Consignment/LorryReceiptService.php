@@ -2,6 +2,7 @@
 
 namespace App\Domains\Consignment;
 
+use App\Domains\Broker\Enums\LorryHireStatus;
 use App\Domains\Company\MasterDataVisibilityResolver;
 use App\Domains\Consignment\Dependency\CompositeLrDependencyGuard;
 use App\Domains\Consignment\Enums\FreightRateType;
@@ -22,6 +23,7 @@ use App\Domains\Subscription\Entitlement\SubscriptionEntitlementGate;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\DocumentNumberAllocation;
+use App\Models\LorryHire;
 use App\Models\LorryReceipt;
 use App\Models\LrAdditionalCharge;
 use App\Models\LrEwayBill;
@@ -339,6 +341,13 @@ final class LorryReceiptService
                     'lr_number' => $lorryReceipt->lr_number,
                     'status' => $lorryReceipt->status->value,
                 ];
+
+                LorryHire::query()
+                    ->where('company_id', $lorryReceipt->company_id)
+                    ->where('lorry_receipt_id', $lorryReceipt->id)
+                    ->where('status', LorryHireStatus::Cancelled->value)
+                    ->whereNull('deleted_at')
+                    ->each(fn (LorryHire $hire) => $hire->delete());
 
                 $lorryReceipt->goodsRows()->each(fn (LrGoodsRow $row) => $row->delete());
                 $lorryReceipt->ewayBills()->each(fn (LrEwayBill $row) => $row->delete());

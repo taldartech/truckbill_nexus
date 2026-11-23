@@ -57,7 +57,30 @@ type Props = {
             explanation: string;
         } | null;
         created_at: string | null;
+        cancelled_at: string | null;
+        cancellation_remark: string | null;
+        settle_outstanding: boolean | null;
     };
+    cancelPreview: {
+        freight_total: string;
+        tds_amount: string;
+        net_payable: string;
+        outstanding_amount: string;
+        settle_yes_description: string;
+        settle_no_description: string;
+        adjustments: Array<{
+            id: string;
+            type: string;
+            amount: string;
+            reason: string | null;
+        }>;
+        vouchers: Array<{
+            id: string;
+            voucher_number: string;
+            amount: string;
+            status: string;
+        }>;
+    } | null;
     adjustments: AdjustmentRow[];
     adjustmentTypeOptions: Array<{ value: string; label: string }>;
     delivery: {
@@ -69,6 +92,7 @@ type Props = {
         lr_status: string | null;
     };
     permissions: {
+        can_cancel?: boolean;
         can_create_adjustment?: boolean;
         can_view_adjustment?: boolean;
         can_manage_delivery?: boolean;
@@ -78,11 +102,13 @@ type Props = {
         lr_show: string;
         adjustment_store: string;
         deliveries: string;
+        cancel: string | null;
     };
 };
 
 export default function LorryHireShow({
     lorryHire,
+    cancelPreview,
     adjustments,
     adjustmentTypeOptions,
     delivery,
@@ -90,6 +116,11 @@ export default function LorryHireShow({
     urls,
 }: Props) {
     const [tab, setTab] = useState('overview');
+
+    const cancelForm = useForm({
+        reason: '',
+        settle_outstanding: true as boolean,
+    });
 
     const adjustmentForm = useForm({
         type: adjustmentTypeOptions[0]?.value ?? 'detention',
@@ -158,6 +189,12 @@ export default function LorryHireShow({
                         { id: 'tds', label: 'TDS snapshot' },
                         { id: 'adjustments', label: 'Adjustments' },
                         { id: 'delivery', label: 'Delivery' },
+                        ...(permissions.can_cancel &&
+                        lorryHire.status !== 'cancelled' &&
+                        cancelPreview &&
+                        urls.cancel
+                            ? [{ id: 'cancel', label: 'Cancel' }]
+                            : []),
                     ]}
                     activeId={tab}
                     onChange={setTab}
@@ -188,6 +225,29 @@ export default function LorryHireShow({
                                 label="Created"
                                 value={lorryHire.created_at}
                             />
+                            {lorryHire.status === 'cancelled' ? (
+                                <>
+                                    <Field
+                                        label="Cancelled"
+                                        value={lorryHire.cancelled_at}
+                                    />
+                                    <Field
+                                        label="Cancellation reason"
+                                        value={lorryHire.cancellation_remark}
+                                    />
+                                    <Field
+                                        label="Settled outstanding"
+                                        value={
+                                            lorryHire.settle_outstanding ===
+                                            null
+                                                ? '—'
+                                                : lorryHire.settle_outstanding
+                                                  ? 'Yes'
+                                                  : 'No'
+                                        }
+                                    />
+                                </>
+                            ) : null}
                         </dl>
                         {lorryHire.remarks ? (
                             <p className="mt-4 text-sm text-muted-foreground">
@@ -502,9 +562,155 @@ export default function LorryHireShow({
                             </Link>
                         ) : null}
                     </DetailTabPanel>
+                    <DetailTabPanel id="cancel" activeId={tab}>
+                        {cancelPreview && urls.cancel ? (
+                            <form
+                                className="max-w-2xl space-y-4 rounded-lg border border-destructive/30 bg-destructive/5 p-4"
+                                onSubmit={(event) => {
+                                    event.preventDefault();
+                                    cancelForm.post(urls.cancel, {
+                                        preserveScroll: true,
+                                    });
+                                }}
+                            >
+                                <h3 className="text-sm font-semibold text-destructive">
+                                    Cancel Lorry Hire
+                                </h3>
+                                <p className="text-sm text-muted-foreground">
+                                    Review amounts before confirming. This
+                                    action cannot be undone.
+                                </p>
+                                <dl className="grid gap-2 rounded-md border border-border bg-background p-3 text-sm sm:grid-cols-2">
+                                    <PreviewField
+                                        label="Transporter freight"
+                                        value={lorryHire.freight_total}
+                                    />
+                                    <PreviewField
+                                        label="TDS"
+                                        value={lorryHire.tds_amount}
+                                    />
+                                    <PreviewField
+                                        label="Net payable"
+                                        value={lorryHire.net_payable}
+                                    />
+                                    <PreviewField
+                                        label="Outstanding"
+                                        value={lorryHire.outstanding_amount}
+                                    />
+                                    <PreviewField
+                                        label="Adjustments"
+                                        value={String(
+                                            cancelPreview.adjustments.length,
+                                        )}
+                                    />
+                                    <PreviewField
+                                        label="Vouchers"
+                                        value={String(
+                                            cancelPreview.vouchers.length,
+                                        )}
+                                    />
+                                </dl>
+                                <fieldset className="space-y-2">
+                                    <legend className="text-sm font-medium">
+                                        Settle outstanding to transporter book?
+                                    </legend>
+                                    <label className="flex cursor-pointer items-start gap-2 text-sm">
+                                        <input
+                                            type="radio"
+                                            name="settle_outstanding"
+                                            className="mt-1"
+                                            checked={
+                                                cancelForm.data
+                                                    .settle_outstanding === true
+                                            }
+                                            onChange={() =>
+                                                cancelForm.setData(
+                                                    'settle_outstanding',
+                                                    true,
+                                                )
+                                            }
+                                        />
+                                        <span>
+                                            {
+                                                cancelPreview.settle_yes_description
+                                            }
+                                        </span>
+                                    </label>
+                                    <label className="flex cursor-pointer items-start gap-2 text-sm">
+                                        <input
+                                            type="radio"
+                                            name="settle_outstanding"
+                                            className="mt-1"
+                                            checked={
+                                                cancelForm.data
+                                                    .settle_outstanding ===
+                                                false
+                                            }
+                                            onChange={() =>
+                                                cancelForm.setData(
+                                                    'settle_outstanding',
+                                                    false,
+                                                )
+                                            }
+                                        />
+                                        <span>
+                                            {
+                                                cancelPreview.settle_no_description
+                                            }
+                                        </span>
+                                    </label>
+                                </fieldset>
+                                <div>
+                                    <Label htmlFor="cancel_reason">
+                                        Reason (required)
+                                    </Label>
+                                    <Input
+                                        id="cancel_reason"
+                                        className="mt-1"
+                                        value={cancelForm.data.reason}
+                                        onChange={(e) =>
+                                            cancelForm.setData(
+                                                'reason',
+                                                e.target.value,
+                                            )
+                                        }
+                                        required
+                                        maxLength={2000}
+                                    />
+                                </div>
+                                <Button
+                                    type="submit"
+                                    variant="destructive"
+                                    disabled={cancelForm.processing}
+                                >
+                                    Confirm cancellation
+                                </Button>
+                            </form>
+                        ) : (
+                            <p className="text-sm text-muted-foreground">
+                                Cancellation is not available for this Lorry
+                                Hire.
+                            </p>
+                        )}
+                    </DetailTabPanel>
                 </DetailTabs>
             </PageShell>
         </>
+    );
+}
+
+function PreviewField({
+    label,
+    value,
+}: {
+    label: string;
+    value: string | null | undefined;
+}) {
+    return (
+        <div>
+            <dt className="text-xs text-muted-foreground">{label}</dt>
+            <dd className="font-medium">{value ?? '—'}</dd>
+        </div>
     );
 }
 
