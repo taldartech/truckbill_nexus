@@ -351,7 +351,7 @@ test('super admin can create internal users and non-super-admin cannot', functio
             'password' => 'password-12345',
             'password_confirmation' => 'password-12345',
         ])
-        ->assertSessionHasErrors();
+        ->assertForbidden();
 
     expect(User::query()->where('email', 'nope.internal@example.com')->exists())->toBeFalse();
 });

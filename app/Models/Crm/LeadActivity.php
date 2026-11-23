@@ -3,6 +3,7 @@
 namespace App\Models\Crm;
 
 use App\Models\User;
+use Carbon\CarbonInterface;
 use Database\Factories\Crm\LeadActivityFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -16,6 +17,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string $activity_type
  * @property string|null $body
  * @property array<string, mixed>|null $meta
+ * @property CarbonInterface|null $created_at
+ * @property CarbonInterface|null $updated_at
  */
 class LeadActivity extends Model
 {

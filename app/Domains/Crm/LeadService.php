@@ -218,7 +218,7 @@ final class LeadService
 
                 $this->recordActivity($lead, $actor, 'follow_up_scheduled', $followUp->notes, [
                     'follow_up_id' => $followUp->id,
-                    'due_at' => $followUp->due_at?->toIso8601String(),
+                    'due_at' => $followUp->due_at->toIso8601String(),
                 ]);
 
                 return $followUp->refresh();

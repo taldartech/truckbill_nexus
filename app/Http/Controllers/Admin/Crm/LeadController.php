@@ -9,6 +9,7 @@ use App\Domains\Crm\Exceptions\CrmDomainException;
 use App\Domains\Crm\LeadService;
 use App\Http\Controllers\Controller;
 use App\Models\Crm\Lead;
+use App\Models\Crm\LeadActivity;
 use App\Models\InternalRoleAssignment;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -158,7 +159,7 @@ class LeadController extends Controller
                     $lead->status->allowedTransitions(),
                 ),
             ],
-            'activities' => $lead->activities->map(fn ($activity): array => [
+            'activities' => $lead->activities->map(fn (LeadActivity $activity): array => [
                 'id' => $activity->id,
                 'activity_type' => $activity->activity_type,
                 'body' => $activity->body,

@@ -623,6 +623,9 @@ final class CompanyWorkspaceService
         ], 'PRD §7 opening bank account on company create');
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     private function companySnapshot(Company $company): array
     {
         return [

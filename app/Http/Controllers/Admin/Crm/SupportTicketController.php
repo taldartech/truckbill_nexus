@@ -8,6 +8,7 @@ use App\Domains\Crm\Exceptions\CrmDomainException;
 use App\Domains\Crm\SupportTicketService;
 use App\Http\Controllers\Controller;
 use App\Models\Crm\SupportTicket;
+use App\Models\Crm\SupportTicketActivity;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -121,7 +122,7 @@ class SupportTicketController extends Controller
                     $ticket->status->allowedTransitions(),
                 ),
             ],
-            'activities' => $ticket->activities->map(fn ($activity): array => [
+            'activities' => $ticket->activities->map(fn (SupportTicketActivity $activity): array => [
                 'id' => $activity->id,
                 'activity_type' => $activity->activity_type,
                 'body' => $activity->body,

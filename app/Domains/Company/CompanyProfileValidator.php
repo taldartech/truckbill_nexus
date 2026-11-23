@@ -116,16 +116,7 @@ final class CompanyProfileValidator
                 throw new CompanyDomainException('Selected GST rate is not active.');
             }
 
-            $normalized['gst_rate_snapshot'] = method_exists($rate, 'toSnapshot')
-                ? $rate->toSnapshot()
-                : [
-                    'gst_rate_id' => $rate->id,
-                    'code' => $rate->code,
-                    'name' => $rate->name,
-                    'rate_percent' => (string) $rate->rate_percent,
-                    'version' => $rate->version,
-                    'effective_from' => $rate->effective_from?->toDateString(),
-                ];
+            $normalized['gst_rate_snapshot'] = $rate->toSnapshot();
         } else {
             $normalized['gst_rate_snapshot'] = null;
         }

@@ -36,9 +36,10 @@ final class SupportTicketService
     {
         $this->assertInternalActor($actor);
 
-        $priority = ($attributes['priority'] ?? SupportTicketPriority::Medium) instanceof SupportTicketPriority
-            ? $attributes['priority']
-            : SupportTicketPriority::from((string) ($attributes['priority'] ?? SupportTicketPriority::Medium->value));
+        $rawPriority = $attributes['priority'] ?? SupportTicketPriority::Medium;
+        $priority = $rawPriority instanceof SupportTicketPriority
+            ? $rawPriority
+            : SupportTicketPriority::from((string) $rawPriority);
 
         return $this->withPlatformTenant(function () use ($actor, $attributes, $priority): SupportTicket {
             return $this->auditedTransaction->run(function () use ($actor, $attributes, $priority): SupportTicket {

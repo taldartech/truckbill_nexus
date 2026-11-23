@@ -133,13 +133,13 @@ class CompanyLifecycleController extends Controller
                 'new_owner' => $transfer->newOwner?->email,
                 'initiated_by' => $transfer->initiatedBy?->email,
                 'remark' => $transfer->remark,
-                'transferred_at' => $transfer->transferred_at?->toIso8601String(),
+                'transferred_at' => $transfer->transferred_at->toIso8601String(),
             ])->values()->all(),
             'audit_entries' => $auditEntries->map(fn (AuditEntry $entry): array => [
                 'id' => $entry->id,
                 'action' => $entry->action,
                 'remark' => $entry->remark,
-                'created_at' => $entry->created_at?->toIso8601String(),
+                'created_at' => $entry->created_at->toIso8601String(),
             ])->values()->all(),
             'urls' => [
                 'index' => route('admin.companies.index'),
