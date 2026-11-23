@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Admin\Crm;
 use App\Domains\Crm\Enums\SupportTicketPriority;
 use App\Domains\Crm\Enums\SupportTicketStatus;
 use App\Domains\Crm\Exceptions\CrmDomainException;
+use App\Domains\Crm\LeadService;
 use App\Domains\Crm\SupportTicketService;
+use App\Domains\Identity\Enums\IdentityType;
 use App\Http\Controllers\Controller;
 use App\Models\Crm\SupportTicket;
 use App\Models\Crm\SupportTicketActivity;
@@ -21,6 +23,7 @@ class SupportTicketController extends Controller
 {
     public function __construct(
         private readonly SupportTicketService $tickets = new SupportTicketService,
+        private readonly LeadService $leads = new LeadService,
     ) {}
 
     public function index(Request $request): Response
@@ -74,6 +77,11 @@ class SupportTicketController extends Controller
 
         return Inertia::render('admin/crm/tickets/create', [
             'priorities' => array_map(fn (SupportTicketPriority $p): string => $p->value, SupportTicketPriority::cases()),
+            'assignable_users' => $this->leads->assignableInternalUsers()->map(fn (User $user): array => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ])->values()->all(),
             'store_url' => route('admin.crm.tickets.store'),
             'index_url' => route('admin.crm.tickets.index'),
         ]);
@@ -89,6 +97,7 @@ class SupportTicketController extends Controller
             'category' => ['required', 'string', 'max:64'],
             'priority' => ['required', Rule::enum(SupportTicketPriority::class)],
             'due_at' => ['nullable', 'date'],
+            'assigned_to_user_id' => ['nullable', 'integer', 'exists:users,id'],
         ]);
 
         try {
@@ -116,12 +125,18 @@ class SupportTicketController extends Controller
                 'priority' => $ticket->priority->value,
                 'status' => $ticket->status->value,
                 'assignee' => $ticket->assignee?->email,
-                'due_at' => $ticket->due_at?->toIso8601String(),
+                'due_at' => $ticket->due_at?->timezone('Asia/Kolkata')->format('d-m-Y H:i'),
                 'allowed_transitions' => array_map(
                     fn (SupportTicketStatus $s): string => $s->value,
                     $ticket->status->allowedTransitions(),
                 ),
+                'can_assign' => $ticket->status !== SupportTicketStatus::Closed,
             ],
+            'assignable_users' => $this->leads->assignableInternalUsers()->map(fn (User $user): array => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ])->values()->all(),
             'activities' => $ticket->activities->map(fn (SupportTicketActivity $activity): array => [
                 'id' => $activity->id,
                 'activity_type' => $activity->activity_type,
@@ -130,7 +145,9 @@ class SupportTicketController extends Controller
             ])->values()->all(),
             'urls' => [
                 'index' => route('admin.crm.tickets.index'),
+                'dashboard' => route('admin.crm.dashboard'),
                 'transition' => route('admin.crm.tickets.transition', $ticket),
+                'assign' => route('admin.crm.tickets.assign', $ticket),
             ],
         ]);
     }
@@ -158,6 +175,31 @@ class SupportTicketController extends Controller
         return redirect()
             ->route('admin.crm.tickets.show', $ticket)
             ->with('success', 'Ticket status updated.');
+    }
+
+    public function assign(Request $request, SupportTicket $ticket): RedirectResponse
+    {
+        $actor = $this->assertInternal($request);
+
+        $validated = $request->validate([
+            'assigned_to_user_id' => ['required', 'integer', 'exists:users,id'],
+            'remark' => ['required', 'string', 'max:1000'],
+        ]);
+
+        $assignee = User::query()
+            ->whereKey($validated['assigned_to_user_id'])
+            ->where('identity_type', IdentityType::Internal->value)
+            ->firstOrFail();
+
+        try {
+            $this->tickets->assign($actor, $ticket, $assignee, $validated['remark']);
+        } catch (CrmDomainException $e) {
+            throw ValidationException::withMessages(['assigned_to_user_id' => $e->getMessage()]);
+        }
+
+        return redirect()
+            ->route('admin.crm.tickets.show', $ticket)
+            ->with('success', 'Ticket assigned.');
     }
 
     private function assertInternal(Request $request): User

@@ -8,6 +8,13 @@ use App\Domains\Company\Enums\DataVisibility;
 use App\Domains\Consignment\Enums\FreightRateType;
 use App\Domains\Consignment\Enums\LrWorkflowContext;
 use App\Domains\Consignment\LorryReceiptService;
+use App\Domains\Crm\Enums\InterestedProduct;
+use App\Domains\Crm\Enums\LeadSource;
+use App\Domains\Crm\Enums\LeadStatus;
+use App\Domains\Crm\Enums\SupportTicketPriority;
+use App\Domains\Crm\Enums\SupportTicketStatus;
+use App\Domains\Crm\LeadService;
+use App\Domains\Crm\SupportTicketService;
 use App\Domains\Enquiry\EnquiryAssignmentService;
 use App\Domains\Enquiry\EnquiryConversionService;
 use App\Domains\Enquiry\EnquiryQuotationService;
@@ -33,6 +40,8 @@ use App\Models\BranchRoleAssignment;
 use App\Models\Company;
 use App\Models\CompanyMembership;
 use App\Models\CompanySubscription;
+use App\Models\Crm\Lead;
+use App\Models\Crm\SupportTicket;
 use App\Models\Enquiry;
 use App\Models\LorryReceipt;
 use App\Models\OwnerCatalogueItem;
@@ -194,6 +203,9 @@ class LocalDemoWorkspaceSeeder extends Seeder
         }
 
         $this->ensureCustomerUser(self::NO_ACCESS_EMAIL, 'Demo No Access', $password);
+
+        $sa = $this->ensureSuperAdminUser('sa.demo.lifecycle@demo.test', 'Demo Lifecycle SA', $password);
+        $this->seedCrmFixtures($sa, $password);
 
         Auth::logout();
 
@@ -753,6 +765,70 @@ class LocalDemoWorkspaceSeeder extends Seeder
         ])->save();
 
         return $user->refresh();
+    }
+
+    private function seedCrmFixtures(User $sa, string $password): void
+    {
+        $sales = User::query()->where('email', 'sales.demo@demo.test')->first()
+            ?? User::factory()->internal()->create([
+                'name' => 'Demo Sales Executive',
+                'email' => 'sales.demo@demo.test',
+                'password' => Hash::make($password),
+                'email_verified_at' => now(),
+            ]);
+
+        $leads = app(LeadService::class);
+        $tickets = app(SupportTicketService::class);
+
+        $existingLead = Lead::query()->where('email', 'crm.lead@demo.test')->first();
+        if ($existingLead === null) {
+            $lead = $leads->create($sa, [
+                'contact_name' => 'Demo CRM Lead',
+                'email' => 'crm.lead@demo.test',
+                'mobile' => '9876500123',
+                'company_name' => 'Demo Prospect Transport',
+                'source' => LeadSource::Website->value,
+                'interested_product' => InterestedProduct::OwnFleet->value,
+                'remarks' => 'Local demo CRM lead',
+                'assigned_to_user_id' => $sales->id,
+            ]);
+            $leads->scheduleFollowUp($sa, $lead, [
+                'due_at' => now()->addDay()->toDateTimeString(),
+                'notes' => 'Demo discovery call',
+                'assigned_to_user_id' => $sales->id,
+            ]);
+            $leads->transition($sa, $lead, LeadStatus::Contacted, 'Demo contacted');
+        }
+
+        $qualified = Lead::query()->where('email', 'crm.qualified@demo.test')->first();
+        if ($qualified === null) {
+            $lead = $leads->create($sa, [
+                'contact_name' => 'Demo Qualified Lead',
+                'email' => 'crm.qualified@demo.test',
+                'mobile' => '9876500456',
+                'company_name' => 'Demo Qualified Logistics',
+                'source' => LeadSource::Referral->value,
+                'interested_product' => InterestedProduct::Broker->value,
+                'assigned_to_user_id' => $sales->id,
+            ]);
+            $leads->transition($sa, $lead, LeadStatus::Contacted, 'Demo contacted');
+            $leads->transition($sa, $lead->fresh(), LeadStatus::Qualified, 'Demo qualified');
+        }
+
+        $existingTicket = SupportTicket::query()
+            ->where('subject', 'Demo support: login help')
+            ->first();
+        if ($existingTicket === null) {
+            $ticket = $tickets->create($sa, [
+                'subject' => 'Demo support: login help',
+                'description' => 'Local demo ticket for support workflow.',
+                'category' => 'system',
+                'priority' => SupportTicketPriority::Medium->value,
+                'assigned_to_user_id' => $sales->id,
+                'due_at' => now()->addDays(2)->toDateTimeString(),
+            ]);
+            $tickets->transition($sa, $ticket, SupportTicketStatus::InProgress, 'Demo in progress');
+        }
     }
 
     private function seedStaffMember(

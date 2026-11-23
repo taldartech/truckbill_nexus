@@ -146,3 +146,35 @@ test('qualified lead converts to customer company without overwriting existing p
         'data_visibility' => DataVisibility::SharedData->value,
     ]))->toThrow(CrmDomainException::class, 'already been converted');
 });
+
+test('support ticket can be assigned via http and appears on dashboard metrics', function () {
+    $sa = User::factory()->superAdmin()->create([
+        'password' => Hash::make('sa-secret'),
+    ]);
+    $agent = User::factory()->internal()->create();
+
+    crmSupportLogin($sa, 'sa-secret');
+
+    $this->post(route('admin.crm.tickets.store'), [
+        'subject' => 'Billing question',
+        'description' => 'Owner asks about trial expiry.',
+        'category' => 'billing',
+        'priority' => SupportTicketPriority::Medium->value,
+        'assigned_to_user_id' => $agent->id,
+    ])->assertRedirect();
+
+    $ticket = SupportTicket::query()->where('subject', 'Billing question')->firstOrFail();
+
+    $this->post(route('admin.crm.tickets.assign', $ticket), [
+        'assigned_to_user_id' => $sa->id,
+        'remark' => 'Reassign to SA for escalation',
+    ])->assertRedirect(route('admin.crm.tickets.show', $ticket));
+
+    expect($ticket->fresh()->assigned_to_user_id)->toBe($sa->id);
+
+    $this->get(route('admin.crm.dashboard'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('admin/crm/dashboard')
+            ->where('metrics.tickets_open', fn ($value) => $value >= 1));
+});

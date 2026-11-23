@@ -1,9 +1,13 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
 
+type AssignableUser = { id: number; name: string; email: string };
+
 type Props = {
     sources: string[];
     products: string[];
+    assignable_users?: AssignableUser[];
+    can_assign?: boolean;
     store_url: string;
     index_url: string;
 };
@@ -11,6 +15,8 @@ type Props = {
 export default function CrmLeadCreate({
     sources,
     products,
+    assignable_users = [],
+    can_assign = false,
     store_url,
     index_url,
 }: Props) {
@@ -101,6 +107,23 @@ export default function CrmLeadCreate({
                             ))}
                         </select>
                     </label>
+                    {can_assign ? (
+                        <label className="flex flex-col gap-1 text-sm">
+                            Assign to
+                            <select
+                                name="assigned_to_user_id"
+                                className="rounded-md border border-border bg-background px-3 py-2"
+                                defaultValue=""
+                            >
+                                <option value="">Unassigned</option>
+                                {assignable_users.map((user) => (
+                                    <option key={user.id} value={user.id}>
+                                        {user.name} ({user.email})
+                                    </option>
+                                ))}
+                            </select>
+                        </label>
+                    ) : null}
                     <label className="flex flex-col gap-1 text-sm">
                         Remarks
                         <textarea

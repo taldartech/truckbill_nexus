@@ -6,6 +6,7 @@ use App\Domains\Crm\Enums\InterestedProduct;
 use App\Domains\Crm\Enums\LeadSource;
 use App\Domains\Crm\Enums\LeadStatus;
 use App\Domains\Crm\Exceptions\CrmDomainException;
+use App\Domains\Identity\Enums\IdentityType;
 use App\Models\Crm\Lead;
 use App\Models\Crm\LeadActivity;
 use App\Models\Crm\LeadFollowUp;
@@ -224,6 +225,51 @@ final class LeadService
                 return $followUp->refresh();
             });
         });
+    }
+
+    public function completeFollowUp(User $actor, LeadFollowUp $followUp, string $remark = ''): LeadFollowUp
+    {
+        $lead = Lead::query()->whereKey($followUp->lead_id)->firstOrFail();
+        $this->assertCanMutateLead($actor, $lead);
+
+        if ($followUp->completed_at !== null) {
+            throw new CrmDomainException('This follow-up is already completed.');
+        }
+
+        return $this->withPlatformTenant(function () use ($actor, $lead, $followUp, $remark): LeadFollowUp {
+            return $this->auditedTransaction->run(function () use ($actor, $lead, $followUp, $remark): LeadFollowUp {
+                $followUp->forceFill([
+                    'completed_at' => now(),
+                    'completion_notes' => trim($remark) !== '' ? trim($remark) : null,
+                ])->save();
+
+                $this->recordActivity($lead, $actor, 'follow_up_completed', trim($remark) !== '' ? $remark : 'Follow-up completed', [
+                    'follow_up_id' => $followUp->id,
+                ]);
+                $this->auditWriter->write(
+                    AuditAction::Updated,
+                    LeadFollowUp::class,
+                    $followUp->id,
+                    remark: trim($remark) !== '' ? $remark : 'CRM follow-up completed',
+                    before: ['completed_at' => null],
+                    after: ['completed_at' => $followUp->completed_at?->toIso8601String()],
+                );
+
+                return $followUp->refresh();
+            });
+        });
+    }
+
+    /**
+     * @return Collection<int, User>
+     */
+    public function assignableInternalUsers(): Collection
+    {
+        return User::query()
+            ->where('is_active', true)
+            ->where('identity_type', IdentityType::Internal->value)
+            ->orderBy('name')
+            ->get(['id', 'name', 'email']);
     }
 
     /**

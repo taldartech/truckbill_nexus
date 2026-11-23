@@ -282,6 +282,11 @@ export function AppSidebar() {
                               icon: UserCog,
                           },
                           {
+                              title: 'CRM Dashboard',
+                              href: '/admin/crm',
+                              icon: LifeBuoy,
+                          },
+                          {
                               title: 'CRM Leads',
                               href: '/admin/crm/leads',
                               icon: LifeBuoy,

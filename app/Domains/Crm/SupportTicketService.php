@@ -119,6 +119,43 @@ final class SupportTicketService
         });
     }
 
+    public function assign(User $actor, SupportTicket $ticket, User $assignee, string $remark): SupportTicket
+    {
+        $this->assertInternalActor($actor);
+
+        if (! $assignee->isInternal() || ! $assignee->isActive()) {
+            throw new CrmDomainException('Assignee must be an active Internal user.');
+        }
+
+        if (trim($remark) === '') {
+            throw new CrmDomainException('A remark is required for ticket assignment.');
+        }
+
+        if (in_array($ticket->status, [SupportTicketStatus::Closed], true)) {
+            throw new CrmDomainException('Closed tickets cannot be reassigned.');
+        }
+
+        return $this->withPlatformTenant(function () use ($actor, $ticket, $assignee, $remark): SupportTicket {
+            return $this->auditedTransaction->run(function () use ($actor, $ticket, $assignee, $remark): SupportTicket {
+                $before = ['assigned_to_user_id' => $ticket->assigned_to_user_id];
+                $ticket->forceFill(['assigned_to_user_id' => $assignee->id])->save();
+                $this->recordActivity($ticket, $actor, 'assigned', $remark, [
+                    'assigned_to_user_id' => $assignee->id,
+                ]);
+                $this->auditWriter->write(
+                    AuditAction::Updated,
+                    SupportTicket::class,
+                    $ticket->id,
+                    remark: $remark,
+                    before: $before,
+                    after: ['assigned_to_user_id' => $assignee->id],
+                );
+
+                return $ticket->refresh();
+            });
+        });
+    }
+
     private function assertInternalActor(User $actor): void
     {
         if (! $actor->isInternal() || ! $actor->isActive()) {

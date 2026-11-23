@@ -1,11 +1,15 @@
 <?php
 
+use App\Domains\Company\Enums\DataVisibility;
+use App\Domains\Company\Enums\GstRegistrationType;
+use App\Domains\Company\Enums\TaxLiability;
 use App\Domains\Crm\Enums\InterestedProduct;
 use App\Domains\Crm\Enums\LeadSource;
 use App\Domains\Crm\Enums\LeadStatus;
 use App\Domains\Crm\Exceptions\CrmDomainException;
 use App\Domains\Crm\LeadService;
 use App\Models\Crm\Lead;
+use App\Models\GstRate;
 use App\Models\User;
 use App\Support\Tenant\TenantContextHolder;
 use Illuminate\Support\Facades\Hash;
@@ -124,4 +128,92 @@ test('disqualified transition requires remark and customer cannot access crm', f
 
     crmLogin($customer, 'customer-secret');
     $this->get(route('admin.crm.leads.index'))->assertForbidden();
+});
+
+test('admin can assign schedule and complete follow-up then convert qualified lead via http', function () {
+    $sa = User::factory()->superAdmin()->create([
+        'password' => Hash::make('sa-secret'),
+    ]);
+    $sales = User::factory()->internal()->create([
+        'password' => Hash::make('sales-secret'),
+    ]);
+
+    crmLogin($sa, 'sa-secret');
+
+    $this->get(route('admin.crm.dashboard'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->component('admin/crm/dashboard'));
+
+    $this->post(route('admin.crm.leads.store'), [
+        'contact_name' => 'Convert Me',
+        'email' => 'convert.http@example.com',
+        'mobile' => '9876543210',
+        'company_name' => 'Convert Logistics',
+        'source' => LeadSource::Website->value,
+        'interested_product' => InterestedProduct::OwnFleet->value,
+    ])->assertRedirect();
+
+    $lead = Lead::query()->where('email', 'convert.http@example.com')->firstOrFail();
+
+    $this->post(route('admin.crm.leads.assign', $lead), [
+        'assigned_to_user_id' => $sales->id,
+        'remark' => 'Assign to sales',
+    ])->assertRedirect(route('admin.crm.leads.show', $lead));
+
+    expect($lead->fresh()->assigned_to_user_id)->toBe($sales->id);
+
+    $this->post(route('admin.crm.leads.follow-ups.store', $lead), [
+        'due_at' => now()->addDay()->format('Y-m-d H:i:s'),
+        'notes' => 'Discovery call',
+        'assigned_to_user_id' => $sales->id,
+    ])->assertRedirect(route('admin.crm.leads.show', $lead));
+
+    $followUp = $lead->fresh()->followUps()->firstOrFail();
+    expect($followUp->completed_at)->toBeNull();
+
+    $this->post(route('admin.crm.leads.follow-ups.complete', [$lead, $followUp]), [
+        'remark' => 'Call done',
+    ])->assertRedirect(route('admin.crm.leads.show', $lead));
+
+    expect($followUp->fresh()->completed_at)->not->toBeNull();
+
+    $this->post(route('admin.crm.leads.transition', $lead), [
+        'status' => LeadStatus::Contacted->value,
+        'remark' => 'Contacted',
+    ])->assertRedirect();
+    $this->post(route('admin.crm.leads.transition', $lead), [
+        'status' => LeadStatus::Qualified->value,
+        'remark' => 'Qualified',
+    ])->assertRedirect();
+
+    $rate = GstRate::query()->firstOrCreate(
+        ['code' => 'GST18', 'version' => 1],
+        [
+            'name' => 'GST 18%',
+            'rate_percent' => '18.000',
+            'effective_from' => now()->toDateString(),
+            'is_active' => true,
+        ],
+    );
+
+    $this->post(route('admin.crm.leads.convert', $lead), [
+        'name' => 'Convert Logistics Pvt Ltd',
+        'pan' => 'ABCDE1234F',
+        'registered_address' => '12 Harbour Road',
+        'state' => 'Maharashtra',
+        'city' => 'Mumbai',
+        'pin' => '400001',
+        'mobile' => '9876543210',
+        'email' => 'convert.http@example.com',
+        'gst_registration_type' => GstRegistrationType::Regular->value,
+        'tax_liability' => TaxLiability::Fcm->value,
+        'gstin' => '27ABCDE1234F1Z5',
+        'gst_rate_id' => $rate->id,
+        'data_visibility' => DataVisibility::SharedData->value,
+        'timezone' => 'Asia/Kolkata',
+        'new_password' => 'CustomerPass!234',
+    ])->assertRedirect(route('admin.crm.leads.show', $lead));
+
+    expect($lead->fresh()->status)->toBe(LeadStatus::Converted)
+        ->and($lead->fresh()->converted_company_id)->not->toBeNull();
 });
