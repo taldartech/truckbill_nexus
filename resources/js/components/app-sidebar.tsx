@@ -1,5 +1,19 @@
 import { Link, usePage } from '@inertiajs/react';
-import { LayoutGrid } from 'lucide-react';
+import {
+    Building2,
+    CreditCard,
+    FileSearch,
+    GitBranch,
+    LayoutDashboard,
+    LifeBuoy,
+    Percent,
+    Receipt,
+    Settings,
+    Ticket,
+    UserCog,
+    Users,
+    Warehouse,
+} from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { CompanySwitcher } from '@/components/company-switcher';
 import { NavMain } from '@/components/nav-main';
@@ -32,8 +46,18 @@ type PageProps = {
     workspace: WorkspaceShare;
 };
 
+function isOwnerGlobalPath(pathname: string): boolean {
+    if (!pathname.startsWith('/owner')) {
+        return false;
+    }
+    // Company-specific Owner routes: /owner/companies/{uuid}/...
+    return !/^\/owner\/companies\/(?!create$)[^/]+/.test(pathname);
+}
+
 export function AppSidebar() {
-    const { auth, workspace } = usePage<PageProps>().props;
+    const page = usePage<PageProps>();
+    const { auth, workspace } = page.props;
+    const pathname = (page.url || '').split('?')[0];
     const isCustomer = auth.user?.identity_type === 'customer';
     const isSuperAdmin = auth.user?.is_super_admin === true;
     const activeCompanyId = workspace?.active_company_id ?? null;
@@ -43,140 +67,220 @@ export function AppSidebar() {
     );
     const ownsAnyCompany =
         workspace?.companies.some((company) => company.is_owner) === true;
-    // PO-OWNER-GLOBAL-MANAGEMENT: global lists stay available without forcing
-    // company selection; company-scoped Users/Settings/Audit need Owner context.
-    const showOwnerGlobalNav = ownsAnyCompany;
-    const showOwnerCompanyNav =
-        activeCompanyId !== null &&
-        activeCompany?.is_owner === true &&
-        activeBranchId === null;
+    const inBranchPanel =
+        Boolean(activeCompanyId && activeBranchId) ||
+        pathname.startsWith('/branch/');
+    const inOwnerGlobal =
+        isCustomer && ownsAnyCompany && isOwnerGlobalPath(pathname);
+    const inOwnerCompanyDetail =
+        isCustomer &&
+        ownsAnyCompany &&
+        /^\/owner\/companies\/(?!create$)[^/]+/.test(pathname);
 
-    const mainNavItems: NavItem[] = isCustomer
+    const ownerOverview: NavItem[] = ownsAnyCompany
         ? [
               {
-                  title: 'Workspace',
-                  href: '/workspace',
-                  icon: LayoutGrid,
-              },
-              ...(showOwnerGlobalNav
-                  ? [
-                        {
-                            title: 'Companies',
-                            href: '/owner/companies',
-                            icon: LayoutGrid,
-                        },
-                        {
-                            title: 'Branches',
-                            href: '/owner/branches',
-                            icon: LayoutGrid,
-                        },
-                        {
-                            title: 'Subscriptions',
-                            href: '/owner/subscriptions',
-                            icon: LayoutGrid,
-                        },
-                    ]
-                  : []),
-              ...(showOwnerCompanyNav
-                  ? [
-                        {
-                            title: 'Company dashboard',
-                            href: `/owner/companies/${activeCompanyId}`,
-                            icon: LayoutGrid,
-                        },
-                        {
-                            title: 'Users',
-                            href: `/owner/companies/${activeCompanyId}/users`,
-                            icon: LayoutGrid,
-                        },
-                        {
-                            title: 'Settings',
-                            href: `/owner/companies/${activeCompanyId}/settings`,
-                            icon: LayoutGrid,
-                        },
-                        {
-                            title: 'Audit',
-                            href: `/owner/companies/${activeCompanyId}/audit`,
-                            icon: LayoutGrid,
-                        },
-                    ]
-                  : []),
-              ...(activeCompanyId && activeBranchId
-                  ? [
-                        {
-                            title: 'Branch Dashboard',
-                            href: `/branch/companies/${activeCompanyId}/branches/${activeBranchId}`,
-                            icon: LayoutGrid,
-                        },
-                        {
-                            title: 'Masters',
-                            href: `/branch/companies/${activeCompanyId}/branches/${activeBranchId}/masters`,
-                            icon: LayoutGrid,
-                        },
-                        {
-                            title: 'Enquiries',
-                            href: `/branch/companies/${activeCompanyId}/branches/${activeBranchId}/enquiries`,
-                            icon: LayoutGrid,
-                        },
-                        {
-                            title: 'Branch Settings',
-                            href: `/branch/companies/${activeCompanyId}/branches/${activeBranchId}/settings`,
-                            icon: LayoutGrid,
-                        },
-                    ]
-                  : []),
-          ]
-        : [
-              {
                   title: 'Dashboard',
-                  href: dashboard(),
-                  icon: LayoutGrid,
+                  href: '/owner',
+                  icon: LayoutDashboard,
+              },
+          ]
+        : [];
+
+    const ownerManagement: NavItem[] = ownsAnyCompany
+        ? [
+              {
+                  title: 'Companies',
+                  href: '/owner/companies',
+                  icon: Building2,
               },
               {
-                  title: 'GST rates',
-                  href: gstRates.url(),
-                  icon: LayoutGrid,
+                  title: 'Branches',
+                  href: '/owner/branches',
+                  icon: GitBranch,
               },
               {
-                  title: 'TDS rules',
-                  href: tdsRules.url(),
-                  icon: LayoutGrid,
+                  title: 'Users',
+                  href: '/owner/users',
+                  icon: Users,
               },
-              ...(isSuperAdmin
-                  ? [
-                        {
-                            title: 'Companies',
-                            href: admin.companies.index.url(),
-                            icon: LayoutGrid,
-                        },
-                        {
-                            title: 'Identities',
-                            href: admin.identities.index.url(),
-                            icon: LayoutGrid,
-                        },
-                        {
-                            title: 'Internal users',
-                            href: admin.internalUsers.index.url(),
-                            icon: LayoutGrid,
-                        },
-                        {
-                            title: 'CRM Leads',
-                            href: '/admin/crm/leads',
-                            icon: LayoutGrid,
-                        },
-                        {
-                            title: 'Support tickets',
-                            href: '/admin/crm/tickets',
-                            icon: LayoutGrid,
-                        },
-                        {
-                            title: 'Subscription invoices',
-                            href: subscriptionInvoices.url(),
-                            icon: LayoutGrid,
-                        },
-                    ]
-                  : []),
-          ];
+              {
+                  title: 'Subscriptions',
+                  href: '/owner/subscriptions',
+                  icon: CreditCard,
+              },
+              {
+                  title: 'Audit',
+                  href: '/owner/audit',
+                  icon: FileSearch,
+              },
+          ]
+        : [];
+
+    const ownerCompanyAdmin: NavItem[] =
+        inOwnerCompanyDetail && activeCompanyId && activeCompany?.is_owner
+            ? [
+                  {
+                      title: 'Company home',
+                      href: `/owner/companies/${activeCompanyId}`,
+                      icon: Building2,
+                  },
+                  {
+                      title: 'Company users',
+                      href: `/owner/companies/${activeCompanyId}/users`,
+                      icon: UserCog,
+                  },
+                  {
+                      title: 'Settings',
+                      href: `/owner/companies/${activeCompanyId}/settings`,
+                      icon: Settings,
+                  },
+                  {
+                      title: 'Company audit',
+                      href: `/owner/companies/${activeCompanyId}/audit`,
+                      icon: FileSearch,
+                  },
+              ]
+            : [];
+
+    const branchNav: NavItem[] =
+        activeCompanyId && activeBranchId
+            ? [
+                  {
+                      title: 'Branch Dashboard',
+                      href: `/branch/companies/${activeCompanyId}/branches/${activeBranchId}`,
+                      icon: LayoutDashboard,
+                  },
+                  {
+                      title: 'Masters',
+                      href: `/branch/companies/${activeCompanyId}/branches/${activeBranchId}/masters`,
+                      icon: Warehouse,
+                  },
+                  {
+                      title: 'Enquiries',
+                      href: `/branch/companies/${activeCompanyId}/branches/${activeBranchId}/enquiries`,
+                      icon: Ticket,
+                  },
+                  {
+                      title: 'Branch Settings',
+                      href: `/branch/companies/${activeCompanyId}/branches/${activeBranchId}/settings`,
+                      icon: Settings,
+                  },
+                  ...(ownsAnyCompany
+                      ? [
+                            {
+                                title: 'Owner Panel',
+                                href: '/owner',
+                                icon: Building2,
+                            },
+                        ]
+                      : []),
+              ]
+            : [];
+
+    const customerGroups =
+        inBranchPanel && activeCompanyId && activeBranchId
+            ? [
+                  { label: 'Operations', items: branchNav },
+                  ...(ownsAnyCompany
+                      ? [{ label: 'Owner', items: ownerOverview }]
+                      : []),
+              ]
+            : [
+                  { label: 'Overview', items: ownerOverview },
+                  { label: 'Management', items: ownerManagement },
+                  ...(ownerCompanyAdmin.length > 0
+                      ? [
+                            {
+                                label: 'This company',
+                                items: ownerCompanyAdmin,
+                            },
+                        ]
+                      : []),
+                  ...(!ownsAnyCompany
+                      ? [
+                            {
+                                label: 'Workspace',
+                                items: [
+                                    {
+                                        title: 'Workspace',
+                                        href: '/workspace',
+                                        icon: LayoutDashboard,
+                                    },
+                                ] as NavItem[],
+                            },
+                        ]
+                      : []),
+              ];
+
+    const internalGroups = [
+        {
+            label: 'Overview',
+            items: [
+                {
+                    title: 'Dashboard',
+                    href: dashboard(),
+                    icon: LayoutDashboard,
+                },
+            ] as NavItem[],
+        },
+        {
+            label: 'Tax',
+            items: [
+                {
+                    title: 'GST rates',
+                    href: gstRates.url(),
+                    icon: Percent,
+                },
+                {
+                    title: 'TDS rules',
+                    href: tdsRules.url(),
+                    icon: Receipt,
+                },
+            ] as NavItem[],
+        },
+        ...(isSuperAdmin
+            ? [
+                  {
+                      label: 'Administration',
+                      items: [
+                          {
+                              title: 'Companies',
+                              href: admin.companies.index.url(),
+                              icon: Building2,
+                          },
+                          {
+                              title: 'Identities',
+                              href: admin.identities.index.url(),
+                              icon: Users,
+                          },
+                          {
+                              title: 'Internal users',
+                              href: admin.internalUsers.index.url(),
+                              icon: UserCog,
+                          },
+                          {
+                              title: 'CRM Leads',
+                              href: '/admin/crm/leads',
+                              icon: LifeBuoy,
+                          },
+                          {
+                              title: 'Support tickets',
+                              href: '/admin/crm/tickets',
+                              icon: Ticket,
+                          },
+                          {
+                              title: 'Subscription invoices',
+                              href: subscriptionInvoices.url(),
+                              icon: CreditCard,
+                          },
+                      ] as NavItem[],
+                  },
+              ]
+            : []),
+    ];
+
+    const showCompanySwitcher = isCustomer && inBranchPanel;
 
     return (
         <Sidebar collapsible="icon" variant="inset">
@@ -185,7 +289,13 @@ export function AppSidebar() {
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
                             <Link
-                                href={isCustomer ? '/workspace' : dashboard()}
+                                href={
+                                    isCustomer
+                                        ? ownsAnyCompany
+                                            ? '/owner'
+                                            : '/workspace'
+                                        : dashboard()
+                                }
                                 prefetch
                             >
                                 <AppLogo />
@@ -193,15 +303,24 @@ export function AppSidebar() {
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>
-                {isCustomer ? (
+                {showCompanySwitcher ? (
                     <div className="px-2 pt-2 group-data-[collapsible=icon]:hidden">
                         <CompanySwitcher />
+                    </div>
+                ) : null}
+                {inOwnerGlobal || inOwnerCompanyDetail ? (
+                    <div className="px-3 pt-2 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
+                        {inOwnerCompanyDetail && activeCompany
+                            ? `Managing ${activeCompany.name}`
+                            : 'All owned companies'}
                     </div>
                 ) : null}
             </SidebarHeader>
 
             <SidebarContent>
-                <NavMain items={mainNavItems} />
+                <NavMain
+                    groups={isCustomer ? customerGroups : internalGroups}
+                />
             </SidebarContent>
 
             <SidebarFooter>

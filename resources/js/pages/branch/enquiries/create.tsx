@@ -1,5 +1,7 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 type Props = {
     company: { id: string; name: string };
@@ -8,6 +10,9 @@ type Props = {
     vehicle_types: { id: string; name: string }[];
     urls: { index: string; store: string };
 };
+
+const fieldClass =
+    'flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm';
 
 export default function BranchEnquiryCreate({
     company,
@@ -23,7 +28,7 @@ export default function BranchEnquiryCreate({
     return (
         <>
             <Head title={`Create enquiry · ${branch.name}`} />
-            <div className="mx-auto flex max-w-3xl flex-col gap-6 p-4 md:p-8">
+            <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6 lg:p-8">
                 <div className="space-y-2">
                     <Link
                         href={urls.index}
@@ -37,6 +42,10 @@ export default function BranchEnquiryCreate({
                     <h1 className="text-2xl font-semibold tracking-tight">
                         Create enquiry
                     </h1>
+                    <p className="max-w-3xl text-sm text-muted-foreground">
+                        Capture customer, route, vehicle, and goods details in a
+                        structured layout for faster daily entry.
+                    </p>
                 </div>
 
                 {errors?.customer_party_id ? (
@@ -45,98 +54,176 @@ export default function BranchEnquiryCreate({
                     </p>
                 ) : null}
 
-                <Form action={urls.store} method="post" className="grid gap-3">
-                    <label className="flex flex-col gap-1 text-sm">
-                        Customer party
-                        <select
-                            name="customer_party_id"
-                            required
-                            className="rounded-md border border-border bg-background px-3 py-2"
-                            defaultValue=""
-                        >
-                            <option value="" disabled>
-                                Select party
-                            </option>
-                            {parties.map((party) => (
-                                <option key={party.id} value={party.id}>
-                                    {party.name}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
-                    <label className="flex flex-col gap-1 text-sm">
-                        Pickup location
-                        <input
-                            name="pickup_location"
-                            required
-                            className="rounded-md border border-border bg-background px-3 py-2"
-                        />
-                    </label>
-                    <label className="flex flex-col gap-1 text-sm">
-                        Delivery location
-                        <input
-                            name="delivery_location"
-                            required
-                            className="rounded-md border border-border bg-background px-3 py-2"
-                        />
-                    </label>
-                    <label className="flex flex-col gap-1 text-sm">
-                        Vehicle type
-                        <select
-                            name="vehicle_type_id"
-                            required
-                            className="rounded-md border border-border bg-background px-3 py-2"
-                            defaultValue=""
-                        >
-                            <option value="" disabled>
-                                Select vehicle type
-                            </option>
-                            {vehicle_types.map((type) => (
-                                <option key={type.id} value={type.id}>
-                                    {type.name}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
-                    <label className="flex flex-col gap-1 text-sm">
-                        Vehicle quantity
-                        <input
-                            name="vehicle_quantity"
-                            type="number"
-                            min={1}
-                            defaultValue={1}
-                            required
-                            className="rounded-md border border-border bg-background px-3 py-2"
-                        />
-                    </label>
-                    <label className="flex flex-col gap-1 text-sm">
-                        Goods description
-                        <input
-                            name="goods[0][goods_description]"
-                            required
-                            className="rounded-md border border-border bg-background px-3 py-2"
-                            placeholder="General cargo"
-                        />
-                    </label>
-                    <label className="flex flex-col gap-1 text-sm">
-                        Package count
-                        <input
-                            name="goods[0][package_count]"
-                            type="number"
-                            min={0}
-                            defaultValue={1}
-                            className="rounded-md border border-border bg-background px-3 py-2"
-                        />
-                    </label>
-                    <label className="flex flex-col gap-1 text-sm">
-                        Instructions
-                        <textarea
-                            name="instructions"
-                            rows={3}
-                            className="rounded-md border border-border bg-background px-3 py-2"
-                        />
-                    </label>
-                    <Button type="submit">Save enquiry</Button>
+                <Form
+                    action={urls.store}
+                    method="post"
+                    className="mx-auto w-full max-w-6xl space-y-6"
+                >
+                    {({ processing }) => (
+                        <>
+                            <section className="space-y-4 rounded-xl border border-border bg-card p-4 shadow-sm md:p-6">
+                                <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+                                    Customer and enquiry
+                                </h2>
+                                <div className="grid gap-4 md:grid-cols-2">
+                                    <div className="space-y-2 md:col-span-2 lg:col-span-1">
+                                        <Label htmlFor="customer_party_id">
+                                            Customer party
+                                        </Label>
+                                        <select
+                                            id="customer_party_id"
+                                            name="customer_party_id"
+                                            required
+                                            className={fieldClass}
+                                            defaultValue=""
+                                        >
+                                            <option value="" disabled>
+                                                Select party
+                                            </option>
+                                            {parties.map((party) => (
+                                                <option
+                                                    key={party.id}
+                                                    value={party.id}
+                                                >
+                                                    {party.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section className="space-y-4 rounded-xl border border-border bg-card p-4 shadow-sm md:p-6">
+                                <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+                                    Route
+                                </h2>
+                                <div className="grid gap-4 md:grid-cols-2">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="pickup_location">
+                                            Pickup location
+                                        </Label>
+                                        <Input
+                                            id="pickup_location"
+                                            name="pickup_location"
+                                            required
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="delivery_location">
+                                            Delivery location
+                                        </Label>
+                                        <Input
+                                            id="delivery_location"
+                                            name="delivery_location"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section className="space-y-4 rounded-xl border border-border bg-card p-4 shadow-sm md:p-6">
+                                <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+                                    Vehicle
+                                </h2>
+                                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                    <div className="space-y-2 md:col-span-2 lg:col-span-2">
+                                        <Label htmlFor="vehicle_type_id">
+                                            Vehicle type
+                                        </Label>
+                                        <select
+                                            id="vehicle_type_id"
+                                            name="vehicle_type_id"
+                                            required
+                                            className={fieldClass}
+                                            defaultValue=""
+                                        >
+                                            <option value="" disabled>
+                                                Select vehicle type
+                                            </option>
+                                            {vehicle_types.map((type) => (
+                                                <option
+                                                    key={type.id}
+                                                    value={type.id}
+                                                >
+                                                    {type.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="vehicle_quantity">
+                                            Vehicle quantity
+                                        </Label>
+                                        <Input
+                                            id="vehicle_quantity"
+                                            name="vehicle_quantity"
+                                            type="number"
+                                            min={1}
+                                            defaultValue={1}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section className="space-y-4 rounded-xl border border-border bg-card p-4 shadow-sm md:p-6">
+                                <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+                                    Goods
+                                </h2>
+                                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                    <div className="space-y-2 md:col-span-2">
+                                        <Label htmlFor="goods_description">
+                                            Goods description
+                                        </Label>
+                                        <Input
+                                            id="goods_description"
+                                            name="goods[0][goods_description]"
+                                            required
+                                            placeholder="General cargo"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="package_count">
+                                            Package count
+                                        </Label>
+                                        <Input
+                                            id="package_count"
+                                            name="goods[0][package_count]"
+                                            type="number"
+                                            min={0}
+                                            defaultValue={1}
+                                        />
+                                    </div>
+                                </div>
+                            </section>
+
+                            <section className="space-y-4 rounded-xl border border-border bg-card p-4 shadow-sm md:p-6">
+                                <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+                                    Instructions
+                                </h2>
+                                <div className="space-y-2">
+                                    <Label htmlFor="instructions">
+                                        Special instructions
+                                    </Label>
+                                    <textarea
+                                        id="instructions"
+                                        name="instructions"
+                                        rows={4}
+                                        className="min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                    />
+                                </div>
+                            </section>
+
+                            <div className="sticky bottom-0 z-10 flex flex-wrap gap-3 border-t border-border bg-background/95 py-4 backdrop-blur">
+                                <Button type="submit" disabled={processing}>
+                                    {processing ? 'Saving…' : 'Save enquiry'}
+                                </Button>
+                                <Button asChild variant="outline">
+                                    <Link href={urls.index}>Cancel</Link>
+                                </Button>
+                            </div>
+                        </>
+                    )}
                 </Form>
             </div>
         </>

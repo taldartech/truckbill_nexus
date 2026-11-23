@@ -22,15 +22,13 @@ test.describe('Owner global panel', () => {
 
         // A — Companies → Settings → Companies (+ mobile smoke)
         await page.goto('/workspace');
-        await expect(page).toHaveURL(/\/owner\/companies/);
-        await expect(
-            page.getByRole('heading', { name: 'Companies' }),
-        ).toBeVisible();
+        await expect(page).toHaveURL(/\/owner\/?$/);
+        await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
         await page.setViewportSize({ width: 390, height: 844 });
-        await expect(
-            page.getByRole('heading', { name: 'Companies' }),
-        ).toBeVisible();
+        await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
         await page.setViewportSize({ width: 1280, height: 720 });
+        await page.getByRole('link', { name: 'All companies' }).first().click();
+        await expect(page).toHaveURL(/\/owner\/companies\/?$/);
         await page.getByRole('link', { name: 'Settings' }).first().click();
         await expect(page).toHaveURL(/\/owner\/companies\/.+\/settings/);
         await page.getByRole('link', { name: 'Companies' }).first().click();

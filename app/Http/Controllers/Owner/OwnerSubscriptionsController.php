@@ -6,6 +6,7 @@ use App\Domains\Company\OwnerGlobalPanelService;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\User;
+use App\Support\Workspace\WorkspaceSession;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -24,6 +25,7 @@ class OwnerSubscriptionsController extends Controller
         /** @var User $user */
         $user = $request->user();
         $this->panel->assertOwnsAtLeastOneCompany($user);
+        WorkspaceSession::clear($request);
 
         $search = trim((string) $request->query('q', ''));
         $status = (string) $request->query('status', 'all');

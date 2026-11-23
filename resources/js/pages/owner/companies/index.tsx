@@ -1,5 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
+import { OwnerPageHeader } from '@/components/owner/owner-page-header';
 import ShellEmptyState from '@/components/shell-empty-state';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +11,11 @@ type CompanyRow = {
     id: string;
     name: string;
     pan: string | null;
+    gstin: string | null;
     gst_registration_type: string | null;
+    registered_address: string | null;
+    contact_person: string | null;
+    mobile: string | null;
     data_visibility: string | null;
     branch_count: number;
     status: string;
@@ -22,6 +27,8 @@ type CompanyRow = {
         settings: string;
         branches: string;
         subscription: string;
+        audit: string;
+        users: string;
     };
 };
 
@@ -70,27 +77,20 @@ export default function OwnerCompaniesIndex({
         <>
             <Head title="Owner · Companies" />
             <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="space-y-2">
-                        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                            Owner Panel
-                        </p>
-                        <h1 className="text-2xl font-semibold tracking-tight">
-                            Companies
-                        </h1>
-                        <p className="text-sm text-muted-foreground">
-                            Manage every company you own from one list.
-                        </p>
-                    </div>
-                    <Button asChild>
-                        <Link
-                            href={links.create}
-                            aria-label="Create a new company"
-                        >
-                            Create company
-                        </Link>
-                    </Button>
-                </div>
+                <OwnerPageHeader
+                    title="Companies"
+                    description="Manage every company you own from one list — open a company for settings, users, and billing."
+                    actions={
+                        <Button asChild>
+                            <Link
+                                href={links.create}
+                                aria-label="Create a new company"
+                            >
+                                Create company
+                            </Link>
+                        </Button>
+                    }
+                />
 
                 <form
                     onSubmit={applyFilters}
@@ -142,10 +142,13 @@ export default function OwnerCompaniesIndex({
                                         Company
                                     </th>
                                     <th className="px-3 py-2 font-medium">
-                                        PAN
+                                        GSTIN
                                     </th>
                                     <th className="px-3 py-2 font-medium">
-                                        GST
+                                        PAN
+                                    </th>
+                                    <th className="hidden px-3 py-2 font-medium lg:table-cell">
+                                        Contact
                                     </th>
                                     <th className="px-3 py-2 font-medium">
                                         Visibility
@@ -174,11 +177,16 @@ export default function OwnerCompaniesIndex({
                                             {company.name}
                                         </td>
                                         <td className="px-3 py-3 font-mono text-xs">
+                                            {company.gstin ?? '—'}
+                                        </td>
+                                        <td className="px-3 py-3 font-mono text-xs">
                                             {company.pan ?? '—'}
                                         </td>
-                                        <td className="px-3 py-3 capitalize">
-                                            {company.gst_registration_type ??
-                                                '—'}
+                                        <td className="hidden px-3 py-3 text-xs text-muted-foreground lg:table-cell">
+                                            <div>
+                                                {company.contact_person ?? '—'}
+                                            </div>
+                                            <div>{company.mobile ?? ''}</div>
                                         </td>
                                         <td className="px-3 py-3">
                                             {company.data_visibility ===
@@ -233,6 +241,12 @@ export default function OwnerCompaniesIndex({
                                                     className="text-xs font-medium text-primary underline"
                                                 >
                                                     Subscription
+                                                </Link>
+                                                <Link
+                                                    href={company.urls.audit}
+                                                    className="text-xs font-medium text-primary underline"
+                                                >
+                                                    History
                                                 </Link>
                                             </div>
                                         </td>

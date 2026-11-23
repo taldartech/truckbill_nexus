@@ -6,12 +6,17 @@ use App\Domains\Company\Enums\DataVisibility;
 use App\Domains\Subscription\Lifecycle\SubscriptionStatusEvaluator;
 use App\Models\BankCashAccount;
 use App\Models\Branch;
+use App\Models\BranchAssignment;
+use App\Models\BranchRoleAssignment;
 use App\Models\Company;
+use App\Models\CompanyMembership;
 use App\Models\Party;
 use App\Models\User;
 use App\Models\Vehicle;
+use App\Support\Audit\AuditEntry;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 
 /**
  * Cross-company Owner Panel listings scoped strictly to owned companies
@@ -99,7 +104,11 @@ final class OwnerGlobalPanelService
             'id' => $company->id,
             'name' => $company->name,
             'pan' => $company->pan,
+            'gstin' => $company->gstin,
             'gst_registration_type' => $company->gst_registration_type?->value,
+            'registered_address' => $company->registered_address,
+            'contact_person' => $company->contact_person,
+            'mobile' => $company->mobile,
             'data_visibility' => $company->data_visibility?->value,
             'branch_count' => (int) ($company->branch_count ?? $company->branches()->whereNull('deactivated_at')->whereNull('deleted_at')->count()),
             'status' => $company->isActive() ? 'Active' : 'Deactivated',
@@ -112,8 +121,220 @@ final class OwnerGlobalPanelService
                 'settings' => route('owner.settings', ['company' => $company]),
                 'branches' => route('owner.branches', ['company' => $company]),
                 'subscription' => route('owner.subscription', ['company' => $company]),
+                'audit' => route('owner.audit', ['company' => $company]),
+                'users' => route('owner.users', ['company' => $company]),
             ],
         ];
+    }
+
+    /**
+     * @return array{
+     *     owner_name: string,
+     *     totals: array{
+     *         companies: int,
+     *         active_companies: int,
+     *         branches: int,
+     *         active_subscriptions: int,
+     *         trial_or_attention: int
+     *     },
+     *     companies: list<array<string, mixed>>,
+     *     attention: list<array{tone: string, title: string, detail: string, href: string|null}>
+     * }
+     */
+    public function dashboardPayload(User $user): array
+    {
+        $this->assertCustomerOwnerActor($user);
+
+        $companies = Company::query()
+            ->where('owner_user_id', $user->id)
+            ->whereNull('deleted_at')
+            ->withCount([
+                'branches as branch_count' => fn (Builder $builder) => $builder
+                    ->whereNull('deactivated_at')
+                    ->whereNull('deleted_at'),
+            ])
+            ->orderBy('name')
+            ->get();
+
+        $activeCompanies = $companies->filter(fn (Company $company): bool => $company->isActive())->count();
+        $branchTotal = (int) $companies->sum('branch_count');
+        $activeSubscriptions = 0;
+        $trialOrAttention = 0;
+        $attention = [];
+        $companyRows = [];
+
+        foreach ($companies as $company) {
+            $row = $this->presentCompanyRow($company, $user);
+            $companyRows[] = $row;
+            $status = $row['subscription_status'];
+            if (in_array($status, ['active', 'trial'], true)) {
+                $activeSubscriptions++;
+            }
+            if (in_array($status, ['trial', 'paid_grace', 'restricted', 'none'], true) || ! $company->isActive()) {
+                $trialOrAttention++;
+                $attention[] = [
+                    'tone' => $company->isActive() ? 'warning' : 'info',
+                    'title' => $company->name,
+                    'detail' => $company->isActive()
+                        ? 'Subscription status: '.str_replace('_', ' ', $status)
+                        : 'Company is deactivated — Owner admin/billing access only.',
+                    'href' => $row['urls']['subscription'],
+                ];
+            }
+        }
+
+        return [
+            'owner_name' => $user->name,
+            'totals' => [
+                'companies' => $companies->count(),
+                'active_companies' => $activeCompanies,
+                'branches' => $branchTotal,
+                'active_subscriptions' => $activeSubscriptions,
+                'trial_or_attention' => $trialOrAttention,
+            ],
+            'companies' => $companyRows,
+            'attention' => array_slice($attention, 0, 8),
+        ];
+    }
+
+    /**
+     * @return LengthAwarePaginator<int, CompanyMembership>
+     */
+    public function paginateOwnedMemberships(
+        User $user,
+        ?string $companyId = null,
+        string $search = '',
+        string $status = 'active',
+        int $perPage = 20,
+    ): LengthAwarePaginator {
+        $this->assertOwnsAtLeastOneCompany($user);
+
+        $ownedCompanyIds = Company::query()
+            ->where('owner_user_id', $user->id)
+            ->whereNull('deleted_at')
+            ->pluck('id');
+
+        $query = CompanyMembership::query()
+            ->with([
+                'user:id,name,email',
+                'company:id,name,owner_user_id,deactivated_at',
+                'branchAssignments' => fn ($builder) => $builder
+                    ->whereNull('deactivated_at')
+                    ->with('branch:id,name'),
+            ])
+            ->whereIn('company_id', $ownedCompanyIds);
+
+        if ($companyId !== null && $companyId !== '') {
+            if (! $ownedCompanyIds->contains($companyId)) {
+                abort(403, 'Company filter is outside Owner designation.');
+            }
+            $query->where('company_id', $companyId);
+        }
+
+        if ($status === 'active') {
+            $query->whereNull('deactivated_at')->whereNull('deleted_at');
+        } elseif ($status === 'inactive') {
+            $query->where(function (Builder $builder): void {
+                $builder->whereNotNull('deactivated_at')->orWhereNotNull('deleted_at');
+            });
+        }
+
+        if ($search !== '') {
+            $query->whereHas('user', function (Builder $builder) use ($search): void {
+                $builder->where('name', 'ilike', '%'.$search.'%')
+                    ->orWhere('email', 'ilike', '%'.$search.'%');
+            });
+        }
+
+        return $query->orderByDesc('created_at')->paginate($perPage)->withQueryString();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function presentMembershipRow(CompanyMembership $membership): array
+    {
+        $company = $membership->company;
+        $branchNames = $membership->branchAssignments
+            ->map(fn (BranchAssignment $assignment): ?string => $assignment->branch?->name)
+            ->filter()
+            ->values()
+            ->all();
+
+        $roleNames = BranchRoleAssignment::query()
+            ->where('company_membership_id', $membership->id)
+            ->whereNull('deactivated_at')
+            ->with('role:id,name')
+            ->get()
+            ->map(fn (BranchRoleAssignment $assignment): ?string => $assignment->role?->name)
+            ->filter()
+            ->unique()
+            ->values()
+            ->all();
+
+        return [
+            'id' => $membership->id,
+            'status' => $membership->isActive() ? 'Active' : 'Inactive',
+            'is_owner' => $company !== null && (int) $membership->user_id === (int) $company->owner_user_id,
+            'user' => [
+                'id' => $membership->user?->id,
+                'name' => $membership->user?->name,
+                'email' => $membership->user?->email,
+            ],
+            'company' => [
+                'id' => $company?->id,
+                'name' => $company?->name,
+            ],
+            'branches' => $branchNames,
+            'roles' => $roleNames,
+            'urls' => [
+                'show' => $company === null ? null : route('owner.users.show', [
+                    'company' => $company,
+                    'membership' => $membership,
+                ]),
+            ],
+        ];
+    }
+
+    /**
+     * @return LengthAwarePaginator<int, AuditEntry>
+     */
+    public function paginateOwnedAuditEntries(
+        User $user,
+        ?string $companyId = null,
+        int $perPage = 25,
+    ): LengthAwarePaginator {
+        $this->assertOwnsAtLeastOneCompany($user);
+
+        $ownedCompanyIds = Company::query()
+            ->where('owner_user_id', $user->id)
+            ->whereNull('deleted_at')
+            ->pluck('id');
+
+        $query = AuditEntry::query()
+            ->whereIn('company_id', $ownedCompanyIds)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
+
+        if ($companyId !== null && $companyId !== '') {
+            if (! $ownedCompanyIds->contains($companyId)) {
+                abort(403, 'Company filter is outside Owner designation.');
+            }
+            $query->where('company_id', $companyId);
+        }
+
+        return $query->paginate($perPage)->withQueryString();
+    }
+
+    /**
+     * @param  Collection<int, Company>  $companies
+     * @return array<string, string>
+     */
+    public function companyNameMap(Collection $companies): array
+    {
+        return $companies->mapWithKeys(
+            fn (Company $company): array => [$company->id => $company->name],
+        )->all();
     }
 
     /**

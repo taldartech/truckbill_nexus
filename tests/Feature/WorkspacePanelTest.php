@@ -48,19 +48,19 @@ function loginCustomer(User $user, string $password = 'owner-secret'): TestRespo
     return $response;
 }
 
-test('customer with one owned company lands on global companies list', function () {
+test('customer with one owned company lands on global owner dashboard', function () {
     ['owner' => $owner, 'company' => $company] = createOwnerWorkspace();
 
     loginCustomer($owner)->assertRedirect('/workspace');
 
     $this->get(route('workspace.landing'))
-        ->assertRedirect(route('owner.companies.index'));
+        ->assertRedirect(route('owner.home'));
 
-    $this->get(route('owner.companies.index'))
+    $this->get(route('owner.home'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('owner/companies/index')
-            ->where('companies.data.0.id', $company->id));
+            ->component('owner/home')
+            ->where('companies.0.id', $company->id));
 
     $this->get(route('owner.dashboard', ['company' => $company]))
         ->assertOk()
@@ -70,7 +70,7 @@ test('customer with one owned company lands on global companies list', function 
             ->where('ownerPanelScope', CompanyAccessService::OWNER_PANEL_FULL));
 });
 
-test('customer with multiple owned companies lands on global companies list', function () {
+test('customer with multiple owned companies lands on global owner dashboard', function () {
     $owner = User::factory()->customer()->create([
         'password' => Hash::make('owner-secret'),
     ]);
@@ -80,7 +80,7 @@ test('customer with multiple owned companies lands on global companies list', fu
     loginCustomer($owner);
 
     $this->get(route('workspace.landing'))
-        ->assertRedirect(route('owner.companies.index'));
+        ->assertRedirect(route('owner.home'));
 
     $this->post(route('workspace.companies.enter', ['company' => $companyB]))
         ->assertRedirect(route('owner.dashboard', ['company' => $companyB]));
@@ -88,7 +88,7 @@ test('customer with multiple owned companies lands on global companies list', fu
     expect($owner->fresh()->mru_owned_company_id)->toBe($companyB->id);
 
     $this->get(route('workspace.landing'))
-        ->assertRedirect(route('owner.companies.index'));
+        ->assertRedirect(route('owner.home'));
 
     expect($companyA->isOwnedBy($owner))->toBeTrue();
 });
@@ -144,7 +144,7 @@ test('mixed owner and member access preserves owner landing and member branch pa
     loginCustomer($user);
 
     $this->get(route('workspace.landing'))
-        ->assertRedirect(route('owner.companies.index'));
+        ->assertRedirect(route('owner.home'));
 
     $this->post(route('workspace.companies.enter', ['company' => $memberCompany]))
         ->assertRedirect(route('branch.dashboard', [

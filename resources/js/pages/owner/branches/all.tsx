@@ -1,5 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
+import { OwnerPageHeader } from '@/components/owner/owner-page-header';
 import ShellEmptyState from '@/components/shell-empty-state';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -67,33 +68,26 @@ export default function OwnerBranchesAll({
         <>
             <Head title="Owner · Branches" />
             <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="space-y-2">
-                        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                            Owner Panel
-                        </p>
-                        <h1 className="text-2xl font-semibold tracking-tight">
-                            Branches
-                        </h1>
-                        <p className="text-sm text-muted-foreground">
-                            Branches across every company you own.
-                        </p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                        <Button asChild variant="outline">
-                            <Link href={links.companies}>Companies</Link>
-                        </Button>
-                        {companyOptions[0] ? (
-                            <Button asChild>
-                                <Link
-                                    href={`/owner/companies/${company || companyOptions[0].id}/branches/create`}
-                                >
-                                    Create branch
-                                </Link>
+                <OwnerPageHeader
+                    title="Branches"
+                    description="Branches across every company you own."
+                    actions={
+                        <>
+                            <Button asChild variant="outline">
+                                <Link href={links.companies}>Companies</Link>
                             </Button>
-                        ) : null}
-                    </div>
-                </div>
+                            {companyOptions[0] ? (
+                                <Button asChild>
+                                    <Link
+                                        href={`/owner/companies/${company || companyOptions[0].id}/branches/create`}
+                                    >
+                                        Create branch
+                                    </Link>
+                                </Button>
+                            ) : null}
+                        </>
+                    }
+                />
 
                 <form
                     onSubmit={applyFilters}

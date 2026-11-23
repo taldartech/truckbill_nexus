@@ -8,7 +8,7 @@ import {
     Users,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { CompanySwitcher } from '@/components/company-switcher';
+import { OwnerPageHeader } from '@/components/owner/owner-page-header';
 import ShellEmptyState from '@/components/shell-empty-state';
 import { Button } from '@/components/ui/button';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
@@ -46,34 +46,30 @@ export default function OwnerDashboard({
     return (
         <>
             <Head title={`Owner Panel · ${company.name}`} />
-            <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto p-4 md:p-6">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="space-y-2">
-                        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                            Owner Panel
-                        </p>
-                        <h1 className="text-2xl font-semibold tracking-tight">
-                            {company.name}
-                        </h1>
-                        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto p-4 md:p-6 lg:p-8">
+                <OwnerPageHeader
+                    title={company.name}
+                    description={`Owner scope: ${ownerPanelScope}`}
+                    breadcrumbs={[
+                        { label: 'Companies', href: '/owner/companies' },
+                        { label: company.name },
+                    ]}
+                    actions={
+                        <>
                             <WorkspaceStatusBadge status={company.status} />
-                            <span>Scope: {ownerPanelScope}</span>
-                        </div>
-                    </div>
-                    <div className="flex w-full max-w-md flex-col gap-3 sm:items-stretch">
-                        {links.create_company ? (
-                            <Button asChild className="w-full sm:w-auto">
-                                <Link
-                                    href={links.create_company}
-                                    aria-label="Create a new company"
-                                >
-                                    Create company
-                                </Link>
-                            </Button>
-                        ) : null}
-                        <CompanySwitcher />
-                    </div>
-                </div>
+                            {links.create_company ? (
+                                <Button asChild>
+                                    <Link
+                                        href={links.create_company}
+                                        aria-label="Create a new company"
+                                    >
+                                        Create company
+                                    </Link>
+                                </Button>
+                            ) : null}
+                        </>
+                    }
+                />
 
                 {isDeactivated ? (
                     <div

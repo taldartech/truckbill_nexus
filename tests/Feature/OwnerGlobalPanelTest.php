@@ -49,7 +49,14 @@ test('owner with one company sees global companies list after landing', function
     globalPanelLogin($owner);
 
     $this->get(route('workspace.landing'))
-        ->assertRedirect(route('owner.companies.index'));
+        ->assertRedirect(route('owner.home'));
+
+    $this->get(route('owner.home'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('owner/home')
+            ->where('totals.companies', 1)
+            ->where('companies.0.id', $company->id));
 
     $this->get(route('owner.companies.index'))
         ->assertOk()
@@ -201,6 +208,28 @@ test('internal user cannot access customer owner panel globals', function () {
     $this->get(route('owner.companies.index'))->assertForbidden();
     $this->get(route('owner.branches.all'))->assertForbidden();
     $this->get(route('owner.subscriptions.index'))->assertForbidden();
+});
+
+test('owner global users and audit lists are scoped to owned companies', function () {
+    $owner = User::factory()->customer()->create([
+        'password' => Hash::make('owner-secret'),
+        'email_verified_at' => now(),
+    ]);
+    $company = globalPanelWorkspace()->createCompany($owner, 'Users Host');
+    $other = User::factory()->customer()->create();
+    globalPanelWorkspace()->createCompany($other, 'Foreign Users Host');
+
+    globalPanelLogin($owner);
+
+    $this->get(route('owner.users.all'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('owner/users/all')
+            ->where('memberships.data.0.company.id', $company->id));
+
+    $this->get(route('owner.audit.all'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->component('owner/audit/all'));
 });
 
 test('shared data visibility default is recorded on owned company rows', function () {

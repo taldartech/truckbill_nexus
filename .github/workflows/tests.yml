@@ -11,7 +11,8 @@ permissions:
 
 jobs:
   ci:
-    runs-on: ubuntu-latest
+    # Playwright 1.57 Chromium install requires a supported OS image (CI #74).
+    runs-on: ubuntu-24.04
 
     services:
       postgres:

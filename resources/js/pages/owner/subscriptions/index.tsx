@@ -1,5 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
+import { OwnerPageHeader } from '@/components/owner/owner-page-header';
 import ShellEmptyState from '@/components/shell-empty-state';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -47,22 +48,15 @@ export default function OwnerSubscriptionsIndex({
         <>
             <Head title="Owner · Subscriptions" />
             <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="space-y-2">
-                        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                            Owner Panel
-                        </p>
-                        <h1 className="text-2xl font-semibold tracking-tight">
-                            Subscriptions
-                        </h1>
-                        <p className="text-sm text-muted-foreground">
-                            Select a company to open its subscription workspace.
-                        </p>
-                    </div>
-                    <Button asChild variant="outline">
-                        <Link href={links.companies}>Companies</Link>
-                    </Button>
-                </div>
+                <OwnerPageHeader
+                    title="Subscriptions"
+                    description="Select a company to open its subscription workspace."
+                    actions={
+                        <Button asChild variant="outline">
+                            <Link href={links.companies}>Companies</Link>
+                        </Button>
+                    }
+                />
 
                 <form
                     onSubmit={applyFilters}
