@@ -1,6 +1,9 @@
 import { Form, Head, Link } from '@inertiajs/react';
-import { Button } from '@/components/ui/button';
+import { Building2, LogOut, Plus } from 'lucide-react';
+import { PageShell } from '@/components/page-shell';
 import ShellEmptyState from '@/components/shell-empty-state';
+import { Button } from '@/components/ui/button';
+import { MetricCard } from '@/components/ui/metric-card';
 import { logout } from '@/routes';
 
 type NoAccessProps = {
@@ -23,14 +26,19 @@ export default function WorkspaceNoAccess({
     return (
         <>
             <Head title="No workspace access" />
-            <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center gap-6 p-6">
-                <div className="space-y-1">
-                    <h1 className="text-2xl font-semibold tracking-tight">
-                        No workspace access
-                    </h1>
-                    <p className="text-sm text-muted-foreground">
-                        Signed in as {userName}
-                    </p>
+            <PageShell
+                width="form"
+                title="No workspace access"
+                description={`Signed in as ${userName}`}
+            >
+                <div className="grid gap-3 sm:grid-cols-2">
+                    <MetricCard
+                        label="Status"
+                        value="No company"
+                        hint={supportHint}
+                        tone="amber"
+                        icon={Building2}
+                    />
                 </div>
 
                 <ShellEmptyState
@@ -40,35 +48,31 @@ export default function WorkspaceNoAccess({
                             ? 'You do not have access to a company yet. Create your company to continue as Owner of that workspace.'
                             : supportHint
                     }
-                    action={
-                        <div className="mt-2 flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
-                            {showCreate && links.createCompany ? (
-                                <Button asChild>
-                                    <Link
-                                        href={links.createCompany}
-                                        aria-label="Create your company"
-                                    >
-                                        Create your company
-                                    </Link>
-                                </Button>
-                            ) : null}
-                            <Form {...logout.form()}>
-                                {({ processing }) => (
-                                    <Button
-                                        type="submit"
-                                        variant={
-                                            showCreate ? 'outline' : 'default'
-                                        }
-                                        disabled={processing}
-                                    >
-                                        Sign out
-                                    </Button>
-                                )}
-                            </Form>
-                        </div>
-                    }
                 />
-            </div>
+
+                <div className="flex flex-wrap gap-2">
+                    {showCreate && links.createCompany ? (
+                        <Button asChild>
+                            <Link href={links.createCompany}>
+                                <Plus className="size-4" />
+                                Create company
+                            </Link>
+                        </Button>
+                    ) : null}
+                    <Form {...logout.form()}>
+                        {({ processing }) => (
+                            <Button
+                                type="submit"
+                                variant="outline"
+                                disabled={processing}
+                            >
+                                <LogOut className="size-4" />
+                                Sign out
+                            </Button>
+                        )}
+                    </Form>
+                </div>
+            </PageShell>
         </>
     );
 }
