@@ -1383,16 +1383,18 @@ class LocalDemoWorkspaceSeeder extends Seeder
         $completeTrip = function (LorryReceipt $lr, string $odometerStart, string $odometerEnd) use ($trips, $actor, $vehicle): Trip {
             $trip = $trips->createFromLorryReceipt($lr, $actor, ['vehicle_id' => $vehicle->id]);
             $movements = app(TripMovementService::class);
+            $firstGoodsRow = $lr->goodsRows()->first();
+            $pickupWeight = $firstGoodsRow !== null ? (string) $firstGoodsRow->charged_weight : '100';
             $pickup = $movements->addPickup($trip, $actor, [
                 'station_id' => $lr->from_station_id,
-                'weight' => (string) ($lr->goodsRows()->first()?->charged_weight ?? 100),
+                'weight' => $pickupWeight,
                 'pickup_date' => CarbonImmutable::now()->subDays(2)->toDateString(),
             ]);
             $drop = $movements->addDrop($trip, $actor, ['station_id' => $lr->to_station_id]);
             $movements->upsertAllocation($trip, $actor, [
                 'trip_pickup_id' => $pickup->id,
                 'trip_drop_id' => $drop->id,
-                'allocation_weight' => (string) ($lr->goodsRows()->first()?->charged_weight ?? 100),
+                'allocation_weight' => $pickupWeight,
                 'freight' => (string) $lr->freight_total,
             ]);
             $dispatched = $trips->dispatch($trip->fresh(), $actor, ['starting_odometer' => $odometerStart]);

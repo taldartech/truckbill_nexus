@@ -18,7 +18,9 @@ use App\Models\Branch;
 use App\Models\Company;
 use App\Models\PaymentMode;
 use App\Models\TripInvoice;
+use App\Models\TripInvoiceCharge;
 use App\Models\TripInvoicePayment;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -54,7 +56,7 @@ class TripInvoiceController extends Controller
             ],
             'permissions' => $this->invoicePermissions($actor, $company, $branch),
             'invoices' => [
-                'data' => $page->getCollection()->map(fn (TripInvoice $invoice): array => $this->presentInvoiceRow($invoice)),
+                'data' => collect($page->items())->map(fn (TripInvoice $invoice): array => $this->presentInvoiceRow($invoice)),
                 'meta' => [
                     'current_page' => $page->currentPage(),
                     'last_page' => $page->lastPage(),
@@ -258,7 +260,7 @@ class TripInvoiceController extends Controller
             ->get()
             ->map(fn (TripInvoicePayment $payment): array => [
                 'id' => $payment->id,
-                'payment_date' => $payment->payment_date?->format('d-m-Y'),
+                'payment_date' => $payment->payment_date->format('d-m-Y'),
                 'invoice_number' => $payment->invoice?->invoice_number,
                 'invoice_id' => $payment->trip_invoice_id,
                 'amount_received' => (string) $payment->amount_received,
@@ -283,7 +285,7 @@ class TripInvoiceController extends Controller
     /**
      * @return array<string, bool>
      */
-    private function invoicePermissions($actor, Company $company, Branch $branch): array
+    private function invoicePermissions(User $actor, Company $company, Branch $branch): array
     {
         return [
             'can_view' => $this->authorizer->allowsCustomer($actor, PermissionCodes::INVOICE_VIEW, $company, $branch),
@@ -297,7 +299,7 @@ class TripInvoiceController extends Controller
     /**
      * @return array<string, bool>
      */
-    private function paymentPermissions($actor, Company $company, Branch $branch): array
+    private function paymentPermissions(User $actor, Company $company, Branch $branch): array
     {
         return [
             'can_view_payments' => $this->authorizer->allowsCustomer($actor, PermissionCodes::PAYMENT_VIEW, $company, $branch),
@@ -313,7 +315,7 @@ class TripInvoiceController extends Controller
         return [
             'id' => $invoice->id,
             'invoice_number' => $invoice->invoice_number,
-            'invoice_date' => $invoice->invoice_date?->format('d-m-Y'),
+            'invoice_date' => $invoice->invoice_date->format('d-m-Y'),
             'billing_customer_name' => $invoice->billingCustomer?->name,
             'invoice_type' => $invoice->invoice_type->value,
             'status' => $invoice->status->value,
@@ -331,7 +333,7 @@ class TripInvoiceController extends Controller
         return [
             'id' => $invoice->id,
             'invoice_number' => $invoice->invoice_number,
-            'invoice_date' => $invoice->invoice_date?->format('d-m-Y'),
+            'invoice_date' => $invoice->invoice_date->format('d-m-Y'),
             'invoice_type' => $invoice->invoice_type->value,
             'particulars_mode' => $invoice->particulars_mode->value,
             'status' => $invoice->status->value,
@@ -361,14 +363,14 @@ class TripInvoiceController extends Controller
                 'lr_number' => $line->lr_number,
                 'base_freight' => (string) $line->base_freight,
             ]),
-            'charges' => $invoice->charges->map(fn ($charge) => [
+            'charges' => $invoice->charges->map(fn (TripInvoiceCharge $charge) => [
                 'charge_type' => $charge->charge_type->value,
                 'description' => $charge->description,
                 'amount' => (string) $charge->amount,
             ]),
             'payments' => $invoice->payments->map(fn (TripInvoicePayment $payment) => [
                 'id' => $payment->id,
-                'payment_date' => $payment->payment_date?->format('d-m-Y'),
+                'payment_date' => $payment->payment_date->format('d-m-Y'),
                 'amount_received' => (string) $payment->amount_received,
                 'tds_amount' => (string) $payment->tds_amount,
                 'shortage_damage' => (string) $payment->shortage_damage,
@@ -382,7 +384,7 @@ class TripInvoiceController extends Controller
     }
 
     /**
-     * @return list<array{value: string, label: string}>
+     * @return array<int, array{value: string, label: string}>
      */
     private function chargeOptions(): array
     {
@@ -395,11 +397,11 @@ class TripInvoiceController extends Controller
                 TripInvoiceChargeType::LoadingSurcharge => 'Loading surcharge',
                 TripInvoiceChargeType::Other => 'Other',
             },
-        ])->all();
+        ])->values()->all();
     }
 
     /**
-     * @return list<array{value: string, label: string}>
+     * @return array<int, array{value: string, label: string}>
      */
     private function particularsOptions(): array
     {
@@ -409,10 +411,10 @@ class TripInvoiceController extends Controller
                 TripInvoiceParticularsMode::SeparateLines => 'Separate LR lines',
                 TripInvoiceParticularsMode::CombinedFreight => 'Combined freight + annexure',
             },
-        ])->all();
+        ])->values()->all();
     }
 
-    private function assertPermission($actor, Company $company, Branch $branch, string $code): void
+    private function assertPermission(User $actor, Company $company, Branch $branch, string $code): void
     {
         if (! $this->authorizer->allowsCustomer($actor, $code, $company, $branch)) {
             abort(403);

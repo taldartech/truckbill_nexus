@@ -123,26 +123,26 @@ final class TripExpenseService
     public function profitSummary(Trip $trip): array
     {
         $lr = $trip->lorryReceipt;
-        $agreed = $this->money((string) ($lr?->freight_total ?? '0'));
-        $charges = $this->money((string) ($lr?->additional_charges_total ?? '0'));
+        $agreed = $this->money($lr === null ? '0' : $this->storedDecimal($lr->freight_total));
+        $charges = $this->money($lr === null ? '0' : $this->storedDecimal($lr->additional_charges_total));
 
         $expenses = TripExpense::query()
             ->where('trip_id', $trip->id)
             ->whereNull('deleted_at')
             ->get();
 
-        $diesel = '0.00';
-        $other = '0.00';
-        $dieselLitres = '0.000';
+        $diesel = bcadd('0', '0', 2);
+        $other = bcadd('0', '0', 2);
+        $dieselLitres = bcadd('0', '0', 3);
 
         foreach ($expenses as $expense) {
             if ($expense->is_diesel) {
-                $diesel = bcadd($diesel, (string) $expense->amount, 2);
+                $diesel = bcadd($diesel, $this->storedDecimal($expense->amount), 2);
                 if ($expense->diesel_litres !== null) {
-                    $dieselLitres = bcadd($dieselLitres, (string) $expense->diesel_litres, 3);
+                    $dieselLitres = bcadd($dieselLitres, $this->storedDecimal($expense->diesel_litres, 3), 3);
                 }
             } else {
-                $other = bcadd($other, (string) $expense->amount, 2);
+                $other = bcadd($other, $this->storedDecimal($expense->amount), 2);
             }
         }
 
@@ -302,6 +302,9 @@ final class TripExpenseService
         }
     }
 
+    /**
+     * @return numeric-string
+     */
     private function requirePositive(mixed $value, string $field, int $scale): string
     {
         $normalized = $this->requireDecimal($value, $field, $scale);
@@ -312,6 +315,9 @@ final class TripExpenseService
         return $normalized;
     }
 
+    /**
+     * @return numeric-string
+     */
     private function requireNonNegative(mixed $value, string $field, int $scale): string
     {
         $normalized = $this->requireDecimal($value, $field, $scale);
@@ -322,6 +328,9 @@ final class TripExpenseService
         return $normalized;
     }
 
+    /**
+     * @return numeric-string|null
+     */
     private function optionalNonNegative(mixed $value, string $field, int $scale): ?string
     {
         if ($value === null || $value === '') {
@@ -331,23 +340,45 @@ final class TripExpenseService
         return $this->requireNonNegative($value, $field, $scale);
     }
 
+    /**
+     * @return numeric-string
+     */
     private function requireDecimal(mixed $value, string $field, int $scale): string
     {
         if (! is_numeric($value)) {
             throw ValidationException::withMessages([$field => 'A valid number is required.']);
         }
 
-        return bcadd((string) $value, '0', $scale);
+        return number_format((float) $value, $scale, '.', '');
     }
 
+    /**
+     * @param  numeric-string  $value
+     * @return numeric-string
+     */
     private function money(string $value): string
     {
-        return bcadd($value, '0', 2);
+        return number_format((float) $value, 2, '.', '');
     }
 
+    /**
+     * @return numeric-string
+     */
     private function zero(int $scale): string
     {
         return bcadd('0', '0', $scale);
+    }
+
+    /**
+     * @return numeric-string
+     */
+    private function storedDecimal(mixed $value, int $scale = 2): string
+    {
+        if (! is_numeric($value)) {
+            throw new TripDomainException('Stored decimal value is not numeric.');
+        }
+
+        return number_format((float) $value, $scale, '.', '');
     }
 
     /**

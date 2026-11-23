@@ -158,7 +158,7 @@ class LorryReceiptController extends Controller
 
         if ($resolution['status'] !== 'ready') {
             throw ValidationException::withMessages([
-                'form_mode' => $resolution['reason'] ?? 'Lorry Receipt creation is not available.',
+                'form_mode' => $resolution['reason'],
             ]);
         }
 

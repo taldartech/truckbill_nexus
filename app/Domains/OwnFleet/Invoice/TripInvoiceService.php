@@ -254,7 +254,7 @@ final class TripInvoiceService
                     throw new TripInvoiceConflictException('Invoices with payments cannot be deleted.');
                 }
 
-                if (bccomp((string) $locked->settlement_total, '0', 2) !== 0) {
+                if (bccomp($this->storedDecimal($locked->settlement_total), '0', 2) !== 0) {
                     throw new TripInvoiceConflictException('Only unpaid invoices can be deleted.');
                 }
 
@@ -348,11 +348,11 @@ final class TripInvoiceService
 
                 [$invoiceNumber, $allocationId] = $this->allocateNumber($company, $branch, $payload);
 
-                $baseFreight = '0.00';
+                $baseFreight = bcadd('0', '0', 2);
                 $lines = [];
                 $sort = 0;
                 foreach ($receipts as $receipt) {
-                    $freight = bcadd((string) $receipt->freight_total, '0', 2);
+                    $freight = $this->storedDecimal($receipt->freight_total);
                     $baseFreight = bcadd($baseFreight, $freight, 2);
                     $trip = Trip::query()->where('lorry_receipt_id', $receipt->id)->whereNull('deleted_at')->firstOrFail();
                     $lines[] = [
@@ -364,7 +364,7 @@ final class TripInvoiceService
                     ];
                 }
 
-                $additional = '0.00';
+                $additional = bcadd('0', '0', 2);
                 foreach ($charges as $charge) {
                     $additional = bcadd($additional, $charge['amount'], 2);
                 }
@@ -503,9 +503,8 @@ final class TripInvoiceService
     }
 
     /**
-     * @return array{
-     *     0: list<array{charge_type: TripInvoiceChargeType, description: string, amount: string}>,
-     * }
+     * @param  array<mixed>  $raw
+     * @return list<array{charge_type: TripInvoiceChargeType, description: string, amount: numeric-string}>
      */
     private function normalizeCharges(array $raw): array
     {
@@ -544,7 +543,9 @@ final class TripInvoiceService
     }
 
     /**
-     * @return array{0: string, 1: string, 2: string, 3: array<string, mixed>|null}
+     * @param  numeric-string  $baseFreight
+     * @param  numeric-string  $additional
+     * @return array{numeric-string, numeric-string, numeric-string, array<string, mixed>|null}
      */
     private function computeTaxTotals(Company $company, string $baseFreight, string $additional): array
     {
@@ -625,6 +626,16 @@ final class TripInvoiceService
         }
     }
 
+    /**
+     * @return array{
+     *     party_id: string,
+     *     name: string,
+     *     gstin: string|null,
+     *     pan: string|null,
+     *     state: string|null,
+     *     invoice_tds_rate_percent: string,
+     * }
+     */
     private function customerSnapshot(Party $party, string $tdsRate): array
     {
         return [
@@ -653,13 +664,28 @@ final class TripInvoiceService
         }
     }
 
+    /**
+     * @return numeric-string
+     */
     private function money(mixed $value, string $field): string
     {
         if (! is_numeric($value)) {
             throw ValidationException::withMessages([$field => 'A valid amount is required.']);
         }
 
-        return bcadd((string) $value, '0', 2);
+        return number_format((float) $value, 2, '.', '');
+    }
+
+    /**
+     * @return numeric-string
+     */
+    private function storedDecimal(mixed $value, int $scale = 2): string
+    {
+        if (! is_numeric($value)) {
+            throw new TripInvoiceDomainException('Stored decimal value is not numeric.');
+        }
+
+        return number_format((float) $value, $scale, '.', '');
     }
 
     private function assertCanCreate(User $actor, Company $company, Branch $branch): void
@@ -700,9 +726,10 @@ final class TripInvoiceService
     }
 
     /**
-     * @return T
+     * @template TReturn
      *
-     * @template T
+     * @param  callable(): TReturn  $callback
+     * @return TReturn
      */
     private function withTenant(Company $company, Branch $branch, callable $callback): mixed
     {

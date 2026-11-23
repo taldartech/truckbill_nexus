@@ -23,6 +23,8 @@ final class LrVehicleClassificationService
     /**
      * Load a branch-visible active vehicle and resolve its entitled workflow context.
      *
+     * @return array{vehicle: Vehicle, context: LrWorkflowContext}
+     *
      * @throws ValidationException
      */
     public function resolveFromVehicleId(

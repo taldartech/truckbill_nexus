@@ -20,6 +20,7 @@ use Illuminate\Support\Str;
  * @property TripInvoicePaymentStatus $payment_status
  * @property TripInvoiceType $invoice_type
  * @property TripInvoiceParticularsMode $particulars_mode
+ * @property Carbon $invoice_date
  * @property Carbon|null $cancelled_at
  * @property Carbon|null $charges_locked_at
  * @property array<string, mixed>|null $gst_rate_snapshot

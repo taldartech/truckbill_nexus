@@ -29,8 +29,10 @@ use App\Models\PartyRole;
 use App\Models\PaymentMode;
 use App\Models\Station;
 use App\Models\Trip;
+use App\Models\TripDrop;
 use App\Models\TripDropPickupAllocation;
 use App\Models\TripExpense;
+use App\Models\TripPickup;
 use App\Models\User;
 use App\Models\Vehicle;
 use Illuminate\Http\RedirectResponse;
@@ -205,7 +207,7 @@ class TripController extends Controller
             'reconciliation' => $this->movements->reconciliationSummary($trip),
             'expenses' => $trip->expenses->map(fn (TripExpense $expense): array => [
                 'id' => $expense->id,
-                'expense_date' => $expense->expense_date?->format('d-m-Y'),
+                'expense_date' => $expense->expense_date->format('d-m-Y'),
                 'category_name' => $expense->category?->name,
                 'amount' => $expense->amount,
                 'is_diesel' => (bool) $expense->is_diesel,
@@ -589,7 +591,7 @@ class TripController extends Controller
     }
 
     /**
-     * @return list<array{id: string, registration_number: string, primary_driver_party_id: string|null, primary_driver_name: string|null}>
+     * @return array<int, array{id: string, registration_number: string, primary_driver_party_id: string|null, primary_driver_name: string|null}>
      */
     private function vehicleOptions(Company $company, Branch $branch): array
     {
@@ -611,7 +613,7 @@ class TripController extends Controller
     }
 
     /**
-     * @return list<array{id: string, name: string}>
+     * @return array<int, array{id: string, name: string}>
      */
     private function driverOptions(Company $company, Branch $branch): array
     {
@@ -712,15 +714,15 @@ class TripController extends Controller
 
     /**
      * @return array{
-     *     pickups: list<array<string, mixed>>,
-     *     drops: list<array<string, mixed>>,
-     *     allocations: list<array<string, mixed>>
+     *     pickups: array<int, array<string, mixed>>,
+     *     drops: array<int, array<string, mixed>>,
+     *     allocations: array<int, array<string, mixed>>
      * }
      */
     private function movementsPayload(Trip $trip): array
     {
         return [
-            'pickups' => $trip->pickups->map(fn ($pickup): array => [
+            'pickups' => $trip->pickups->map(fn (TripPickup $pickup): array => [
                 'id' => $pickup->id,
                 'position' => $pickup->position,
                 'station_id' => $pickup->station_id,
@@ -729,9 +731,9 @@ class TripController extends Controller
                 'consignor_name' => $pickup->consignor?->name,
                 'goods_description' => $pickup->goods_description,
                 'weight' => $pickup->weight,
-                'pickup_date' => $pickup->pickup_date?->format('d-m-Y'),
+                'pickup_date' => $pickup->pickup_date->format('d-m-Y'),
             ])->values()->all(),
-            'drops' => $trip->drops->map(fn ($drop): array => [
+            'drops' => $trip->drops->map(fn (TripDrop $drop): array => [
                 'id' => $drop->id,
                 'position' => $drop->position,
                 'station_id' => $drop->station_id,
@@ -755,7 +757,7 @@ class TripController extends Controller
     }
 
     /**
-     * @return list<array{id: string, name: string}>
+     * @return array<int, array{id: string, name: string}>
      */
     private function stationOptions(Company $company): array
     {
@@ -775,10 +777,7 @@ class TripController extends Controller
     }
 
     /**
-     * @return list<array{id: string, name: string}>
-     */
-    /**
-     * @return list<array{id: string, name: string}>
+     * @return array<int, array{id: string, name: string}>
      */
     private function expenseCategoryOptions(Company $company): array
     {
@@ -797,6 +796,9 @@ class TripController extends Controller
             ->all();
     }
 
+    /**
+     * @return array<int, array{id: string, name: string}>
+     */
     private function partyRoleOptions(Company $company, Branch $branch, PartyRoleType $role): array
     {
         $partyIds = PartyRole::query()

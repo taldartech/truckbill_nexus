@@ -309,11 +309,11 @@ class VehicleController extends Controller
 
     /**
      * @return array{
-     *     ownershipOptions: list<array{value: string, label: string}>,
-     *     truckTypes: list<array{id: string, name: string}>,
-     *     tyreLayouts: list<array{id: string, name: string}>,
-     *     transporters: list<array{id: string, name: string}>,
-     *     drivers: list<array{id: string, name: string}>
+     *     ownershipOptions: array<int, array{value: string, label: string}>,
+     *     truckTypes: array<int, array{id: string, name: string}>,
+     *     tyreLayouts: array<int, array{id: string, name: string}>,
+     *     transporters: array<int, array{id: string, name: string}>,
+     *     drivers: array<int, array{id: string, name: string}>
      * }
      */
     private function formOptions(Company $company, Branch $branch): array

@@ -10,6 +10,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
+/**
+ * @property TripInvoiceChargeType $charge_type
+ */
 class TripInvoiceCharge extends Model
 {
     /** @use HasFactory<TripInvoiceChargeFactory> */

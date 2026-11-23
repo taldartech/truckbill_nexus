@@ -52,9 +52,9 @@ final class TripMovementService
     {
         $this->assertEditable($trip, $actor);
 
-        $stationId = (string) ($payload['station_id'] ?? '');
-        $weight = $this->requirePositiveDecimal($payload['weight'] ?? null, 'weight', 3);
-        $pickupDate = (string) ($payload['pickup_date'] ?? '');
+        $stationId = $payload['station_id'];
+        $weight = $this->requirePositiveDecimal($payload['weight'], 'weight', 3);
+        $pickupDate = $payload['pickup_date'];
         if ($pickupDate === '') {
             throw ValidationException::withMessages(['pickup_date' => 'Pickup date is required.']);
         }
@@ -115,7 +115,7 @@ final class TripMovementService
     {
         $this->assertEditable($trip, $actor);
 
-        $stationId = (string) ($payload['station_id'] ?? '');
+        $stationId = $payload['station_id'];
         $company = Company::query()->findOrFail($trip->company_id);
         $branch = Branch::query()->findOrFail($trip->branch_id);
         $this->assertStation($stationId);
@@ -174,9 +174,9 @@ final class TripMovementService
     {
         $this->assertEditable($trip, $actor);
 
-        $pickupId = (string) ($payload['trip_pickup_id'] ?? '');
-        $dropId = (string) ($payload['trip_drop_id'] ?? '');
-        $weight = $this->requirePositiveDecimal($payload['allocation_weight'] ?? null, 'allocation_weight', 3);
+        $pickupId = $payload['trip_pickup_id'];
+        $dropId = $payload['trip_drop_id'];
+        $weight = $this->requirePositiveDecimal($payload['allocation_weight'], 'allocation_weight', 3);
         $rate = $this->optionalNonNegativeDecimal($payload['rate'] ?? null, 'rate', 4) ?? '0.0000';
         $freight = $this->optionalNonNegativeDecimal($payload['freight'] ?? null, 'freight', 2) ?? '0.00';
         $distance = $this->optionalNonNegativeDecimal($payload['distance'] ?? null, 'distance', 1);
@@ -254,12 +254,12 @@ final class TripMovementService
                         ->lockForUpdate()
                         ->get(['allocation_weight']);
 
-                    $otherAllocated = '0.000';
+                    $otherAllocated = bcadd('0', '0', 3);
                     foreach ($otherRows as $otherRow) {
-                        $otherAllocated = bcadd($otherAllocated, (string) $otherRow->allocation_weight, 3);
+                        $otherAllocated = bcadd($otherAllocated, $this->storedDecimal($otherRow->allocation_weight, 3), 3);
                     }
 
-                    $remaining = bcsub((string) $pickup->weight, $otherAllocated, 3);
+                    $remaining = bcsub($this->storedDecimal($pickup->weight, 3), $otherAllocated, 3);
                     if (bccomp($weight, $remaining, 3) === 1) {
                         throw ValidationException::withMessages([
                             'allocation_weight' => 'Allocation exceeds remaining pickup weight ('.$remaining.').',
@@ -385,7 +385,7 @@ final class TripMovementService
 
         $rows = [];
         $allReconciled = $pickups->isNotEmpty();
-        $totalFreight = '0.00';
+        $totalFreight = bcadd('0', '0', 2);
 
         foreach ($pickups as $pickup) {
             $allocated = TripDropPickupAllocation::query()
@@ -393,7 +393,7 @@ final class TripMovementService
                 ->whereNull('deleted_at')
                 ->sum('allocation_weight');
             $allocatedStr = $this->numericString((string) $allocated, 3);
-            $remaining = bcsub((string) $pickup->weight, $allocatedStr, 3);
+            $remaining = bcsub($this->storedDecimal($pickup->weight, 3), $allocatedStr, 3);
             $reconciled = bccomp($remaining, '0.000', 3) === 0;
             if (! $reconciled) {
                 $allReconciled = false;
@@ -507,6 +507,9 @@ final class TripMovementService
         }
     }
 
+    /**
+     * @return numeric-string
+     */
     private function requirePositiveDecimal(mixed $value, string $field, int $scale): string
     {
         $normalized = $this->requireDecimal($value, $field, $scale);
@@ -517,6 +520,9 @@ final class TripMovementService
         return $normalized;
     }
 
+    /**
+     * @return numeric-string|null
+     */
     private function optionalNonNegativeDecimal(mixed $value, string $field, int $scale): ?string
     {
         if ($value === null || $value === '') {
@@ -531,23 +537,48 @@ final class TripMovementService
         return $normalized;
     }
 
+    /**
+     * @return numeric-string
+     */
     private function requireDecimal(mixed $value, string $field, int $scale): string
     {
         if (! is_numeric($value)) {
             throw ValidationException::withMessages([$field => 'A valid number is required.']);
         }
 
-        return $this->numericString((string) $value, $scale);
+        return number_format((float) $value, $scale, '.', '');
     }
 
+    /**
+     * @return numeric-string
+     */
     private function numericString(string $value, int $scale): string
     {
-        return bcadd($value, '0', $scale);
+        if (! is_numeric($value)) {
+            throw new TripDomainException('Numeric string value is not numeric.');
+        }
+
+        return number_format((float) $value, $scale, '.', '');
     }
 
+    /**
+     * @return numeric-string
+     */
     private function zero(int $scale): string
     {
         return bcadd('0', '0', $scale);
+    }
+
+    /**
+     * @return numeric-string
+     */
+    private function storedDecimal(mixed $value, int $scale = 2): string
+    {
+        if (! is_numeric($value)) {
+            throw new TripDomainException('Stored decimal value is not numeric.');
+        }
+
+        return number_format((float) $value, $scale, '.', '');
     }
 
     /**

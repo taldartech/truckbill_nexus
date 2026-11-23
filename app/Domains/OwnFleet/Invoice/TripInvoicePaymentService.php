@@ -119,7 +119,7 @@ final class TripInvoicePaymentService
 
                 $existingTds = $this->sumTdsOnInvoice($locked);
                 $newTdsTotal = bcadd($existingTds, $tdsAmount, 2);
-                $tdsCap = (string) $locked->tds_basis_freight;
+                $tdsCap = $this->storedDecimal($locked->tds_basis_freight);
                 if (bccomp($newTdsTotal, $tdsCap, 2) === 1) {
                     throw new TripInvoiceConflictException('Cumulative TDS cannot exceed base freight.');
                 }
@@ -164,6 +164,12 @@ final class TripInvoicePaymentService
         });
     }
 
+    /**
+     * @param  numeric-string  $tdsAmount
+     * @param  numeric-string  $shortage
+     * @param  numeric-string  $discount
+     * @return numeric-string
+     */
     public function fillNetPreview(TripInvoice $invoice, string $tdsAmount, string $shortage, string $discount): string
     {
         $remaining = $this->remainingBalance($invoice);
@@ -186,13 +192,17 @@ final class TripInvoicePaymentService
         $settled = '0.00';
 
         foreach ($payments as $row) {
-            $received = bcadd($received, (string) $row->amount_received, 2);
-            $tds = bcadd($tds, (string) $row->tds_amount, 2);
-            $deductions = bcadd($deductions, bcadd((string) $row->shortage_damage, (string) $row->discount, 2), 2);
-            $settled = bcadd($settled, (string) $row->settlement_amount, 2);
+            $received = bcadd($received, $this->storedDecimal($row->amount_received), 2);
+            $tds = bcadd($tds, $this->storedDecimal($row->tds_amount), 2);
+            $deductions = bcadd(
+                $deductions,
+                bcadd($this->storedDecimal($row->shortage_damage), $this->storedDecimal($row->discount), 2),
+                2,
+            );
+            $settled = bcadd($settled, $this->storedDecimal($row->settlement_amount), 2);
         }
 
-        $balance = bcsub((string) $invoice->invoice_total, $settled, 2);
+        $balance = bcsub($this->storedDecimal($invoice->invoice_total), $settled, 2);
         if (bccomp($balance, '0', 2) === -1) {
             $balance = '0.00';
         }
@@ -225,28 +235,53 @@ final class TripInvoicePaymentService
         );
     }
 
+    /**
+     * @return numeric-string
+     */
     private function remainingBalance(TripInvoice $invoice): string
     {
-        return bcsub((string) $invoice->invoice_total, (string) $invoice->settlement_total, 2);
+        return bcsub(
+            $this->storedDecimal($invoice->invoice_total),
+            $this->storedDecimal($invoice->settlement_total),
+            2,
+        );
     }
 
+    /**
+     * @return numeric-string
+     */
     private function sumTdsOnInvoice(TripInvoice $invoice): string
     {
-        $total = '0.00';
+        $total = bcadd('0', '0', 2);
         foreach (TripInvoicePayment::query()->where('trip_invoice_id', $invoice->id)->lockForUpdate()->get() as $row) {
-            $total = bcadd($total, (string) $row->tds_amount, 2);
+            $total = bcadd($total, $this->storedDecimal($row->tds_amount), 2);
         }
 
         return $total;
     }
 
+    /**
+     * @return numeric-string
+     */
     private function money(mixed $value, string $field): string
     {
         if (! is_numeric($value)) {
             throw ValidationException::withMessages([$field => 'A valid amount is required.']);
         }
 
-        return bcadd((string) $value, '0', 2);
+        return number_format((float) $value, 2, '.', '');
+    }
+
+    /**
+     * @return numeric-string
+     */
+    private function storedDecimal(mixed $value, int $scale = 2): string
+    {
+        if (! is_numeric($value)) {
+            throw new TripInvoiceDomainException('Stored decimal value is not numeric.');
+        }
+
+        return number_format((float) $value, $scale, '.', '');
     }
 
     private function assertCanCreate(User $actor, Company $company, Branch $branch): void
@@ -266,9 +301,10 @@ final class TripInvoicePaymentService
     }
 
     /**
-     * @return T
+     * @template TReturn
      *
-     * @template T
+     * @param  callable(): TReturn  $callback
+     * @return TReturn
      */
     private function withTenant(Company $company, Branch $branch, callable $callback): mixed
     {

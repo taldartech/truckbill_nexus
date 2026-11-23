@@ -98,7 +98,7 @@ final class TripService
         $this->assertOwnFleetEntitled($company);
         $this->assertLorryReceiptEligible($lorryReceipt);
 
-        $vehicleId = (string) ($payload['vehicle_id'] ?? '');
+        $vehicleId = $payload['vehicle_id'];
         if ($vehicleId === '') {
             throw ValidationException::withMessages([
                 'vehicle_id' => 'Vehicle is required.',
@@ -271,7 +271,7 @@ final class TripService
             throw new TripAuthorizationException('Not authorized to dispatch OwnFleet Trips.');
         }
 
-        $starting = $this->requireNonNegativeDecimal($payload['starting_odometer'] ?? null, 'starting_odometer', 1);
+        $starting = $this->requireNonNegativeDecimal($payload['starting_odometer'], 'starting_odometer', 1);
         $timezone = filled($company->timezone) ? (string) $company->timezone : 'Asia/Kolkata';
         $departure = filled($payload['departure_at'] ?? null)
             ? CarbonImmutable::parse((string) $payload['departure_at'], $timezone)->utc()
@@ -322,7 +322,7 @@ final class TripService
             throw new TripAuthorizationException('Not authorized to complete OwnFleet Trips.');
         }
 
-        $ending = $this->requireNonNegativeDecimal($payload['ending_odometer'] ?? null, 'ending_odometer', 1);
+        $ending = $this->requireNonNegativeDecimal($payload['ending_odometer'], 'ending_odometer', 1);
         $timezone = filled($company->timezone) ? (string) $company->timezone : 'Asia/Kolkata';
         $arrival = filled($payload['actual_arrival_at'] ?? null)
             ? CarbonImmutable::parse((string) $payload['actual_arrival_at'], $timezone)->utc()
@@ -342,7 +342,7 @@ final class TripService
                     ]);
                 }
 
-                if (bccomp($ending, (string) $locked->starting_odometer, 1) !== 1) {
+                if (bccomp($ending, $this->storedDecimal($locked->starting_odometer, 1), 1) !== 1) {
                     throw ValidationException::withMessages([
                         'ending_odometer' => 'Ending odometer must be greater than starting odometer.',
                     ]);
@@ -350,7 +350,7 @@ final class TripService
 
                 $this->movements()->assertCompletionReconciliation($locked);
 
-                $distance = bcsub($ending, (string) $locked->starting_odometer, 1);
+                $distance = bcsub($ending, $this->storedDecimal($locked->starting_odometer, 1), 1);
                 $timing = $this->classifyTiming($locked->expected_end_at, $arrival, $timezone);
 
                 $before = $locked->toArray();
@@ -396,7 +396,7 @@ final class TripService
             return TripTimingPerformance::Early;
         }
 
-        if ($arrivalLocal->eq($expectedLocal) || $arrivalLocal->diffInMinutes($expectedLocal) === 0) {
+        if ($arrivalLocal->eq($expectedLocal)) {
             return TripTimingPerformance::OnTime;
         }
 
@@ -410,18 +410,41 @@ final class TripService
             : TripTimingPerformance::OnTime;
     }
 
+    /**
+     * @return numeric-string
+     */
     private function requireNonNegativeDecimal(mixed $value, string $field, int $scale): string
     {
         if (! is_numeric($value)) {
             throw ValidationException::withMessages([$field => 'A valid number is required.']);
         }
 
-        $normalized = bcadd((string) $value, '0', $scale);
-        if (bccomp($normalized, bcadd('0', '0', $scale), $scale) === -1) {
+        $normalized = number_format((float) $value, $scale, '.', '');
+        if (bccomp($normalized, $this->zero($scale), $scale) === -1) {
             throw ValidationException::withMessages([$field => 'Value cannot be negative.']);
         }
 
         return $normalized;
+    }
+
+    /**
+     * @return numeric-string
+     */
+    private function storedDecimal(mixed $value, int $scale = 2): string
+    {
+        if (! is_numeric($value)) {
+            throw new TripDomainException('Stored decimal value is not numeric.');
+        }
+
+        return number_format((float) $value, $scale, '.', '');
+    }
+
+    /**
+     * @return numeric-string
+     */
+    private function zero(int $scale): string
+    {
+        return bcadd('0', '0', $scale);
     }
 
     /**
