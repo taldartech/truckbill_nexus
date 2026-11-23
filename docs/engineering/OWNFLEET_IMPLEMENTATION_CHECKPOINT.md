@@ -3,7 +3,7 @@
 **Date:** 23 November 2026  
 **PO Phase 5 AUTH:** Approved  
 **Implementation status:** **Batches A–G complete; Batch H partially executed (Pest/Larastan/Playwright smoke/k6 smoke); formal dual-DB MySQL CI + full journey Playwright pending remote evidence**  
-**HEAD tip (local):** `5ba3e877317d674c2793bce3d69244f747508d64`
+**HEAD tip (local):** `26923ae74c16c2e2453d384d4d0441502b7950ec`
 
 | Batch             | Commit (abbreviated) | Topic                                                |
 | ----------------- | -------------------- | ---------------------------------------------------- |
