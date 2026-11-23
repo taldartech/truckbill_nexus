@@ -3,6 +3,7 @@
 **Date:** 23 November 2026  
 **Baseline remote:** `18d083430f4df64ebcf9e68648841b80b2d88d58`  
 **Local tip before this batch:** `a405bdeaad7c596f4537f396174551b6f85f3c0a`
+**Feature commit:** `6b19c46ddc648717bb5c97b56907b6209141fa22`
 
 ## Batch A — Navigation (implemented)
 
