@@ -140,6 +140,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/branch/companies/{company}/branches/{branch}/enquiries', [EnquiryController::class, 'index'])
         ->scopeBindings()
         ->name('branch.enquiries.index');
+    Route::get('/branch/companies/{company}/branches/{branch}/enquiries/create', [EnquiryController::class, 'create'])
+        ->scopeBindings()
+        ->name('branch.enquiries.create');
     Route::post('/branch/companies/{company}/branches/{branch}/enquiries', [EnquiryController::class, 'store'])
         ->scopeBindings()
         ->name('branch.enquiries.store');

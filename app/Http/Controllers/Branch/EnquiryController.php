@@ -6,6 +6,7 @@ use App\Domains\Company\CompanyAccessService;
 use App\Domains\Enquiry\EnquiryService;
 use App\Domains\Enquiry\Exceptions\EnquiryAuthorizationException;
 use App\Domains\Enquiry\Exceptions\EnquiryDomainException;
+use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
@@ -13,13 +14,18 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\Enquiry;
+use App\Models\OwnerCatalogueItem;
+use App\Models\Party;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Inertia\Inertia;
+use Inertia\Response;
 
 /**
- * Branch enquiry JSON API (Batch B backend only — no Inertia UI).
+ * Branch enquiry JSON API + Inertia product UI (PO-P4-DESIGN-FORMAL).
  */
 class EnquiryController extends Controller
 {
@@ -31,7 +37,7 @@ class EnquiryController extends Controller
         private readonly EnquiryService $enquiries,
     ) {}
 
-    public function store(Request $request, Company $company, Branch $branch): JsonResponse
+    public function store(Request $request, Company $company, Branch $branch): JsonResponse|RedirectResponse
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertPermission($actor, $company, $branch, PermissionCodes::ENQUIRY_CREATE);
@@ -45,12 +51,22 @@ class EnquiryController extends Controller
         } catch (EnquiryAuthorizationException $e) {
             abort(403, $e->getMessage());
         } catch (EnquiryDomainException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+
+            throw ValidationException::withMessages(['customer_party_id' => $e->getMessage()]);
         }
 
-        return response()->json([
-            'data' => $this->enquiryPayload($enquiry->load('goodsRows', 'statusHistories')),
-        ], 201);
+        if ($request->expectsJson()) {
+            return response()->json([
+                'data' => $this->enquiryPayload($enquiry->load('goodsRows', 'statusHistories')),
+            ], 201);
+        }
+
+        return redirect()
+            ->route('branch.enquiries.show', [$company, $branch, $enquiry])
+            ->with('success', 'Enquiry created.');
     }
 
     public function update(Request $request, Company $company, Branch $branch, Enquiry $enquiry): JsonResponse
@@ -83,7 +99,7 @@ class EnquiryController extends Controller
     /**
      * Branch-scoped list. Unassigned company queue requires enquiry.assign (Batch C visibility gate documented).
      */
-    public function index(Request $request, Company $company, Branch $branch): JsonResponse
+    public function index(Request $request, Company $company, Branch $branch): JsonResponse|Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertPermission($actor, $company, $branch, PermissionCodes::ENQUIRY_VIEW);
@@ -107,8 +123,7 @@ class EnquiryController extends Controller
         }
 
         $page = $query->paginate($perPage);
-
-        return response()->json([
+        $payload = [
             'data' => collect($page->items())->map(fn (Enquiry $enquiry): array => $this->enquiryPayload($enquiry))->values()->all(),
             'meta' => [
                 'current_page' => $page->currentPage(),
@@ -116,12 +131,71 @@ class EnquiryController extends Controller
                 'total' => $page->total(),
                 'per_page' => $page->perPage(),
                 'includes_unassigned' => $includeUnassigned,
-                'unassigned_visibility_note' => 'Company unassigned queue requires enquiry.assign until Batch C visibility decision.',
+                'unassigned_visibility_note' => 'Company unassigned queue requires enquiry.assign.',
+            ],
+        ];
+
+        if ($request->expectsJson()) {
+            return response()->json($payload);
+        }
+
+        return Inertia::render('branch/enquiries/index', [
+            'company' => ['id' => $company->id, 'name' => $company->name],
+            'branch' => ['id' => $branch->id, 'name' => $branch->name],
+            'filters' => [
+                'unassigned' => $includeUnassigned,
+            ],
+            'can_create' => $this->authorizer->allowsCustomer($actor, PermissionCodes::ENQUIRY_CREATE, $company, $branch),
+            'can_include_unassigned' => $this->authorizer->allowsCustomer($actor, PermissionCodes::ENQUIRY_ASSIGN, $company, $branch),
+            'enquiries' => $payload,
+            'urls' => [
+                'index' => route('branch.enquiries.index', [$company, $branch]),
+                'create' => route('branch.enquiries.create', [$company, $branch]),
+                'masters' => route('branch.masters.index', [$company, $branch]),
             ],
         ]);
     }
 
-    public function show(Request $request, Company $company, Branch $branch, Enquiry $enquiry): JsonResponse
+    public function create(Request $request, Company $company, Branch $branch): Response
+    {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertPermission($actor, $company, $branch, PermissionCodes::ENQUIRY_CREATE);
+
+        $parties = Party::query()
+            ->where('company_id', $company->id)
+            ->whereNull('deleted_at')
+            ->orderBy('name')
+            ->limit(200)
+            ->get(['id', 'name']);
+
+        $vehicleTypes = OwnerCatalogueItem::query()
+            ->where('owner_user_id', $company->owner_user_id)
+            ->where('catalogue_type', OwnerCatalogueType::TruckType->value)
+            ->where('is_active', true)
+            ->whereNull('deleted_at')
+            ->orderBy('name')
+            ->limit(200)
+            ->get(['id', 'name']);
+
+        return Inertia::render('branch/enquiries/create', [
+            'company' => ['id' => $company->id, 'name' => $company->name],
+            'branch' => ['id' => $branch->id, 'name' => $branch->name],
+            'parties' => $parties->map(fn ($party): array => [
+                'id' => $party->id,
+                'name' => $party->name,
+            ])->values()->all(),
+            'vehicle_types' => $vehicleTypes->map(fn ($type): array => [
+                'id' => $type->id,
+                'name' => $type->name,
+            ])->values()->all(),
+            'urls' => [
+                'index' => route('branch.enquiries.index', [$company, $branch]),
+                'store' => route('branch.enquiries.store', [$company, $branch]),
+            ],
+        ]);
+    }
+
+    public function show(Request $request, Company $company, Branch $branch, Enquiry $enquiry): JsonResponse|Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertPermission($actor, $company, $branch, PermissionCodes::ENQUIRY_VIEW);
@@ -137,8 +211,19 @@ class EnquiryController extends Controller
             abort(404);
         }
 
-        return response()->json([
-            'data' => $this->enquiryPayload($enquiry->load(['goodsRows', 'statusHistories'])),
+        $data = $this->enquiryPayload($enquiry->load(['goodsRows', 'statusHistories']));
+
+        if ($request->expectsJson()) {
+            return response()->json(['data' => $data]);
+        }
+
+        return Inertia::render('branch/enquiries/show', [
+            'company' => ['id' => $company->id, 'name' => $company->name],
+            'branch' => ['id' => $branch->id, 'name' => $branch->name],
+            'enquiry' => $data,
+            'urls' => [
+                'index' => route('branch.enquiries.index', [$company, $branch]),
+            ],
         ]);
     }
 

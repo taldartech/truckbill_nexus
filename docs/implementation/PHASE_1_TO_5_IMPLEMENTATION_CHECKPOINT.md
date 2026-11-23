@@ -21,13 +21,14 @@
 
 ## Outstanding (exact next steps)
 
-1. **Phase 2A CRM** — Conversion confirm UI; follow-ups UI; dashboards (real aggregates); Sales pipeline; seeder personas.
-2. **Playwright** — CI Chromium via `--with-deps`; local may use `PLAYWRIGHT_USE_SYSTEM_CHROME=1`. Expand journeys with `E2E_REQUIRE_DEMO=1`.
-3. **k6** — Run smoke against dedicated non-prod when k6 CLI available; record measurements.
-4. **Phase 3** — Gap-harden missing approved fields/screens; preserve EX-01…07.
-5. **Phase 4** — Batch B Enquiry product UI; then C→F sequential full-stack (Option C conversion).
-6. **Phase 5** — OwnFleet Trip→Invoice after Unified LR certified.
-7. **Certification** — Update gap audit + final report with honest status; no live Razorpay / deploy / push.
+1. **Phase 2A CRM** — Conversion confirm UI; follow-ups UI; dashboards; Sales pipeline; seeder personas.
+2. **Phase 4** — Batch B edit UI polish; Batches C–F sequential.
+3. **Playwright** — CI Chromium via `--with-deps`; local may use `PLAYWRIGHT_USE_SYSTEM_CHROME=1`. Expand journeys with `E2E_REQUIRE_DEMO=1`.
+4. **k6** — Run smoke against dedicated non-prod when k6 CLI available; record measurements.
+5. **Phase 3** — Gap-harden missing approved fields/screens; preserve EX-01…07.
+6. **Phase 4** — Batch B Enquiry product UI; then C→F sequential full-stack (Option C conversion).
+7. **Phase 5** — OwnFleet Trip→Invoice after Unified LR certified.
+8. **Certification** — Update gap audit + final report with honest status; no live Razorpay / deploy / push.
 
 ## Known defects / notes
 

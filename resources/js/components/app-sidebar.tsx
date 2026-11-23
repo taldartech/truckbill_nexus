@@ -98,6 +98,11 @@ export function AppSidebar() {
                             icon: LayoutGrid,
                         },
                         {
+                            title: 'Enquiries',
+                            href: `/branch/companies/${activeCompanyId}/branches/${activeBranchId}/enquiries`,
+                            icon: LayoutGrid,
+                        },
+                        {
                             title: 'Branch Settings',
                             href: `/branch/companies/${activeCompanyId}/branches/${activeBranchId}/settings`,
                             icon: LayoutGrid,
