@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__.'/../Support/VehicleMasterFixtures.php';
+
 use App\Domains\Auth\WebSessionService;
 use App\Domains\Company\CompanyWorkspaceService;
 use App\Domains\Document\DocumentAttachmentService;
@@ -91,10 +93,10 @@ test('upload attach download and storage accounting', function () {
     ['owner' => $owner, 'company' => $company, 'branch' => $branch] = docWorkspace();
     docActingAsCustomer($owner);
 
-    $vehicle = app(VehicleService::class)->create($owner, $company, null, [
+    $vehicle = app(VehicleService::class)->create($owner, $company, null, ownVehicleMasterPayload($owner, [
         'registration_number' => 'MH14DOC001',
         'vehicle_type' => 'truck',
-    ]);
+    ]));
 
     $docs = app(DocumentAttachmentService::class);
     $attachment = $docs->uploadAndAttach(
@@ -129,9 +131,9 @@ test('cross-company file attach and download denied', function () {
     ] = docWorkspace();
 
     docActingAsCustomer($owner);
-    $vehicle = app(VehicleService::class)->create($owner, $company, null, [
+    $vehicle = app(VehicleService::class)->create($owner, $company, null, ownVehicleMasterPayload($owner, [
         'registration_number' => 'MH14DOC002',
-    ]);
+    ]));
 
     $file = app(DocumentAttachmentService::class)->uploadAndAttach(
         $owner,

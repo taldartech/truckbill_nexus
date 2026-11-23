@@ -433,7 +433,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
             truckTypeId: $catalogues['truck']->id,
             tyreLayoutId: $catalogues['tyre']->id,
         );
-        $this->ensureVehicle(
+        $marketVehicle = $this->ensureVehicle(
             $company,
             $second,
             'MH14DEMO'.substr((string) crc32($company->id.'2'), 0, 4),
@@ -492,6 +492,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
                 $consignorParty,
                 $consigneeParty,
                 $catalogues,
+                $marketVehicle,
                 'demo-lr:'.$company->id.':'.$branch->id.':'.$i,
                 $i,
             );
@@ -1474,6 +1475,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
         Party $consignor,
         Party $consignee,
         array $catalogues,
+        Vehicle $vehicle,
         string $fixtureKey,
         int $index,
     ): void {
@@ -1490,6 +1492,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
 
         $lorryReceipts->create($company, $branch, $actor, [
             'workflow_context' => 'broker',
+            'vehicle_id' => $vehicle->id,
             'number_mode' => 'auto',
             'lr_date' => CarbonImmutable::now()->subDays($index)->toDateString(),
             'from_text' => 'Demo From '.$fixtureKey,

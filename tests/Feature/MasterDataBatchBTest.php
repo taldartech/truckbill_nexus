@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__.'/../Support/VehicleMasterFixtures.php';
+
 use App\Domains\Auth\WebSessionService;
 use App\Domains\Company\CompanyWorkspaceService;
 use App\Domains\Master\BankCash\BankCashAccountService;
@@ -103,20 +105,20 @@ test('vehicle create update search soft-delete and duplicate registration', func
     masterActingAsCustomer($owner);
 
     $service = app(VehicleService::class);
-    $vehicle = $service->create($owner, $company, null, [
+    $vehicle = $service->create($owner, $company, null, ownVehicleMasterPayload($owner, [
         'registration_number' => 'mh12ab1234',
         'vehicle_type' => 'truck',
         'make' => 'Ashok',
         'capacity_mt' => '12.500',
-    ]);
+    ]));
 
     expect($vehicle->registration_number)->toBe('MH12AB1234')
         ->and($vehicle->branch_id)->toBeNull();
 
-    expect(fn () => $service->create($owner, $company, null, [
+    expect(fn () => $service->create($owner, $company, null, ownVehicleMasterPayload($owner, [
         'registration_number' => 'MH12AB1234',
         'vehicle_type' => 'truck',
-    ]))->toThrow(ValidationException::class);
+    ])))->toThrow(ValidationException::class);
 
     $updated = $service->update($owner, $vehicle, ['is_active' => false], 'Deactivate vehicle');
     expect($updated->is_active)->toBeFalse();
@@ -133,9 +135,9 @@ test('viewer cannot mutate vehicles', function () {
     ['viewer' => $viewer, 'company' => $company] = masterWorkspace();
     masterActingAsCustomer($viewer);
 
-    expect(fn () => app(VehicleService::class)->create($viewer, $company, null, [
+    expect(fn () => app(VehicleService::class)->create($viewer, $company, null, ownVehicleMasterPayload($viewer, [
         'registration_number' => 'MH01XX9999',
-    ]))->toThrow(MasterDomainException::class);
+    ])))->toThrow(MasterDomainException::class);
 });
 
 test('bank account masks sensitive number and cash account works', function () {

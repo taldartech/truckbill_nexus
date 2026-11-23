@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__.'/../Support/VehicleMasterFixtures.php';
+
 use App\Domains\Company\CompanyWorkspaceService;
 use App\Domains\Company\Enums\DataVisibility;
 use App\Domains\Company\Enums\GstRegistrationType;
@@ -111,7 +113,7 @@ test('shared data party vehicle and bank persist company-wide', function () {
         $owner,
         $company,
         app(MasterDataVisibilityResolver::class)->scopeBranchForCreate($company, $branchA),
-        ['registration_number' => 'MH12AB1234'],
+        ownVehicleMasterPayload($owner, ['registration_number' => 'MH12AB1234']),
         'Create',
     );
     $account = app(BankCashAccountService::class)->create(
@@ -146,7 +148,7 @@ test('restricted party vehicle and bank persist to authorized branch', function 
         $owner,
         $company,
         $resolver->scopeBranchForCreate($company, $branchA),
-        ['registration_number' => 'MH12XY9999'],
+        ownVehicleMasterPayload($owner, ['registration_number' => 'MH12XY9999']),
         'Create',
     );
     $account = app(BankCashAccountService::class)->create(
@@ -187,11 +189,14 @@ test('forged scope cannot override company data visibility on http create', func
     visibilityLogin($owner2);
     enterBranchWorkspace($company2, $branch2)->assertRedirect();
 
-    $this->post(route('branch.vehicles.store'), [
-        'scope' => 'branch',
-        'registration_number' => 'MH01ZZ0001',
-        'remark' => 'Forge branch',
-    ])->assertRedirect();
+    $this->post(route('branch.vehicles.store'), array_merge(
+        ownVehicleMasterPayload($owner2),
+        [
+            'scope' => 'branch',
+            'registration_number' => 'MH01ZZ0001',
+            'remark' => 'Forge branch',
+        ],
+    ))->assertRedirect();
 
     $vehicle = Vehicle::query()->where('registration_number', 'MH01ZZ0001')->firstOrFail();
     expect($vehicle->branch_id)->toBeNull();

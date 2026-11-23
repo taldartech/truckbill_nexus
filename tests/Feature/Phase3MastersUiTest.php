@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__.'/../Support/VehicleMasterFixtures.php';
+
 use App\Domains\Company\CompanyWorkspaceService;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Rbac\Enums\PermissionDomain;
@@ -189,12 +191,15 @@ test('vehicle and bank cash inertia crud masks account numbers', function () {
     uiActingAsCustomer($owner);
     enterBranchWorkspace($company, $branch)->assertRedirect();
 
-    $this->post(route('branch.vehicles.store'), [
-        'registration_number' => 'MH12AB1234',
-        'make' => 'Tata',
-        'model' => '407',
-        'remark' => 'Create vehicle',
-    ])->assertRedirect();
+    $this->post(route('branch.vehicles.store'), array_merge(
+        ownVehicleMasterPayload($owner),
+        [
+            'registration_number' => 'MH12AB1234',
+            'make' => 'Tata',
+            'model' => '407',
+            'remark' => 'Create vehicle',
+        ],
+    ))->assertRedirect();
 
     $vehicle = Vehicle::query()->where('registration_number', 'MH12AB1234')->firstOrFail();
     $this->get(route('branch.vehicles.show', $vehicle))
