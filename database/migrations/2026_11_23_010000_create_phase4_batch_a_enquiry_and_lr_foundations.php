@@ -1,8 +1,8 @@
 <?php
 
+use App\Support\Database\SoftDeleteUniqueIndex;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -28,20 +28,18 @@ return new class extends Migration
             $table->foreign(['company_id', 'branch_id'])
                 ->references(['company_id', 'id'])
                 ->on('branches')
-                ->nullOnDelete();
+                ->restrictOnDelete();
             $table->index(['company_id', 'document_type']);
         });
 
         // PostgreSQL treats NULLs as distinct in unique indexes; coalesce branch for company scope.
-        DB::statement("
-            CREATE UNIQUE INDEX document_number_sequences_scope_unique
-            ON document_number_sequences (
-                company_id,
-                document_type,
-                scope_type,
-                (COALESCE(branch_id::text, ''))
-            )
-        ");
+        // MySQL: generated scope_key via CONCAT + IFNULL(branch_id, '').
+        SoftDeleteUniqueIndex::createNullableScopeUniqueIndex(
+            'document_number_sequences',
+            'document_number_sequences_scope_unique',
+            ['company_id', 'document_type', 'scope_type'],
+            'branch_id',
+        );
 
         Schema::create('document_number_allocations', function (Blueprint $table) {
             $table->uuid('id')->primary();
@@ -60,21 +58,23 @@ return new class extends Migration
             $table->foreign(['company_id', 'branch_id'])
                 ->references(['company_id', 'id'])
                 ->on('branches')
-                ->nullOnDelete();
-            $table->index(['company_id', 'document_type', 'number']);
-            $table->index(['allocated_to_type', 'allocated_to_id']);
+                ->restrictOnDelete();
+            $table->index(['company_id', 'document_type', 'number'], 'dna_company_type_number_idx');
+            $table->index(['allocated_to_type', 'allocated_to_id'], 'dna_allocated_to_idx');
         });
 
-        DB::statement("
-            CREATE UNIQUE INDEX document_number_allocations_company_active_unique
-            ON document_number_allocations (company_id, document_type, number)
-            WHERE deleted_at IS NULL AND scope_type = 'company'
-        ");
-        DB::statement("
-            CREATE UNIQUE INDEX document_number_allocations_branch_active_unique
-            ON document_number_allocations (company_id, branch_id, document_type, number)
-            WHERE deleted_at IS NULL AND scope_type = 'branch'
-        ");
+        SoftDeleteUniqueIndex::createActiveUniqueIndex(
+            'document_number_allocations',
+            'document_number_allocations_company_active_unique',
+            ['company_id', 'document_type', 'number'],
+            "scope_type = 'company'",
+        );
+        SoftDeleteUniqueIndex::createActiveUniqueIndex(
+            'document_number_allocations',
+            'document_number_allocations_branch_active_unique',
+            ['company_id', 'branch_id', 'document_type', 'number'],
+            "scope_type = 'branch'",
+        );
 
         Schema::create('document_number_adjustments', function (Blueprint $table) {
             $table->uuid('id')->primary();
@@ -121,11 +121,11 @@ return new class extends Migration
             $table->foreign(['company_id', 'branch_id'])
                 ->references(['company_id', 'id'])
                 ->on('branches')
-                ->nullOnDelete();
+                ->restrictOnDelete();
             $table->foreign(['company_id', 'customer_party_id'])
                 ->references(['company_id', 'id'])
                 ->on('parties')
-                ->nullOnDelete();
+                ->restrictOnDelete();
             $table->foreign('vehicle_type_id')->references('id')->on('owner_catalogue_items')->restrictOnDelete();
             $table->unique(['company_id', 'id']);
             $table->index(['company_id', 'status']);
@@ -133,17 +133,22 @@ return new class extends Migration
             $table->index(['company_id', 'expected_loading_date']);
         });
 
-        DB::statement('
-            CREATE UNIQUE INDEX enquiries_company_number_active_unique
-            ON enquiries (company_id, enquiry_number)
-            WHERE deleted_at IS NULL
-        ');
-        DB::statement('
-            CREATE INDEX enquiries_unassigned_queue_idx
-            ON enquiries (company_id, created_at)
-            WHERE branch_id IS NULL AND deleted_at IS NULL
-        ');
-        DB::statement('ALTER TABLE enquiries ADD CONSTRAINT enquiries_vehicle_quantity_positive CHECK (vehicle_quantity >= 1)');
+        SoftDeleteUniqueIndex::createActiveUniqueIndex(
+            'enquiries',
+            'enquiries_company_number_active_unique',
+            ['company_id', 'enquiry_number'],
+        );
+        SoftDeleteUniqueIndex::createPartialIndex(
+            'enquiries',
+            'enquiries_unassigned_queue_idx',
+            ['company_id', 'created_at'],
+            'branch_id IS NULL AND deleted_at IS NULL',
+        );
+        SoftDeleteUniqueIndex::addCheckConstraint(
+            'enquiries',
+            'enquiries_vehicle_quantity_positive',
+            'vehicle_quantity >= 1',
+        );
 
         Schema::create('enquiry_goods_rows', function (Blueprint $table) {
             $table->uuid('id')->primary();
@@ -188,7 +193,7 @@ return new class extends Migration
                 ->references(['company_id', 'id'])
                 ->on('enquiries')
                 ->restrictOnDelete();
-            $table->index(['company_id', 'enquiry_id', 'assigned_at']);
+            $table->index(['company_id', 'enquiry_id', 'assigned_at'], 'eah_company_enquiry_assigned_idx');
         });
 
         Schema::create('enquiry_follow_ups', function (Blueprint $table) {
@@ -263,11 +268,11 @@ return new class extends Migration
             $table->index(['company_id', 'enquiry_id']);
         });
 
-        DB::statement('
-            CREATE UNIQUE INDEX enquiry_quotations_transporter_active_unique
-            ON enquiry_quotations (enquiry_id, transporter_party_id)
-            WHERE deleted_at IS NULL
-        ');
+        SoftDeleteUniqueIndex::createActiveUniqueIndex(
+            'enquiry_quotations',
+            'enquiry_quotations_transporter_active_unique',
+            ['enquiry_id', 'transporter_party_id'],
+        );
 
         Schema::create('enquiry_quotation_selection_histories', function (Blueprint $table) {
             $table->uuid('id')->primary();
@@ -281,15 +286,16 @@ return new class extends Migration
             $table->timestamps();
 
             $table->foreign('company_id')->references('id')->on('companies')->restrictOnDelete();
-            $table->foreign(['company_id', 'enquiry_id'])
+            // Explicit short names: MySQL identifier limit is 64 characters.
+            $table->foreign(['company_id', 'enquiry_id'], 'eqsh_company_enquiry_fk')
                 ->references(['company_id', 'id'])
                 ->on('enquiries')
                 ->restrictOnDelete();
-            $table->foreign(['company_id', 'quotation_id'])
+            $table->foreign(['company_id', 'quotation_id'], 'eqsh_company_quotation_fk')
                 ->references(['company_id', 'id'])
                 ->on('enquiry_quotations')
                 ->restrictOnDelete();
-            $table->index(['company_id', 'enquiry_id', 'selected_at']);
+            $table->index(['company_id', 'enquiry_id', 'selected_at'], 'eqsh_company_enquiry_selected_idx');
         });
 
         Schema::create('enquiry_quotation_broadcast_requests', function (Blueprint $table) {
@@ -297,7 +303,7 @@ return new class extends Migration
             $table->uuid('company_id');
             $table->uuid('enquiry_id');
             $table->uuid('batch_id');
-            $table->jsonb('channels');
+            $table->json('channels');
             $table->string('status', 32);
             $table->string('correlation_id', 64)->nullable();
             $table->string('idempotency_key', 128)->nullable();
@@ -306,20 +312,21 @@ return new class extends Migration
             $table->timestamps();
 
             $table->foreign('company_id')->references('id')->on('companies')->restrictOnDelete();
-            $table->foreign(['company_id', 'enquiry_id'])
+            $table->foreign(['company_id', 'enquiry_id'], 'eqbr_company_enquiry_fk')
                 ->references(['company_id', 'id'])
                 ->on('enquiries')
                 ->restrictOnDelete();
             $table->unique(['company_id', 'id']);
-            $table->index(['company_id', 'enquiry_id', 'requested_at']);
+            $table->index(['company_id', 'enquiry_id', 'requested_at'], 'eqbr_company_enquiry_requested_idx');
             $table->index(['company_id', 'batch_id']);
         });
 
-        DB::statement('
-            CREATE UNIQUE INDEX enquiry_broadcast_idempotency_unique
-            ON enquiry_quotation_broadcast_requests (company_id, idempotency_key)
-            WHERE idempotency_key IS NOT NULL
-        ');
+        SoftDeleteUniqueIndex::createPartialUniqueIndex(
+            'enquiry_quotation_broadcast_requests',
+            'enquiry_broadcast_idempotency_unique',
+            ['company_id', 'idempotency_key'],
+            'idempotency_key IS NOT NULL',
+        );
 
         Schema::create('enquiry_quotation_broadcast_targets', function (Blueprint $table) {
             $table->uuid('id')->primary();
@@ -329,11 +336,11 @@ return new class extends Migration
             $table->timestamps();
 
             $table->foreign('company_id')->references('id')->on('companies')->restrictOnDelete();
-            $table->foreign(['company_id', 'broadcast_request_id'])
+            $table->foreign(['company_id', 'broadcast_request_id'], 'eqbt_company_broadcast_fk')
                 ->references(['company_id', 'id'])
                 ->on('enquiry_quotation_broadcast_requests')
                 ->restrictOnDelete();
-            $table->foreign(['company_id', 'transporter_party_id'])
+            $table->foreign(['company_id', 'transporter_party_id'], 'eqbt_company_transporter_fk')
                 ->references(['company_id', 'id'])
                 ->on('parties')
                 ->restrictOnDelete();
@@ -371,7 +378,7 @@ return new class extends Migration
             $table->foreign(['company_id', 'enquiry_id'])
                 ->references(['company_id', 'id'])
                 ->on('enquiries')
-                ->nullOnDelete();
+                ->restrictOnDelete();
             $table->unique(['company_id', 'external_reference'], 'enquiry_external_references_company_ref_unique');
             $table->index(['company_id', 'enquiry_id']);
         });
@@ -410,11 +417,11 @@ return new class extends Migration
             $table->foreign(['company_id', 'consignor_party_id'])
                 ->references(['company_id', 'id'])
                 ->on('parties')
-                ->nullOnDelete();
+                ->restrictOnDelete();
             $table->foreign(['company_id', 'consignee_party_id'])
                 ->references(['company_id', 'id'])
                 ->on('parties')
-                ->nullOnDelete();
+                ->restrictOnDelete();
             $table->unique(['company_id', 'id']);
             $table->index(['company_id', 'branch_id', 'status']);
             $table->index(['company_id', 'workflow_context']);
@@ -485,7 +492,11 @@ return new class extends Migration
             $table->index(['company_id', 'lorry_receipt_id']);
         });
 
-        DB::statement('ALTER TABLE lr_additional_charges ADD CONSTRAINT lr_additional_charges_amount_positive CHECK (amount > 0)');
+        SoftDeleteUniqueIndex::addCheckConstraint(
+            'lr_additional_charges',
+            'lr_additional_charges_amount_positive',
+            'amount > 0',
+        );
 
         // Cardinality-neutral conversion foundation (PO-P4-CNV-CARDINALITY Pending).
         Schema::create('enquiry_conversions', function (Blueprint $table) {
@@ -506,11 +517,12 @@ return new class extends Migration
             $table->unique(['company_id', 'id']);
         });
 
-        DB::statement('
-            CREATE UNIQUE INDEX enquiry_conversions_idempotency_unique
-            ON enquiry_conversions (company_id, idempotency_key)
-            WHERE idempotency_key IS NOT NULL
-        ');
+        SoftDeleteUniqueIndex::createPartialUniqueIndex(
+            'enquiry_conversions',
+            'enquiry_conversions_idempotency_unique',
+            ['company_id', 'idempotency_key'],
+            'idempotency_key IS NOT NULL',
+        );
 
         Schema::create('enquiry_conversion_lorry_receipts', function (Blueprint $table) {
             $table->uuid('id')->primary();
@@ -521,17 +533,17 @@ return new class extends Migration
             $table->timestamps();
 
             $table->foreign('company_id')->references('id')->on('companies')->restrictOnDelete();
-            $table->foreign(['company_id', 'enquiry_conversion_id'])
+            $table->foreign(['company_id', 'enquiry_conversion_id'], 'eclr_company_conversion_fk')
                 ->references(['company_id', 'id'])
                 ->on('enquiry_conversions')
                 ->restrictOnDelete();
-            $table->foreign(['company_id', 'lorry_receipt_id'])
+            $table->foreign(['company_id', 'lorry_receipt_id'], 'eclr_company_lorry_receipt_fk')
                 ->references(['company_id', 'id'])
                 ->on('lorry_receipts')
                 ->restrictOnDelete();
-            $table->unique(['enquiry_conversion_id', 'lorry_receipt_id']);
+            $table->unique(['enquiry_conversion_id', 'lorry_receipt_id'], 'eclr_conversion_lr_uq');
             $table->unique(['lorry_receipt_id']);
-            $table->index(['company_id', 'enquiry_conversion_id']);
+            $table->index(['company_id', 'enquiry_conversion_id'], 'eclr_company_conversion_idx');
         });
     }
 

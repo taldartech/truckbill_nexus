@@ -99,13 +99,14 @@ return new class extends Migration
             $table->timestamps();
 
             $table->foreign('company_id')->references('id')->on('companies')->restrictOnDelete();
-            $table->foreign(['company_id', 'company_subscription_id'])
+            // Explicit short names: MySQL identifier limit is 64 characters.
+            $table->foreign(['company_id', 'company_subscription_id'], 'csi_company_subscription_fk')
                 ->references(['company_id', 'id'])
                 ->on('company_subscriptions')
                 ->restrictOnDelete();
             $table->foreign('plan_id')->references('id')->on('subscription_plans')->nullOnDelete();
             $table->foreign('addon_id')->references('id')->on('subscription_addons')->nullOnDelete();
-            $table->index(['company_subscription_id', 'item_type']);
+            $table->index(['company_subscription_id', 'item_type'], 'csi_subscription_item_type_idx');
         });
 
         Schema::create('company_subscription_snapshots', function (Blueprint $table) {
@@ -118,11 +119,11 @@ return new class extends Migration
             $table->timestamp('created_at');
 
             $table->foreign('company_id')->references('id')->on('companies')->restrictOnDelete();
-            $table->foreign(['company_id', 'company_subscription_id'])
+            $table->foreign(['company_id', 'company_subscription_id'], 'css_company_subscription_fk')
                 ->references(['company_id', 'id'])
                 ->on('company_subscriptions')
                 ->restrictOnDelete();
-            $table->index(['company_subscription_id', 'created_at']);
+            $table->index(['company_subscription_id', 'created_at'], 'css_subscription_created_idx');
         });
 
         Schema::create('subscription_credit_ledgers', function (Blueprint $table) {
@@ -134,7 +135,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->foreign('company_id')->references('id')->on('companies')->restrictOnDelete();
-            $table->unique(['company_id', 'ledger_type', 'service_key']);
+            $table->unique(['company_id', 'ledger_type', 'service_key'], 'scl_company_type_service_uq');
         });
 
         Schema::create('subscription_credit_entries', function (Blueprint $table) {

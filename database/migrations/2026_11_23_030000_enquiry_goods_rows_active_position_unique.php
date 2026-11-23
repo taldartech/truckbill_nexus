@@ -1,7 +1,7 @@
 <?php
 
+use App\Support\Database\SoftDeleteUniqueIndex;
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -16,13 +16,16 @@ return new class extends Migration
             return;
         }
 
-        DB::statement('ALTER TABLE enquiry_goods_rows DROP CONSTRAINT IF EXISTS enquiry_goods_rows_enquiry_id_position_unique');
+        SoftDeleteUniqueIndex::dropUniqueConstraintOrIndexIfExists(
+            'enquiry_goods_rows',
+            'enquiry_goods_rows_enquiry_id_position_unique',
+        );
 
-        DB::statement('
-            CREATE UNIQUE INDEX enquiry_goods_rows_enquiry_id_position_active_unique
-            ON enquiry_goods_rows (enquiry_id, position)
-            WHERE deleted_at IS NULL
-        ');
+        SoftDeleteUniqueIndex::createActiveUniqueIndex(
+            'enquiry_goods_rows',
+            'enquiry_goods_rows_enquiry_id_position_active_unique',
+            ['enquiry_id', 'position'],
+        );
     }
 
     public function down(): void
@@ -31,11 +34,15 @@ return new class extends Migration
             return;
         }
 
-        DB::statement('DROP INDEX IF EXISTS enquiry_goods_rows_enquiry_id_position_active_unique');
+        SoftDeleteUniqueIndex::dropIndexIfExists(
+            'enquiry_goods_rows',
+            'enquiry_goods_rows_enquiry_id_position_active_unique',
+        );
 
-        DB::statement('
-            CREATE UNIQUE INDEX enquiry_goods_rows_enquiry_id_position_unique
-            ON enquiry_goods_rows (enquiry_id, position)
-        ');
+        SoftDeleteUniqueIndex::createUniqueIndex(
+            'enquiry_goods_rows',
+            'enquiry_goods_rows_enquiry_id_position_unique',
+            ['enquiry_id', 'position'],
+        );
     }
 };

@@ -58,7 +58,7 @@ return new class extends Migration
             $table->foreign('company_id')->references('id')->on('companies')->restrictOnDelete();
             $table->foreign('company_subscription_id')->references('id')->on('company_subscriptions')->nullOnDelete();
             $table->foreign('catalogue_version_id')->references('id')->on('subscription_catalogue_versions')->nullOnDelete();
-            $table->index(['company_id', 'status', 'change_type']);
+            $table->index(['company_id', 'status', 'change_type'], 'scp_company_status_type_idx');
         });
 
         Schema::create('subscription_credit_reservations', function (Blueprint $table) {
@@ -76,7 +76,7 @@ return new class extends Migration
 
             $table->foreign('company_id')->references('id')->on('companies')->restrictOnDelete();
             $table->foreign('ledger_id')->references('id')->on('subscription_credit_ledgers')->restrictOnDelete();
-            $table->unique(['ledger_id', 'idempotency_key']);
+            $table->unique(['ledger_id', 'idempotency_key'], 'scr_ledger_idempotency_uq');
             $table->index(['company_id', 'status']);
         });
 

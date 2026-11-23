@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Database\SoftDeleteUniqueIndex;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -33,7 +34,10 @@ return new class extends Migration
                 END
             ");
 
-            DB::statement('ALTER TABLE users DROP CONSTRAINT IF EXISTS users_internal_role_consistency_check');
+            SoftDeleteUniqueIndex::dropCheckConstraintIfExists(
+                'users',
+                'users_internal_role_consistency_check',
+            );
 
             Schema::table('users', function (Blueprint $table) {
                 $table->dropIndex(['internal_role']);
@@ -41,14 +45,11 @@ return new class extends Migration
             });
         }
 
-        DB::statement('
-            ALTER TABLE users
-            ADD CONSTRAINT users_is_super_admin_internal_only_check
-            CHECK (
-                (is_super_admin = false)
-                OR (is_super_admin = true AND identity_type = \'internal\')
-            )
-        ');
+        SoftDeleteUniqueIndex::addCheckConstraint(
+            'users',
+            'users_is_super_admin_internal_only_check',
+            "(is_super_admin = false) OR (is_super_admin = true AND identity_type = 'internal')",
+        );
 
         Schema::table('users', function (Blueprint $table) {
             $table->index('is_super_admin');
@@ -57,7 +58,10 @@ return new class extends Migration
 
     public function down(): void
     {
-        DB::statement('ALTER TABLE users DROP CONSTRAINT IF EXISTS users_is_super_admin_internal_only_check');
+        SoftDeleteUniqueIndex::dropCheckConstraintIfExists(
+            'users',
+            'users_is_super_admin_internal_only_check',
+        );
 
         Schema::table('users', function (Blueprint $table) {
             $table->dropIndex(['is_super_admin']);
@@ -85,10 +89,10 @@ return new class extends Migration
             );
         }
 
-        DB::statement("
-            ALTER TABLE users
-            ADD CONSTRAINT users_internal_role_consistency_check
-            CHECK (
+        SoftDeleteUniqueIndex::addCheckConstraint(
+            'users',
+            'users_internal_role_consistency_check',
+            "
                 (identity_type = 'customer' AND internal_role IS NULL)
                 OR (
                     identity_type = 'internal'
@@ -99,8 +103,8 @@ return new class extends Migration
                         'support_executive'
                     )
                 )
-            )
-        ");
+            ",
+        );
 
         Schema::table('users', function (Blueprint $table) {
             $table->index('internal_role');

@@ -1,8 +1,8 @@
 <?php
 
+use App\Support\Database\SoftDeleteUniqueIndex;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -102,37 +102,43 @@ return new class extends Migration
             $table->index('deactivated_at');
         });
 
-        DB::statement("
-            ALTER TABLE permissions
-            ADD CONSTRAINT permissions_domain_check
-            CHECK (domain IN ('internal', 'customer'))
-        ");
+        SoftDeleteUniqueIndex::addCheckConstraint(
+            'permissions',
+            'permissions_domain_check',
+            "domain IN ('internal', 'customer')",
+        );
 
-        DB::statement("
-            ALTER TABLE roles
-            ADD CONSTRAINT roles_domain_check
-            CHECK (domain IN ('internal', 'customer'))
-        ");
+        SoftDeleteUniqueIndex::addCheckConstraint(
+            'roles',
+            'roles_domain_check',
+            "domain IN ('internal', 'customer')",
+        );
 
-        DB::statement('
-            CREATE UNIQUE INDEX role_permissions_active_unique
-            ON role_permissions (role_id, permission_id)
-            WHERE deactivated_at IS NULL AND deleted_at IS NULL
-        ');
+        SoftDeleteUniqueIndex::createActiveUniqueIndex(
+            'role_permissions',
+            'role_permissions_active_unique',
+            ['role_id', 'permission_id'],
+            null,
+            'deactivated_at IS NULL AND deleted_at IS NULL',
+        );
 
         // One active ordinary Internal role per Internal identity.
-        DB::statement('
-            CREATE UNIQUE INDEX internal_role_assignments_active_user_unique
-            ON internal_role_assignments (user_id)
-            WHERE deactivated_at IS NULL AND deleted_at IS NULL
-        ');
+        SoftDeleteUniqueIndex::createActiveUniqueIndex(
+            'internal_role_assignments',
+            'internal_role_assignments_active_user_unique',
+            ['user_id'],
+            null,
+            'deactivated_at IS NULL AND deleted_at IS NULL',
+        );
 
         // One active Customer role per membership+branch.
-        DB::statement('
-            CREATE UNIQUE INDEX branch_role_assignments_active_membership_branch_unique
-            ON branch_role_assignments (company_membership_id, branch_id)
-            WHERE deactivated_at IS NULL AND deleted_at IS NULL
-        ');
+        SoftDeleteUniqueIndex::createActiveUniqueIndex(
+            'branch_role_assignments',
+            'branch_role_assignments_active_membership_branch_unique',
+            ['company_membership_id', 'branch_id'],
+            null,
+            'deactivated_at IS NULL AND deleted_at IS NULL',
+        );
     }
 
     public function down(): void

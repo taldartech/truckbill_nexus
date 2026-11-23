@@ -45,7 +45,7 @@ return new class extends Migration
             $table->timestamps();
             $table->softDeletes();
 
-            $table->index(['company_id', 'branch_id', 'account_kind', 'is_active']);
+            $table->index(['company_id', 'branch_id', 'account_kind', 'is_active'], 'bca_company_branch_kind_active_idx');
             $table->unique(['company_id', 'account_kind', 'name']);
         });
 
@@ -69,9 +69,13 @@ return new class extends Migration
             $table->foreignUuid('station_id')->constrained('stations')->cascadeOnDelete();
             $table->foreignUuid('company_id')->constrained('companies')->cascadeOnDelete();
             $table->foreignUuid('branch_id')->nullable()->constrained('branches')->nullOnDelete();
-            $table->foreignUuid('default_transporter_party_id')->nullable()->constrained('parties')->nullOnDelete();
+            $table->uuid('default_transporter_party_id')->nullable();
             $table->timestamps();
 
+            $table->foreign('default_transporter_party_id', 'sdt_transporter_party_fk')
+                ->references('id')
+                ->on('parties')
+                ->nullOnDelete();
             $table->unique(['station_id', 'company_id', 'branch_id'], 'station_defaults_scope_unique');
         });
 
@@ -88,7 +92,7 @@ return new class extends Migration
             $table->softDeletes();
 
             $table->unique(['owner_user_id', 'catalogue_type', 'code'], 'owner_catalogue_unique');
-            $table->index(['owner_user_id', 'catalogue_type', 'is_active']);
+            $table->index(['owner_user_id', 'catalogue_type', 'is_active'], 'owner_catalogue_type_active_idx');
         });
 
         Schema::create('payment_modes', function (Blueprint $table) {

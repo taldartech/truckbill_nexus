@@ -1,8 +1,8 @@
 <?php
 
+use App\Support\Database\SoftDeleteUniqueIndex;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -76,18 +76,22 @@ return new class extends Migration
         });
 
         // Exactly one active membership per user/company.
-        DB::statement('
-            CREATE UNIQUE INDEX company_memberships_active_user_company_unique
-            ON company_memberships (company_id, user_id)
-            WHERE deactivated_at IS NULL AND deleted_at IS NULL
-        ');
+        SoftDeleteUniqueIndex::createActiveUniqueIndex(
+            'company_memberships',
+            'company_memberships_active_user_company_unique',
+            ['company_id', 'user_id'],
+            null,
+            'deactivated_at IS NULL AND deleted_at IS NULL',
+        );
 
         // Exactly one active assignment per membership/branch.
-        DB::statement('
-            CREATE UNIQUE INDEX branch_assignments_active_membership_branch_unique
-            ON branch_assignments (company_membership_id, branch_id)
-            WHERE deactivated_at IS NULL AND deleted_at IS NULL
-        ');
+        SoftDeleteUniqueIndex::createActiveUniqueIndex(
+            'branch_assignments',
+            'branch_assignments_active_membership_branch_unique',
+            ['company_membership_id', 'branch_id'],
+            null,
+            'deactivated_at IS NULL AND deleted_at IS NULL',
+        );
     }
 
     public function down(): void

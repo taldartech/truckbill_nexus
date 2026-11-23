@@ -1,7 +1,7 @@
 <?php
 
+use App\Support\Database\SoftDeleteUniqueIndex;
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
@@ -17,13 +17,16 @@ return new class extends Migration
             return;
         }
 
-        DB::statement('ALTER TABLE lr_goods_rows DROP CONSTRAINT IF EXISTS lr_goods_rows_lorry_receipt_id_position_unique');
+        SoftDeleteUniqueIndex::dropUniqueConstraintOrIndexIfExists(
+            'lr_goods_rows',
+            'lr_goods_rows_lorry_receipt_id_position_unique',
+        );
 
-        DB::statement('
-            CREATE UNIQUE INDEX lr_goods_rows_lorry_receipt_id_position_active_unique
-            ON lr_goods_rows (lorry_receipt_id, position)
-            WHERE deleted_at IS NULL
-        ');
+        SoftDeleteUniqueIndex::createActiveUniqueIndex(
+            'lr_goods_rows',
+            'lr_goods_rows_lorry_receipt_id_position_active_unique',
+            ['lorry_receipt_id', 'position'],
+        );
     }
 
     public function down(): void
@@ -32,11 +35,15 @@ return new class extends Migration
             return;
         }
 
-        DB::statement('DROP INDEX IF EXISTS lr_goods_rows_lorry_receipt_id_position_active_unique');
+        SoftDeleteUniqueIndex::dropIndexIfExists(
+            'lr_goods_rows',
+            'lr_goods_rows_lorry_receipt_id_position_active_unique',
+        );
 
-        DB::statement('
-            CREATE UNIQUE INDEX lr_goods_rows_lorry_receipt_id_position_unique
-            ON lr_goods_rows (lorry_receipt_id, position)
-        ');
+        SoftDeleteUniqueIndex::createUniqueIndex(
+            'lr_goods_rows',
+            'lr_goods_rows_lorry_receipt_id_position_unique',
+            ['lorry_receipt_id', 'position'],
+        );
     }
 };

@@ -36,7 +36,7 @@ return new class extends Migration
             $table->foreign(['company_id', 'branch_id'])
                 ->references(['company_id', 'id'])
                 ->on('branches')
-                ->nullOnDelete();
+                ->restrictOnDelete();
             $table->unique(['company_id', 'id']);
             $table->index(['company_id', 'branch_id']);
             $table->index(['company_id', 'name']);

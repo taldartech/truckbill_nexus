@@ -1,8 +1,8 @@
 <?php
 
+use App\Support\Database\SoftDeleteUniqueIndex;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -27,11 +27,11 @@ return new class extends Migration
             $table->index(['status', 'expires_at']);
         });
 
-        DB::statement("
-            ALTER TABLE invitations
-            ADD CONSTRAINT invitations_status_check
-            CHECK (status IN ('pending', 'accepted', 'revoked', 'expired'))
-        ");
+        SoftDeleteUniqueIndex::addCheckConstraint(
+            'invitations',
+            'invitations_status_check',
+            "status IN ('pending', 'accepted', 'revoked', 'expired')",
+        );
     }
 
     public function down(): void

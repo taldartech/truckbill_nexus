@@ -1,5 +1,6 @@
 <?php
 
+use App\Support\Database\SoftDeleteUniqueIndex;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -38,18 +39,18 @@ return new class extends Migration
             );
         }
 
-        DB::statement('ALTER TABLE users ALTER COLUMN identity_type SET NOT NULL');
+        SoftDeleteUniqueIndex::setColumnNotNull('users', 'identity_type', 'VARCHAR(32)');
 
-        DB::statement("
-            ALTER TABLE users
-            ADD CONSTRAINT users_identity_type_check
-            CHECK (identity_type IN ('internal', 'customer'))
-        ");
+        SoftDeleteUniqueIndex::addCheckConstraint(
+            'users',
+            'users_identity_type_check',
+            "identity_type IN ('internal', 'customer')",
+        );
 
-        DB::statement("
-            ALTER TABLE users
-            ADD CONSTRAINT users_internal_role_consistency_check
-            CHECK (
+        SoftDeleteUniqueIndex::addCheckConstraint(
+            'users',
+            'users_internal_role_consistency_check',
+            "
                 (identity_type = 'customer' AND internal_role IS NULL)
                 OR (
                     identity_type = 'internal'
@@ -60,8 +61,8 @@ return new class extends Migration
                         'support_executive'
                     )
                 )
-            )
-        ");
+            ",
+        );
 
         Schema::table('users', function (Blueprint $table) {
             $table->index('identity_type');
@@ -75,8 +76,8 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement('ALTER TABLE users DROP CONSTRAINT IF EXISTS users_internal_role_consistency_check');
-        DB::statement('ALTER TABLE users DROP CONSTRAINT IF EXISTS users_identity_type_check');
+        SoftDeleteUniqueIndex::dropCheckConstraintIfExists('users', 'users_internal_role_consistency_check');
+        SoftDeleteUniqueIndex::dropCheckConstraintIfExists('users', 'users_identity_type_check');
 
         Schema::table('users', function (Blueprint $table) {
             $table->dropIndex(['identity_type']);
