@@ -59,6 +59,7 @@ return [
             'prefix_indexes' => true,
             'strict' => true,
             'engine' => null,
+            'timezone' => env('DB_TIMEZONE', '+00:00'),
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
@@ -79,6 +80,7 @@ return [
             'prefix_indexes' => true,
             'strict' => true,
             'engine' => null,
+            'timezone' => env('DB_TIMEZONE', '+00:00'),
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
@@ -97,6 +99,9 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
+            // Keep session TZ aligned with app.timezone (UTC) so timestampTz round-trips
+            // preserve absolute instants when Eloquent writes naive UTC datetimes.
+            'timezone' => env('DB_TIMEZONE', 'UTC'),
         ],
 
         'sqlsrv' => [

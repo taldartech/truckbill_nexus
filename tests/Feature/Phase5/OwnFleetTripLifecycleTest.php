@@ -6,6 +6,7 @@ use App\Domains\OwnFleet\Trip\Exceptions\TripConflictException;
 use App\Domains\OwnFleet\Trip\TripMovementService;
 use App\Domains\OwnFleet\Trip\TripService;
 use App\Support\Tenant\TenantContextHolder;
+use Carbon\CarbonImmutable;
 use Database\Seeders\RbacSeeder;
 use Database\Seeders\SubscriptionCatalogueSeeder;
 use Illuminate\Support\Facades\Cache;
@@ -86,9 +87,11 @@ test('completion validates odometer distance allocation and timing classificatio
         'ending_odometer' => '900',
     ]))->toThrow(ValidationException::class);
 
+    // Operational datetimes are company-local wall clocks; persistence is UTC.
+    $timezone = filled($ctx['company']->timezone) ? (string) $ctx['company']->timezone : 'Asia/Kolkata';
     $withExpected = $dispatched->fresh();
     $withExpected->forceFill([
-        'expected_end_at' => '2026-11-23 18:00:00',
+        'expected_end_at' => CarbonImmutable::parse('2026-11-23 18:00:00', $timezone)->utc(),
     ])->save();
 
     $completed = $service->complete($withExpected->fresh(), $ctx['member'], [
@@ -103,4 +106,42 @@ test('completion validates odometer distance allocation and timing classificatio
     expect(fn () => $service->complete($completed, $ctx['member'], [
         'ending_odometer' => '1200',
     ]))->toThrow(TripConflictException::class);
+});
+
+test('timing classification covers early on-time delayed not-applicable and midnight boundary', function () {
+    $ctx = tripWorkspace();
+    tripActivate($ctx['company'], $ctx['branch']);
+    $service = app(TripService::class);
+    $timezone = filled($ctx['company']->timezone) ? (string) $ctx['company']->timezone : 'Asia/Kolkata';
+
+    $cases = [
+        ['expected' => '2026-11-23 18:00:00', 'arrival' => '2026-11-23 17:30:00', 'result' => TripTimingPerformance::Early],
+        ['expected' => '2026-11-23 18:00:00', 'arrival' => '2026-11-23 18:00:00', 'result' => TripTimingPerformance::OnTime],
+        ['expected' => '2026-11-23 18:00:00', 'arrival' => '2026-11-23 18:00:45', 'result' => TripTimingPerformance::OnTime],
+        ['expected' => '2026-11-23 18:00:00', 'arrival' => '2026-11-23 19:30:00', 'result' => TripTimingPerformance::Delayed],
+        ['expected' => '2026-11-23 23:30:00', 'arrival' => '2026-11-24 00:15:00', 'result' => TripTimingPerformance::Delayed],
+        ['expected' => null, 'arrival' => '2026-11-23 19:30:00', 'result' => TripTimingPerformance::NotApplicable],
+    ];
+
+    foreach ($cases as $index => $case) {
+        $trip = tripCreatePendingTrip($ctx);
+        $dispatched = $service->dispatch($trip, $ctx['member'], [
+            'starting_odometer' => (string) (1000 + ($index * 10)),
+            'departure_at' => '2026-11-23 08:00:00',
+        ]);
+        tripFullyAllocate($ctx, $dispatched);
+
+        if ($case['expected'] !== null) {
+            $dispatched->forceFill([
+                'expected_end_at' => CarbonImmutable::parse($case['expected'], $timezone)->utc(),
+            ])->save();
+        }
+
+        $completed = $service->complete($dispatched->fresh(), $ctx['member'], [
+            'ending_odometer' => (string) (1100 + ($index * 10)),
+            'actual_arrival_at' => $case['arrival'],
+        ]);
+
+        expect($completed->timing_performance)->toBe($case['result']);
+    }
 });

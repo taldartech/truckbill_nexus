@@ -29,6 +29,7 @@ use App\Support\Audit\AuditWriter;
 use App\Support\Tenant\TenantContext;
 use App\Support\Tenant\TenantContextHolder;
 use Carbon\CarbonImmutable;
+use Carbon\CarbonInterface;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Str;
@@ -153,8 +154,9 @@ final class TripService
             $substituteId = null;
         }
 
+        $timezone = $this->companyTimezone($company);
         $expectedEnd = filled($payload['expected_end_at'] ?? null)
-            ? (string) $payload['expected_end_at']
+            ? $this->parseCompanyLocalDateTime((string) $payload['expected_end_at'], $timezone)
             : null;
 
         try {
@@ -272,9 +274,9 @@ final class TripService
         }
 
         $starting = $this->requireNonNegativeDecimal($payload['starting_odometer'] ?? null, 'starting_odometer', 1);
-        $timezone = filled($company->timezone) ? (string) $company->timezone : 'Asia/Kolkata';
+        $timezone = $this->companyTimezone($company);
         $departure = filled($payload['departure_at'] ?? null)
-            ? CarbonImmutable::parse((string) $payload['departure_at'], $timezone)->utc()
+            ? $this->parseCompanyLocalDateTime((string) $payload['departure_at'], $timezone)
             : CarbonImmutable::now('UTC');
 
         return $this->auditedTransaction->run(function () use ($trip, $company, $branch, $starting, $departure): Trip {
@@ -323,9 +325,9 @@ final class TripService
         }
 
         $ending = $this->requireNonNegativeDecimal($payload['ending_odometer'] ?? null, 'ending_odometer', 1);
-        $timezone = filled($company->timezone) ? (string) $company->timezone : 'Asia/Kolkata';
+        $timezone = $this->companyTimezone($company);
         $arrival = filled($payload['actual_arrival_at'] ?? null)
-            ? CarbonImmutable::parse((string) $payload['actual_arrival_at'], $timezone)->utc()
+            ? $this->parseCompanyLocalDateTime((string) $payload['actual_arrival_at'], $timezone)
             : CarbonImmutable::now($timezone)->utc();
 
         return $this->auditedTransaction->run(function () use ($trip, $company, $branch, $ending, $arrival, $timezone): Trip {
@@ -376,6 +378,10 @@ final class TripService
         });
     }
 
+    /**
+     * Contract: operational wall-clock inputs use company timezone; persisted as UTC.
+     * Classification compares arrival vs expected in company-local time.
+     */
     private function classifyTiming(
         mixed $expectedEndAt,
         CarbonImmutable $arrivalUtc,
@@ -385,12 +391,15 @@ final class TripService
             return TripTimingPerformance::NotApplicable;
         }
 
-        $expected = $expectedEndAt instanceof CarbonImmutable
-            ? $expectedEndAt
-            : CarbonImmutable::parse((string) $expectedEndAt);
+        // Stored expected_end_at is always a UTC instant (timestampTz).
+        $expectedUtc = match (true) {
+            $expectedEndAt instanceof CarbonImmutable => $expectedEndAt->utc(),
+            $expectedEndAt instanceof CarbonInterface => CarbonImmutable::instance($expectedEndAt)->utc(),
+            default => CarbonImmutable::parse((string) $expectedEndAt, 'UTC'),
+        };
 
         $arrivalLocal = $arrivalUtc->timezone($timezone);
-        $expectedLocal = $expected->timezone($timezone);
+        $expectedLocal = $expectedUtc->timezone($timezone);
 
         if ($arrivalLocal->lt($expectedLocal)) {
             return TripTimingPerformance::Early;
@@ -408,6 +417,16 @@ final class TripService
         return $arrivalLocal->gt($expectedLocal)
             ? TripTimingPerformance::Delayed
             : TripTimingPerformance::OnTime;
+    }
+
+    private function companyTimezone(Company $company): string
+    {
+        return filled($company->timezone) ? (string) $company->timezone : 'Asia/Kolkata';
+    }
+
+    private function parseCompanyLocalDateTime(string $value, string $timezone): CarbonImmutable
+    {
+        return CarbonImmutable::parse($value, $timezone)->utc();
     }
 
     /**

@@ -61,10 +61,12 @@ return new class extends Migration
                 ->references(['company_id', 'id'])
                 ->on('parties')
                 ->restrictOnDelete();
+            // MySQL rejects ON DELETE SET NULL on composite FKs when company_id is NOT NULL (errno 1830).
+            // Allocations are retained history; restrict deletion while invoices still reference them.
             $table->foreign(['company_id', 'document_number_allocation_id'], 'trip_invoices_company_doc_alloc_fk')
                 ->references(['company_id', 'id'])
                 ->on('document_number_allocations')
-                ->nullOnDelete();
+                ->restrictOnDelete();
             $table->unique(['company_id', 'id']);
             $table->index(['company_id', 'branch_id', 'status'], 'trip_invoices_company_branch_status_idx');
             $table->index(['company_id', 'billing_customer_party_id'], 'trip_invoices_company_customer_idx');
