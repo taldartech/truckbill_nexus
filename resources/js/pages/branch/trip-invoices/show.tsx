@@ -35,10 +35,20 @@ type Props = {
         can_delete: boolean;
         can_print: boolean;
         can_record_payment: boolean;
+        can_edit_charges: boolean;
+        can_view_freight: boolean;
     };
     paymentModes: Array<{ id: string; name: string }>;
     sampleBanner: string;
 };
+
+function moneyLabel(value: string | null | undefined, mayView: boolean): string {
+    if (!mayView || value === null || value === undefined) {
+        return '—';
+    }
+
+    return `₹${value}`;
+}
 
 export default function TripInvoiceShow({
     invoice,
@@ -47,6 +57,7 @@ export default function TripInvoiceShow({
     sampleBanner,
 }: Props) {
     const [showPayment, setShowPayment] = useState(false);
+    const mayViewFreight = permissions.can_view_freight;
 
     return (
         <>
@@ -77,13 +88,32 @@ export default function TripInvoiceShow({
                         </p>
                     </div>
                     <div className="rounded-lg border p-4 text-sm">
-                        <p>Base freight: ₹{invoice.base_freight_total}</p>
-                        <p>Additional: ₹{invoice.additional_charges_total}</p>
-                        <p>GST: ₹{invoice.gst_amount}</p>
-                        <p className="font-semibold">
-                            Total: ₹{invoice.invoice_total}
+                        <p>
+                            Base freight:{' '}
+                            {moneyLabel(
+                                invoice.base_freight_total,
+                                mayViewFreight,
+                            )}
                         </p>
-                        <p>Balance due: ₹{invoice.balance_due}</p>
+                        <p>
+                            Additional:{' '}
+                            {moneyLabel(
+                                invoice.additional_charges_total,
+                                mayViewFreight,
+                            )}
+                        </p>
+                        <p>
+                            GST:{' '}
+                            {moneyLabel(invoice.gst_amount, mayViewFreight)}
+                        </p>
+                        <p className="font-semibold">
+                            Total:{' '}
+                            {moneyLabel(invoice.invoice_total, mayViewFreight)}
+                        </p>
+                        <p>
+                            Balance due:{' '}
+                            {moneyLabel(invoice.balance_due, mayViewFreight)}
+                        </p>
                     </div>
                 </div>
                 <section>
@@ -91,7 +121,8 @@ export default function TripInvoiceShow({
                     <ul className="space-y-1 text-sm">
                         {invoice.lines.map((line, index) => (
                             <li key={index}>
-                                {line.lr_number} — ₹{line.base_freight}
+                                {line.lr_number} —{' '}
+                                {moneyLabel(line.base_freight, mayViewFreight)}
                             </li>
                         ))}
                     </ul>
@@ -104,7 +135,8 @@ export default function TripInvoiceShow({
                         <ul className="space-y-1 text-sm">
                             {invoice.charges.map((c, index) => (
                                 <li key={index}>
-                                    {c.description} — ₹{c.amount}
+                                    {c.description} —{' '}
+                                    {moneyLabel(c.amount, mayViewFreight)}
                                 </li>
                             ))}
                         </ul>
@@ -122,15 +154,34 @@ export default function TripInvoiceShow({
                         <ul className="space-y-1 text-sm">
                             {invoice.payments.map((p, index) => (
                                 <li key={index}>
-                                    {p.payment_date}: received ₹
-                                    {p.amount_received}, TDS ₹{p.tds_amount}{' '}
-                                    (settlement ₹{p.settlement_amount})
+                                    {p.payment_date}: received{' '}
+                                    {moneyLabel(
+                                        p.amount_received,
+                                        mayViewFreight,
+                                    )}
+                                    , TDS{' '}
+                                    {moneyLabel(p.tds_amount, mayViewFreight)}{' '}
+                                    (settlement{' '}
+                                    {moneyLabel(
+                                        p.settlement_amount,
+                                        mayViewFreight,
+                                    )}
+                                    )
                                 </li>
                             ))}
                         </ul>
                     )}
                 </section>
                 <div className="flex flex-wrap gap-2">
+                    {permissions.can_edit_charges && (
+                        <Button asChild variant="secondary">
+                            <Link
+                                href={`/trip-invoices/${invoice.id}/edit-charges`}
+                            >
+                                Edit additional charges
+                            </Link>
+                        </Button>
+                    )}
                     {permissions.can_print && (
                         <Button asChild variant="outline">
                             <Link
@@ -142,7 +193,9 @@ export default function TripInvoiceShow({
                         </Button>
                     )}
                     {permissions.can_record_payment &&
-                        invoice.balance_due !== '0.00' && (
+                        mayViewFreight &&
+                        invoice.balance_due !== '0.00' &&
+                        invoice.balance_due !== null && (
                             <Button onClick={() => setShowPayment((v) => !v)}>
                                 Record payment
                             </Button>

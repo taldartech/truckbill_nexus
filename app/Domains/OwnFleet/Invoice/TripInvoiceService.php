@@ -235,6 +235,98 @@ final class TripInvoiceService
         });
     }
 
+    /**
+     * @param  array{
+     *     edit_remark: string,
+     *     charges?: list<array{charge_type: string, description: string, amount: numeric-string|float|int}>
+     * }  $payload
+     */
+    public function updateCharges(TripInvoice $invoice, User $actor, array $payload): TripInvoice
+    {
+        $company = Company::query()->findOrFail($invoice->company_id);
+        $branch = Branch::query()->findOrFail($invoice->branch_id);
+        $this->assertCanEditCharges($actor, $company, $branch);
+        $this->assertOwnFleetEntitled($company);
+
+        $remark = trim((string) ($payload['edit_remark'] ?? ''));
+        if ($remark === '') {
+            throw ValidationException::withMessages(['edit_remark' => 'Edit reason is required.']);
+        }
+
+        $charges = $this->normalizeCharges($payload['charges'] ?? []);
+
+        return $this->auditedTransaction->run(function () use ($invoice, $company, $branch, $remark, $charges): TripInvoice {
+            return $this->withTenant($company, $branch, function () use ($invoice, $remark, $charges): TripInvoice {
+                $locked = TripInvoice::query()->whereKey($invoice->id)->whereNull('deleted_at')->lockForUpdate()->firstOrFail();
+
+                if ($locked->status !== TripInvoiceStatus::Pending) {
+                    throw new TripInvoiceConflictException('Only pending invoices allow additional charge edits.');
+                }
+
+                if ($locked->payments()->exists()) {
+                    throw new TripInvoiceConflictException('Additional charges are locked after the first payment.');
+                }
+
+                if ($locked->charges_locked_at !== null) {
+                    throw new TripInvoiceConflictException('Additional charges are locked.');
+                }
+
+                $baseFreight = $this->storedDecimal($locked->base_freight_total);
+                $additional = '0.00';
+                foreach ($charges as $charge) {
+                    $additional = bcadd($additional, $charge['amount'], 2);
+                }
+
+                [$taxable, $gstAmount, $invoiceTotal, $gstSnapshot] = $this->computeTaxTotals(
+                    Company::query()->findOrFail($locked->company_id),
+                    $baseFreight,
+                    $additional,
+                );
+
+                $before = $locked->toArray();
+
+                TripInvoiceCharge::query()
+                    ->where('trip_invoice_id', $locked->id)
+                    ->whereNull('deleted_at')
+                    ->each(fn (TripInvoiceCharge $row) => $row->delete());
+
+                foreach ($charges as $charge) {
+                    TripInvoiceCharge::query()->create([
+                        'id' => (string) Str::uuid(),
+                        'company_id' => $locked->company_id,
+                        'trip_invoice_id' => $locked->id,
+                        ...$charge,
+                    ]);
+                }
+
+                $balanceDue = bcsub($invoiceTotal, $this->storedDecimal($locked->settlement_total), 2);
+                if (bccomp($balanceDue, '0', 2) === -1) {
+                    $balanceDue = '0.00';
+                }
+
+                $locked->forceFill([
+                    'additional_charges_total' => $additional,
+                    'taxable_total' => $taxable,
+                    'gst_amount' => $gstAmount,
+                    'invoice_total' => $invoiceTotal,
+                    'balance_due' => $balanceDue,
+                    'gst_rate_snapshot' => $gstSnapshot ?? $locked->gst_rate_snapshot,
+                ])->save();
+
+                $this->audit->write(
+                    AuditAction::Updated,
+                    TripInvoice::class,
+                    $locked->id,
+                    remark: 'Update OwnFleet trip invoice additional charges: '.$remark,
+                    before: $before,
+                    after: $locked->fresh(['lines', 'charges'])?->toArray(),
+                );
+
+                return $locked->fresh(['lines', 'charges', 'payments', 'billingCustomer']) ?? $locked;
+            });
+        });
+    }
+
     public function softDelete(TripInvoice $invoice, User $actor): void
     {
         $company = Company::query()->findOrFail($invoice->company_id);
@@ -699,6 +791,13 @@ final class TripInvoiceService
     {
         if (! $this->authorizer->allowsCustomer($actor, PermissionCodes::INVOICE_CANCEL, $company, $branch)) {
             throw new TripInvoiceAuthorizationException('Not authorized to cancel OwnFleet invoices.');
+        }
+    }
+
+    private function assertCanEditCharges(User $actor, Company $company, Branch $branch): void
+    {
+        if (! $this->authorizer->allowsCustomer($actor, PermissionCodes::INVOICE_EDIT, $company, $branch)) {
+            throw new TripInvoiceAuthorizationException('Not authorized to edit OwnFleet invoice charges.');
         }
     }
 

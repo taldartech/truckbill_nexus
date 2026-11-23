@@ -31,6 +31,7 @@ use App\Models\Party;
 use App\Models\Station;
 use App\Models\User;
 use App\Models\Vehicle;
+use App\Support\Presentation\FreightAmountPresentation;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -52,6 +53,7 @@ class LorryReceiptController extends Controller
         private readonly LrWorkflowContextResolver $contextResolver,
         private readonly LrVehicleClassificationService $vehicleClassification,
         private readonly TripService $trips,
+        private readonly FreightAmountPresentation $freightPresentation,
     ) {}
 
     public function index(Request $request, Company $company, Branch $branch): Response
@@ -68,7 +70,8 @@ class LorryReceiptController extends Controller
             perPage: min(100, max(1, (int) $request->input('per_page', 15))),
         );
 
-        $permissions = $this->lrPermissions($actor, $company, $branch);
+        $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
+        $permissions = $this->lrPermissions($actor, $company, $branch, $maySeeFreight);
 
         return Inertia::render('branch/lorry-receipts/index', [
             'filters' => [
@@ -89,7 +92,7 @@ class LorryReceiptController extends Controller
                 ? route('branch.lorry-receipts.create', ['context' => 'partload'], absolute: false)
                 : null,
             'lorryReceipts' => [
-                'data' => collect($page->items())->map(fn (LorryReceipt $lr): array => $this->listPayload($lr))->values()->all(),
+                'data' => collect($page->items())->map(fn (LorryReceipt $lr): array => $this->listPayload($lr, $maySeeFreight))->values()->all(),
                 'meta' => [
                     'current_page' => $page->currentPage(),
                     'last_page' => $page->lastPage(),
@@ -133,7 +136,12 @@ class LorryReceiptController extends Controller
                 : 'Lorry Receipt',
             'lorryReceipt' => null,
             'formOptions' => $this->formOptions($company, $branch, $actor, $formMode),
-            'permissions' => $this->lrPermissions($actor, $company, $branch),
+            'permissions' => $this->lrPermissions(
+                $actor,
+                $company,
+                $branch,
+                $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch),
+            ),
             'urls' => [
                 'index' => route('branch.lorry-receipts.index', absolute: false),
                 'store' => route('branch.lorry-receipts.store', absolute: false),
@@ -238,9 +246,11 @@ class LorryReceiptController extends Controller
             && $linkedTrip === null
             && $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_CREATE, $company, $branch);
 
+        $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
+
         return Inertia::render('branch/lorry-receipts/show', [
-            'lorryReceipt' => $this->detailPayload($lorryReceipt),
-            'permissions' => array_merge($this->lrPermissions($actor, $company, $branch), [
+            'lorryReceipt' => $this->detailPayload($lorryReceipt, $maySeeFreight),
+            'permissions' => array_merge($this->lrPermissions($actor, $company, $branch, $maySeeFreight), [
                 'can_create_trip' => $canCreateTrip,
             ]),
             'linkedTrip' => $linkedTrip === null ? null : [
@@ -276,14 +286,16 @@ class LorryReceiptController extends Controller
             ? LrWorkflowContextResolver::FORM_PARTLOAD
             : LrWorkflowContextResolver::FORM_TRUCK;
 
+        $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
+
         return Inertia::render('branch/lorry-receipts/edit', [
             'mode' => 'edit',
             'formMode' => $formMode,
             'workflowContext' => $context->value,
             'contextLabel' => $this->contextResolver->labelFor($context),
-            'lorryReceipt' => $this->detailPayload($lorryReceipt),
+            'lorryReceipt' => $this->detailPayload($lorryReceipt, $maySeeFreight),
             'formOptions' => $this->formOptions($company, $branch, $actor, $formMode),
-            'permissions' => $this->lrPermissions($actor, $company, $branch),
+            'permissions' => $this->lrPermissions($actor, $company, $branch, $maySeeFreight),
             'urls' => [
                 'index' => route('branch.lorry-receipts.index', absolute: false),
                 'show' => route('branch.lorry-receipts.show', [$lorryReceipt], absolute: false),
@@ -368,10 +380,12 @@ class LorryReceiptController extends Controller
 
         $lorryReceipt->load(['goodsRows', 'ewayBills', 'additionalCharges', 'consignor', 'consignee', 'fromStation', 'toStation']);
 
+        $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
+
         return Inertia::render('branch/lorry-receipts/print', [
             'company' => ['id' => $company->id, 'name' => $company->name],
             'branch' => ['id' => $branch->id, 'name' => $branch->name],
-            'lorryReceipt' => $this->detailPayload($lorryReceipt),
+            'lorryReceipt' => $this->detailPayload($lorryReceipt, $maySeeFreight),
             'urls' => [
                 'show' => route('branch.lorry-receipts.show', [$lorryReceipt], absolute: false),
             ],
@@ -413,7 +427,7 @@ class LorryReceiptController extends Controller
      *     can_delete: bool
      * }
      */
-    private function lrPermissions(User $actor, Company $company, Branch $branch): array
+    private function lrPermissions(User $actor, Company $company, Branch $branch, bool $maySeeFreight): array
     {
         return [
             'can_view' => $this->authorizer->allowsCustomer($actor, PermissionCodes::LR_VIEW, $company, $branch),
@@ -421,6 +435,7 @@ class LorryReceiptController extends Controller
             'can_edit' => $this->authorizer->allowsCustomer($actor, PermissionCodes::LR_EDIT, $company, $branch),
             'can_cancel' => $this->authorizer->allowsCustomer($actor, PermissionCodes::LR_CANCEL, $company, $branch),
             'can_delete' => $this->authorizer->allowsCustomer($actor, PermissionCodes::LR_DELETE, $company, $branch),
+            'can_view_freight' => $maySeeFreight,
         ];
     }
 
@@ -662,7 +677,7 @@ class LorryReceiptController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function listPayload(LorryReceipt $lr): array
+    private function listPayload(LorryReceipt $lr, bool $maySeeFreight): array
     {
         return [
             'id' => $lr->id,
@@ -672,8 +687,8 @@ class LorryReceiptController extends Controller
             'status' => $lr->status->value,
             'from_text' => $lr->from_text,
             'to_text' => $lr->to_text,
-            'freight_total' => $lr->freight_total,
-            'additional_charges_total' => $lr->additional_charges_total,
+            'freight_total' => $this->freightPresentation->presentAmount($lr->freight_total, $maySeeFreight),
+            'additional_charges_total' => $this->freightPresentation->presentAmount($lr->additional_charges_total, $maySeeFreight),
             'consignor_name' => $lr->consignor?->name,
             'consignee_name' => $lr->consignee?->name,
         ];
@@ -682,7 +697,7 @@ class LorryReceiptController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function detailPayload(LorryReceipt $lr): array
+    private function detailPayload(LorryReceipt $lr, bool $maySeeFreight): array
     {
         return [
             'id' => $lr->id,
@@ -703,12 +718,12 @@ class LorryReceiptController extends Controller
             'consignor_name' => $lr->consignor?->name,
             'consignee_name' => $lr->consignee?->name,
             'goods_value' => $lr->goods_value,
-            'freight_total' => $lr->freight_total,
-            'additional_charges_total' => $lr->additional_charges_total,
+            'freight_total' => $this->freightPresentation->presentAmount($lr->freight_total, $maySeeFreight),
+            'additional_charges_total' => $this->freightPresentation->presentAmount($lr->additional_charges_total, $maySeeFreight),
             'delivered_at' => $lr->delivered_at?->toIso8601String(),
             'cancelled_at' => $lr->cancelled_at?->toIso8601String(),
             'cancellation_remark' => $lr->cancellation_remark,
-            'goods' => $lr->goodsRows->map(function (LrGoodsRow $row): array {
+            'goods' => $lr->goodsRows->map(function (LrGoodsRow $row) use ($maySeeFreight): array {
                 return [
                     'id' => $row->id,
                     'position' => $row->position,
@@ -719,8 +734,8 @@ class LorryReceiptController extends Controller
                     'actual_weight' => $row->actual_weight,
                     'charged_weight' => $row->charged_weight,
                     'freight_rate_type' => $row->freight_rate_type->value,
-                    'freight_rate' => $row->freight_rate,
-                    'freight_amount' => $row->freight_amount,
+                    'freight_rate' => $this->freightPresentation->presentAmount($row->freight_rate, $maySeeFreight),
+                    'freight_amount' => $this->freightPresentation->presentAmount($row->freight_amount, $maySeeFreight),
                     'goods_value' => $row->goods_value,
                 ];
             })->values()->all(),
@@ -732,11 +747,11 @@ class LorryReceiptController extends Controller
                     'valid_until' => $bill->valid_until?->toDateString(),
                 ];
             })->values()->all(),
-            'additional_charges' => $lr->additionalCharges->map(function (LrAdditionalCharge $charge): array {
+            'additional_charges' => $lr->additionalCharges->map(function (LrAdditionalCharge $charge) use ($maySeeFreight): array {
                 return [
                     'id' => $charge->id,
                     'description' => $charge->description,
-                    'amount' => $charge->amount,
+                    'amount' => $this->freightPresentation->presentAmount($charge->amount, $maySeeFreight),
                 ];
             })->values()->all(),
         ];

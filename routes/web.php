@@ -211,6 +211,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/trip-invoices/individual', [TripInvoiceController::class, 'storeIndividual'])->name('branch.trip-invoices.store-individual');
         Route::post('/trip-invoices/consolidated', [TripInvoiceController::class, 'storeConsolidated'])->name('branch.trip-invoices.store-consolidated');
         Route::get('/trip-invoices/{tripInvoice}', [TripInvoiceController::class, 'show'])->name('branch.trip-invoices.show');
+        Route::get('/trip-invoices/{tripInvoice}/edit-charges', [TripInvoiceController::class, 'editCharges'])->name('branch.trip-invoices.edit-charges');
+        Route::patch('/trip-invoices/{tripInvoice}/charges', [TripInvoiceController::class, 'updateCharges'])->name('branch.trip-invoices.update-charges');
         Route::get('/trip-invoices/{tripInvoice}/print', [TripInvoiceController::class, 'print'])->name('branch.trip-invoices.print');
         Route::post('/trip-invoices/{tripInvoice}/cancel', [TripInvoiceController::class, 'cancel'])->name('branch.trip-invoices.cancel');
         Route::delete('/trip-invoices/{tripInvoice}', [TripInvoiceController::class, 'destroy'])->name('branch.trip-invoices.destroy');

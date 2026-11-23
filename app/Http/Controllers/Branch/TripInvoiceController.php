@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Branch;
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\OwnFleet\Invoice\Enums\TripInvoiceChargeType;
 use App\Domains\OwnFleet\Invoice\Enums\TripInvoiceParticularsMode;
+use App\Domains\OwnFleet\Invoice\Enums\TripInvoiceStatus;
 use App\Domains\OwnFleet\Invoice\Exceptions\TripInvoiceAuthorizationException;
 use App\Domains\OwnFleet\Invoice\Exceptions\TripInvoiceConflictException;
 use App\Domains\OwnFleet\Invoice\Exceptions\TripInvoiceDomainException;
@@ -21,6 +22,7 @@ use App\Models\TripInvoice;
 use App\Models\TripInvoiceCharge;
 use App\Models\TripInvoicePayment;
 use App\Models\User;
+use App\Support\Presentation\FreightAmountPresentation;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -36,12 +38,15 @@ class TripInvoiceController extends Controller
         private readonly PermissionAuthorizer $authorizer,
         private readonly TripInvoiceService $invoices,
         private readonly TripInvoicePaymentService $payments,
+        private readonly FreightAmountPresentation $freightPresentation,
     ) {}
 
     public function index(Request $request, Company $company, Branch $branch): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertPermission($actor, $company, $branch, PermissionCodes::INVOICE_VIEW);
+
+        $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
 
         $page = $this->invoices->search(
             company: $company,
@@ -54,9 +59,12 @@ class TripInvoiceController extends Controller
             'filters' => [
                 'payment_status' => $request->string('payment_status')->toString(),
             ],
-            'permissions' => $this->invoicePermissions($actor, $company, $branch),
+            'permissions' => array_merge(
+                $this->invoicePermissions($actor, $company, $branch),
+                ['can_view_freight' => $maySeeFreight],
+            ),
             'invoices' => [
-                'data' => collect($page->items())->map(fn (TripInvoice $invoice): array => $this->presentInvoiceRow($invoice)),
+                'data' => collect($page->items())->map(fn (TripInvoice $invoice): array => $this->presentInvoiceRow($invoice, $maySeeFreight)),
                 'meta' => [
                     'current_page' => $page->currentPage(),
                     'last_page' => $page->lastPage(),
@@ -73,19 +81,24 @@ class TripInvoiceController extends Controller
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertPermission($actor, $company, $branch, PermissionCodes::INVOICE_CREATE);
 
+        $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
+
         return Inertia::render('branch/trip-invoices/create', [
             'eligibleReceipts' => $this->invoices->listInvoiceEligibleLorryReceipts($company, $branch)
                 ->map(fn ($lr) => [
                     'id' => $lr->id,
                     'lr_number' => $lr->lr_number,
-                    'freight_total' => (string) $lr->freight_total,
+                    'freight_total' => $this->freightPresentation->presentAmount($lr->freight_total, $maySeeFreight),
                     'billing_customer_name' => $lr->billingCustomer?->name,
                     'billing_customer_party_id' => $lr->billing_customer_party_id,
                     'lr_date' => $lr->lr_date?->format('d-m-Y'),
                 ]),
             'chargeTypeOptions' => $this->chargeOptions(),
             'particularsOptions' => $this->particularsOptions(),
-            'permissions' => $this->invoicePermissions($actor, $company, $branch),
+            'permissions' => array_merge(
+                $this->invoicePermissions($actor, $company, $branch),
+                ['can_view_freight' => $maySeeFreight],
+            ),
             'sampleBanner' => 'SAMPLE / NON-PRODUCTION — Not a legally operative tax invoice.',
         ]);
     }
@@ -97,12 +110,14 @@ class TripInvoiceController extends Controller
 
         $billingCustomerId = $request->string('billing_customer_party_id')->toString() ?: null;
 
+        $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
+
         return Inertia::render('branch/trip-invoices/consolidate', [
             'eligibleReceipts' => $this->invoices->listInvoiceEligibleLorryReceipts($company, $branch, $billingCustomerId)
                 ->map(fn ($lr) => [
                     'id' => $lr->id,
                     'lr_number' => $lr->lr_number,
-                    'freight_total' => (string) $lr->freight_total,
+                    'freight_total' => $this->freightPresentation->presentAmount($lr->freight_total, $maySeeFreight),
                     'billing_customer_name' => $lr->billingCustomer?->name,
                     'billing_customer_party_id' => $lr->billing_customer_party_id,
                     'lr_date' => $lr->lr_date?->format('d-m-Y'),
@@ -110,7 +125,10 @@ class TripInvoiceController extends Controller
             'chargeTypeOptions' => $this->chargeOptions(),
             'particularsOptions' => $this->particularsOptions(),
             'filters' => ['billing_customer_party_id' => $billingCustomerId],
-            'permissions' => $this->invoicePermissions($actor, $company, $branch),
+            'permissions' => array_merge(
+                $this->invoicePermissions($actor, $company, $branch),
+                ['can_view_freight' => $maySeeFreight],
+            ),
             'sampleBanner' => 'SAMPLE / NON-PRODUCTION — Not a legally operative tax invoice.',
         ]);
     }
@@ -162,7 +180,7 @@ class TripInvoiceController extends Controller
         return redirect()->route('branch.trip-invoices.show', [$invoice]);
     }
 
-    public function show(Request $request, Company $company, Branch $branch, TripInvoice $tripInvoice): Response
+    public function show(Request $request, TripInvoice $tripInvoice, Company $company, Branch $branch): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertTripInvoiceTenant($tripInvoice, $company, $branch);
@@ -170,18 +188,21 @@ class TripInvoiceController extends Controller
 
         $tripInvoice->load(['lines.lorryReceipt', 'charges', 'payments.paymentMode', 'billingCustomer']);
 
+        $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
+
         return Inertia::render('branch/trip-invoices/show', [
-            'invoice' => $this->presentInvoiceDetail($tripInvoice),
+            'invoice' => $this->presentInvoiceDetail($tripInvoice, $maySeeFreight),
             'permissions' => array_merge(
-                $this->invoicePermissions($actor, $company, $branch),
+                $this->invoicePermissions($actor, $company, $branch, $tripInvoice),
                 $this->paymentPermissions($actor, $company, $branch),
+                ['can_view_freight' => $maySeeFreight],
             ),
             'paymentModes' => PaymentMode::query()->where('is_active', true)->orderBy('name')->get(['id', 'name', 'code']),
             'sampleBanner' => 'SAMPLE / NON-PRODUCTION — Not a legally operative tax invoice.',
         ]);
     }
 
-    public function print(Request $request, Company $company, Branch $branch, TripInvoice $tripInvoice): Response
+    public function print(Request $request, TripInvoice $tripInvoice, Company $company, Branch $branch): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertTripInvoiceTenant($tripInvoice, $company, $branch);
@@ -189,8 +210,10 @@ class TripInvoiceController extends Controller
 
         $tripInvoice->load(['lines.lorryReceipt', 'charges', 'billingCustomer', 'company']);
 
+        $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
+
         return Inertia::render('branch/trip-invoices/print', [
-            'invoice' => $this->presentInvoiceDetail($tripInvoice),
+            'invoice' => $this->presentInvoiceDetail($tripInvoice, $maySeeFreight),
             'company' => [
                 'name' => $company->name,
                 'gstin' => $company->gstin,
@@ -199,7 +222,7 @@ class TripInvoiceController extends Controller
         ]);
     }
 
-    public function cancel(Request $request, Company $company, Branch $branch, TripInvoice $tripInvoice): RedirectResponse
+    public function cancel(Request $request, TripInvoice $tripInvoice, Company $company, Branch $branch): RedirectResponse
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertTripInvoiceTenant($tripInvoice, $company, $branch);
@@ -213,7 +236,60 @@ class TripInvoiceController extends Controller
         return back()->with('flash.success', 'Invoice cancelled.');
     }
 
-    public function destroy(Request $request, Company $company, Branch $branch, TripInvoice $tripInvoice): RedirectResponse
+    public function editCharges(Request $request, TripInvoice $tripInvoice, Company $company, Branch $branch): Response
+    {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertTripInvoiceTenant($tripInvoice, $company, $branch);
+        $this->assertPermission($actor, $company, $branch, PermissionCodes::INVOICE_EDIT);
+
+        $tripInvoice->load(['charges']);
+
+        if (! $this->invoicePermissions($actor, $company, $branch, $tripInvoice)['can_edit_charges']) {
+            abort(403, 'Additional charges cannot be edited.');
+        }
+
+        $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
+
+        return Inertia::render('branch/trip-invoices/edit-charges', [
+            'invoice' => [
+                'id' => $tripInvoice->id,
+                'invoice_number' => $tripInvoice->invoice_number,
+                'charges' => $tripInvoice->charges->map(fn (TripInvoiceCharge $charge) => [
+                    'charge_type' => $charge->charge_type->value,
+                    'description' => $charge->description,
+                    'amount' => $this->freightPresentation->presentAmount($charge->amount, $maySeeFreight),
+                ]),
+            ],
+            'chargeTypeOptions' => $this->chargeOptions(),
+            'permissions' => array_merge(
+                $this->invoicePermissions($actor, $company, $branch, $tripInvoice),
+                ['can_view_freight' => $maySeeFreight],
+            ),
+            'sampleBanner' => 'SAMPLE / NON-PRODUCTION — Not a legally operative tax invoice.',
+        ]);
+    }
+
+    public function updateCharges(Request $request, TripInvoice $tripInvoice, Company $company, Branch $branch): RedirectResponse
+    {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertTripInvoiceTenant($tripInvoice, $company, $branch);
+
+        $validated = $request->validate([
+            'edit_remark' => ['required', 'string', 'max:2000'],
+            'charges' => ['nullable', 'array'],
+            'charges.*.charge_type' => ['required_with:charges', 'string'],
+            'charges.*.description' => ['required_with:charges', 'string', 'max:255'],
+            'charges.*.amount' => ['required_with:charges', 'numeric', 'min:0.01'],
+        ]);
+
+        $this->invoices->updateCharges($tripInvoice, $actor, $validated);
+
+        return redirect()
+            ->route('branch.trip-invoices.show', [$tripInvoice])
+            ->with('flash.success', 'Additional charges updated.');
+    }
+
+    public function destroy(Request $request, TripInvoice $tripInvoice, Company $company, Branch $branch): RedirectResponse
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertTripInvoiceTenant($tripInvoice, $company, $branch);
@@ -224,7 +300,7 @@ class TripInvoiceController extends Controller
             ->with('flash.success', 'Invoice deleted.');
     }
 
-    public function storePayment(Request $request, Company $company, Branch $branch, TripInvoice $tripInvoice): RedirectResponse
+    public function storePayment(Request $request, TripInvoice $tripInvoice, Company $company, Branch $branch): RedirectResponse
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertTripInvoiceTenant($tripInvoice, $company, $branch);
@@ -251,6 +327,8 @@ class TripInvoiceController extends Controller
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertPermission($actor, $company, $branch, PermissionCodes::PAYMENT_VIEW);
 
+        $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
+
         $rows = TripInvoicePayment::query()
             ->where('company_id', $company->id)
             ->whereHas('invoice', fn ($q) => $q->where('branch_id', $branch->id))
@@ -263,15 +341,18 @@ class TripInvoiceController extends Controller
                 'payment_date' => $payment->payment_date->format('d-m-Y'),
                 'invoice_number' => $payment->invoice?->invoice_number,
                 'invoice_id' => $payment->trip_invoice_id,
-                'amount_received' => (string) $payment->amount_received,
-                'tds_amount' => (string) $payment->tds_amount,
-                'settlement_amount' => (string) $payment->settlement_amount,
+                'amount_received' => $this->freightPresentation->presentAmount($payment->amount_received, $maySeeFreight),
+                'tds_amount' => $this->freightPresentation->presentAmount($payment->tds_amount, $maySeeFreight),
+                'settlement_amount' => $this->freightPresentation->presentAmount($payment->settlement_amount, $maySeeFreight),
                 'payment_mode' => $payment->paymentMode?->name,
             ]);
 
         return Inertia::render('branch/payments/index', [
             'payments' => $rows,
-            'permissions' => $this->paymentPermissions($actor, $company, $branch),
+            'permissions' => array_merge(
+                $this->paymentPermissions($actor, $company, $branch),
+                ['can_view_freight' => $maySeeFreight],
+            ),
         ]);
     }
 
@@ -285,11 +366,26 @@ class TripInvoiceController extends Controller
     /**
      * @return array<string, bool>
      */
-    private function invoicePermissions(User $actor, Company $company, Branch $branch): array
+    private function invoicePermissions(User $actor, Company $company, Branch $branch, ?TripInvoice $invoice = null): array
     {
+        $canEdit = $this->authorizer->allowsCustomer($actor, PermissionCodes::INVOICE_EDIT, $company, $branch);
+        $canEditCharges = false;
+
+        if ($invoice !== null) {
+            $hasPayments = $invoice->relationLoaded('payments')
+                ? $invoice->payments->isNotEmpty()
+                : $invoice->payments()->exists();
+
+            $canEditCharges = $canEdit
+                && $invoice->status === TripInvoiceStatus::Pending
+                && $invoice->charges_locked_at === null
+                && ! $hasPayments;
+        }
+
         return [
             'can_view' => $this->authorizer->allowsCustomer($actor, PermissionCodes::INVOICE_VIEW, $company, $branch),
             'can_create' => $this->authorizer->allowsCustomer($actor, PermissionCodes::INVOICE_CREATE, $company, $branch),
+            'can_edit_charges' => $canEditCharges,
             'can_cancel' => $this->authorizer->allowsCustomer($actor, PermissionCodes::INVOICE_CANCEL, $company, $branch),
             'can_delete' => $this->authorizer->allowsCustomer($actor, PermissionCodes::INVOICE_DELETE, $company, $branch),
             'can_print' => $this->authorizer->allowsCustomer($actor, PermissionCodes::INVOICE_PRINT, $company, $branch),
@@ -310,7 +406,7 @@ class TripInvoiceController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function presentInvoiceRow(TripInvoice $invoice): array
+    private function presentInvoiceRow(TripInvoice $invoice, bool $maySeeFreight): array
     {
         return [
             'id' => $invoice->id,
@@ -320,17 +416,17 @@ class TripInvoiceController extends Controller
             'invoice_type' => $invoice->invoice_type->value,
             'status' => $invoice->status->value,
             'payment_status' => $invoice->payment_status->value,
-            'invoice_total' => (string) $invoice->invoice_total,
-            'balance_due' => (string) $invoice->balance_due,
+            'invoice_total' => $this->freightPresentation->presentAmount($invoice->invoice_total, $maySeeFreight),
+            'balance_due' => $this->freightPresentation->presentAmount($invoice->balance_due, $maySeeFreight),
         ];
     }
 
     /**
      * @return array<string, mixed>
      */
-    private function presentInvoiceDetail(TripInvoice $invoice): array
+    private function presentInvoiceDetail(TripInvoice $invoice, bool $maySeeFreight): array
     {
-        return [
+        $payload = [
             'id' => $invoice->id,
             'invoice_number' => $invoice->invoice_number,
             'invoice_date' => $invoice->invoice_date->format('d-m-Y'),
@@ -339,6 +435,7 @@ class TripInvoiceController extends Controller
             'status' => $invoice->status->value,
             'payment_status' => $invoice->payment_status->value,
             'workflow_state' => $invoice->workflow_state,
+            'charges_locked_at' => $invoice->charges_locked_at?->toIso8601String(),
             'billing_customer' => $invoice->billingCustomer ? [
                 'id' => $invoice->billingCustomer->id,
                 'name' => $invoice->billingCustomer->name,
@@ -361,26 +458,40 @@ class TripInvoiceController extends Controller
             'lines' => $invoice->lines->map(fn ($line) => [
                 'id' => $line->id,
                 'lr_number' => $line->lr_number,
-                'base_freight' => (string) $line->base_freight,
-            ]),
+                'base_freight' => $this->freightPresentation->presentAmount($line->base_freight, $maySeeFreight),
+            ])->values()->all(),
             'charges' => $invoice->charges->map(fn (TripInvoiceCharge $charge) => [
                 'charge_type' => $charge->charge_type->value,
                 'description' => $charge->description,
-                'amount' => (string) $charge->amount,
-            ]),
+                'amount' => $this->freightPresentation->presentAmount($charge->amount, $maySeeFreight),
+            ])->values()->all(),
             'payments' => $invoice->payments->map(fn (TripInvoicePayment $payment) => [
                 'id' => $payment->id,
                 'payment_date' => $payment->payment_date->format('d-m-Y'),
-                'amount_received' => (string) $payment->amount_received,
-                'tds_amount' => (string) $payment->tds_amount,
-                'shortage_damage' => (string) $payment->shortage_damage,
-                'discount' => (string) $payment->discount,
+                'amount_received' => $this->freightPresentation->presentAmount($payment->amount_received, $maySeeFreight),
+                'tds_amount' => $this->freightPresentation->presentAmount($payment->tds_amount, $maySeeFreight),
+                'shortage_damage' => $this->freightPresentation->presentAmount($payment->shortage_damage, $maySeeFreight),
+                'discount' => $this->freightPresentation->presentAmount($payment->discount, $maySeeFreight),
                 'discount_reason' => $payment->discount_reason,
-                'settlement_amount' => (string) $payment->settlement_amount,
+                'settlement_amount' => $this->freightPresentation->presentAmount($payment->settlement_amount, $maySeeFreight),
                 'reference' => $payment->reference,
                 'payment_mode' => $payment->paymentMode?->name,
-            ]),
+            ])->values()->all(),
         ];
+
+        return $this->freightPresentation->redactKeys($payload, [
+            'base_freight_total',
+            'additional_charges_total',
+            'taxable_total',
+            'gst_amount',
+            'invoice_total',
+            'amount_received_total',
+            'tds_received_total',
+            'deductions_total',
+            'settlement_total',
+            'balance_due',
+            'tds_basis_freight',
+        ], $maySeeFreight);
     }
 
     /**

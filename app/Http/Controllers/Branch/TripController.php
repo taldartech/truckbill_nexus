@@ -35,6 +35,7 @@ use App\Models\TripExpense;
 use App\Models\TripPickup;
 use App\Models\User;
 use App\Models\Vehicle;
+use App\Support\Presentation\FreightAmountPresentation;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -56,6 +57,7 @@ class TripController extends Controller
         private readonly TripMovementService $movements,
         private readonly TripExpenseService $expenses,
         private readonly DocumentAttachmentService $documents,
+        private readonly FreightAmountPresentation $freightPresentation,
     ) {}
 
     public function index(Request $request, Company $company, Branch $branch): Response
@@ -74,7 +76,7 @@ class TripController extends Controller
             'filters' => [
                 'status' => $request->string('status')->toString(),
             ],
-            'permissions' => $this->tripPermissions($actor, $company, $branch),
+            'permissions' => $this->tripPermissions($actor, $company, $branch, $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch)),
             'statusOptions' => collect(TripStatus::cases())->map(fn (TripStatus $status): array => [
                 'value' => $status->value,
                 'label' => match ($status) {
@@ -131,11 +133,14 @@ class TripController extends Controller
                 'to_station_name' => $lorryReceipt->toStation?->name,
                 'consignor_name' => $lorryReceipt->consignor?->name,
                 'consignee_name' => $lorryReceipt->consignee?->name,
-                'freight_total' => $lorryReceipt->freight_total,
+                'freight_total' => $this->freightPresentation->presentAmount(
+                    $lorryReceipt->freight_total,
+                    $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch),
+                ),
             ],
             'vehicles' => $this->vehicleOptions($company, $branch),
             'drivers' => $this->driverOptions($company, $branch),
-            'permissions' => $this->tripPermissions($actor, $company, $branch),
+            'permissions' => $this->tripPermissions($actor, $company, $branch, $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch)),
             'urls' => [
                 'store' => route('branch.trips.store-from-lr', [$lorryReceipt], absolute: false),
                 'lr_show' => route('branch.lorry-receipts.show', [$lorryReceipt], absolute: false),
@@ -201,23 +206,30 @@ class TripController extends Controller
             'lorryReceipt.toStation',
         ]);
 
+        $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
+        $profit = $this->freightPresentation->redactKeys(
+            $this->expenses->profitSummary($trip),
+            ['agreed_freight', 'additional_charges', 'trip_profit'],
+            $maySeeFreight,
+        );
+
         return Inertia::render('branch/trips/show', [
-            'trip' => $this->detailPayload($trip),
-            'movements' => $this->movementsPayload($trip),
+            'trip' => $this->detailPayload($trip, $maySeeFreight),
+            'movements' => $this->movementsPayload($trip, $maySeeFreight),
             'reconciliation' => $this->movements->reconciliationSummary($trip),
             'expenses' => $trip->expenses->map(fn (TripExpense $expense): array => [
                 'id' => $expense->id,
                 'expense_date' => $expense->expense_date->format('d-m-Y'),
                 'category_name' => $expense->category?->name,
-                'amount' => $expense->amount,
+                'amount' => $this->freightPresentation->presentAmount($expense->amount, $maySeeFreight),
                 'is_diesel' => (bool) $expense->is_diesel,
                 'diesel_litres' => $expense->diesel_litres,
-                'diesel_rate_per_litre' => $expense->diesel_rate_per_litre,
+                'diesel_rate_per_litre' => $this->freightPresentation->presentAmount($expense->diesel_rate_per_litre, $maySeeFreight),
                 'diesel_odometer' => $expense->diesel_odometer,
                 'remarks' => $expense->remarks,
                 'payment_mode' => $expense->paymentMode?->name,
             ])->values()->all(),
-            'profit' => $this->expenses->profitSummary($trip),
+            'profit' => $profit,
             'formOptions' => [
                 'stations' => $this->stationOptions($company),
                 'consignors' => $this->partyRoleOptions($company, $branch, PartyRoleType::Consignor),
@@ -237,7 +249,7 @@ class TripController extends Controller
                     ->map(fn (BankCashAccount $account): array => ['id' => $account->id, 'name' => $account->name])
                     ->values()->all(),
             ],
-            'permissions' => $this->tripPermissions($actor, $company, $branch),
+            'permissions' => $this->tripPermissions($actor, $company, $branch, $maySeeFreight),
             'urls' => [
                 'index' => route('branch.trips.index', absolute: false),
                 'lr_show' => route('branch.lorry-receipts.show', [$trip->lorry_receipt_id], absolute: false),
@@ -577,7 +589,7 @@ class TripController extends Controller
      *     can_delete: bool
      * }
      */
-    private function tripPermissions(User $actor, Company $company, Branch $branch): array
+    private function tripPermissions(User $actor, Company $company, Branch $branch, bool $maySeeFreight): array
     {
         return [
             'can_view' => $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_VIEW, $company, $branch),
@@ -587,6 +599,7 @@ class TripController extends Controller
             'can_complete' => $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_COMPLETE, $company, $branch),
             'can_cancel' => $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_CANCEL, $company, $branch),
             'can_delete' => $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_DELETE, $company, $branch),
+            'can_view_freight' => $maySeeFreight,
         ];
     }
 
@@ -667,7 +680,7 @@ class TripController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function detailPayload(Trip $trip): array
+    private function detailPayload(Trip $trip, bool $maySeeFreight): array
     {
         $lr = $trip->lorryReceipt;
 
@@ -676,8 +689,8 @@ class TripController extends Controller
             'status' => $trip->status->value,
             'lorry_receipt_id' => $trip->lorry_receipt_id,
             'lr_number' => $lr?->lr_number,
-            'lr_freight_total' => $lr?->freight_total,
-            'lr_additional_charges_total' => $lr?->additional_charges_total,
+            'lr_freight_total' => $this->freightPresentation->presentAmount($lr?->freight_total, $maySeeFreight),
+            'lr_additional_charges_total' => $this->freightPresentation->presentAmount($lr?->additional_charges_total, $maySeeFreight),
             'from_station_name' => $lr?->fromStation?->name,
             'to_station_name' => $lr?->toStation?->name,
             'vehicle' => $trip->vehicle === null ? null : [
@@ -719,7 +732,7 @@ class TripController extends Controller
      *     allocations: array<int, array<string, mixed>>
      * }
      */
-    private function movementsPayload(Trip $trip): array
+    private function movementsPayload(Trip $trip, bool $maySeeFreight): array
     {
         return [
             'pickups' => $trip->pickups->map(fn (TripPickup $pickup): array => [
@@ -746,8 +759,8 @@ class TripController extends Controller
                 'trip_pickup_id' => $allocation->trip_pickup_id,
                 'trip_drop_id' => $allocation->trip_drop_id,
                 'allocation_weight' => $allocation->allocation_weight,
-                'rate' => $allocation->rate,
-                'freight' => $allocation->freight,
+                'rate' => $this->freightPresentation->presentAmount($allocation->rate, $maySeeFreight),
+                'freight' => $this->freightPresentation->presentAmount($allocation->freight, $maySeeFreight),
                 'distance' => $allocation->distance,
                 'package_count' => $allocation->package_count,
                 'ewb_number' => $allocation->ewb_number,
