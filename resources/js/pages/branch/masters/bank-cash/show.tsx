@@ -30,6 +30,7 @@ type Props = {
     > | null;
     links: {
         hub: string;
+        dashboard: string;
         index: string;
         edit: string;
         destroy: string;
@@ -57,7 +58,7 @@ export default function BankCashShow({
                     company={company}
                     branch={branch}
                     crumbs={[
-                        { label: 'Masters', href: links.hub },
+                        { label: 'Branch', href: links.dashboard },
                         { label: 'Bank / Cash', href: links.index },
                         { label: account.name },
                     ]}
@@ -114,7 +115,6 @@ export default function BankCashShow({
                         ['Account (masked)', account.account_number_masked],
                         ['IFSC', account.ifsc],
                         ['Holder', account.account_holder_name],
-                        ['Scope', account.branch_id ? 'branch' : 'shared'],
                         ['Status', account.is_active ? 'Active' : 'Inactive'],
                     ].map(([label, value]) => (
                         <div key={label}>

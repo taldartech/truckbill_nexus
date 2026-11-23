@@ -67,12 +67,12 @@ class BankCashAccountController extends Controller
                     'total' => $page->total(),
                 ],
             ],
-            'links' => [
-                'hub' => route('branch.masters.index'),
-                'index' => route('branch.bank-cash.index'),
-                'create' => route('branch.bank-cash.create'),
-                'store' => route('branch.bank-cash.store'),
-            ],
+            'dataVisibility' => $this->dataVisibilityPresentation($company),
+            'links' => array_merge($this->branchMasterNavLinks(), [
+                'index' => route('branch.bank-cash.index', absolute: false),
+                'create' => route('branch.bank-cash.create', absolute: false),
+                'store' => route('branch.bank-cash.store', absolute: false),
+            ]),
         ]);
     }
 
@@ -92,11 +92,10 @@ class BankCashAccountController extends Controller
             'mode' => 'create',
             'account' => null,
             'dataVisibility' => $this->dataVisibilityPresentation($company),
-            'links' => [
-                'hub' => route('branch.masters.index'),
-                'index' => route('branch.bank-cash.index'),
-                'store' => route('branch.bank-cash.store'),
-            ],
+            'links' => array_merge($this->branchMasterNavLinks(), [
+                'index' => route('branch.bank-cash.index', absolute: false),
+                'store' => route('branch.bank-cash.store', absolute: false),
+            ]),
         ]);
     }
 
@@ -161,19 +160,18 @@ class BankCashAccountController extends Controller
                 $this->documents,
                 $permissions,
             ),
-            'links' => [
-                'hub' => route('branch.masters.index'),
-                'index' => route('branch.bank-cash.index'),
-                'edit' => route('branch.bank-cash.edit', [$bankCashAccount]),
-                'update' => route('branch.bank-cash.update', [$bankCashAccount]),
-                'destroy' => route('branch.bank-cash.destroy', [$bankCashAccount]),
+            'links' => array_merge($this->branchMasterNavLinks(), [
+                'index' => route('branch.bank-cash.index', absolute: false),
+                'edit' => route('branch.bank-cash.edit', [$bankCashAccount], absolute: false),
+                'update' => route('branch.bank-cash.update', [$bankCashAccount], absolute: false),
+                'destroy' => route('branch.bank-cash.destroy', [$bankCashAccount], absolute: false),
                 'documents' => route('branch.documents.index', [
                     'company' => $company,
                     'branch' => $branch,
                     'parentType' => 'bank_cash_account',
                     'parentId' => $bankCashAccount->id,
-                ]),
-            ],
+                ], absolute: false),
+            ]),
         ]);
     }
 
@@ -194,12 +192,11 @@ class BankCashAccountController extends Controller
             'permissions' => $permissions,
             'mode' => 'edit',
             'account' => $this->accounts->present($bankCashAccount),
-            'links' => [
-                'hub' => route('branch.masters.index'),
-                'index' => route('branch.bank-cash.index'),
-                'show' => route('branch.bank-cash.show', [$bankCashAccount]),
-                'update' => route('branch.bank-cash.update', [$bankCashAccount]),
-            ],
+            'links' => array_merge($this->branchMasterNavLinks(), [
+                'index' => route('branch.bank-cash.index', absolute: false),
+                'show' => route('branch.bank-cash.show', [$bankCashAccount], absolute: false),
+                'update' => route('branch.bank-cash.update', [$bankCashAccount], absolute: false),
+            ]),
         ]);
     }
 

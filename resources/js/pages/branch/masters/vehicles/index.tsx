@@ -16,7 +16,6 @@ type Row = {
     make: string | null;
     model: string | null;
     is_active: boolean;
-    scope: string;
 };
 
 type Props = {
@@ -28,7 +27,8 @@ type Props = {
         data: Row[];
         meta: { current_page: number; last_page: number; total: number };
     };
-    links: { hub: string; index: string; create: string };
+    dataVisibility?: { mode: string; label: string; message: string };
+    links: { hub: string; dashboard: string; index: string; create: string };
 };
 
 export default function VehiclesIndex({
@@ -37,6 +37,7 @@ export default function VehiclesIndex({
     permissions,
     filters,
     vehicles,
+    dataVisibility,
     links,
 }: Props) {
     const { flash } = usePage<{ flash?: { success?: string | null } }>().props;
@@ -77,12 +78,6 @@ export default function VehiclesIndex({
                 cell: (row) =>
                     [row.make, row.model].filter(Boolean).join(' ') || '—',
             },
-            {
-                id: 'scope',
-                header: 'Scope',
-                priority: 3,
-                cell: (row) => row.scope,
-            },
         ],
         [company.id, branch.id],
     );
@@ -96,8 +91,16 @@ export default function VehiclesIndex({
                     title="Vehicles"
                     company={company}
                     branch={branch}
+                    dataVisibility={
+                        dataVisibility
+                            ? {
+                                  label: dataVisibility.label,
+                                  message: dataVisibility.message,
+                              }
+                            : null
+                    }
                     crumbs={[
-                        { label: 'Masters', href: links.hub },
+                        { label: 'Branch', href: links.dashboard },
                         { label: 'Vehicles' },
                     ]}
                 />

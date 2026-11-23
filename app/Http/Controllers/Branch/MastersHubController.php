@@ -8,12 +8,11 @@ use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Company;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
-use Inertia\Response;
 
 /**
- * Branch Panel masters navigation hub (PO-P3-UI-AUTH).
+ * Compatibility redirect — Masters are opened directly from the Branch sidebar.
  */
 class MastersHubController extends Controller
 {
@@ -24,7 +23,7 @@ class MastersHubController extends Controller
         private readonly PermissionAuthorizer $authorizer,
     ) {}
 
-    public function __invoke(Request $request, Company $company, Branch $branch): Response
+    public function __invoke(Request $request, Company $company, Branch $branch): RedirectResponse
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $permissions = $this->masterPermissions($actor, $company, $branch, $this->access, $this->authorizer);
@@ -33,52 +32,6 @@ class MastersHubController extends Controller
             abort(403, 'Not authorized to view masters.');
         }
 
-        $categories = [
-            [
-                'key' => 'parties',
-                'title' => 'Party Master',
-                'description' => 'Customers, transporters, drivers, vendors and multi-role parties.',
-                'href' => route('branch.parties.index'),
-                'visible' => true,
-            ],
-            [
-                'key' => 'vehicles',
-                'title' => 'Vehicle Master',
-                'description' => 'Registration, capacity and vehicle attributes.',
-                'href' => route('branch.vehicles.index'),
-                'visible' => true,
-            ],
-            [
-                'key' => 'bank_cash',
-                'title' => 'Bank / Cash Accounts',
-                'description' => 'Bank and cash accounts with masked account numbers.',
-                'href' => route('branch.bank-cash.index'),
-                'visible' => true,
-            ],
-            [
-                'key' => 'stations',
-                'title' => 'Stations',
-                'description' => 'Shared station directory and default transporters.',
-                'href' => route('branch.stations.index'),
-                'visible' => true,
-            ],
-            [
-                'key' => 'catalogues',
-                'title' => 'Supporting Masters',
-                'description' => 'Goods types, truck types, document types and more.',
-                'href' => route('branch.catalogues.index'),
-                'visible' => true,
-            ],
-        ];
-
-        return Inertia::render('branch/masters/index', [
-            'company' => $this->companyPayload($company),
-            'branch' => $this->branchPayload($branch),
-            'permissions' => $permissions,
-            'categories' => $categories,
-            'links' => [
-                'dashboard' => route('branch.dashboard'),
-            ],
-        ]);
+        return redirect()->route('branch.parties.index');
     }
 }

@@ -87,21 +87,20 @@ afterEach(function () {
     TenantContextHolder::clear();
 });
 
-test('masters hub and party inertia screens render for authorized branch users', function () {
+test('masters hub redirects to party master and party screens render', function () {
     ['owner' => $owner, 'company' => $company, 'branch' => $branch] = uiMastersWorkspace();
     uiActingAsCustomer($owner);
     enterBranchWorkspace($company, $branch)->assertRedirect();
 
     $this->get(route('branch.masters.index'))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->component('branch/masters/index')
-            ->has('categories')
-            ->where('permissions.can_view', true));
+        ->assertRedirect(route('branch.parties.index'));
 
     $this->get(route('branch.parties.index'))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->component('branch/masters/parties/index'));
+        ->assertInertia(fn ($page) => $page
+            ->component('branch/masters/parties/index')
+            ->has('dataVisibility.label')
+            ->has('dataVisibility.message'));
 
     $this->get(route('branch.parties.create'))
         ->assertOk()

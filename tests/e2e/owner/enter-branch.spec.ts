@@ -59,14 +59,21 @@ test.describe('Enter Branch Panel', () => {
         ).toBeVisible();
         await expect(page.getByText(/^Owner Panel$/i)).toHaveCount(0);
         await expect(
-            page.getByRole('link', { name: 'Return to Management' }),
+            page.getByRole('link', { name: 'Return to Owner Portal' }),
         ).toHaveCount(1);
         await expect(
-            page.getByRole('link', { name: 'Return to Management' }),
+            page.getByRole('link', { name: 'Return to Owner Portal' }),
+        ).toBeVisible();
+        await expect(page.getByTestId('company-switcher')).toHaveCount(0);
+        await expect(page.getByTestId('branch-context-readonly')).toBeVisible();
+        await expect(
+            page.getByRole('link', { name: 'Party Master' }),
         ).toBeVisible();
 
         // Return and enter the other shared branch.
-        await page.getByRole('link', { name: 'Return to Management' }).click();
+        await page
+            .getByRole('link', { name: 'Return to Owner Portal' })
+            .click();
         await expect(page).toHaveURL(/\/management\/?$/);
 
         await page.goto('/management/branches');

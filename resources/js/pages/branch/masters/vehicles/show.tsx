@@ -21,6 +21,7 @@ type Props = {
     > | null;
     links: {
         hub: string;
+        dashboard: string;
         index: string;
         edit: string;
         destroy: string;
@@ -49,7 +50,7 @@ export default function VehicleShow({
                     company={company}
                     branch={branch}
                     crumbs={[
-                        { label: 'Masters', href: links.hub },
+                        { label: 'Branch', href: links.dashboard },
                         { label: 'Vehicles', href: links.index },
                         { label: String(vehicle.registration_number) },
                     ]}
@@ -101,7 +102,12 @@ export default function VehicleShow({
                 </div>
                 <dl className="grid gap-4 rounded-xl border border-border p-4 sm:grid-cols-2">
                     {Object.entries(vehicle)
-                        .filter(([k]) => k !== 'id')
+                        .filter(
+                            ([k]) =>
+                                k !== 'id' &&
+                                k !== 'scope' &&
+                                k !== 'branch_id',
+                        )
                         .map(([key, value]) => (
                             <div key={key}>
                                 <dt className="text-xs tracking-wide text-muted-foreground uppercase">

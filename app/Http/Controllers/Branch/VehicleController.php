@@ -67,12 +67,12 @@ class VehicleController extends Controller
                     'total' => $page->total(),
                 ],
             ],
-            'links' => [
-                'hub' => route('branch.masters.index'),
-                'index' => route('branch.vehicles.index'),
-                'create' => route('branch.vehicles.create'),
-                'store' => route('branch.vehicles.store'),
-            ],
+            'dataVisibility' => $this->dataVisibilityPresentation($company),
+            'links' => array_merge($this->branchMasterNavLinks(), [
+                'index' => route('branch.vehicles.index', absolute: false),
+                'create' => route('branch.vehicles.create', absolute: false),
+                'store' => route('branch.vehicles.store', absolute: false),
+            ]),
         ]);
     }
 
@@ -92,11 +92,10 @@ class VehicleController extends Controller
             'mode' => 'create',
             'vehicle' => null,
             'dataVisibility' => $this->dataVisibilityPresentation($company),
-            'links' => [
-                'hub' => route('branch.masters.index'),
-                'index' => route('branch.vehicles.index'),
-                'store' => route('branch.vehicles.store'),
-            ],
+            'links' => array_merge($this->branchMasterNavLinks(), [
+                'index' => route('branch.vehicles.index', absolute: false),
+                'store' => route('branch.vehicles.store', absolute: false),
+            ]),
         ]);
     }
 
@@ -163,19 +162,18 @@ class VehicleController extends Controller
                 $this->documents,
                 $permissions,
             ),
-            'links' => [
-                'hub' => route('branch.masters.index'),
-                'index' => route('branch.vehicles.index'),
-                'edit' => route('branch.vehicles.edit', [$vehicle]),
-                'update' => route('branch.vehicles.update', [$vehicle]),
-                'destroy' => route('branch.vehicles.destroy', [$vehicle]),
+            'links' => array_merge($this->branchMasterNavLinks(), [
+                'index' => route('branch.vehicles.index', absolute: false),
+                'edit' => route('branch.vehicles.edit', [$vehicle], absolute: false),
+                'update' => route('branch.vehicles.update', [$vehicle], absolute: false),
+                'destroy' => route('branch.vehicles.destroy', [$vehicle], absolute: false),
                 'documents' => route('branch.documents.index', [
                     'company' => $company,
                     'branch' => $branch,
                     'parentType' => 'vehicle',
                     'parentId' => $vehicle->id,
-                ]),
-            ],
+                ], absolute: false),
+            ]),
         ]);
     }
 
@@ -195,12 +193,11 @@ class VehicleController extends Controller
             'permissions' => $permissions,
             'mode' => 'edit',
             'vehicle' => $this->vehiclePayload($vehicle),
-            'links' => [
-                'hub' => route('branch.masters.index'),
-                'index' => route('branch.vehicles.index'),
-                'show' => route('branch.vehicles.show', [$vehicle]),
-                'update' => route('branch.vehicles.update', [$vehicle]),
-            ],
+            'links' => array_merge($this->branchMasterNavLinks(), [
+                'index' => route('branch.vehicles.index', absolute: false),
+                'show' => route('branch.vehicles.show', [$vehicle], absolute: false),
+                'update' => route('branch.vehicles.update', [$vehicle], absolute: false),
+            ]),
         ]);
     }
 

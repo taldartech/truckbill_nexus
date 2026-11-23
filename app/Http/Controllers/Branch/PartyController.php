@@ -83,12 +83,12 @@ class PartyController extends Controller
                     'per_page' => $page->perPage(),
                 ],
             ],
-            'links' => [
-                'hub' => route('branch.masters.index'),
-                'index' => route('branch.parties.index'),
-                'create' => route('branch.parties.create'),
-                'store' => route('branch.parties.store'),
-            ],
+            'dataVisibility' => $this->dataVisibilityPresentation($company),
+            'links' => array_merge($this->branchMasterNavLinks(), [
+                'index' => route('branch.parties.index', absolute: false),
+                'create' => route('branch.parties.create', absolute: false),
+                'store' => route('branch.parties.store', absolute: false),
+            ]),
         ]);
     }
 
@@ -112,11 +112,10 @@ class PartyController extends Controller
                 'value' => $role->value,
                 'label' => str_replace('_', ' ', ucfirst($role->value)),
             ])->values()->all(),
-            'links' => [
-                'hub' => route('branch.masters.index'),
-                'index' => route('branch.parties.index'),
-                'store' => route('branch.parties.store'),
-            ],
+            'links' => array_merge($this->branchMasterNavLinks(), [
+                'index' => route('branch.parties.index', absolute: false),
+                'store' => route('branch.parties.store', absolute: false),
+            ]),
         ]);
     }
 
@@ -199,20 +198,19 @@ class PartyController extends Controller
                 $this->documents,
                 $permissions,
             ),
-            'links' => [
-                'hub' => route('branch.masters.index'),
-                'index' => route('branch.parties.index'),
-                'edit' => route('branch.parties.edit', [$party]),
-                'update' => route('branch.parties.update', [$party]),
-                'assign_role' => route('branch.parties.roles.assign', [$party]),
-                'destroy' => route('branch.parties.destroy', [$party]),
+            'links' => array_merge($this->branchMasterNavLinks(), [
+                'index' => route('branch.parties.index', absolute: false),
+                'edit' => route('branch.parties.edit', [$party], absolute: false),
+                'update' => route('branch.parties.update', [$party], absolute: false),
+                'assign_role' => route('branch.parties.roles.assign', [$party], absolute: false),
+                'destroy' => route('branch.parties.destroy', [$party], absolute: false),
                 'documents' => route('branch.documents.index', [
                     'company' => $company,
                     'branch' => $branch,
                     'parentType' => 'party',
                     'parentId' => $party->id,
-                ]),
-            ],
+                ], absolute: false),
+            ]),
         ]);
     }
 
@@ -238,12 +236,11 @@ class PartyController extends Controller
                 'value' => $role->value,
                 'label' => str_replace('_', ' ', ucfirst($role->value)),
             ])->values()->all(),
-            'links' => [
-                'hub' => route('branch.masters.index'),
-                'index' => route('branch.parties.index'),
-                'show' => route('branch.parties.show', [$party]),
-                'update' => route('branch.parties.update', [$party]),
-            ],
+            'links' => array_merge($this->branchMasterNavLinks(), [
+                'index' => route('branch.parties.index', absolute: false),
+                'show' => route('branch.parties.show', [$party], absolute: false),
+                'update' => route('branch.parties.update', [$party], absolute: false),
+            ]),
         ]);
     }
 

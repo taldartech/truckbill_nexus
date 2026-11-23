@@ -26,6 +26,7 @@ type Props = {
     dataVisibility?: { mode: string; label: string; message: string };
     links: {
         hub: string;
+        dashboard: string;
         index: string;
         store?: string;
         update?: string;
@@ -62,7 +63,7 @@ export default function VehicleForm({
                     company={company}
                     branch={branch}
                     crumbs={[
-                        { label: 'Masters', href: links.hub },
+                        { label: 'Branch', href: links.dashboard },
                         { label: 'Vehicles', href: links.index },
                         { label: mode },
                     ]}

@@ -53,6 +53,56 @@ test('owner panel pages never import CompanySwitcher', function () {
     }
 });
 
+test('branch panel pages and sidebar never expose CompanySwitcher', function () {
+    $branchPages = collect(File::allFiles(resource_path('js/pages/branch')))
+        ->filter(fn ($file) => str_ends_with($file->getFilename(), '.tsx'))
+        ->values();
+
+    expect($branchPages)->not->toBeEmpty();
+
+    foreach ($branchPages as $file) {
+        $contents = File::get($file->getPathname());
+        expect($contents)
+            ->not->toContain('CompanySwitcher')
+            ->and($contents)->not->toContain('company-switcher')
+            ->and($contents)->not->toContain('Return to Management')
+            ->and($contents)->not->toContain('Return to Owner Panel');
+    }
+
+    $sidebar = File::get(resource_path('js/components/app-sidebar.tsx'));
+    expect($sidebar)
+        ->not->toContain('CompanySwitcher')
+        ->and($sidebar)->toContain('Return to Owner Portal')
+        ->and($sidebar)->toContain('/branch/parties')
+        ->and($sidebar)->toContain('/branch/vehicles')
+        ->and($sidebar)->toContain('/branch/bank-cash')
+        ->and($sidebar)->not->toContain("href: '/branch/masters'");
+
+    $masterHeader = File::get(resource_path('js/components/masters/master-page-header.tsx'));
+    expect($masterHeader)->not->toContain('CompanySwitcher');
+});
+
+test('branch inertia share exposes read-only company and branch names without switcher', function () {
+    $owner = User::factory()->customer()->create([
+        'password' => Hash::make('owner-secret'),
+        'email_verified_at' => now(),
+    ]);
+    $company = navigationWorkspace()->createCompany($owner, 'Readonly Context Co', 'Pune');
+    $branch = $company->branches()->firstOrFail();
+
+    navigationLogin($owner);
+    enterBranchWorkspace($company, $branch)->assertRedirect();
+
+    $this->get(route('branch.dashboard'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('company.name', 'Readonly Context Co')
+            ->where('branch.name', 'Pune')
+            ->where('workspace.active_company_name', 'Readonly Context Co')
+            ->where('workspace.active_branch_name', 'Pune')
+            ->missing('workspace.companies.0.create'));
+});
+
 test('owner global and company subscription routes clear workspace and open without switcher dependency', function () {
     $owner = User::factory()->customer()->create([
         'password' => Hash::make('owner-secret'),

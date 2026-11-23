@@ -110,7 +110,8 @@ test('branch routes resolve from session and reject missing context', function (
             ->where('branch.id', $branch->id)
             ->where('links.dashboard', internalRoute('branch.dashboard'))
             ->where('links.settings', internalRoute('branch.settings')));
-    $this->get(route('branch.masters.index'))->assertOk();
+    $this->get(route('branch.masters.index'))
+        ->assertRedirect(route('branch.parties.index'));
     $this->get(route('branch.parties.index'))->assertOk();
 });
 

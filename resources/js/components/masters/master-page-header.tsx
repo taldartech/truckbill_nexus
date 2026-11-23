@@ -1,5 +1,4 @@
 import { Link } from '@inertiajs/react';
-import { CompanySwitcher } from '@/components/company-switcher';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 
 type Props = {
@@ -8,6 +7,8 @@ type Props = {
     company: { id: string; name: string; status: string };
     branch?: { id: string; name: string; status: string } | null;
     crumbs?: { label: string; href?: string }[];
+    /** Optional company Data Visibility banner (not per-row scope). */
+    dataVisibility?: { label: string; message: string } | null;
 };
 
 export function MasterPageHeader({
@@ -16,9 +17,10 @@ export function MasterPageHeader({
     company,
     branch,
     crumbs = [],
+    dataVisibility = null,
 }: Props) {
     return (
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="flex flex-col gap-4">
             <div className="space-y-2">
                 <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                     {eyebrow}
@@ -64,9 +66,18 @@ export function MasterPageHeader({
                         </>
                     ) : null}
                 </div>
-            </div>
-            <div className="w-full max-w-sm">
-                <CompanySwitcher />
+                {dataVisibility ? (
+                    <p
+                        role="status"
+                        className="max-w-3xl text-sm text-muted-foreground"
+                        data-testid="company-data-visibility"
+                    >
+                        <span className="font-medium text-foreground">
+                            {dataVisibility.label}:
+                        </span>{' '}
+                        {dataVisibility.message}
+                    </p>
+                ) : null}
             </div>
         </div>
     );

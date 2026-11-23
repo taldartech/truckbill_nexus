@@ -1,21 +1,24 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
+    ArrowLeftFromLine,
     Building2,
     CreditCard,
     FileSearch,
     GitBranch,
+    Landmark,
     LayoutDashboard,
     LifeBuoy,
+    MapPin,
+    Package,
     Percent,
     Receipt,
     Settings,
     Ticket,
+    Truck,
     UserCog,
     Users,
-    Warehouse,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
-import { CompanySwitcher } from '@/components/company-switcher';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
 import {
@@ -54,13 +57,11 @@ export function AppSidebar() {
     const isSuperAdmin = auth.user?.is_super_admin === true;
     const activeCompanyId = workspace?.active_company_id ?? null;
     const activeBranchId = workspace?.active_branch_id ?? null;
-    const activeCompany = workspace?.companies.find(
-        (c) => c.id === activeCompanyId,
-    );
     const ownsAnyCompany =
         workspace?.companies.some((company) => company.is_owner) === true;
     const inBranchPanel =
         Boolean(activeCompanyId && activeBranchId) ||
+        pathname === '/branch' ||
         pathname.startsWith('/branch/');
     const inOwnerPanel =
         isCustomer &&
@@ -69,6 +70,8 @@ export function AppSidebar() {
         isCustomer &&
         ownsAnyCompany &&
         pathname.startsWith('/management/company');
+    const activeCompany =
+        workspace?.companies.find((c) => c.id === activeCompanyId) ?? null;
 
     const ownerOverview: NavItem[] = ownsAnyCompany
         ? [
@@ -110,54 +113,65 @@ export function AppSidebar() {
           ]
         : [];
 
-    const branchNav: NavItem[] =
-        activeCompanyId && activeBranchId
-            ? [
-                  {
-                      title: 'Branch Dashboard',
-                      href: '/branch',
-                      icon: LayoutDashboard,
-                  },
-                  {
-                      title: 'Masters',
-                      href: '/branch/masters',
-                      icon: Warehouse,
-                  },
-                  {
-                      title: 'Enquiries',
-                      href: '/branch/enquiries',
-                      icon: Ticket,
-                  },
-                  {
-                      title: 'Branch Settings',
-                      href: '/branch/settings',
-                      icon: Settings,
-                  },
-              ]
-            : [];
+    const branchOverview: NavItem[] = [
+        {
+            title: 'Branch Dashboard',
+            href: '/branch',
+            icon: LayoutDashboard,
+        },
+    ];
+
+    const branchOperations: NavItem[] = [
+        {
+            title: 'Enquiries',
+            href: '/branch/enquiries',
+            icon: Ticket,
+        },
+    ];
+
+    const branchMasters: NavItem[] = [
+        {
+            title: 'Party Master',
+            href: '/branch/parties',
+            icon: Users,
+        },
+        {
+            title: 'Vehicle Master',
+            href: '/branch/vehicles',
+            icon: Truck,
+        },
+        {
+            title: 'Bank/Cash Accounts',
+            href: '/branch/bank-cash',
+            icon: Landmark,
+        },
+        {
+            title: 'Station Master',
+            href: '/branch/stations',
+            icon: MapPin,
+        },
+        {
+            title: 'Supporting Catalogues',
+            href: '/branch/catalogues',
+            icon: Package,
+        },
+    ];
+
+    const branchSettings: NavItem[] = [
+        {
+            title: 'Branch Settings',
+            href: '/branch/settings',
+            icon: Settings,
+        },
+    ];
 
     const customerGroups =
         inBranchPanel && activeCompanyId && activeBranchId
             ? [
-                  { label: 'Overview', items: branchNav.slice(0, 1) },
-                  {
-                      label: 'Operations',
-                      items: branchNav.filter((item) =>
-                          ['Enquiries'].includes(item.title),
-                      ),
-                  },
-                  {
-                      label: 'Masters',
-                      items: branchNav.filter((item) =>
-                          ['Masters'].includes(item.title),
-                      ),
-                  },
-                  {
-                      label: 'Branch',
-                      items: branchNav.filter((item) =>
-                          ['Branch Settings'].includes(item.title),
-                      ),
-                  },
+                  { label: 'Overview', items: branchOverview },
+                  { label: 'Operations', items: branchOperations },
+                  { label: 'Masters', items: branchMasters },
+                  { label: 'Branch', items: branchSettings },
               ]
             : [
                   { label: 'Overview', items: ownerOverview },
@@ -245,13 +259,17 @@ export function AppSidebar() {
             : []),
     ];
 
-    // Company switcher: Branch Panel operational context only — never Owner Panel.
-    const showCompanySwitcher = isCustomer && inBranchPanel && !inOwnerPanel;
-    const showReturnToOwner =
+    const showReturnToOwnerPortal =
         isCustomer &&
         inBranchPanel &&
         ownsAnyCompany &&
         Boolean(activeCompanyId && activeBranchId);
+
+    const showBranchContext =
+        isCustomer &&
+        inBranchPanel &&
+        Boolean(activeCompanyId && activeBranchId) &&
+        Boolean(workspace?.active_company_name || activeCompany?.name);
 
     return (
         <Sidebar collapsible="icon" variant="inset">
@@ -274,9 +292,18 @@ export function AppSidebar() {
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>
-                {showCompanySwitcher ? (
-                    <div className="px-2 pt-2 group-data-[collapsible=icon]:hidden">
-                        <CompanySwitcher />
+                {showBranchContext ? (
+                    <div
+                        className="space-y-0.5 px-3 pt-2 group-data-[collapsible=icon]:hidden"
+                        data-testid="branch-context-readonly"
+                    >
+                        <p className="truncate text-sm font-medium text-foreground">
+                            {workspace?.active_company_name ??
+                                activeCompany?.name}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                            {workspace?.active_branch_name ?? 'Branch'}
+                        </p>
                     </div>
                 ) : null}
                 {inOwnerPanel ? (
@@ -295,16 +322,16 @@ export function AppSidebar() {
             </SidebarContent>
 
             <SidebarFooter>
-                {showReturnToOwner ? (
+                {showReturnToOwnerPortal ? (
                     <SidebarMenu>
                         <SidebarMenuItem>
                             <SidebarMenuButton
                                 asChild
-                                tooltip="Return to Management"
+                                tooltip="Return to Owner Portal"
                             >
                                 <Link href="/management" prefetch>
-                                    <Building2 />
-                                    <span>Return to Management</span>
+                                    <ArrowLeftFromLine />
+                                    <span>Return to Owner Portal</span>
                                 </Link>
                             </SidebarMenuButton>
                         </SidebarMenuItem>

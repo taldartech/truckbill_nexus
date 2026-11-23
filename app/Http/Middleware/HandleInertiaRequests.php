@@ -97,10 +97,25 @@ class HandleInertiaRequests extends Middleware
                 : WorkspaceSession::branchId($request);
         }
 
+        $activeCompany = $activeCompanyId === null
+            ? null
+            : Company::query()->whereKey($activeCompanyId)->whereNull('deleted_at')->first();
+        $activeBranch = $activeBranchId === null
+            ? null
+            : Branch::query()->whereKey($activeBranchId)->whereNull('deleted_at')->first();
+
         return [
             'companies' => $navigation->accessibleCompanies($user)->values(),
             'active_company_id' => $activeCompanyId,
             'active_branch_id' => $activeBranchId,
+            'active_company_name' => $activeCompany?->name,
+            'active_company_status' => $activeCompany === null
+                ? null
+                : ($activeCompany->isActive() ? 'Active' : 'Deactivated'),
+            'active_branch_name' => $activeBranch?->name,
+            'active_branch_status' => $activeBranch === null
+                ? null
+                : ($activeBranch->isActive() ? 'Active' : 'Deactivated'),
             'context_version' => WorkspaceSession::version($request),
             'can_create_company' => true,
             'create_company_url' => route('owner.companies.create'),

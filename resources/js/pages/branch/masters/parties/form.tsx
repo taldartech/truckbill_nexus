@@ -30,6 +30,7 @@ type Props = {
     roleOptions: { value: string; label: string }[];
     links: {
         hub: string;
+        dashboard: string;
         index: string;
         store?: string;
         update?: string;
@@ -80,7 +81,7 @@ export default function PartyForm({
                     company={company}
                     branch={branch}
                     crumbs={[
-                        { label: 'Masters', href: links.hub },
+                        { label: 'Branch', href: links.dashboard },
                         { label: 'Parties', href: links.index },
                         { label: mode === 'create' ? 'Create' : 'Edit' },
                     ]}
@@ -98,14 +99,6 @@ export default function PartyForm({
                                     className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground"
                                 >
                                     {dataVisibility.message}
-                                </p>
-                            ) : null}
-                            {mode === 'edit' && party ? (
-                                <p className="text-sm text-muted-foreground">
-                                    Visibility:{' '}
-                                    {party.scope === 'shared'
-                                        ? 'Shared across company branches'
-                                        : 'Restricted to creating branch'}
                                 </p>
                             ) : null}
                             <div className="grid gap-4 sm:grid-cols-2">

@@ -28,7 +28,8 @@ type Props = {
         data: Row[];
         meta: { current_page: number; last_page: number; total: number };
     };
-    links: { hub: string; index: string; create: string };
+    dataVisibility?: { mode: string; label: string; message: string };
+    links: { hub: string; dashboard: string; index: string; create: string };
 };
 
 export default function BankCashIndex({
@@ -37,6 +38,7 @@ export default function BankCashIndex({
     permissions,
     filters,
     accounts,
+    dataVisibility,
     links,
 }: Props) {
     const { flash } = usePage<{ flash?: { success?: string | null } }>().props;
@@ -84,12 +86,6 @@ export default function BankCashIndex({
                 className: 'font-mono',
                 cell: (row) => row.account_number_masked || '—',
             },
-            {
-                id: 'scope',
-                header: 'Scope',
-                priority: 3,
-                cell: (row) => (row.branch_id ? 'branch' : 'shared'),
-            },
         ],
         [company.id, branch.id],
     );
@@ -103,8 +99,16 @@ export default function BankCashIndex({
                     title="Bank / Cash accounts"
                     company={company}
                     branch={branch}
+                    dataVisibility={
+                        dataVisibility
+                            ? {
+                                  label: dataVisibility.label,
+                                  message: dataVisibility.message,
+                              }
+                            : null
+                    }
                     crumbs={[
-                        { label: 'Masters', href: links.hub },
+                        { label: 'Branch', href: links.dashboard },
                         { label: 'Bank / Cash' },
                     ]}
                 />

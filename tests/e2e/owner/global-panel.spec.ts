@@ -65,9 +65,11 @@ test.describe('Owner global panel', () => {
             /Companies|Management/i,
         );
         await expect(
-            page.getByRole('link', { name: /Return to Management/i }),
+            page.getByRole('link', { name: /Return to Owner Portal/i }),
         ).toBeVisible();
-        await page.getByRole('link', { name: /Return to Management/i }).click();
+        await page
+            .getByRole('link', { name: /Return to Owner Portal/i })
+            .click();
         await expect(page).toHaveURL(/\/management\/?$/);
 
         // C — Subscriptions → Manage via icon

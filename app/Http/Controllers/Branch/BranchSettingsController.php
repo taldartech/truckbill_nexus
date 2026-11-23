@@ -55,10 +55,8 @@ class BranchSettingsController extends Controller
                 'note' => 'Branch-scoped preferences only. Company ownership, billing, and subscription administration remain in the Owner Panel.',
             ],
             'links' => [
-                'dashboard' => route('branch.dashboard', ['company' => $company, 'branch' => $branch]),
-                'owner_panel' => $this->access->isCompanyOwner($user, $company)
-                    ? route('owner.home')
-                    : null,
+                'dashboard' => route('branch.dashboard', absolute: false),
+                'owner_panel' => null,
             ],
         ]);
     }

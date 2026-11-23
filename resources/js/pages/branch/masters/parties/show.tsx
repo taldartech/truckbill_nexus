@@ -49,6 +49,7 @@ type Props = {
     > | null;
     links: {
         hub: string;
+        dashboard: string;
         index: string;
         edit: string;
         assign_role: string;
@@ -79,7 +80,7 @@ export default function PartyShow({
                     company={company}
                     branch={branch}
                     crumbs={[
-                        { label: 'Masters', href: links.hub },
+                        { label: 'Branch', href: links.dashboard },
                         { label: 'Parties', href: links.index },
                         { label: party.name },
                     ]}
@@ -132,7 +133,6 @@ export default function PartyShow({
 
                 <dl className="grid gap-4 rounded-xl border border-border p-4 sm:grid-cols-2">
                     {[
-                        ['Scope', party.scope],
                         ['Contact person', party.contact_person],
                         ['Contact number', party.contact_number],
                         ['Email', party.email],

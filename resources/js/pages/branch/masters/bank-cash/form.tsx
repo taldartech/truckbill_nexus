@@ -25,6 +25,7 @@ type Props = {
     dataVisibility?: { mode: string; label: string; message: string };
     links: {
         hub: string;
+        dashboard: string;
         index: string;
         store?: string;
         update?: string;
@@ -62,7 +63,7 @@ export default function BankCashForm({
                     company={company}
                     branch={branch}
                     crumbs={[
-                        { label: 'Masters', href: links.hub },
+                        { label: 'Branch', href: links.dashboard },
                         { label: 'Bank / Cash', href: links.index },
                         { label: mode },
                     ]}

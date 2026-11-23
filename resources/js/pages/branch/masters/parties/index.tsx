@@ -15,7 +15,6 @@ type PartyRow = {
     contact_number: string | null;
     email: string | null;
     city: string | null;
-    scope: string;
     roles: string[];
 };
 
@@ -33,7 +32,8 @@ type Props = {
         data: PartyRow[];
         meta: { current_page: number; last_page: number; total: number };
     };
-    links: { hub: string; index: string; create: string };
+    dataVisibility?: { mode: string; label: string; message: string };
+    links: { hub: string; dashboard: string; index: string; create: string };
 };
 
 export default function PartiesIndex({
@@ -43,6 +43,7 @@ export default function PartiesIndex({
     filters,
     roleOptions,
     parties,
+    dataVisibility,
     links,
 }: Props) {
     const { flash } = usePage<{ flash?: { success?: string | null } }>().props;
@@ -76,10 +77,10 @@ export default function PartiesIndex({
                 ),
             },
             {
-                id: 'scope',
-                header: 'Scope',
+                id: 'roles',
+                header: 'Roles',
                 priority: 1,
-                cell: (row) => row.scope,
+                cell: (row) => row.roles.join(', ') || '—',
             },
             {
                 id: 'contact',
@@ -89,10 +90,11 @@ export default function PartiesIndex({
                 cell: (row) => row.contact_number || row.email || '—',
             },
             {
-                id: 'roles',
-                header: 'Roles',
+                id: 'city',
+                header: 'City',
                 priority: 2,
-                cell: (row) => row.roles.join(', ') || '—',
+                className: 'text-muted-foreground',
+                cell: (row) => row.city || '—',
             },
         ],
         [company.id, branch.id],
@@ -107,8 +109,16 @@ export default function PartiesIndex({
                     title="Parties"
                     company={company}
                     branch={branch}
+                    dataVisibility={
+                        dataVisibility
+                            ? {
+                                  label: dataVisibility.label,
+                                  message: dataVisibility.message,
+                              }
+                            : null
+                    }
                     crumbs={[
-                        { label: 'Masters', href: links.hub },
+                        { label: 'Branch', href: links.dashboard },
                         { label: 'Parties' },
                     ]}
                 />

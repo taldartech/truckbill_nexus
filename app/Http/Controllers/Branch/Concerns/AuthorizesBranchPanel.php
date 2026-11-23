@@ -107,6 +107,17 @@ trait AuthorizesBranchPanel
     }
 
     /**
+     * @return array{hub: string, dashboard: string}
+     */
+    protected function branchMasterNavLinks(): array
+    {
+        return [
+            'hub' => route('branch.masters.index', absolute: false),
+            'dashboard' => route('branch.dashboard', absolute: false),
+        ];
+    }
+
+    /**
      * @return array{id: string, name: string, status: string}
      */
     protected function branchPayload(Branch $branch): array
