@@ -123,6 +123,12 @@ class LorryHire extends Model
         return $this->hasMany(BrokerAdjustment::class);
     }
 
+    /** @return HasOne<BrokerDelivery, $this> */
+    public function delivery(): HasOne
+    {
+        return $this->hasOne(BrokerDelivery::class);
+    }
+
     /** @return HasMany<TransporterBookBalanceEntry, $this> */
     public function bookBalanceEntries(): HasMany
     {

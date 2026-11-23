@@ -14,7 +14,9 @@ use App\Http\Controllers\Admin\TdsRuleController;
 use App\Http\Controllers\Branch\BankCashAccountController;
 use App\Http\Controllers\Branch\BranchDashboardController;
 use App\Http\Controllers\Branch\BranchSettingsController;
+use App\Http\Controllers\Branch\BrokerAdjustmentController;
 use App\Http\Controllers\Branch\BrokerDailyPaymentsController;
+use App\Http\Controllers\Branch\BrokerDeliveryController;
 use App\Http\Controllers\Branch\CatalogueController;
 use App\Http\Controllers\Branch\DocumentAttachmentController;
 use App\Http\Controllers\Branch\EnquiryController;
@@ -200,6 +202,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('/broker/lorry-hires', [LorryHireController::class, 'index'])->name('branch.broker.lorry-hires.index');
         Route::get('/broker/lorry-hires/{lorryHire}', [LorryHireController::class, 'show'])->name('branch.broker.lorry-hires.show');
+        Route::get('/broker/lorry-hires/{lorryHire}/adjustments', [BrokerAdjustmentController::class, 'index'])->name('branch.broker.lorry-hires.adjustments.index');
+        Route::post('/broker/lorry-hires/{lorryHire}/adjustments', [BrokerAdjustmentController::class, 'store'])->name('branch.broker.lorry-hires.adjustments.store');
+
+        Route::get('/broker/deliveries', [BrokerDeliveryController::class, 'index'])->name('branch.broker.deliveries.index');
+        Route::post('/broker/deliveries/memo', [BrokerDeliveryController::class, 'assignMemo'])->name('branch.broker.deliveries.memo');
+        Route::post('/broker/deliveries/{lorryReceipt}/complete', [BrokerDeliveryController::class, 'complete'])->name('branch.broker.deliveries.complete');
 
         Route::get('/broker/vouchers', [TransporterVoucherController::class, 'index'])->name('branch.broker.vouchers.index');
         Route::get('/broker/vouchers/create', [TransporterVoucherController::class, 'create'])->name('branch.broker.vouchers.create');

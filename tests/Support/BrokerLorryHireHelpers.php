@@ -36,6 +36,20 @@ if (! function_exists('brokerGrantLorryHirePermissions')) {
     }
 }
 
+if (! function_exists('brokerGrantDeliveryAdjustmentPermissions')) {
+    function brokerGrantDeliveryAdjustmentPermissions(): void
+    {
+        foreach ([
+            PermissionCodes::BROKER_DELIVERY_VIEW,
+            PermissionCodes::BROKER_DELIVERY_MANAGE,
+            PermissionCodes::BROKER_ADJUSTMENT_VIEW,
+            PermissionCodes::BROKER_ADJUSTMENT_CREATE,
+        ] as $code) {
+            tripGrant('customer.admin', $code);
+        }
+    }
+}
+
 if (! function_exists('brokerGrantVoucherPermissions')) {
     function brokerGrantVoucherPermissions(): void
     {
@@ -191,6 +205,35 @@ if (! function_exists('brokerCreateBrokerLr')) {
             'consignee_party_id' => $consignee->id,
             'goods' => $goods,
         ]);
+    }
+}
+
+if (! function_exists('brokerSetBillingCustomer')) {
+    /**
+     * @param  array<string, mixed>  $ctx
+     */
+    function brokerSetBillingCustomer(LorryReceipt $lr, array $ctx, ?Party $customer = null): Party
+    {
+        if ($customer === null) {
+            $customer = app(PartyService::class)->create(
+                actor: $ctx['owner'],
+                company: $ctx['company'],
+                branch: null,
+                attributes: [
+                    'name' => 'Broker Billing Customer',
+                    'contact_number' => '9800055010',
+                    'state' => 'MH',
+                    'city' => 'Mumbai',
+                    'is_gst_applicable' => false,
+                ],
+                roles: [['role' => PartyRoleType::Customer->value]],
+                remark: 'Broker billing customer',
+            );
+        }
+
+        $lr->forceFill(['billing_customer_party_id' => $customer->id])->save();
+
+        return $customer;
     }
 }
 

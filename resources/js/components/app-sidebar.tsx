@@ -177,6 +177,11 @@ export function AppSidebar() {
             icon: Truck,
         },
         {
+            title: 'Delivery / Memo',
+            href: '/broker/deliveries',
+            icon: Truck,
+        },
+        {
             title: 'Voucher Payments',
             href: '/broker/vouchers',
             icon: CreditCard,

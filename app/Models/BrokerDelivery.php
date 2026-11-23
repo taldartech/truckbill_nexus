@@ -2,11 +2,17 @@
 
 namespace App\Models;
 
+use App\Domains\Broker\Enums\BrokerDeliveryStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
+/**
+ * @property BrokerDeliveryStatus $status
+ * @property Carbon|null $delivery_date
+ */
 class BrokerDelivery extends Model
 {
     use SoftDeletes;
@@ -24,7 +30,32 @@ class BrokerDelivery extends Model
     {
         return [
             'delivery_date' => 'date',
+            'status' => BrokerDeliveryStatus::class,
         ];
+    }
+
+    /** @return BelongsTo<Company, $this> */
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
+
+    /** @return BelongsTo<Branch, $this> */
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class);
+    }
+
+    /** @return BelongsTo<LorryHire, $this> */
+    public function lorryHire(): BelongsTo
+    {
+        return $this->belongsTo(LorryHire::class);
+    }
+
+    /** @return BelongsTo<User, $this> */
+    public function createdBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by_user_id');
     }
 
     protected static function booted(): void

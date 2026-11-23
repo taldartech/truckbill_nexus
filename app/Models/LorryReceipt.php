@@ -122,6 +122,12 @@ class LorryReceipt extends Model
         return $this->hasOne(LorryHire::class);
     }
 
+    /** @return HasOne<BrokerDelivery, $this> */
+    public function delivery(): HasOne
+    {
+        return $this->hasOne(BrokerDelivery::class);
+    }
+
     /** @return HasMany<LrGoodsRow, $this> */
     public function goodsRows(): HasMany
     {

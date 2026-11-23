@@ -57,6 +57,67 @@ final class LorryHireCalculationService
     }
 
     /**
+     * Recompute variable-rate line freight after hire-level unloading weight (TDS basis unchanged).
+     *
+     * @return numeric-string
+     */
+    public function recalculateFreightForUnloading(LorryHire $hire, string $unloadingWeight): string
+    {
+        $hire->loadMissing(['goodsLines.lrGoodsRow']);
+
+        $unloading = $this->decimal($unloadingWeight, 3);
+        $freightTotal = '0.00';
+
+        foreach ($hire->goodsLines as $line) {
+            if ($line->is_fixed_amount || $line->rate_type === FreightRateType::FixedAmount) {
+                $freightTotal = bcadd($freightTotal, $this->money($line->freight_amount), 2);
+
+                continue;
+            }
+
+            $loading = $this->decimal($line->loading_weight, 3);
+            $applicable = bccomp($loading, $unloading, 3) <= 0 ? $loading : $unloading;
+
+            $freight = $this->goodsLineFreight([
+                'rate_type' => $line->rate_type,
+                'rate' => $line->rate,
+                'is_fixed_amount' => false,
+                'actual_weight' => $applicable,
+                'charged_weight' => $applicable,
+                'package_count' => $line->lrGoodsRow?->package_count,
+            ]);
+
+            $line->forceFill(['freight_amount' => $freight])->save();
+            $freightTotal = bcadd($freightTotal, $freight, 2);
+        }
+
+        return $this->money($freightTotal);
+    }
+
+    /**
+     * Latest unloading new weight for a hire, if recorded.
+     *
+     * @return numeric-string|null
+     */
+    public function latestUnloadingWeight(LorryHire $hire): ?string
+    {
+        $latest = BrokerAdjustment::query()
+            ->where('company_id', $hire->company_id)
+            ->where('lorry_hire_id', $hire->id)
+            ->where('type', BrokerAdjustmentType::UnloadingWeight->value)
+            ->whereNull('deleted_at')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->first();
+
+        if ($latest === null || $latest->new_weight === null) {
+            return null;
+        }
+
+        return $this->decimal($latest->new_weight, 3);
+    }
+
+    /**
      * @param  numeric-string  $freightTotal
      * @param  numeric-string  $tdsPercent
      * @return numeric-string
@@ -154,6 +215,35 @@ final class LorryHireCalculationService
         ];
     }
 
+    /**
+     * Effective loading baseline before a new unloading adjustment.
+     *
+     * @return numeric-string
+     */
+    public function effectiveLoadingWeightBeforeUnloading(LorryHire $hire): string
+    {
+        $latest = $this->latestUnloadingWeight($hire);
+        if ($latest !== null) {
+            return $latest;
+        }
+
+        $hire->loadMissing('goodsLines');
+
+        $loading = null;
+        foreach ($hire->goodsLines as $line) {
+            if ($line->is_fixed_amount || $line->rate_type === FreightRateType::FixedAmount) {
+                continue;
+            }
+
+            $weight = $this->decimal($line->loading_weight, 3);
+            if ($loading === null || bccomp($weight, $loading, 3) > 0) {
+                $loading = $weight;
+            }
+        }
+
+        return $loading ?? '0.000';
+    }
+
     private function isCreditAdjustment(BrokerAdjustmentType|string $type): bool
     {
         $value = $type instanceof BrokerAdjustmentType ? $type->value : (string) $type;
@@ -174,6 +264,14 @@ final class LorryHireCalculationService
         }
 
         return number_format((float) $value, $scale, '.', '');
+    }
+
+    /**
+     * @return numeric-string
+     */
+    private function decimal(mixed $value, int $scale): string
+    {
+        return $this->money($value, $scale);
     }
 
     /**

@@ -26,7 +26,7 @@ trait PresentsDocumentDrawer
         DocumentAttachmentService $documents,
         array $permissions,
     ): ?array {
-        if (! in_array($parentType, ['party', 'vehicle', 'bank_cash_account', 'station', 'lorry_receipt', 'trip'], true)) {
+        if (! in_array($parentType, ['party', 'vehicle', 'bank_cash_account', 'station', 'lorry_receipt', 'trip', 'broker_delivery'], true)) {
             return null;
         }
 

@@ -176,7 +176,7 @@ class DocumentAttachmentController extends Controller
 
     private function assertParentType(string $parentType): void
     {
-        if (! in_array($parentType, ['party', 'vehicle', 'bank_cash_account', 'station', 'lorry_receipt', 'trip', 'company_record'], true)) {
+        if (! in_array($parentType, ['party', 'vehicle', 'bank_cash_account', 'station', 'lorry_receipt', 'trip', 'company_record', 'broker_delivery'], true)) {
             abort(404);
         }
     }

@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers\Branch;
 
+use App\Domains\Broker\Adjustment\BrokerAdjustmentService;
+use App\Domains\Broker\Enums\BrokerAdjustmentType;
 use App\Domains\Broker\Enums\LorryHireStatus;
 use App\Domains\Broker\Exceptions\BrokerAuthorizationException;
 use App\Domains\Broker\Exceptions\BrokerConflictException;
@@ -40,6 +42,7 @@ class LorryHireController extends Controller
         private readonly PermissionAuthorizer $authorizer,
         private readonly LorryHireService $lorryHires,
         private readonly LorryHireCalculationService $calculations,
+        private readonly BrokerAdjustmentService $adjustments,
         private readonly FreightAmountPresentation $freightPresentation,
         private readonly CoreModuleEntitlementResolver $moduleEntitlements = new CoreModuleEntitlementResolver,
     ) {}
@@ -191,13 +194,36 @@ class LorryHireController extends Controller
 
         $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
         $summary = $this->calculations->summarize($lorryHire);
+        $adjustmentRows = $this->adjustments->listForHire($company, $branch, $lorryHire);
+        $lorryHire->loadMissing(['lorryReceipt.delivery', 'delivery']);
 
         return Inertia::render('broker/lorry-hires/show', [
             'lorryHire' => $this->detailPayload($lorryHire, $maySeeFreight, $summary),
-            'permissions' => $this->lorryHirePermissions($actor, $company, $branch, $maySeeFreight),
+            'adjustments' => $adjustmentRows->map(fn ($row): array => [
+                'id' => $row->id,
+                'type' => $row->type->value,
+                'amount' => $this->freightPresentation->presentAmount($row->amount, $maySeeFreight),
+                'previous_weight' => $row->previous_weight,
+                'new_weight' => $row->new_weight,
+                'quantity' => $row->quantity,
+                'rate' => $row->rate,
+                'reason' => $row->reason,
+                'created_at' => $row->created_at?->format('d-m-Y H:i'),
+            ])->values()->all(),
+            'adjustmentTypeOptions' => collect(BrokerAdjustmentType::cases())->map(fn (BrokerAdjustmentType $type): array => [
+                'value' => $type->value,
+                'label' => ucwords(str_replace('_', ' ', $type->value)),
+            ])->values()->all(),
+            'delivery' => $this->deliveryPanelPayload($lorryHire),
+            'permissions' => array_merge(
+                $this->lorryHirePermissions($actor, $company, $branch, $maySeeFreight),
+                $this->adjustmentDeliveryPermissions($actor, $company, $branch),
+            ),
             'urls' => [
                 'index' => route('branch.broker.lorry-hires.index', absolute: false),
                 'lr_show' => route('branch.lorry-receipts.show', [$lorryHire->lorry_receipt_id], absolute: false),
+                'adjustment_store' => route('branch.broker.lorry-hires.adjustments.store', [$lorryHire], absolute: false),
+                'deliveries' => route('branch.broker.deliveries.index', absolute: false),
             ],
         ]);
     }
@@ -230,6 +256,43 @@ class LorryHireController extends Controller
         if (! $this->moduleEntitlements->isEntitled($company, SubscriptionModule::Broker)) {
             abort(403, 'Broker module is not entitled for this company.');
         }
+    }
+
+    /**
+     * @return array{
+     *     status: string|null,
+     *     memo_number: string|null,
+     *     pod_number: string|null,
+     *     delivery_date: string|null,
+     *     lr_delivered_at: string|null,
+     *     lr_status: string|null
+     * }
+     */
+    private function deliveryPanelPayload(LorryHire $hire): array
+    {
+        $delivery = $hire->delivery ?? $hire->lorryReceipt?->delivery;
+        $lr = $hire->lorryReceipt;
+
+        return [
+            'status' => $delivery?->status?->value,
+            'memo_number' => $delivery?->memo_number,
+            'pod_number' => $delivery?->pod_number,
+            'delivery_date' => $delivery?->delivery_date?->format('d-m-Y'),
+            'lr_delivered_at' => $lr?->delivered_at?->format('d-m-Y'),
+            'lr_status' => $lr?->status?->value,
+        ];
+    }
+
+    /**
+     * @return array{can_create_adjustment: bool, can_view_adjustment: bool, can_manage_delivery: bool}
+     */
+    private function adjustmentDeliveryPermissions(User $actor, Company $company, Branch $branch): array
+    {
+        return [
+            'can_create_adjustment' => $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_ADJUSTMENT_CREATE, $company, $branch),
+            'can_view_adjustment' => $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_ADJUSTMENT_VIEW, $company, $branch),
+            'can_manage_delivery' => $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_DELIVERY_MANAGE, $company, $branch),
+        ];
     }
 
     /**
