@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Branch\Concerns;
 
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Company\Exceptions\CompanyAccessException;
+use App\Domains\Company\MasterDataVisibilityResolver;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
 use App\Domains\Subscription\Entitlement\SubscriptionEntitlementGate;
@@ -84,13 +85,25 @@ trait AuthorizesBranchPanel
     /**
      * @return array{id: string, name: string, status: string}
      */
+    /**
+     * @return array{id: string, name: string, status: string, data_visibility: string|null}
+     */
     protected function companyPayload(Company $company): array
     {
         return [
             'id' => $company->id,
             'name' => $company->name,
             'status' => $company->isActive() ? 'Active' : 'Deactivated',
+            'data_visibility' => $company->data_visibility?->value,
         ];
+    }
+
+    /**
+     * @return array{mode: string, label: string, message: string}
+     */
+    protected function dataVisibilityPresentation(Company $company): array
+    {
+        return app(MasterDataVisibilityResolver::class)->presentation($company);
     }
 
     /**

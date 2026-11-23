@@ -26,6 +26,7 @@ type Props = {
     branch: { id: string; name: string; status: string };
     mode: 'create' | 'edit';
     party: Party | null;
+    dataVisibility?: { mode: string; label: string; message: string };
     roleOptions: { value: string; label: string }[];
     links: {
         hub: string;
@@ -41,6 +42,7 @@ export default function PartyForm({
     branch,
     mode,
     party,
+    dataVisibility,
     roleOptions,
     links,
 }: Props) {
@@ -90,24 +92,21 @@ export default function PartyForm({
                 >
                     {({ errors, processing }) => (
                         <>
-                            {mode === 'create' ? (
-                                <div className="space-y-2">
-                                    <Label htmlFor="scope">Scope</Label>
-                                    <select
-                                        id="scope"
-                                        name="scope"
-                                        defaultValue="branch"
-                                        className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                    >
-                                        <option value="branch">
-                                            Branch restricted
-                                        </option>
-                                        <option value="shared">
-                                            Shared (company-wide)
-                                        </option>
-                                    </select>
-                                    <InputError message={errors.scope} />
-                                </div>
+                            {mode === 'create' && dataVisibility ? (
+                                <p
+                                    role="status"
+                                    className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground"
+                                >
+                                    {dataVisibility.message}
+                                </p>
+                            ) : null}
+                            {mode === 'edit' && party ? (
+                                <p className="text-sm text-muted-foreground">
+                                    Visibility:{' '}
+                                    {party.scope === 'shared'
+                                        ? 'Shared across company branches'
+                                        : 'Restricted to creating branch'}
+                                </p>
                             ) : null}
                             <div className="grid gap-4 sm:grid-cols-2">
                                 <div className="space-y-2 sm:col-span-2">

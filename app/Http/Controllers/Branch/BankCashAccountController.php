@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Branch;
 
 use App\Domains\Company\CompanyAccessService;
+use App\Domains\Company\MasterDataVisibilityResolver;
 use App\Domains\Document\DocumentAttachmentService;
 use App\Domains\Master\BankCash\BankCashAccountService;
 use App\Domains\Master\Exceptions\MasterDomainException;
@@ -90,6 +91,7 @@ class BankCashAccountController extends Controller
             'permissions' => $permissions,
             'mode' => 'create',
             'account' => null,
+            'dataVisibility' => $this->dataVisibilityPresentation($company),
             'links' => [
                 'hub' => route('branch.masters.index', [$company, $branch]),
                 'index' => route('branch.bank-cash.index', [$company, $branch]),
@@ -103,7 +105,6 @@ class BankCashAccountController extends Controller
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
 
         $validated = $request->validate([
-            'scope' => ['required', Rule::in(['shared', 'branch'])],
             'account_kind' => ['required', Rule::in(['bank', 'cash'])],
             'name' => ['required', 'string', 'max:255'],
             'bank_name' => ['nullable', 'string', 'max:255'],
@@ -114,11 +115,14 @@ class BankCashAccountController extends Controller
             'remark' => ['nullable', 'string', 'max:1000'],
         ]);
 
+        $scopeBranch = app(MasterDataVisibilityResolver::class)
+            ->scopeBranchForCreate($company, $branch);
+
         try {
             $account = $this->accounts->create(
                 $actor,
                 $company,
-                $validated['scope'] === 'branch' ? $branch : null,
+                $scopeBranch,
                 $validated,
                 $validated['remark'] ?? 'Create bank/cash account',
             );

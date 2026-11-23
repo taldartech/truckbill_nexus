@@ -23,6 +23,7 @@ type Props = {
     branch: { id: string; name: string; status: string };
     mode: 'create' | 'edit';
     vehicle: Vehicle | null;
+    dataVisibility?: { mode: string; label: string; message: string };
     links: {
         hub: string;
         index: string;
@@ -37,6 +38,7 @@ export default function VehicleForm({
     branch,
     mode,
     vehicle,
+    dataVisibility,
     links,
 }: Props) {
     const action = mode === 'create' ? links.store! : links.update!;
@@ -72,21 +74,13 @@ export default function VehicleForm({
                 >
                     {({ errors, processing }) => (
                         <>
-                            {mode === 'create' ? (
-                                <div className="space-y-2">
-                                    <Label htmlFor="scope">Scope</Label>
-                                    <select
-                                        id="scope"
-                                        name="scope"
-                                        defaultValue="branch"
-                                        className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                    >
-                                        <option value="branch">
-                                            Branch restricted
-                                        </option>
-                                        <option value="shared">Shared</option>
-                                    </select>
-                                </div>
+                            {mode === 'create' && dataVisibility ? (
+                                <p
+                                    role="status"
+                                    className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground"
+                                >
+                                    {dataVisibility.message}
+                                </p>
                             ) : null}
                             <div className="grid gap-4 sm:grid-cols-2">
                                 {[

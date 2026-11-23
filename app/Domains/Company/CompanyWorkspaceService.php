@@ -32,6 +32,7 @@ final class CompanyWorkspaceService
         private readonly SubscriptionTrialService $trials = new SubscriptionTrialService,
         private readonly CompanyProfileValidator $profiles = new CompanyProfileValidator,
         private readonly BankCashAccountService $bankCash = new BankCashAccountService,
+        private readonly MasterDataVisibilityResolver $masterVisibility = new MasterDataVisibilityResolver,
     ) {}
 
     /**
@@ -143,6 +144,13 @@ final class CompanyWorkspaceService
         $normalized = $profile === [] && ! $requireCompleteProfile
             ? null
             : $this->profiles->normalizeAndValidate($profile, $requireCompleteProfile);
+
+        if ($normalized !== null && isset($normalized['data_visibility'])) {
+            $nextVisibility = $normalized['data_visibility'] instanceof DataVisibility
+                ? $normalized['data_visibility']
+                : DataVisibility::from((string) $normalized['data_visibility']);
+            $this->masterVisibility->assertVisibilityChangeAllowed($company, $nextVisibility);
+        }
 
         return $this->auditedTransaction->run(function () use ($company, $name, $remark, $normalized): Company {
             return $this->withCompanyAuditContext($company, true, function () use ($company, $name, $remark, $normalized): Company {

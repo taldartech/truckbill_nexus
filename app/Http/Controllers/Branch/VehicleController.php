@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Branch;
 
 use App\Domains\Company\CompanyAccessService;
+use App\Domains\Company\MasterDataVisibilityResolver;
 use App\Domains\Document\DocumentAttachmentService;
 use App\Domains\Master\Exceptions\MasterDomainException;
 use App\Domains\Master\Vehicle\VehicleService;
@@ -16,7 +17,6 @@ use App\Models\User;
 use App\Models\Vehicle;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -91,6 +91,7 @@ class VehicleController extends Controller
             'permissions' => $permissions,
             'mode' => 'create',
             'vehicle' => null,
+            'dataVisibility' => $this->dataVisibilityPresentation($company),
             'links' => [
                 'hub' => route('branch.masters.index', [$company, $branch]),
                 'index' => route('branch.vehicles.index', [$company, $branch]),
@@ -104,7 +105,6 @@ class VehicleController extends Controller
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
 
         $validated = $request->validate([
-            'scope' => ['required', Rule::in(['shared', 'branch'])],
             'registration_number' => ['required', 'string', 'max:32'],
             'vehicle_type' => ['nullable', 'string', 'max:100'],
             'make' => ['nullable', 'string', 'max:100'],
@@ -117,11 +117,14 @@ class VehicleController extends Controller
             'remark' => ['nullable', 'string', 'max:1000'],
         ]);
 
+        $scopeBranch = app(MasterDataVisibilityResolver::class)
+            ->scopeBranchForCreate($company, $branch);
+
         try {
             $vehicle = $this->vehicles->create(
                 $actor,
                 $company,
-                $validated['scope'] === 'branch' ? $branch : null,
+                $scopeBranch,
                 $validated,
                 $validated['remark'] ?? 'Create vehicle',
             );

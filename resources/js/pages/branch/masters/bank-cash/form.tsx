@@ -22,6 +22,7 @@ type Props = {
     branch: { id: string; name: string; status: string };
     mode: 'create' | 'edit';
     account: Account | null;
+    dataVisibility?: { mode: string; label: string; message: string };
     links: {
         hub: string;
         index: string;
@@ -36,6 +37,7 @@ export default function BankCashForm({
     branch,
     mode,
     account,
+    dataVisibility,
     links,
 }: Props) {
     const [kind, setKind] = useState(account?.account_kind ?? 'bank');
@@ -74,22 +76,14 @@ export default function BankCashForm({
                         <>
                             {mode === 'create' ? (
                                 <>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="scope">Scope</Label>
-                                        <select
-                                            id="scope"
-                                            name="scope"
-                                            defaultValue="branch"
-                                            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                    {dataVisibility ? (
+                                        <p
+                                            role="status"
+                                            className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground"
                                         >
-                                            <option value="branch">
-                                                Branch
-                                            </option>
-                                            <option value="shared">
-                                                Shared
-                                            </option>
-                                        </select>
-                                    </div>
+                                            {dataVisibility.message}
+                                        </p>
+                                    ) : null}
                                     <div className="space-y-2">
                                         <Label htmlFor="account_kind">
                                             Kind

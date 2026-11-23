@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Branch;
 
 use App\Domains\Company\CompanyAccessService;
+use App\Domains\Company\MasterDataVisibilityResolver;
 use App\Domains\Document\DocumentAttachmentService;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Party\Exceptions\PartyDomainException;
@@ -106,6 +107,7 @@ class PartyController extends Controller
             'permissions' => $permissions,
             'mode' => 'create',
             'party' => null,
+            'dataVisibility' => $this->dataVisibilityPresentation($company),
             'roleOptions' => collect(PartyRoleType::cases())->map(fn (PartyRoleType $role): array => [
                 'value' => $role->value,
                 'label' => str_replace('_', ' ', ucfirst($role->value)),
@@ -123,7 +125,6 @@ class PartyController extends Controller
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
 
         $validated = $request->validate([
-            'scope' => ['required', Rule::in(['shared', 'branch'])],
             'name' => ['required', 'string', 'max:255'],
             'contact_person' => ['nullable', 'string', 'max:255'],
             'contact_number' => ['nullable', 'string', 'max:50'],
@@ -140,7 +141,9 @@ class PartyController extends Controller
             'remark' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        $scopeBranch = $validated['scope'] === 'branch' ? $branch : null;
+        // PO-MASTER-COMPANY-VISIBILITY: ignore any client-submitted scope.
+        $scopeBranch = app(MasterDataVisibilityResolver::class)
+            ->scopeBranchForCreate($company, $branch);
 
         try {
             $party = $this->parties->create(
