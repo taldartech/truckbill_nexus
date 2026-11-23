@@ -299,6 +299,21 @@ test('broker-only active subscription resolves broker', function () {
         ->and($resolution['context'])->toBe(LrWorkflowContext::Broker)
         ->and(app(CoreModuleEntitlementResolver::class)->entitledModules($ws['company']))
         ->toEqual([SubscriptionModule::Broker]);
+
+    lrContextLoginAs($ws['member'], 'member-secret');
+    enterBranchWorkspace($ws['company'], $ws['branch'])->assertRedirect();
+
+    $this->get(route('branch.lorry-receipts.create'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('branch/lorry-receipts/create')
+            ->where('workflowContext', 'broker'));
+
+    $this->get(route('branch.lorry-receipts.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('createAction.mode', 'direct')
+            ->where('createAction.url', route('branch.lorry-receipts.create', ['context' => 'broker'], absolute: false)));
 });
 
 test('ownfleet-only active subscription resolves own_fleet', function () {
@@ -323,7 +338,7 @@ test('partload-only active subscription resolves partload', function () {
         ->and($resolution['context'])->toBe(LrWorkflowContext::Partload);
 });
 
-test('multi-module without origin returns choose status', function () {
+test('multi-module without origin returns choose status and redirects to inline create menu', function () {
     $ws = lrContextWorkspace();
     lrActivatePaidModules($ws['owner'], $ws['company'], [
         SubscriptionModule::Broker->value,
@@ -342,10 +357,15 @@ test('multi-module without origin returns choose status', function () {
     enterBranchWorkspace($ws['company'], $ws['branch'])->assertRedirect();
 
     $this->get(route('branch.lorry-receipts.create'))
+        ->assertRedirect(route('branch.lorry-receipts.index'));
+
+    $this->get(route('branch.lorry-receipts.index'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('branch/lorry-receipts/choose-context')
-            ->has('options', 2));
+            ->component('branch/lorry-receipts/index')
+            ->where('createAction.mode', 'menu')
+            ->has('createAction.options', 2)
+            ->where('createAction.open_menu', true));
 });
 
 test('multi-module with origin own_fleet resolves own_fleet', function () {

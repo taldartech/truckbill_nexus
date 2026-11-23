@@ -389,10 +389,9 @@ test('http authorization denial and happy path index create store', function () 
     lrLoginAs($ctx['member'], 'member-secret');
     enterBranchWorkspace($ctx['company'], $ctx['branch'])->assertRedirect();
 
-    // First-company trial entitles all core modules → choose page without origin.
+    // First-company trial entitles all core modules → list with inline Create menu.
     $this->get(route('branch.lorry-receipts.create'))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page->component('branch/lorry-receipts/choose-context'));
+        ->assertRedirect(route('branch.lorry-receipts.index'));
 
     $this->get(route('branch.lorry-receipts.create', ['context' => 'broker']))
         ->assertOk()
@@ -402,7 +401,10 @@ test('http authorization denial and happy path index create store', function () 
 
     $this->get(route('branch.lorry-receipts.index'))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->component('branch/lorry-receipts/index'));
+        ->assertInertia(fn ($page) => $page
+            ->component('branch/lorry-receipts/index')
+            ->where('createAction.mode', 'menu')
+            ->has('createAction.options', 3));
 
     $response = $this->post(route('branch.lorry-receipts.store'), lrPayload($ctx, [
         'context' => 'broker',

@@ -1,11 +1,18 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { useMemo, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import {
     ResponsiveDataTable,
     type DataTableColumn,
 } from '@/components/data-table';
 import { MasterPageHeader } from '@/components/masters/master-page-header';
 import { Button } from '@/components/ui/button';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -24,11 +31,38 @@ type LrRow = {
 
 type Option = { value: string; label: string };
 
+type CreateOption = {
+    value: string;
+    label: string;
+    create_url: string;
+};
+
+type CreateAction =
+    | {
+          mode: 'direct';
+          label: string;
+          url: string;
+          open_menu: boolean;
+      }
+    | {
+          mode: 'menu';
+          label: string;
+          options: CreateOption[];
+          open_menu: boolean;
+      }
+    | {
+          mode: 'blocked';
+          label: string;
+          reason: string;
+          open_menu: boolean;
+      };
+
 type Props = {
     filters: { q: string; status: string; workflow_context: string };
     permissions: { can_create: boolean };
     statusOptions: Option[];
     contextOptions: Option[];
+    createAction: CreateAction | null;
     lorryReceipts: {
         data: LrRow[];
         meta: { current_page: number; last_page: number; total: number };
@@ -36,15 +70,76 @@ type Props = {
     urls: { index: string; create: string };
 };
 
+function CreateLrAction({ action }: { action: CreateAction }) {
+    const [open, setOpen] = useState(
+        action.mode === 'menu' && action.open_menu,
+    );
+
+    useEffect(() => {
+        if (action.mode === 'menu' && action.open_menu) {
+            setOpen(true);
+        }
+    }, [action]);
+
+    if (action.mode === 'blocked') {
+        return (
+            <p className="max-w-xs text-right text-xs text-muted-foreground">
+                {action.reason}
+            </p>
+        );
+    }
+
+    if (action.mode === 'direct') {
+        return (
+            <Button asChild variant="primary">
+                <Link href={action.url} data-testid="create-lr-direct">
+                    {action.label}
+                </Link>
+            </Button>
+        );
+    }
+
+    return (
+        <DropdownMenu open={open} onOpenChange={setOpen}>
+            <DropdownMenuTrigger asChild>
+                <Button
+                    type="button"
+                    variant="primary"
+                    data-testid="create-lr-menu"
+                    aria-haspopup="menu"
+                >
+                    {action.label}
+                    <ChevronDown className="size-4 opacity-80" aria-hidden />
+                </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="min-w-44">
+                {action.options.map((option) => (
+                    <DropdownMenuItem key={option.value} asChild>
+                        <Link
+                            href={option.create_url}
+                            data-testid={`create-lr-${option.value}`}
+                        >
+                            {option.label} LR
+                        </Link>
+                    </DropdownMenuItem>
+                ))}
+            </DropdownMenuContent>
+        </DropdownMenu>
+    );
+}
+
 export default function LorryReceiptsIndex({
     filters,
     permissions,
     statusOptions,
     contextOptions,
+    createAction,
     lorryReceipts,
     urls,
 }: Props) {
-    const { flash } = usePage<{ flash?: { success?: string | null } }>().props;
+    const { flash } = usePage<{
+        flash?: { success?: string | null; info?: string | null };
+    }>().props;
     const [q, setQ] = useState(filters.q);
     const [status, setStatus] = useState(filters.status);
     const [workflowContext, setWorkflowContext] = useState(
@@ -87,7 +182,7 @@ export default function LorryReceiptsIndex({
             },
             {
                 id: 'context',
-                header: 'Context',
+                header: 'Module',
                 priority: 2,
                 cell: (row) => row.workflow_context.replaceAll('_', ' '),
             },
@@ -139,6 +234,15 @@ export default function LorryReceiptsIndex({
                         {flash.success}
                     </p>
                 ) : null}
+                {flash?.info ? (
+                    <p
+                        role="status"
+                        className="rounded-lg border border-info/30 bg-info/5 px-3 py-2 text-sm text-foreground"
+                        data-testid="lr-create-menu-hint"
+                    >
+                        {flash.info}
+                    </p>
+                ) : null}
                 <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                     <form
                         onSubmit={applyFilters}
@@ -173,7 +277,7 @@ export default function LorryReceiptsIndex({
                             </select>
                         </div>
                         <div className="space-y-2 md:w-44">
-                            <Label htmlFor="lr-context">Context</Label>
+                            <Label htmlFor="lr-context">Module</Label>
                             <select
                                 id="lr-context"
                                 className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
@@ -197,10 +301,8 @@ export default function LorryReceiptsIndex({
                             Filter
                         </Button>
                     </form>
-                    {permissions.can_create ? (
-                        <Button asChild>
-                            <Link href={urls.create}>Create LR</Link>
-                        </Button>
+                    {permissions.can_create && createAction ? (
+                        <CreateLrAction action={createAction} />
                     ) : null}
                 </div>
 

@@ -62,18 +62,23 @@ class LorryReceiptController extends Controller
             perPage: min(100, max(1, (int) $request->input('per_page', 15))),
         );
 
+        $permissions = $this->lrPermissions($actor, $company, $branch);
+
         return Inertia::render('branch/lorry-receipts/index', [
             'filters' => [
                 'q' => $request->string('q')->toString(),
                 'status' => $request->string('status')->toString(),
                 'workflow_context' => $request->string('workflow_context')->toString(),
             ],
-            'permissions' => $this->lrPermissions($actor, $company, $branch),
+            'permissions' => $permissions,
             'statusOptions' => collect(LrStatus::cases())->map(fn (LrStatus $status): array => [
                 'value' => $status->value,
                 'label' => ucfirst($status->value),
             ])->values()->all(),
             'contextOptions' => $this->contextOptions(),
+            'createAction' => $permissions['can_create']
+                ? $this->createActionPayload($company, $actor, $branch, (bool) $request->session()->pull('lr_create_menu', false))
+                : null,
             'lorryReceipts' => [
                 'data' => collect($page->items())->map(fn (LorryReceipt $lr): array => $this->listPayload($lr))->values()->all(),
                 'meta' => [
@@ -90,7 +95,7 @@ class LorryReceiptController extends Controller
         ]);
     }
 
-    public function create(Request $request, Company $company, Branch $branch): Response
+    public function create(Request $request, Company $company, Branch $branch): Response|RedirectResponse
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertPermission($actor, $company, $branch, PermissionCodes::LR_CREATE);
@@ -99,12 +104,12 @@ class LorryReceiptController extends Controller
         $resolution = $this->contextResolver->resolveForCreate($company, $actor, $branch, $origin);
 
         if ($resolution['status'] === 'choose') {
-            return Inertia::render('branch/lorry-receipts/choose-context', [
-                'options' => $resolution['options'],
-                'urls' => [
-                    'index' => route('branch.lorry-receipts.index', absolute: false),
-                ],
-            ]);
+            // Multi-module with no origin: return to the list and use the inline Create menu.
+            // Never invent a default context and never render a full chooser page.
+            return redirect()
+                ->route('branch.lorry-receipts.index')
+                ->with('lr_create_menu', true)
+                ->with('info', 'Select Broker LR, OwnFleet LR, or Partload LR from Create LR.');
         }
 
         if ($resolution['status'] === 'blocked') {
@@ -486,6 +491,56 @@ class LorryReceiptController extends Controller
                 'id' => $item->id,
                 'name' => $item->name,
             ])->values()->all(),
+        ];
+    }
+
+    /**
+     * Compact Create LR control for the list page (direct link or entitled inline menu).
+     *
+     * @return array{
+     *     mode: 'direct'|'menu'|'blocked',
+     *     label: string,
+     *     url?: string,
+     *     options?: list<array{value: string, label: string, create_url: string}>,
+     *     reason?: string,
+     *     open_menu: bool
+     * }
+     */
+    private function createActionPayload(
+        Company $company,
+        User $actor,
+        Branch $branch,
+        bool $openMenu = false,
+    ): array {
+        $resolution = $this->contextResolver->resolveForCreate($company, $actor, $branch, null);
+
+        if ($resolution['status'] === 'blocked') {
+            return [
+                'mode' => 'blocked',
+                'label' => 'Create LR',
+                'reason' => $resolution['reason'],
+                'open_menu' => false,
+            ];
+        }
+
+        if ($resolution['status'] === 'ready') {
+            $context = $resolution['context'];
+
+            return [
+                'mode' => 'direct',
+                'label' => 'Create LR',
+                'url' => route('branch.lorry-receipts.create', [
+                    'context' => $context->value,
+                ], absolute: false),
+                'open_menu' => false,
+            ];
+        }
+
+        return [
+            'mode' => 'menu',
+            'label' => 'Create LR',
+            'options' => $resolution['options'],
+            'open_menu' => $openMenu,
         ];
     }
 

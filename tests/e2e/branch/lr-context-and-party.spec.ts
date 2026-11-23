@@ -34,13 +34,39 @@ test.describe('LR context resolution and Party Master', () => {
             .click();
         await expect(page).toHaveURL(/\/operations\/?$/);
 
-        await page.goto('/lorry-receipts/create');
-        // Ready form, choose cards, or blocked — never a Workflow Context control.
+        await page.goto('/lorry-receipts');
+        await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+            'Lorry Receipts',
+        );
+        // Never a full-page chooser.
+        await expect(
+            page.getByRole('heading', { name: /choose workflow context/i }),
+        ).toHaveCount(0);
+
+        const direct = page.getByTestId('create-lr-direct');
+        const menu = page.getByTestId('create-lr-menu');
+        if (await direct.count()) {
+            await direct.click();
+        } else {
+            await expect(menu).toBeVisible();
+            await menu.click();
+            await page.getByTestId('create-lr-broker').click();
+        }
+
+        await expect(page).toHaveURL(/\/lorry-receipts\/create/);
         await expect(page.getByLabel(/workflow context/i)).toHaveCount(0);
         await expect(
             page.locator('select[name="workflow_context"]'),
         ).toHaveCount(0);
-        await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+        await expect(
+            page.getByRole('heading', { name: /choose workflow context/i }),
+        ).toHaveCount(0);
+
+        // Deep link without origin must not invent a module or show chooser page.
+        await page.goto('/lorry-receipts/create');
+        await expect(
+            page.getByRole('heading', { name: /choose workflow context/i }),
+        ).toHaveCount(0);
     });
 
     test('party create page loads without duplicated company badges', async ({
