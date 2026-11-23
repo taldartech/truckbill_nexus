@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -107,6 +108,12 @@ class LorryReceipt extends Model
     public function billingCustomer(): BelongsTo
     {
         return $this->belongsTo(Party::class, 'billing_customer_party_id');
+    }
+
+    /** @return HasOne<Trip, $this> */
+    public function trip(): HasOne
+    {
+        return $this->hasOne(Trip::class);
     }
 
     /** @return HasMany<LrGoodsRow, $this> */

@@ -9,6 +9,7 @@ use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Party\PartyService;
 use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
+use App\Domains\OwnFleet\Trip\TripMovementService;
 use App\Domains\OwnFleet\Trip\TripService;
 use App\Domains\Rbac\Enums\PermissionDomain;
 use App\Domains\Rbac\PermissionCodes;
@@ -96,11 +97,21 @@ if (! function_exists('tripWorkspace')) {
             PermissionCodes::TRIP_COMPLETE,
             PermissionCodes::TRIP_CANCEL,
             PermissionCodes::TRIP_DELETE,
+            PermissionCodes::INVOICE_VIEW,
+            PermissionCodes::INVOICE_CREATE,
+            PermissionCodes::INVOICE_EDIT,
+            PermissionCodes::INVOICE_CANCEL,
+            PermissionCodes::INVOICE_DELETE,
+            PermissionCodes::INVOICE_PRINT,
+            PermissionCodes::PAYMENT_VIEW,
+            PermissionCodes::PAYMENT_CREATE,
         ] as $code) {
             tripGrant('customer.admin', $code);
         }
         tripGrant('customer.viewer', PermissionCodes::LR_VIEW);
         tripGrant('customer.viewer', PermissionCodes::TRIP_VIEW);
+        tripGrant('customer.viewer', PermissionCodes::INVOICE_VIEW);
+        tripGrant('customer.viewer', PermissionCodes::PAYMENT_VIEW);
 
         $owner = User::factory()->customer()->create(['password' => Hash::make('owner-secret')]);
         $company = $workspace->createCompany($owner, 'Trip Co');
@@ -337,5 +348,104 @@ if (! function_exists('tripCreatePendingTrip')) {
         return app(TripService::class)->createFromLorryReceipt($lr, $ctx['member'], [
             'vehicle_id' => $ctx['vehicle']->id,
         ]);
+    }
+}
+
+if (! function_exists('tripCreateBillingCustomer')) {
+    function tripCreateBillingCustomer(array $ctx, string $pan = 'AABCP1234E'): Party
+    {
+        TenantContextHolder::inject(new TenantContext(
+            companyId: $ctx['company']->id,
+            branchId: $ctx['branch']->id,
+            ownerId: (string) $ctx['company']->owner_user_id,
+        ));
+
+        return app(PartyService::class)->create(
+            actor: $ctx['member'],
+            company: $ctx['company'],
+            branch: null,
+            attributes: [
+                'name' => 'Invoice Customer',
+                'contact_number' => '9800040001',
+                'state' => 'MH',
+                'city' => 'Pune',
+                'pan' => $pan,
+                'is_gst_applicable' => true,
+            ],
+            roles: [[
+                'role' => PartyRoleType::Customer->value,
+                'attributes' => [],
+            ]],
+            remark: 'Trip invoice billing customer',
+        );
+    }
+}
+
+if (! function_exists('tripAssignBillingCustomer')) {
+    function tripAssignBillingCustomer(LorryReceipt $lr, Party $customer, array $ctx): LorryReceipt
+    {
+        tripActivate($ctx['company'], $ctx['branch']);
+        $lr->forceFill(['billing_customer_party_id' => $customer->id])->save();
+
+        return $lr->fresh();
+    }
+}
+
+if (! function_exists('tripCompleteTrip')) {
+    function tripCompleteTrip(array $ctx, Trip $trip): Trip
+    {
+        $movements = app(TripMovementService::class);
+        if ($trip->pickups()->count() === 0) {
+            tripFullyAllocateForInvoice($ctx, $trip);
+        }
+        $service = app(TripService::class);
+        $dispatched = $service->dispatch($trip, $ctx['member'], [
+            'starting_odometer' => '1000',
+        ]);
+
+        return $service->complete($dispatched->fresh(), $ctx['member'], [
+            'ending_odometer' => '1150',
+        ]);
+    }
+}
+
+if (! function_exists('tripFullyAllocateForInvoice')) {
+    function tripFullyAllocateForInvoice(array $ctx, Trip $trip): void
+    {
+        $movements = app(TripMovementService::class);
+        $pickup = $movements->addPickup($trip, $ctx['member'], [
+            'station_id' => $ctx['fromStation']->id,
+            'weight' => '100',
+            'pickup_date' => now()->toDateString(),
+        ]);
+        $drop = $movements->addDrop($trip, $ctx['member'], [
+            'station_id' => $ctx['toStation']->id,
+        ]);
+        $movements->upsertAllocation($trip, $ctx['member'], [
+            'trip_pickup_id' => $pickup->id,
+            'trip_drop_id' => $drop->id,
+            'allocation_weight' => '100',
+            'freight' => '1500',
+        ]);
+    }
+}
+
+if (! function_exists('tripEnsureCompanyGstSnapshot')) {
+    function tripEnsureCompanyGstSnapshot(Company $company): void
+    {
+        if ($company->gst_rate_snapshot !== null) {
+            return;
+        }
+
+        $company->forceFill([
+            'gst_rate_snapshot' => [
+                'gst_rate_id' => 'test-rate',
+                'code' => 'GST18',
+                'name' => 'GST 18%',
+                'rate_percent' => '18.00',
+                'version' => 1,
+                'effective_from' => '2026-04-01',
+            ],
+        ])->save();
     }
 }

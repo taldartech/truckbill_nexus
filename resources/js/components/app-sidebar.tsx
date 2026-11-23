@@ -160,6 +160,16 @@ export function AppSidebar() {
             href: '/trips',
             icon: Truck,
         },
+        {
+            title: 'OwnFleet Invoices',
+            href: '/trip-invoices',
+            icon: Receipt,
+        },
+        {
+            title: 'Payments',
+            href: '/payments',
+            icon: CreditCard,
+        },
     ];
 
     const branchMasters: NavItem[] = [

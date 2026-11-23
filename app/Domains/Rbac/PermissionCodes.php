@@ -76,6 +76,22 @@ final class PermissionCodes
 
     public const TRIP_DELETE = 'trip.delete';
 
+    public const INVOICE_VIEW = 'invoice.view';
+
+    public const INVOICE_CREATE = 'invoice.create';
+
+    public const INVOICE_EDIT = 'invoice.edit';
+
+    public const INVOICE_CANCEL = 'invoice.cancel';
+
+    public const INVOICE_DELETE = 'invoice.delete';
+
+    public const INVOICE_PRINT = 'invoice.print';
+
+    public const PAYMENT_VIEW = 'payment.view';
+
+    public const PAYMENT_CREATE = 'payment.create';
+
     /**
      * @return list<string>
      */
@@ -137,6 +153,14 @@ final class PermissionCodes
             self::TRIP_COMPLETE,
             self::TRIP_CANCEL,
             self::TRIP_DELETE,
+            self::INVOICE_VIEW,
+            self::INVOICE_CREATE,
+            self::INVOICE_EDIT,
+            self::INVOICE_CANCEL,
+            self::INVOICE_DELETE,
+            self::INVOICE_PRINT,
+            self::PAYMENT_VIEW,
+            self::PAYMENT_CREATE,
         ];
     }
 }

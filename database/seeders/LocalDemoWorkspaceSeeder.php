@@ -13,6 +13,8 @@ use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Party\PartyService;
 use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
+use App\Domains\OwnFleet\Invoice\TripInvoicePaymentService;
+use App\Domains\OwnFleet\Invoice\TripInvoiceService;
 use App\Domains\OwnFleet\Trip\TripMovementService;
 use App\Domains\OwnFleet\Trip\TripService;
 use App\Domains\Rbac\Enums\PermissionDomain;
@@ -39,6 +41,7 @@ use App\Models\Station;
 use App\Models\SubscriptionCatalogueVersion;
 use App\Models\SubscriptionPlan;
 use App\Models\Trip;
+use App\Models\TripInvoice;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Support\Tenant\TenantContext;
@@ -507,6 +510,20 @@ class LocalDemoWorkspaceSeeder extends Seeder
             $catalogues,
             'demo-ownfleet:'.$company->id.':pending',
         );
+        $this->ensureOwnFleetInvoiceFixtures(
+            app(LorryReceiptService::class),
+            app(TripService::class),
+            app(TripInvoiceService::class),
+            app(TripInvoicePaymentService::class),
+            $company,
+            $head,
+            $owner,
+            $customerParty,
+            $vehicleHead,
+            $fromStation,
+            $toStation,
+            $catalogues,
+        );
 
         TenantContextHolder::inject(new TenantContext(
             companyId: $company->id,
@@ -557,6 +574,14 @@ class LocalDemoWorkspaceSeeder extends Seeder
                     PermissionCodes::TRIP_COMPLETE,
                     PermissionCodes::TRIP_CANCEL,
                     PermissionCodes::TRIP_DELETE,
+                    PermissionCodes::INVOICE_VIEW,
+                    PermissionCodes::INVOICE_CREATE,
+                    PermissionCodes::INVOICE_EDIT,
+                    PermissionCodes::INVOICE_CANCEL,
+                    PermissionCodes::INVOICE_DELETE,
+                    PermissionCodes::INVOICE_PRINT,
+                    PermissionCodes::PAYMENT_VIEW,
+                    PermissionCodes::PAYMENT_CREATE,
                 ],
             ],
             self::ROLE_OPERATOR => [
@@ -575,6 +600,10 @@ class LocalDemoWorkspaceSeeder extends Seeder
                     PermissionCodes::TRIP_EDIT,
                     PermissionCodes::TRIP_DISPATCH,
                     PermissionCodes::TRIP_COMPLETE,
+                    PermissionCodes::INVOICE_VIEW,
+                    PermissionCodes::INVOICE_CREATE,
+                    PermissionCodes::PAYMENT_VIEW,
+                    PermissionCodes::PAYMENT_CREATE,
                 ],
             ],
             self::ROLE_VIEWER => [
@@ -586,6 +615,8 @@ class LocalDemoWorkspaceSeeder extends Seeder
                     PermissionCodes::ENQUIRY_VIEW,
                     PermissionCodes::LR_VIEW,
                     PermissionCodes::TRIP_VIEW,
+                    PermissionCodes::INVOICE_VIEW,
+                    PermissionCodes::PAYMENT_VIEW,
                 ],
             ],
         ];
@@ -1322,6 +1353,111 @@ class LocalDemoWorkspaceSeeder extends Seeder
             'allocation_weight' => '300',
             'freight' => '0',
             'rate' => '0',
+        ]);
+    }
+
+    /**
+     * OwnFleet demo invoices: one partial and one paid (Batch F–G).
+     */
+    /**
+     * @param  array{truck: OwnerCatalogueItem, goods: OwnerCatalogueItem, package: OwnerCatalogueItem}  $catalogues
+     */
+    private function ensureOwnFleetInvoiceFixtures(
+        LorryReceiptService $lorryReceipts,
+        TripService $trips,
+        TripInvoiceService $invoices,
+        TripInvoicePaymentService $payments,
+        Company $company,
+        Branch $branch,
+        User $actor,
+        Party $billingCustomer,
+        Vehicle $vehicle,
+        Station $fromStation,
+        Station $toStation,
+        array $catalogues,
+    ): void {
+        if (TripInvoice::query()->where('company_id', $company->id)->where('invoice_number', 'like', 'DEMO-OF-INV%')->exists()) {
+            return;
+        }
+
+        $completeTrip = function (LorryReceipt $lr, string $odometerStart, string $odometerEnd) use ($trips, $actor, $vehicle): Trip {
+            $trip = $trips->createFromLorryReceipt($lr, $actor, ['vehicle_id' => $vehicle->id]);
+            $movements = app(TripMovementService::class);
+            $pickup = $movements->addPickup($trip, $actor, [
+                'station_id' => $lr->from_station_id,
+                'weight' => (string) ($lr->goodsRows()->first()?->charged_weight ?? 100),
+                'pickup_date' => CarbonImmutable::now()->subDays(2)->toDateString(),
+            ]);
+            $drop = $movements->addDrop($trip, $actor, ['station_id' => $lr->to_station_id]);
+            $movements->upsertAllocation($trip, $actor, [
+                'trip_pickup_id' => $pickup->id,
+                'trip_drop_id' => $drop->id,
+                'allocation_weight' => (string) ($lr->goodsRows()->first()?->charged_weight ?? 100),
+                'freight' => (string) $lr->freight_total,
+            ]);
+            $dispatched = $trips->dispatch($trip->fresh(), $actor, ['starting_odometer' => $odometerStart]);
+
+            return $trips->complete($dispatched->fresh(), $actor, ['ending_odometer' => $odometerEnd]);
+        };
+
+        $lrPartial = $lorryReceipts->create($company, $branch, $actor, [
+            'workflow_context' => LrWorkflowContext::OwnFleet->value,
+            'vehicle_id' => $vehicle->id,
+            'billing_customer_party_id' => $billingCustomer->id,
+            'number_mode' => 'auto',
+            'lr_date' => CarbonImmutable::now()->subDays(2)->toDateString(),
+            'from_station_id' => $fromStation->id,
+            'to_station_id' => $toStation->id,
+            'goods' => [[
+                'goods_type_id' => $catalogues['goods']->id,
+                'package_type_id' => $catalogues['package']->id,
+                'goods_description' => 'OwnFleet invoice partial demo',
+                'package_count' => 5,
+                'actual_weight' => 900,
+                'charged_weight' => 900,
+                'freight_rate_type' => FreightRateType::FixedAmount->value,
+                'freight_rate' => 22000,
+                'goods_value' => 150000,
+            ]],
+        ]);
+        $completeTrip($lrPartial, '4100', '4280');
+        $partial = $invoices->createIndividual($company, $branch, $actor, $lrPartial->id, [
+            'number_mode' => 'manual',
+            'manual_number' => 'DEMO-OF-INV-PARTIAL',
+        ]);
+        $payments->record($partial, $actor, [
+            'amount_received' => '5000',
+            'tds_amount' => '100',
+        ]);
+
+        $lrPaid = $lorryReceipts->create($company, $branch, $actor, [
+            'workflow_context' => LrWorkflowContext::OwnFleet->value,
+            'vehicle_id' => $vehicle->id,
+            'billing_customer_party_id' => $billingCustomer->id,
+            'number_mode' => 'auto',
+            'lr_date' => CarbonImmutable::now()->subDay()->toDateString(),
+            'from_station_id' => $fromStation->id,
+            'to_station_id' => $toStation->id,
+            'goods' => [[
+                'goods_type_id' => $catalogues['goods']->id,
+                'package_type_id' => $catalogues['package']->id,
+                'goods_description' => 'OwnFleet invoice paid demo',
+                'package_count' => 4,
+                'actual_weight' => 700,
+                'charged_weight' => 700,
+                'freight_rate_type' => FreightRateType::FixedAmount->value,
+                'freight_rate' => 12000,
+                'goods_value' => 90000,
+            ]],
+        ]);
+        $completeTrip($lrPaid, '4280', '4360');
+        $paidInvoice = $invoices->createIndividual($company, $branch, $actor, $lrPaid->id, [
+            'number_mode' => 'manual',
+            'manual_number' => 'DEMO-OF-INV-PAID',
+        ]);
+        $payments->record($paidInvoice, $actor, [
+            'fill_net' => true,
+            'tds_amount' => '0',
         ]);
     }
 

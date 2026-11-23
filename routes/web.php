@@ -21,6 +21,7 @@ use App\Http\Controllers\Branch\MastersHubController;
 use App\Http\Controllers\Branch\PartyController;
 use App\Http\Controllers\Branch\StationController;
 use App\Http\Controllers\Branch\TripController;
+use App\Http\Controllers\Branch\TripInvoiceController;
 use App\Http\Controllers\Branch\VehicleController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\InvitationAcceptanceController;
@@ -193,6 +194,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/trips/{trip}/allocations/{allocation}', [TripController::class, 'destroyAllocation'])->name('branch.trips.allocations.destroy');
         Route::post('/trips/{trip}/expenses', [TripController::class, 'storeExpense'])->name('branch.trips.expenses.store');
         Route::delete('/trips/{trip}/expenses/{expense}', [TripController::class, 'destroyExpense'])->name('branch.trips.expenses.destroy');
+
+        Route::get('/trip-invoices', [TripInvoiceController::class, 'index'])->name('branch.trip-invoices.index');
+        Route::get('/trip-invoices/create', [TripInvoiceController::class, 'create'])->name('branch.trip-invoices.create');
+        Route::get('/trip-invoices/consolidate', [TripInvoiceController::class, 'consolidate'])->name('branch.trip-invoices.consolidate');
+        Route::post('/trip-invoices/individual', [TripInvoiceController::class, 'storeIndividual'])->name('branch.trip-invoices.store-individual');
+        Route::post('/trip-invoices/consolidated', [TripInvoiceController::class, 'storeConsolidated'])->name('branch.trip-invoices.store-consolidated');
+        Route::get('/trip-invoices/{tripInvoice}', [TripInvoiceController::class, 'show'])->name('branch.trip-invoices.show');
+        Route::get('/trip-invoices/{tripInvoice}/print', [TripInvoiceController::class, 'print'])->name('branch.trip-invoices.print');
+        Route::post('/trip-invoices/{tripInvoice}/cancel', [TripInvoiceController::class, 'cancel'])->name('branch.trip-invoices.cancel');
+        Route::delete('/trip-invoices/{tripInvoice}', [TripInvoiceController::class, 'destroy'])->name('branch.trip-invoices.destroy');
+        Route::post('/trip-invoices/{tripInvoice}/payments', [TripInvoiceController::class, 'storePayment'])->name('branch.trip-invoices.payments.store');
+
+        Route::get('/payments', [TripInvoiceController::class, 'paymentsIndex'])->name('branch.payments.index');
 
         Route::get('/masters', MastersHubController::class)->name('branch.masters.index');
 

@@ -25,6 +25,7 @@ class RbacSeeder extends Seeder
             $this->seedCustomerPlatformPermissions();
             $this->seedCustomerPhase4Permissions();
             $this->seedCustomerPhase5Permissions();
+            $this->seedCustomerPhase5InvoicePermissions();
             $this->seedInternalRoles();
             $this->seedCustomerDefaultRoles();
             $this->seedCustomerDefaultMatrix();
@@ -97,6 +98,34 @@ class RbacSeeder extends Seeder
     /**
      * Phase 5 OwnFleet Trip codes — registered without blanket role grants.
      */
+    /**
+     * Phase 5 OwnFleet invoice / payment codes — registered without blanket role grants.
+     */
+    private function seedCustomerPhase5InvoicePermissions(): void
+    {
+        $definitions = [
+            [PermissionCodes::INVOICE_VIEW, 'invoice', null, 'View Invoices', 'View OwnFleet customer invoices'],
+            [PermissionCodes::INVOICE_CREATE, 'invoice', null, 'Create Invoices', 'Create OwnFleet customer invoices'],
+            [PermissionCodes::INVOICE_EDIT, 'invoice', null, 'Edit Invoices', 'Edit OwnFleet invoice additional charges'],
+            [PermissionCodes::INVOICE_CANCEL, 'invoice', null, 'Cancel Invoices', 'Cancel unpaid OwnFleet invoices'],
+            [PermissionCodes::INVOICE_DELETE, 'invoice', null, 'Delete Invoices', 'Soft-delete latest unpaid OwnFleet invoices'],
+            [PermissionCodes::INVOICE_PRINT, 'invoice', null, 'Print Invoices', 'Print sample OwnFleet invoices'],
+            [PermissionCodes::PAYMENT_VIEW, 'payment', null, 'View Payments', 'View OwnFleet invoice payments'],
+            [PermissionCodes::PAYMENT_CREATE, 'payment', null, 'Record Payments', 'Record OwnFleet invoice payments'],
+        ];
+
+        foreach ($definitions as [$code, $module, $submodule, $name, $description]) {
+            $this->upsertPermission(
+                domain: PermissionDomain::Customer,
+                module: $module,
+                submodule: $submodule,
+                name: $name,
+                code: $code,
+                description: $description,
+            );
+        }
+    }
+
     private function seedCustomerPhase5Permissions(): void
     {
         $definitions = [
