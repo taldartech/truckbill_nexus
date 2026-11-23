@@ -3,7 +3,7 @@
 **Decisions:** `PO-OWNER-GLOBAL-MANAGEMENT`, `PO-MASTER-COMPANY-VISIBILITY`  
 **Date:** 23 November 2026  
 **Starting HEAD:** `bcb1d58b528c7ae87cebde2d37a146555e7c5d70`  
-**Tip HEAD (pre-docs):** `79524e1` (tests commit); docs tip recorded after this file’s commit  
+**Tip HEAD:** `582a34a` (docs/certification commit)  
 **Status:** Locally certified — no push / no production deploy
 
 ## Scope delivered
