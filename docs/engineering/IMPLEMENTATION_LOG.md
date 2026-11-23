@@ -105,3 +105,5 @@ Dated workstream records with verified local commit SHAs. Living product Memory 
 | 2026-11-23 | Dual-DB SoftDeleteUniqueIndex | `03c7e8fb4652bc24b270c6f990c113f76ef1f2c5` | PostgreSQL/MySQL soft-delete uniqueness, scope keys, identifier/FK fixes; MySQL 8.4 migrate proven. |
 | 2026-11-23 | Transporter TDS + April 1 reset | `f0b0281ecd9cb92efcfc0128ed990410c23ebbae` | Calculation service, Party preview, reference seeder, annual reset; Pest §6 scenarios. |
 | 2026-11-23 | Premium Party UI + CI mysql | `7507e5dff23081327fb4e7dedc08dc8dc4f980e3` | FormSection Party form, semantic buttons, MySQL CI job, certification docs. |
+| 2026-11-24 | GA #87 Larastan fix | `ae48109f9b4e9afaf45c01b7c3c445c9ee14e295` | Remove non-nullable `??` on demo CDF conversion LR-link count; business assertion preserved; PHPStan + LocalDemoWorkspaceSeederTest green. |
+| 2026-11-24 | PO-P6-AUTH + Batch 0 parity | _(docs commit pending)_ | Phase 6 authorized; `PHASE_6_AUTHORIZATION_RECORD.md`; `LEGACY_TO_NEXUS_COMPREHENSIVE_PARITY_MATRIX.md`; handoff status updated; Memory entry; Phase 7 still deferred. |

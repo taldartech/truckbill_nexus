@@ -42,6 +42,7 @@ function customerCatalogueCodes(): array
         PermissionCodes::customerPlatformCatalogue(),
         PermissionCodes::customerPhase4Catalogue(),
         PermissionCodes::customerPhase5Catalogue(),
+        PermissionCodes::customerPhase6Catalogue(),
     )));
 }
 
@@ -90,8 +91,8 @@ test('every PermissionCodes customer constant is registered in Permission Master
     $fromClass = permissionCodesClassCustomerConstants();
     $fromCatalogues = customerCatalogueCodes();
 
-    expect($fromClass)->toHaveCount(41)
-        ->and($fromCatalogues)->toHaveCount(41)
+    expect($fromClass)->toHaveCount(62)
+        ->and($fromCatalogues)->toHaveCount(62)
         ->and($fromClass)->toEqualCanonicalizing($fromCatalogues);
 
     foreach ($fromCatalogues as $code) {

@@ -92,6 +92,48 @@ final class PermissionCodes
 
     public const PAYMENT_CREATE = 'payment.create';
 
+    public const BROKER_LORRY_HIRE_VIEW = 'broker.lorry_hire.view';
+
+    public const BROKER_LORRY_HIRE_CREATE = 'broker.lorry_hire.create';
+
+    public const BROKER_LORRY_HIRE_EDIT = 'broker.lorry_hire.edit';
+
+    public const BROKER_LORRY_HIRE_CANCEL = 'broker.lorry_hire.cancel';
+
+    public const BROKER_VOUCHER_VIEW = 'broker.voucher.view';
+
+    public const BROKER_VOUCHER_CREATE = 'broker.voucher.create';
+
+    public const BROKER_VOUCHER_EDIT = 'broker.voucher.edit';
+
+    public const BROKER_VOUCHER_STATUS = 'broker.voucher.status';
+
+    public const BROKER_VOUCHER_BULK = 'broker.voucher.bulk';
+
+    public const BROKER_DELIVERY_VIEW = 'broker.delivery.view';
+
+    public const BROKER_DELIVERY_MANAGE = 'broker.delivery.manage';
+
+    public const BROKER_ADJUSTMENT_VIEW = 'broker.adjustment.view';
+
+    public const BROKER_ADJUSTMENT_CREATE = 'broker.adjustment.create';
+
+    public const BROKER_INVOICE_VIEW = 'broker.invoice.view';
+
+    public const BROKER_INVOICE_CREATE = 'broker.invoice.create';
+
+    public const BROKER_INVOICE_CANCEL = 'broker.invoice.cancel';
+
+    public const BROKER_INVOICE_PRINT = 'broker.invoice.print';
+
+    public const BROKER_LINKED_BILTY_VIEW = 'broker.linked_bilty.view';
+
+    public const BROKER_LINKED_BILTY_CREATE = 'broker.linked_bilty.create';
+
+    public const BROKER_LINKED_BILTY_PAY = 'broker.linked_bilty.pay';
+
+    public const BROKER_BOOK_BALANCE_VIEW = 'broker.book_balance.view';
+
     /**
      * @return list<string>
      */
@@ -161,6 +203,38 @@ final class PermissionCodes
             self::INVOICE_PRINT,
             self::PAYMENT_VIEW,
             self::PAYMENT_CREATE,
+        ];
+    }
+
+    /**
+     * Phase 6 Broker catalogue (registered; assigned explicitly — no blanket grants).
+     *
+     * @return list<string>
+     */
+    public static function customerPhase6Catalogue(): array
+    {
+        return [
+            self::BROKER_LORRY_HIRE_VIEW,
+            self::BROKER_LORRY_HIRE_CREATE,
+            self::BROKER_LORRY_HIRE_EDIT,
+            self::BROKER_LORRY_HIRE_CANCEL,
+            self::BROKER_VOUCHER_VIEW,
+            self::BROKER_VOUCHER_CREATE,
+            self::BROKER_VOUCHER_EDIT,
+            self::BROKER_VOUCHER_STATUS,
+            self::BROKER_VOUCHER_BULK,
+            self::BROKER_DELIVERY_VIEW,
+            self::BROKER_DELIVERY_MANAGE,
+            self::BROKER_ADJUSTMENT_VIEW,
+            self::BROKER_ADJUSTMENT_CREATE,
+            self::BROKER_INVOICE_VIEW,
+            self::BROKER_INVOICE_CREATE,
+            self::BROKER_INVOICE_CANCEL,
+            self::BROKER_INVOICE_PRINT,
+            self::BROKER_LINKED_BILTY_VIEW,
+            self::BROKER_LINKED_BILTY_CREATE,
+            self::BROKER_LINKED_BILTY_PAY,
+            self::BROKER_BOOK_BALANCE_VIEW,
         ];
     }
 }

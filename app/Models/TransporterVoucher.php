@@ -1,0 +1,55 @@
+<?php
+
+namespace App\Models;
+
+use App\Domains\Broker\Enums\VoucherPaymentMode;
+use App\Domains\Broker\Enums\VoucherPaymentType;
+use App\Domains\Broker\Enums\VoucherStatus;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Str;
+
+/**
+ * @property VoucherStatus $status
+ * @property string $amount
+ */
+class TransporterVoucher extends Model
+{
+    use SoftDeletes;
+
+    public $incrementing = false;
+
+    protected $keyType = 'string';
+
+    protected $fillable = [
+        'id', 'company_id', 'branch_id', 'lorry_hire_id', 'voucher_number',
+        'transporter_party_id', 'vehicle_id', 'amount', 'payment_type', 'payment_mode',
+        'status', 'bank_cash_account_id', 'cash_reference', 'pump_reference', 'remark', 'created_by_user_id',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'amount' => 'decimal:2',
+            'payment_type' => VoucherPaymentType::class,
+            'payment_mode' => VoucherPaymentMode::class,
+            'status' => VoucherStatus::class,
+        ];
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(function (self $model): void {
+            if (! filled($model->getAttribute('id'))) {
+                $model->setAttribute('id', (string) Str::uuid());
+            }
+        });
+    }
+
+    /** @return BelongsTo<LorryHire, $this> */
+    public function lorryHire(): BelongsTo
+    {
+        return $this->belongsTo(LorryHire::class);
+    }
+}

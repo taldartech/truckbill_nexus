@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Domains\Auth\Listeners\HandleWebSessionOnLogout;
 use App\Domains\Auth\WebSessionService;
+use App\Domains\Broker\LorryHire\LorryHireLrDependencyGuard;
 use App\Domains\Consignment\Dependency\CompositeLrDependencyGuard;
 use App\Domains\OwnFleet\Trip\TripLrDependencyGuard;
 use App\Domains\Rbac\PermissionAuthorizer;
@@ -45,6 +46,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->singleton(CompositeLrDependencyGuard::class, function (): CompositeLrDependencyGuard {
             return new CompositeLrDependencyGuard([
                 new TripLrDependencyGuard,
+                new LorryHireLrDependencyGuard,
             ]);
         });
 

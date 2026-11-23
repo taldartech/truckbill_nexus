@@ -17,6 +17,7 @@ use App\Http\Controllers\Branch\BranchSettingsController;
 use App\Http\Controllers\Branch\CatalogueController;
 use App\Http\Controllers\Branch\DocumentAttachmentController;
 use App\Http\Controllers\Branch\EnquiryController;
+use App\Http\Controllers\Branch\LorryHireController;
 use App\Http\Controllers\Branch\LorryReceiptController;
 use App\Http\Controllers\Branch\MastersHubController;
 use App\Http\Controllers\Branch\PartyController;
@@ -191,6 +192,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/lorry-receipts/{lorryReceipt}/print', [LorryReceiptController::class, 'print'])->name('branch.lorry-receipts.print');
         Route::get('/lorry-receipts/{lorryReceipt}/create-trip', [TripController::class, 'createFromLorryReceipt'])->name('branch.trips.create-from-lr');
         Route::post('/lorry-receipts/{lorryReceipt}/trips', [TripController::class, 'storeFromLorryReceipt'])->name('branch.trips.store-from-lr');
+        Route::get('/lorry-receipts/{lorryReceipt}/create-lorry-hire', [LorryHireController::class, 'createFromLorryReceipt'])->name('branch.broker.lorry-hires.create-from-lr');
+        Route::post('/lorry-receipts/{lorryReceipt}/lorry-hires', [LorryHireController::class, 'storeFromLorryReceipt'])->name('branch.broker.lorry-hires.store-from-lr');
+
+        Route::get('/broker/lorry-hires', [LorryHireController::class, 'index'])->name('branch.broker.lorry-hires.index');
+        Route::get('/broker/lorry-hires/{lorryHire}', [LorryHireController::class, 'show'])->name('branch.broker.lorry-hires.show');
 
         Route::get('/trips', [TripController::class, 'index'])->name('branch.trips.index');
         Route::get('/trips/{trip}', [TripController::class, 'show'])->name('branch.trips.show');

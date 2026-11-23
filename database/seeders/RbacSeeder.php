@@ -26,6 +26,7 @@ class RbacSeeder extends Seeder
             $this->seedCustomerPhase4Permissions();
             $this->seedCustomerPhase5Permissions();
             $this->seedCustomerPhase5InvoicePermissions();
+            $this->seedCustomerPhase6Permissions();
             $this->seedInternalRoles();
             $this->seedCustomerDefaultRoles();
             $this->seedCustomerDefaultMatrix();
@@ -112,6 +113,47 @@ class RbacSeeder extends Seeder
             [PermissionCodes::INVOICE_PRINT, 'invoice', null, 'Print Invoices', 'Print sample OwnFleet invoices'],
             [PermissionCodes::PAYMENT_VIEW, 'payment', null, 'View Payments', 'View OwnFleet invoice payments'],
             [PermissionCodes::PAYMENT_CREATE, 'payment', null, 'Record Payments', 'Record OwnFleet invoice payments'],
+        ];
+
+        foreach ($definitions as [$code, $module, $submodule, $name, $description]) {
+            $this->upsertPermission(
+                domain: PermissionDomain::Customer,
+                module: $module,
+                submodule: $submodule,
+                name: $name,
+                code: $code,
+                description: $description,
+            );
+        }
+    }
+
+    /**
+     * Phase 6 Broker codes — registered without blanket role grants.
+     */
+    private function seedCustomerPhase6Permissions(): void
+    {
+        $definitions = [
+            [PermissionCodes::BROKER_LORRY_HIRE_VIEW, 'broker', 'lorry_hire', 'View Lorry Hires', 'View Broker Lorry Hires'],
+            [PermissionCodes::BROKER_LORRY_HIRE_CREATE, 'broker', 'lorry_hire', 'Create Lorry Hires', 'Create Lorry Hires from Broker LRs'],
+            [PermissionCodes::BROKER_LORRY_HIRE_EDIT, 'broker', 'lorry_hire', 'Edit Lorry Hires', 'Edit Broker Lorry Hires'],
+            [PermissionCodes::BROKER_LORRY_HIRE_CANCEL, 'broker', 'lorry_hire', 'Cancel Lorry Hires', 'Cancel Broker Lorry Hires'],
+            [PermissionCodes::BROKER_VOUCHER_VIEW, 'broker', 'voucher', 'View Vouchers', 'View transporter vouchers'],
+            [PermissionCodes::BROKER_VOUCHER_CREATE, 'broker', 'voucher', 'Create Vouchers', 'Create transporter vouchers'],
+            [PermissionCodes::BROKER_VOUCHER_EDIT, 'broker', 'voucher', 'Edit Vouchers', 'Edit transporter vouchers'],
+            [PermissionCodes::BROKER_VOUCHER_STATUS, 'broker', 'voucher', 'Update Voucher Status', 'Mark transporter voucher status'],
+            [PermissionCodes::BROKER_VOUCHER_BULK, 'broker', 'voucher', 'Bulk Voucher Actions', 'Bulk transporter voucher operations'],
+            [PermissionCodes::BROKER_DELIVERY_VIEW, 'broker', 'delivery', 'View Deliveries', 'View Broker delivery memos/POD'],
+            [PermissionCodes::BROKER_DELIVERY_MANAGE, 'broker', 'delivery', 'Manage Deliveries', 'Manage Broker delivery memos/POD'],
+            [PermissionCodes::BROKER_ADJUSTMENT_VIEW, 'broker', 'adjustment', 'View Adjustments', 'View post-delivery Broker adjustments'],
+            [PermissionCodes::BROKER_ADJUSTMENT_CREATE, 'broker', 'adjustment', 'Create Adjustments', 'Create post-delivery Broker adjustments'],
+            [PermissionCodes::BROKER_INVOICE_VIEW, 'broker', 'invoice', 'View Broker Invoices', 'View Broker customer invoices'],
+            [PermissionCodes::BROKER_INVOICE_CREATE, 'broker', 'invoice', 'Create Broker Invoices', 'Create Broker customer invoices'],
+            [PermissionCodes::BROKER_INVOICE_CANCEL, 'broker', 'invoice', 'Cancel Broker Invoices', 'Cancel Broker customer invoices'],
+            [PermissionCodes::BROKER_INVOICE_PRINT, 'broker', 'invoice', 'Print Broker Invoices', 'Print Broker customer invoices'],
+            [PermissionCodes::BROKER_LINKED_BILTY_VIEW, 'broker', 'linked_bilty', 'View Linked Bilties', 'View linked bilty groups'],
+            [PermissionCodes::BROKER_LINKED_BILTY_CREATE, 'broker', 'linked_bilty', 'Create Linked Bilties', 'Create linked bilty groups'],
+            [PermissionCodes::BROKER_LINKED_BILTY_PAY, 'broker', 'linked_bilty', 'Pay Linked Bilties', 'Record linked bilty payments'],
+            [PermissionCodes::BROKER_BOOK_BALANCE_VIEW, 'broker', 'book_balance', 'View Book Balance', 'View transporter book balance'],
         ];
 
         foreach ($definitions as [$code, $module, $submodule, $name, $description]) {
