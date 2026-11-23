@@ -31,6 +31,11 @@ final class ResolveManagementCompany
             abort(403, 'Management requires an active Customer identity.');
         }
 
+        // Company-scoped management is Owner-only — deny members before soft redirects.
+        if (! Company::query()->where('owner_user_id', $user->id)->whereNull('deleted_at')->exists()) {
+            abort(403, 'Owner Panel management requires company ownership.');
+        }
+
         // Clear branch so Owner chrome is never mixed with Branch Panel.
         $request->session()->forget(WorkspaceSession::BRANCH_KEY);
 

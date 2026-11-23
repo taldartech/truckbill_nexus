@@ -1,22 +1,29 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { useMemo } from 'react';
+import {
+    ResponsiveDataTable,
+    type DataTableColumn,
+} from '@/components/data-table';
 import { Button } from '@/components/ui/button';
+
+type LeadRow = {
+    id: string;
+    contact_name: string;
+    email: string | null;
+    company_name: string | null;
+    status: string;
+    source: string;
+    interested_product: string;
+    assignee: string | null;
+    show_url: string;
+};
 
 type Props = {
     filters: { q: string; status: string };
     statuses: string[];
     urls: { index: string; create: string };
     leads: {
-        data: {
-            id: string;
-            contact_name: string;
-            email: string | null;
-            company_name: string | null;
-            status: string;
-            source: string;
-            interested_product: string;
-            assignee: string | null;
-            show_url: string;
-        }[];
+        data: LeadRow[];
         meta: { current_page: number; last_page: number; total: number };
     };
 };
@@ -30,6 +37,44 @@ export default function CrmLeadsIndex({
     const { flash } = usePage<{
         flash?: { success?: string | null };
     }>().props;
+
+    const columns = useMemo<DataTableColumn<LeadRow>[]>(
+        () => [
+            {
+                id: 'contact',
+                header: 'Contact',
+                priority: 0,
+                cell: (lead) => (
+                    <>
+                        <div>{lead.contact_name}</div>
+                        <div className="text-xs text-muted-foreground">
+                            {lead.email ?? '—'}
+                            {lead.company_name ? ` · ${lead.company_name}` : ''}
+                        </div>
+                    </>
+                ),
+            },
+            {
+                id: 'product',
+                header: 'Product',
+                priority: 2,
+                cell: (lead) => lead.interested_product,
+            },
+            {
+                id: 'status',
+                header: 'Status',
+                priority: 1,
+                cell: (lead) => lead.status,
+            },
+            {
+                id: 'assignee',
+                header: 'Assignee',
+                priority: 2,
+                cell: (lead) => lead.assignee ?? 'Unassigned',
+            },
+        ],
+        [],
+    );
 
     return (
         <>
@@ -89,77 +134,22 @@ export default function CrmLeadsIndex({
                     <Button type="submit">Filter</Button>
                 </Form>
 
-                <div className="overflow-x-auto rounded-xl border border-border">
-                    <table className="w-full min-w-[44rem] text-left text-sm">
-                        <thead className="border-b border-border bg-muted/30 text-muted-foreground">
-                            <tr>
-                                <th className="px-4 py-3 font-medium">
-                                    Contact
-                                </th>
-                                <th className="px-4 py-3 font-medium">
-                                    Product
-                                </th>
-                                <th className="px-4 py-3 font-medium">
-                                    Status
-                                </th>
-                                <th className="px-4 py-3 font-medium">
-                                    Assignee
-                                </th>
-                                <th className="px-4 py-3 font-medium">
-                                    Actions
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {leads.data.length === 0 ? (
-                                <tr>
-                                    <td
-                                        colSpan={5}
-                                        className="px-4 py-8 text-center text-muted-foreground"
-                                    >
-                                        No leads found.
-                                    </td>
-                                </tr>
-                            ) : (
-                                leads.data.map((lead) => (
-                                    <tr
-                                        key={lead.id}
-                                        className="border-b border-border last:border-0"
-                                    >
-                                        <td className="px-4 py-3">
-                                            <div className="font-medium">
-                                                {lead.contact_name}
-                                            </div>
-                                            <div className="text-xs text-muted-foreground">
-                                                {lead.email ?? '—'}
-                                                {lead.company_name
-                                                    ? ` · ${lead.company_name}`
-                                                    : ''}
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {lead.interested_product}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {lead.status}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {lead.assignee ?? 'Unassigned'}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <Link
-                                                href={lead.show_url}
-                                                className="font-medium underline-offset-4 hover:underline"
-                                            >
-                                                Open
-                                            </Link>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                <ResponsiveDataTable
+                    caption="CRM leads"
+                    columns={columns}
+                    rows={leads.data}
+                    rowKey={(lead) => lead.id}
+                    emptyTitle="No leads found"
+                    emptyDescription="Create a lead or adjust filters."
+                    actions={(lead) => (
+                        <Link
+                            href={lead.show_url}
+                            className="font-medium underline-offset-4 hover:underline"
+                        >
+                            Open
+                        </Link>
+                    )}
+                />
 
                 <p className="text-xs text-muted-foreground">
                     Page {leads.meta.current_page} of {leads.meta.last_page} (

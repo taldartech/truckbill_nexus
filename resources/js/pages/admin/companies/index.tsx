@@ -1,4 +1,9 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { useMemo } from 'react';
+import {
+    ResponsiveDataTable,
+    type DataTableColumn,
+} from '@/components/data-table';
 import { Button } from '@/components/ui/button';
 
 type CompanyRow = {
@@ -28,6 +33,49 @@ export default function AdminCompaniesIndex({
     const { flash } = usePage<{
         flash?: { success?: string | null };
     }>().props;
+
+    const columns = useMemo<DataTableColumn<CompanyRow>[]>(
+        () => [
+            {
+                id: 'company',
+                header: 'Company',
+                priority: 0,
+                cell: (row) => (
+                    <>
+                        <div>{row.name}</div>
+                        {row.pan ? (
+                            <div className="font-mono text-xs text-muted-foreground">
+                                {row.pan}
+                            </div>
+                        ) : null}
+                    </>
+                ),
+            },
+            {
+                id: 'owner',
+                header: 'Owner',
+                priority: 2,
+                cell: (row) =>
+                    row.owner ? (
+                        <>
+                            <div>{row.owner.name}</div>
+                            <div className="text-xs text-muted-foreground">
+                                {row.owner.email}
+                            </div>
+                        </>
+                    ) : (
+                        '—'
+                    ),
+            },
+            {
+                id: 'status',
+                header: 'Status',
+                priority: 1,
+                cell: (row) => (row.is_active ? 'Active' : 'Deactivated'),
+            },
+        ],
+        [],
+    );
 
     return (
         <>
@@ -85,81 +133,22 @@ export default function AdminCompaniesIndex({
                     <Button type="submit">Filter</Button>
                 </Form>
 
-                <div className="overflow-x-auto rounded-xl border border-border">
-                    <table className="w-full min-w-[40rem] text-left text-sm">
-                        <thead className="border-b border-border bg-muted/30 text-muted-foreground">
-                            <tr>
-                                <th className="px-4 py-3 font-medium">
-                                    Company
-                                </th>
-                                <th className="px-4 py-3 font-medium">Owner</th>
-                                <th className="px-4 py-3 font-medium">
-                                    Status
-                                </th>
-                                <th className="px-4 py-3 font-medium">
-                                    Actions
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {companies.data.length === 0 ? (
-                                <tr>
-                                    <td
-                                        colSpan={4}
-                                        className="px-4 py-8 text-center text-muted-foreground"
-                                    >
-                                        No companies match these filters.
-                                    </td>
-                                </tr>
-                            ) : (
-                                companies.data.map((company) => (
-                                    <tr
-                                        key={company.id}
-                                        className="border-b border-border last:border-0"
-                                    >
-                                        <td className="px-4 py-3">
-                                            <div className="font-medium">
-                                                {company.name}
-                                            </div>
-                                            {company.pan ? (
-                                                <div className="font-mono text-xs text-muted-foreground">
-                                                    {company.pan}
-                                                </div>
-                                            ) : null}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {company.owner ? (
-                                                <>
-                                                    <div>
-                                                        {company.owner.name}
-                                                    </div>
-                                                    <div className="text-xs text-muted-foreground">
-                                                        {company.owner.email}
-                                                    </div>
-                                                </>
-                                            ) : (
-                                                '—'
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {company.is_active
-                                                ? 'Active'
-                                                : 'Deactivated'}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <Link
-                                                href={company.show_url}
-                                                className="text-sm font-medium underline-offset-4 hover:underline"
-                                            >
-                                                Open
-                                            </Link>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                <ResponsiveDataTable
+                    caption="Companies"
+                    columns={columns}
+                    rows={companies.data}
+                    rowKey={(row) => row.id}
+                    emptyTitle="No companies match these filters"
+                    emptyDescription="Try adjusting search or status filters."
+                    actions={(company) => (
+                        <Link
+                            href={company.show_url}
+                            className="text-sm font-medium underline-offset-4 hover:underline"
+                        >
+                            Open
+                        </Link>
+                    )}
+                />
 
                 <p className="text-xs text-muted-foreground">
                     Showing page {companies.meta.current_page} of{' '}

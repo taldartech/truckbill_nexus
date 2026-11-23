@@ -1,7 +1,10 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import {
+    ResponsiveDataTable,
+    type DataTableColumn,
+} from '@/components/data-table';
 import { MasterPageHeader } from '@/components/masters/master-page-header';
-import ShellEmptyState from '@/components/shell-empty-state';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,6 +37,44 @@ export default function StationsIndex({
     const [q, setQ] = useState(filters.q);
     const showUrl = (id: string) =>
         `/branch/companies/${company.id}/branches/${branch.id}/stations/${id}`;
+
+    const columns = useMemo<DataTableColumn<Row>[]>(
+        () => [
+            {
+                id: 'code',
+                header: 'Code',
+                priority: 0,
+                cell: (row) => (
+                    <Link
+                        href={showUrl(row.id)}
+                        className="font-medium hover:underline"
+                    >
+                        {row.code}
+                    </Link>
+                ),
+            },
+            {
+                id: 'status',
+                header: 'Status',
+                priority: 1,
+                cell: (row) => (row.is_active ? 'Active' : 'Inactive'),
+            },
+            {
+                id: 'name',
+                header: 'Name',
+                priority: 2,
+                cell: (row) => row.name,
+            },
+            {
+                id: 'city',
+                header: 'City',
+                priority: 2,
+                cell: (row) => row.city || '—',
+            },
+        ],
+        [company.id, branch.id],
+    );
+
     return (
         <>
             <Head title={`Stations · ${branch.name}`} />
@@ -92,61 +133,14 @@ export default function StationsIndex({
                         browse the shared directory.
                     </p>
                 ) : null}
-                {stations.data.length === 0 ? (
-                    <ShellEmptyState
-                        title="No stations"
-                        description="Owner-shared stations will appear here."
-                    />
-                ) : (
-                    <div className="overflow-x-auto rounded-xl border border-border">
-                        <table className="w-full min-w-[560px] text-left text-sm">
-                            <thead className="bg-muted/40">
-                                <tr>
-                                    <th className="px-4 py-3 font-medium">
-                                        Code
-                                    </th>
-                                    <th className="px-4 py-3 font-medium">
-                                        Name
-                                    </th>
-                                    <th className="px-4 py-3 font-medium">
-                                        City
-                                    </th>
-                                    <th className="px-4 py-3 font-medium">
-                                        Status
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {stations.data.map((row) => (
-                                    <tr
-                                        key={row.id}
-                                        className="border-t border-border"
-                                    >
-                                        <td className="px-4 py-3">
-                                            <Link
-                                                href={showUrl(row.id)}
-                                                className="font-medium hover:underline"
-                                            >
-                                                {row.code}
-                                            </Link>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {row.name}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {row.city || '—'}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {row.is_active
-                                                ? 'Active'
-                                                : 'Inactive'}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+                <ResponsiveDataTable
+                    caption="Stations"
+                    columns={columns}
+                    rows={stations.data}
+                    rowKey={(row) => row.id}
+                    emptyTitle="No stations"
+                    emptyDescription="Owner-shared stations will appear here."
+                />
             </div>
         </>
     );

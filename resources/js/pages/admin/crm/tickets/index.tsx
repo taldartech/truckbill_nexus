@@ -1,22 +1,30 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { useMemo } from 'react';
+import {
+    ResponsiveDataTable,
+    type DataTableColumn,
+} from '@/components/data-table';
 import { Button } from '@/components/ui/button';
+import { formatDisplayDateSmart } from '@/lib/dates';
+
+type TicketRow = {
+    id: string;
+    subject: string;
+    category: string;
+    priority: string;
+    status: string;
+    assignee: string | null;
+    due_at: string | null;
+    is_overdue: boolean;
+    show_url: string;
+};
 
 type Props = {
     filters: { status: string };
     statuses: string[];
     urls: { index: string; create: string };
     tickets: {
-        data: {
-            id: string;
-            subject: string;
-            category: string;
-            priority: string;
-            status: string;
-            assignee: string | null;
-            due_at: string | null;
-            is_overdue: boolean;
-            show_url: string;
-        }[];
+        data: TicketRow[];
         meta: { current_page: number; last_page: number; total: number };
     };
 };
@@ -30,6 +38,47 @@ export default function CrmTicketsIndex({
     const { flash } = usePage<{
         flash?: { success?: string | null };
     }>().props;
+
+    const columns = useMemo<DataTableColumn<TicketRow>[]>(
+        () => [
+            {
+                id: 'subject',
+                header: 'Subject',
+                priority: 0,
+                cell: (ticket) => (
+                    <>
+                        <div>{ticket.subject}</div>
+                        <div className="text-xs text-muted-foreground">
+                            {ticket.category}
+                            {ticket.assignee ? ` · ${ticket.assignee}` : ''}
+                        </div>
+                    </>
+                ),
+            },
+            {
+                id: 'priority',
+                header: 'Priority',
+                priority: 2,
+                cell: (ticket) => ticket.priority,
+            },
+            {
+                id: 'status',
+                header: 'Status',
+                priority: 1,
+                cell: (ticket) => ticket.status,
+            },
+            {
+                id: 'due',
+                header: 'Due',
+                priority: 2,
+                cell: (ticket) =>
+                    ticket.is_overdue
+                        ? 'Overdue'
+                        : formatDisplayDateSmart(ticket.due_at),
+            },
+        ],
+        [],
+    );
 
     return (
         <>
@@ -81,77 +130,22 @@ export default function CrmTicketsIndex({
                     <Button type="submit">Filter</Button>
                 </Form>
 
-                <div className="overflow-x-auto rounded-xl border border-border">
-                    <table className="w-full min-w-[44rem] text-left text-sm">
-                        <thead className="border-b border-border bg-muted/30 text-muted-foreground">
-                            <tr>
-                                <th className="px-4 py-3 font-medium">
-                                    Subject
-                                </th>
-                                <th className="px-4 py-3 font-medium">
-                                    Priority
-                                </th>
-                                <th className="px-4 py-3 font-medium">
-                                    Status
-                                </th>
-                                <th className="px-4 py-3 font-medium">Due</th>
-                                <th className="px-4 py-3 font-medium">
-                                    Actions
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {tickets.data.length === 0 ? (
-                                <tr>
-                                    <td
-                                        colSpan={5}
-                                        className="px-4 py-8 text-center text-muted-foreground"
-                                    >
-                                        No tickets found.
-                                    </td>
-                                </tr>
-                            ) : (
-                                tickets.data.map((ticket) => (
-                                    <tr
-                                        key={ticket.id}
-                                        className="border-b border-border last:border-0"
-                                    >
-                                        <td className="px-4 py-3">
-                                            <div className="font-medium">
-                                                {ticket.subject}
-                                            </div>
-                                            <div className="text-xs text-muted-foreground">
-                                                {ticket.category}
-                                                {ticket.assignee
-                                                    ? ` · ${ticket.assignee}`
-                                                    : ''}
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {ticket.priority}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {ticket.status}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {ticket.is_overdue
-                                                ? 'Overdue'
-                                                : (ticket.due_at ?? '—')}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <Link
-                                                href={ticket.show_url}
-                                                className="font-medium underline-offset-4 hover:underline"
-                                            >
-                                                Open
-                                            </Link>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                <ResponsiveDataTable
+                    caption="Support tickets"
+                    columns={columns}
+                    rows={tickets.data}
+                    rowKey={(ticket) => ticket.id}
+                    emptyTitle="No tickets found"
+                    emptyDescription="Create a ticket or adjust filters."
+                    actions={(ticket) => (
+                        <Link
+                            href={ticket.show_url}
+                            className="font-medium underline-offset-4 hover:underline"
+                        >
+                            Open
+                        </Link>
+                    )}
+                />
             </div>
         </>
     );

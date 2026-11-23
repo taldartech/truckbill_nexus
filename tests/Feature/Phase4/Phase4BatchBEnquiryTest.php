@@ -51,13 +51,14 @@ afterEach(function () {
     TenantContextHolder::clear();
 });
 
-function batchBActingAs(User $user): void
+function batchBActingAs(User $user, Company $company, Branch $branch): void
 {
     // Flush session so Customer single-session claim can rebind for the new actor.
     test()->flushSession();
     CustomerWebSession::query()->where('user_id', $user->id)->delete();
     test()->actingAs($user);
     session()->forget(WebSessionService::SESSION_VERSION_KEY);
+    seedBranchSession($company, $branch);
 }
 
 function batchBCustomerRole(string $slug): Role
@@ -252,10 +253,10 @@ function batchBManualPayload(array $workspace, array $overrides = []): array
 
 test('authorized branch user creates enquiry with company branch goods status audit and outbox', function () {
     $ws = batchBWorkspace();
-    batchBActingAs($ws['member']);
+    batchBActingAs($ws['member'], $ws['company'], $ws['branch']);
 
     $response = $this->postJson(
-        route('branch.enquiries.store', [$ws['company'], $ws['branch']]),
+        route('branch.enquiries.store'),
         batchBManualPayload($ws),
     );
 
@@ -278,32 +279,32 @@ test('authorized branch user creates enquiry with company branch goods status au
 
 test('zero vehicle quantity and vehicle type arrays are rejected', function () {
     $ws = batchBWorkspace();
-    batchBActingAs($ws['member']);
-    $this->postJson(route('branch.enquiries.store', [$ws['company'], $ws['branch']]), batchBManualPayload($ws, [
+    batchBActingAs($ws['member'], $ws['company'], $ws['branch']);
+    $this->postJson(route('branch.enquiries.store'), batchBManualPayload($ws, [
         'vehicle_quantity' => 0,
     ]))->assertUnprocessable();
 });
 
 test('vehicle type arrays are rejected', function () {
     $ws = batchBWorkspace();
-    batchBActingAs($ws['member']);
-    $this->postJson(route('branch.enquiries.store', [$ws['company'], $ws['branch']]), batchBManualPayload($ws, [
+    batchBActingAs($ws['member'], $ws['company'], $ws['branch']);
+    $this->postJson(route('branch.enquiries.store'), batchBManualPayload($ws, [
         'vehicle_types' => [$ws['truck']->id],
     ]))->assertUnprocessable();
 });
 
 test('invalid catalogue reference is rejected', function () {
     $ws = batchBWorkspace();
-    batchBActingAs($ws['member']);
-    $this->postJson(route('branch.enquiries.store', [$ws['company'], $ws['branch']]), batchBManualPayload($ws, [
+    batchBActingAs($ws['member'], $ws['company'], $ws['branch']);
+    $this->postJson(route('branch.enquiries.store'), batchBManualPayload($ws, [
         'vehicle_type_id' => (string) Str::uuid(),
     ]))->assertUnprocessable();
 });
 
 test('cross-company customer is rejected', function () {
     $ws = batchBWorkspace();
-    batchBActingAs($ws['member']);
-    $this->postJson(route('branch.enquiries.store', [$ws['company'], $ws['branch']]), batchBManualPayload($ws, [
+    batchBActingAs($ws['member'], $ws['company'], $ws['branch']);
+    $this->postJson(route('branch.enquiries.store'), batchBManualPayload($ws, [
         'customer_party_id' => $ws['otherParty']->id,
     ]))->assertUnprocessable();
 });
@@ -311,30 +312,30 @@ test('cross-company customer is rejected', function () {
 test('unauthorized viewer wrong branch inactive company and missing enquiry.create are rejected', function () {
     $ws = batchBWorkspace();
 
-    batchBActingAs($ws['viewer']);
-    $this->postJson(route('branch.enquiries.store', [$ws['company'], $ws['branch']]), batchBManualPayload($ws))
+    batchBActingAs($ws['viewer'], $ws['company'], $ws['branch']);
+    $this->postJson(route('branch.enquiries.store'), batchBManualPayload($ws))
         ->assertForbidden();
 
-    // Cross-company branch path must not authorize the member.
-    batchBActingAs($ws['member']);
-    $this->postJson(route('branch.enquiries.store', [$ws['company'], $ws['otherBranch']]), batchBManualPayload($ws))
-        ->assertNotFound();
+    // Cross-company branch context must not authorize the member.
+    batchBActingAs($ws['member'], $ws['otherCompany'], $ws['otherBranch']);
+    $this->postJson(route('branch.enquiries.store'), batchBManualPayload($ws))
+        ->assertForbidden();
 
     app(CompanyWorkspaceService::class)->deactivateCompany(
         User::factory()->superAdmin()->create(),
         $ws['company'],
         'Deactivate for test',
     );
-    batchBActingAs($ws['member']);
-    $this->postJson(route('branch.enquiries.store', [$ws['company'], $ws['branch']]), batchBManualPayload($ws))
+    batchBActingAs($ws['member'], $ws['company'], $ws['branch']);
+    $this->postJson(route('branch.enquiries.store'), batchBManualPayload($ws))
         ->assertForbidden();
 });
 
 test('platform permissions alone do not grant enquiry.create', function () {
     $ws = batchBWorkspace(withEnquiryCreate: false);
-    batchBActingAs($ws['member']);
+    batchBActingAs($ws['member'], $ws['company'], $ws['branch']);
 
-    $this->postJson(route('branch.enquiries.store', [$ws['company'], $ws['branch']]), batchBManualPayload($ws))
+    $this->postJson(route('branch.enquiries.store'), batchBManualPayload($ws))
         ->assertForbidden();
 
     expect(
@@ -364,7 +365,7 @@ test('subscription paid grace blocks enquiry mutation', function () {
     $catalogue = SubscriptionCatalogueVersion::query()->where('code', 'v2026-initial')->firstOrFail();
     $plan = SubscriptionPlan::query()->where('catalogue_version_id', $catalogue->id)->where('is_active', true)->firstOrFail();
 
-    batchBActingAs($ws['owner']);
+    batchBActingAs($ws['owner'], $ws['company'], $ws['branch']);
     $draft = app(CompanySubscriptionContractService::class)->createDraftContract(
         actor: $ws['owner'],
         company: $ws['company'],
@@ -381,38 +382,38 @@ test('subscription paid grace blocks enquiry mutation', function () {
     $status = app(SubscriptionEntitlementGate::class)->evaluate($ws['company']);
     expect($status['branch_mutations_allowed'])->toBeFalse();
 
-    batchBActingAs($ws['member']);
-    $this->postJson(route('branch.enquiries.store', [$ws['company'], $ws['branch']]), batchBManualPayload($ws))
+    batchBActingAs($ws['member'], $ws['company'], $ws['branch']);
+    $this->postJson(route('branch.enquiries.store'), batchBManualPayload($ws))
         ->assertForbidden();
 });
 
 test('edit without remark is rejected', function () {
     $ws = batchBWorkspace();
-    batchBActingAs($ws['member']);
+    batchBActingAs($ws['member'], $ws['company'], $ws['branch']);
 
     $enquiryId = $this->postJson(
-        route('branch.enquiries.store', [$ws['company'], $ws['branch']]),
+        route('branch.enquiries.store'),
         batchBManualPayload($ws),
     )->assertCreated()->json('data.id');
 
     // Re-bind session after create so CustomerWebSession matches the testing session id.
-    batchBActingAs($ws['member']);
-    $this->patchJson(route('branch.enquiries.update', [$ws['company'], $ws['branch'], $enquiryId]), [
+    batchBActingAs($ws['member'], $ws['company'], $ws['branch']);
+    $this->patchJson(route('branch.enquiries.update', ['enquiry' => $enquiryId]), [
         'pickup_location' => 'Updated Pickup',
     ])->assertUnprocessable();
 });
 
 test('edit with remark updates enquiry and preserves creation side effects', function () {
     $ws = batchBWorkspace();
-    batchBActingAs($ws['member']);
+    batchBActingAs($ws['member'], $ws['company'], $ws['branch']);
 
     $enquiryId = $this->postJson(
-        route('branch.enquiries.store', [$ws['company'], $ws['branch']]),
+        route('branch.enquiries.store'),
         batchBManualPayload($ws),
     )->assertCreated()->json('data.id');
 
-    batchBActingAs($ws['member']);
-    $this->patchJson(route('branch.enquiries.update', [$ws['company'], $ws['branch'], $enquiryId]), [
+    batchBActingAs($ws['member'], $ws['company'], $ws['branch']);
+    $this->patchJson(route('branch.enquiries.update', ['enquiry' => $enquiryId]), [
         'remark' => 'Corrected pickup',
         'pickup_location' => 'Updated Pickup',
     ])->assertOk()->assertJsonPath('data.pickup_location', 'Updated Pickup');
@@ -424,10 +425,10 @@ test('edit with remark updates enquiry and preserves creation side effects', fun
 
 test('enquiry goods edit soft-deletes prior rows and retains history identifiers', function () {
     $ws = batchBWorkspace();
-    batchBActingAs($ws['member']);
+    batchBActingAs($ws['member'], $ws['company'], $ws['branch']);
 
     $enquiryId = $this->postJson(
-        route('branch.enquiries.store', [$ws['company'], $ws['branch']]),
+        route('branch.enquiries.store'),
         batchBManualPayload($ws),
     )->assertCreated()->json('data.id');
 
@@ -439,8 +440,8 @@ test('enquiry goods edit soft-deletes prior rows and retains history identifiers
 
     expect($originalIds)->toHaveCount(2);
 
-    batchBActingAs($ws['member']);
-    $this->patchJson(route('branch.enquiries.update', [$ws['company'], $ws['branch'], $enquiryId]), [
+    batchBActingAs($ws['member'], $ws['company'], $ws['branch']);
+    $this->patchJson(route('branch.enquiries.update', ['enquiry' => $enquiryId]), [
         'remark' => 'Replace goods rows',
         'goods' => [
             [
@@ -471,7 +472,7 @@ test('enquiry goods edit soft-deletes prior rows and retains history identifiers
 
 test('failed persistence rolls back enquiry goods number and outbox', function () {
     $ws = batchBWorkspace();
-    batchBActingAs($ws['member']);
+    batchBActingAs($ws['member'], $ws['company'], $ws['branch']);
 
     $beforeEnquiries = Enquiry::query()->where('company_id', $ws['company']->id)->count();
     $beforeGoods = EnquiryGoodsRow::query()->where('company_id', $ws['company']->id)->count();
@@ -507,19 +508,19 @@ test('failed persistence rolls back enquiry goods number and outbox', function (
 
 test('unassigned queue listing requires enquiry.assign', function () {
     $ws = batchBWorkspace();
-    batchBActingAs($ws['member']);
+    batchBActingAs($ws['member'], $ws['company'], $ws['branch']);
 
     Enquiry::factory()->forCompany($ws['company'])->unassigned()->create([
         'vehicle_type_id' => $ws['truck']->id,
     ]);
 
-    $this->getJson(route('branch.enquiries.index', [$ws['company'], $ws['branch']]).'?unassigned=1')
+    $this->getJson(route('branch.enquiries.index').'?unassigned=1')
         ->assertOk()
         ->assertJsonPath('meta.includes_unassigned', true);
 
     batchBGrantRolePermission('customer.viewer', PermissionCodes::ENQUIRY_VIEW);
-    batchBActingAs($ws['viewer']);
-    $this->getJson(route('branch.enquiries.index', [$ws['company'], $ws['branch']]).'?unassigned=1')
+    batchBActingAs($ws['viewer'], $ws['company'], $ws['branch']);
+    $this->getJson(route('branch.enquiries.index').'?unassigned=1')
         ->assertOk()
         ->assertJsonPath('meta.includes_unassigned', false);
 });

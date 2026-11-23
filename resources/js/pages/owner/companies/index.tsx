@@ -7,10 +7,13 @@ import {
     Plus,
     Users,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { AppIconAction } from '@/components/app-icon-action';
+import {
+    ResponsiveDataTable,
+    type DataTableColumn,
+} from '@/components/data-table';
 import { OwnerPageHeader } from '@/components/owner/owner-page-header';
-import ShellEmptyState from '@/components/shell-empty-state';
 import { WorkspaceContextAction } from '@/components/workspace-context-action';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,6 +65,18 @@ type Props = {
     };
 };
 
+function visibilityLabel(value: string | null): string {
+    if (value === 'branch_wise_restricted') {
+        return 'Restricted';
+    }
+
+    if (value === 'shared_data') {
+        return 'Shared';
+    }
+
+    return '—';
+}
+
 export default function OwnerCompaniesIndex({
     filters,
     companies,
@@ -83,6 +98,64 @@ export default function OwnerCompaniesIndex({
             { preserveState: true, replace: true },
         );
     };
+
+    const columns = useMemo<DataTableColumn<CompanyRow>[]>(
+        () => [
+            {
+                id: 'name',
+                header: 'Company',
+                priority: 0,
+                cell: (row) => row.name,
+            },
+            {
+                id: 'status',
+                header: 'Status',
+                priority: 1,
+                cell: (row) => <WorkspaceStatusBadge status={row.status} />,
+            },
+            {
+                id: 'gstin',
+                header: 'GSTIN',
+                priority: 2,
+                className: 'font-mono text-xs',
+                cell: (row) => row.gstin ?? '—',
+            },
+            {
+                id: 'pan',
+                header: 'PAN',
+                priority: 2,
+                className: 'font-mono text-xs',
+                cell: (row) => row.pan ?? '—',
+            },
+            {
+                id: 'branches',
+                header: 'Branches',
+                priority: 2,
+                cell: (row) => row.branch_count,
+            },
+            {
+                id: 'visibility',
+                header: 'Visibility',
+                priority: 3,
+                cell: (row) => visibilityLabel(row.data_visibility),
+            },
+            {
+                id: 'subscription',
+                header: 'Subscription',
+                priority: 3,
+                className: 'capitalize',
+                cell: (row) => row.subscription_status.replaceAll('_', ' '),
+            },
+            {
+                id: 'created',
+                header: 'Created',
+                priority: 3,
+                className: 'text-xs text-muted-foreground',
+                cell: (row) => formatDisplayDateSmart(row.created_at),
+            },
+        ],
+        [],
+    );
 
     return (
         <>
@@ -136,166 +209,63 @@ export default function OwnerCompaniesIndex({
                     </Button>
                 </form>
 
-                {companies.data.length === 0 ? (
-                    <ShellEmptyState
-                        title="No companies yet"
-                        description="Create your first company to open management for branches and subscriptions."
-                        action={
-                            <AppIconAction
-                                icon={Plus}
-                                label="Create company"
-                                href={links.create}
-                                variant="default"
-                                size="default"
-                                className="gap-2 px-3"
-                            >
-                                <span className="text-sm font-medium">
-                                    Create
-                                </span>
-                            </AppIconAction>
-                        }
-                    />
-                ) : (
-                    <div className="overflow-x-auto rounded-xl border border-border">
-                        <table className="min-w-full text-left text-sm">
-                            <thead className="border-b border-border bg-muted/40 text-xs uppercase">
-                                <tr>
-                                    <th className="px-3 py-2 font-medium">
-                                        Company
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        GSTIN
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        PAN
-                                    </th>
-                                    <th className="hidden px-3 py-2 font-medium lg:table-cell">
-                                        Created
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Visibility
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Branches
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Status
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Subscription
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Actions
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {companies.data.map((company) => (
-                                    <tr
-                                        key={company.id}
-                                        className="border-b border-border last:border-0"
-                                    >
-                                        <td className="px-3 py-3 font-medium">
-                                            {company.name}
-                                        </td>
-                                        <td className="px-3 py-3 font-mono text-xs">
-                                            {company.gstin ?? '—'}
-                                        </td>
-                                        <td className="px-3 py-3 font-mono text-xs">
-                                            {company.pan ?? '—'}
-                                        </td>
-                                        <td className="hidden px-3 py-3 text-xs text-muted-foreground lg:table-cell">
-                                            {formatDisplayDateSmart(
-                                                company.created_at,
-                                            )}
-                                        </td>
-                                        <td className="px-3 py-3">
-                                            {company.data_visibility ===
-                                            'branch_wise_restricted'
-                                                ? 'Restricted'
-                                                : company.data_visibility ===
-                                                    'shared_data'
-                                                  ? 'Shared'
-                                                  : '—'}
-                                        </td>
-                                        <td className="px-3 py-3">
-                                            {company.branch_count}
-                                        </td>
-                                        <td className="px-3 py-3">
-                                            <WorkspaceStatusBadge
-                                                status={company.status}
-                                            />
-                                        </td>
-                                        <td className="px-3 py-3 capitalize">
-                                            {company.subscription_status.replaceAll(
-                                                '_',
-                                                ' ',
-                                            )}
-                                        </td>
-                                        <td className="px-3 py-3">
-                                            <div className="flex flex-wrap gap-1">
-                                                <WorkspaceContextAction
-                                                    contextUrl={
-                                                        company.urls.context
-                                                    }
-                                                    redirect={
-                                                        company.urls.settings
-                                                    }
-                                                    icon={Pencil}
-                                                    label="Edit company"
-                                                    disabled={
-                                                        !company.can_manage
-                                                    }
-                                                />
-                                                <WorkspaceContextAction
-                                                    contextUrl={
-                                                        company.urls.context
-                                                    }
-                                                    redirect={
-                                                        company.urls.branches
-                                                    }
-                                                    icon={GitBranch}
-                                                    label="Manage branches"
-                                                />
-                                                <WorkspaceContextAction
-                                                    contextUrl={
-                                                        company.urls.context
-                                                    }
-                                                    redirect={
-                                                        company.urls.users
-                                                    }
-                                                    icon={Users}
-                                                    label="Manage users"
-                                                />
-                                                <WorkspaceContextAction
-                                                    contextUrl={
-                                                        company.urls.context
-                                                    }
-                                                    redirect={
-                                                        company.urls
-                                                            .subscription
-                                                    }
-                                                    icon={CreditCard}
-                                                    label="Manage subscription"
-                                                />
-                                                <WorkspaceContextAction
-                                                    contextUrl={
-                                                        company.urls.context
-                                                    }
-                                                    redirect={
-                                                        company.urls.audit
-                                                    }
-                                                    icon={History}
-                                                    label="View audit"
-                                                />
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+                <ResponsiveDataTable
+                    caption="Owned companies"
+                    columns={columns}
+                    rows={companies.data}
+                    rowKey={(row) => row.id}
+                    emptyTitle="No companies yet"
+                    emptyDescription="Create your first company to open management for branches and subscriptions."
+                    emptyAction={
+                        <AppIconAction
+                            icon={Plus}
+                            label="Create company"
+                            href={links.create}
+                            variant="default"
+                            size="default"
+                            className="gap-2 px-3"
+                        >
+                            <span className="text-sm font-medium">Create</span>
+                        </AppIconAction>
+                    }
+                    actions={(company) => (
+                        <>
+                            <WorkspaceContextAction
+                                contextUrl={company.urls.context}
+                                redirect={company.urls.settings}
+                                icon={Pencil}
+                                label="Edit company"
+                                disabled={!company.can_manage}
+                            />
+                            <WorkspaceContextAction
+                                contextUrl={company.urls.context}
+                                redirect={company.urls.branches}
+                                icon={GitBranch}
+                                label="Manage branches"
+                            />
+                            <WorkspaceContextAction
+                                contextUrl={company.urls.context}
+                                redirect={company.urls.users}
+                                icon={Users}
+                                label="Manage users"
+                            />
+                            <span className="hidden sm:contents">
+                                <WorkspaceContextAction
+                                    contextUrl={company.urls.context}
+                                    redirect={company.urls.subscription}
+                                    icon={CreditCard}
+                                    label="Manage subscription"
+                                />
+                                <WorkspaceContextAction
+                                    contextUrl={company.urls.context}
+                                    redirect={company.urls.audit}
+                                    icon={History}
+                                    label="View audit"
+                                />
+                            </span>
+                        </>
+                    )}
+                />
 
                 <p className="text-xs text-muted-foreground">
                     Page {companies.meta.current_page} of{' '}

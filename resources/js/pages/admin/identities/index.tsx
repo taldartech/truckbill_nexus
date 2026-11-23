@@ -1,4 +1,9 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { useMemo } from 'react';
+import {
+    ResponsiveDataTable,
+    type DataTableColumn,
+} from '@/components/data-table';
 import { Button } from '@/components/ui/button';
 
 type IdentityRow = {
@@ -29,6 +34,38 @@ export default function AdminIdentitiesIndex({
     const { flash } = usePage<{
         flash?: { success?: string | null };
     }>().props;
+
+    const columns = useMemo<DataTableColumn<IdentityRow>[]>(
+        () => [
+            {
+                id: 'identity',
+                header: 'Identity',
+                priority: 0,
+                cell: (row) => (
+                    <>
+                        <div>{row.name}</div>
+                        <div className="text-xs text-muted-foreground">
+                            {row.email}
+                        </div>
+                    </>
+                ),
+            },
+            {
+                id: 'type',
+                header: 'Type',
+                priority: 2,
+                cell: (row) =>
+                    `${row.identity_type ?? '—'}${row.is_super_admin ? ' · Super Admin' : ''}`,
+            },
+            {
+                id: 'status',
+                header: 'Status',
+                priority: 1,
+                cell: (row) => (row.is_active ? 'Active' : 'Deactivated'),
+            },
+        ],
+        [],
+    );
 
     return (
         <>
@@ -99,71 +136,22 @@ export default function AdminIdentitiesIndex({
                     </Button>
                 </Form>
 
-                <div className="overflow-x-auto rounded-xl border border-border">
-                    <table className="w-full min-w-[40rem] text-left text-sm">
-                        <thead className="border-b border-border bg-muted/30 text-muted-foreground">
-                            <tr>
-                                <th className="px-4 py-3 font-medium">
-                                    Identity
-                                </th>
-                                <th className="px-4 py-3 font-medium">Type</th>
-                                <th className="px-4 py-3 font-medium">
-                                    Status
-                                </th>
-                                <th className="px-4 py-3 font-medium">
-                                    Actions
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {identities.data.length === 0 ? (
-                                <tr>
-                                    <td
-                                        colSpan={4}
-                                        className="px-4 py-8 text-center text-muted-foreground"
-                                    >
-                                        No identities match these filters.
-                                    </td>
-                                </tr>
-                            ) : (
-                                identities.data.map((identity) => (
-                                    <tr
-                                        key={identity.id}
-                                        className="border-b border-border last:border-0"
-                                    >
-                                        <td className="px-4 py-3">
-                                            <div className="font-medium">
-                                                {identity.name}
-                                            </div>
-                                            <div className="text-xs text-muted-foreground">
-                                                {identity.email}
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {identity.identity_type}
-                                            {identity.is_super_admin
-                                                ? ' · Super Admin'
-                                                : ''}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {identity.is_active
-                                                ? 'Active'
-                                                : 'Deactivated'}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <Link
-                                                href={identity.show_url}
-                                                className="text-sm font-medium underline-offset-4 hover:underline"
-                                            >
-                                                Open
-                                            </Link>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                <ResponsiveDataTable
+                    caption="Identities"
+                    columns={columns}
+                    rows={identities.data}
+                    rowKey={(row) => String(row.id)}
+                    emptyTitle="No identities match these filters"
+                    emptyDescription="Try adjusting search or filter options."
+                    actions={(identity) => (
+                        <Link
+                            href={identity.show_url}
+                            className="text-sm font-medium underline-offset-4 hover:underline"
+                        >
+                            Open
+                        </Link>
+                    )}
+                />
 
                 <p className="text-xs text-muted-foreground">
                     Showing page {identities.meta.current_page} of{' '}

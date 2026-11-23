@@ -1,20 +1,28 @@
 import { Form, Head, usePage } from '@inertiajs/react';
+import { useMemo } from 'react';
+import {
+    ResponsiveDataTable,
+    type DataTableColumn,
+} from '@/components/data-table';
 import { Button } from '@/components/ui/button';
+import { formatDisplayDateSmart } from '@/lib/dates';
+
+type GstRateRow = {
+    id: string;
+    code: string;
+    name: string;
+    rate_percent: string;
+    version: number;
+    is_active: boolean;
+    effective_from: string | null;
+    effective_to: string | null;
+    deactivate_url: string;
+};
 
 type Props = {
     compliance_note: string;
     store_url: string;
-    rates: {
-        id: string;
-        code: string;
-        name: string;
-        rate_percent: string;
-        version: number;
-        is_active: boolean;
-        effective_from: string | null;
-        effective_to: string | null;
-        deactivate_url: string;
-    }[];
+    rates: GstRateRow[];
 };
 
 export default function AdminGstRates({
@@ -26,6 +34,53 @@ export default function AdminGstRates({
         flash?: { success?: string | null };
         errors?: Record<string, string>;
     }>().props;
+
+    const columns = useMemo<DataTableColumn<GstRateRow>[]>(
+        () => [
+            {
+                id: 'code',
+                header: 'Code',
+                priority: 0,
+                className: 'font-mono text-xs',
+                cell: (row) => row.code,
+            },
+            {
+                id: 'name',
+                header: 'Name',
+                priority: 2,
+                cell: (row) => row.name,
+            },
+            {
+                id: 'rate',
+                header: 'Rate',
+                priority: 2,
+                cell: (row) => `${row.rate_percent}%`,
+            },
+            {
+                id: 'version',
+                header: 'Ver',
+                priority: 3,
+                cell: (row) => row.version,
+            },
+            {
+                id: 'effective',
+                header: 'Effective',
+                priority: 2,
+                className: 'text-xs',
+                cell: (row) =>
+                    row.effective_from
+                        ? `${formatDisplayDateSmart(row.effective_from)}${row.effective_to ? ` → ${formatDisplayDateSmart(row.effective_to)}` : ''}`
+                        : '—',
+            },
+            {
+                id: 'active',
+                header: 'Active',
+                priority: 1,
+                cell: (row) => (row.is_active ? 'Yes' : 'No'),
+            },
+        ],
+        [],
+    );
 
     return (
         <>
@@ -117,99 +172,40 @@ export default function AdminGstRates({
                     </Form>
                 </section>
 
-                {rates.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                        No GST rate versions yet.
-                    </p>
-                ) : (
-                    <div className="overflow-x-auto rounded-xl border border-border">
-                        <table className="min-w-full text-left text-sm">
-                            <thead className="border-b border-border bg-muted/30">
-                                <tr>
-                                    <th className="px-3 py-2 font-medium">
-                                        Code
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Name
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Rate
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Ver
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Effective
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Active
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Deactivate
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {rates.map((rate) => (
-                                    <tr
-                                        key={rate.id}
-                                        className="border-b border-border last:border-0"
-                                    >
-                                        <td className="px-3 py-2 font-mono text-xs">
-                                            {rate.code}
-                                        </td>
-                                        <td className="px-3 py-2">
-                                            {rate.name}
-                                        </td>
-                                        <td className="px-3 py-2">
-                                            {rate.rate_percent}%
-                                        </td>
-                                        <td className="px-3 py-2">
-                                            {rate.version}
-                                        </td>
-                                        <td className="px-3 py-2 text-xs">
-                                            {rate.effective_from || '—'}
-                                            {rate.effective_to
-                                                ? ` → ${rate.effective_to}`
-                                                : ''}
-                                        </td>
-                                        <td className="px-3 py-2">
-                                            {rate.is_active ? 'Yes' : 'No'}
-                                        </td>
-                                        <td className="px-3 py-2">
-                                            {rate.is_active ? (
-                                                <Form
-                                                    action={rate.deactivate_url}
-                                                    method="post"
-                                                    className="flex flex-wrap items-center gap-2"
-                                                >
-                                                    <input
-                                                        name="remark"
-                                                        required
-                                                        placeholder="Deactivate remark"
-                                                        aria-label={`Deactivate remark for ${rate.code} v${rate.version}`}
-                                                        className="rounded-md border border-border bg-background px-2 py-1 text-xs"
-                                                    />
-                                                    <Button
-                                                        type="submit"
-                                                        size="sm"
-                                                        variant="outline"
-                                                    >
-                                                        Deactivate
-                                                    </Button>
-                                                </Form>
-                                            ) : (
-                                                <span className="text-muted-foreground">
-                                                    —
-                                                </span>
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+                <ResponsiveDataTable
+                    caption="GST rate versions"
+                    columns={columns}
+                    rows={rates}
+                    rowKey={(row) => row.id}
+                    emptyTitle="No GST rate versions yet"
+                    emptyDescription="Create a version using the form above."
+                    actions={(rate) =>
+                        rate.is_active ? (
+                            <Form
+                                action={rate.deactivate_url}
+                                method="post"
+                                className="flex flex-wrap items-center justify-end gap-2"
+                            >
+                                <input
+                                    name="remark"
+                                    required
+                                    placeholder="Deactivate remark"
+                                    aria-label={`Deactivate remark for ${rate.code} v${rate.version}`}
+                                    className="max-w-[8rem] rounded-md border border-border bg-background px-2 py-1 text-xs"
+                                />
+                                <Button
+                                    type="submit"
+                                    size="sm"
+                                    variant="outline"
+                                >
+                                    Deactivate
+                                </Button>
+                            </Form>
+                        ) : (
+                            <span className="text-muted-foreground">—</span>
+                        )
+                    }
+                />
             </div>
         </>
     );

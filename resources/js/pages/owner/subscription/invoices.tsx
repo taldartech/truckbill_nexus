@@ -1,25 +1,33 @@
 import { Form, Head, Link } from '@inertiajs/react';
+import { useMemo } from 'react';
+import {
+    ResponsiveDataTable,
+    type DataTableColumn,
+} from '@/components/data-table';
 import { Button } from '@/components/ui/button';
+import { formatDisplayDateSmart } from '@/lib/dates';
+
+type InvoiceRow = {
+    id: string;
+    status: string;
+    proposed_number: string | null;
+    approved_number: string | null;
+    financial_year: string;
+    amount: string;
+    currency: string;
+    email_status: string | null;
+    approved_at: string | null;
+    created_at: string | null;
+    preview_url: string;
+    download_url: string;
+    email_url: string | null;
+};
 
 type Props = {
     company: { id: string; name: string; status: string };
     ownerPanelScope: string;
     issuer_note: string;
-    invoices: {
-        id: string;
-        status: string;
-        proposed_number: string | null;
-        approved_number: string | null;
-        financial_year: string;
-        amount: string;
-        currency: string;
-        email_status: string | null;
-        approved_at: string | null;
-        created_at: string | null;
-        preview_url: string;
-        download_url: string;
-        email_url: string | null;
-    }[];
+    invoices: InvoiceRow[];
     links: { overview: string };
 };
 
@@ -30,6 +38,51 @@ export default function SubscriptionInvoices({
     invoices,
     links,
 }: Props) {
+    const columns = useMemo<DataTableColumn<InvoiceRow>[]>(
+        () => [
+            {
+                id: 'number',
+                header: 'Number',
+                priority: 0,
+                className: 'font-mono text-xs',
+                cell: (row) =>
+                    row.approved_number || row.proposed_number || '—',
+            },
+            {
+                id: 'status',
+                header: 'Status',
+                priority: 1,
+                cell: (row) => row.status,
+            },
+            {
+                id: 'fy',
+                header: 'FY',
+                priority: 2,
+                cell: (row) => row.financial_year,
+            },
+            {
+                id: 'amount',
+                header: 'Amount',
+                priority: 2,
+                cell: (row) => `${row.currency} ${row.amount}`,
+            },
+            {
+                id: 'email',
+                header: 'Email',
+                priority: 3,
+                cell: (row) => row.email_status || '—',
+            },
+            {
+                id: 'created',
+                header: 'Created',
+                priority: 3,
+                className: 'text-xs text-muted-foreground',
+                cell: (row) => formatDisplayDateSmart(row.created_at),
+            },
+        ],
+        [],
+    );
+
     return (
         <>
             <Head title={`Invoices · ${company.name}`} />
@@ -49,98 +102,46 @@ export default function SubscriptionInvoices({
                 <Button asChild variant="outline" className="w-fit">
                     <Link href={links.overview}>Back to subscription</Link>
                 </Button>
-                {invoices.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                        No subscription invoices yet.
-                    </p>
-                ) : (
-                    <div className="overflow-x-auto rounded-xl border border-border">
-                        <table className="min-w-full text-left text-sm">
-                            <thead className="border-b border-border bg-muted/40">
-                                <tr>
-                                    <th className="px-3 py-2 font-medium">
-                                        Status
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Number
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        FY
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Amount
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Email
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Actions
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {invoices.map((invoice) => (
-                                    <tr
-                                        key={invoice.id}
-                                        className="border-b border-border/60"
+                <ResponsiveDataTable
+                    caption="Subscription invoices"
+                    columns={columns}
+                    rows={invoices}
+                    rowKey={(row) => row.id}
+                    emptyTitle="No subscription invoices yet"
+                    emptyDescription="Invoices appear here after billing events."
+                    actions={(invoice) => (
+                        <div className="flex flex-wrap justify-end gap-2">
+                            <Link
+                                href={invoice.preview_url}
+                                className="text-sm underline-offset-2 hover:underline"
+                            >
+                                Preview
+                            </Link>
+                            <a
+                                href={invoice.download_url}
+                                className="text-sm underline-offset-2 hover:underline"
+                                target="_blank"
+                                rel="noreferrer"
+                            >
+                                HTML
+                            </a>
+                            {invoice.email_url ? (
+                                <Form
+                                    action={invoice.email_url}
+                                    method="post"
+                                    className="inline"
+                                >
+                                    <button
+                                        type="submit"
+                                        className="text-sm underline-offset-2 hover:underline"
                                     >
-                                        <td className="px-3 py-2">
-                                            {invoice.status}
-                                        </td>
-                                        <td className="px-3 py-2 font-mono text-xs">
-                                            {invoice.approved_number ||
-                                                invoice.proposed_number ||
-                                                '—'}
-                                        </td>
-                                        <td className="px-3 py-2">
-                                            {invoice.financial_year}
-                                        </td>
-                                        <td className="px-3 py-2">
-                                            {invoice.currency} {invoice.amount}
-                                        </td>
-                                        <td className="px-3 py-2">
-                                            {invoice.email_status || '—'}
-                                        </td>
-                                        <td className="px-3 py-2">
-                                            <div className="flex flex-wrap gap-2">
-                                                <Link
-                                                    href={invoice.preview_url}
-                                                    className="text-sm underline-offset-2 hover:underline"
-                                                >
-                                                    Preview
-                                                </Link>
-                                                <a
-                                                    href={invoice.download_url}
-                                                    className="text-sm underline-offset-2 hover:underline"
-                                                    target="_blank"
-                                                    rel="noreferrer"
-                                                >
-                                                    HTML
-                                                </a>
-                                                {invoice.email_url ? (
-                                                    <Form
-                                                        action={
-                                                            invoice.email_url
-                                                        }
-                                                        method="post"
-                                                        className="inline"
-                                                    >
-                                                        <button
-                                                            type="submit"
-                                                            className="text-sm underline-offset-2 hover:underline"
-                                                        >
-                                                            Email
-                                                        </button>
-                                                    </Form>
-                                                ) : null}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+                                        Email
+                                    </button>
+                                </Form>
+                            ) : null}
+                        </div>
+                    )}
+                />
             </div>
         </>
     );

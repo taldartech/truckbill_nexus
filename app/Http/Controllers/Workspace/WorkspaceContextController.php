@@ -8,10 +8,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\User;
+use App\Support\Workspace\SafeInternalRedirect;
 use App\Support\Workspace\WorkspaceSession;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 
 /**
  * Explicit, CSRF-protected workspace context switches (PO session routing).
@@ -38,9 +38,9 @@ class WorkspaceContextController extends Controller
 
         WorkspaceSession::put($request, $company->id, null);
 
-        return redirect()->to($this->safeRedirect(
+        return redirect()->to(SafeInternalRedirect::normalize(
             $validated['redirect'] ?? null,
-            route('owner.companies.index'),
+            SafeInternalRedirect::route('owner.companies.index'),
         ));
     }
 
@@ -64,9 +64,9 @@ class WorkspaceContextController extends Controller
 
         WorkspaceSession::put($request, $company->id, $branch->id);
 
-        return redirect()->to($this->safeRedirect(
+        return redirect()->to(SafeInternalRedirect::normalize(
             $validated['redirect'] ?? null,
-            route('branch.dashboard'),
+            SafeInternalRedirect::route('branch.dashboard'),
         ));
     }
 
@@ -75,20 +75,5 @@ class WorkspaceContextController extends Controller
         WorkspaceSession::clear($request);
 
         return redirect()->route('workspace.landing');
-    }
-
-    private function safeRedirect(?string $redirect, string $fallback): string
-    {
-        if ($redirect === null || $redirect === '') {
-            return $fallback;
-        }
-
-        if (! str_starts_with($redirect, '/') || str_starts_with($redirect, '//')) {
-            throw ValidationException::withMessages([
-                'redirect' => 'Invalid redirect target.',
-            ]);
-        }
-
-        return $redirect;
     }
 }

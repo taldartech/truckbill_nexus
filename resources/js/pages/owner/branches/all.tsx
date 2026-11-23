@@ -1,7 +1,10 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import {
+    ResponsiveDataTable,
+    type DataTableColumn,
+} from '@/components/data-table';
 import { OwnerPageHeader } from '@/components/owner/owner-page-header';
-import ShellEmptyState from '@/components/shell-empty-state';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -63,6 +66,36 @@ export default function OwnerBranchesAll({
             { preserveState: true, replace: true },
         );
     };
+
+    const columns = useMemo<DataTableColumn<BranchRow>[]>(
+        () => [
+            {
+                id: 'branch',
+                header: 'Branch',
+                priority: 0,
+                cell: (row) => row.name,
+            },
+            {
+                id: 'status',
+                header: 'Status',
+                priority: 1,
+                cell: (row) => <WorkspaceStatusBadge status={row.status} />,
+            },
+            {
+                id: 'company',
+                header: 'Company',
+                priority: 2,
+                cell: (row) => row.company?.name ?? '—',
+            },
+            {
+                id: 'assigned_users',
+                header: 'Assigned users',
+                priority: 2,
+                cell: (row) => row.assigned_users_count,
+            },
+        ],
+        [],
+    );
 
     return (
         <>
@@ -137,82 +170,36 @@ export default function OwnerBranchesAll({
                     </div>
                 </form>
 
-                {branches.data.length === 0 ? (
-                    <ShellEmptyState
-                        title="No branches found"
-                        description="Create a branch from a company, or adjust filters."
-                    />
-                ) : (
-                    <div className="overflow-x-auto rounded-xl border border-border">
-                        <table className="min-w-full text-left text-sm">
-                            <thead className="border-b border-border bg-muted/40 text-xs uppercase">
-                                <tr>
-                                    <th className="px-3 py-2 font-medium">
-                                        Company
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Branch
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Status
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Assigned users
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Actions
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {branches.data.map((branch) => (
-                                    <tr
-                                        key={branch.id}
-                                        className="border-b border-border last:border-0"
+                <ResponsiveDataTable
+                    caption="Branches"
+                    columns={columns}
+                    rows={branches.data}
+                    rowKey={(row) => row.id}
+                    emptyTitle="No branches found"
+                    emptyDescription="Create a branch from a company, or adjust filters."
+                    actions={(branch) => (
+                        <>
+                            {branch.urls.show ? (
+                                <Link
+                                    href={branch.urls.show}
+                                    className="text-xs font-medium text-primary underline"
+                                >
+                                    View / Edit
+                                </Link>
+                            ) : null}
+                            {branch.urls.enter_branch ? (
+                                <span className="hidden sm:contents">
+                                    <Link
+                                        href={branch.urls.enter_branch}
+                                        className="text-xs font-medium text-primary underline"
                                     >
-                                        <td className="px-3 py-3">
-                                            {branch.company?.name ?? '—'}
-                                        </td>
-                                        <td className="px-3 py-3 font-medium">
-                                            {branch.name}
-                                        </td>
-                                        <td className="px-3 py-3">
-                                            <WorkspaceStatusBadge
-                                                status={branch.status}
-                                            />
-                                        </td>
-                                        <td className="px-3 py-3">
-                                            {branch.assigned_users_count}
-                                        </td>
-                                        <td className="px-3 py-3">
-                                            <div className="flex flex-wrap gap-2">
-                                                {branch.urls.show ? (
-                                                    <Link
-                                                        href={branch.urls.show}
-                                                        className="text-xs font-medium text-primary underline"
-                                                    >
-                                                        View / Edit
-                                                    </Link>
-                                                ) : null}
-                                                {branch.urls.enter_branch ? (
-                                                    <Link
-                                                        href={
-                                                            branch.urls
-                                                                .enter_branch
-                                                        }
-                                                        className="text-xs font-medium text-primary underline"
-                                                    >
-                                                        Enter Branch Panel
-                                                    </Link>
-                                                ) : null}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+                                        Enter Branch Panel
+                                    </Link>
+                                </span>
+                            ) : null}
+                        </>
+                    )}
+                />
 
                 <p className="text-xs text-muted-foreground">
                     Page {branches.meta.current_page} of{' '}

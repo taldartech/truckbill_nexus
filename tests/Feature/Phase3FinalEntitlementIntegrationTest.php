@@ -93,8 +93,9 @@ test('owner subscription overview exposes lifecycle capacity and payment gate no
     $owner = User::factory()->customer()->create(['password' => Hash::make('owner-secret')]);
     $company = app(CompanyWorkspaceService::class)->createCompany($owner, 'Overview Co');
     finalPhase3LoginAs($owner);
+    enterManagementCompany($company)->assertRedirect();
 
-    $this->get(route('owner.subscription', $company))
+    $this->get(route('owner.subscription'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('owner/subscription/overview')
@@ -105,11 +106,11 @@ test('owner subscription overview exposes lifecycle capacity and payment gate no
             ->has('links.payments')
             ->has('links.invoices'));
 
-    $this->get(route('owner.subscription.payments', $company))
+    $this->get(route('owner.subscription.payments'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->component('owner/subscription/payments'));
 
-    $this->get(route('owner.subscription.invoices', $company))
+    $this->get(route('owner.subscription.invoices'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->component('owner/subscription/invoices'));
 });
@@ -136,18 +137,19 @@ test('owner can schedule and withdraw cancellation from owner panel', function (
     );
 
     finalPhase3LoginAs($owner);
+    enterManagementCompany($company)->assertRedirect();
 
-    $this->post(route('owner.subscription.cancel', $company), [
+    $this->post(route('owner.subscription.cancel'), [
         'subscription_id' => $active->id,
         'remark' => 'Cancel at renewal',
-    ])->assertRedirect(route('owner.subscription', $company));
+    ])->assertRedirect(route('owner.subscription'));
 
     expect($active->fresh()->cancellation_effective_on?->toDateString())->toBe('2027-08-01');
 
-    $this->post(route('owner.subscription.cancel.withdraw', $company), [
+    $this->post(route('owner.subscription.cancel.withdraw'), [
         'subscription_id' => $active->id,
         'remark' => 'Keep plan',
-    ])->assertRedirect(route('owner.subscription', $company));
+    ])->assertRedirect(route('owner.subscription'));
 
     expect($active->fresh()->cancellation_requested_at)->toBeNull();
 });

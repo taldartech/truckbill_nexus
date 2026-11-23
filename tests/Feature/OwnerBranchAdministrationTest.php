@@ -65,6 +65,7 @@ test('owner can list create edit and enter branch management screens', function 
     ['owner' => $owner, 'company' => $company, 'headOffice' => $headOffice] = createBranchAdminWorkspace();
 
     loginBranchAdminCustomer($owner);
+    enterManagementCompany($company)->assertRedirect();
 
     $this->get(route('owner.branches'))
         ->assertOk()
@@ -92,7 +93,7 @@ test('owner can list create edit and enter branch management screens', function 
 
     expect($warehouse->isActive())->toBeTrue();
 
-    $this->get(route('owner.branches.show'))
+    $this->get(route('owner.branches.show', ['branch' => $warehouse]))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('owner/branches/show')
@@ -100,10 +101,10 @@ test('owner can list create edit and enter branch management screens', function 
             ->where('canManage', true)
             ->where('canDeactivate', true));
 
-    $this->post(route('owner.branches.update'), [
+    $this->post(route('owner.branches.update', ['branch' => $warehouse]), [
         'name' => 'Warehouse West Renamed',
         'remark' => 'Rename for clarity',
-    ])->assertRedirect(route('owner.branches.show'));
+    ])->assertRedirect(route('owner.branches.show', ['branch' => $warehouse]));
 
     expect($warehouse->fresh()->name)->toBe('Warehouse West Renamed');
 
@@ -131,6 +132,7 @@ test('branch create may assign existing members and roles without granting other
     ]);
 
     loginBranchAdminCustomer($owner);
+    enterManagementCompany($company)->assertRedirect();
 
     $this->post(route('owner.branches.store'), [
         'name' => 'Depot North',
@@ -175,6 +177,7 @@ test('branch capacity is enforced for owner create', function () {
     ['owner' => $owner, 'company' => $company] = createBranchAdminWorkspace('Capacity Co');
 
     loginBranchAdminCustomer($owner);
+    enterManagementCompany($company)->assertRedirect();
 
     $this->post(route('owner.branches.store'), [
         'name' => 'Second Branch',
@@ -197,6 +200,7 @@ test('branch capacity is enforced for owner create', function () {
 test('owner can deactivate non-last branch and cannot deactivate last active branch', function () {
     ['owner' => $owner, 'company' => $company, 'headOffice' => $headOffice] = createBranchAdminWorkspace();
     loginBranchAdminCustomer($owner);
+    enterManagementCompany($company)->assertRedirect();
 
     $this->post(route('owner.branches.store'), [
         'name' => 'Closeable',
@@ -208,14 +212,14 @@ test('owner can deactivate non-last branch and cannot deactivate last active bra
         ->where('name', 'Closeable')
         ->firstOrFail();
 
-    $this->post(route('owner.branches.deactivate'), [
+    $this->post(route('owner.branches.deactivate', ['branch' => $closeable]), [
         'remark' => 'Closing depot',
     ])->assertRedirect(route('owner.branches'));
 
     expect($closeable->fresh()->isActive())->toBeFalse();
 
-    $this->from(route('owner.branches.show'))
-        ->post(route('owner.branches.deactivate'), [
+    $this->from(route('owner.branches.show', ['branch' => $headOffice]))
+        ->post(route('owner.branches.deactivate', ['branch' => $headOffice]), [
             'remark' => 'Attempt last branch',
         ])
         ->assertSessionHasErrors('remark');
@@ -241,15 +245,11 @@ test('non-owner and cross-company branch mutations are denied', function () {
     ])->assertForbidden();
 
     loginBranchAdminCustomer($owner);
-    $this->get(route('owner.branches.show', [
-        'company' => $companyA,
-        'branch' => $other['headOffice'],
-    ]))->assertNotFound();
+    enterManagementCompany($companyA)->assertRedirect();
 
-    $this->post(route('owner.branches.update', [
-        'company' => $companyA,
-        'branch' => $other['headOffice'],
-    ]), [
+    $this->get(route('owner.branches.show', ['branch' => $other['headOffice']]))->assertNotFound();
+
+    $this->post(route('owner.branches.update', ['branch' => $other['headOffice']]), [
         'name' => 'Cross rename',
         'remark' => 'Cross company',
     ])->assertNotFound();

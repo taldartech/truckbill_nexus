@@ -59,11 +59,32 @@ test('company-scoped management routes require session company context', functio
     $this->get(route('owner.settings'))
         ->assertRedirect(route('owner.companies.index'));
 
-    enterManagementCompany($company, route('owner.settings'))
-        ->assertRedirect(route('owner.settings'));
+    enterManagementCompany($company, internalRoute('owner.settings'))
+        ->assertRedirect(internalRoute('owner.settings'));
 
     $this->get(route('owner.settings'))->assertOk();
     $this->get(route('owner.subscription'))->assertOk();
+});
+
+test('company context accepts absolute same-origin redirect and rejects external targets', function () {
+    $owner = User::factory()->customer()->create([
+        'password' => Hash::make('owner-secret'),
+        'email_verified_at' => now(),
+    ]);
+    $company = app(CompanyWorkspaceService::class)->createCompany($owner, 'Redirect Co');
+
+    sessionRoutingLogin($owner);
+
+    enterManagementCompany($company, route('owner.settings'))
+        ->assertRedirect(internalRoute('owner.settings'));
+
+    $this->post(route('workspace.context.company', ['company' => $company]), [
+        'redirect' => 'https://evil.example/phish',
+    ])->assertSessionHasErrors('redirect');
+
+    $this->post(route('workspace.context.company', ['company' => $company]), [
+        'redirect' => '//evil.example/phish',
+    ])->assertSessionHasErrors('redirect');
 });
 
 test('branch routes resolve from session and reject missing context', function () {
@@ -122,7 +143,7 @@ test('stale workspace context version rejects mutations', function () {
         'company' => $company,
         'branch' => $branch,
     ]), [
-        'redirect' => route('branch.dashboard'),
+        'redirect' => internalRoute('branch.dashboard'),
     ])->assertRedirect();
 
     $this->withHeaders(['X-Workspace-Context-Version' => (string) $versionBefore])

@@ -1,19 +1,26 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { useMemo } from 'react';
+import {
+    ResponsiveDataTable,
+    type DataTableColumn,
+} from '@/components/data-table';
 import { Button } from '@/components/ui/button';
+
+type InternalUserRow = {
+    id: number;
+    name: string;
+    email: string;
+    is_super_admin: boolean;
+    is_active: boolean;
+    deactivated_at: string | null;
+    show_url: string;
+};
 
 type Props = {
     note: string;
     store_url: string;
     roles: { id: string; name: string; slug: string }[];
-    users: {
-        id: number;
-        name: string;
-        email: string;
-        is_super_admin: boolean;
-        is_active: boolean;
-        deactivated_at: string | null;
-        show_url: string;
-    }[];
+    users: InternalUserRow[];
 };
 
 export default function AdminInternalUsersIndex({
@@ -26,6 +33,38 @@ export default function AdminInternalUsersIndex({
         flash?: { success?: string | null };
         errors?: Record<string, string>;
     }>().props;
+
+    const columns = useMemo<DataTableColumn<InternalUserRow>[]>(
+        () => [
+            {
+                id: 'user',
+                header: 'User',
+                priority: 0,
+                cell: (row) => (
+                    <>
+                        <div>{row.name}</div>
+                        <div className="text-xs text-muted-foreground">
+                            {row.email}
+                        </div>
+                    </>
+                ),
+            },
+            {
+                id: 'role',
+                header: 'Role',
+                priority: 2,
+                cell: (row) =>
+                    row.is_super_admin ? 'Super Admin' : 'Internal',
+            },
+            {
+                id: 'status',
+                header: 'Status',
+                priority: 1,
+                cell: (row) => (row.is_active ? 'Active' : 'Deactivated'),
+            },
+        ],
+        [],
+    );
 
     return (
         <>
@@ -131,57 +170,22 @@ export default function AdminInternalUsersIndex({
                     </Form>
                 </section>
 
-                <div className="overflow-x-auto rounded-xl border border-border">
-                    <table className="w-full min-w-[36rem] text-left text-sm">
-                        <thead className="border-b border-border bg-muted/30 text-muted-foreground">
-                            <tr>
-                                <th className="px-4 py-3 font-medium">User</th>
-                                <th className="px-4 py-3 font-medium">Role</th>
-                                <th className="px-4 py-3 font-medium">
-                                    Status
-                                </th>
-                                <th className="px-4 py-3 font-medium">
-                                    Actions
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {users.map((user) => (
-                                <tr
-                                    key={user.id}
-                                    className="border-b border-border last:border-0"
-                                >
-                                    <td className="px-4 py-3">
-                                        <div className="font-medium">
-                                            {user.name}
-                                        </div>
-                                        <div className="text-xs text-muted-foreground">
-                                            {user.email}
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        {user.is_super_admin
-                                            ? 'Super Admin'
-                                            : 'Internal'}
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        {user.is_active
-                                            ? 'Active'
-                                            : 'Deactivated'}
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        <Link
-                                            href={user.show_url}
-                                            className="text-sm font-medium underline-offset-4 hover:underline"
-                                        >
-                                            Lifecycle
-                                        </Link>
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                <ResponsiveDataTable
+                    caption="Internal users"
+                    columns={columns}
+                    rows={users}
+                    rowKey={(row) => String(row.id)}
+                    emptyTitle="No internal users"
+                    emptyDescription="Create an internal user above."
+                    actions={(user) => (
+                        <Link
+                            href={user.show_url}
+                            className="text-sm font-medium underline-offset-4 hover:underline"
+                        >
+                            Lifecycle
+                        </Link>
+                    )}
+                />
             </div>
         </>
     );

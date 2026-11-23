@@ -34,12 +34,22 @@ expect()->extend('toBeOne', function () {
 */
 
 /**
+ * Relative path for an internal named route (context redirect payloads).
+ *
+ * @param  array<string, mixed>  $parameters
+ */
+function internalRoute(string $name, array $parameters = []): string
+{
+    return route($name, $parameters, absolute: false);
+}
+
+/**
  * Establish Owner management company context (session) then continue.
  */
 function enterManagementCompany(Company $company, ?string $redirect = null): TestResponse
 {
     return test()->post(route('workspace.context.company', ['company' => $company]), [
-        'redirect' => $redirect ?? route('owner.companies.index'),
+        'redirect' => $redirect ?? internalRoute('owner.companies.index'),
     ]);
 }
 
@@ -52,7 +62,18 @@ function enterBranchWorkspace(Company $company, Branch $branch, ?string $redirec
         'company' => $company,
         'branch' => $branch,
     ]), [
-        'redirect' => $redirect ?? route('branch.dashboard'),
+        'redirect' => $redirect ?? internalRoute('branch.dashboard'),
+    ]);
+}
+
+/**
+ * Seed Owner management company session without an HTTP round-trip.
+ */
+function seedManagementSession(Company $company): void
+{
+    test()->withSession([
+        WorkspaceSession::COMPANY_KEY => $company->id,
+        WorkspaceSession::VERSION_KEY => 1,
     ]);
 }
 

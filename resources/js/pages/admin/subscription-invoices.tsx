@@ -1,19 +1,24 @@
 import { Form, Head, usePage } from '@inertiajs/react';
+import { useMemo } from 'react';
+import {
+    ResponsiveDataTable,
+    type DataTableColumn,
+} from '@/components/data-table';
 import { Button } from '@/components/ui/button';
+type InvoiceRow = {
+    id: string;
+    company_name: string | null;
+    status: string;
+    proposed_number: string | null;
+    financial_year: string | null;
+    amount: string;
+    currency: string;
+    approve_url: string;
+};
 
 type Props = {
     issuer_note: string;
-    invoices: {
-        id: string;
-        company_name: string | null;
-        status: string;
-        proposed_number: string | null;
-        financial_year: string | null;
-        amount: string;
-        currency: string;
-        approve_url: string;
-        created_at: string | null;
-    }[];
+    invoices: InvoiceRow[];
 };
 
 export default function AdminSubscriptionInvoices({
@@ -24,6 +29,37 @@ export default function AdminSubscriptionInvoices({
         flash?: { success?: string | null };
         errors?: { approved_number?: string };
     }>().props;
+
+    const columns = useMemo<DataTableColumn<InvoiceRow>[]>(
+        () => [
+            {
+                id: 'company',
+                header: 'Company',
+                priority: 0,
+                cell: (row) => row.company_name || '—',
+            },
+            {
+                id: 'proposed',
+                header: 'Proposed',
+                priority: 2,
+                className: 'font-mono text-xs',
+                cell: (row) => row.proposed_number || '—',
+            },
+            {
+                id: 'fy',
+                header: 'FY',
+                priority: 2,
+                cell: (row) => row.financial_year,
+            },
+            {
+                id: 'amount',
+                header: 'Amount',
+                priority: 2,
+                cell: (row) => `${row.currency} ${row.amount}`,
+            },
+        ],
+        [],
+    );
 
     return (
         <>
@@ -53,76 +89,31 @@ export default function AdminSubscriptionInvoices({
                         {errors.approved_number}
                     </p>
                 ) : null}
-                {invoices.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                        No invoices awaiting number approval.
-                    </p>
-                ) : (
-                    <div className="overflow-x-auto rounded-xl border border-border">
-                        <table className="min-w-full text-left text-sm">
-                            <thead className="border-b border-border bg-muted/30">
-                                <tr>
-                                    <th className="px-3 py-2 font-medium">
-                                        Company
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Proposed
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        FY
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Amount
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Approve
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {invoices.map((invoice) => (
-                                    <tr
-                                        key={invoice.id}
-                                        className="border-b border-border last:border-0"
-                                    >
-                                        <td className="px-3 py-2">
-                                            {invoice.company_name || '—'}
-                                        </td>
-                                        <td className="px-3 py-2 font-mono text-xs">
-                                            {invoice.proposed_number || '—'}
-                                        </td>
-                                        <td className="px-3 py-2">
-                                            {invoice.financial_year}
-                                        </td>
-                                        <td className="px-3 py-2">
-                                            {invoice.currency} {invoice.amount}
-                                        </td>
-                                        <td className="px-3 py-2">
-                                            <Form
-                                                action={invoice.approve_url}
-                                                method="post"
-                                                className="flex flex-wrap items-center gap-2"
-                                            >
-                                                <input
-                                                    name="approved_number"
-                                                    defaultValue={
-                                                        invoice.proposed_number ||
-                                                        ''
-                                                    }
-                                                    aria-label={`Approved number for ${invoice.company_name || invoice.id}`}
-                                                    className="rounded-md border border-border bg-background px-2 py-1 font-mono text-xs"
-                                                />
-                                                <Button type="submit" size="sm">
-                                                    Approve
-                                                </Button>
-                                            </Form>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+                <ResponsiveDataTable
+                    caption="Invoices awaiting approval"
+                    columns={columns}
+                    rows={invoices}
+                    rowKey={(row) => row.id}
+                    emptyTitle="No invoices awaiting approval"
+                    emptyDescription="Approved invoices are removed from this queue."
+                    actions={(invoice) => (
+                        <Form
+                            action={invoice.approve_url}
+                            method="post"
+                            className="flex flex-wrap items-center justify-end gap-2"
+                        >
+                            <input
+                                name="approved_number"
+                                defaultValue={invoice.proposed_number || ''}
+                                aria-label={`Approved number for ${invoice.company_name || invoice.id}`}
+                                className="max-w-[7rem] rounded-md border border-border bg-background px-2 py-1 font-mono text-xs"
+                            />
+                            <Button type="submit" size="sm">
+                                Approve
+                            </Button>
+                        </Form>
+                    )}
+                />
             </div>
         </>
     );

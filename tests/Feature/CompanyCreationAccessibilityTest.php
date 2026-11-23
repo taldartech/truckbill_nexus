@@ -150,7 +150,9 @@ test('member-only customer can access the approved creation entry', function () 
     // workspace props still expose Create Company for eligible Customers.
     $this->get(route('owner.home'))->assertForbidden();
 
-    $this->get(route('branch.dashboard', ['company' => $company, 'branch' => $branch]))
+    enterBranchWorkspace($company, $branch)->assertRedirect();
+
+    $this->get(route('branch.dashboard'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('workspace.can_create_company', true)
@@ -219,7 +221,7 @@ test('owner dashboard exposes the correct creation url', function () {
     $this->get(route('owner.home'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('owner/dashboard')
+            ->component('owner/home')
             ->where('links.create_company', route('owner.companies.create')));
 });
 
@@ -329,8 +331,15 @@ test('cross-company authorization remains secure for owner panel', function () {
 
     accessLoginCustomer($ownerA);
 
-    $this->get(route('owner.home'))->assertForbidden();
-    $this->get(route('owner.settings'))->assertForbidden();
+    $this->get(route('owner.home'))->assertOk();
+
+    $this->post(route('workspace.context.company', ['company' => $companyB]))->assertForbidden();
+
+    $this->get(route('owner.settings'))->assertRedirect(route('owner.companies.index'));
+
+    enterManagementCompany($companyA)->assertRedirect();
+
+    $this->get(route('owner.settings'))->assertOk();
 
     expect($companyA->isOwnedBy($ownerA))->toBeTrue()
         ->and($companyB->isOwnedBy($ownerA))->toBeFalse();

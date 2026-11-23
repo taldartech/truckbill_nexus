@@ -168,6 +168,7 @@ test('restricted party vehicle and bank persist to authorized branch', function 
 test('forged scope cannot override company data visibility on http create', function () {
     ['owner' => $owner, 'company' => $company, 'branchA' => $branchA] = visibilityWorkspace(DataVisibility::BranchWiseRestricted);
     visibilityLogin($owner);
+    enterBranchWorkspace($company, $branchA)->assertRedirect();
 
     $this->post(route('branch.parties.store'), [
         'scope' => 'shared',
@@ -181,6 +182,7 @@ test('forged scope cannot override company data visibility on http create', func
 
     ['owner' => $owner2, 'company' => $company2, 'branchA' => $branch2] = visibilityWorkspace(DataVisibility::SharedData);
     visibilityLogin($owner2);
+    enterBranchWorkspace($company2, $branch2)->assertRedirect();
 
     $this->post(route('branch.vehicles.store'), [
         'scope' => 'branch',
@@ -206,8 +208,8 @@ test('cross-company master access remains denied', function () {
     );
 
     visibilityLogin($ownerB);
+    enterBranchWorkspace($companyB, $branchB)->assertRedirect();
 
-    $this->get(route('branch.parties.show', $party))->assertForbidden();
     $this->get(route('branch.parties.show', $party))->assertNotFound();
 });
 
@@ -250,6 +252,7 @@ test('visibility change is blocked when operational masters exist', function () 
 test('create forms expose company visibility without scope control', function () {
     ['owner' => $owner, 'company' => $company, 'branchA' => $branchA] = visibilityWorkspace(DataVisibility::SharedData);
     visibilityLogin($owner);
+    enterBranchWorkspace($company, $branchA)->assertRedirect();
 
     $this->get(route('branch.parties.create'))
         ->assertOk()

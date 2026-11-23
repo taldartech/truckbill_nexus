@@ -1,8 +1,11 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { CreditCard } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import {
+    ResponsiveDataTable,
+    type DataTableColumn,
+} from '@/components/data-table';
 import { OwnerPageHeader } from '@/components/owner/owner-page-header';
-import ShellEmptyState from '@/components/shell-empty-state';
 import { WorkspaceContextAction } from '@/components/workspace-context-action';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,6 +52,57 @@ export default function OwnerSubscriptionsIndex({
         );
     };
 
+    const columns = useMemo<DataTableColumn<SubscriptionRow>[]>(
+        () => [
+            {
+                id: 'company',
+                header: 'Company',
+                priority: 0,
+                cell: (row) => row.name,
+            },
+            {
+                id: 'status',
+                header: 'Status',
+                priority: 1,
+                cell: (row) => <WorkspaceStatusBadge status={row.status} />,
+            },
+            {
+                id: 'modules',
+                header: 'Active modules',
+                priority: 2,
+                className: 'text-xs',
+                cell: (row) =>
+                    row.active_modules.length > 0
+                        ? row.active_modules
+                              .map((module) => module.replaceAll('_', ' '))
+                              .join(', ')
+                        : '—',
+            },
+            {
+                id: 'subscription',
+                header: 'Subscription',
+                priority: 2,
+                className: 'capitalize',
+                cell: (row) => row.subscription_status.replaceAll('_', ' '),
+            },
+            {
+                id: 'renewal',
+                header: 'Trial / renewal',
+                priority: 3,
+                className: 'text-xs text-muted-foreground',
+                cell: (row) =>
+                    row.trial_ends_at
+                        ? `Trial ends ${formatDisplayDateSmart(row.trial_ends_at)}`
+                        : row.common_renewal_date
+                          ? `Renews ${formatDisplayDateSmart(row.common_renewal_date)}`
+                          : row.paid_through_date
+                            ? `Paid through ${formatDisplayDateSmart(row.paid_through_date)}`
+                            : '—',
+            },
+        ],
+        [],
+    );
+
     return (
         <>
             <Head title="Owner · Subscriptions" />
@@ -93,91 +147,22 @@ export default function OwnerSubscriptionsIndex({
                     </Button>
                 </form>
 
-                {companies.data.length === 0 ? (
-                    <ShellEmptyState
-                        title="No owned companies"
-                        description="Create a company before managing subscriptions."
-                    />
-                ) : (
-                    <div className="overflow-x-auto rounded-xl border border-border">
-                        <table className="min-w-full text-left text-sm">
-                            <thead className="border-b border-border bg-muted/40 text-xs uppercase">
-                                <tr>
-                                    <th className="px-3 py-2 font-medium">
-                                        Company
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Status
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Active modules
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Subscription
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Trial / renewal
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Action
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {companies.data.map((row) => (
-                                    <tr
-                                        key={row.id}
-                                        className="border-b border-border last:border-0"
-                                    >
-                                        <td className="px-3 py-3 font-medium">
-                                            {row.name}
-                                        </td>
-                                        <td className="px-3 py-3">
-                                            <WorkspaceStatusBadge
-                                                status={row.status}
-                                            />
-                                        </td>
-                                        <td className="px-3 py-3 text-xs">
-                                            {row.active_modules.length > 0
-                                                ? row.active_modules
-                                                      .map((module) =>
-                                                          module.replaceAll(
-                                                              '_',
-                                                              ' ',
-                                                          ),
-                                                      )
-                                                      .join(', ')
-                                                : '—'}
-                                        </td>
-                                        <td className="px-3 py-3 capitalize">
-                                            {row.subscription_status.replaceAll(
-                                                '_',
-                                                ' ',
-                                            )}
-                                        </td>
-                                        <td className="px-3 py-3 text-xs text-muted-foreground">
-                                            {row.trial_ends_at
-                                                ? `Trial ends ${formatDisplayDateSmart(row.trial_ends_at)}`
-                                                : row.common_renewal_date
-                                                  ? `Renews ${formatDisplayDateSmart(row.common_renewal_date)}`
-                                                  : row.paid_through_date
-                                                    ? `Paid through ${formatDisplayDateSmart(row.paid_through_date)}`
-                                                    : '—'}
-                                        </td>
-                                        <td className="px-3 py-3">
-                                            <WorkspaceContextAction
-                                                contextUrl={row.urls.context}
-                                                redirect={row.urls.subscription}
-                                                icon={CreditCard}
-                                                label="Manage subscription"
-                                            />
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+                <ResponsiveDataTable
+                    caption="Company subscriptions"
+                    columns={columns}
+                    rows={companies.data}
+                    rowKey={(row) => row.id}
+                    emptyTitle="No owned companies"
+                    emptyDescription="Create a company before managing subscriptions."
+                    actions={(row) => (
+                        <WorkspaceContextAction
+                            contextUrl={row.urls.context}
+                            redirect={row.urls.subscription}
+                            icon={CreditCard}
+                            label="Manage subscription"
+                        />
+                    )}
+                />
 
                 <p className="text-xs text-muted-foreground">
                     Page {companies.meta.current_page} of{' '}

@@ -263,8 +263,9 @@ test('webhook rejects invalid signature and does not trust mismatched payload by
 test('owner checkout simulate activates subscription with fake gateway', function () {
     ['owner' => $owner, 'company' => $company, 'draft' => $draft] = batchFOwnerDraft();
     batchFLogin($owner);
+    enterManagementCompany($company)->assertRedirect();
 
-    $this->get(route('owner.subscription.checkout'))
+    $this->get(route('owner.subscription.checkout', ['subscription' => $draft]))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('owner/subscription/checkout')
@@ -274,9 +275,9 @@ test('owner checkout simulate activates subscription with fake gateway', functio
 
     $intent = PaymentIntent::query()->where('company_id', $company->id)->latest('created_at')->firstOrFail();
 
-    $this->post(route('owner.subscription.checkout.simulate'), [
+    $this->post(route('owner.subscription.checkout.simulate', ['subscription' => $draft]), [
         'payment_intent_id' => $intent->id,
-    ])->assertRedirect(route('owner.subscription', $company));
+    ])->assertRedirect(route('owner.subscription'));
 
     expect($intent->fresh()->status)->toBe('paid')
         ->and($draft->fresh()->status)->toBe('active');

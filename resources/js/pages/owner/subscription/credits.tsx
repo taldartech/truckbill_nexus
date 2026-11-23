@@ -1,5 +1,11 @@
 import { Head, Link } from '@inertiajs/react';
+import { useMemo } from 'react';
+import {
+    ResponsiveDataTable,
+    type DataTableColumn,
+} from '@/components/data-table';
 import { Button } from '@/components/ui/button';
+import { formatDisplayDateSmart } from '@/lib/dates';
 
 type Props = {
     company: { id: string; name: string; status: string };
@@ -44,6 +50,37 @@ export default function SubscriptionCredits({
     presentation_note,
     links,
 }: Props) {
+    const entryColumns = useMemo<DataTableColumn<(typeof entries)[number]>[]>(
+        () => [
+            {
+                id: 'when',
+                header: 'When',
+                priority: 0,
+                cell: (row) => formatDisplayDateSmart(row.created_at),
+            },
+            {
+                id: 'type',
+                header: 'Type',
+                priority: 1,
+                cell: (row) => row.entry_type,
+            },
+            {
+                id: 'amount',
+                header: 'Amount',
+                priority: 2,
+                className: 'font-mono',
+                cell: (row) => row.amount,
+            },
+            {
+                id: 'reason',
+                header: 'Reason',
+                priority: 2,
+                cell: (row) => row.reason,
+            },
+        ],
+        [],
+    );
+
     return (
         <>
             <Head title={`Credits · ${company.name}`} />
@@ -124,53 +161,14 @@ export default function SubscriptionCredits({
                 </ul>
                 <section className="space-y-3">
                     <h2 className="font-semibold">Ledger history</h2>
-                    {entries.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">
-                            No entries yet.
-                        </p>
-                    ) : (
-                        <div className="overflow-x-auto rounded-xl border border-border">
-                            <table className="w-full min-w-[560px] text-left text-sm">
-                                <thead className="bg-muted/40">
-                                    <tr>
-                                        <th className="px-4 py-3 font-medium">
-                                            When
-                                        </th>
-                                        <th className="px-4 py-3 font-medium">
-                                            Type
-                                        </th>
-                                        <th className="px-4 py-3 font-medium">
-                                            Amount
-                                        </th>
-                                        <th className="px-4 py-3 font-medium">
-                                            Reason
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {entries.map((entry) => (
-                                        <tr
-                                            key={entry.id}
-                                            className="border-t border-border"
-                                        >
-                                            <td className="px-4 py-3">
-                                                {entry.created_at || '—'}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                {entry.entry_type}
-                                            </td>
-                                            <td className="px-4 py-3 font-mono">
-                                                {entry.amount}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                {entry.reason}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    )}
+                    <ResponsiveDataTable
+                        caption="Ledger history"
+                        columns={entryColumns}
+                        rows={entries}
+                        rowKey={(row) => row.id}
+                        emptyTitle="No entries yet"
+                        emptyDescription="Credit ledger movements will appear here."
+                    />
                 </section>
             </div>
         </>

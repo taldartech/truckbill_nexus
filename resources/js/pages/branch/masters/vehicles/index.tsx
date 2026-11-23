@@ -1,7 +1,10 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import {
+    ResponsiveDataTable,
+    type DataTableColumn,
+} from '@/components/data-table';
 import { MasterPageHeader } from '@/components/masters/master-page-header';
-import ShellEmptyState from '@/components/shell-empty-state';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -40,6 +43,50 @@ export default function VehiclesIndex({
     const [q, setQ] = useState(filters.q);
     const showUrl = (id: string) =>
         `/branch/companies/${company.id}/branches/${branch.id}/vehicles/${id}`;
+
+    const columns = useMemo<DataTableColumn<Row>[]>(
+        () => [
+            {
+                id: 'registration',
+                header: 'Registration',
+                priority: 0,
+                cell: (row) => (
+                    <Link
+                        href={showUrl(row.id)}
+                        className="font-medium hover:underline"
+                    >
+                        {row.registration_number}
+                    </Link>
+                ),
+            },
+            {
+                id: 'status',
+                header: 'Status',
+                priority: 1,
+                cell: (row) => (row.is_active ? 'Active' : 'Inactive'),
+            },
+            {
+                id: 'type',
+                header: 'Type',
+                priority: 2,
+                cell: (row) => row.vehicle_type || '—',
+            },
+            {
+                id: 'make_model',
+                header: 'Make / model',
+                priority: 2,
+                cell: (row) =>
+                    [row.make, row.model].filter(Boolean).join(' ') || '—',
+            },
+            {
+                id: 'scope',
+                header: 'Scope',
+                priority: 3,
+                cell: (row) => row.scope,
+            },
+        ],
+        [company.id, branch.id],
+    );
 
     return (
         <>
@@ -93,87 +140,14 @@ export default function VehiclesIndex({
                         </Button>
                     ) : null}
                 </div>
-                {vehicles.data.length === 0 ? (
-                    <ShellEmptyState
-                        title="No vehicles"
-                        description="Create a vehicle to get started."
-                    />
-                ) : (
-                    <>
-                        <div className="grid gap-3 md:hidden">
-                            {vehicles.data.map((row) => (
-                                <Link
-                                    key={row.id}
-                                    href={showUrl(row.id)}
-                                    className="rounded-xl border border-border p-4"
-                                >
-                                    <p className="font-medium">
-                                        {row.registration_number}
-                                    </p>
-                                    <p className="text-sm text-muted-foreground">
-                                        {row.make} {row.model} · {row.scope}
-                                    </p>
-                                </Link>
-                            ))}
-                        </div>
-                        <div className="hidden overflow-x-auto rounded-xl border border-border md:block">
-                            <table className="w-full min-w-[640px] text-left text-sm">
-                                <thead className="bg-muted/40">
-                                    <tr>
-                                        <th className="px-4 py-3 font-medium">
-                                            Registration
-                                        </th>
-                                        <th className="px-4 py-3 font-medium">
-                                            Type
-                                        </th>
-                                        <th className="px-4 py-3 font-medium">
-                                            Make / model
-                                        </th>
-                                        <th className="px-4 py-3 font-medium">
-                                            Scope
-                                        </th>
-                                        <th className="px-4 py-3 font-medium">
-                                            Status
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {vehicles.data.map((row) => (
-                                        <tr
-                                            key={row.id}
-                                            className="border-t border-border"
-                                        >
-                                            <td className="px-4 py-3">
-                                                <Link
-                                                    href={showUrl(row.id)}
-                                                    className="font-medium hover:underline"
-                                                >
-                                                    {row.registration_number}
-                                                </Link>
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                {row.vehicle_type || '—'}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                {[row.make, row.model]
-                                                    .filter(Boolean)
-                                                    .join(' ') || '—'}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                {row.scope}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                {row.is_active
-                                                    ? 'Active'
-                                                    : 'Inactive'}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </>
-                )}
+                <ResponsiveDataTable
+                    caption="Vehicles"
+                    columns={columns}
+                    rows={vehicles.data}
+                    rowKey={(row) => row.id}
+                    emptyTitle="No vehicles"
+                    emptyDescription="Create a vehicle to get started."
+                />
             </div>
         </>
     );

@@ -1,9 +1,13 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import {
+    ResponsiveDataTable,
+    type DataTableColumn,
+} from '@/components/data-table';
 import { OwnerPageHeader } from '@/components/owner/owner-page-header';
-import ShellEmptyState from '@/components/shell-empty-state';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { formatDisplayDateSmart } from '@/lib/dates';
 
 type Entry = {
     id: number;
@@ -44,6 +48,44 @@ export default function OwnerAuditAll({
         );
     };
 
+    const columns = useMemo<DataTableColumn<Entry>[]>(
+        () => [
+            {
+                id: 'when',
+                header: 'When',
+                priority: 0,
+                className: 'text-xs text-muted-foreground',
+                cell: (row) => formatDisplayDateSmart(row.created_at),
+            },
+            {
+                id: 'action',
+                header: 'Action',
+                priority: 1,
+                cell: (row) => row.action,
+            },
+            {
+                id: 'company',
+                header: 'Company',
+                priority: 2,
+                cell: (row) => row.company.name,
+            },
+            {
+                id: 'subject',
+                header: 'Subject',
+                priority: 2,
+                cell: (row) => row.subject_type,
+            },
+            {
+                id: 'remark',
+                header: 'Remark',
+                priority: 3,
+                className: 'max-w-xs truncate text-muted-foreground',
+                cell: (row) => row.remark ?? '—',
+            },
+        ],
+        [],
+    );
+
     return (
         <>
             <Head title="Owner · Audit" />
@@ -83,75 +125,22 @@ export default function OwnerAuditAll({
                     </Button>
                 </form>
 
-                {entries.data.length === 0 ? (
-                    <ShellEmptyState
-                        title="No audit entries"
-                        description="Audited Owner actions will appear here."
-                    />
-                ) : (
-                    <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
-                        <table className="min-w-full text-left text-sm">
-                            <thead className="border-b border-border bg-muted/40 text-xs uppercase">
-                                <tr>
-                                    <th className="px-3 py-2 font-medium">
-                                        When
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Company
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Action
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Subject
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Remark
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Open
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {entries.data.map((entry) => (
-                                    <tr
-                                        key={entry.uuid || String(entry.id)}
-                                        className="border-b border-border last:border-0"
-                                    >
-                                        <td className="px-3 py-3 text-xs text-muted-foreground">
-                                            {entry.created_at
-                                                ? new Date(
-                                                      entry.created_at,
-                                                  ).toLocaleString()
-                                                : '—'}
-                                        </td>
-                                        <td className="px-3 py-3">
-                                            {entry.company.name}
-                                        </td>
-                                        <td className="px-3 py-3 font-medium">
-                                            {entry.action}
-                                        </td>
-                                        <td className="px-3 py-3">
-                                            {entry.subject_type}
-                                        </td>
-                                        <td className="max-w-xs truncate px-3 py-3 text-muted-foreground">
-                                            {entry.remark ?? '—'}
-                                        </td>
-                                        <td className="px-3 py-3">
-                                            <Link
-                                                href={entry.company_audit_url}
-                                                className="text-xs font-medium text-primary underline"
-                                            >
-                                                Company audit
-                                            </Link>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+                <ResponsiveDataTable
+                    caption="Audit entries"
+                    columns={columns}
+                    rows={entries.data}
+                    rowKey={(row) => row.uuid || String(row.id)}
+                    emptyTitle="No audit entries"
+                    emptyDescription="Audited Owner actions will appear here."
+                    actions={(entry) => (
+                        <Link
+                            href={entry.company_audit_url}
+                            className="text-xs font-medium text-primary underline"
+                        >
+                            Company audit
+                        </Link>
+                    )}
+                />
 
                 <p className="text-xs text-muted-foreground">
                     Page {entries.meta.current_page} of {entries.meta.last_page}{' '}

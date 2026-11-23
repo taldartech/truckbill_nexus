@@ -34,15 +34,25 @@ export function loadOwnerGlobalPanelFixture(): OwnerGlobalPanelFixture {
     ) as OwnerGlobalPanelFixture;
 }
 
-export function partyCreateUrl(fixture: VisibilityFixture): string {
-    return `/branch/companies/${fixture.company_id}/branches/${fixture.branch_a_id}/parties/create`;
+/** Canonical Branch Panel parties create (session context must already be set). */
+export function partyCreateUrl(): string {
+    return '/branch/parties/create';
 }
 
-export function partiesIndexUrl(
+/** Canonical Branch Panel parties index (session context must already be set). */
+export function partiesIndexUrl(): string {
+    return '/branch/parties';
+}
+
+export function branchContextUrl(
     fixture: VisibilityFixture,
     branch: 'a' | 'b',
 ): string {
     const branchId = branch === 'a' ? fixture.branch_a_id : fixture.branch_b_id;
 
-    return `/branch/companies/${fixture.company_id}/branches/${branchId}/parties`;
+    return `/workspace/context/companies/${fixture.company_id}/branches/${branchId}`;
+}
+
+export function companyContextUrl(companyId: string): string {
+    return `/workspace/context/companies/${companyId}`;
 }

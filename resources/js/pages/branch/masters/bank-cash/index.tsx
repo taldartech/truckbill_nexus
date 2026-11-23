@@ -1,7 +1,10 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import {
+    ResponsiveDataTable,
+    type DataTableColumn,
+} from '@/components/data-table';
 import { MasterPageHeader } from '@/components/masters/master-page-header';
-import ShellEmptyState from '@/components/shell-empty-state';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -41,6 +44,57 @@ export default function BankCashIndex({
     const [kind, setKind] = useState(filters.kind);
     const showUrl = (id: string) =>
         `/branch/companies/${company.id}/branches/${branch.id}/bank-cash/${id}`;
+
+    const columns = useMemo<DataTableColumn<Row>[]>(
+        () => [
+            {
+                id: 'name',
+                header: 'Name',
+                priority: 0,
+                cell: (row) => (
+                    <Link
+                        href={showUrl(row.id)}
+                        className="font-medium hover:underline"
+                    >
+                        {row.name}
+                    </Link>
+                ),
+            },
+            {
+                id: 'status',
+                header: 'Status',
+                priority: 1,
+                cell: (row) => (row.is_active ? 'Active' : 'Inactive'),
+            },
+            {
+                id: 'kind',
+                header: 'Kind',
+                priority: 2,
+                cell: (row) => row.account_kind,
+            },
+            {
+                id: 'bank',
+                header: 'Bank',
+                priority: 2,
+                cell: (row) => row.bank_name || '—',
+            },
+            {
+                id: 'account',
+                header: 'Account',
+                priority: 3,
+                className: 'font-mono',
+                cell: (row) => row.account_number_masked || '—',
+            },
+            {
+                id: 'scope',
+                header: 'Scope',
+                priority: 3,
+                cell: (row) => (row.branch_id ? 'branch' : 'shared'),
+            },
+        ],
+        [company.id, branch.id],
+    );
+
     return (
         <>
             <Head title={`Bank / Cash · ${branch.name}`} />
@@ -106,75 +160,14 @@ export default function BankCashIndex({
                         </Button>
                     ) : null}
                 </div>
-                {accounts.data.length === 0 ? (
-                    <ShellEmptyState
-                        title="No accounts"
-                        description="Create a bank or cash account."
-                    />
-                ) : (
-                    <div className="overflow-x-auto rounded-xl border border-border">
-                        <table className="w-full min-w-[640px] text-left text-sm">
-                            <thead className="bg-muted/40">
-                                <tr>
-                                    <th className="px-4 py-3 font-medium">
-                                        Name
-                                    </th>
-                                    <th className="px-4 py-3 font-medium">
-                                        Kind
-                                    </th>
-                                    <th className="px-4 py-3 font-medium">
-                                        Bank
-                                    </th>
-                                    <th className="px-4 py-3 font-medium">
-                                        Account
-                                    </th>
-                                    <th className="px-4 py-3 font-medium">
-                                        Scope
-                                    </th>
-                                    <th className="px-4 py-3 font-medium">
-                                        Status
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {accounts.data.map((row) => (
-                                    <tr
-                                        key={row.id}
-                                        className="border-t border-border"
-                                    >
-                                        <td className="px-4 py-3">
-                                            <Link
-                                                href={showUrl(row.id)}
-                                                className="font-medium hover:underline"
-                                            >
-                                                {row.name}
-                                            </Link>
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {row.account_kind}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {row.bank_name || '—'}
-                                        </td>
-                                        <td className="px-4 py-3 font-mono">
-                                            {row.account_number_masked || '—'}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {row.branch_id
-                                                ? 'branch'
-                                                : 'shared'}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {row.is_active
-                                                ? 'Active'
-                                                : 'Inactive'}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+                <ResponsiveDataTable
+                    caption="Bank and cash accounts"
+                    columns={columns}
+                    rows={accounts.data}
+                    rowKey={(row) => row.id}
+                    emptyTitle="No accounts"
+                    emptyDescription="Create a bank or cash account."
+                />
             </div>
         </>
     );

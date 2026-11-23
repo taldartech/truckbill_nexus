@@ -131,7 +131,7 @@ test('global branch list links to company-specific detail', function () {
     $this->get(route('owner.branches.all'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->where('branches.data.0.urls.show', route('owner.branches.show', [
+            ->where('branches.data.0.urls.show', internalRoute('owner.branches.show', [
                 'branch' => $branch,
             ])));
 });
@@ -152,8 +152,8 @@ test('owner can open company-specific subscription from global list', function (
             ->has('companies.data', 1)
             ->where('companies.data.0.id', $company->id)
             ->where('companies.data.0.active_modules', [])
-            ->where('companies.data.0.urls.subscription', route('owner.subscription'))
-            ->where('companies.data.0.urls.company_settings', route('owner.settings')));
+            ->where('companies.data.0.urls.subscription', internalRoute('owner.subscription'))
+            ->where('companies.data.0.urls.company_settings', internalRoute('owner.settings')));
 
     enterManagementCompany($company, route('owner.subscription'))->assertRedirect();
     $this->get(route('owner.subscription'))

@@ -1,7 +1,10 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import {
+    ResponsiveDataTable,
+    type DataTableColumn,
+} from '@/components/data-table';
 import { OwnerPageHeader } from '@/components/owner/owner-page-header';
-import ShellEmptyState from '@/components/shell-empty-state';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -50,6 +53,60 @@ export default function OwnerUsersAll({
             { preserveState: true, replace: true },
         );
     };
+
+    const columns = useMemo<DataTableColumn<MembershipRow>[]>(
+        () => [
+            {
+                id: 'name',
+                header: 'Name',
+                priority: 0,
+                cell: (row) => (
+                    <>
+                        {row.user.name ?? '—'}
+                        {row.is_owner ? (
+                            <span className="ml-2 text-xs text-muted-foreground">
+                                Owner
+                            </span>
+                        ) : null}
+                    </>
+                ),
+            },
+            {
+                id: 'status',
+                header: 'Status',
+                priority: 1,
+                cell: (row) => <WorkspaceStatusBadge status={row.status} />,
+            },
+            {
+                id: 'email',
+                header: 'Email',
+                priority: 2,
+                className: 'text-muted-foreground',
+                cell: (row) => row.user.email ?? '—',
+            },
+            {
+                id: 'company',
+                header: 'Company',
+                priority: 2,
+                cell: (row) => row.company.name ?? '—',
+            },
+            {
+                id: 'branches',
+                header: 'Branches',
+                priority: 3,
+                cell: (row) =>
+                    row.branches.length > 0 ? row.branches.join(', ') : '—',
+            },
+            {
+                id: 'roles',
+                header: 'Roles',
+                priority: 3,
+                cell: (row) =>
+                    row.roles.length > 0 ? row.roles.join(', ') : '—',
+            },
+        ],
+        [],
+    );
 
     return (
         <>
@@ -114,92 +171,26 @@ export default function OwnerUsersAll({
                     </div>
                 </form>
 
-                {memberships.data.length === 0 ? (
-                    <ShellEmptyState
-                        title="No memberships found"
-                        description="Invite users from a company Users screen, or adjust filters."
-                    />
-                ) : (
-                    <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
-                        <table className="min-w-full text-left text-sm">
-                            <thead className="border-b border-border bg-muted/40 text-xs uppercase">
-                                <tr>
-                                    <th className="px-3 py-2 font-medium">
-                                        Name
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Email
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Company
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Branches
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Roles
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Status
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Actions
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {memberships.data.map((row) => (
-                                    <tr
-                                        key={row.id}
-                                        className="border-b border-border last:border-0"
-                                    >
-                                        <td className="px-3 py-3 font-medium">
-                                            {row.user.name ?? '—'}
-                                            {row.is_owner ? (
-                                                <span className="ml-2 text-xs text-muted-foreground">
-                                                    Owner
-                                                </span>
-                                            ) : null}
-                                        </td>
-                                        <td className="px-3 py-3 text-muted-foreground">
-                                            {row.user.email ?? '—'}
-                                        </td>
-                                        <td className="px-3 py-3">
-                                            {row.company.name ?? '—'}
-                                        </td>
-                                        <td className="px-3 py-3">
-                                            {row.branches.length > 0
-                                                ? row.branches.join(', ')
-                                                : '—'}
-                                        </td>
-                                        <td className="px-3 py-3">
-                                            {row.roles.length > 0
-                                                ? row.roles.join(', ')
-                                                : '—'}
-                                        </td>
-                                        <td className="px-3 py-3">
-                                            <WorkspaceStatusBadge
-                                                status={row.status}
-                                            />
-                                        </td>
-                                        <td className="px-3 py-3">
-                                            {row.urls.show ? (
-                                                <Link
-                                                    href={row.urls.show}
-                                                    className="text-xs font-medium text-primary underline"
-                                                >
-                                                    Manage
-                                                </Link>
-                                            ) : (
-                                                '—'
-                                            )}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+                <ResponsiveDataTable
+                    caption="User memberships"
+                    columns={columns}
+                    rows={memberships.data}
+                    rowKey={(row) => row.id}
+                    emptyTitle="No memberships found"
+                    emptyDescription="Invite users from a company Users screen, or adjust filters."
+                    actions={(row) =>
+                        row.urls.show ? (
+                            <Link
+                                href={row.urls.show}
+                                className="text-xs font-medium text-primary underline"
+                            >
+                                Manage
+                            </Link>
+                        ) : (
+                            '—'
+                        )
+                    }
+                />
 
                 <p className="text-xs text-muted-foreground">
                     Page {memberships.meta.current_page} of{' '}

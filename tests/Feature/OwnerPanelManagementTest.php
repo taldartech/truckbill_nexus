@@ -66,8 +66,9 @@ test('owner can update company profile name with remark', function () {
     ['owner' => $owner, 'company' => $company] = createManagedOwnerWorkspace();
 
     loginOwnerPanelCustomer($owner);
+    enterManagementCompany($company)->assertRedirect();
 
-    $this->post(route('owner.settings.update', ['company' => $company]), [
+    $this->post(route('owner.settings.update'), [
         'name' => 'Renamed Logistics',
         'remark' => 'Legal trading name update',
     ])->assertRedirect(route('owner.settings'));
@@ -84,15 +85,17 @@ test('owner profile update rejects empty remark and member cannot update', funct
     ownerPanelWorkspace()->assignBranch($membership, $headOffice, 'Assign');
 
     loginOwnerPanelCustomer($owner);
+    enterManagementCompany($company)->assertRedirect();
+
     $this->from(route('owner.settings'))
-        ->post(route('owner.settings.update', ['company' => $company]), [
+        ->post(route('owner.settings.update'), [
             'name' => 'Nope',
             'remark' => '',
         ])
         ->assertSessionHasErrors('remark');
 
     loginOwnerPanelCustomer($member, 'member-secret');
-    $this->post(route('owner.settings.update', ['company' => $company]), [
+    $this->post(route('owner.settings.update'), [
         'name' => 'Hijack',
         'remark' => 'Attempt',
     ])->assertForbidden();
@@ -106,6 +109,7 @@ test('deactivated company profile is read-only for owner', function () {
     ownerPanelWorkspace()->deactivateCompany($sa, $company, 'Pause trading');
 
     loginOwnerPanelCustomer($owner);
+    enterManagementCompany($company)->assertRedirect();
 
     $this->get(route('owner.settings'))
         ->assertOk()
@@ -114,7 +118,7 @@ test('deactivated company profile is read-only for owner', function () {
             ->where('canEditProfile', false)
             ->where('ownerPanelScope', CompanyAccessService::OWNER_PANEL_ADMIN_BILLING_ONLY));
 
-    $this->post(route('owner.settings.update', ['company' => $company]), [
+    $this->post(route('owner.settings.update'), [
         'name' => 'Should Fail',
         'remark' => 'Write while deactivated',
     ])->assertForbidden();
@@ -130,8 +134,9 @@ test('owner can invite revoke deactivate membership and assign branch role', fun
     $invitations = app(InvitationService::class);
 
     loginOwnerPanelCustomer($owner);
+    enterManagementCompany($company)->assertRedirect();
 
-    $this->post(route('owner.users.invite-for-branch'), [
+    $this->post(route('owner.users.invite-for-branch', ['branch' => $headOffice]), [
         'email' => 'pending.revoke@example.com',
     ])->assertRedirect(route('owner.users'));
 
@@ -159,17 +164,20 @@ test('owner can invite revoke deactivate membership and assign branch role', fun
         ->whereNull('deactivated_at')
         ->firstOrFail();
 
-    $this->get(route('owner.users.show'))
+    $this->get(route('owner.users.show', ['membership' => $membership]))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('owner/users/show')
             ->where('membership.is_owner', false)
             ->where('canManage', true));
 
-    $this->post(route('owner.users.assign-role'), [
+    $this->post(route('owner.users.assign-role', [
+        'membership' => $membership,
+        'branch' => $headOffice,
+    ]), [
         'role_id' => $role->id,
         'remark' => 'Grant clerk',
-    ])->assertRedirect(route('owner.users.show'));
+    ])->assertRedirect(route('owner.users.show', ['membership' => $membership]));
 
     $roleAssignment = BranchRoleAssignment::query()
         ->where('company_membership_id', $membership->id)
@@ -178,19 +186,19 @@ test('owner can invite revoke deactivate membership and assign branch role', fun
 
     expect($roleAssignment->role_id)->toBe($role->id);
 
-    $this->post(route('owner.users.roles.revoke'), [
+    $this->post(route('owner.users.roles.revoke', ['roleAssignment' => $roleAssignment]), [
         'remark' => 'Revoke clerk',
     ])->assertRedirect();
 
     expect($roleAssignment->fresh()->isActive())->toBeFalse();
 
-    $this->post(route('owner.users.invitations.revoke'), [
+    $this->post(route('owner.users.invitations.revoke', ['invitation' => $pendingInvitation]), [
         'remark' => 'No longer needed',
     ])->assertRedirect(route('owner.users'));
 
     expect($pendingInvitation->fresh()->status)->toBe(InvitationStatus::Revoked);
 
-    $this->post(route('owner.users.deactivate'), [
+    $this->post(route('owner.users.deactivate', ['membership' => $membership]), [
         'remark' => 'Left company',
     ])->assertRedirect(route('owner.users'));
 
@@ -211,8 +219,10 @@ test('owner cannot deactivate own membership or escalate member via owner routes
     ownerPanelWorkspace()->assignBranch($membership, $headOffice, 'Assign');
 
     loginOwnerPanelCustomer($owner);
-    $this->from(route('owner.users.show'))
-        ->post(route('owner.users.deactivate'), [
+    enterManagementCompany($company)->assertRedirect();
+
+    $this->from(route('owner.users.show', ['membership' => $ownerMembership]))
+        ->post(route('owner.users.deactivate', ['membership' => $ownerMembership]), [
             'remark' => 'Self deactivate',
         ])
         ->assertSessionHasErrors('remark');
@@ -234,12 +244,17 @@ test('owner cannot manage another company memberships and audit is company scope
     ownerPanelWorkspace()->assignBranch($membershipB, $headOfficeB, 'Assign B');
 
     loginOwnerPanelCustomer($ownerA);
+    enterManagementCompany($companyA)->assertRedirect();
 
-    $this->get(route('owner.users.show'))->assertNotFound();
+    $this->get(route('owner.users.show', ['membership' => $membershipB]))->assertNotFound();
+
+    $this->post(route('workspace.context.company', ['company' => $companyB]))->assertForbidden();
 
     $this->post(route('owner.users.invite'), [
         'email' => 'cross@example.com',
-    ])->assertForbidden();
+    ])->assertRedirect(route('owner.users'));
+
+    expect(Invitation::query()->where('email', 'cross@example.com')->value('company_id'))->toBe($companyA->id);
 
     $this->get(route('owner.audit'))
         ->assertOk()

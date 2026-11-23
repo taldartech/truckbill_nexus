@@ -197,6 +197,7 @@ test('owner can update complete company profile from settings', function () {
     );
 
     prd7LoginCustomer($owner);
+    enterManagementCompany($company)->assertRedirect();
 
     $newRate = GstRate::query()->firstOrCreate(
         ['code' => 'GST12', 'version' => 1],
@@ -209,7 +210,7 @@ test('owner can update complete company profile from settings', function () {
         ],
     );
 
-    $this->post(route('owner.settings.update', ['company' => $company]), [
+    $this->post(route('owner.settings.update'), [
         'name' => 'Editable Co Renamed',
         'remark' => 'Profile correction',
         'pan' => 'BBBBB1234C',

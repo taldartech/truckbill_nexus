@@ -1,5 +1,9 @@
 import { Form, Head, router, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import {
+    ResponsiveDataTable,
+    type DataTableColumn,
+} from '@/components/data-table';
 import InputError from '@/components/input-error';
 import { MasterPageHeader } from '@/components/masters/master-page-header';
 import { Button } from '@/components/ui/button';
@@ -41,6 +45,32 @@ export default function CataloguesIndex({
     const { flash } = usePage<{ flash?: { success?: string | null } }>().props;
     const [q, setQ] = useState(filters.q);
     const [type, setType] = useState(filters.type);
+
+    const columns = useMemo<DataTableColumn<Item>[]>(
+        () => [
+            {
+                id: 'code',
+                header: 'Code',
+                priority: 0,
+                className: 'font-mono',
+                cell: (row) => row.code,
+            },
+            {
+                id: 'status',
+                header: 'Status',
+                priority: 1,
+                cell: (row) => (row.is_active ? 'Active' : 'Inactive'),
+            },
+            {
+                id: 'name',
+                header: 'Name',
+                priority: 2,
+                cell: (row) => row.name,
+            },
+        ],
+        [],
+    );
+
     return (
         <>
             <Head title={`Supporting masters · ${branch.name}`} />
@@ -151,69 +181,43 @@ export default function CataloguesIndex({
                         read-only.
                     </p>
                 )}
-                <div className="overflow-x-auto rounded-xl border border-border">
-                    <table className="w-full min-w-[480px] text-left text-sm">
-                        <thead className="bg-muted/40">
-                            <tr>
-                                <th className="px-4 py-3 font-medium">Code</th>
-                                <th className="px-4 py-3 font-medium">Name</th>
-                                <th className="px-4 py-3 font-medium">
-                                    Status
-                                </th>
-                                {canManageOwnerCatalogues ? (
-                                    <th className="px-4 py-3 font-medium">
-                                        Actions
-                                    </th>
-                                ) : null}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {items.data.map((item) => (
-                                <tr
-                                    key={item.id}
-                                    className="border-t border-border"
-                                >
-                                    <td className="px-4 py-3 font-mono">
-                                        {item.code}
-                                    </td>
-                                    <td className="px-4 py-3">{item.name}</td>
-                                    <td className="px-4 py-3">
-                                        {item.is_active ? 'Active' : 'Inactive'}
-                                    </td>
-                                    {canManageOwnerCatalogues ? (
-                                        <td className="px-4 py-3">
-                                            <Form
-                                                action={`/branch/companies/${company.id}/branches/${branch.id}/catalogues/${item.id}`}
-                                                method="delete"
-                                                className="inline"
-                                            >
-                                                {({ processing }) => (
-                                                    <>
-                                                        <input
-                                                            type="hidden"
-                                                            name="remark"
-                                                            value="Delete catalogue item"
-                                                        />
-                                                        <Button
-                                                            type="submit"
-                                                            size="sm"
-                                                            variant="outline"
-                                                            disabled={
-                                                                processing
-                                                            }
-                                                        >
-                                                            Delete
-                                                        </Button>
-                                                    </>
-                                                )}
-                                            </Form>
-                                        </td>
-                                    ) : null}
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
+                <ResponsiveDataTable
+                    caption="Catalogue items"
+                    columns={columns}
+                    rows={items.data}
+                    rowKey={(row) => row.id}
+                    emptyTitle="No catalogue items"
+                    emptyDescription="Add an item using the form above."
+                    actions={
+                        canManageOwnerCatalogues
+                            ? (item) => (
+                                  <Form
+                                      action={`/branch/companies/${company.id}/branches/${branch.id}/catalogues/${item.id}`}
+                                      method="delete"
+                                      className="inline"
+                                  >
+                                      {({ processing }) => (
+                                          <>
+                                              <input
+                                                  type="hidden"
+                                                  name="remark"
+                                                  value="Delete catalogue item"
+                                              />
+                                              <Button
+                                                  type="submit"
+                                                  size="sm"
+                                                  variant="outline"
+                                                  disabled={processing}
+                                              >
+                                                  Delete
+                                              </Button>
+                                          </>
+                                      )}
+                                  </Form>
+                              )
+                            : undefined
+                    }
+                />
                 <section className="space-y-3">
                     <h2 className="text-lg font-semibold">
                         Payment modes (read-only)

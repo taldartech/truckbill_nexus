@@ -1,8 +1,14 @@
 # Global UI Consistency Audit
 
-**Date:** 23 November 2026
-**Feature baseline:** session routing + icon/date foundations
-**Verdict:** PARTIALLY IMPLEMENTED — routing/session/date foundations landed; full page-by-page icon/layout remediation ongoing
+**Date:** 23 November 2026  
+**Feature baseline:** session routing + action regression fix + responsive tables  
+**Verdict:** IMPLEMENTED WITH DOCUMENTED EXCEPTIONS — P0 actions/Pest green; ResponsiveDataTable on 22 list pages; remaining form/detail icon/layout polish incomplete
+
+### Responsive table coverage (Batch D)
+
+Converted to `ResponsiveDataTable` (P0–P3): Owner companies/branches/users/subscriptions/audit (+ subscription credits/invoices/payments); Admin companies/identities/internal-users/gst/subscription-invoices/CRM leads & tickets; Branch enquiries + masters parties/vehicles/stations/catalogues/bank-cash.
+
+Skipped (no ordinary list table): company-scoped owner branch/users index layouts, TDS card list, documents drawer list, invoice line-item preview.
 
 | Page                                     | Module        | Layout    | Width | Icons | Dates | Status      | Notes                                     |
 | ---------------------------------------- | ------------- | --------- | ----- | ----- | ----- | ----------- | ----------------------------------------- |

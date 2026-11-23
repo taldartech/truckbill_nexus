@@ -62,11 +62,13 @@ test('customer with one owned company lands on global owner dashboard', function
             ->component('owner/home')
             ->where('companies.0.id', $company->id));
 
-    $this->get(route('owner.home'))
+    enterManagementCompany($company)->assertRedirect();
+
+    $this->get(route('owner.settings'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('owner/dashboard')
-            ->where('company.id', $company->id)
+            ->component('owner/settings')
+            ->where('canEditProfile', true)
             ->where('ownerPanelScope', CompanyAccessService::OWNER_PANEL_FULL));
 });
 
@@ -103,11 +105,13 @@ test('member-only customer lands on branch panel for sole assignment', function 
 
     loginCustomer($member, 'member-secret');
 
-    $this->get(route('workspace.landing'))
-        ->assertRedirect(route('branch.dashboard', [
-            'company' => $company,
-            'branch' => $headOffice,
-        ]));
+    $landing = $this->get(route('workspace.landing'));
+    $landing->assertRedirect();
+    expect(parse_url($landing->headers->get('Location'), PHP_URL_PATH))->toBe('/branch');
+
+    enterBranchWorkspace($company, $headOffice)->assertRedirect();
+
+    $this->get(route('branch.dashboard'))->assertOk();
 
     $this->get(route('owner.home'))
         ->assertForbidden();
@@ -147,10 +151,7 @@ test('mixed owner and member access preserves owner landing and member branch pa
         ->assertRedirect(route('owner.home'));
 
     $this->post(route('workspace.companies.enter', ['company' => $memberCompany]))
-        ->assertRedirect(route('branch.dashboard', [
-            'company' => $memberCompany,
-            'branch' => $memberBranch,
-        ]));
+        ->assertRedirect(route('branch.dashboard'));
 });
 
 test('invalid company context is forbidden', function () {
@@ -159,10 +160,12 @@ test('invalid company context is forbidden', function () {
 
     loginCustomer($owner);
 
-    $this->get(route('owner.home'))
-        ->assertForbidden();
+    $this->get(route('owner.home'))->assertOk();
 
     $this->post(route('workspace.companies.enter', ['company' => $strangerCompany]))
+        ->assertForbidden();
+
+    $this->post(route('workspace.context.company', ['company' => $strangerCompany]))
         ->assertForbidden();
 });
 
@@ -173,10 +176,10 @@ test('invalid branch context is forbidden', function () {
 
     loginCustomer($owner);
 
-    $this->get(route('branch.dashboard', [
-        'company' => $company,
+    $this->post(route('workspace.context.branch', [
+        'company' => $other,
         'branch' => $otherBranch,
-    ]))->assertNotFound();
+    ]))->assertForbidden();
 });
 
 test('deactivated company limits owner panel and blocks branch panel', function () {
@@ -185,16 +188,19 @@ test('deactivated company limits owner panel and blocks branch panel', function 
 
     loginCustomer($owner);
 
-    $this->get(route('owner.home'))
+    enterManagementCompany($company)->assertRedirect();
+
+    $this->get(route('owner.settings'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->where('ownerPanelScope', CompanyAccessService::OWNER_PANEL_ADMIN_BILLING_ONLY)
-            ->where('isDeactivated', true));
+            ->where('ownerPanelScope', CompanyAccessService::OWNER_PANEL_ADMIN_BILLING_ONLY));
 
-    $this->get(route('branch.dashboard', [
+    $this->post(route('workspace.context.branch', [
         'company' => $company,
         'branch' => $headOffice,
     ]))->assertForbidden();
+
+    $this->get(route('branch.dashboard'))->assertRedirect(route('workspace.landing'));
 });
 
 test('client supplied tenant identifiers are rejected on workspace routes', function () {
@@ -217,16 +223,14 @@ test('revoked membership denies branch panel', function () {
 
     loginCustomer($member, 'member-secret');
 
-    $this->get(route('branch.dashboard', [
-        'company' => $company,
-        'branch' => $headOffice,
-    ]))->assertForbidden();
+    $this->get(route('branch.dashboard'))->assertRedirect(route('workspace.landing'));
 });
 
 test('subscription presentation does not invent entitlement actions', function () {
     ['owner' => $owner, 'company' => $company] = createOwnerWorkspace();
 
     loginCustomer($owner);
+    enterManagementCompany($company)->assertRedirect();
 
     $this->get(route('owner.subscription'))
         ->assertOk()
@@ -240,14 +244,7 @@ test('owner dashboard exposes Region B management entry points', function () {
     ['owner' => $owner, 'company' => $company] = createOwnerWorkspace();
 
     loginCustomer($owner);
-
-    $this->get(route('owner.home'))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->component('owner/dashboard')
-            ->has('links.users')
-            ->has('links.settings')
-            ->has('links.audit'));
+    enterManagementCompany($company)->assertRedirect();
 
     $this->get(route('owner.users'))
         ->assertOk()
@@ -285,11 +282,9 @@ test('branch settings remain branch-scoped', function () {
     ['owner' => $owner, 'company' => $company, 'headOffice' => $headOffice] = createOwnerWorkspace();
 
     loginCustomer($owner);
+    enterBranchWorkspace($company, $headOffice)->assertRedirect();
 
-    $this->get(route('branch.settings', [
-        'company' => $company,
-        'branch' => $headOffice,
-    ]))->assertOk()
+    $this->get(route('branch.settings'))->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('branch/settings')
             ->where('preferences.note', fn ($note) => str_contains($note, 'Branch-scoped preferences')));
@@ -299,11 +294,9 @@ test('unavailable modules are not exposed on branch dashboard', function () {
     ['owner' => $owner, 'company' => $company, 'headOffice' => $headOffice] = createOwnerWorkspace();
 
     loginCustomer($owner);
+    enterBranchWorkspace($company, $headOffice)->assertRedirect();
 
-    $this->get(route('branch.dashboard', [
-        'company' => $company,
-        'branch' => $headOffice,
-    ]))->assertOk()
+    $this->get(route('branch.dashboard'))->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('branch/dashboard')
             ->where('modules', []));
@@ -313,19 +306,16 @@ test('returning to owner panel clears active branch chrome after branch visit', 
     ['owner' => $owner, 'company' => $company, 'headOffice' => $headOffice] = createOwnerWorkspace();
 
     loginCustomer($owner);
+    enterBranchWorkspace($company, $headOffice)->assertRedirect();
 
-    $this->get(route('branch.dashboard', [
-        'company' => $company,
-        'branch' => $headOffice,
-    ]))->assertOk()
+    $this->get(route('branch.dashboard'))->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('workspace.active_branch_id', $headOffice->id));
 
     $this->get(route('owner.home'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('owner/dashboard')
-            ->where('workspace.active_company_id', $company->id)
+            ->component('owner/home')
             ->where('workspace.active_branch_id', null));
 });
 

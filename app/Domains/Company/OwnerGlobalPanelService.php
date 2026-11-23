@@ -15,6 +15,7 @@ use App\Models\Party;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Support\Audit\AuditEntry;
+use App\Support\Workspace\SafeInternalRedirect;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -119,11 +120,11 @@ final class OwnerGlobalPanelService
             'can_manage' => $canAccess && $company->isActive(),
             'urls' => [
                 'context' => route('workspace.context.company', ['company' => $company]),
-                'settings' => route('owner.settings'),
-                'branches' => route('owner.branches'),
-                'subscription' => route('owner.subscription'),
-                'audit' => route('owner.audit'),
-                'users' => route('owner.users'),
+                'settings' => SafeInternalRedirect::route('owner.settings'),
+                'branches' => SafeInternalRedirect::route('owner.branches'),
+                'subscription' => SafeInternalRedirect::route('owner.subscription'),
+                'audit' => SafeInternalRedirect::route('owner.audit'),
+                'users' => SafeInternalRedirect::route('owner.users'),
             ],
         ];
     }
@@ -289,8 +290,9 @@ final class OwnerGlobalPanelService
             'branches' => $branchNames,
             'roles' => $roleNames,
             'urls' => [
-                'show' => $company === null ? null : route('owner.users.show', ['membership' => $membership,
-                ]),
+                'show' => $company === null
+                    ? null
+                    : SafeInternalRedirect::route('owner.users.show', ['membership' => $membership]),
             ],
         ];
     }
@@ -417,16 +419,18 @@ final class OwnerGlobalPanelService
                 'status' => $companyActive ? 'Active' : 'Deactivated',
             ],
             'urls' => [
-                'show' => $company === null ? null : route('owner.branches.show', [
-                    'branch' => $branch,
-                ]),
+                'show' => $company === null
+                    ? null
+                    : SafeInternalRedirect::route('owner.branches.show', ['branch' => $branch]),
                 'enter_branch_context' => ($company !== null && $companyActive && $branch->isActive())
                     ? route('workspace.context.branch', ['company' => $company, 'branch' => $branch])
                     : null,
                 'enter_branch' => ($company !== null && $companyActive && $branch->isActive())
-                    ? route('branch.dashboard')
+                    ? SafeInternalRedirect::route('branch.dashboard')
                     : null,
-                'create_for_company' => $company === null ? null : route('owner.branches.create'),
+                'create_for_company' => $company === null
+                    ? null
+                    : SafeInternalRedirect::route('owner.branches.create'),
             ],
         ];
     }
@@ -479,8 +483,8 @@ final class OwnerGlobalPanelService
             'notes' => $lifecycle['notes'],
             'urls' => [
                 'context' => route('workspace.context.company', ['company' => $company]),
-                'subscription' => route('owner.subscription'),
-                'company_settings' => route('owner.settings'),
+                'subscription' => SafeInternalRedirect::route('owner.subscription'),
+                'company_settings' => SafeInternalRedirect::route('owner.settings'),
             ],
         ];
     }

@@ -1,7 +1,10 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import {
+    ResponsiveDataTable,
+    type DataTableColumn,
+} from '@/components/data-table';
 import { MasterPageHeader } from '@/components/masters/master-page-header';
-import ShellEmptyState from '@/components/shell-empty-state';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -46,6 +49,9 @@ export default function PartiesIndex({
     const [q, setQ] = useState(filters.q);
     const [role, setRole] = useState(filters.role);
 
+    const partyShowUrl = (id: string) =>
+        `/branch/companies/${company.id}/branches/${branch.id}/parties/${id}`;
+
     const applyFilters = (event: React.FormEvent) => {
         event.preventDefault();
         router.get(
@@ -54,6 +60,44 @@ export default function PartiesIndex({
             { preserveState: true, replace: true },
         );
     };
+
+    const columns = useMemo<DataTableColumn<PartyRow>[]>(
+        () => [
+            {
+                id: 'name',
+                header: 'Name',
+                priority: 0,
+                cell: (row) => (
+                    <Link
+                        href={partyShowUrl(row.id)}
+                        className="font-medium hover:underline"
+                    >
+                        {row.name}
+                    </Link>
+                ),
+            },
+            {
+                id: 'scope',
+                header: 'Scope',
+                priority: 1,
+                cell: (row) => row.scope,
+            },
+            {
+                id: 'contact',
+                header: 'Contact',
+                priority: 2,
+                className: 'text-muted-foreground',
+                cell: (row) => row.contact_number || row.email || '—',
+            },
+            {
+                id: 'roles',
+                header: 'Roles',
+                priority: 2,
+                cell: (row) => row.roles.join(', ') || '—',
+            },
+        ],
+        [company.id, branch.id],
+    );
 
     return (
         <>
@@ -121,83 +165,21 @@ export default function PartiesIndex({
                     ) : null}
                 </div>
 
-                {parties.data.length === 0 ? (
-                    <ShellEmptyState
-                        title="No parties found"
-                        description="Create a party or adjust filters."
-                    />
-                ) : (
-                    <>
-                        <div className="grid gap-3 md:hidden">
-                            {parties.data.map((party) => (
-                                <Link
-                                    key={party.id}
-                                    href={`/branch/companies/${company.id}/branches/${branch.id}/parties/${party.id}`}
-                                    className="rounded-xl border border-border p-4"
-                                >
-                                    <p className="font-medium">{party.name}</p>
-                                    <p className="text-sm text-muted-foreground">
-                                        {party.scope} ·{' '}
-                                        {party.roles.join(', ') || 'No roles'}
-                                    </p>
-                                </Link>
-                            ))}
-                        </div>
-                        <div className="hidden overflow-x-auto rounded-xl border border-border md:block">
-                            <table className="w-full min-w-[640px] text-left text-sm">
-                                <thead className="bg-muted/40">
-                                    <tr>
-                                        <th className="px-4 py-3 font-medium">
-                                            Name
-                                        </th>
-                                        <th className="px-4 py-3 font-medium">
-                                            Contact
-                                        </th>
-                                        <th className="px-4 py-3 font-medium">
-                                            Scope
-                                        </th>
-                                        <th className="px-4 py-3 font-medium">
-                                            Roles
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {parties.data.map((party) => (
-                                        <tr
-                                            key={party.id}
-                                            className="border-t border-border"
-                                        >
-                                            <td className="px-4 py-3">
-                                                <Link
-                                                    href={`/branch/companies/${company.id}/branches/${branch.id}/parties/${party.id}`}
-                                                    className="font-medium hover:underline"
-                                                >
-                                                    {party.name}
-                                                </Link>
-                                            </td>
-                                            <td className="px-4 py-3 text-muted-foreground">
-                                                {party.contact_number ||
-                                                    party.email ||
-                                                    '—'}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                {party.scope}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                {party.roles.join(', ') || '—'}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                            Page {parties.meta.current_page} of{' '}
-                            {parties.meta.last_page} · {parties.meta.total}{' '}
-                            total
-                        </p>
-                    </>
-                )}
+                <ResponsiveDataTable
+                    caption="Parties"
+                    columns={columns}
+                    rows={parties.data}
+                    rowKey={(row) => row.id}
+                    emptyTitle="No parties found"
+                    emptyDescription="Create a party or adjust filters."
+                />
+
+                {parties.data.length > 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                        Page {parties.meta.current_page} of{' '}
+                        {parties.meta.last_page} · {parties.meta.total} total
+                    </p>
+                ) : null}
             </div>
         </>
     );

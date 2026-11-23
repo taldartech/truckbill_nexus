@@ -24,14 +24,16 @@ Owner management URLs used `/owner` and embedded company UUIDs. Branch URLs embe
 6. Client request bodies must not carry `company_id` / `branch_id` (existing RejectClientTenantIdentifiers).
 7. Redundant company dashboard is removed from navigation; company actions open settings/branches/users/subscription/audit via context switch.
 8. Legacy `/owner/*` and UUID branch URLs redirect without silently changing session context.
+9. Context-switch `redirect` targets must be same-origin relative paths (or absolute URLs normalized via `SafeInternalRedirect`); external and protocol-relative targets are rejected.
+10. Company-scoped management middleware denies non-owners with 403 before soft “select company” redirects.
 
 ## Consequences
 
 - Controllers keep type-hinted Company/Branch after middleware injection; resource route params precede session params in method signatures.
 - Global Owner lists must not require a selected company.
-- Frontend action icons POST context then redirect to clean URLs.
-- Tests use `enterManagementCompany` / `enterBranchWorkspace` / `seedBranchSession` helpers.
+- Frontend action icons POST context then redirect to clean URLs; Inertia destination payloads use relative paths.
+- Tests use `enterManagementCompany` / `enterBranchWorkspace` / `seedManagementSession` / `seedBranchSession` / `internalRoute` helpers.
 
 ## Related
 
-ADR-002, Owner/Branch navigation specs, GLOBAL_UI_CONSISTENCY_AUDIT.md
+ADR-002, Owner/Branch navigation specs, `RESPONSIVE_TABLE_STANDARD.md`, `ACTION_REGRESSION_CERTIFICATION.md`, `GLOBAL_UI_CONSISTENCY_AUDIT.md`

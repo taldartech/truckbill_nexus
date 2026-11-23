@@ -1,8 +1,12 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { useState } from 'react';
-import ShellEmptyState from '@/components/shell-empty-state';
+import { useMemo, useState } from 'react';
+import {
+    ResponsiveDataTable,
+    type DataTableColumn,
+} from '@/components/data-table';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { formatDisplayDateSmart } from '@/lib/dates';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 
 type AuditEntryRow = {
@@ -58,6 +62,44 @@ export default function OwnerAudit({
             { preserveState: true, replace: true },
         );
     };
+
+    const columns = useMemo<DataTableColumn<AuditEntryRow>[]>(
+        () => [
+            {
+                id: 'when',
+                header: 'When',
+                priority: 0,
+                className: 'whitespace-nowrap text-muted-foreground',
+                cell: (row) => formatDisplayDateSmart(row.created_at),
+            },
+            {
+                id: 'action',
+                header: 'Action',
+                priority: 1,
+                cell: (row) => row.action,
+            },
+            {
+                id: 'subject',
+                header: 'Subject',
+                priority: 2,
+                cell: (row) => (
+                    <>
+                        <div>{row.subject_type}</div>
+                        <div className="text-xs text-muted-foreground">
+                            {row.subject_id}
+                        </div>
+                    </>
+                ),
+            },
+            {
+                id: 'remark',
+                header: 'Remark',
+                priority: 3,
+                cell: (row) => row.remark ?? '—',
+            },
+        ],
+        [],
+    );
 
     return (
         <>
@@ -125,61 +167,14 @@ export default function OwnerAudit({
                     </Button>
                 </form>
 
-                {entries.data.length === 0 ? (
-                    <ShellEmptyState
-                        title="No audit entries"
-                        description="No company audit activity matches the current filters."
-                    />
-                ) : (
-                    <div className="overflow-x-auto rounded-xl border border-border">
-                        <table className="min-w-full text-left text-sm">
-                            <thead className="border-b border-border bg-muted/40">
-                                <tr>
-                                    <th className="px-3 py-2 font-medium">
-                                        When
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Action
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Subject
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Remark
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {entries.data.map((entry) => (
-                                    <tr
-                                        key={entry.uuid}
-                                        className="border-b border-border last:border-0"
-                                    >
-                                        <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">
-                                            {entry.created_at
-                                                ? new Date(
-                                                      entry.created_at,
-                                                  ).toLocaleString()
-                                                : '—'}
-                                        </td>
-                                        <td className="px-3 py-2">
-                                            {entry.action}
-                                        </td>
-                                        <td className="px-3 py-2">
-                                            <div>{entry.subject_type}</div>
-                                            <div className="text-xs text-muted-foreground">
-                                                {entry.subject_id}
-                                            </div>
-                                        </td>
-                                        <td className="px-3 py-2">
-                                            {entry.remark ?? '—'}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+                <ResponsiveDataTable
+                    caption="Company audit log"
+                    columns={columns}
+                    rows={entries.data}
+                    rowKey={(row) => row.uuid}
+                    emptyTitle="No audit entries"
+                    emptyDescription="No company audit activity matches the current filters."
+                />
 
                 <p className="text-sm text-muted-foreground">
                     Page {entries.meta.current_page} of {entries.meta.last_page}{' '}

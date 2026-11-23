@@ -73,6 +73,8 @@ test('authorized users can open document manager for a party parent', function (
         test()->withUnencryptedCookie($cookie->getName(), $cookie->getValue());
     }
 
+    enterBranchWorkspace($company, $branch)->assertRedirect();
+
     $party = app(PartyService::class)->create(
         actor: $owner,
         company: $company,
@@ -81,7 +83,7 @@ test('authorized users can open document manager for a party parent', function (
         roles: [['role' => PartyRoleType::Customer->value, 'attributes' => []]],
     );
 
-    $this->get(route('branch.documents.index', 'party', $party->id))
+    $this->get(route('branch.documents.index', ['parentType' => 'party', 'parentId' => $party->id]))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('branch/masters/documents/index')
@@ -121,6 +123,8 @@ test('document upload download authorization respects company isolation and scan
         test()->withUnencryptedCookie($cookie->getName(), $cookie->getValue());
     }
 
+    enterBranchWorkspace($company, $branch)->assertRedirect();
+
     $party = app(PartyService::class)->create(
         actor: $owner,
         company: $company,
@@ -129,7 +133,7 @@ test('document upload download authorization respects company isolation and scan
         roles: [['role' => PartyRoleType::Customer->value, 'attributes' => []]],
     );
 
-    $this->post(route('branch.documents.store', 'party', $party->id), [
+    $this->post(route('branch.documents.store', ['parentType' => 'party', 'parentId' => $party->id]), [
         'file' => UploadedFile::fake()->create('rc.pdf', 100, 'application/pdf'),
         'label' => 'RC',
         'remark' => 'Upload RC',
@@ -148,6 +152,7 @@ test('document upload download authorization respects company isolation and scan
     foreach ($login->headers->getCookies() as $cookie) {
         test()->withUnencryptedCookie($cookie->getName(), $cookie->getValue());
     }
+    enterBranchWorkspace($otherCompany, $otherBranch)->assertRedirect();
     $this->get(route('branch.documents.download', $attachment))->assertNotFound();
 
     if (auth()->check()) {
@@ -159,7 +164,8 @@ test('document upload download authorization respects company isolation and scan
     foreach ($login->headers->getCookies() as $cookie) {
         test()->withUnencryptedCookie($cookie->getName(), $cookie->getValue());
     }
-    $this->post(route('branch.documents.store', 'party', $party->id), [
+    enterBranchWorkspace($company, $branch)->assertRedirect();
+    $this->post(route('branch.documents.store', ['parentType' => 'party', 'parentId' => $party->id]), [
         'file' => UploadedFile::fake()->create('x.pdf', 50, 'application/pdf'),
         'remark' => 'Denied upload',
     ])->assertForbidden();

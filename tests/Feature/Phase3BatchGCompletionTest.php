@@ -121,8 +121,10 @@ test('owner subscription overview exposes capacity storage and quotas from servi
     ['owner' => $owner, 'company' => $company] = batchGOwnerCompany('Overview Co');
     app(QuotaAllocationService::class)->ensureCounter($company, 'broker', '100.0000', '2026-01-01', '2026-12-31');
 
+    seedManagementSession($company);
+
     $this->actingAs($owner)
-        ->get(route('owner.subscription', $company))
+        ->get(route('owner.subscription'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('owner/subscription/overview')
@@ -212,8 +214,10 @@ test('invoice html preview download and email do not reverse approval', function
     expect($html)->toContain('SAMPLE / NON-PRODUCTION')
         ->and($html)->toContain('TB/2026-2027/G001');
 
+    seedManagementSession($company);
+
     $this->actingAs($owner)
-        ->get(route('owner.subscription.invoices.show'))
+        ->get(route('owner.subscription.invoices.show', ['invoice' => $approved]))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('owner/subscription/invoice-preview')
