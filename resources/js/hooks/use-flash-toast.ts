@@ -1,4 +1,4 @@
-import { router, usePage } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 import { useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import type { FlashToast } from '@/types/ui';
@@ -9,60 +9,80 @@ type FlashProps = {
     toast?: FlashToast | null;
 };
 
+type PageWithFlash = {
+    props?: {
+        flash?: FlashProps;
+    };
+};
+
 /**
  * Surface success/error feedback from shared Inertia flash props and
  * Inertia::flash('toast') events. Also announce common HTTP failures.
+ *
+ * Must not call usePage() — Toaster is mounted via withApp() outside the
+ * Inertia page context.
  */
 export function useFlashToast(): void {
-    const page = usePage<{ flash?: FlashProps }>();
     const lastShown = useRef<string>('');
 
     useEffect(() => {
-        const flash = page.props.flash;
-        if (!flash) {
-            return;
-        }
-
-        const key = JSON.stringify({
-            s: flash.success ?? null,
-            e: flash.error ?? null,
-            t: flash.toast ?? null,
-        });
-
-        if (
-            key === lastShown.current ||
-            key === '{"s":null,"e":null,"t":null}'
-        ) {
-            return;
-        }
-
-        lastShown.current = key;
-
-        if (flash.toast?.message) {
-            toast[flash.toast.type](flash.toast.message);
-
-            return;
-        }
-
-        if (flash.success) {
-            toast.success(flash.success);
-        }
-
-        if (flash.error) {
-            toast.error(flash.error);
-        }
-    }, [page.props.flash]);
-
-    useEffect(() => {
-        const offFlash = router.on('flash', (event) => {
-            const flash = (event as CustomEvent).detail?.flash;
-            const data = flash?.toast as FlashToast | undefined;
-
-            if (!data?.message) {
+        const showSharedFlash = (flash: FlashProps | undefined): void => {
+            if (!flash) {
                 return;
             }
 
-            toast[data.type](data.message);
+            const key = JSON.stringify({
+                s: flash.success ?? null,
+                e: flash.error ?? null,
+                t: flash.toast ?? null,
+            });
+
+            if (
+                key === lastShown.current ||
+                key === '{"s":null,"e":null,"t":null}'
+            ) {
+                return;
+            }
+
+            lastShown.current = key;
+
+            if (flash.toast?.message) {
+                toast[flash.toast.type](flash.toast.message);
+
+                return;
+            }
+
+            if (flash.success) {
+                toast.success(flash.success);
+            }
+
+            if (flash.error) {
+                toast.error(flash.error);
+            }
+        };
+
+        const pageFromRouter = (router as unknown as { page?: PageWithFlash })
+            .page;
+        showSharedFlash(pageFromRouter?.props?.flash);
+
+        const offSuccess = router.on('success', (event) => {
+            const page = (event as CustomEvent<{ page?: PageWithFlash }>).detail
+                ?.page;
+            showSharedFlash(page?.props?.flash);
+        });
+
+        const offFlash = router.on('flash', (event) => {
+            const flash = (event as CustomEvent).detail?.flash as
+                | FlashProps
+                | undefined;
+
+            if (flash?.toast?.message) {
+                toast[flash.toast.type](flash.toast.message);
+
+                return;
+            }
+
+            showSharedFlash(flash);
         });
 
         const offHttp = router.on('httpException', (event) => {
@@ -102,6 +122,7 @@ export function useFlashToast(): void {
         });
 
         return () => {
+            offSuccess();
             offFlash();
             offHttp();
             offNetwork();
