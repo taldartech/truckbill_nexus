@@ -90,3 +90,9 @@ Historical Phase 2 acceptance is unchanged; this is a **management completeness*
 ## 6. Reconciliation with parallel read-only audit
 
 A concurrent codebase audit ([Phase 2 management audit](09fa20e9-ce36-4502-921f-ed357d8b5072)) captured the **pre-follow-on** state (enter-only `OwnerBranchesController`, sidebar missing Users/Settings/Audit, no Customer company-create HTTP). Those findings match this document’s pre-work baseline. Items already closed by the management feature commit (`9b20a79…`) must not be treated as still Missing. Remaining open items in that audit (PRD §7 create, membership/branch reactivation, Internal lifecycle UI) remain **Pending/Deferred/gated** as listed above. Owner dashboard empty-state copy that still claimed “branch creation is not part of P2-WS-8” was corrected in a follow-up commit.
+
+---
+
+## 7. Addendum — PO-OWNER-GLOBAL-MANAGEMENT (23 November 2026)
+
+Product Owner approved global Owner Panel lists (Companies / Branches / Subscriptions) without requiring company selection first. Users / Settings / Audit remain company-scoped. This closes the prior “single-company dashboard prerequisite” management friction; historical Phase 2 acceptance records are not rewritten. See `PHASE_1_TO_5_CONSOLIDATED_PO_DECISIONS.md` and `OWNER_GLOBAL_PANEL_CERTIFICATION_REPORT.md`.

@@ -82,6 +82,22 @@ Full-stack sequential; internal technical acceptance before advancing. Phase 9 c
 | PO-P2A-CRM-ACCESS      | PRD §6 matrix                                                                   |
 | PO-P2A-DUPLICATE       | 30-day email/interest warning; override with remark + audit                     |
 
+### PO-OWNER-GLOBAL-MANAGEMENT — APPROVED (23 November 2026)
+
+Owner Panel is a **multi-company management workspace**. Global lists:
+
+| Route                       | Purpose                                                |
+| --------------------------- | ------------------------------------------------------ |
+| `owner.companies.index`     | All companies owned by the authenticated Customer      |
+| `owner.branches.all`        | Branches across owned companies                        |
+| `owner.subscriptions.index` | Owned companies → company-specific subscription detail |
+
+Login for owners enters the global Companies list (not forced single-company / MRU dashboard). Users / Settings / Audit remain company-specific. Company Switcher retained for operational context.
+
+### PO-MASTER-COMPANY-VISIBILITY — APPROVED (23 November 2026)
+
+Company `data_visibility` is the sole authority for Party, Vehicle, and Bank/Cash create scope. Client-submitted `scope` is ignored. Shared → `branch_id = null`; Branch-wise Restricted → current branch. Changing company visibility while operational masters exist is blocked until a migration policy is approved. Station / owner catalogues / central masters unchanged.
+
 ---
 
 ## 2. Preserved external gates (not waived)
