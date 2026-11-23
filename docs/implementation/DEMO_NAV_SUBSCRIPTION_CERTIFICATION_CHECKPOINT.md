@@ -1,7 +1,7 @@
 # Certification Checkpoint — Demo Seeder, Owner/Branch Nav, Subscription UX, CI #75
 
 **Date:** 23 November 2026  
-**Tip SHA:** `84e0da4` (feature commit `576ba2b`)  
+**Feature commit:** `576ba2b`  
 **Scope:** Batches 1–3 + CI readiness fix + Phase 5 audit matrix  
 **Verdict (honest):** **PARTIALLY IMPLEMENTED — REMAINING FUNCTIONALITY IDENTIFIED**
 
