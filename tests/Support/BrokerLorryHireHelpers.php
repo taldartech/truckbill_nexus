@@ -16,6 +16,7 @@ use App\Models\Party;
 use App\Models\Vehicle;
 use App\Support\Tenant\TenantContext;
 use App\Support\Tenant\TenantContextHolder;
+use Illuminate\Support\Str;
 
 require_once __DIR__.'/OwnFleetTripHelpers.php';
 
@@ -87,6 +88,83 @@ if (! function_exists('brokerDeliverLr')) {
         ]);
 
         return $lr->fresh(['delivery', 'lorryHire']);
+    }
+}
+
+if (! function_exists('brokerGrantLinkedBiltyPermissions')) {
+    function brokerGrantLinkedBiltyPermissions(): void
+    {
+        foreach ([
+            PermissionCodes::BROKER_LINKED_BILTY_VIEW,
+            PermissionCodes::BROKER_LINKED_BILTY_CREATE,
+            PermissionCodes::BROKER_LINKED_BILTY_PAY,
+        ] as $code) {
+            tripGrant('customer.admin', $code);
+        }
+    }
+}
+
+if (! function_exists('brokerCreateBrokerLrOnVehicle')) {
+    /**
+     * @param  array<string, mixed>  $ctx
+     * @param  array<int, array<string, mixed>>|null  $goodsOverride
+     */
+    function brokerCreateBrokerLrOnVehicle(array $ctx, Vehicle $vehicle, ?array $goodsOverride = null): LorryReceipt
+    {
+        brokerGrantLorryHirePermissions();
+
+        $goods = $goodsOverride ?? [[
+            'goods_type_id' => $ctx['goodsType']->id,
+            'package_type_id' => $ctx['packageType']->id,
+            'goods_description' => 'Broker cartons',
+            'package_count' => 10,
+            'actual_weight' => 100,
+            'charged_weight' => 100,
+            'freight_rate_type' => FreightRateType::FixedAmount->value,
+            'freight_rate' => 7500,
+        ]];
+
+        $consignor = app(PartyService::class)->create(
+            actor: $ctx['owner'],
+            company: $ctx['company'],
+            branch: null,
+            attributes: [
+                'name' => 'Broker Consignor '.Str::uuid(),
+                'contact_number' => '9800055002',
+                'state' => 'MH',
+                'city' => 'Mumbai',
+                'is_gst_applicable' => false,
+            ],
+            roles: [['role' => PartyRoleType::Consignor->value]],
+            remark: 'Broker consignor',
+        );
+
+        $consignee = app(PartyService::class)->create(
+            actor: $ctx['owner'],
+            company: $ctx['company'],
+            branch: null,
+            attributes: [
+                'name' => 'Broker Consignee '.Str::uuid(),
+                'contact_number' => '9800055003',
+                'state' => 'MH',
+                'city' => 'Pune',
+                'is_gst_applicable' => false,
+            ],
+            roles: [['role' => PartyRoleType::Consignee->value]],
+            remark: 'Broker consignee',
+        );
+
+        return app(LorryReceiptService::class)->create($ctx['company'], $ctx['branch'], $ctx['member'], [
+            'workflow_context' => LrWorkflowContext::Broker->value,
+            'vehicle_id' => $vehicle->id,
+            'number_mode' => 'auto',
+            'lr_date' => now()->toDateString(),
+            'from_text' => 'Mumbai',
+            'to_text' => 'Pune',
+            'consignor_party_id' => $consignor->id,
+            'consignee_party_id' => $consignee->id,
+            'goods' => $goods,
+        ]);
     }
 }
 

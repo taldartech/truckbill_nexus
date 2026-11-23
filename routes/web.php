@@ -21,6 +21,7 @@ use App\Http\Controllers\Branch\BrokerInvoiceController;
 use App\Http\Controllers\Branch\CatalogueController;
 use App\Http\Controllers\Branch\DocumentAttachmentController;
 use App\Http\Controllers\Branch\EnquiryController;
+use App\Http\Controllers\Branch\LinkedBiltyGroupController;
 use App\Http\Controllers\Branch\LorryHireController;
 use App\Http\Controllers\Branch\LorryReceiptController;
 use App\Http\Controllers\Branch\MastersHubController;
@@ -231,6 +232,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/broker/invoices/{brokerInvoice}', [BrokerInvoiceController::class, 'show'])->name('branch.broker.invoices.show');
         Route::post('/broker/invoices/{brokerInvoice}/cancel', [BrokerInvoiceController::class, 'cancel'])->name('branch.broker.invoices.cancel');
         Route::post('/broker/invoices/{brokerInvoice}/payments', [BrokerInvoiceController::class, 'storePayment'])->name('branch.broker.invoices.payments.store');
+
+        Route::get('/broker/linked-bilties', [LinkedBiltyGroupController::class, 'index'])->name('branch.broker.linked-bilties.index');
+        Route::get('/broker/linked-bilties/create', [LinkedBiltyGroupController::class, 'create'])->name('branch.broker.linked-bilties.create');
+        Route::post('/broker/linked-bilties', [LinkedBiltyGroupController::class, 'store'])->name('branch.broker.linked-bilties.store');
+        Route::get('/broker/linked-bilties/{linkedBiltyGroup}', [LinkedBiltyGroupController::class, 'show'])->name('branch.broker.linked-bilties.show');
+        Route::post('/broker/linked-bilties/{linkedBiltyGroup}/pay/preview', [LinkedBiltyGroupController::class, 'payPreview'])->name('branch.broker.linked-bilties.pay.preview');
+        Route::post('/broker/linked-bilties/{linkedBiltyGroup}/pay', [LinkedBiltyGroupController::class, 'payStore'])->name('branch.broker.linked-bilties.pay.store');
 
         Route::get('/trips', [TripController::class, 'index'])->name('branch.trips.index');
         Route::get('/trips/{trip}', [TripController::class, 'show'])->name('branch.trips.show');

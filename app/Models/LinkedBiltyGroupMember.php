@@ -40,4 +40,16 @@ class LinkedBiltyGroupMember extends Model
     {
         return $this->belongsTo(LinkedBiltyGroup::class, 'linked_bilty_group_id');
     }
+
+    /** @return BelongsTo<LorryReceipt, $this> */
+    public function lorryReceipt(): BelongsTo
+    {
+        return $this->belongsTo(LorryReceipt::class);
+    }
+
+    /** @return BelongsTo<LorryHire, $this> */
+    public function lorryHire(): BelongsTo
+    {
+        return $this->belongsTo(LorryHire::class);
+    }
 }

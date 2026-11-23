@@ -68,4 +68,10 @@ class TransporterVoucher extends Model
     {
         return $this->belongsTo(Vehicle::class);
     }
+
+    /** @return BelongsTo<LinkedBiltyGroup, $this> */
+    public function linkedBiltyGroup(): BelongsTo
+    {
+        return $this->belongsTo(LinkedBiltyGroup::class, 'linked_bilty_group_id');
+    }
 }

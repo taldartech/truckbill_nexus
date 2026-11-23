@@ -187,6 +187,11 @@ export function AppSidebar() {
             icon: Receipt,
         },
         {
+            title: 'Linked Bilties',
+            href: '/broker/linked-bilties',
+            icon: Truck,
+        },
+        {
             title: 'Voucher Payments',
             href: '/broker/vouchers',
             icon: CreditCard,

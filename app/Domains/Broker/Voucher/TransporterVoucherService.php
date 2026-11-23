@@ -116,7 +116,8 @@ final class TransporterVoucherService
      *     bank_cash_account_id?: string|null,
      *     cash_reference?: string|null,
      *     pump_reference?: string|null,
-     *     remark?: string|null
+     *     remark?: string|null,
+     *     linked_bilty_group_id?: string|null,
      * }  $payload
      */
     public function createForLorryHire(
@@ -193,6 +194,9 @@ final class TransporterVoucherService
                         'company_id' => $company->id,
                         'branch_id' => $branch->id,
                         'lorry_hire_id' => $lockedHire->id,
+                        'linked_bilty_group_id' => filled($payload['linked_bilty_group_id'] ?? null)
+                            ? (string) $payload['linked_bilty_group_id']
+                            : null,
                         'voucher_number' => $allocation['number'],
                         'voucher_date' => $voucherDate,
                         'transporter_party_id' => $lockedHire->transporter_party_id,
