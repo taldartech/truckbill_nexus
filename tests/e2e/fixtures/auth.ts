@@ -6,8 +6,8 @@ export async function loginAs(
     password: string,
 ): Promise<void> {
     await page.goto('/login');
-    await page.getByLabel(/email/i).fill(email);
-    await page.getByLabel(/password/i).fill(password);
+    await page.locator('#email').fill(email);
+    await page.locator('#password').fill(password);
     await page.getByRole('button', { name: /log in|sign in/i }).click();
     await expect(page).not.toHaveURL(/\/login$/);
 }

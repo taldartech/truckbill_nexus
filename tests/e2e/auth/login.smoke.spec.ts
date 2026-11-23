@@ -8,14 +8,14 @@ import { demoCredentials, loginAs } from '../fixtures/auth';
 test.describe('authentication smoke', () => {
     test('login page is reachable', async ({ page }) => {
         await page.goto('/login');
-        await expect(page.getByLabel(/email/i)).toBeVisible();
-        await expect(page.getByLabel(/password/i)).toBeVisible();
+        await expect(page.locator('#email')).toBeVisible();
+        await expect(page.locator('#password')).toBeVisible();
     });
 
     test('invalid credentials stay on login', async ({ page }) => {
         await page.goto('/login');
-        await page.getByLabel(/email/i).fill('nobody@example.com');
-        await page.getByLabel(/password/i).fill('definitely-wrong');
+        await page.locator('#email').fill('nobody@example.com');
+        await page.locator('#password').fill('definitely-wrong');
         await page.getByRole('button', { name: /log in|sign in/i }).click();
         await expect(page).toHaveURL(/\/login/);
     });

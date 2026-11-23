@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\CompanyLifecycleController;
 use App\Http\Controllers\Admin\Crm\LeadController as CrmLeadController;
+use App\Http\Controllers\Admin\Crm\SupportTicketController as CrmSupportTicketController;
 use App\Http\Controllers\Admin\GstRateController;
 use App\Http\Controllers\Admin\IdentityLifecycleController;
 use App\Http\Controllers\Admin\InternalUserController;
@@ -285,6 +286,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('admin.crm.leads.show');
     Route::post('/admin/crm/leads/{lead}/transition', [CrmLeadController::class, 'transition'])
         ->name('admin.crm.leads.transition');
+
+    Route::get('/admin/crm/tickets', [CrmSupportTicketController::class, 'index'])
+        ->name('admin.crm.tickets.index');
+    Route::get('/admin/crm/tickets/create', [CrmSupportTicketController::class, 'create'])
+        ->name('admin.crm.tickets.create');
+    Route::post('/admin/crm/tickets', [CrmSupportTicketController::class, 'store'])
+        ->name('admin.crm.tickets.store');
+    Route::get('/admin/crm/tickets/{ticket}', [CrmSupportTicketController::class, 'show'])
+        ->name('admin.crm.tickets.show');
+    Route::post('/admin/crm/tickets/{ticket}/transition', [CrmSupportTicketController::class, 'transition'])
+        ->name('admin.crm.tickets.transition');
 
     Route::get('/admin/subscription-invoices', [SubscriptionInvoiceController::class, 'index'])
         ->name('admin.subscription-invoices');

@@ -10,7 +10,8 @@
         "check:fix": "vp check --fix",
         "types:check": "tsc --noEmit",
         "test:e2e": "playwright test",
-        "test:e2e:smoke": "playwright test tests/e2e/auth/login.smoke.spec.ts"
+        "test:e2e:smoke": "playwright test tests/e2e/auth/login.smoke.spec.ts",
+        "test:e2e:smoke:local": "PLAYWRIGHT_USE_SYSTEM_CHROME=1 playwright test tests/e2e/auth/login.smoke.spec.ts"
     },
     "dependencies": {
         "@inertiajs/react": "^3.0.0",
