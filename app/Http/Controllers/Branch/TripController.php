@@ -203,8 +203,62 @@ class TripController extends Controller
                 'add_drop' => route('branch.trips.drops.store', [$trip], absolute: false),
                 'upsert_allocation' => route('branch.trips.allocations.store', [$trip], absolute: false),
                 'remove_allocation' => route('branch.trips.allocations.destroy', [$trip, 'ALLOCATION_ID'], absolute: false),
+                'dispatch' => route('branch.trips.dispatch', [$trip], absolute: false),
+                'complete' => route('branch.trips.complete', [$trip], absolute: false),
             ],
         ]);
+    }
+
+    public function dispatch(Request $request, Trip $trip, Company $company, Branch $branch): RedirectResponse
+    {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertPermission($actor, $company, $branch, PermissionCodes::TRIP_DISPATCH);
+        $this->assertTrip($trip, $company, $branch);
+
+        $validated = $request->validate([
+            'starting_odometer' => ['required', 'numeric', 'min:0'],
+            'departure_at' => ['nullable', 'date'],
+        ]);
+
+        try {
+            $this->trips->dispatch($trip, $actor, $validated);
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (TripAuthorizationException $e) {
+            abort(403, $e->getMessage());
+        } catch (TripConflictException|TripDomainException $e) {
+            throw ValidationException::withMessages(['starting_odometer' => $e->getMessage()]);
+        }
+
+        return redirect()
+            ->route('branch.trips.show', [$trip])
+            ->with('success', 'Trip dispatched.');
+    }
+
+    public function complete(Request $request, Trip $trip, Company $company, Branch $branch): RedirectResponse
+    {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertPermission($actor, $company, $branch, PermissionCodes::TRIP_COMPLETE);
+        $this->assertTrip($trip, $company, $branch);
+
+        $validated = $request->validate([
+            'ending_odometer' => ['required', 'numeric', 'min:0'],
+            'actual_arrival_at' => ['nullable', 'date'],
+        ]);
+
+        try {
+            $this->trips->complete($trip, $actor, $validated);
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (TripAuthorizationException $e) {
+            abort(403, $e->getMessage());
+        } catch (TripConflictException|TripDomainException $e) {
+            throw ValidationException::withMessages(['ending_odometer' => $e->getMessage()]);
+        }
+
+        return redirect()
+            ->route('branch.trips.show', [$trip])
+            ->with('success', 'Trip completed.');
     }
 
     public function storePickup(Request $request, Trip $trip, Company $company, Branch $branch): RedirectResponse

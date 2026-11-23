@@ -2,11 +2,11 @@
 
 **Date:** 23 November 2026  
 **PO Phase 5 AUTH:** Approved  
-**Implementation status:** **Batches A–B complete; Batches C–H remaining**
+**Implementation status:** **Batches A–C complete; Batches D–H remaining**
 
 ## Verdict
 
-Do **not** certify Phase 5 complete. Trip foundation and multi-point allocation are implemented; dispatch through payments remain.
+Do **not** certify Phase 5 complete. Trip foundation, multi-point allocation, and dispatch/completion are implemented; expenses through payments remain.
 
 ## Completed — Batch A
 
@@ -24,9 +24,14 @@ Do **not** certify Phase 5 complete. Trip foundation and multi-point allocation 
 - Pest: `OwnFleetTripAllocationTest` (split, combine, over-allocation, completion gate)
 - Demo seeder: multi-point fixtures with partial allocation example
 
+## Completed — Batch C
+
+- `TripService::dispatch` / `complete` with odometer rules, distance, timing Early/On Time/Delayed/N/A
+- Trip Detail dispatch & completion forms
+- Pest: `OwnFleetTripLifecycleTest`
+
 ## Remaining (authorized sequence)
 
-- **C** Dispatch & completion
 - **D** Expenses, diesel, profitability
 - **E** POD, documents, cancel/delete
 - **F** OwnFleet invoices

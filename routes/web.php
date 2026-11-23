@@ -183,6 +183,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('/trips', [TripController::class, 'index'])->name('branch.trips.index');
         Route::get('/trips/{trip}', [TripController::class, 'show'])->name('branch.trips.show');
+        Route::post('/trips/{trip}/dispatch', [TripController::class, 'dispatch'])->name('branch.trips.dispatch');
+        Route::post('/trips/{trip}/complete', [TripController::class, 'complete'])->name('branch.trips.complete');
         Route::post('/trips/{trip}/pickups', [TripController::class, 'storePickup'])->name('branch.trips.pickups.store');
         Route::post('/trips/{trip}/drops', [TripController::class, 'storeDrop'])->name('branch.trips.drops.store');
         Route::post('/trips/{trip}/allocations', [TripController::class, 'storeAllocation'])->name('branch.trips.allocations.store');

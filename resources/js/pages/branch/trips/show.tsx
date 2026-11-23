@@ -19,6 +19,13 @@ type Trip = {
     pickup_count: number;
     drop_count: number;
     allocation_count: number;
+    starting_odometer: string | null;
+    ending_odometer: string | null;
+    trip_distance: string | null;
+    departure_at: string | null;
+    actual_arrival_at: string | null;
+    expected_end_at: string | null;
+    timing_performance: string | null;
     created_at: string | null;
 };
 
@@ -83,6 +90,8 @@ type Props = {
         add_drop: string;
         upsert_allocation: string;
         remove_allocation: string;
+        dispatch: string;
+        complete: string;
     };
 };
 
@@ -147,6 +156,150 @@ export default function TripShow({
                         <Link href={urls.lr_show}>Open LR</Link>
                     </Button>
                 </div>
+
+                <section className="rounded-lg border border-border p-4">
+                    <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+                        Dispatch & completion
+                    </h2>
+                    <dl className="mt-3 grid gap-2 text-sm md:grid-cols-2">
+                        <div className="flex justify-between gap-4">
+                            <dt className="text-muted-foreground">
+                                Starting odometer
+                            </dt>
+                            <dd>{trip.starting_odometer ?? '—'}</dd>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                            <dt className="text-muted-foreground">Departure</dt>
+                            <dd>{trip.departure_at ?? '—'}</dd>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                            <dt className="text-muted-foreground">
+                                Ending odometer
+                            </dt>
+                            <dd>{trip.ending_odometer ?? '—'}</dd>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                            <dt className="text-muted-foreground">Arrival</dt>
+                            <dd>{trip.actual_arrival_at ?? '—'}</dd>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                            <dt className="text-muted-foreground">Distance</dt>
+                            <dd>
+                                {trip.trip_distance
+                                    ? `${trip.trip_distance} km`
+                                    : '—'}
+                            </dd>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                            <dt className="text-muted-foreground">Timing</dt>
+                            <dd>{trip.timing_performance ?? '—'}</dd>
+                        </div>
+                    </dl>
+
+                    {permissions.can_dispatch && trip.status === 'pending' ? (
+                        <Form
+                            action={urls.dispatch}
+                            method="post"
+                            className="mt-4 grid max-w-xl gap-2 rounded-md border border-dashed border-border p-3"
+                        >
+                            {({ processing }) => (
+                                <>
+                                    <Label htmlFor="starting_odometer">
+                                        Dispatch — starting odometer
+                                    </Label>
+                                    <Input
+                                        id="starting_odometer"
+                                        name="starting_odometer"
+                                        type="number"
+                                        step="0.1"
+                                        min="0"
+                                        required
+                                    />
+                                    <Label htmlFor="departure_at">
+                                        Departure (optional)
+                                    </Label>
+                                    <Input
+                                        id="departure_at"
+                                        name="departure_at"
+                                        type="datetime-local"
+                                    />
+                                    {errors?.starting_odometer ? (
+                                        <p className="text-sm text-destructive">
+                                            {errors.starting_odometer}
+                                        </p>
+                                    ) : null}
+                                    <Button
+                                        type="submit"
+                                        disabled={processing}
+                                        className="bg-[#2D8CFF] text-white hover:bg-[#2476db]"
+                                    >
+                                        Dispatch trip
+                                    </Button>
+                                </>
+                            )}
+                        </Form>
+                    ) : null}
+
+                    {permissions.can_complete &&
+                    trip.status === 'in_progress' ? (
+                        <Form
+                            action={urls.complete}
+                            method="post"
+                            className="mt-4 grid max-w-xl gap-2 rounded-md border border-dashed border-border p-3"
+                        >
+                            {({ processing }) => (
+                                <>
+                                    <Label htmlFor="ending_odometer">
+                                        Complete — ending odometer
+                                    </Label>
+                                    <Input
+                                        id="ending_odometer"
+                                        name="ending_odometer"
+                                        type="number"
+                                        step="0.1"
+                                        min="0"
+                                        required
+                                    />
+                                    <Label htmlFor="actual_arrival_at">
+                                        Actual arrival (optional; defaults now)
+                                    </Label>
+                                    <Input
+                                        id="actual_arrival_at"
+                                        name="actual_arrival_at"
+                                        type="datetime-local"
+                                    />
+                                    {!reconciliation.completion_ready ? (
+                                        <p className="text-sm text-amber-700">
+                                            Complete allocations before
+                                            completion (full weight + positive
+                                            freight).
+                                        </p>
+                                    ) : null}
+                                    {errors?.ending_odometer ? (
+                                        <p className="text-sm text-destructive">
+                                            {errors.ending_odometer}
+                                        </p>
+                                    ) : null}
+                                    {errors?.allocations ? (
+                                        <p className="text-sm text-destructive">
+                                            {errors.allocations}
+                                        </p>
+                                    ) : null}
+                                    <Button
+                                        type="submit"
+                                        disabled={
+                                            processing ||
+                                            !reconciliation.completion_ready
+                                        }
+                                        className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                                    >
+                                        Complete trip
+                                    </Button>
+                                </>
+                            )}
+                        </Form>
+                    ) : null}
+                </section>
 
                 <div className="grid gap-4 lg:grid-cols-2">
                     <section className="rounded-lg border border-border p-4">

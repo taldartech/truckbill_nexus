@@ -6,6 +6,7 @@ use App\Domains\Consignment\Enums\LrStatus;
 use App\Domains\Consignment\Enums\LrWorkflowContext;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\OwnFleet\Enums\TripStatus;
+use App\Domains\OwnFleet\Enums\TripTimingPerformance;
 use App\Domains\OwnFleet\Trip\Exceptions\TripAuthorizationException;
 use App\Domains\OwnFleet\Trip\Exceptions\TripConflictException;
 use App\Domains\OwnFleet\Trip\Exceptions\TripDomainException;
@@ -27,6 +28,7 @@ use App\Support\Audit\AuditedTransaction;
 use App\Support\Audit\AuditWriter;
 use App\Support\Tenant\TenantContext;
 use App\Support\Tenant\TenantContextHolder;
+use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Str;
@@ -43,7 +45,13 @@ final class TripService
         private readonly PermissionAuthorizer $authorizer = new PermissionAuthorizer,
         private readonly CoreModuleEntitlementResolver $entitlements = new CoreModuleEntitlementResolver,
         private readonly SubscriptionEntitlementGate $entitlementGate = new SubscriptionEntitlementGate,
+        private readonly ?TripMovementService $movements = null,
     ) {}
+
+    private function movements(): TripMovementService
+    {
+        return $this->movements ?? app(TripMovementService::class);
+    }
 
     /**
      * @return LengthAwarePaginator<int, Trip>
@@ -245,6 +253,175 @@ final class TripService
             ->where('lorry_receipt_id', $lorryReceipt->id)
             ->whereNull('deleted_at')
             ->first();
+    }
+
+    /**
+     * @param  array{
+     *     starting_odometer: string|float|int,
+     *     departure_at?: string|null
+     * }  $payload
+     */
+    public function dispatch(Trip $trip, User $actor, array $payload): Trip
+    {
+        $company = Company::query()->findOrFail($trip->company_id);
+        $branch = Branch::query()->findOrFail($trip->branch_id);
+        $this->assertOwnFleetEntitled($company);
+
+        if (! $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_DISPATCH, $company, $branch)) {
+            throw new TripAuthorizationException('Not authorized to dispatch OwnFleet Trips.');
+        }
+
+        $starting = $this->requireNonNegativeDecimal($payload['starting_odometer'] ?? null, 'starting_odometer', 1);
+        $timezone = filled($company->timezone) ? (string) $company->timezone : 'Asia/Kolkata';
+        $departure = filled($payload['departure_at'] ?? null)
+            ? CarbonImmutable::parse((string) $payload['departure_at'], $timezone)->utc()
+            : CarbonImmutable::now('UTC');
+
+        return $this->auditedTransaction->run(function () use ($trip, $company, $branch, $starting, $departure): Trip {
+            return $this->withTenant($company, $branch, function () use ($trip, $starting, $departure): Trip {
+                $locked = Trip::query()->whereKey($trip->id)->whereNull('deleted_at')->lockForUpdate()->firstOrFail();
+
+                if ($locked->status !== TripStatus::Pending) {
+                    throw new TripConflictException('Only Pending Trips can be dispatched.');
+                }
+
+                $before = $locked->toArray();
+                $locked->forceFill([
+                    'status' => TripStatus::InProgress,
+                    'starting_odometer' => $starting,
+                    'departure_at' => $departure,
+                ])->save();
+
+                $this->audit->write(
+                    AuditAction::Updated,
+                    Trip::class,
+                    $locked->id,
+                    remark: 'Dispatch OwnFleet Trip',
+                    before: $before,
+                    after: $locked->fresh()?->toArray(),
+                );
+
+                return $locked->fresh(['lorryReceipt', 'vehicle', 'driver']) ?? $locked;
+            });
+        });
+    }
+
+    /**
+     * @param  array{
+     *     ending_odometer: string|float|int,
+     *     actual_arrival_at?: string|null
+     * }  $payload
+     */
+    public function complete(Trip $trip, User $actor, array $payload): Trip
+    {
+        $company = Company::query()->findOrFail($trip->company_id);
+        $branch = Branch::query()->findOrFail($trip->branch_id);
+        $this->assertOwnFleetEntitled($company);
+
+        if (! $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_COMPLETE, $company, $branch)) {
+            throw new TripAuthorizationException('Not authorized to complete OwnFleet Trips.');
+        }
+
+        $ending = $this->requireNonNegativeDecimal($payload['ending_odometer'] ?? null, 'ending_odometer', 1);
+        $timezone = filled($company->timezone) ? (string) $company->timezone : 'Asia/Kolkata';
+        $arrival = filled($payload['actual_arrival_at'] ?? null)
+            ? CarbonImmutable::parse((string) $payload['actual_arrival_at'], $timezone)->utc()
+            : CarbonImmutable::now($timezone)->utc();
+
+        return $this->auditedTransaction->run(function () use ($trip, $company, $branch, $ending, $arrival, $timezone): Trip {
+            return $this->withTenant($company, $branch, function () use ($trip, $ending, $arrival, $timezone): Trip {
+                $locked = Trip::query()->whereKey($trip->id)->whereNull('deleted_at')->lockForUpdate()->firstOrFail();
+
+                if ($locked->status !== TripStatus::InProgress) {
+                    throw new TripConflictException('Only In Progress Trips can be completed.');
+                }
+
+                if ($locked->starting_odometer === null) {
+                    throw ValidationException::withMessages([
+                        'ending_odometer' => 'Starting odometer is missing; re-dispatch is required.',
+                    ]);
+                }
+
+                if (bccomp($ending, (string) $locked->starting_odometer, 1) !== 1) {
+                    throw ValidationException::withMessages([
+                        'ending_odometer' => 'Ending odometer must be greater than starting odometer.',
+                    ]);
+                }
+
+                $this->movements()->assertCompletionReconciliation($locked);
+
+                $distance = bcsub($ending, (string) $locked->starting_odometer, 1);
+                $timing = $this->classifyTiming($locked->expected_end_at, $arrival, $timezone);
+
+                $before = $locked->toArray();
+                $locked->forceFill([
+                    'status' => TripStatus::Completed,
+                    'ending_odometer' => $ending,
+                    'actual_arrival_at' => $arrival,
+                    'trip_distance' => $distance,
+                    'timing_performance' => $timing,
+                ])->save();
+
+                $this->audit->write(
+                    AuditAction::Updated,
+                    Trip::class,
+                    $locked->id,
+                    remark: 'Complete OwnFleet Trip',
+                    before: $before,
+                    after: $locked->fresh()?->toArray(),
+                );
+
+                return $locked->fresh(['lorryReceipt', 'vehicle', 'driver']) ?? $locked;
+            });
+        });
+    }
+
+    private function classifyTiming(
+        mixed $expectedEndAt,
+        CarbonImmutable $arrivalUtc,
+        string $timezone,
+    ): TripTimingPerformance {
+        if ($expectedEndAt === null) {
+            return TripTimingPerformance::NotApplicable;
+        }
+
+        $expected = $expectedEndAt instanceof CarbonImmutable
+            ? $expectedEndAt
+            : CarbonImmutable::parse((string) $expectedEndAt);
+
+        $arrivalLocal = $arrivalUtc->timezone($timezone);
+        $expectedLocal = $expected->timezone($timezone);
+
+        if ($arrivalLocal->lt($expectedLocal)) {
+            return TripTimingPerformance::Early;
+        }
+
+        if ($arrivalLocal->eq($expectedLocal) || $arrivalLocal->diffInMinutes($expectedLocal) === 0) {
+            return TripTimingPerformance::OnTime;
+        }
+
+        // Treat same calendar minute as on time; otherwise delayed when after expected.
+        if ($arrivalLocal->format('Y-m-d H:i') === $expectedLocal->format('Y-m-d H:i')) {
+            return TripTimingPerformance::OnTime;
+        }
+
+        return $arrivalLocal->gt($expectedLocal)
+            ? TripTimingPerformance::Delayed
+            : TripTimingPerformance::OnTime;
+    }
+
+    private function requireNonNegativeDecimal(mixed $value, string $field, int $scale): string
+    {
+        if (! is_numeric($value)) {
+            throw ValidationException::withMessages([$field => 'A valid number is required.']);
+        }
+
+        $normalized = bcadd((string) $value, '0', $scale);
+        if (bccomp($normalized, bcadd('0', '0', $scale), $scale) === -1) {
+            throw ValidationException::withMessages([$field => 'Value cannot be negative.']);
+        }
+
+        return $normalized;
     }
 
     private function assertCanCreate(User $actor, Company $company, Branch $branch): void
