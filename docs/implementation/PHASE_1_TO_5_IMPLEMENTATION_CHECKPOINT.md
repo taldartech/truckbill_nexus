@@ -1,7 +1,7 @@
 # Phase 1–5 Implementation Checkpoint
 
 **Updated:** 23 November 2026  
-**Local HEAD:** _(update after next commit)_  
+**Local HEAD:** `a94a99bfd4c8e9a097a433ae93f3e6d9ec20fb6f`  
 **Baseline at PO auth:** `448d85fc7f697d8124eb7c1874d2e12a49058bee`  
 **Authority:** `PO-P1-P5-FULLSTACK-AUTH`  
 **Verdict so far:** **PARTIALLY IMPLEMENTED — VERIFIED BLOCKERS REMAIN** (authorized scope incomplete; work continues)
@@ -10,14 +10,14 @@
 
 ## Completed (verified commits)
 
-| Slice                                  | HEAD               | Evidence                                                     |
-| -------------------------------------- | ------------------ | ------------------------------------------------------------ |
-| PO D1–D8 authorization records         | `3a589a0…`         | Final auth + decision registers                              |
-| Stage 1 company PRD §7 create/settings | `3a589a0…`         | Owner UI + `CompanyPrd7ProfileTest`                          |
-| Stage 1 Internal lifecycle UI (D2)     | `0978192…`         | Admin companies/identities/users + `InternalLifecycleUiTest` |
-| D7 Playwright + k6 scaffolding         | `25ab11a…`         | `@playwright/test@1.57.0`, k6 scripts, CI smoke step         |
-| Stage 2A CRM leads foundation          | `98d8d93…`         | Schema, LeadService, lead UI, `CrmLeadManagementTest`        |
-| Stage 2A tickets + conversion service  | _(pending commit)_ | Support ticket UI; LeadConversionService; Pest               |
+| Slice                                  | HEAD       | Evidence                                                     |
+| -------------------------------------- | ---------- | ------------------------------------------------------------ |
+| PO D1–D8 authorization records         | `3a589a0…` | Final auth + decision registers                              |
+| Stage 1 company PRD §7 create/settings | `3a589a0…` | Owner UI + `CompanyPrd7ProfileTest`                          |
+| Stage 1 Internal lifecycle UI (D2)     | `0978192…` | Admin companies/identities/users + `InternalLifecycleUiTest` |
+| D7 Playwright + k6 scaffolding         | `25ab11a…` | `@playwright/test@1.57.0`, k6 scripts, CI smoke step         |
+| Stage 2A CRM leads foundation          | `98d8d93…` | Schema, LeadService, lead UI, `CrmLeadManagementTest`        |
+| Stage 2A tickets + conversion service  | `a94a99b…` | Support ticket UI; LeadConversionService; Pest               |
 
 ## Outstanding (exact next steps)
 
