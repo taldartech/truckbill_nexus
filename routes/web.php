@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\CompanyLifecycleController;
+use App\Http\Controllers\Admin\Crm\CrmDashboardController;
 use App\Http\Controllers\Admin\Crm\LeadController as CrmLeadController;
 use App\Http\Controllers\Admin\Crm\SupportTicketController as CrmSupportTicketController;
 use App\Http\Controllers\Admin\GstRateController;
@@ -169,6 +170,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/enquiries', [EnquiryController::class, 'store'])->name('branch.enquiries.store');
         Route::get('/enquiries/{enquiry}', [EnquiryController::class, 'show'])->name('branch.enquiries.show');
         Route::patch('/enquiries/{enquiry}', [EnquiryController::class, 'update'])->name('branch.enquiries.update');
+        Route::post('/enquiries/{enquiry}/assign', [EnquiryController::class, 'assign'])->name('branch.enquiries.assign');
+        Route::post('/enquiries/{enquiry}/follow-ups', [EnquiryController::class, 'storeFollowUp'])->name('branch.enquiries.follow-ups.store');
+        Route::post('/enquiries/{enquiry}/follow-ups/{followUp}/complete', [EnquiryController::class, 'completeFollowUp'])->name('branch.enquiries.follow-ups.complete');
+        Route::post('/enquiries/{enquiry}/quotations', [EnquiryController::class, 'storeQuotation'])->name('branch.enquiries.quotations.store');
+        Route::patch('/enquiries/{enquiry}/quotations/{quotation}', [EnquiryController::class, 'updateQuotation'])->name('branch.enquiries.quotations.update');
+        Route::post('/enquiries/{enquiry}/quotations/{quotation}/select', [EnquiryController::class, 'selectQuotation'])->name('branch.enquiries.quotations.select');
+        Route::post('/enquiries/{enquiry}/quotation-broadcasts', [EnquiryController::class, 'storeQuotationBroadcast'])->name('branch.enquiries.quotation-broadcasts.store');
+        Route::get('/enquiries/{enquiry}/conversion-preview', [EnquiryController::class, 'conversionPreview'])->name('branch.enquiries.conversion-preview');
+        Route::post('/enquiries/{enquiry}/convert', [EnquiryController::class, 'convert'])->name('branch.enquiries.convert');
 
         Route::get('/lorry-receipts', [LorryReceiptController::class, 'index'])->name('branch.lorry-receipts.index');
         Route::get('/lorry-receipts/create', [LorryReceiptController::class, 'create'])->name('branch.lorry-receipts.create');
@@ -355,6 +365,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/admin/internal-users', [InternalUserController::class, 'store'])
         ->name('admin.internal-users.store');
 
+    Route::get('/admin/crm', CrmDashboardController::class)
+        ->name('admin.crm.dashboard');
     Route::get('/admin/crm/leads', [CrmLeadController::class, 'index'])
         ->name('admin.crm.leads.index');
     Route::get('/admin/crm/leads/create', [CrmLeadController::class, 'create'])
@@ -365,6 +377,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('admin.crm.leads.show');
     Route::post('/admin/crm/leads/{lead}/transition', [CrmLeadController::class, 'transition'])
         ->name('admin.crm.leads.transition');
+    Route::post('/admin/crm/leads/{lead}/assign', [CrmLeadController::class, 'assign'])
+        ->name('admin.crm.leads.assign');
+    Route::post('/admin/crm/leads/{lead}/follow-ups', [CrmLeadController::class, 'storeFollowUp'])
+        ->name('admin.crm.leads.follow-ups.store');
+    Route::post('/admin/crm/leads/{lead}/follow-ups/{followUp}/complete', [CrmLeadController::class, 'completeFollowUp'])
+        ->name('admin.crm.leads.follow-ups.complete');
+    Route::post('/admin/crm/leads/{lead}/convert', [CrmLeadController::class, 'convert'])
+        ->name('admin.crm.leads.convert');
 
     Route::get('/admin/crm/tickets', [CrmSupportTicketController::class, 'index'])
         ->name('admin.crm.tickets.index');
@@ -376,6 +396,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('admin.crm.tickets.show');
     Route::post('/admin/crm/tickets/{ticket}/transition', [CrmSupportTicketController::class, 'transition'])
         ->name('admin.crm.tickets.transition');
+    Route::post('/admin/crm/tickets/{ticket}/assign', [CrmSupportTicketController::class, 'assign'])
+        ->name('admin.crm.tickets.assign');
 
     Route::get('/admin/subscription-invoices', [SubscriptionInvoiceController::class, 'index'])
         ->name('admin.subscription-invoices');

@@ -8,6 +8,9 @@ use App\Domains\Company\Enums\DataVisibility;
 use App\Domains\Consignment\Enums\FreightRateType;
 use App\Domains\Consignment\Enums\LrWorkflowContext;
 use App\Domains\Consignment\LorryReceiptService;
+use App\Domains\Enquiry\EnquiryAssignmentService;
+use App\Domains\Enquiry\EnquiryConversionService;
+use App\Domains\Enquiry\EnquiryQuotationService;
 use App\Domains\Enquiry\EnquiryService;
 use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Master\Party\Enums\PartyRoleType;
@@ -537,6 +540,21 @@ class LocalDemoWorkspaceSeeder extends Seeder
             $catalogues,
             'demo-web-'.$this->slugCompany($companyName).'-001',
         );
+        if ($companyName === self::COMPANY_A_NAME) {
+            $access->activateContext($owner, $company, $head);
+            $this->ensureEnquiryCdfDemoFixtures(
+                $access,
+                app(EnquiryAssignmentService::class),
+                app(EnquiryQuotationService::class),
+                app(EnquiryConversionService::class),
+                $company,
+                $head,
+                $owner,
+                $customerParty,
+                $transporterParty,
+                $marketVehicle,
+            );
+        }
         TenantContextHolder::clear();
 
         Auth::logout();
@@ -1585,6 +1603,78 @@ class LocalDemoWorkspaceSeeder extends Seeder
     /**
      * @param  array{truck: OwnerCatalogueItem, goods: OwnerCatalogueItem, package: OwnerCatalogueItem}  $catalogues
      */
+    private function ensureEnquiryCdfDemoFixtures(
+        CompanyAccessService $access,
+        EnquiryAssignmentService $assignments,
+        EnquiryQuotationService $quotations,
+        EnquiryConversionService $conversions,
+        Company $company,
+        Branch $branch,
+        User $actor,
+        Party $customerParty,
+        Party $transporterParty,
+        Vehicle $marketVehicle,
+    ): void {
+        $marker = 'demo-cdf:'.$company->id;
+
+        $unassigned = Enquiry::query()
+            ->where('company_id', $company->id)
+            ->whereNull('branch_id')
+            ->whereNull('deleted_at')
+            ->first();
+        if ($unassigned !== null && $unassigned->branch_id === null) {
+            $assignments->assign($company, $branch, $unassigned, $actor, [
+                'to_branch_id' => $branch->id,
+                'to_assigned_user_id' => $actor->id,
+                'remark' => 'Demo assign website enquiry '.$marker,
+            ]);
+        }
+
+        $quoted = Enquiry::query()
+            ->where('company_id', $company->id)
+            ->where('branch_id', $branch->id)
+            ->whereNull('deleted_at')
+            ->where('status', '!=', 'converted')
+            ->orderBy('created_at')
+            ->first();
+        if ($quoted !== null) {
+            $hasQuote = $quoted->quotations()->where('transporter_party_id', $transporterParty->id)->exists();
+            if (! $hasQuote) {
+                $quote = $quotations->create($company, $branch, $quoted, $actor, [
+                    'transporter_party_id' => $transporterParty->id,
+                    'quoted_freight' => 18500,
+                ]);
+                $quotations->selectPreferred($company, $branch, $quoted, $quote, $actor, 'Demo preferred quote '.$marker);
+            }
+        }
+
+        $convertCandidate = Enquiry::query()
+            ->where('company_id', $company->id)
+            ->where('branch_id', $branch->id)
+            ->whereNull('deleted_at')
+            ->where('vehicle_quantity', 1)
+            ->where('status', 'selected')
+            ->whereDoesntHave('conversion')
+            ->where('customer_party_id', $customerParty->id)
+            ->orderByDesc('created_at')
+            ->first();
+
+        if ($convertCandidate !== null) {
+            $access->activateContext($actor, $company, $branch);
+            $preview = $conversions->preview($company, $branch, $convertCandidate);
+            if (($preview['eligible'] ?? false) === true) {
+                $conversions->convert($company, $branch, $convertCandidate, $actor, [
+                    'workflow_context' => LrWorkflowContext::Broker->value,
+                    'vehicle_id' => $marketVehicle->id,
+                    'idempotency_key' => 'demo-convert-'.$convertCandidate->id,
+                    'vehicles' => collect($preview['suggested_vehicles'])->map(fn (array $vehicle): array => [
+                        'goods' => $vehicle['goods'],
+                    ])->all(),
+                ]);
+            }
+        }
+    }
+
     private function ensureWebsiteEnquiry(
         EnquiryService $enquiries,
         Company $company,

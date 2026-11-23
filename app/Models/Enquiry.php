@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -158,5 +159,21 @@ class Enquiry extends Model
     public function quotations(): HasMany
     {
         return $this->hasMany(EnquiryQuotation::class);
+    }
+
+    /**
+     * @return HasMany<EnquiryQuotationBroadcastRequest, $this>
+     */
+    public function broadcastRequests(): HasMany
+    {
+        return $this->hasMany(EnquiryQuotationBroadcastRequest::class);
+    }
+
+    /**
+     * @return HasOne<EnquiryConversion, $this>
+     */
+    public function conversion(): HasOne
+    {
+        return $this->hasOne(EnquiryConversion::class);
     }
 }

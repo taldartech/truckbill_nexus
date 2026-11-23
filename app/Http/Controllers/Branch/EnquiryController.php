@@ -3,20 +3,32 @@
 namespace App\Http\Controllers\Branch;
 
 use App\Domains\Company\CompanyAccessService;
+use App\Domains\Enquiry\EnquiryAssignmentService;
+use App\Domains\Enquiry\EnquiryConversionService;
+use App\Domains\Enquiry\EnquiryFollowUpService;
+use App\Domains\Enquiry\EnquiryQuotationService;
 use App\Domains\Enquiry\EnquiryService;
 use App\Domains\Enquiry\Exceptions\EnquiryAuthorizationException;
+use App\Domains\Enquiry\Exceptions\EnquiryConflictException;
 use App\Domains\Enquiry\Exceptions\EnquiryDomainException;
 use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
+use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
+use App\Models\BranchAssignment;
 use App\Models\Company;
+use App\Models\CompanyMembership;
 use App\Models\Enquiry;
+use App\Models\EnquiryFollowUp;
+use App\Models\EnquiryQuotation;
 use App\Models\OwnerCatalogueItem;
 use App\Models\Party;
+use App\Models\PartyRole;
 use App\Models\User;
+use App\Models\Vehicle;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -35,6 +47,10 @@ class EnquiryController extends Controller
         private readonly CompanyAccessService $access,
         private readonly PermissionAuthorizer $authorizer,
         private readonly EnquiryService $enquiries,
+        private readonly EnquiryAssignmentService $assignments,
+        private readonly EnquiryFollowUpService $followUps,
+        private readonly EnquiryQuotationService $quotations,
+        private readonly EnquiryConversionService $conversions,
     ) {}
 
     public function store(Request $request, Company $company, Branch $branch): JsonResponse|RedirectResponse
@@ -211,7 +227,22 @@ class EnquiryController extends Controller
             abort(404);
         }
 
-        $data = $this->enquiryPayload($enquiry->load(['goodsRows', 'statusHistories']));
+        $enquiry->load([
+            'goodsRows',
+            'statusHistories',
+            'assignmentHistories',
+            'followUps',
+            'quotations.transporter',
+            'broadcastRequests.targets',
+            'conversion.lorryReceiptLinks',
+            'assignedUser',
+        ]);
+
+        $data = $this->enquiryPayload($enquiry);
+        $canAssign = $this->authorizer->allowsCustomer($actor, PermissionCodes::ENQUIRY_ASSIGN, $company, $branch);
+        $canEdit = $this->authorizer->allowsCustomer($actor, PermissionCodes::ENQUIRY_EDIT, $company, $branch);
+        $canConvert = $this->authorizer->allowsCustomer($actor, PermissionCodes::ENQUIRY_CONVERT, $company, $branch);
+        $conversionPreview = $canConvert ? $this->conversions->preview($company, $branch, $enquiry) : null;
 
         if ($request->expectsJson()) {
             return response()->json(['data' => $data]);
@@ -221,10 +252,406 @@ class EnquiryController extends Controller
             'company' => ['id' => $company->id, 'name' => $company->name],
             'branch' => ['id' => $branch->id, 'name' => $branch->name],
             'enquiry' => $data,
+            'branches' => $this->branchOptions($company),
+            'assignable_users' => $this->assignableUsers($company, $branch),
+            'transporters' => $this->transporterOptions($company),
+            'vehicles' => $this->vehicleOptions($company),
+            'conversion_preview' => $conversionPreview,
+            'capabilities' => [
+                'assign' => $canAssign,
+                'edit' => $canEdit,
+                'convert' => $canConvert,
+            ],
             'urls' => [
                 'index' => route('branch.enquiries.index'),
+                'assign' => route('branch.enquiries.assign', [$enquiry]),
+                'follow_up' => route('branch.enquiries.follow-ups.store', [$enquiry]),
+                'quotation_store' => route('branch.enquiries.quotations.store', [$enquiry]),
+                'broadcast' => route('branch.enquiries.quotation-broadcasts.store', [$enquiry]),
+                'conversion_preview' => route('branch.enquiries.conversion-preview', [$enquiry]),
+                'convert' => route('branch.enquiries.convert', [$enquiry]),
             ],
         ]);
+    }
+
+    public function assign(Request $request, Enquiry $enquiry, Company $company, Branch $branch): RedirectResponse|JsonResponse
+    {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertPermission($actor, $company, $branch, PermissionCodes::ENQUIRY_ASSIGN);
+        $this->assertEnquiryRouteScope($enquiry, $company, $branch, $actor);
+
+        $payload = $request->validate([
+            'remark' => ['required', 'string', 'min:1'],
+            'to_branch_id' => ['nullable', 'uuid'],
+            'to_assigned_user_id' => ['nullable', 'integer'],
+        ]);
+
+        try {
+            $updated = $this->assignments->assign($company, $branch, $enquiry, $actor, $payload);
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (EnquiryAuthorizationException $e) {
+            abort(403, $e->getMessage());
+        } catch (EnquiryDomainException $e) {
+            return back()->withErrors($e->getMessage());
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json(['data' => $this->enquiryPayload($updated)]);
+        }
+
+        return back()->with('success', 'Enquiry assignment updated.');
+    }
+
+    public function storeFollowUp(Request $request, Enquiry $enquiry, Company $company, Branch $branch): RedirectResponse|JsonResponse
+    {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertPermission($actor, $company, $branch, PermissionCodes::ENQUIRY_EDIT);
+        $this->assertEnquiryRouteScope($enquiry, $company, $branch, $actor);
+
+        $payload = $request->validate([
+            'follow_up_at' => ['required', 'date'],
+            'remarks' => ['required', 'string', 'min:1'],
+        ]);
+
+        try {
+            $followUp = $this->followUps->add($company, $branch, $enquiry, $actor, $payload);
+        } catch (EnquiryAuthorizationException $e) {
+            abort(403, $e->getMessage());
+        } catch (EnquiryDomainException $e) {
+            return back()->withErrors($e->getMessage());
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json(['data' => $followUp], 201);
+        }
+
+        return back()->with('success', 'Follow-up added.');
+    }
+
+    public function completeFollowUp(
+        Request $request,
+        Enquiry $enquiry,
+        EnquiryFollowUp $followUp,
+        Company $company,
+        Branch $branch,
+    ): RedirectResponse {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertPermission($actor, $company, $branch, PermissionCodes::ENQUIRY_EDIT);
+        $this->assertEnquiryRouteScope($enquiry, $company, $branch, $actor);
+
+        try {
+            $this->followUps->complete($company, $branch, $enquiry, $followUp, $actor);
+        } catch (EnquiryAuthorizationException|EnquiryDomainException $e) {
+            return back()->withErrors($e->getMessage());
+        }
+
+        return back()->with('success', 'Follow-up marked complete.');
+    }
+
+    public function storeQuotation(Request $request, Enquiry $enquiry, Company $company, Branch $branch): RedirectResponse|JsonResponse
+    {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertPermission($actor, $company, $branch, PermissionCodes::ENQUIRY_EDIT);
+        $this->assertEnquiryRouteScope($enquiry, $company, $branch, $actor);
+
+        $payload = $request->validate([
+            'transporter_party_id' => ['required', 'uuid'],
+            'quoted_freight' => ['required', 'numeric', 'gt:0'],
+            'rate_basis' => ['nullable', 'string', 'max:64'],
+            'advance_amount' => ['nullable', 'numeric', 'min:0'],
+            'payment_terms' => ['nullable', 'string', 'max:255'],
+            'expected_delivery_duration' => ['nullable', 'string', 'max:255'],
+            'valid_until' => ['nullable', 'date'],
+            'extra_charges_amount' => ['nullable', 'numeric', 'min:0'],
+            'extra_charges_description' => ['nullable', 'string'],
+            'remarks' => ['nullable', 'string'],
+        ]);
+
+        try {
+            $quotation = $this->quotations->create($company, $branch, $enquiry, $actor, $payload);
+        } catch (EnquiryConflictException $e) {
+            return back()->withErrors(['transporter_party_id' => $e->getMessage()]);
+        } catch (EnquiryAuthorizationException $e) {
+            abort(403, $e->getMessage());
+        } catch (EnquiryDomainException $e) {
+            return back()->withErrors($e->getMessage());
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json(['data' => $quotation], 201);
+        }
+
+        return back()->with('success', 'Quotation saved.');
+    }
+
+    public function updateQuotation(
+        Request $request,
+        Enquiry $enquiry,
+        EnquiryQuotation $quotation,
+        Company $company,
+        Branch $branch,
+    ): RedirectResponse|JsonResponse {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertPermission($actor, $company, $branch, PermissionCodes::ENQUIRY_EDIT);
+        $this->assertEnquiryRouteScope($enquiry, $company, $branch, $actor);
+
+        $payload = $request->validate([
+            'remark' => ['required', 'string', 'min:1'],
+            'quoted_freight' => ['sometimes', 'numeric', 'gt:0'],
+            'rate_basis' => ['nullable', 'string', 'max:64'],
+            'advance_amount' => ['nullable', 'numeric', 'min:0'],
+            'payment_terms' => ['nullable', 'string', 'max:255'],
+            'expected_delivery_duration' => ['nullable', 'string', 'max:255'],
+            'valid_until' => ['nullable', 'date'],
+            'extra_charges_amount' => ['nullable', 'numeric', 'min:0'],
+            'extra_charges_description' => ['nullable', 'string'],
+            'remarks' => ['nullable', 'string'],
+        ]);
+
+        try {
+            $updated = $this->quotations->update(
+                $company,
+                $branch,
+                $enquiry,
+                $quotation,
+                $actor,
+                $payload,
+                (string) $payload['remark'],
+            );
+        } catch (EnquiryAuthorizationException $e) {
+            abort(403, $e->getMessage());
+        } catch (EnquiryDomainException $e) {
+            return back()->withErrors($e->getMessage());
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json(['data' => $updated]);
+        }
+
+        return back()->with('success', 'Quotation updated.');
+    }
+
+    public function selectQuotation(
+        Request $request,
+        Enquiry $enquiry,
+        EnquiryQuotation $quotation,
+        Company $company,
+        Branch $branch,
+    ): RedirectResponse|JsonResponse {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertPermission($actor, $company, $branch, PermissionCodes::ENQUIRY_EDIT);
+        $this->assertEnquiryRouteScope($enquiry, $company, $branch, $actor);
+
+        $remark = $request->validate(['remark' => ['nullable', 'string']])['remark'] ?? null;
+
+        try {
+            $updated = $this->quotations->selectPreferred($company, $branch, $enquiry, $quotation, $actor, $remark);
+        } catch (EnquiryAuthorizationException $e) {
+            abort(403, $e->getMessage());
+        } catch (EnquiryDomainException $e) {
+            return back()->withErrors($e->getMessage());
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json(['data' => $this->enquiryPayload($updated)]);
+        }
+
+        return back()->with('success', 'Preferred quotation selected.');
+    }
+
+    public function storeQuotationBroadcast(Request $request, Enquiry $enquiry, Company $company, Branch $branch): RedirectResponse|JsonResponse
+    {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertPermission($actor, $company, $branch, PermissionCodes::ENQUIRY_EDIT);
+        $this->assertEnquiryRouteScope($enquiry, $company, $branch, $actor);
+
+        $payload = $request->validate([
+            'transporter_party_ids' => ['required', 'array', 'min:1'],
+            'transporter_party_ids.*' => ['uuid'],
+            'channels' => ['required', 'array', 'min:1'],
+            'channels.*' => ['string', 'in:whatsapp,sms,email'],
+            'idempotency_key' => ['nullable', 'string', 'max:128'],
+        ]);
+
+        try {
+            $broadcast = $this->quotations->requestBroadcast($company, $branch, $enquiry, $actor, $payload);
+        } catch (EnquiryAuthorizationException $e) {
+            abort(403, $e->getMessage());
+        } catch (EnquiryDomainException $e) {
+            return back()->withErrors($e->getMessage());
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json(['data' => $broadcast], 201);
+        }
+
+        return back()->with('success', 'Broadcast request queued for Communications (Phase 9).');
+    }
+
+    public function conversionPreview(Request $request, Enquiry $enquiry, Company $company, Branch $branch): JsonResponse
+    {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertPermission($actor, $company, $branch, PermissionCodes::ENQUIRY_CONVERT);
+        $this->assertEnquiryRouteScope($enquiry, $company, $branch, $actor);
+
+        return response()->json([
+            'data' => $this->conversions->preview($company, $branch, $enquiry),
+        ]);
+    }
+
+    public function convert(Request $request, Enquiry $enquiry, Company $company, Branch $branch): RedirectResponse|JsonResponse
+    {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertPermission($actor, $company, $branch, PermissionCodes::ENQUIRY_CONVERT);
+        $this->assertEnquiryRouteScope($enquiry, $company, $branch, $actor);
+
+        $payload = $request->validate([
+            'workflow_context' => ['required', 'string', 'in:broker,own_fleet,partload'],
+            'vehicle_id' => ['nullable', 'uuid'],
+            'from_station_id' => ['nullable', 'uuid'],
+            'to_station_id' => ['nullable', 'uuid'],
+            'idempotency_key' => ['nullable', 'string', 'max:128'],
+            'remark' => ['nullable', 'string'],
+            'vehicles' => ['required', 'array', 'min:1'],
+            'vehicles.*.goods' => ['required', 'array', 'min:1'],
+            'vehicles.*.goods.*.goods_row_id' => ['required', 'uuid'],
+            'vehicles.*.goods.*.package_count' => ['nullable', 'numeric', 'min:0'],
+            'vehicles.*.goods.*.actual_weight' => ['nullable', 'numeric', 'min:0'],
+            'vehicles.*.goods.*.charged_weight' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        try {
+            $result = $this->conversions->convert($company, $branch, $enquiry, $actor, $payload);
+        } catch (EnquiryConflictException $e) {
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage()], 409);
+            }
+
+            return back()->withErrors($e->getMessage());
+        } catch (EnquiryAuthorizationException $e) {
+            abort(403, $e->getMessage());
+        } catch (EnquiryDomainException $e) {
+            return back()->withErrors($e->getMessage());
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'data' => [
+                    'conversion_id' => $result['conversion']->id,
+                    'lorry_receipt_ids' => collect($result['lorry_receipts'])->pluck('id')->all(),
+                ],
+            ], 201);
+        }
+
+        $lr = $result['lorry_receipts'][0] ?? null;
+
+        return redirect()
+            ->route('branch.lorry-receipts.show', [$lr])
+            ->with('success', 'Enquiry converted to '.count($result['lorry_receipts']).' Unified LR(s).');
+    }
+
+    private function assertEnquiryRouteScope(Enquiry $enquiry, Company $company, Branch $branch, User $actor): void
+    {
+        if ($enquiry->company_id !== $company->id) {
+            abort(404);
+        }
+
+        $canSeeUnassigned = $enquiry->branch_id === null
+            && $this->authorizer->allowsCustomer($actor, PermissionCodes::ENQUIRY_ASSIGN, $company, $branch);
+
+        if ($enquiry->branch_id !== null && $enquiry->branch_id !== $branch->id && ! $canSeeUnassigned) {
+            abort(404);
+        }
+    }
+
+    /**
+     * @return list<array{id: string, name: string}>
+     */
+    private function branchOptions(Company $company): array
+    {
+        return Branch::query()
+            ->where('company_id', $company->id)
+            ->whereNull('deactivated_at')
+            ->whereNull('deleted_at')
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (Branch $row): array => ['id' => $row->id, 'name' => $row->name])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return list<array{id: int, name: string, email: string|null}>
+     */
+    private function assignableUsers(Company $company, Branch $branch): array
+    {
+        $membershipIds = BranchAssignment::query()
+            ->where('company_id', $company->id)
+            ->where('branch_id', $branch->id)
+            ->whereNull('deactivated_at')
+            ->pluck('company_membership_id');
+
+        $userIds = CompanyMembership::query()
+            ->whereIn('id', $membershipIds)
+            ->whereNull('deactivated_at')
+            ->pluck('user_id');
+
+        return User::query()
+            ->whereIn('id', $userIds)
+            ->whereNull('deactivated_at')
+            ->orderBy('name')
+            ->get(['id', 'name', 'email'])
+            ->map(fn (User $user): array => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return list<array{id: string, name: string}>
+     */
+    private function transporterOptions(Company $company): array
+    {
+        $partyIds = PartyRole::query()
+            ->where('company_id', $company->id)
+            ->where('role', PartyRoleType::Transporter->value)
+            ->whereNull('deactivated_at')
+            ->whereNull('deleted_at')
+            ->pluck('party_id');
+
+        return Party::query()
+            ->where('company_id', $company->id)
+            ->whereIn('id', $partyIds)
+            ->whereNull('deleted_at')
+            ->orderBy('name')
+            ->limit(200)
+            ->get(['id', 'name'])
+            ->map(fn (Party $party): array => ['id' => $party->id, 'name' => $party->name])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return list<array{id: string, registration_number: string|null}>
+     */
+    private function vehicleOptions(Company $company): array
+    {
+        return Vehicle::query()
+            ->where('company_id', $company->id)
+            ->whereNull('deleted_at')
+            ->orderBy('registration_number')
+            ->limit(200)
+            ->get(['id', 'registration_number'])
+            ->map(fn (Vehicle $vehicle): array => [
+                'id' => $vehicle->id,
+                'registration_number' => $vehicle->registration_number,
+            ])
+            ->values()
+            ->all();
     }
 
     private function assertPermission(User $actor, Company $company, Branch $branch, string $code): void
@@ -329,6 +756,10 @@ class EnquiryController extends Controller
                     'charged_weight' => $row->charged_weight,
                 ])->values()->all()
                 : [],
+            'assigned_user_id' => $enquiry->assigned_user_id,
+            'assigned_user_name' => $enquiry->relationLoaded('assignedUser') && $enquiry->assignedUser
+                ? $enquiry->assignedUser->name
+                : null,
             'status_history' => $enquiry->relationLoaded('statusHistories')
                 ? $enquiry->statusHistories->map(fn ($row): array => [
                     'from_status' => $row->from_status?->value,
@@ -337,6 +768,59 @@ class EnquiryController extends Controller
                     'changed_at' => $row->changed_at?->toIso8601String(),
                 ])->values()->all()
                 : [],
+            'assignment_history' => $enquiry->relationLoaded('assignmentHistories')
+                ? $enquiry->assignmentHistories
+                    ->sortByDesc('assigned_at')
+                    ->map(fn ($row): array => [
+                        'from_branch_id' => $row->from_branch_id,
+                        'to_branch_id' => $row->to_branch_id,
+                        'from_assigned_user_id' => $row->from_assigned_user_id,
+                        'to_assigned_user_id' => $row->to_assigned_user_id,
+                        'remark' => $row->remark,
+                        'assigned_at' => $row->assigned_at?->toIso8601String(),
+                    ])->values()->all()
+                : [],
+            'follow_ups' => $enquiry->relationLoaded('followUps')
+                ? $enquiry->followUps
+                    ->sortByDesc('follow_up_at')
+                    ->map(fn ($row): array => [
+                        'id' => $row->id,
+                        'follow_up_at' => $row->follow_up_at?->toIso8601String(),
+                        'remarks' => $row->remarks,
+                        'completed_at' => $row->completed_at?->toIso8601String(),
+                    ])->values()->all()
+                : [],
+            'quotations' => $enquiry->relationLoaded('quotations')
+                ? $enquiry->quotations->map(fn ($row): array => [
+                    'id' => $row->id,
+                    'transporter_party_id' => $row->transporter_party_id,
+                    'transporter_name' => $row->relationLoaded('transporter') ? $row->transporter?->name : null,
+                    'quoted_freight' => $row->quoted_freight,
+                    'selection_status' => $row->selection_status->value,
+                    'remarks' => $row->remarks,
+                    'select_url' => route('branch.enquiries.quotations.select', [$enquiry, $row]),
+                ])->values()->all()
+                : [],
+            'broadcast_requests' => $enquiry->relationLoaded('broadcastRequests')
+                ? $enquiry->broadcastRequests
+                    ->sortByDesc('requested_at')
+                    ->map(fn ($row): array => [
+                        'id' => $row->id,
+                        'status' => $row->status->value,
+                        'channels' => $row->channels,
+                        'target_count' => $row->relationLoaded('targets') ? $row->targets->count() : 0,
+                        'requested_at' => $row->requested_at?->toIso8601String(),
+                    ])->values()->all()
+                : [],
+            'conversion' => $enquiry->relationLoaded('conversion') && $enquiry->conversion
+                ? [
+                    'id' => $enquiry->conversion->id,
+                    'converted_at' => $enquiry->conversion->converted_at?->toIso8601String(),
+                    'lorry_receipt_ids' => $enquiry->conversion->relationLoaded('lorryReceiptLinks')
+                        ? $enquiry->conversion->lorryReceiptLinks->pluck('lorry_receipt_id')->all()
+                        : [],
+                ]
+                : null,
         ];
     }
 }
