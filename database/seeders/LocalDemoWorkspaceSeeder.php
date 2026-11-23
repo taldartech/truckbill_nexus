@@ -2,6 +2,15 @@
 
 namespace Database\Seeders;
 
+use App\Domains\Broker\Adjustment\BrokerAdjustmentService;
+use App\Domains\Broker\Delivery\BrokerDeliveryService;
+use App\Domains\Broker\Enums\VoucherPaymentMode;
+use App\Domains\Broker\Enums\VoucherPaymentType;
+use App\Domains\Broker\Enums\VoucherStatus;
+use App\Domains\Broker\Invoice\BrokerInvoiceService;
+use App\Domains\Broker\LinkedBilty\LinkedBiltyGroupService;
+use App\Domains\Broker\LorryHire\LorryHireService;
+use App\Domains\Broker\Voucher\TransporterVoucherService;
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Company\CompanyWorkspaceService;
 use App\Domains\Company\Enums\DataVisibility;
@@ -37,12 +46,15 @@ use App\Models\BankCashAccount;
 use App\Models\Branch;
 use App\Models\BranchAssignment;
 use App\Models\BranchRoleAssignment;
+use App\Models\BrokerInvoice;
 use App\Models\Company;
 use App\Models\CompanyMembership;
 use App\Models\CompanySubscription;
 use App\Models\Crm\Lead;
 use App\Models\Crm\SupportTicket;
 use App\Models\Enquiry;
+use App\Models\LinkedBiltyGroup;
+use App\Models\LorryHire;
 use App\Models\LorryReceipt;
 use App\Models\OwnerCatalogueItem;
 use App\Models\Party;
@@ -52,6 +64,7 @@ use App\Models\RolePermission;
 use App\Models\Station;
 use App\Models\SubscriptionCatalogueVersion;
 use App\Models\SubscriptionPlan;
+use App\Models\TransporterVoucher;
 use App\Models\Trip;
 use App\Models\TripInvoice;
 use App\Models\User;
@@ -541,6 +554,29 @@ class LocalDemoWorkspaceSeeder extends Seeder
             $catalogues,
         );
 
+        if ($companyName === self::COMPANY_A_NAME) {
+            $bank = $this->ensureBank($company, $head, 'demo-bank:'.$company->id.':broker');
+            $access->activateContext($owner, $company, $head);
+            $this->ensureBrokerOperationalFixtures(
+                $lorryReceipts,
+                app(LorryHireService::class),
+                app(TransporterVoucherService::class),
+                app(BrokerAdjustmentService::class),
+                app(BrokerDeliveryService::class),
+                app(BrokerInvoiceService::class),
+                app(LinkedBiltyGroupService::class),
+                $parties,
+                $company,
+                $head,
+                $owner,
+                $customerParty,
+                $consignorParty,
+                $consigneeParty,
+                $catalogues,
+                $bank,
+            );
+        }
+
         TenantContextHolder::inject(new TenantContext(
             companyId: $company->id,
             branchId: null,
@@ -615,6 +651,27 @@ class LocalDemoWorkspaceSeeder extends Seeder
                     PermissionCodes::INVOICE_PRINT,
                     PermissionCodes::PAYMENT_VIEW,
                     PermissionCodes::PAYMENT_CREATE,
+                    PermissionCodes::BROKER_LORRY_HIRE_VIEW,
+                    PermissionCodes::BROKER_LORRY_HIRE_CREATE,
+                    PermissionCodes::BROKER_LORRY_HIRE_EDIT,
+                    PermissionCodes::BROKER_LORRY_HIRE_CANCEL,
+                    PermissionCodes::BROKER_VOUCHER_VIEW,
+                    PermissionCodes::BROKER_VOUCHER_CREATE,
+                    PermissionCodes::BROKER_VOUCHER_EDIT,
+                    PermissionCodes::BROKER_VOUCHER_STATUS,
+                    PermissionCodes::BROKER_VOUCHER_BULK,
+                    PermissionCodes::BROKER_DELIVERY_VIEW,
+                    PermissionCodes::BROKER_DELIVERY_MANAGE,
+                    PermissionCodes::BROKER_ADJUSTMENT_VIEW,
+                    PermissionCodes::BROKER_ADJUSTMENT_CREATE,
+                    PermissionCodes::BROKER_INVOICE_VIEW,
+                    PermissionCodes::BROKER_INVOICE_CREATE,
+                    PermissionCodes::BROKER_INVOICE_CANCEL,
+                    PermissionCodes::BROKER_INVOICE_PRINT,
+                    PermissionCodes::BROKER_LINKED_BILTY_VIEW,
+                    PermissionCodes::BROKER_LINKED_BILTY_CREATE,
+                    PermissionCodes::BROKER_LINKED_BILTY_PAY,
+                    PermissionCodes::BROKER_BOOK_BALANCE_VIEW,
                 ],
             ],
             self::ROLE_OPERATOR => [
@@ -1846,6 +1903,372 @@ class LocalDemoWorkspaceSeeder extends Seeder
                 ],
             ],
         ]);
+    }
+
+    /**
+     * Phase 6 Batch H–J: Broker domain fixtures via real services (Company A, local/testing only).
+     *
+     * @param  array{truck: OwnerCatalogueItem, goods: OwnerCatalogueItem, package: OwnerCatalogueItem}  $catalogues
+     */
+    private function ensureBrokerOperationalFixtures(
+        LorryReceiptService $lorryReceipts,
+        LorryHireService $lorryHires,
+        TransporterVoucherService $vouchers,
+        BrokerAdjustmentService $adjustments,
+        BrokerDeliveryService $deliveries,
+        BrokerInvoiceService $invoices,
+        LinkedBiltyGroupService $linkedGroups,
+        PartyService $parties,
+        Company $company,
+        Branch $branch,
+        User $owner,
+        Party $billingCustomer,
+        Party $consignor,
+        Party $consignee,
+        array $catalogues,
+        BankCashAccount $bankAccount,
+    ): void {
+        $fixtureRoot = 'demo-broker:'.$company->id;
+
+        if (LorryHire::query()
+            ->where('company_id', $company->id)
+            ->where('branch_id', $branch->id)
+            ->whereHas('lorryReceipt', fn ($query) => $query->where('from_text', 'like', '%'.$fixtureRoot.':active%'))
+            ->exists()) {
+            return;
+        }
+
+        $ownerTransporter = $this->ensurePartyWithRoles(
+            $parties,
+            $owner,
+            $company,
+            $branch,
+            'demo-party:'.$company->id.':broker-owner-transporter',
+            'Demo Broker Owner Transporter',
+            [
+                [
+                    'role' => PartyRoleType::Transporter->value,
+                    'attributes' => [
+                        'pan' => 'BRKOW1234A',
+                        'pan_status' => 'active',
+                        'declaration' => true,
+                        'declaration_type' => 'owner',
+                        'goods_vehicles_count' => 5,
+                    ],
+                ],
+            ],
+            'Thane',
+        );
+
+        $agencyTransporter = $this->ensurePartyWithRoles(
+            $parties,
+            $owner,
+            $company,
+            $branch,
+            'demo-party:'.$company->id.':broker-agency-transporter',
+            'Demo Broker Agency Transporter',
+            [
+                [
+                    'role' => PartyRoleType::Transporter->value,
+                    'attributes' => [
+                        'pan' => 'BRKAG5678C',
+                        'pan_status' => 'active',
+                        'declaration' => true,
+                        'declaration_type' => 'agency',
+                        'goods_vehicles_count' => 3,
+                    ],
+                ],
+            ],
+            'Nashik',
+        );
+
+        $substituteDriver = Party::query()
+            ->where('company_id', $company->id)
+            ->where('name', 'Alpha Substitute Driver')
+            ->first();
+
+        $ownerVehicle = $this->ensureVehicle(
+            $company,
+            $branch,
+            'MH12BRKOWN'.substr((string) crc32($company->id.'broker-owner'), 0, 2),
+            ownership: VehicleOwnership::Market,
+            primaryDriverPartyId: $substituteDriver?->id,
+            ownerPartyId: $ownerTransporter->id,
+        );
+
+        $agencyVehicle = $this->ensureVehicle(
+            $company,
+            $branch,
+            'MH12BRKAGY'.substr((string) crc32($company->id.'broker-agency'), 0, 2),
+            ownership: VehicleOwnership::Market,
+            primaryDriverPartyId: $substituteDriver?->id,
+            ownerPartyId: $agencyTransporter->id,
+        );
+
+        $pendingFrom = $fixtureRoot.':pending';
+        $pendingLr = LorryReceipt::query()
+            ->where('company_id', $company->id)
+            ->where('branch_id', $branch->id)
+            ->where('from_text', $pendingFrom)
+            ->whereNull('deleted_at')
+            ->first();
+
+        if ($pendingLr === null) {
+            $pendingLr = $lorryReceipts->create($company, $branch, $owner, [
+                'workflow_context' => LrWorkflowContext::Broker->value,
+                'vehicle_id' => $ownerVehicle->id,
+                'number_mode' => 'auto',
+                'lr_date' => CarbonImmutable::now()->subDays(3)->toDateString(),
+                'from_text' => $pendingFrom,
+                'to_text' => 'Demo Broker pending destination',
+                'consignor_party_id' => $consignor->id,
+                'consignee_party_id' => $consignee->id,
+                'goods' => [
+                    [
+                        'goods_type_id' => $catalogues['goods']->id,
+                        'package_type_id' => $catalogues['package']->id,
+                        'goods_description' => 'Broker pending line A',
+                        'package_count' => 12,
+                        'actual_weight' => 600,
+                        'charged_weight' => 600,
+                        'freight_rate_type' => FreightRateType::FixedAmount->value,
+                        'freight_rate' => 9000,
+                    ],
+                    [
+                        'goods_type_id' => $catalogues['goods']->id,
+                        'package_type_id' => $catalogues['package']->id,
+                        'goods_description' => 'Broker pending line B',
+                        'package_count' => 8,
+                        'actual_weight' => 400,
+                        'charged_weight' => 400,
+                        'freight_rate_type' => FreightRateType::FixedAmount->value,
+                        'freight_rate' => 5500,
+                    ],
+                ],
+            ]);
+        }
+
+        if ($pendingLr->lorryHire()->whereNull('deleted_at')->doesntExist()) {
+            $lorryHires->createFromLorryReceipt($pendingLr, $owner, [
+                'goods_lines' => $this->brokerGoodsLinesFromLorryReceipt($pendingLr),
+            ]);
+        }
+
+        $activeFrom = $fixtureRoot.':active';
+        $activeLr = LorryReceipt::query()
+            ->where('company_id', $company->id)
+            ->where('branch_id', $branch->id)
+            ->where('from_text', $activeFrom)
+            ->whereNull('deleted_at')
+            ->first();
+
+        if ($activeLr === null) {
+            $activeLr = $lorryReceipts->create($company, $branch, $owner, [
+                'workflow_context' => LrWorkflowContext::Broker->value,
+                'vehicle_id' => $agencyVehicle->id,
+                'billing_customer_party_id' => $billingCustomer->id,
+                'number_mode' => 'auto',
+                'lr_date' => CarbonImmutable::now()->subDays(2)->toDateString(),
+                'from_text' => $activeFrom,
+                'to_text' => 'Demo Broker active destination',
+                'consignor_party_id' => $consignor->id,
+                'consignee_party_id' => $consignee->id,
+                'goods' => [
+                    [
+                        'goods_type_id' => $catalogues['goods']->id,
+                        'package_type_id' => $catalogues['package']->id,
+                        'goods_description' => 'Broker active mixed goods',
+                        'package_count' => 20,
+                        'actual_weight' => 1000,
+                        'charged_weight' => 1000,
+                        'freight_rate_type' => FreightRateType::FixedAmount->value,
+                        'freight_rate' => 14500,
+                    ],
+                ],
+            ]);
+        } elseif ($activeLr->billing_customer_party_id === null) {
+            $activeLr->forceFill(['billing_customer_party_id' => $billingCustomer->id])->save();
+        }
+
+        $activeHire = $activeLr->lorryHire()->whereNull('deleted_at')->first();
+        if ($activeHire === null) {
+            $activeHire = $lorryHires->createFromLorryReceipt($activeLr, $owner, [
+                'goods_lines' => $this->brokerGoodsLinesFromLorryReceipt($activeLr),
+            ]);
+        }
+
+        if ($activeHire->adjustments()->whereNull('deleted_at')->count() === 0) {
+            $adjustments->createDetention($activeHire, $owner, ['amount' => '350.00', 'reason' => 'Demo detention '.$fixtureRoot]);
+            $adjustments->createMiscExpense($activeHire, $owner, ['amount' => '150.00', 'reason' => 'Demo toll']);
+            $adjustments->createShortage($activeHire, $owner, [
+                'quantity' => '2',
+                'rate' => '250',
+                'reason' => 'Demo shortage cartons',
+            ]);
+        }
+
+        $advanceKey = 'demo-broker-voucher-advance:'.$company->id;
+        if (! TransporterVoucher::query()
+            ->where('company_id', $company->id)
+            ->where('lorry_hire_id', $activeHire->id)
+            ->where('remark', $advanceKey)
+            ->exists()) {
+            $cashAdvance = $vouchers->createForLorryHire($activeHire->fresh(), $owner, [
+                'amount' => '2000.00',
+                'payment_type' => VoucherPaymentType::Advance->value,
+                'payment_mode' => VoucherPaymentMode::Cash->value,
+                'remark' => $advanceKey,
+            ]);
+            $vouchers->transitionStatus($cashAdvance, $owner, VoucherStatus::Paid);
+        }
+
+        $bankKey = 'demo-broker-voucher-bank:'.$company->id;
+        if (! TransporterVoucher::query()
+            ->where('company_id', $company->id)
+            ->where('remark', $bankKey)
+            ->exists()) {
+            $vouchers->createForLorryHire($activeHire->fresh(), $owner, [
+                'amount' => '1500.00',
+                'payment_type' => VoucherPaymentType::Partial->value,
+                'payment_mode' => VoucherPaymentMode::Bank->value,
+                'bank_cash_account_id' => $bankAccount->id,
+                'remark' => $bankKey,
+            ]);
+        }
+
+        if (! TransporterVoucher::query()
+            ->where('company_id', $company->id)
+            ->where('lorry_hire_id', $activeHire->id)
+            ->where('payment_mode', VoucherPaymentMode::AdjustInAdvance->value)
+            ->exists()) {
+            $vouchers->createForLorryHire($activeHire->fresh(), $owner, [
+                'amount' => '300.00',
+                'payment_type' => VoucherPaymentType::Advance->value,
+                'payment_mode' => VoucherPaymentMode::AdjustInAdvance->value,
+                'remark' => 'demo-broker-book-balance:'.$company->id,
+            ]);
+        }
+
+        $activeLr = $activeLr->fresh(['delivery']);
+        if ($activeLr->delivery === null) {
+            $deliveries->assignMemoPod($company, $branch, $owner, [
+                'lorry_receipt_ids' => [$activeLr->id],
+                'memo_number' => 'DEMO-MEMO-'.$company->id,
+                'pod_number' => 'DEMO-POD-'.$company->id,
+            ]);
+        }
+
+        if ($activeLr->delivered_at === null) {
+            $deliveries->recordDelivery($activeLr->fresh(), $owner, [
+                'delivery_date' => CarbonImmutable::now()->subDay()->toDateString(),
+            ]);
+        }
+
+        $activeLr = $activeLr->fresh();
+        if (! BrokerInvoice::query()
+            ->where('company_id', $company->id)
+            ->where('branch_id', $branch->id)
+            ->whereHas('lines', fn ($query) => $query->where('lorry_receipt_id', $activeLr->id))
+            ->exists()) {
+            $brokerInvoice = $invoices->createInvoice($company, $branch, $owner, [
+                'billing_customer_party_id' => $billingCustomer->id,
+                'lorry_receipt_ids' => [$activeLr->id],
+            ]);
+            $invoices->recordPayment($brokerInvoice, $owner, [
+                'amount_received' => '2500.00',
+                'tds_amount' => '0',
+            ]);
+        }
+
+        $linkedMarker = 'demo-broker-linked:'.$company->id;
+        if (! LinkedBiltyGroup::query()
+            ->where('company_id', $company->id)
+            ->where('branch_id', $branch->id)
+            ->whereHas('members.lorryReceipt', fn ($query) => $query->where('from_text', 'like', '%'.$linkedMarker.'%'))
+            ->exists()) {
+            $linkedOne = $lorryReceipts->create($company, $branch, $owner, [
+                'workflow_context' => LrWorkflowContext::Broker->value,
+                'vehicle_id' => $ownerVehicle->id,
+                'number_mode' => 'auto',
+                'lr_date' => CarbonImmutable::now()->subDay()->toDateString(),
+                'from_text' => $linkedMarker.':a',
+                'to_text' => 'Linked demo A',
+                'consignor_party_id' => $consignor->id,
+                'consignee_party_id' => $consignee->id,
+                'goods' => [[
+                    'goods_type_id' => $catalogues['goods']->id,
+                    'package_type_id' => $catalogues['package']->id,
+                    'goods_description' => 'Linked bilty A',
+                    'package_count' => 6,
+                    'actual_weight' => 300,
+                    'charged_weight' => 300,
+                    'freight_rate_type' => FreightRateType::FixedAmount->value,
+                    'freight_rate' => 6200,
+                ]],
+            ]);
+            $linkedTwo = $lorryReceipts->create($company, $branch, $owner, [
+                'workflow_context' => LrWorkflowContext::Broker->value,
+                'vehicle_id' => $ownerVehicle->id,
+                'number_mode' => 'auto',
+                'lr_date' => CarbonImmutable::now()->subDay()->toDateString(),
+                'from_text' => $linkedMarker.':b',
+                'to_text' => 'Linked demo B',
+                'consignor_party_id' => $consignor->id,
+                'consignee_party_id' => $consignee->id,
+                'goods' => [[
+                    'goods_type_id' => $catalogues['goods']->id,
+                    'package_type_id' => $catalogues['package']->id,
+                    'goods_description' => 'Linked bilty B',
+                    'package_count' => 6,
+                    'actual_weight' => 300,
+                    'charged_weight' => 300,
+                    'freight_rate_type' => FreightRateType::FixedAmount->value,
+                    'freight_rate' => 3800,
+                ]],
+            ]);
+
+            $linkedHireA = $lorryHires->createFromLorryReceipt($linkedOne, $owner, [
+                'goods_lines' => $this->brokerGoodsLinesFromLorryReceipt($linkedOne),
+            ]);
+            $lorryHires->createFromLorryReceipt($linkedTwo, $owner, [
+                'goods_lines' => $this->brokerGoodsLinesFromLorryReceipt($linkedTwo),
+            ]);
+
+            $linkedGroups->createGroup($owner, $company, $branch, [
+                'vehicle_id' => $ownerVehicle->id,
+                'group_date' => CarbonImmutable::now()->subDay()->toDateString(),
+                'lorry_receipt_ids' => [$linkedOne->id, $linkedTwo->id],
+            ]);
+
+            if ($linkedHireA->fresh()->paid_amount === '0.00') {
+                $vouchers->createForLorryHire($linkedHireA->fresh(), $owner, [
+                    'amount' => '500.00',
+                    'payment_type' => VoucherPaymentType::Advance->value,
+                    'payment_mode' => VoucherPaymentMode::Cash->value,
+                    'remark' => 'demo-broker-linked-pay:'.$company->id,
+                ]);
+            }
+        }
+    }
+
+    /**
+     * @return list<array{lr_goods_row_id: string, rate_type: string, rate: string, is_fixed_amount: bool}>
+     */
+    private function brokerGoodsLinesFromLorryReceipt(LorryReceipt $lr): array
+    {
+        $lr->loadMissing('goodsRows');
+        $lines = [];
+
+        foreach ($lr->goodsRows as $row) {
+            $lines[] = [
+                'lr_goods_row_id' => (string) $row->id,
+                'rate_type' => $row->freight_rate_type->value,
+                'rate' => (string) $row->freight_rate,
+                'is_fixed_amount' => $row->freight_rate_type === FreightRateType::FixedAmount,
+            ];
+        }
+
+        return $lines;
     }
 
     private function slugCompany(string $name): string

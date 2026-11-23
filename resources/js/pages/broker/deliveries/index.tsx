@@ -75,18 +75,14 @@ export default function DeliveriesIndex({
 
     const submitMemo = (event: React.FormEvent) => {
         event.preventDefault();
-        memoForm
-            .transform((data) => ({
-                ...data,
-                lorry_receipt_ids: selected,
-            }))
-            .post(urls.memo, {
-                preserveScroll: true,
-                onSuccess: () => {
-                    setSelected([]);
-                    memoForm.reset();
-                },
-            });
+        memoForm.setData('lorry_receipt_ids', selected);
+        memoForm.post(urls.memo, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setSelected([]);
+                memoForm.reset();
+            },
+        });
     };
 
     return (

@@ -1,11 +1,15 @@
 <?php
 
+use App\Models\BrokerInvoice;
 use App\Models\Company;
 use App\Models\Enquiry;
 use App\Models\EnquiryExternalReference;
+use App\Models\LinkedBiltyGroup;
+use App\Models\LorryHire;
 use App\Models\Party;
 use App\Models\Role;
 use App\Models\RolePermission;
+use App\Models\TransporterVoucher;
 use App\Models\User;
 use App\Support\Tenant\TenantContextHolder;
 use Database\Seeders\LocalDemoWorkspaceSeeder;
@@ -119,6 +123,15 @@ test('local demo seeder creates isolated companies roles masters and enquiries i
         ->and($converted?->conversion?->lorryReceiptLinks()->count())->toBeGreaterThanOrEqual(1);
 
     expect(EnquiryExternalReference::query()->where('company_id', $companyA->id)->count())->toBeGreaterThanOrEqual(1);
+
+    expect(LorryHire::query()->where('company_id', $companyA->id)->whereNull('deleted_at')->count())
+        ->toBeGreaterThanOrEqual(2)
+        ->and(TransporterVoucher::query()->where('company_id', $companyA->id)->whereNull('deleted_at')->count())
+        ->toBeGreaterThanOrEqual(2)
+        ->and(BrokerInvoice::query()->where('company_id', $companyA->id)->whereNull('deleted_at')->count())
+        ->toBeGreaterThanOrEqual(1)
+        ->and(LinkedBiltyGroup::query()->where('company_id', $companyA->id)->whereNull('deleted_at')->count())
+        ->toBeGreaterThanOrEqual(1);
 
     $managerRole = Role::query()->where('slug', LocalDemoWorkspaceSeeder::ROLE_MANAGER)->firstOrFail();
     $codes = RolePermission::query()

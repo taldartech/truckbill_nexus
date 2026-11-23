@@ -2,6 +2,7 @@ import { Link, usePage } from '@inertiajs/react';
 import {
     ArrowLeftFromLine,
     Building2,
+    ClipboardList,
     CreditCard,
     FileSearch,
     GitBranch,
@@ -170,6 +171,11 @@ export function AppSidebar() {
             title: 'Payments',
             href: '/payments',
             icon: CreditCard,
+        },
+        {
+            title: 'Broker Registers',
+            href: '/broker/registers',
+            icon: ClipboardList,
         },
         {
             title: 'Lorry Hires',

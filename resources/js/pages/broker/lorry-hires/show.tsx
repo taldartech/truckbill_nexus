@@ -568,7 +568,11 @@ export default function LorryHireShow({
                                 className="max-w-2xl space-y-4 rounded-lg border border-destructive/30 bg-destructive/5 p-4"
                                 onSubmit={(event) => {
                                     event.preventDefault();
-                                    cancelForm.post(urls.cancel, {
+                                    const cancelUrl = urls.cancel;
+                                    if (!cancelUrl) {
+                                        return;
+                                    }
+                                    cancelForm.post(cancelUrl, {
                                         preserveScroll: true,
                                     });
                                 }}

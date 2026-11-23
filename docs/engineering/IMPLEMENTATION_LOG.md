@@ -109,3 +109,9 @@ Dated workstream records with verified local commit SHAs. Living product Memory 
 | 2026-11-24 | PO-P6-AUTH + Batch 0 parity | _(in `7d22303` docs)_ | Phase 6 authorized; `PHASE_6_AUTHORIZATION_RECORD.md`; `LEGACY_TO_NEXUS_COMPREHENSIVE_PARITY_MATRIX.md`; handoff status updated; Memory entry; Phase 7 still deferred. |
 | 2026-11-24 | P6 Batch A/B | `7d2230375fcf9178345d39e8c9ec06a78fc43f3f` | Broker permissions, portable foundations migration, LorryHireService + TDS snapshot, dependency guard, Inertia create/show/index, Pest 9 green. |
 | 2026-11-24 | P6 Batch C (in progress) | _(working tree)_ | Voucher/BookBalance services, bulk vouchers, daily payments UI, controllers/routes; PHPStan polish + Pest under concurrent-test contention. |
+| 2026-11-24 | P6 Batch C | `9183619386467b56628640ba1cb55cd6a46076a5` | Voucher payments, book balance, daily payments UI. |
+| 2026-11-24 | P6 Batch D | `143510642acc1ec79bc9b92b35a29b959ce37b59` | Delivery memo/POD, adjustments. |
+| 2026-11-24 | P6 Batch E | `06c0726de0195fafe373e3a9446c6ad9466f9f96` | Lorry hire cancellation, LR guards. |
+| 2026-11-24 | P6 Batch F | `103d41d6c962233ef254e6f04cd2edc04f54ed35` | Broker customer invoices. |
+| 2026-11-24 | P6 Batch G | `d114c1ed66768b5c333ca5a22a7e724aeccfdd51` | Linked bilty groups, proportional payment. |
+| 2026-11-24 | P6 Batch H–J | _(this delivery commit)_ | Registers hub, demo broker fixtures, certification docs, Phase 7 handoff. |

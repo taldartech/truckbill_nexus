@@ -49,6 +49,7 @@ export default function VouchersIndex({
             <Head title="Transporter Vouchers" />
             <PageShell
                 title="Transporter Voucher Payments"
+                description="Voucher register. Filter status=pending for the pending voucher queue."
                 actions={
                     permissions.can_create ? (
                         <Link href={urls.create}>

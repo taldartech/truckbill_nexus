@@ -1,35 +1,40 @@
 # Phase 6 Handoff — Broker / Market-Hired
 
 **Date:** 24 November 2026  
-**Status:** **AUTHORIZED** — PO instruction 24 Nov 2026; Batch A+B Lorry Hire foundation implementation in progress on `main` (local).  
-**Phase 5 tip (local):** see `git rev-parse HEAD` / `docs/engineering/OWNFLEET_IMPLEMENTATION_CHECKPOINT.md`
+**Status:** **FUNCTIONALLY COMPLETE (local)** — Batches A–H delivered; certification batches I–J documented; external production activations Pending.  
+**Baseline:** `d114c1e` (Batch G) → Batch H–J commit(s) on `main` (local, not pushed).
 
 ## Prerequisite from Phase 5
 
 - Market vehicles are classified with explicit `ownership = market` and Transporter `owner_party_id`.
 - Creating an LR with a Market vehicle automatically sets `workflow_context = broker`.
-- Lorry Hire foundation (1 active hire per Broker LR, TDS snapshots, schema for vouchers/delivery/invoice stubs) is implemented under Batch A+B.
+- Lorry Hire foundation (1 active hire per Broker LR, TDS snapshots) implemented Batch A/B.
 
-## Phase 6 scope (governing)
+## Implemented (A–H)
 
-PRD §13 / Rules §11 — Market vehicle Bilty → Lorry Hire → transporter vouchers → Memo/POD delivery → post-delivery adjustments → customer invoice.
+1. Permissions + portable Phase 6 schema.
+2. Lorry Hire create/show/index + cancellation.
+3. Transporter vouchers, daily payments, transporter book balance.
+4. Delivery memo/POD + adjustments.
+5. Broker customer invoices + payments.
+6. Linked bilty groups + group payment.
+7. Branch sidebar Broker navigation.
+8. Operational registers hub `/broker/registers`.
+9. `LocalDemoWorkspaceSeeder` broker fixtures (Company A) via domain services.
 
-## Implemented (Batch A+B foundation)
+## Certification artefacts
 
-1. Permission catalogue `customerPhase6Catalogue()` + RbacSeeder registration (no blanket grants).
-2. `DocumentNumberType` cases: `lorry_hire`, `broker_voucher`, `broker_invoice`, `linked_bilty_group`.
-3. Migration `create_phase6_broker_foundations.php` (Lorry Hire + related stub tables).
-4. Domain services: `LorryHireService`, `LorryHireCalculationService`, `LorryHireLrDependencyGuard`.
-5. Branch UI: `broker/lorry-hires` index, create-from-LR, show (Inertia).
-6. Pest: `tests/Feature/Broker/LorryHireServiceTest.php`.
+- `docs/engineering/PHASE_6_BROKER_IMPLEMENTATION_REPORT.md`
+- `docs/engineering/PHASE_6_TDS_AND_SETTLEMENT_CERTIFICATION.md`
+- `docs/security/PHASE_6_BROKER_RBAC_MATRIX.md`
+- `docs/engineering/PHASE_6_POSTGRESQL_MYSQL_TEST_REPORT.md`
+- `docs/engineering/PHASE_6_PLAYWRIGHT_CERTIFICATION.md` (Pending)
+- `docs/engineering/PHASE_6_K6_REPORT.md` (Pending)
+- `docs/engineering/PHASE_6_BROKER_UI_REDESIGN_REPORT.md`
 
-## Remaining (later batches)
+## Phase 7 pointer
 
-- Transporter voucher UI / payments workflow.
-- Delivery Memo/POD screens.
-- Post-delivery adjustments UI.
-- Broker customer invoice (distinct from OwnFleet `trip_invoices`).
-- Linked bilty groups UI.
+- `docs/implementation/PHASE_7_PARTLOAD_HANDOFF.md` — documentation only; no Partload code.
 
 ## Reuse from Phase 5
 
@@ -39,9 +44,8 @@ PRD §13 / Rules §11 — Market vehicle Bilty → Lorry Hire → transporter vo
 - Audit / soft-delete / tenant patterns
 - `TransporterTdsCalculationService` (server authoritative TDS)
 
-## Explicit non-goals until authorized
+## Explicit non-goals
 
 - Live Razorpay / production tax invoices
 - GL postings (ADR-010 Pending)
-- Changing OwnFleet invoice engine semantics
-- Phase 7 Partload
+- Phase 7 Partload implementation without PO-P7-AUTH

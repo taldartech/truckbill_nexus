@@ -18,6 +18,7 @@ use App\Http\Controllers\Branch\BrokerAdjustmentController;
 use App\Http\Controllers\Branch\BrokerDailyPaymentsController;
 use App\Http\Controllers\Branch\BrokerDeliveryController;
 use App\Http\Controllers\Branch\BrokerInvoiceController;
+use App\Http\Controllers\Branch\BrokerRegistersController;
 use App\Http\Controllers\Branch\CatalogueController;
 use App\Http\Controllers\Branch\DocumentAttachmentController;
 use App\Http\Controllers\Branch\EnquiryController;
@@ -201,6 +202,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/lorry-receipts/{lorryReceipt}/trips', [TripController::class, 'storeFromLorryReceipt'])->name('branch.trips.store-from-lr');
         Route::get('/lorry-receipts/{lorryReceipt}/create-lorry-hire', [LorryHireController::class, 'createFromLorryReceipt'])->name('branch.broker.lorry-hires.create-from-lr');
         Route::post('/lorry-receipts/{lorryReceipt}/lorry-hires', [LorryHireController::class, 'storeFromLorryReceipt'])->name('branch.broker.lorry-hires.store-from-lr');
+
+        Route::get('/broker/registers', [BrokerRegistersController::class, 'index'])->name('branch.broker.registers.index');
 
         Route::get('/broker/lorry-hires', [LorryHireController::class, 'index'])->name('branch.broker.lorry-hires.index');
         Route::get('/broker/lorry-hires/{lorryHire}', [LorryHireController::class, 'show'])->name('branch.broker.lorry-hires.show');

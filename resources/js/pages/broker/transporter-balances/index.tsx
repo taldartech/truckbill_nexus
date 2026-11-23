@@ -38,7 +38,10 @@ export default function TransporterBalancesIndex({
     return (
         <>
             <Head title="Transporter Book Balance" />
-            <PageShell title="Transporter Book Balance">
+            <PageShell
+                title="Transporter Book Balance"
+                description="Outstanding balance summary per transporter. Select a transporter to view running balance and ledger entries (voucher adjustments, advances)."
+            >
                 <form
                     className="flex flex-wrap items-end gap-3"
                     onSubmit={(event) => {

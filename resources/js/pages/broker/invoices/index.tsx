@@ -44,6 +44,7 @@ export default function BrokerInvoicesIndex({
             <Head title="Broker Customer Invoices" />
             <PageShell
                 title="Broker Customer Invoices"
+                description="Post-delivery billing for Broker LRs. Filter payment_status for pending customer invoices."
                 actions={
                     permissions.can_create ? (
                         <Link href={urls.create}>
