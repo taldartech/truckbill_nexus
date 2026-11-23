@@ -1,4 +1,4 @@
-import { Form, Head } from '@inertiajs/react';
+import { Form, Head, Link } from '@inertiajs/react';
 import { Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
@@ -10,6 +10,8 @@ type SelectCompanyProps = {
     mode: 'owned' | 'unified';
     heading: string;
     description: string;
+    canCreateCompany?: boolean;
+    links?: { createCompany?: string };
 };
 
 export default function SelectCompany({
@@ -17,21 +19,34 @@ export default function SelectCompany({
     mode,
     heading,
     description,
+    canCreateCompany = false,
+    links,
 }: SelectCompanyProps) {
     return (
         <>
             <Head title={heading} />
             <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 p-6">
-                <div className="space-y-1">
-                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                        {mode === 'owned' ? 'Owner Panel landing' : 'Workspace'}
-                    </p>
-                    <h1 className="text-2xl font-semibold tracking-tight">
-                        {heading}
-                    </h1>
-                    <p className="text-sm text-muted-foreground">
-                        {description}
-                    </p>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="space-y-1">
+                        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                            {mode === 'owned'
+                                ? 'Owner Panel landing'
+                                : 'Workspace'}
+                        </p>
+                        <h1 className="text-2xl font-semibold tracking-tight">
+                            {heading}
+                        </h1>
+                        <p className="text-sm text-muted-foreground">
+                            {description}
+                        </p>
+                    </div>
+                    {canCreateCompany && links?.createCompany ? (
+                        <Button asChild>
+                            <Link href={links.createCompany}>
+                                Create company
+                            </Link>
+                        </Button>
+                    ) : null}
                 </div>
 
                 <ul className="space-y-3" role="list">

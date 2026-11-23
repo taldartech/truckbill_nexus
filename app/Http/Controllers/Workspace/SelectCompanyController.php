@@ -49,6 +49,10 @@ class SelectCompanyController extends Controller
             'description' => $showOwnedSelection
                 ? 'Choose which owned company to open in the Owner Panel.'
                 : 'Owner companies open the Owner Panel. Member companies continue to branch selection.',
+            'canCreateCompany' => $user->isCustomer() && $user->isActive(),
+            'links' => [
+                'createCompany' => route('owner.companies.create'),
+            ],
         ]);
     }
 }

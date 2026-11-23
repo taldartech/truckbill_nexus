@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use App\Domains\Company\Enums\DataVisibility;
+use App\Domains\Company\Enums\GstRegistrationType;
+use App\Domains\Company\Enums\TaxLiability;
 use App\Domains\Company\Exceptions\CompanyDomainException;
 use Database\Factories\CompanyFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -15,6 +18,23 @@ use Illuminate\Support\Str;
 /**
  * @property string $id
  * @property string $name
+ * @property string|null $pan
+ * @property string|null $registered_address
+ * @property string|null $state
+ * @property string|null $city
+ * @property string|null $pin
+ * @property string|null $contact_person
+ * @property string|null $mobile
+ * @property string|null $email
+ * @property GstRegistrationType|null $gst_registration_type
+ * @property TaxLiability|null $tax_liability
+ * @property string|null $gstin
+ * @property string|null $gst_rate_id
+ * @property array<string, mixed>|null $gst_rate_snapshot
+ * @property DataVisibility|null $data_visibility
+ * @property string|null $timezone
+ * @property string|null $logo_file_id
+ * @property string|null $signature_file_id
  * @property int $owner_user_id
  * @property Carbon|null $deactivated_at
  * @property Carbon|null $deleted_at
@@ -33,6 +53,23 @@ class Company extends Model
      */
     protected $fillable = [
         'name',
+        'pan',
+        'registered_address',
+        'state',
+        'city',
+        'pin',
+        'contact_person',
+        'mobile',
+        'email',
+        'gst_registration_type',
+        'tax_liability',
+        'gstin',
+        'gst_rate_id',
+        'gst_rate_snapshot',
+        'data_visibility',
+        'timezone',
+        'logo_file_id',
+        'signature_file_id',
         'owner_user_id',
         'deactivated_at',
     ];
@@ -43,6 +80,10 @@ class Company extends Model
     protected function casts(): array
     {
         return [
+            'gst_registration_type' => GstRegistrationType::class,
+            'tax_liability' => TaxLiability::class,
+            'data_visibility' => DataVisibility::class,
+            'gst_rate_snapshot' => 'array',
             'deactivated_at' => 'datetime',
             'deleted_at' => 'datetime',
         ];

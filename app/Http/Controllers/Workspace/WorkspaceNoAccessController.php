@@ -35,6 +35,10 @@ class WorkspaceNoAccessController extends Controller
         return Inertia::render('workspace/no-access', [
             'userName' => $user->name,
             'supportHint' => 'Contact your company Owner or TruckBill support if you believe you should have access.',
+            'canCreateCompany' => $user->isCustomer() && $user->isActive(),
+            'links' => [
+                'createCompany' => route('owner.companies.create'),
+            ],
         ]);
     }
 }

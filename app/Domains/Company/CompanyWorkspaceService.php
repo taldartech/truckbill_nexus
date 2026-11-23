@@ -2,7 +2,9 @@
 
 namespace App\Domains\Company;
 
+use App\Domains\Company\Enums\DataVisibility;
 use App\Domains\Company\Exceptions\CompanyDomainException;
+use App\Domains\Master\BankCash\BankCashAccountService;
 use App\Domains\Subscription\Lifecycle\SubscriptionTrialService;
 use App\Models\Branch;
 use App\Models\BranchAssignment;
@@ -28,22 +30,58 @@ final class CompanyWorkspaceService
         private readonly AuditWriter $auditWriter = new AuditWriter,
         private readonly CompanyAccessService $access = new CompanyAccessService,
         private readonly SubscriptionTrialService $trials = new SubscriptionTrialService,
+        private readonly CompanyProfileValidator $profiles = new CompanyProfileValidator,
+        private readonly BankCashAccountService $bankCash = new BankCashAccountService,
     ) {}
 
-    public function createCompany(User $owner, string $name, ?string $initialBranchName = 'Head Office'): Company
-    {
+    /**
+     * @param  array<string, mixed>  $profile  PRD §7 fields when $requireCompleteProfile is true
+     */
+    public function createCompany(
+        User $owner,
+        string $name,
+        ?string $initialBranchName = 'Head Office',
+        array $profile = [],
+        bool $requireCompleteProfile = false,
+    ): Company {
         $this->assertCustomerIdentity($owner);
 
         if (! $owner->isActive()) {
             throw new CompanyDomainException('Owner identity must be active.');
         }
 
-        return $this->auditedTransaction->run(function () use ($owner, $name, $initialBranchName): Company {
+        if (trim($name) === '') {
+            throw new InvalidArgumentException('Company name is required.');
+        }
+
+        $normalized = $this->profiles->normalizeAndValidate(
+            $this->defaultProfileFromOwner($owner, $profile),
+            $requireCompleteProfile,
+        );
+
+        return $this->auditedTransaction->run(function () use ($owner, $name, $initialBranchName, $normalized): Company {
             $company = new Company;
             $company->forceFill([
-                'name' => $name,
+                'name' => trim($name),
                 'owner_user_id' => $owner->id,
                 'deactivated_at' => null,
+                'pan' => $normalized['pan'] !== '' ? $normalized['pan'] : null,
+                'registered_address' => $normalized['registered_address'] !== '' ? $normalized['registered_address'] : null,
+                'state' => $normalized['state'] !== '' ? $normalized['state'] : null,
+                'city' => $normalized['city'] !== '' ? $normalized['city'] : null,
+                'pin' => $normalized['pin'] !== '' ? $normalized['pin'] : null,
+                'contact_person' => $normalized['contact_person'] !== '' ? $normalized['contact_person'] : null,
+                'mobile' => $normalized['mobile'] !== '' ? $normalized['mobile'] : null,
+                'email' => $normalized['email'] !== '' ? $normalized['email'] : null,
+                'gst_registration_type' => $normalized['gst_registration_type'],
+                'tax_liability' => $normalized['tax_liability'],
+                'gstin' => $normalized['gstin'] !== '' && $normalized['gstin'] !== null ? $normalized['gstin'] : null,
+                'gst_rate_id' => $normalized['gst_rate_id'],
+                'gst_rate_snapshot' => $normalized['gst_rate_snapshot'] ?? null,
+                'data_visibility' => $normalized['data_visibility'],
+                'timezone' => $normalized['timezone'] ?: 'Asia/Kolkata',
+                'logo_file_id' => $normalized['logo_file_id'],
+                'signature_file_id' => $normalized['signature_file_id'],
             ]);
             $company->save();
 
@@ -55,7 +93,8 @@ final class CompanyWorkspaceService
             ]);
             $membership->save();
 
-            $this->withCompanyAuditContext($company, true, function () use ($company, $membership, $initialBranchName): void {
+            $branch = null;
+            $this->withCompanyAuditContext($company, true, function () use ($company, $membership, $initialBranchName, &$branch): void {
                 $this->auditWriter->write(
                     AuditAction::Created,
                     Company::class,
@@ -75,9 +114,11 @@ final class CompanyWorkspaceService
                 );
 
                 if ($initialBranchName !== null && $initialBranchName !== '') {
-                    $this->createBranchWithinContext($company, $initialBranchName);
+                    $branch = $this->createBranchWithinContext($company, $initialBranchName);
                 }
             });
+
+            $this->createOptionalOpeningBankAccount($owner, $company->refresh(), $branch, $normalized);
 
             // First-company trial only; subsequent companies return null (Rules §15).
             $this->trials->startFirstCompanyTrial($owner, $company->refresh());
@@ -86,7 +127,10 @@ final class CompanyWorkspaceService
         });
     }
 
-    public function updateCompany(Company $company, string $name, string $remark): Company
+    /**
+     * @param  array<string, mixed>  $profile
+     */
+    public function updateCompany(Company $company, string $name, string $remark, array $profile = [], bool $requireCompleteProfile = false): Company
     {
         if (trim($remark) === '') {
             throw new InvalidArgumentException('A remark is required for company updates.');
@@ -96,10 +140,36 @@ final class CompanyWorkspaceService
             throw new InvalidArgumentException('Company name is required.');
         }
 
-        return $this->auditedTransaction->run(function () use ($company, $name, $remark): Company {
-            return $this->withCompanyAuditContext($company, true, function () use ($company, $name, $remark): Company {
+        $normalized = $profile === [] && ! $requireCompleteProfile
+            ? null
+            : $this->profiles->normalizeAndValidate($profile, $requireCompleteProfile);
+
+        return $this->auditedTransaction->run(function () use ($company, $name, $remark, $normalized): Company {
+            return $this->withCompanyAuditContext($company, true, function () use ($company, $name, $remark, $normalized): Company {
                 $before = $this->companySnapshot($company);
-                $company->forceFill(['name' => trim($name)])->save();
+                $payload = ['name' => trim($name)];
+                if ($normalized !== null) {
+                    $payload = array_merge($payload, [
+                        'pan' => $normalized['pan'] !== '' ? $normalized['pan'] : null,
+                        'registered_address' => $normalized['registered_address'] !== '' ? $normalized['registered_address'] : null,
+                        'state' => $normalized['state'] !== '' ? $normalized['state'] : null,
+                        'city' => $normalized['city'] !== '' ? $normalized['city'] : null,
+                        'pin' => $normalized['pin'] !== '' ? $normalized['pin'] : null,
+                        'contact_person' => $normalized['contact_person'] !== '' ? $normalized['contact_person'] : null,
+                        'mobile' => $normalized['mobile'] !== '' ? $normalized['mobile'] : null,
+                        'email' => $normalized['email'] !== '' ? $normalized['email'] : null,
+                        'gst_registration_type' => $normalized['gst_registration_type'],
+                        'tax_liability' => $normalized['tax_liability'],
+                        'gstin' => $normalized['gstin'] !== '' && $normalized['gstin'] !== null ? $normalized['gstin'] : null,
+                        'gst_rate_id' => $normalized['gst_rate_id'],
+                        'gst_rate_snapshot' => $normalized['gst_rate_snapshot'] ?? null,
+                        'data_visibility' => $normalized['data_visibility'],
+                        'timezone' => $normalized['timezone'] ?: 'Asia/Kolkata',
+                        'logo_file_id' => $normalized['logo_file_id'],
+                        'signature_file_id' => $normalized['signature_file_id'],
+                    ]);
+                }
+                $company->forceFill($payload)->save();
 
                 $this->auditWriter->write(
                     AuditAction::Updated,
@@ -505,11 +575,63 @@ final class CompanyWorkspaceService
     /**
      * @return array<string, mixed>
      */
+    /**
+     * @param  array<string, mixed>  $profile
+     * @return array<string, mixed>
+     */
+    private function defaultProfileFromOwner(User $owner, array $profile): array
+    {
+        return array_merge([
+            'contact_person' => $owner->name,
+            'mobile' => $owner->getAttribute('mobile') ?? $owner->getAttribute('phone') ?? '',
+            'email' => $owner->email,
+            'timezone' => 'Asia/Kolkata',
+        ], $profile);
+    }
+
+    /**
+     * @param  array<string, mixed>  $normalized
+     */
+    private function createOptionalOpeningBankAccount(
+        User $owner,
+        Company $company,
+        ?Branch $branch,
+        array $normalized,
+    ): void {
+        $bankName = (string) ($normalized['bank_name'] ?? '');
+        $accountNumber = (string) ($normalized['account_number'] ?? '');
+        $ifsc = (string) ($normalized['ifsc'] ?? '');
+        if ($bankName === '' || $accountNumber === '' || $ifsc === '') {
+            return;
+        }
+
+        $visibility = $normalized['data_visibility'] ?? null;
+        if ($visibility === DataVisibility::BranchWiseRestricted->value && $branch === null) {
+            throw new CompanyDomainException(
+                'Branch-wise Restricted companies require an initial branch before creating a bank account on company create.'
+            );
+        }
+
+        $this->bankCash->create($owner, $company, $branch, [
+            'account_kind' => 'bank',
+            'name' => $bankName.' — '.$accountNumber,
+            'bank_name' => $bankName,
+            'account_number' => $accountNumber,
+            'ifsc' => $ifsc,
+            'account_holder_name' => $normalized['contact_person'] ?: $owner->name,
+            'is_active' => true,
+        ], 'PRD §7 opening bank account on company create');
+    }
+
     private function companySnapshot(Company $company): array
     {
         return [
             'id' => $company->id,
             'name' => $company->name,
+            'pan' => $company->pan,
+            'gstin' => $company->gstin,
+            'gst_registration_type' => $company->gst_registration_type?->value,
+            'data_visibility' => $company->data_visibility?->value,
             'owner_user_id' => $company->owner_user_id,
             'deactivated_at' => $company->deactivated_at?->toISOString(),
         ];

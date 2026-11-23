@@ -22,6 +22,7 @@ use App\Http\Controllers\HealthController;
 use App\Http\Controllers\InvitationAcceptanceController;
 use App\Http\Controllers\Owner\OwnerAuditController;
 use App\Http\Controllers\Owner\OwnerBranchesController;
+use App\Http\Controllers\Owner\OwnerCompaniesController;
 use App\Http\Controllers\Owner\OwnerDashboardController;
 use App\Http\Controllers\Owner\OwnerSettingsController;
 use App\Http\Controllers\Owner\OwnerSubscriptionController;
@@ -62,6 +63,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->scopeBindings()
         ->name('workspace.branches.enter');
 
+    Route::get('/owner/companies/create', [OwnerCompaniesController::class, 'create'])->name('owner.companies.create');
+    Route::post('/owner/companies', [OwnerCompaniesController::class, 'store'])->name('owner.companies.store');
     Route::get('/owner/companies/{company}', OwnerDashboardController::class)->name('owner.dashboard');
     Route::get('/owner/companies/{company}/subscription', [OwnerSubscriptionController::class, 'overview'])->name('owner.subscription');
     Route::get('/owner/companies/{company}/subscription/catalogue', [OwnerSubscriptionController::class, 'catalogue'])->name('owner.subscription.catalogue');

@@ -4,23 +4,25 @@ namespace App\Http\Controllers\Owner;
 
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Company\CompanyWorkspaceService;
+use App\Domains\Company\Enums\DataVisibility;
+use App\Domains\Company\Enums\GstRegistrationType;
+use App\Domains\Company\Enums\TaxLiability;
 use App\Domains\Company\Exceptions\CompanyDomainException;
+use App\Domains\Tax\GstRateService;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Owner\Concerns\AuthorizesOwnerPanel;
 use App\Models\Company;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use InvalidArgumentException;
 
 /**
- * Owner company profile / settings hub (P2-WS-8 follow-on).
- *
- * Editable fields are limited to schema-backed company name. Legal/tax identifiers
- * are not inventable without approved schema and policy.
+ * Owner company profile / settings hub — PRD §7 fields (D1 / PO-P1-P5-FULLSTACK-AUTH).
  */
 class OwnerSettingsController extends Controller
 {
@@ -29,6 +31,7 @@ class OwnerSettingsController extends Controller
     public function __construct(
         private readonly CompanyAccessService $access,
         private readonly CompanyWorkspaceService $workspace,
+        private readonly GstRateService $gstRates,
     ) {}
 
     public function show(Request $request, Company $company): Response
@@ -39,6 +42,20 @@ class OwnerSettingsController extends Controller
 
         return Inertia::render('owner/settings', [
             'company' => array_merge($this->companyPayload($company), [
+                'pan' => $company->pan,
+                'registered_address' => $company->registered_address,
+                'state' => $company->state,
+                'city' => $company->city,
+                'pin' => $company->pin,
+                'contact_person' => $company->contact_person,
+                'mobile' => $company->mobile,
+                'email' => $company->email,
+                'gst_registration_type' => $company->gst_registration_type?->value,
+                'tax_liability' => $company->tax_liability?->value,
+                'gstin' => $company->gstin,
+                'gst_rate_id' => $company->gst_rate_id,
+                'data_visibility' => $company->data_visibility?->value,
+                'timezone' => $company->timezone ?? 'Asia/Kolkata',
                 'owner' => $owner === null ? null : [
                     'id' => $owner->id,
                     'name' => $owner->name,
@@ -46,23 +63,38 @@ class OwnerSettingsController extends Controller
                 ],
                 'updated_at' => $company->updated_at?->toIso8601String(),
             ]),
+            'gstRates' => $this->gstRates->listActive()->map(fn ($rate): array => [
+                'id' => $rate->id,
+                'code' => $rate->code,
+                'name' => $rate->name,
+                'rate_percent' => (string) $rate->rate_percent,
+            ])->values(),
+            'options' => [
+                'gst_registration_types' => array_map(
+                    fn (GstRegistrationType $case): array => ['value' => $case->value, 'label' => $case->name],
+                    GstRegistrationType::cases(),
+                ),
+                'tax_liabilities' => array_map(
+                    fn (TaxLiability $case): array => ['value' => $case->value, 'label' => strtoupper($case->value)],
+                    TaxLiability::cases(),
+                ),
+                'data_visibilities' => [
+                    ['value' => DataVisibility::SharedData->value, 'label' => 'Shared Data'],
+                    ['value' => DataVisibility::BranchWiseRestricted->value, 'label' => 'Branch-wise Restricted'],
+                ],
+            ],
             'ownerPanelScope' => $scope,
             'canEditProfile' => $scope === CompanyAccessService::OWNER_PANEL_FULL,
             'deferredSections' => [
                 [
-                    'key' => 'visibility',
-                    'title' => 'Data visibility',
-                    'message' => 'Company-level visibility configuration is reserved in Owner Panel IA and is not implemented in this slice.',
-                ],
-                [
                     'key' => 'numbering',
                     'title' => 'Numbering',
-                    'message' => 'Document numbering configuration is reserved and not implemented in this slice.',
+                    'message' => 'Document numbering configuration remains available via branch/company numbering services; dedicated settings UI polish is follow-on.',
                 ],
                 [
                     'key' => 'documents',
                     'title' => 'Documents, logo & signature',
-                    'message' => 'Company document assets are reserved and not implemented in this slice.',
+                    'message' => 'Private logo and signature upload uses approved document infrastructure; upload controls land with the next Stage 1 document-asset slice.',
                 ],
             ],
             'links' => [
@@ -76,13 +108,44 @@ class OwnerSettingsController extends Controller
     {
         $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
 
-        $validated = $request->validate([
+        $profileSubmitted = $request->filled('pan')
+            || $request->filled('registered_address')
+            || $request->filled('gst_registration_type');
+
+        $rules = [
             'name' => ['required', 'string', 'max:255'],
             'remark' => ['required', 'string', 'max:1000'],
-        ]);
+        ];
+
+        if ($profileSubmitted || filled($company->pan)) {
+            $rules = array_merge($rules, [
+                'pan' => ['required', 'string', 'max:10'],
+                'registered_address' => ['required', 'string', 'max:2000'],
+                'state' => ['required', 'string', 'max:100'],
+                'city' => ['required', 'string', 'max:100'],
+                'pin' => ['required', 'string', 'max:10'],
+                'contact_person' => ['nullable', 'string', 'max:255'],
+                'mobile' => ['required', 'string', 'max:20'],
+                'email' => ['nullable', 'email', 'max:255'],
+                'gst_registration_type' => ['required', Rule::enum(GstRegistrationType::class)],
+                'tax_liability' => ['required', Rule::enum(TaxLiability::class)],
+                'gstin' => ['nullable', 'string', 'max:15'],
+                'gst_rate_id' => ['nullable', 'uuid', 'exists:gst_rates,id'],
+                'data_visibility' => ['required', Rule::enum(DataVisibility::class)],
+                'timezone' => ['nullable', 'string', 'max:64'],
+            ]);
+        }
+
+        $validated = $request->validate($rules);
 
         try {
-            $this->workspace->updateCompany($company, $validated['name'], $validated['remark']);
+            $this->workspace->updateCompany(
+                $company,
+                $validated['name'],
+                $validated['remark'],
+                $profileSubmitted || filled($company->pan) ? $validated : [],
+                requireCompleteProfile: $profileSubmitted || filled($company->pan),
+            );
         } catch (CompanyDomainException|InvalidArgumentException $e) {
             throw ValidationException::withMessages(['name' => $e->getMessage()]);
         }
