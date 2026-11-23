@@ -13,6 +13,9 @@ use Illuminate\Database\Seeder;
  * Does not seed predictable demo logins. Opt-in local demo workspace seeding is
  * documented in docs/engineering/LOCAL_DEMO_DATA_SETUP.md and must be invoked
  * explicitly (never from this default seeder).
+ *
+ * Reference TDS rules are seeded via standalone {@see TdsReferenceRulesSeeder}
+ * (`php artisan db:seed --class=TdsReferenceRulesSeeder`) — not from this seeder.
  */
 class DatabaseSeeder extends Seeder
 {

@@ -7,6 +7,8 @@ use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Party\Exceptions\PartyDomainException;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
+use App\Domains\Tax\Exceptions\TaxDomainException;
+use App\Domains\Tax\TransporterTdsCalculationService;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\Party;
@@ -35,6 +37,7 @@ final class PartyService
         private readonly AuditedTransaction $auditedTransaction = new AuditedTransaction,
         private readonly AuditWriter $audit = new AuditWriter,
         private readonly PartyRoleAttributeValidator $roleAttributes = new PartyRoleAttributeValidator,
+        private readonly TransporterTdsCalculationService $transporterTds = new TransporterTdsCalculationService,
     ) {}
 
     /**
@@ -288,6 +291,7 @@ final class PartyService
         ]);
 
         $normalized = $this->roleAttributes->validateAndNormalize($role, $roleAttributes, $partyAttributes);
+        $normalized = $this->applyTransporterTdsRates($role, $normalized, $partyAttributes);
         $this->roleAttributes->validatePartyAttributes(
             $partyAttributes,
             array_values(array_merge(
@@ -537,11 +541,13 @@ final class PartyService
             }
             $seen[$role] = true;
 
+            $roleType = PartyRoleType::from($role);
             $attributes = $this->roleAttributes->validateAndNormalize(
-                PartyRoleType::from($role),
+                $roleType,
                 $rolePayload['attributes'] ?? [],
                 $partyAttributes,
             );
+            $attributes = $this->applyTransporterTdsRates($roleType, $attributes, $partyAttributes);
 
             $normalized[] = [
                 'role' => $role,
@@ -550,6 +556,48 @@ final class PartyService
         }
 
         return $normalized;
+    }
+
+    /**
+     * Persist last calculated / applicable TDS rates for transporter roles.
+     *
+     * @param  array<string, mixed>  $attributes
+     * @param  array<string, mixed>  $partyAttributes
+     * @return array<string, mixed>
+     */
+    private function applyTransporterTdsRates(
+        PartyRoleType $role,
+        array $attributes,
+        array $partyAttributes,
+    ): array {
+        if ($role !== PartyRoleType::Transporter) {
+            return $attributes;
+        }
+
+        $context = $this->transporterTds->buildContextFromTransporter($partyAttributes, $attributes);
+        $override = filter_var($attributes['tds_override'] ?? false, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE)
+            ?? (bool) ($attributes['tds_override'] ?? false);
+
+        try {
+            $result = $this->transporterTds->calculate(
+                $context,
+                overrideRate: $override && isset($attributes['tds_percentage'])
+                    ? (string) $attributes['tds_percentage']
+                    : null,
+                overrideRemark: $override ? ($attributes['tds_adjustment_remark'] ?? null) : null,
+                allowOverride: $override,
+            );
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (TaxDomainException) {
+            // Optional enrichment — reference TDS rules may not be seeded yet.
+            return $attributes;
+        }
+
+        $attributes['calculated_tds_rate'] = $result->calculatedRate;
+        $attributes['applicable_tds_rate'] = $result->applicableRate;
+
+        return $attributes;
     }
 
     private function assertCanView(User $actor, Company $company, Branch $branch): void

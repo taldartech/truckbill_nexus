@@ -112,6 +112,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
 
         $this->call(RbacSeeder::class);
         $this->call(SubscriptionCatalogueSeeder::class);
+        $this->call(TdsReferenceRulesSeeder::class);
 
         $this->ensureDemoRoles();
 
@@ -777,7 +778,8 @@ class LocalDemoWorkspaceSeeder extends Seeder
         array $rolePayload,
         string $city,
     ): Party {
-        $email = strtolower(str_replace([':', '.'], ['-', '-'], $fixtureKey)).'@party.demo.test';
+        // Keep local-part ≤64 chars (RFC) — fixture keys include company UUIDs.
+        $email = 'p'.substr(hash('sha256', $fixtureKey), 0, 20).'@party.demo.test';
 
         $existing = Party::query()
             ->where('company_id', $company->id)
@@ -1040,6 +1042,72 @@ class LocalDemoWorkspaceSeeder extends Seeder
                 ['role' => PartyRoleType::Consignor->value, 'attributes' => []],
             ],
             'Pune',
+        );
+
+        $this->ensurePartyWithRoles(
+            $parties,
+            $owner,
+            $company,
+            $branch,
+            'demo-party:'.$company->id.':transporter-invalid-pan',
+            'Alpha Invalid PAN Transporter',
+            [
+                [
+                    'role' => PartyRoleType::Transporter->value,
+                    'attributes' => [
+                        'pan' => 'ABCDE1234F',
+                        'pan_status' => 'invalid',
+                        'declaration' => false,
+                        'declaration_type' => 'owner',
+                        'goods_vehicles_count' => 2,
+                    ],
+                ],
+            ],
+            'Thane',
+        );
+
+        $this->ensurePartyWithRoles(
+            $parties,
+            $owner,
+            $company,
+            $branch,
+            'demo-party:'.$company->id.':transporter-agency',
+            'Alpha Agency Transporter',
+            [
+                [
+                    'role' => PartyRoleType::Transporter->value,
+                    'attributes' => [
+                        'pan' => 'AABCP5678K',
+                        'pan_status' => 'active',
+                        'declaration' => true,
+                        'declaration_type' => 'agency',
+                        'goods_vehicles_count' => 3,
+                    ],
+                ],
+            ],
+            'Nagpur',
+        );
+
+        $this->ensurePartyWithRoles(
+            $parties,
+            $owner,
+            $company,
+            $branch,
+            'demo-party:'.$company->id.':transporter-fleet-heavy',
+            'Alpha Heavy Fleet Transporter',
+            [
+                [
+                    'role' => PartyRoleType::Transporter->value,
+                    'attributes' => [
+                        'pan' => 'AAHPP9012L',
+                        'pan_status' => 'active',
+                        'declaration' => true,
+                        'declaration_type' => 'owner',
+                        'goods_vehicles_count' => 15,
+                    ],
+                ],
+            ],
+            'Nashik',
         );
     }
 

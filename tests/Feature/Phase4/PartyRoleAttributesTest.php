@@ -314,7 +314,7 @@ test('rejects unknown role attributes', function () {
     ))->toThrow(ValidationException::class);
 });
 
-test('rejects transporter without declaration', function () {
+test('rejects transporter without declaration key', function () {
     ['owner' => $owner, 'company' => $company] = partyRoleAttrsWorkspace();
     $this->actingAs($owner);
 
@@ -334,10 +334,41 @@ test('rejects transporter without declaration', function () {
             'attributes' => [
                 'pan' => 'CCCCC1234C',
                 'pan_status' => 'active',
-                'declaration' => false,
             ],
         ]],
     ))->toThrow(ValidationException::class);
+});
+
+test('accepts transporter with declaration false', function () {
+    ['owner' => $owner, 'company' => $company] = partyRoleAttrsWorkspace();
+    $this->actingAs($owner);
+
+    $party = app(PartyService::class)->create(
+        actor: $owner,
+        company: $company,
+        branch: null,
+        attributes: [
+            'name' => 'Declaration No Co',
+            'contact_number' => '9555544333',
+            'pan' => 'CCCCC1234C',
+            'state' => 'MH',
+            'city' => 'Nagpur',
+        ],
+        roles: [[
+            'role' => PartyRoleType::Transporter->value,
+            'attributes' => [
+                'pan' => 'CCCCC1234C',
+                'pan_status' => 'active',
+                'declaration' => false,
+                'goods_vehicles_count' => 3,
+                'declaration_type' => 'owner',
+            ],
+        ]],
+    );
+
+    $role = $party->roles()->where('role', PartyRoleType::Transporter->value)->first();
+    expect($role)->not->toBeNull()
+        ->and($role->role_attributes['declaration'] ?? null)->toBeFalse();
 });
 
 test('edit form payload includes active roles with attributes', function () {

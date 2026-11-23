@@ -29,6 +29,8 @@ final class PartyRoleAttributeValidator
             'tds_percentage',
             'tds_override',
             'tds_adjustment_remark',
+            'calculated_tds_rate',
+            'applicable_tds_rate',
             'bank_account',
             'short_name',
             'beneficiary_id',
@@ -156,16 +158,18 @@ final class PartyRoleAttributeValidator
             ]);
         }
 
-        if (! $this->declarationPresent($attributes['declaration'] ?? null)) {
+        if (! array_key_exists('declaration', $attributes) || $attributes['declaration'] === null || $attributes['declaration'] === '') {
             throw ValidationException::withMessages([
                 'roles.attributes.declaration' => 'Transporter requires declaration.',
             ]);
         }
 
+        $declarationValid = $this->normalizeDeclarationFlag($attributes['declaration']);
+
         $normalized = [
             'pan' => $pan,
             'pan_status' => $panStatus,
-            'declaration' => $attributes['declaration'],
+            'declaration' => $declarationValid,
         ];
 
         if (array_key_exists('declaration_type', $attributes) && filled($attributes['declaration_type'])) {
@@ -363,28 +367,23 @@ final class PartyRoleAttributeValidator
         }
     }
 
-    private function declarationPresent(mixed $declaration): bool
+    private function normalizeDeclarationFlag(mixed $declaration): bool
     {
         if (is_bool($declaration)) {
-            return $declaration === true;
+            return $declaration;
         }
 
         if (is_string($declaration)) {
-            $trimmed = trim($declaration);
-            if ($trimmed === '') {
-                return false;
-            }
+            $lower = strtolower(trim($declaration));
 
-            $lower = strtolower($trimmed);
-
-            return ! in_array($lower, ['0', 'false', 'no'], true);
+            return in_array($lower, ['1', 'true', 'yes', 'on'], true);
         }
 
         if (is_int($declaration) || is_float($declaration)) {
             return (int) $declaration === 1;
         }
 
-        return filled($declaration);
+        return (bool) $declaration;
     }
 
     /**

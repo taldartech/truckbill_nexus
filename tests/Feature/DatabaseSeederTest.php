@@ -150,5 +150,6 @@ test('only one comprehensive demo workspace seeder class remains', function () {
         'LocalDemoWorkspaceSeeder.php',
         'RbacSeeder.php',
         'SubscriptionCatalogueSeeder.php',
+        'TdsReferenceRulesSeeder.php',
     ])->and(File::exists(database_path('seeders/LocalDemoUserSeeder.php')))->toBeFalse();
 });

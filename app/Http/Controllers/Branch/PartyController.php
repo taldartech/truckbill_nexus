@@ -3,12 +3,16 @@
 namespace App\Http\Controllers\Branch;
 
 use App\Domains\Company\CompanyAccessService;
+use App\Domains\Company\CompanyProfileValidator;
 use App\Domains\Company\MasterDataVisibilityResolver;
 use App\Domains\Document\DocumentAttachmentService;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Party\Exceptions\PartyDomainException;
+use App\Domains\Master\Party\PartyRoleAttributeValidator;
 use App\Domains\Master\Party\PartyService;
 use App\Domains\Rbac\PermissionAuthorizer;
+use App\Domains\Tax\Exceptions\TaxDomainException;
+use App\Domains\Tax\TransporterTdsCalculationService;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Branch\Concerns\PresentsDocumentDrawer;
 use App\Http\Controllers\Controller;
@@ -38,6 +42,7 @@ class PartyController extends Controller
         private readonly PermissionAuthorizer $authorizer,
         private readonly PartyService $parties,
         private readonly DocumentAttachmentService $documents,
+        private readonly TransporterTdsCalculationService $transporterTds,
     ) {}
 
     public function index(Request $request, Company $company, Branch $branch): Response|JsonResponse
@@ -116,6 +121,100 @@ class PartyController extends Controller
                 'index' => route('branch.parties.index', absolute: false),
                 'store' => route('branch.parties.store', absolute: false),
             ]),
+        ]);
+    }
+
+    public function previewTds(Request $request, Company $company, Branch $branch): JsonResponse
+    {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $permissions = $this->masterPermissions($actor, $company, $branch, $this->access, $this->authorizer);
+
+        if (! $permissions['can_create'] && ! $permissions['can_edit']) {
+            abort(403, 'Not authorized to preview transporter TDS.');
+        }
+
+        $validated = $request->validate([
+            'pan' => ['nullable', 'string', 'max:20'],
+            'pan_status' => ['nullable', 'string', 'max:32'],
+            'declaration' => ['nullable'],
+            'declaration_type' => ['nullable', 'string', 'max:16'],
+            'goods_vehicles_count' => ['nullable'],
+            'tds_percentage' => ['nullable'],
+            'tds_override' => ['nullable'],
+            'tds_adjustment_remark' => ['nullable', 'string', 'max:1000'],
+            'party' => ['nullable', 'array'],
+            'party.pan' => ['nullable', 'string', 'max:20'],
+            'attributes' => ['nullable', 'array'],
+        ]);
+
+        $previewKeys = [
+            'pan',
+            'pan_status',
+            'declaration',
+            'declaration_type',
+            'goods_vehicles_count',
+            'tds_percentage',
+            'tds_override',
+            'tds_adjustment_remark',
+        ];
+        $fromRequest = array_intersect_key($validated, array_flip($previewKeys));
+
+        $roleAttrs = $this->normalizeIncomingRoleAttributes(array_merge(
+            $validated['attributes'] ?? [],
+            $fromRequest,
+        ));
+
+        $partyAttrs = array_merge(
+            $validated['party'] ?? [],
+            filled($validated['pan'] ?? null) ? ['pan' => $validated['pan']] : [],
+        );
+
+        $pan = strtoupper(trim((string) ($roleAttrs['pan'] ?? $partyAttrs['pan'] ?? '')));
+        if ($pan !== '' && ! preg_match(CompanyProfileValidator::PAN_PATTERN, $pan)) {
+            throw ValidationException::withMessages(['pan' => 'PAN format is invalid (AAAAA9999A).']);
+        }
+
+        if (isset($roleAttrs['pan_status']) && filled($roleAttrs['pan_status'])) {
+            $status = strtolower(trim((string) $roleAttrs['pan_status']));
+            if (! in_array($status, PartyRoleAttributeValidator::PAN_STATUSES, true)) {
+                throw ValidationException::withMessages([
+                    'pan_status' => 'pan_status must be one of: '.implode(', ', PartyRoleAttributeValidator::PAN_STATUSES).'.',
+                ]);
+            }
+            $roleAttrs['pan_status'] = $status;
+        }
+
+        if (isset($roleAttrs['declaration_type']) && filled($roleAttrs['declaration_type'])) {
+            $type = strtolower(trim((string) $roleAttrs['declaration_type']));
+            if (! in_array($type, ['owner', 'agency'], true)) {
+                throw ValidationException::withMessages([
+                    'declaration_type' => 'Declaration type must be owner or agency.',
+                ]);
+            }
+            $roleAttrs['declaration_type'] = $type;
+        }
+
+        $context = $this->transporterTds->buildContextFromTransporter($partyAttrs, $roleAttrs);
+        $override = filter_var($roleAttrs['tds_override'] ?? false, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE)
+            ?? (bool) ($roleAttrs['tds_override'] ?? false);
+
+        try {
+            $result = $this->transporterTds->calculate(
+                $context,
+                overrideRate: $override && isset($roleAttrs['tds_percentage'])
+                    ? (string) $roleAttrs['tds_percentage']
+                    : null,
+                overrideRemark: $override ? ($roleAttrs['tds_adjustment_remark'] ?? null) : null,
+                allowOverride: $override,
+            );
+        } catch (TaxDomainException $e) {
+            throw ValidationException::withMessages([
+                'tds' => $e->getMessage(),
+            ]);
+        }
+
+        return response()->json([
+            'data' => $result->toArray(),
         ]);
     }
 
