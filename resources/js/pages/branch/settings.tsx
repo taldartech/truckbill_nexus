@@ -1,7 +1,9 @@
 import { Head, Link } from '@inertiajs/react';
-import { MasterPageHeader } from '@/components/masters/master-page-header';
+import { ArrowLeft } from 'lucide-react';
+import { AppIconAction } from '@/components/app-icon-action';
+import { PageShell } from '@/components/page-shell';
 import ShellEmptyState from '@/components/shell-empty-state';
-import { Button } from '@/components/ui/button';
+import { FormSection } from '@/components/form-section';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 
 type BranchSettingsProps = {
@@ -20,31 +22,41 @@ export default function BranchSettings({
     preferences,
     links,
 }: BranchSettingsProps) {
-    const showStatus = branch.status !== 'Active';
-
     return (
         <>
             <Head title="Branch settings" />
-            <div className="flex h-full flex-1 flex-col gap-4 p-4 md:p-6">
-                <div className="flex flex-wrap items-center gap-2">
-                    <MasterPageHeader title="Branch settings" />
-                    {showStatus ? (
+            <PageShell
+                title="Branch settings"
+                description="Branch-level preferences and status."
+                actions={
+                    <AppIconAction
+                        icon={ArrowLeft}
+                        label="Back to dashboard"
+                        href={links.dashboard}
+                        variant="outline"
+                    />
+                }
+            >
+                <FormSection title="Workspace status" columns={2}>
+                    <div className="space-y-1">
+                        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                            Branch
+                        </p>
+                        <p className="text-sm font-medium">{branch.name}</p>
+                    </div>
+                    <div className="space-y-1">
+                        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                            Status
+                        </p>
                         <WorkspaceStatusBadge status={branch.status} />
-                    ) : null}
-                </div>
+                    </div>
+                </FormSection>
 
                 <ShellEmptyState
                     title="Branch preferences"
                     description={preferences.note}
-                    action={
-                        <Button asChild variant="outline">
-                            <Link href={links.dashboard}>
-                                Back to dashboard
-                            </Link>
-                        </Button>
-                    }
                 />
-            </div>
+            </PageShell>
         </>
     );
 }

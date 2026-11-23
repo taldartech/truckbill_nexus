@@ -1,7 +1,10 @@
 import { Form, Head, Link } from '@inertiajs/react';
+import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
+import { AppIconAction } from '@/components/app-icon-action';
 import InputError from '@/components/input-error';
-import { MasterPageHeader } from '@/components/masters/master-page-header';
+import { FormSection } from '@/components/form-section';
+import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -199,21 +202,23 @@ export default function LrForm({
     return (
         <>
             <Head title={title} />
-            <div className="flex h-full flex-1 flex-col gap-4 p-4 md:p-6">
-                <div className="space-y-2">
-                    <Link
+            <PageShell
+                width="form"
+                title={title}
+                description={contextLabel}
+                actions={
+                    <AppIconAction
+                        icon={ArrowLeft}
+                        label="Back"
                         href={urls.show ?? urls.index}
-                        className="text-sm text-muted-foreground underline-offset-4 hover:underline"
-                    >
-                        ← Back
-                    </Link>
-                    <MasterPageHeader title={title} />
-                </div>
-
+                        variant="outline"
+                    />
+                }
+            >
                 <Form
                     action={action}
                     method={method}
-                    className="mx-auto w-full max-w-6xl space-y-5"
+                    className="w-full space-y-5"
                 >
                     {({ errors, processing }) => (
                         <>
@@ -230,380 +235,346 @@ export default function LrForm({
                                 />
                             ) : null}
 
-                            <section className="space-y-4 rounded-xl border border-border bg-card p-4 md:p-5">
-                                <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-                                    LR Details
-                                </h2>
-                                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                                    {showVehicle ? (
-                                        <div className="space-y-2 md:col-span-2">
-                                            <Label htmlFor="vehicle_id">
-                                                Truck / Vehicle
-                                            </Label>
-                                            <select
-                                                id="vehicle_id"
-                                                name="vehicle_id"
-                                                className={fieldClass}
-                                                value={vehicleId}
-                                                onChange={(e) =>
-                                                    setVehicleId(e.target.value)
-                                                }
-                                                required={mode === 'create'}
-                                                disabled={mode === 'edit'}
-                                            >
-                                                <option value="">
-                                                    Select vehicle…
-                                                </option>
-                                                {(
-                                                    formOptions.vehicles ?? []
-                                                ).map((vehicle) => (
+                            <FormSection title="LR details" columns={3}>
+                                {showVehicle ? (
+                                    <div className="space-y-2 md:col-span-2">
+                                        <Label htmlFor="vehicle_id">
+                                            Truck / Vehicle
+                                        </Label>
+                                        <select
+                                            id="vehicle_id"
+                                            name="vehicle_id"
+                                            className={fieldClass}
+                                            value={vehicleId}
+                                            onChange={(e) =>
+                                                setVehicleId(e.target.value)
+                                            }
+                                            required={mode === 'create'}
+                                            disabled={mode === 'edit'}
+                                        >
+                                            <option value="">
+                                                Select vehicle…
+                                            </option>
+                                            {(formOptions.vehicles ?? []).map(
+                                                (vehicle) => (
                                                     <option
                                                         key={vehicle.id}
                                                         value={vehicle.id}
                                                     >
                                                         {vehicle.label}
                                                     </option>
-                                                ))}
-                                            </select>
-                                            <p className="text-xs text-muted-foreground">
-                                                {resolvedContext === 'own_fleet'
-                                                    ? 'Own vehicle → OwnFleet LR (stations required).'
-                                                    : resolvedContext ===
-                                                        'broker'
-                                                      ? 'Market vehicle → Broker LR (free-text route).'
-                                                      : 'Ownership on the selected vehicle classifies Broker or OwnFleet automatically.'}
-                                            </p>
-                                            <InputError
-                                                message={errors.vehicle_id}
-                                            />
-                                            <InputError
-                                                message={
-                                                    errors.workflow_context
-                                                }
-                                            />
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-2">
-                                            <Label>Workflow</Label>
-                                            <Input
-                                                value={contextLabel}
-                                                disabled
-                                                readOnly
-                                            />
-                                        </div>
-                                    )}
-                                    <div className="space-y-2">
-                                        <Label htmlFor="billing_customer_party_id">
-                                            Billing Customer
-                                        </Label>
-                                        <select
-                                            id="billing_customer_party_id"
-                                            name="billing_customer_party_id"
-                                            className={fieldClass}
-                                            value={billingCustomerId}
-                                            onChange={(e) =>
-                                                setBillingCustomerId(
-                                                    e.target.value,
-                                                )
-                                            }
-                                        >
-                                            <option value="">Optional…</option>
-                                            {(
-                                                formOptions.billingCustomers ??
-                                                []
-                                            ).map((party) => (
-                                                <option
-                                                    key={party.id}
-                                                    value={party.id}
-                                                >
-                                                    {party.name}
-                                                </option>
-                                            ))}
+                                                ),
+                                            )}
                                         </select>
+                                        <p className="text-xs text-muted-foreground">
+                                            {resolvedContext === 'own_fleet'
+                                                ? 'Own vehicle → OwnFleet LR (stations required).'
+                                                : resolvedContext === 'broker'
+                                                  ? 'Market vehicle → Broker LR (free-text route).'
+                                                  : 'Ownership on the selected vehicle classifies Broker or OwnFleet automatically.'}
+                                        </p>
                                         <InputError
-                                            message={
-                                                errors.billing_customer_party_id
-                                            }
+                                            message={errors.vehicle_id}
+                                        />
+                                        <InputError
+                                            message={errors.workflow_context}
                                         />
                                     </div>
-                                    {mode === 'create' ? (
-                                        <>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="number_mode">
-                                                    Number mode
-                                                </Label>
-                                                <select
-                                                    id="number_mode"
-                                                    name="number_mode"
-                                                    className={fieldClass}
-                                                    value={numberMode}
-                                                    onChange={(e) =>
-                                                        setNumberMode(
-                                                            e.target.value as
-                                                                | 'auto'
-                                                                | 'manual',
-                                                        )
-                                                    }
-                                                >
-                                                    <option value="auto">
-                                                        Auto
-                                                    </option>
-                                                    <option value="manual">
-                                                        Manual
-                                                    </option>
-                                                </select>
-                                            </div>
-                                            {numberMode === 'manual' ? (
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="lr_number">
-                                                        LR number
-                                                    </Label>
-                                                    <Input
-                                                        id="lr_number"
-                                                        name="lr_number"
-                                                        required
-                                                    />
-                                                    <InputError
-                                                        message={
-                                                            errors.lr_number
-                                                        }
-                                                    />
-                                                </div>
-                                            ) : null}
-                                        </>
-                                    ) : (
+                                ) : (
+                                    <div className="space-y-2">
+                                        <Label>Workflow</Label>
+                                        <Input
+                                            value={contextLabel}
+                                            disabled
+                                            readOnly
+                                        />
+                                    </div>
+                                )}
+                                <div className="space-y-2">
+                                    <Label htmlFor="billing_customer_party_id">
+                                        Billing Customer
+                                    </Label>
+                                    <select
+                                        id="billing_customer_party_id"
+                                        name="billing_customer_party_id"
+                                        className={fieldClass}
+                                        value={billingCustomerId}
+                                        onChange={(e) =>
+                                            setBillingCustomerId(e.target.value)
+                                        }
+                                    >
+                                        <option value="">Optional…</option>
+                                        {(
+                                            formOptions.billingCustomers ?? []
+                                        ).map((party) => (
+                                            <option
+                                                key={party.id}
+                                                value={party.id}
+                                            >
+                                                {party.name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <InputError
+                                        message={
+                                            errors.billing_customer_party_id
+                                        }
+                                    />
+                                </div>
+                                {mode === 'create' ? (
+                                    <>
                                         <div className="space-y-2">
-                                            <Label>LR number</Label>
+                                            <Label htmlFor="number_mode">
+                                                Number mode
+                                            </Label>
+                                            <select
+                                                id="number_mode"
+                                                name="number_mode"
+                                                className={fieldClass}
+                                                value={numberMode}
+                                                onChange={(e) =>
+                                                    setNumberMode(
+                                                        e.target.value as
+                                                            | 'auto'
+                                                            | 'manual',
+                                                    )
+                                                }
+                                            >
+                                                <option value="auto">
+                                                    Auto
+                                                </option>
+                                                <option value="manual">
+                                                    Manual
+                                                </option>
+                                            </select>
+                                        </div>
+                                        {numberMode === 'manual' ? (
+                                            <div className="space-y-2">
+                                                <Label htmlFor="lr_number">
+                                                    LR number
+                                                </Label>
+                                                <Input
+                                                    id="lr_number"
+                                                    name="lr_number"
+                                                    required
+                                                />
+                                                <InputError
+                                                    message={errors.lr_number}
+                                                />
+                                            </div>
+                                        ) : null}
+                                    </>
+                                ) : (
+                                    <div className="space-y-2">
+                                        <Label>LR number</Label>
+                                        <Input
+                                            value={
+                                                lorryReceipt?.lr_number ?? ''
+                                            }
+                                            disabled
+                                            readOnly
+                                        />
+                                    </div>
+                                )}
+                                <div className="space-y-2">
+                                    <Label htmlFor="lr_date">LR date</Label>
+                                    <Input
+                                        id="lr_date"
+                                        name="lr_date"
+                                        type="date"
+                                        defaultValue={
+                                            lorryReceipt?.lr_date ?? ''
+                                        }
+                                    />
+                                </div>
+                                {needsTextLocations ? (
+                                    <>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="from_text">
+                                                From text
+                                            </Label>
                                             <Input
-                                                value={
-                                                    lorryReceipt?.lr_number ??
+                                                id="from_text"
+                                                name="from_text"
+                                                defaultValue={
+                                                    lorryReceipt?.from_text ??
                                                     ''
                                                 }
-                                                disabled
-                                                readOnly
+                                            />
+                                            <InputError
+                                                message={errors.from_text}
                                             />
                                         </div>
-                                    )}
-                                    <div className="space-y-2">
-                                        <Label htmlFor="lr_date">LR date</Label>
-                                        <Input
-                                            id="lr_date"
-                                            name="lr_date"
-                                            type="date"
-                                            defaultValue={
-                                                lorryReceipt?.lr_date ?? ''
-                                            }
-                                        />
-                                    </div>
-                                    {needsTextLocations ? (
-                                        <>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="from_text">
-                                                    From text
-                                                </Label>
-                                                <Input
-                                                    id="from_text"
-                                                    name="from_text"
-                                                    defaultValue={
-                                                        lorryReceipt?.from_text ??
-                                                        ''
-                                                    }
-                                                />
-                                                <InputError
-                                                    message={errors.from_text}
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="to_text">
-                                                    To text
-                                                </Label>
-                                                <Input
-                                                    id="to_text"
-                                                    name="to_text"
-                                                    defaultValue={
-                                                        lorryReceipt?.to_text ??
-                                                        ''
-                                                    }
-                                                />
-                                                <InputError
-                                                    message={errors.to_text}
-                                                />
-                                            </div>
-                                        </>
-                                    ) : null}
-                                    {needsStations ? (
-                                        <>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="from_station_id">
-                                                    From station *
-                                                </Label>
-                                                <select
-                                                    id="from_station_id"
-                                                    name="from_station_id"
-                                                    className={fieldClass}
-                                                    defaultValue={
-                                                        lorryReceipt?.from_station_id ??
-                                                        ''
-                                                    }
-                                                    required
-                                                >
-                                                    <option value="">
-                                                        Select
-                                                    </option>
-                                                    {formOptions.stations.map(
-                                                        (station) => (
-                                                            <option
-                                                                key={station.id}
-                                                                value={
-                                                                    station.id
-                                                                }
-                                                            >
-                                                                {station.name}
-                                                            </option>
-                                                        ),
-                                                    )}
-                                                </select>
-                                                <InputError
-                                                    message={
-                                                        errors.from_station_id
-                                                    }
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="to_station_id">
-                                                    To station *
-                                                </Label>
-                                                <select
-                                                    id="to_station_id"
-                                                    name="to_station_id"
-                                                    className={fieldClass}
-                                                    defaultValue={
-                                                        lorryReceipt?.to_station_id ??
-                                                        ''
-                                                    }
-                                                    required
-                                                >
-                                                    <option value="">
-                                                        Select
-                                                    </option>
-                                                    {formOptions.stations.map(
-                                                        (station) => (
-                                                            <option
-                                                                key={station.id}
-                                                                value={
-                                                                    station.id
-                                                                }
-                                                            >
-                                                                {station.name}
-                                                            </option>
-                                                        ),
-                                                    )}
-                                                </select>
-                                                <InputError
-                                                    message={
-                                                        errors.to_station_id
-                                                    }
-                                                />
-                                            </div>
-                                        </>
-                                    ) : null}
-                                    {needsParties || partiesOptional ? (
-                                        <>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="consignor_party_id">
-                                                    Consignor
-                                                    {needsParties ? ' *' : ''}
-                                                </Label>
-                                                <select
-                                                    id="consignor_party_id"
-                                                    name="consignor_party_id"
-                                                    className={fieldClass}
-                                                    defaultValue={
-                                                        lorryReceipt?.consignor_party_id ??
-                                                        ''
-                                                    }
-                                                    required={needsParties}
-                                                >
-                                                    <option value="">
-                                                        Select
-                                                    </option>
-                                                    {formOptions.consignors.map(
-                                                        (party) => (
-                                                            <option
-                                                                key={party.id}
-                                                                value={party.id}
-                                                            >
-                                                                {party.name}
-                                                            </option>
-                                                        ),
-                                                    )}
-                                                </select>
-                                                <InputError
-                                                    message={
-                                                        errors.consignor_party_id
-                                                    }
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="consignee_party_id">
-                                                    Consignee
-                                                    {needsParties ? ' *' : ''}
-                                                </Label>
-                                                <select
-                                                    id="consignee_party_id"
-                                                    name="consignee_party_id"
-                                                    className={fieldClass}
-                                                    defaultValue={
-                                                        lorryReceipt?.consignee_party_id ??
-                                                        ''
-                                                    }
-                                                    required={needsParties}
-                                                >
-                                                    <option value="">
-                                                        Select
-                                                    </option>
-                                                    {formOptions.consignees.map(
-                                                        (party) => (
-                                                            <option
-                                                                key={party.id}
-                                                                value={party.id}
-                                                            >
-                                                                {party.name}
-                                                            </option>
-                                                        ),
-                                                    )}
-                                                </select>
-                                                <InputError
-                                                    message={
-                                                        errors.consignee_party_id
-                                                    }
-                                                />
-                                            </div>
-                                        </>
-                                    ) : null}
-                                    <div className="space-y-2">
-                                        <Label htmlFor="goods_value">
-                                            Goods value (optional override)
-                                        </Label>
-                                        <Input
-                                            id="goods_value"
-                                            name="goods_value"
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            defaultValue={
-                                                lorryReceipt?.goods_value ?? ''
-                                            }
-                                        />
-                                    </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="to_text">
+                                                To text
+                                            </Label>
+                                            <Input
+                                                id="to_text"
+                                                name="to_text"
+                                                defaultValue={
+                                                    lorryReceipt?.to_text ?? ''
+                                                }
+                                            />
+                                            <InputError
+                                                message={errors.to_text}
+                                            />
+                                        </div>
+                                    </>
+                                ) : null}
+                                {needsStations ? (
+                                    <>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="from_station_id">
+                                                From station *
+                                            </Label>
+                                            <select
+                                                id="from_station_id"
+                                                name="from_station_id"
+                                                className={fieldClass}
+                                                defaultValue={
+                                                    lorryReceipt?.from_station_id ??
+                                                    ''
+                                                }
+                                                required
+                                            >
+                                                <option value="">Select</option>
+                                                {formOptions.stations.map(
+                                                    (station) => (
+                                                        <option
+                                                            key={station.id}
+                                                            value={station.id}
+                                                        >
+                                                            {station.name}
+                                                        </option>
+                                                    ),
+                                                )}
+                                            </select>
+                                            <InputError
+                                                message={errors.from_station_id}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="to_station_id">
+                                                To station *
+                                            </Label>
+                                            <select
+                                                id="to_station_id"
+                                                name="to_station_id"
+                                                className={fieldClass}
+                                                defaultValue={
+                                                    lorryReceipt?.to_station_id ??
+                                                    ''
+                                                }
+                                                required
+                                            >
+                                                <option value="">Select</option>
+                                                {formOptions.stations.map(
+                                                    (station) => (
+                                                        <option
+                                                            key={station.id}
+                                                            value={station.id}
+                                                        >
+                                                            {station.name}
+                                                        </option>
+                                                    ),
+                                                )}
+                                            </select>
+                                            <InputError
+                                                message={errors.to_station_id}
+                                            />
+                                        </div>
+                                    </>
+                                ) : null}
+                                {needsParties || partiesOptional ? (
+                                    <>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="consignor_party_id">
+                                                Consignor
+                                                {needsParties ? ' *' : ''}
+                                            </Label>
+                                            <select
+                                                id="consignor_party_id"
+                                                name="consignor_party_id"
+                                                className={fieldClass}
+                                                defaultValue={
+                                                    lorryReceipt?.consignor_party_id ??
+                                                    ''
+                                                }
+                                                required={needsParties}
+                                            >
+                                                <option value="">Select</option>
+                                                {formOptions.consignors.map(
+                                                    (party) => (
+                                                        <option
+                                                            key={party.id}
+                                                            value={party.id}
+                                                        >
+                                                            {party.name}
+                                                        </option>
+                                                    ),
+                                                )}
+                                            </select>
+                                            <InputError
+                                                message={
+                                                    errors.consignor_party_id
+                                                }
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="consignee_party_id">
+                                                Consignee
+                                                {needsParties ? ' *' : ''}
+                                            </Label>
+                                            <select
+                                                id="consignee_party_id"
+                                                name="consignee_party_id"
+                                                className={fieldClass}
+                                                defaultValue={
+                                                    lorryReceipt?.consignee_party_id ??
+                                                    ''
+                                                }
+                                                required={needsParties}
+                                            >
+                                                <option value="">Select</option>
+                                                {formOptions.consignees.map(
+                                                    (party) => (
+                                                        <option
+                                                            key={party.id}
+                                                            value={party.id}
+                                                        >
+                                                            {party.name}
+                                                        </option>
+                                                    ),
+                                                )}
+                                            </select>
+                                            <InputError
+                                                message={
+                                                    errors.consignee_party_id
+                                                }
+                                            />
+                                        </div>
+                                    </>
+                                ) : null}
+                                <div className="space-y-2">
+                                    <Label htmlFor="goods_value">
+                                        Goods value (optional override)
+                                    </Label>
+                                    <Input
+                                        id="goods_value"
+                                        name="goods_value"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        defaultValue={
+                                            lorryReceipt?.goods_value ?? ''
+                                        }
+                                    />
                                 </div>
-                            </section>
+                            </FormSection>
 
-                            <section className="space-y-4 rounded-xl border border-border bg-card p-4 md:p-5">
-                                <div className="flex items-center justify-between gap-3">
-                                    <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-                                        Goods
-                                    </h2>
+                            <FormSection title="Goods" columns={3}>
+                                <div className="flex items-center justify-end gap-3 md:col-span-3">
                                     <Button
                                         type="button"
                                         variant="secondary"
@@ -926,13 +897,10 @@ export default function LrForm({
                                         </div>
                                     ))}
                                 </div>
-                            </section>
+                            </FormSection>
 
-                            <section className="space-y-4 rounded-xl border border-border bg-card p-4 md:p-5">
-                                <div className="flex items-center justify-between gap-3">
-                                    <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-                                        E-way bills
-                                    </h2>
+                            <FormSection title="E-way bills" columns={3}>
+                                <div className="flex items-center justify-end gap-3 md:col-span-3">
                                     <Button
                                         type="button"
                                         variant="secondary"
@@ -1069,13 +1037,10 @@ export default function LrForm({
                                         ))}
                                     </div>
                                 )}
-                            </section>
+                            </FormSection>
 
-                            <section className="space-y-4 rounded-xl border border-border bg-card p-4 md:p-5">
-                                <div className="flex items-center justify-between gap-3">
-                                    <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-                                        Additional charges
-                                    </h2>
+                            <FormSection title="Additional charges" columns={2}>
+                                <div className="flex items-center justify-end gap-3 md:col-span-2">
                                     <Button
                                         type="button"
                                         variant="secondary"
@@ -1190,7 +1155,7 @@ export default function LrForm({
                                         ))}
                                     </div>
                                 )}
-                            </section>
+                            </FormSection>
 
                             <div className="flex items-center justify-end gap-3">
                                 <Button variant="outline" asChild>
@@ -1211,7 +1176,7 @@ export default function LrForm({
                         </>
                     )}
                 </Form>
-            </div>
+            </PageShell>
         </>
     );
 }

@@ -1,13 +1,17 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Eye, Filter, Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { AppIconAction } from '@/components/app-icon-action';
 import {
     ResponsiveDataTable,
     type DataTableColumn,
 } from '@/components/data-table';
-import { MasterPageHeader } from '@/components/masters/master-page-header';
+import { FormSection } from '@/components/form-section';
+import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 
 type Row = {
     id: string;
@@ -31,7 +35,6 @@ type Props = {
 };
 
 export default function VehiclesIndex({
-    company,
     branch,
     permissions,
     filters,
@@ -61,7 +64,11 @@ export default function VehiclesIndex({
                 id: 'status',
                 header: 'Status',
                 priority: 1,
-                cell: (row) => (row.is_active ? 'Active' : 'Inactive'),
+                cell: (row) => (
+                    <WorkspaceStatusBadge
+                        status={row.is_active ? 'Active' : 'Inactive'}
+                    />
+                ),
             },
             {
                 id: 'type',
@@ -77,14 +84,26 @@ export default function VehiclesIndex({
                     [row.make, row.model].filter(Boolean).join(' ') || '—',
             },
         ],
-        [company.id, branch.id],
+        [],
     );
 
     return (
         <>
             <Head title={`Vehicles · ${branch.name}`} />
-            <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <MasterPageHeader title="Vehicles" />
+            <PageShell
+                title="Vehicles"
+                description="Fleet registry for OwnFleet and operational assignments."
+                actions={
+                    permissions.can_create ? (
+                        <Button asChild variant="primary" className="gap-2">
+                            <Link href={links.create}>
+                                <Plus className="size-4" />
+                                Create vehicle
+                            </Link>
+                        </Button>
+                    ) : null
+                }
+            >
                 {flash?.success ? (
                     <p
                         role="status"
@@ -93,7 +112,8 @@ export default function VehiclesIndex({
                         {flash.success}
                     </p>
                 ) : null}
-                <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+
+                <FormSection title="Filters" columns={2}>
                     <form
                         onSubmit={(e) => {
                             e.preventDefault();
@@ -103,26 +123,30 @@ export default function VehiclesIndex({
                                 { preserveState: true, replace: true },
                             );
                         }}
-                        className="flex w-full gap-3 md:max-w-xl"
+                        className="contents"
                     >
-                        <div className="flex-1 space-y-2">
+                        <div className="space-y-2">
                             <Label htmlFor="q">Search</Label>
                             <Input
                                 id="q"
                                 value={q}
                                 onChange={(e) => setQ(e.target.value)}
+                                placeholder="Registration, make, model…"
                             />
                         </div>
-                        <Button type="submit" variant="secondary">
-                            Filter
-                        </Button>
+                        <div className="flex items-end">
+                            <Button
+                                type="submit"
+                                variant="secondary"
+                                className="gap-2"
+                            >
+                                <Filter className="size-4" />
+                                Apply
+                            </Button>
+                        </div>
                     </form>
-                    {permissions.can_create ? (
-                        <Button asChild>
-                            <Link href={links.create}>Create vehicle</Link>
-                        </Button>
-                    ) : null}
-                </div>
+                </FormSection>
+
                 <ResponsiveDataTable
                     caption="Vehicles"
                     columns={columns}
@@ -130,8 +154,16 @@ export default function VehiclesIndex({
                     rowKey={(row) => row.id}
                     emptyTitle="No vehicles"
                     emptyDescription="Create a vehicle to get started."
+                    actions={(row) => (
+                        <AppIconAction
+                            icon={Eye}
+                            label="View vehicle"
+                            href={showUrl(row.id)}
+                            variant="info"
+                        />
+                    )}
                 />
-            </div>
+            </PageShell>
         </>
     );
 }

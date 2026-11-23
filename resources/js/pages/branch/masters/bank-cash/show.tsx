@@ -4,7 +4,7 @@ import {
     DocumentDrawer,
     type DocumentDrawerProps,
 } from '@/components/masters/document-drawer';
-import { MasterPageHeader } from '@/components/masters/master-page-header';
+import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
 
 type Account = {
@@ -49,8 +49,7 @@ export default function BankCashShow({
     return (
         <>
             <Head title={account.name} />
-            <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <MasterPageHeader title={account.name} />
+            <PageShell title={account.name}>
                 {flash?.success ? (
                     <p
                         role="status"
@@ -113,7 +112,7 @@ export default function BankCashShow({
                         </div>
                     ))}
                 </dl>
-            </div>
+            </PageShell>
             {documentDrawer ? (
                 <DocumentDrawer
                     open={docsOpen}

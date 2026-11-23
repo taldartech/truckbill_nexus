@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { MasterPageHeader } from '@/components/masters/master-page-header';
+import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 
@@ -55,8 +55,7 @@ export default function TripsIndex({
     return (
         <>
             <Head title="OwnFleet Trips" />
-            <div className="flex h-full flex-1 flex-col gap-4 p-4 md:p-6">
-                <MasterPageHeader title="OwnFleet Trips" />
+            <PageShell title={'OwnFleet Trips'}>
                 <p className="max-w-2xl text-sm text-muted-foreground">
                     Trips are created from OwnFleet Lorry Receipts. Open an
                     OwnFleet LR and use Create Trip.
@@ -179,7 +178,7 @@ export default function TripsIndex({
                         ({trips.meta.total} trips)
                     </p>
                 ) : null}
-            </div>
+            </PageShell>
         </>
     );
 }

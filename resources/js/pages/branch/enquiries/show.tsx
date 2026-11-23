@@ -1,6 +1,13 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { ArrowLeft } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { AppIconAction } from '@/components/app-icon-action';
+import { FormSection } from '@/components/form-section';
+import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
+import { MetricCard } from '@/components/ui/metric-card';
+import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
+import { formatDisplayDateTime } from '@/lib/dates';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -133,26 +140,41 @@ export default function BranchEnquiryShow({
             <Head
                 title={`${enquiry.enquiry_number ?? 'Enquiry'} · ${branch.name}`}
             />
-            <div className="mx-auto flex max-w-5xl flex-col gap-6 p-4 md:p-8">
-                <div className="space-y-2">
-                    <Link
+            <PageShell
+                title={enquiry.enquiry_number ?? enquiry.id.slice(0, 8)}
+                description={`${company.name} · ${branch.name} · ${enquiry.source}`}
+                actions={
+                    <AppIconAction
+                        icon={ArrowLeft}
+                        label="Back to enquiries"
                         href={urls.index}
-                        className="text-sm text-muted-foreground underline-offset-4 hover:underline"
-                    >
-                        ← Enquiries
-                    </Link>
-                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                        {company.name} · {branch.name}
-                    </p>
-                    <h1 className="text-2xl font-semibold tracking-tight">
-                        {enquiry.enquiry_number ?? enquiry.id.slice(0, 8)}
-                    </h1>
-                    <p className="text-sm text-muted-foreground">
-                        {enquiry.status} · {enquiry.source}
-                        {enquiry.assigned_user_name
-                            ? ` · Assigned to ${enquiry.assigned_user_name}`
-                            : ''}
-                    </p>
+                        variant="outline"
+                    />
+                }
+            >
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <MetricCard
+                        label="Status"
+                        value={<WorkspaceStatusBadge status={enquiry.status} />}
+                        tone="blue"
+                    />
+                    <MetricCard
+                        label="Vehicles"
+                        value={enquiry.vehicle_quantity}
+                        tone="green"
+                    />
+                    <MetricCard
+                        label="Assignee"
+                        value={enquiry.assigned_user_name ?? 'Unassigned'}
+                        tone="amber"
+                    />
+                    <MetricCard
+                        label="Route"
+                        value={`${enquiry.pickup_location} → ${enquiry.delivery_location}`}
+                        hint={enquiry.instructions ?? undefined}
+                        tone="neutral"
+                        className="sm:col-span-2 lg:col-span-1"
+                    />
                 </div>
 
                 {flash?.success ? (
@@ -170,18 +192,7 @@ export default function BranchEnquiryShow({
                     </p>
                 ) : null}
 
-                <section className="space-y-2 rounded-xl border border-border p-4 text-sm">
-                    <p>
-                        {enquiry.pickup_location} → {enquiry.delivery_location}
-                    </p>
-                    <p>Vehicles requested: {enquiry.vehicle_quantity}</p>
-                    {enquiry.instructions ? (
-                        <p>Instructions: {enquiry.instructions}</p>
-                    ) : null}
-                </section>
-
-                <section className="space-y-3 rounded-xl border border-border p-4">
-                    <h2 className="font-semibold">Goods</h2>
+                <FormSection title="Goods" columns={2}>
                     <ul className="space-y-2 text-sm">
                         {enquiry.goods.map((row) => (
                             <li
@@ -193,11 +204,10 @@ export default function BranchEnquiryShow({
                             </li>
                         ))}
                     </ul>
-                </section>
+                </FormSection>
 
                 {capabilities.assign ? (
-                    <section className="space-y-3 rounded-xl border border-border p-4">
-                        <h2 className="font-semibold">Assignment</h2>
+                    <FormSection title="Assignment" columns={2}>
                         <Form
                             action={urls.assign}
                             method="post"
@@ -261,17 +271,17 @@ export default function BranchEnquiryShow({
                             <ul className="space-y-2 text-xs text-muted-foreground">
                                 {enquiry.assignment_history.map((row, i) => (
                                     <li key={`${row.assigned_at}-${i}`}>
-                                        {row.assigned_at} — {row.remark}
+                                        {formatDisplayDateTime(row.assigned_at)}{' '}
+                                        — {row.remark}
                                     </li>
                                 ))}
                             </ul>
                         ) : null}
-                    </section>
+                    </FormSection>
                 ) : null}
 
                 {capabilities.edit ? (
-                    <section className="space-y-3 rounded-xl border border-border p-4">
-                        <h2 className="font-semibold">Follow-ups</h2>
+                    <FormSection title="Follow-ups" columns={2}>
                         <Form
                             action={urls.follow_up}
                             method="post"
@@ -304,19 +314,19 @@ export default function BranchEnquiryShow({
                                     key={row.id}
                                     className="rounded-md border border-border px-3 py-2"
                                 >
-                                    {row.follow_up_at} — {row.remarks}
+                                    {formatDisplayDateTime(row.follow_up_at)} —{' '}
+                                    {row.remarks}
                                     {row.completed_at
                                         ? ' (completed)'
                                         : ' (open)'}
                                 </li>
                             ))}
                         </ul>
-                    </section>
+                    </FormSection>
                 ) : null}
 
                 {capabilities.edit ? (
-                    <section className="space-y-3 rounded-xl border border-border p-4">
-                        <h2 className="font-semibold">Quotations</h2>
+                    <FormSection title="Quotations & broadcast" columns={3}>
                         <Form
                             action={urls.quotation_store}
                             method="post"
@@ -417,20 +427,20 @@ export default function BranchEnquiryShow({
                                     key={req.id}
                                     className="text-xs text-muted-foreground"
                                 >
-                                    {req.requested_at} · {req.status} ·{' '}
-                                    {req.target_count} targets · channels:{' '}
-                                    {req.channels.join(', ')}
+                                    {formatDisplayDateTime(req.requested_at)} ·{' '}
+                                    {req.status} · {req.target_count} targets ·
+                                    channels: {req.channels.join(', ')}
                                 </p>
                             ))}
                         </div>
-                    </section>
+                    </FormSection>
                 ) : null}
 
                 {capabilities.convert && !enquiry.conversion ? (
-                    <section className="space-y-3 rounded-xl border border-border p-4">
-                        <h2 className="font-semibold">
-                            Conversion (Option C — N vehicles → N LRs)
-                        </h2>
+                    <FormSection
+                        title="Conversion (N vehicles → N LRs)"
+                        columns={1}
+                    >
                         {conversion_preview && !conversion_preview.eligible ? (
                             <p className="text-sm text-destructive">
                                 {conversion_preview.eligibility_errors.join(
@@ -514,35 +524,36 @@ export default function BranchEnquiryShow({
                                 </Button>
                             </Form>
                         ) : null}
-                    </section>
+                    </FormSection>
                 ) : null}
 
                 {enquiry.conversion ? (
-                    <section className="rounded-xl border border-border p-4 text-sm">
-                        <h2 className="font-semibold">Converted</h2>
-                        <p>
-                            {enquiry.conversion.converted_at} —{' '}
-                            {enquiry.conversion.lorry_receipt_ids.length} LR(s)
-                            created
+                    <FormSection title="Converted" columns={1}>
+                        <p className="text-sm">
+                            {formatDisplayDateTime(
+                                enquiry.conversion.converted_at,
+                            )}{' '}
+                            — {enquiry.conversion.lorry_receipt_ids.length}{' '}
+                            LR(s) created
                         </p>
-                    </section>
+                    </FormSection>
                 ) : null}
 
-                <section className="space-y-3 rounded-xl border border-border p-4">
-                    <h2 className="font-semibold">Status history</h2>
+                <FormSection title="Status history" columns={1}>
                     <ul className="space-y-2 text-sm">
                         {enquiry.status_history.map((row, index) => (
                             <li
                                 key={`${row.changed_at}-${index}`}
                                 className="rounded-md border border-border px-3 py-2"
                             >
+                                {formatDisplayDateTime(row.changed_at)} ·{' '}
                                 {row.from_status ?? '—'} → {row.to_status}
                                 {row.remark ? ` — ${row.remark}` : ''}
                             </li>
                         ))}
                     </ul>
-                </section>
-            </div>
+                </FormSection>
+            </PageShell>
         </>
     );
 }

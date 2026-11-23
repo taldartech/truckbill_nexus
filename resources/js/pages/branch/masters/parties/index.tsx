@@ -1,10 +1,13 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Eye, Filter, Pencil, Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { AppIconAction } from '@/components/app-icon-action';
 import {
     ResponsiveDataTable,
     type DataTableColumn,
 } from '@/components/data-table';
-import { MasterPageHeader } from '@/components/masters/master-page-header';
+import { FormSection } from '@/components/form-section';
+import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -47,6 +50,7 @@ export default function PartiesIndex({
     const [role, setRole] = useState(filters.role);
 
     const partyShowUrl = (id: string) => `/parties/${id}`;
+    const partyEditUrl = (id: string) => `/parties/${id}/edit`;
 
     const applyFilters = (event: React.FormEvent) => {
         event.preventDefault();
@@ -99,22 +103,32 @@ export default function PartiesIndex({
     return (
         <>
             <Head title="Parties" />
-            <div className="flex h-full flex-1 flex-col gap-4 p-4 md:p-6">
-                <MasterPageHeader title="Parties" />
+            <PageShell
+                title="Parties"
+                description="Customers, vendors, transporters, and drivers."
+                actions={
+                    permissions.can_create ? (
+                        <Button asChild variant="primary" className="gap-2">
+                            <Link href={links.create}>
+                                <Plus className="size-4" />
+                                Create party
+                            </Link>
+                        </Button>
+                    ) : null
+                }
+            >
                 {flash?.success ? (
                     <p
                         role="status"
-                        className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm"
+                        className="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm"
                     >
                         {flash.success}
                     </p>
                 ) : null}
-                <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-                    <form
-                        onSubmit={applyFilters}
-                        className="flex w-full flex-col gap-3 md:max-w-2xl md:flex-row"
-                    >
-                        <div className="flex-1 space-y-2">
+
+                <FormSection title="Filters" columns={3}>
+                    <form onSubmit={applyFilters} className="contents">
+                        <div className="space-y-2">
                             <Label htmlFor="party-q">Search</Label>
                             <Input
                                 id="party-q"
@@ -123,7 +137,7 @@ export default function PartiesIndex({
                                 placeholder="Name, phone, GSTIN…"
                             />
                         </div>
-                        <div className="space-y-2 md:w-48">
+                        <div className="space-y-2">
                             <Label htmlFor="party-role">Role</Label>
                             <select
                                 id="party-role"
@@ -142,16 +156,18 @@ export default function PartiesIndex({
                                 ))}
                             </select>
                         </div>
-                        <Button type="submit" variant="secondary">
-                            Filter
-                        </Button>
+                        <div className="flex items-end">
+                            <Button
+                                type="submit"
+                                variant="secondary"
+                                className="gap-2"
+                            >
+                                <Filter className="size-4" />
+                                Apply
+                            </Button>
+                        </div>
                     </form>
-                    {permissions.can_create ? (
-                        <Button asChild>
-                            <Link href={links.create}>Create party</Link>
-                        </Button>
-                    ) : null}
-                </div>
+                </FormSection>
 
                 <ResponsiveDataTable
                     caption="Parties"
@@ -160,6 +176,23 @@ export default function PartiesIndex({
                     rowKey={(row) => row.id}
                     emptyTitle="No parties found"
                     emptyDescription="Create a party or adjust filters."
+                    actions={(row) => (
+                        <div className="flex justify-end gap-1">
+                            <AppIconAction
+                                icon={Eye}
+                                label="View party"
+                                href={partyShowUrl(row.id)}
+                                variant="info"
+                            />
+                            <AppIconAction
+                                icon={Pencil}
+                                label="Edit party"
+                                href={partyEditUrl(row.id)}
+                                variant="warning"
+                                visible={permissions.can_edit}
+                            />
+                        </div>
+                    )}
                 />
 
                 {parties.data.length > 0 ? (
@@ -168,7 +201,7 @@ export default function PartiesIndex({
                         {parties.meta.last_page} · {parties.meta.total} total
                     </p>
                 ) : null}
-            </div>
+            </PageShell>
         </>
     );
 }

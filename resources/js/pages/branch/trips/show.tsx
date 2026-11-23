@@ -1,6 +1,11 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
-import { MasterPageHeader } from '@/components/masters/master-page-header';
+import { ArrowLeft } from 'lucide-react';
+import { AppIconAction } from '@/components/app-icon-action';
+import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
+import { MetricCard } from '@/components/ui/metric-card';
+import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
+import { formatDisplayDateTime } from '@/lib/dates';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -158,16 +163,42 @@ export default function TripShow({
     return (
         <>
             <Head title={`Trip · ${trip.lr_number ?? trip.id}`} />
-            <div className="flex h-full flex-1 flex-col gap-4 p-4 md:p-6">
-                <div className="space-y-2">
-                    <Link
+            <PageShell
+                title={`Trip · LR ${trip.lr_number ?? '—'}`}
+                description="Pickups, drops, allocations, dispatch, and settlement."
+                actions={
+                    <AppIconAction
+                        icon={ArrowLeft}
+                        label="Back to trips"
                         href={urls.index}
-                        className="text-sm text-muted-foreground underline-offset-4 hover:underline"
-                    >
-                        ← OwnFleet Trips
-                    </Link>
-                    <MasterPageHeader
-                        title={`Trip · LR ${trip.lr_number ?? '—'}`}
+                        variant="outline"
+                    />
+                }
+            >
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <MetricCard
+                        label="Status"
+                        value={
+                            <WorkspaceStatusBadge
+                                status={statusLabel(trip.status)}
+                            />
+                        }
+                        tone="blue"
+                    />
+                    <MetricCard
+                        label="Pickups / drops"
+                        value={`${trip.pickup_count} / ${trip.drop_count}`}
+                        tone="neutral"
+                    />
+                    <MetricCard
+                        label="Trip profit"
+                        value={`₹${profit.trip_profit}`}
+                        tone="green"
+                    />
+                    <MetricCard
+                        label="Departure"
+                        value={formatDisplayDateTime(trip.departure_at)}
+                        tone="amber"
                     />
                 </div>
 
@@ -1081,7 +1112,7 @@ export default function TripShow({
                         </Form>
                     ) : null}
                 </section>
-            </div>
+            </PageShell>
         </>
     );
 }

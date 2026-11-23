@@ -4,7 +4,7 @@ import {
     DocumentDrawer,
     type DocumentDrawerProps,
 } from '@/components/masters/document-drawer';
-import { MasterPageHeader } from '@/components/masters/master-page-header';
+import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
 
 type Props = {
@@ -41,8 +41,7 @@ export default function VehicleShow({
     return (
         <>
             <Head title={String(vehicle.registration_number)} />
-            <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <MasterPageHeader title={String(vehicle.registration_number)} />
+            <PageShell title={String(vehicle.registration_number)}>
                 {flash?.success ? (
                     <p
                         role="status"
@@ -113,7 +112,7 @@ export default function VehicleShow({
                             </div>
                         ))}
                 </dl>
-            </div>
+            </PageShell>
             {documentDrawer ? (
                 <DocumentDrawer
                     open={docsOpen}

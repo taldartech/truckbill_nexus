@@ -1,7 +1,15 @@
 import { Form, Head, Link } from '@inertiajs/react';
-import { MasterPageHeader } from '@/components/masters/master-page-header';
-import { Button } from '@/components/ui/button';
+import { ArrowLeft, Banknote, Pencil, Printer } from 'lucide-react';
 import { useState } from 'react';
+import { AppIconAction } from '@/components/app-icon-action';
+import { FormSection } from '@/components/form-section';
+import { PageShell } from '@/components/page-shell';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { MetricCard } from '@/components/ui/metric-card';
+import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
+import { formatDisplayDate } from '@/lib/dates';
 
 type Props = {
     invoice: {
@@ -65,235 +73,296 @@ export default function TripInvoiceShow({
     return (
         <>
             <Head title={`Invoice ${invoice.invoice_number}`} />
-            <div className="flex h-full flex-1 flex-col gap-4 p-4 md:p-6">
-                <MasterPageHeader title={`Invoice ${invoice.invoice_number}`} />
-                <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            <PageShell
+                title={`Invoice ${invoice.invoice_number}`}
+                description="OwnFleet billing, TDS, and payment settlement."
+                actions={
+                    <>
+                        <AppIconAction
+                            icon={ArrowLeft}
+                            label="Back to invoices"
+                            href="/trip-invoices"
+                            variant="outline"
+                        />
+                        {permissions.can_print ? (
+                            <AppIconAction
+                                icon={Printer}
+                                label="Print sample"
+                                href={`/trip-invoices/${invoice.id}/print`}
+                                variant="secondary"
+                            />
+                        ) : null}
+                        {permissions.can_edit_charges ? (
+                            <AppIconAction
+                                icon={Pencil}
+                                label="Edit charges"
+                                href={`/trip-invoices/${invoice.id}/edit-charges`}
+                                variant="warning"
+                            />
+                        ) : null}
+                    </>
+                }
+            >
+                <p className="rounded-xl border border-[#FFC107]/40 bg-[#FFC107]/15 px-4 py-3 text-sm text-[#8a6a00]">
                     {sampleBanner}
                 </p>
-                <div className="grid gap-4 md:grid-cols-2">
-                    <div className="rounded-lg border p-4 text-sm">
-                        <p>
-                            <strong>Date:</strong> {invoice.invoice_date}
-                        </p>
-                        <p>
-                            <strong>Customer:</strong>{' '}
-                            {invoice.billing_customer?.name}
-                        </p>
-                        <p>
-                            <strong>Payment:</strong>{' '}
-                            <span className="capitalize">
-                                {invoice.payment_status}
-                            </span>
-                        </p>
-                        <p>
-                            <strong>Invoice TDS rate:</strong>{' '}
-                            {invoice.invoice_tds_rate_percent}%
-                        </p>
-                    </div>
-                    <div className="rounded-lg border p-4 text-sm">
-                        <p>
-                            Base freight:{' '}
-                            {moneyLabel(
-                                invoice.base_freight_total,
-                                mayViewFreight,
-                            )}
-                        </p>
-                        <p>
-                            Additional:{' '}
-                            {moneyLabel(
-                                invoice.additional_charges_total,
-                                mayViewFreight,
-                            )}
-                        </p>
-                        <p>
-                            GST:{' '}
-                            {moneyLabel(invoice.gst_amount, mayViewFreight)}
-                        </p>
-                        <p className="font-semibold">
-                            Total:{' '}
-                            {moneyLabel(invoice.invoice_total, mayViewFreight)}
-                        </p>
-                        <p>
-                            Balance due:{' '}
-                            {moneyLabel(invoice.balance_due, mayViewFreight)}
-                        </p>
-                    </div>
+
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <MetricCard
+                        label="Invoice total"
+                        value={moneyLabel(
+                            invoice.invoice_total,
+                            mayViewFreight,
+                        )}
+                        tone="blue"
+                    />
+                    <MetricCard
+                        label="Balance due"
+                        value={moneyLabel(invoice.balance_due, mayViewFreight)}
+                        tone="amber"
+                    />
+                    <MetricCard
+                        label="Payment status"
+                        value={
+                            <WorkspaceStatusBadge
+                                status={invoice.payment_status}
+                            />
+                        }
+                        tone="green"
+                    />
+                    <MetricCard
+                        label="TDS rate"
+                        value={`${invoice.invoice_tds_rate_percent}%`}
+                        hint={`Basis freight ₹${invoice.tds_basis_freight}`}
+                        tone="neutral"
+                    />
                 </div>
-                <section>
-                    <h2 className="mb-2 text-sm font-semibold">LR lines</h2>
-                    <ul className="space-y-1 text-sm">
-                        {invoice.lines.map((line, index) => (
-                            <li key={index}>
-                                {line.lr_number} —{' '}
+
+                <FormSection title="Invoice details" columns={2}>
+                    <ReadonlyField
+                        label="Date"
+                        value={formatDisplayDate(invoice.invoice_date)}
+                    />
+                    <ReadonlyField
+                        label="Customer"
+                        value={invoice.billing_customer?.name ?? '—'}
+                    />
+                    <ReadonlyField
+                        label="Base freight"
+                        value={moneyLabel(
+                            invoice.base_freight_total,
+                            mayViewFreight,
+                        )}
+                    />
+                    <ReadonlyField
+                        label="Additional charges"
+                        value={moneyLabel(
+                            invoice.additional_charges_total,
+                            mayViewFreight,
+                        )}
+                    />
+                    <ReadonlyField
+                        label="GST"
+                        value={moneyLabel(invoice.gst_amount, mayViewFreight)}
+                    />
+                </FormSection>
+
+                <FormSection title="LR lines" columns={2}>
+                    {invoice.lines.map((line, index) => (
+                        <div key={index} className="text-sm">
+                            <p className="font-medium">
+                                {line.lr_number ?? '—'}
+                            </p>
+                            <p className="text-muted-foreground">
+                                Base freight{' '}
                                 {moneyLabel(line.base_freight, mayViewFreight)}
-                            </li>
-                        ))}
-                    </ul>
-                </section>
-                {invoice.charges.length > 0 && (
-                    <section>
-                        <h2 className="mb-2 text-sm font-semibold">
-                            Additional charges
-                        </h2>
-                        <ul className="space-y-1 text-sm">
-                            {invoice.charges.map((c, index) => (
-                                <li key={index}>
-                                    {c.description} —{' '}
+                            </p>
+                        </div>
+                    ))}
+                </FormSection>
+
+                {invoice.charges.length > 0 ? (
+                    <FormSection title="Additional charge lines" columns={2}>
+                        {invoice.charges.map((c, index) => (
+                            <div key={index} className="text-sm">
+                                <p className="font-medium">{c.description}</p>
+                                <p className="text-muted-foreground">
+                                    {c.charge_type} ·{' '}
                                     {moneyLabel(c.amount, mayViewFreight)}
-                                </li>
-                            ))}
-                        </ul>
-                    </section>
-                )}
-                <section>
-                    <h2 className="mb-2 text-sm font-semibold">
-                        Payment history
-                    </h2>
+                                </p>
+                            </div>
+                        ))}
+                    </FormSection>
+                ) : null}
+
+                <FormSection title="Payment history & settlement" columns={1}>
                     {invoice.payments.length === 0 ? (
                         <p className="text-sm text-muted-foreground">
                             No payments yet.
                         </p>
                     ) : (
-                        <ul className="space-y-1 text-sm">
+                        <ul className="space-y-2 text-sm">
                             {invoice.payments.map((p, index) => (
-                                <li key={index}>
-                                    {p.payment_date}: received{' '}
-                                    {moneyLabel(
-                                        p.amount_received,
-                                        mayViewFreight,
-                                    )}
-                                    , TDS{' '}
-                                    {moneyLabel(p.tds_amount, mayViewFreight)}{' '}
-                                    (settlement{' '}
-                                    {moneyLabel(
-                                        p.settlement_amount,
-                                        mayViewFreight,
-                                    )}
-                                    )
+                                <li
+                                    key={index}
+                                    className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border px-3 py-2"
+                                >
+                                    <span>
+                                        {formatDisplayDate(p.payment_date)}
+                                    </span>
+                                    <span>
+                                        Received{' '}
+                                        {moneyLabel(
+                                            p.amount_received,
+                                            mayViewFreight,
+                                        )}{' '}
+                                        · TDS{' '}
+                                        {moneyLabel(
+                                            p.tds_amount,
+                                            mayViewFreight,
+                                        )}
+                                    </span>
+                                    <span className="font-medium">
+                                        Settlement{' '}
+                                        {moneyLabel(
+                                            p.settlement_amount,
+                                            mayViewFreight,
+                                        )}
+                                    </span>
                                 </li>
                             ))}
                         </ul>
                     )}
-                </section>
-                <div className="flex flex-wrap gap-2">
-                    {permissions.can_edit_charges && (
-                        <Button asChild variant="secondary">
-                            <Link
-                                href={`/trip-invoices/${invoice.id}/edit-charges`}
-                            >
-                                Edit additional charges
-                            </Link>
-                        </Button>
-                    )}
-                    {permissions.can_print && (
-                        <Button asChild variant="outline">
-                            <Link
-                                href={`/trip-invoices/${invoice.id}/print`}
-                                target="_blank"
-                            >
-                                Print sample
-                            </Link>
-                        </Button>
-                    )}
+
                     {permissions.can_record_payment &&
-                        mayViewFreight &&
-                        invoice.balance_due !== '0.00' &&
-                        invoice.balance_due !== null && (
-                            <Button onClick={() => setShowPayment((v) => !v)}>
-                                Record payment
+                    mayViewFreight &&
+                    invoice.balance_due !== '0.00' &&
+                    invoice.balance_due !== null ? (
+                        <div className="mt-4 space-y-3 border-t border-border pt-4">
+                            <Button
+                                type="button"
+                                variant="primary"
+                                className="gap-2"
+                                onClick={() => setShowPayment((v) => !v)}
+                            >
+                                <Banknote className="size-4" />
+                                {showPayment
+                                    ? 'Hide payment form'
+                                    : 'Record payment'}
                             </Button>
-                        )}
-                </div>
-                {showPayment && (
-                    <Form
-                        action={`/trip-invoices/${invoice.id}/payments`}
-                        method="post"
-                        className="max-w-xl space-y-3 rounded-lg border p-4"
-                    >
-                        {({ processing }) => (
-                            <>
-                                <label className="flex flex-col gap-1 text-sm">
-                                    Payment date
-                                    <input
-                                        type="date"
-                                        name="payment_date"
-                                        className="rounded-md border px-2 py-1"
-                                    />
-                                </label>
-                                <label className="flex flex-col gap-1 text-sm">
-                                    Mode
-                                    <select
-                                        name="payment_mode_id"
-                                        className="rounded-md border px-2 py-1"
-                                    >
-                                        <option value="">—</option>
-                                        {paymentModes.map((mode) => (
-                                            <option
-                                                key={mode.id}
-                                                value={mode.id}
+                            {showPayment ? (
+                                <Form
+                                    action={`/trip-invoices/${invoice.id}/payments`}
+                                    method="post"
+                                    className="grid gap-3 md:grid-cols-2"
+                                >
+                                    {({ processing }) => (
+                                        <>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="payment_date">
+                                                    Payment date
+                                                </Label>
+                                                <Input
+                                                    id="payment_date"
+                                                    name="payment_date"
+                                                    type="date"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="payment_mode_id">
+                                                    Mode
+                                                </Label>
+                                                <select
+                                                    id="payment_mode_id"
+                                                    name="payment_mode_id"
+                                                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                                >
+                                                    <option value="">—</option>
+                                                    {paymentModes.map(
+                                                        (mode) => (
+                                                            <option
+                                                                key={mode.id}
+                                                                value={mode.id}
+                                                            >
+                                                                {mode.name}
+                                                            </option>
+                                                        ),
+                                                    )}
+                                                </select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="amount_received">
+                                                    Amount received
+                                                </Label>
+                                                <Input
+                                                    id="amount_received"
+                                                    name="amount_received"
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="tds_amount">
+                                                    TDS
+                                                </Label>
+                                                <Input
+                                                    id="tds_amount"
+                                                    name="tds_amount"
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0"
+                                                />
+                                            </div>
+                                            <label className="flex items-center gap-2 text-sm md:col-span-2">
+                                                <input
+                                                    type="checkbox"
+                                                    name="fill_net"
+                                                    value="1"
+                                                />
+                                                Fill net (auto amount received)
+                                            </label>
+                                            <Button
+                                                type="submit"
+                                                variant="primary"
+                                                disabled={processing}
                                             >
-                                                {mode.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                </label>
-                                <div className="grid gap-2 md:grid-cols-2">
-                                    <label className="flex flex-col gap-1 text-sm">
-                                        Amount received
-                                        <input
-                                            name="amount_received"
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            className="rounded-md border px-2 py-1"
-                                        />
-                                    </label>
-                                    <label className="flex flex-col gap-1 text-sm">
-                                        TDS
-                                        <input
-                                            name="tds_amount"
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            className="rounded-md border px-2 py-1"
-                                        />
-                                    </label>
-                                </div>
-                                <label className="flex items-center gap-2 text-sm">
-                                    <input
-                                        type="checkbox"
-                                        name="fill_net"
-                                        value="1"
-                                    />
-                                    Fill net (auto amount received)
-                                </label>
-                                <Button type="submit" disabled={processing}>
-                                    Save payment
-                                </Button>
-                            </>
-                        )}
-                    </Form>
-                )}
-                {permissions.can_cancel && (
-                    <Form
-                        action={`/trip-invoices/${invoice.id}/cancel`}
-                        method="post"
-                        className="max-w-md space-y-2"
-                    >
-                        <label className="flex flex-col gap-1 text-sm">
-                            Cancel reason
-                            <textarea
-                                name="cancellation_remark"
-                                required
-                                className="min-h-20 rounded-md border px-2 py-1"
-                            />
-                        </label>
-                        <Button type="submit" variant="destructive">
-                            Cancel invoice
-                        </Button>
-                    </Form>
-                )}
-                {permissions.can_delete && (
+                                                Save payment
+                                            </Button>
+                                        </>
+                                    )}
+                                </Form>
+                            ) : null}
+                        </div>
+                    ) : null}
+                </FormSection>
+
+                {permissions.can_cancel ? (
+                    <FormSection title="Cancel invoice" columns={1}>
+                        <Form
+                            action={`/trip-invoices/${invoice.id}/cancel`}
+                            method="post"
+                            className="space-y-3"
+                        >
+                            <div className="space-y-2">
+                                <Label htmlFor="cancellation_remark">
+                                    Cancel reason
+                                </Label>
+                                <textarea
+                                    id="cancellation_remark"
+                                    name="cancellation_remark"
+                                    required
+                                    className="min-h-20 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                />
+                            </div>
+                            <Button type="submit" variant="destructive">
+                                Cancel invoice
+                            </Button>
+                        </Form>
+                    </FormSection>
+                ) : null}
+
+                {permissions.can_delete ? (
                     <Form
                         action={`/trip-invoices/${invoice.id}`}
                         method="delete"
@@ -302,11 +371,19 @@ export default function TripInvoiceShow({
                             Soft delete (latest only)
                         </Button>
                     </Form>
-                )}
-                <Button asChild variant="ghost">
-                    <Link href="/trip-invoices">Back to list</Link>
-                </Button>
-            </div>
+                ) : null}
+            </PageShell>
         </>
+    );
+}
+
+function ReadonlyField({ label, value }: { label: string; value: string }) {
+    return (
+        <div className="space-y-1">
+            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                {label}
+            </p>
+            <p className="text-sm font-medium">{value}</p>
+        </div>
     );
 }

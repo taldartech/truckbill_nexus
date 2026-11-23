@@ -5,7 +5,11 @@ import {
     DocumentDrawer,
     type DocumentDrawerProps,
 } from '@/components/masters/document-drawer';
-import { MasterPageHeader } from '@/components/masters/master-page-header';
+import { FileText, Pencil, Trash2 } from 'lucide-react';
+import { AppIconAction } from '@/components/app-icon-action';
+import { FormSection } from '@/components/form-section';
+import { PageShell } from '@/components/page-shell';
+import { formatDisplayDate } from '@/lib/dates';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -71,8 +75,44 @@ export default function PartyShow({
     return (
         <>
             <Head title={party.name} />
-            <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <MasterPageHeader title={party.name} />
+            <PageShell
+                title={party.name}
+                description="Party profile, roles, and documents."
+                actions={
+                    <>
+                        <AppIconAction
+                            icon={Pencil}
+                            label="Edit party"
+                            href={links.edit}
+                            variant="warning"
+                            visible={permissions.can_edit}
+                        />
+                        <AppIconAction
+                            icon={FileText}
+                            label="Documents"
+                            href={links.documents}
+                            variant="info"
+                            visible={!documentDrawer}
+                        />
+                        {permissions.can_delete ? (
+                            <AppIconAction
+                                icon={Trash2}
+                                label="Soft delete"
+                                variant="destructive"
+                                onClick={() => {
+                                    const remark = window.prompt(
+                                        'Remark for soft deletion',
+                                    );
+                                    if (!remark) return;
+                                    router.delete(links.destroy, {
+                                        data: { remark },
+                                    });
+                                }}
+                            />
+                        ) : null}
+                    </>
+                }
+            >
                 {flash?.success ? (
                     <p
                         role="status"
@@ -81,45 +121,19 @@ export default function PartyShow({
                         {flash.success}
                     </p>
                 ) : null}
-                <div className="flex flex-wrap gap-2">
-                    {permissions.can_edit ? (
-                        <Button asChild variant="outline">
-                            <Link href={links.edit}>Edit</Link>
-                        </Button>
-                    ) : null}
-                    {documentDrawer ? (
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => setDocsOpen(true)}
-                        >
-                            Documents
-                        </Button>
-                    ) : (
-                        <Button asChild variant="outline">
-                            <Link href={links.documents}>Documents</Link>
-                        </Button>
-                    )}
-                    {permissions.can_delete ? (
-                        <Button
-                            type="button"
-                            variant="destructive"
-                            onClick={() => {
-                                const remark = window.prompt(
-                                    'Remark for soft deletion',
-                                );
-                                if (!remark) return;
-                                router.delete(links.destroy, {
-                                    data: { remark },
-                                });
-                            }}
-                        >
-                            Soft delete
-                        </Button>
-                    ) : null}
-                </div>
+                {documentDrawer ? (
+                    <Button
+                        type="button"
+                        variant="outline"
+                        className="gap-2"
+                        onClick={() => setDocsOpen(true)}
+                    >
+                        <FileText className="size-4" />
+                        Documents
+                    </Button>
+                ) : null}
 
-                <dl className="grid gap-4 rounded-xl border border-border p-4 sm:grid-cols-2">
+                <FormSection title="Contact & tax" columns={2}>
                     {[
                         ['Contact person', party.contact_person],
                         ['Contact number', party.contact_number],
@@ -137,10 +151,25 @@ export default function PartyShow({
                             <dd className="mt-1 text-sm">{value || '—'}</dd>
                         </div>
                     ))}
-                </dl>
+                    <div>
+                        <dt className="text-xs tracking-wide text-muted-foreground uppercase">
+                            Created
+                        </dt>
+                        <dd className="mt-1 text-sm">
+                            {formatDisplayDate(party.created_at)}
+                        </dd>
+                    </div>
+                    <div>
+                        <dt className="text-xs tracking-wide text-muted-foreground uppercase">
+                            Updated
+                        </dt>
+                        <dd className="mt-1 text-sm">
+                            {formatDisplayDate(party.updated_at)}
+                        </dd>
+                    </div>
+                </FormSection>
 
-                <section className="space-y-4">
-                    <h2 className="text-lg font-semibold">Roles</h2>
+                <FormSection title="Roles" columns={1}>
                     <ul className="space-y-2">
                         {party.roles.map((role) => (
                             <li
@@ -152,7 +181,7 @@ export default function PartyShow({
                                     <p className="text-xs text-muted-foreground">
                                         {role.is_active
                                             ? 'Active'
-                                            : `Removed ${role.deactivated_at}`}
+                                            : `Removed ${formatDisplayDate(role.deactivated_at)}`}
                                     </p>
                                 </div>
                                 {role.is_active && permissions.can_edit ? (
@@ -234,8 +263,8 @@ export default function PartyShow({
                             )}
                         </Form>
                     ) : null}
-                </section>
-            </div>
+                </FormSection>
+            </PageShell>
 
             {documentDrawer ? (
                 <DocumentDrawer

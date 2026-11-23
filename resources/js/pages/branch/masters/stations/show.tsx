@@ -5,7 +5,7 @@ import {
     DocumentDrawer,
     type DocumentDrawerProps,
 } from '@/components/masters/document-drawer';
-import { MasterPageHeader } from '@/components/masters/master-page-header';
+import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -49,8 +49,7 @@ export default function StationShow({
     return (
         <>
             <Head title={station.name} />
-            <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <MasterPageHeader title={station.name} />
+            <PageShell title={station.name}>
                 {flash?.success ? (
                     <p
                         role="status"
@@ -175,7 +174,7 @@ export default function StationShow({
                         )}
                     </Form>
                 ) : null}
-            </div>
+            </PageShell>
             {documentDrawer ? (
                 <DocumentDrawer
                     open={docsOpen}

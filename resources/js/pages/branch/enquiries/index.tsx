@@ -1,10 +1,15 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { Eye, Filter, Plus } from 'lucide-react';
 import { useMemo } from 'react';
+import { AppIconAction } from '@/components/app-icon-action';
 import {
     ResponsiveDataTable,
     type DataTableColumn,
 } from '@/components/data-table';
+import { FormSection } from '@/components/form-section';
+import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
+import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 
 type EnquiryRow = {
     id: string;
@@ -35,7 +40,6 @@ type Props = {
 };
 
 export default function BranchEnquiriesIndex({
-    company,
     branch,
     filters,
     can_create,
@@ -60,7 +64,11 @@ export default function BranchEnquiriesIndex({
                 id: 'status',
                 header: 'Status',
                 priority: 1,
-                cell: (row) => `${row.status} · ${row.source}`,
+                cell: (row) => (
+                    <WorkspaceStatusBadge
+                        status={`${row.status} · ${row.source}`}
+                    />
+                ),
             },
             {
                 id: 'route',
@@ -82,23 +90,20 @@ export default function BranchEnquiriesIndex({
     return (
         <>
             <Head title={`Enquiries · ${branch.name}`} />
-            <div className="mx-auto flex max-w-5xl flex-col gap-6 p-4 md:p-8">
-                <div className="flex flex-wrap items-end justify-between gap-3">
-                    <div className="space-y-2">
-                        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                            Branch · {company.name} · {branch.name}
-                        </p>
-                        <h1 className="text-2xl font-semibold tracking-tight">
-                            Enquiries
-                        </h1>
-                    </div>
-                    {can_create ? (
-                        <Button asChild>
-                            <Link href={urls.create}>Create enquiry</Link>
+            <PageShell
+                title="Enquiries"
+                description={`Broker pipeline for ${branch.name}.`}
+                actions={
+                    can_create ? (
+                        <Button asChild variant="primary" className="gap-2">
+                            <Link href={urls.create}>
+                                <Plus className="size-4" />
+                                Create enquiry
+                            </Link>
                         </Button>
-                    ) : null}
-                </div>
-
+                    ) : null
+                }
+            >
                 {flash?.success ? (
                     <p
                         role="status"
@@ -109,24 +114,24 @@ export default function BranchEnquiriesIndex({
                 ) : null}
 
                 {can_include_unassigned ? (
-                    <Form
-                        action={urls.index}
-                        method="get"
-                        className="flex items-center gap-3 rounded-xl border border-border p-4 text-sm"
-                    >
-                        <label className="flex items-center gap-2">
-                            <input
-                                type="checkbox"
-                                name="unassigned"
-                                value="1"
-                                defaultChecked={filters.unassigned}
-                            />
-                            Include company unassigned queue
-                        </label>
-                        <Button type="submit" size="sm">
-                            Apply
-                        </Button>
-                    </Form>
+                    <FormSection title="Queue filters" columns={2}>
+                        <Form
+                            action={urls.index}
+                            method="get"
+                            className="contents"
+                        >
+                            <label className="flex items-center gap-2 text-sm">
+                                <input
+                                    type="checkbox"
+                                    name="unassigned"
+                                    value="1"
+                                    defaultChecked={filters.unassigned}
+                                />
+                                Include company unassigned queue
+                            </label>
+                            <FilterApplyButton />
+                        </Form>
+                    </FormSection>
                 ) : null}
 
                 <ResponsiveDataTable
@@ -137,23 +142,32 @@ export default function BranchEnquiriesIndex({
                     emptyTitle="No enquiries found"
                     emptyDescription="Create an enquiry or adjust filters."
                     actions={(enquiry) => (
-                        <Link
+                        <AppIconAction
+                            icon={Eye}
+                            label="Open enquiry"
                             href={`${urls.index}/${enquiry.id}`}
-                            className="font-medium underline-offset-4 hover:underline"
-                        >
-                            Open
-                        </Link>
+                            variant="info"
+                        />
                     )}
                 />
 
                 <p className="text-xs text-muted-foreground">
                     Page {enquiries.meta.current_page} of{' '}
-                    {enquiries.meta.last_page} ({enquiries.meta.total} total)
+                    {enquiries.meta.last_page} · {enquiries.meta.total} total
                     {enquiries.meta.includes_unassigned
-                        ? ' · includes unassigned'
+                        ? ' · includes unassigned queue'
                         : ''}
                 </p>
-            </div>
+            </PageShell>
         </>
+    );
+}
+
+function FilterApplyButton() {
+    return (
+        <Button type="submit" variant="secondary" className="gap-2">
+            <Filter className="size-4" />
+            Apply
+        </Button>
     );
 }

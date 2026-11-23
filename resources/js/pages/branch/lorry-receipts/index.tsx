@@ -4,7 +4,8 @@ import {
     ResponsiveDataTable,
     type DataTableColumn,
 } from '@/components/data-table';
-import { MasterPageHeader } from '@/components/masters/master-page-header';
+import { PageShell } from '@/components/page-shell';
+import { formatDisplayDate } from '@/lib/dates';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -49,19 +50,6 @@ type Props = {
     };
     urls: { index: string; create: string };
 };
-
-function formatLrDate(value: string | null): string {
-    if (!value) {
-        return '—';
-    }
-
-    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
-    if (!match) {
-        return value;
-    }
-
-    return `${match[3]}-${match[2]}-${match[1]}`;
-}
 
 function statusLabel(status: string): string {
     return status.replaceAll('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase());
@@ -129,7 +117,7 @@ export default function LorryReceiptsIndex({
                 id: 'lr_date',
                 header: 'LR Date',
                 priority: 0,
-                cell: (row) => formatLrDate(row.lr_date),
+                cell: (row) => formatDisplayDate(row.lr_date),
             },
             {
                 id: 'status',
@@ -181,9 +169,7 @@ export default function LorryReceiptsIndex({
     return (
         <>
             <Head title="Lorry Receipts" />
-            <div className="flex h-full flex-1 flex-col gap-4 p-4 md:p-6">
-                <MasterPageHeader title="Lorry Receipts" />
-
+            <PageShell title={'Lorry Receipts'}>
                 {flash?.success ? (
                     <p className="text-sm text-emerald-700">{flash.success}</p>
                 ) : null}
@@ -284,7 +270,7 @@ export default function LorryReceiptsIndex({
                         {lorryReceipts.meta.total} total
                     </p>
                 ) : null}
-            </div>
+            </PageShell>
         </>
     );
 }

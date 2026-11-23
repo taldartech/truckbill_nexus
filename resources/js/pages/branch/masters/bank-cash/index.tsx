@@ -4,7 +4,7 @@ import {
     ResponsiveDataTable,
     type DataTableColumn,
 } from '@/components/data-table';
-import { MasterPageHeader } from '@/components/masters/master-page-header';
+import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -91,8 +91,7 @@ export default function BankCashIndex({
     return (
         <>
             <Head title={`Bank / Cash · ${branch.name}`} />
-            <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <MasterPageHeader title="Bank / Cash accounts" />
+            <PageShell title={'Bank / Cash accounts'}>
                 {flash?.success ? (
                     <p
                         role="status"
@@ -152,7 +151,7 @@ export default function BankCashIndex({
                     emptyTitle="No accounts"
                     emptyDescription="Create a bank or cash account."
                 />
-            </div>
+            </PageShell>
         </>
     );
 }

@@ -1,13 +1,17 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Eye, Filter, Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { AppIconAction } from '@/components/app-icon-action';
 import {
     ResponsiveDataTable,
     type DataTableColumn,
 } from '@/components/data-table';
-import { MasterPageHeader } from '@/components/masters/master-page-header';
+import { FormSection } from '@/components/form-section';
+import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 
 type Row = {
     id: string;
@@ -26,7 +30,6 @@ type Props = {
     links: { hub: string; index: string; create: string };
 };
 export default function StationsIndex({
-    company,
     branch,
     canManageOwnerStations,
     filters,
@@ -56,7 +59,11 @@ export default function StationsIndex({
                 id: 'status',
                 header: 'Status',
                 priority: 1,
-                cell: (row) => (row.is_active ? 'Active' : 'Inactive'),
+                cell: (row) => (
+                    <WorkspaceStatusBadge
+                        status={row.is_active ? 'Active' : 'Inactive'}
+                    />
+                ),
             },
             {
                 id: 'name',
@@ -71,14 +78,26 @@ export default function StationsIndex({
                 cell: (row) => row.city || '—',
             },
         ],
-        [company.id, branch.id],
+        [],
     );
 
     return (
         <>
             <Head title={`Stations · ${branch.name}`} />
-            <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <MasterPageHeader title="Stations" />
+            <PageShell
+                title="Stations"
+                description="Owner-shared station directory for routes and LR parties."
+                actions={
+                    canManageOwnerStations ? (
+                        <Button asChild variant="primary" className="gap-2">
+                            <Link href={links.create}>
+                                <Plus className="size-4" />
+                                Create station
+                            </Link>
+                        </Button>
+                    ) : null
+                }
+            >
                 {flash?.success ? (
                     <p
                         role="status"
@@ -87,7 +106,8 @@ export default function StationsIndex({
                         {flash.success}
                     </p>
                 ) : null}
-                <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+
+                <FormSection title="Filters" columns={2}>
                     <form
                         onSubmit={(e) => {
                             e.preventDefault();
@@ -97,9 +117,9 @@ export default function StationsIndex({
                                 { preserveState: true, replace: true },
                             );
                         }}
-                        className="flex w-full gap-3 md:max-w-xl"
+                        className="contents"
                     >
-                        <div className="flex-1 space-y-2">
+                        <div className="space-y-2">
                             <Label htmlFor="q">Search</Label>
                             <Input
                                 id="q"
@@ -107,22 +127,26 @@ export default function StationsIndex({
                                 onChange={(e) => setQ(e.target.value)}
                             />
                         </div>
-                        <Button type="submit" variant="secondary">
-                            Filter
-                        </Button>
+                        <div className="flex items-end">
+                            <Button
+                                type="submit"
+                                variant="secondary"
+                                className="gap-2"
+                            >
+                                <Filter className="size-4" />
+                                Apply
+                            </Button>
+                        </div>
                     </form>
-                    {canManageOwnerStations ? (
-                        <Button asChild>
-                            <Link href={links.create}>Create station</Link>
-                        </Button>
-                    ) : null}
-                </div>
+                </FormSection>
+
                 {!canManageOwnerStations ? (
                     <p className="text-sm text-muted-foreground">
                         Station creation is owner-only. Branch members can
                         browse the shared directory.
                     </p>
                 ) : null}
+
                 <ResponsiveDataTable
                     caption="Stations"
                     columns={columns}
@@ -130,8 +154,16 @@ export default function StationsIndex({
                     rowKey={(row) => row.id}
                     emptyTitle="No stations"
                     emptyDescription="Owner-shared stations will appear here."
+                    actions={(row) => (
+                        <AppIconAction
+                            icon={Eye}
+                            label="View station"
+                            href={showUrl(row.id)}
+                            variant="info"
+                        />
+                    )}
                 />
-            </div>
+            </PageShell>
         </>
     );
 }

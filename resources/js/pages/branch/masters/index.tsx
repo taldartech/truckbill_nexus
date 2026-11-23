@@ -1,6 +1,8 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { MasterPageHeader } from '@/components/masters/master-page-header';
+import { ArrowUpRight } from 'lucide-react';
+import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
+import { MetricCard } from '@/components/ui/metric-card';
 
 type Category = {
     key: string;
@@ -23,8 +25,10 @@ export default function MastersHub({ branch, categories }: Props) {
     return (
         <>
             <Head title={`Masters · ${branch.name}`} />
-            <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <MasterPageHeader title="Masters" />
+            <PageShell
+                title="Masters"
+                description="Parties, fleet, stations, and supporting reference data."
+            >
                 {flash?.success ? (
                     <p
                         role="status"
@@ -33,13 +37,21 @@ export default function MastersHub({ branch, categories }: Props) {
                         {flash.success}
                     </p>
                 ) : null}
+
+                <MetricCard
+                    label="Categories"
+                    value={categories.length}
+                    hint="Master data areas available in this branch"
+                    tone="blue"
+                />
+
                 <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     {categories.map((category) => (
                         <section
                             key={category.key}
-                            className="flex flex-col gap-3 rounded-xl border border-border p-4"
+                            className="flex flex-col gap-3 rounded-xl border border-border bg-card p-5 shadow-xs"
                         >
-                            <h2 className="text-lg font-semibold">
+                            <h2 className="text-base font-semibold tracking-tight">
                                 {category.title}
                             </h2>
                             <p className="flex-1 text-sm text-muted-foreground">
@@ -48,14 +60,17 @@ export default function MastersHub({ branch, categories }: Props) {
                             <Button
                                 asChild
                                 variant="outline"
-                                className="self-start"
+                                className="gap-2 self-start"
                             >
-                                <Link href={category.href}>Open</Link>
+                                <Link href={category.href}>
+                                    Open
+                                    <ArrowUpRight className="size-4" />
+                                </Link>
                             </Button>
                         </section>
                     ))}
                 </div>
-            </div>
+            </PageShell>
         </>
     );
 }

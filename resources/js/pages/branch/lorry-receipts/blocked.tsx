@@ -1,5 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
-import { MasterPageHeader } from '@/components/masters/master-page-header';
+import { ArrowLeft } from 'lucide-react';
+import { AppIconAction } from '@/components/app-icon-action';
+import { PageShell } from '@/components/page-shell';
 import ShellEmptyState from '@/components/shell-empty-state';
 import { Button } from '@/components/ui/button';
 
@@ -12,17 +14,18 @@ export default function LorryReceiptBlocked({ reason, urls }: Props) {
     return (
         <>
             <Head title="LR unavailable" />
-            <div className="flex h-full flex-1 flex-col gap-4 p-4 md:p-6">
-                <div className="space-y-2">
-                    <Link
+            <PageShell
+                title="Cannot create Lorry Receipt"
+                description="Workflow context is not available for a new LR."
+                actions={
+                    <AppIconAction
+                        icon={ArrowLeft}
+                        label="Back to lorry receipts"
                         href={urls.index}
-                        className="text-sm text-muted-foreground underline-offset-4 hover:underline"
-                    >
-                        ← Back to Lorry Receipts
-                    </Link>
-                    <MasterPageHeader title="Cannot create Lorry Receipt" />
-                </div>
-
+                        variant="outline"
+                    />
+                }
+            >
                 <ShellEmptyState
                     title="Workflow context unavailable"
                     description={reason}
@@ -32,7 +35,7 @@ export default function LorryReceiptBlocked({ reason, urls }: Props) {
                         </Button>
                     }
                 />
-            </div>
+            </PageShell>
         </>
     );
 }

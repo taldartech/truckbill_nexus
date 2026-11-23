@@ -1,7 +1,8 @@
 import { Form, Head, Link } from '@inertiajs/react';
 import { useState } from 'react';
 import InputError from '@/components/input-error';
-import { MasterPageHeader } from '@/components/masters/master-page-header';
+import { FormSection } from '@/components/form-section';
+import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -69,22 +70,26 @@ export default function VehicleForm({
                         : `Edit ${vehicle?.registration_number}`
                 }
             />
-            <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <MasterPageHeader
-                    title={
-                        mode === 'create'
-                            ? 'Create vehicle'
-                            : `Edit ${vehicle?.registration_number}`
-                    }
-                />
+            <PageShell
+                width="form"
+                title={
+                    mode === 'create'
+                        ? 'Create vehicle'
+                        : `Edit ${vehicle?.registration_number}`
+                }
+                description="Registration, ownership, driver assignment, and technical specifications."
+            >
                 <Form
                     action={action}
                     method={mode === 'create' ? 'post' : 'patch'}
-                    className="mx-auto grid w-full max-w-3xl gap-4 md:max-w-5xl"
+                    className="grid w-full gap-5"
                 >
                     {({ errors, processing }) => (
                         <>
-                            <div className="grid gap-4 sm:grid-cols-2">
+                            <FormSection
+                                title="Registration & ownership"
+                                columns={2}
+                            >
                                 <div className="space-y-2">
                                     <Label htmlFor="registration_number">
                                         Registration number
@@ -193,7 +198,7 @@ export default function VehicleForm({
                                         </div>
                                     </>
                                 ) : (
-                                    <div className="space-y-2 sm:col-span-2">
+                                    <div className="space-y-2 md:col-span-2">
                                         <Label htmlFor="owner_party_id">
                                             Vehicle Owner (Transporter)
                                         </Label>
@@ -223,7 +228,7 @@ export default function VehicleForm({
                                         />
                                     </div>
                                 )}
-                                <div className="space-y-2 sm:col-span-2">
+                                <div className="space-y-2 md:col-span-2">
                                     <Label htmlFor="primary_driver_party_id">
                                         Primary Driver
                                     </Label>
@@ -290,44 +295,52 @@ export default function VehicleForm({
                                         <InputError message={errors[name]} />
                                     </div>
                                 ))}
-                            </div>
-                            <label className="flex items-center gap-2 text-sm">
-                                <input
-                                    type="checkbox"
-                                    name="is_active"
-                                    value="1"
-                                    defaultChecked={vehicle?.is_active ?? true}
-                                />
-                                Active
-                            </label>
-                            <div className="space-y-2">
-                                <Label htmlFor="remark">Remark</Label>
-                                <Input
-                                    id="remark"
-                                    name="remark"
-                                    required={mode === 'edit'}
-                                    defaultValue={
-                                        mode === 'create'
-                                            ? 'Create vehicle'
-                                            : ''
-                                    }
-                                />
-                                <InputError message={errors.remark} />
-                            </div>
-                            <div className="flex gap-3">
-                                <Button type="submit" disabled={processing}>
-                                    {processing ? 'Saving…' : 'Save'}
-                                </Button>
-                                <Button asChild variant="outline">
-                                    <Link href={links.show ?? links.index}>
-                                        Cancel
-                                    </Link>
-                                </Button>
-                            </div>
+                            </FormSection>
+                            <FormSection title="Status & audit" columns={1}>
+                                <label className="flex items-center gap-2 text-sm">
+                                    <input
+                                        type="checkbox"
+                                        name="is_active"
+                                        value="1"
+                                        defaultChecked={
+                                            vehicle?.is_active ?? true
+                                        }
+                                    />
+                                    Active
+                                </label>
+                                <div className="space-y-2">
+                                    <Label htmlFor="remark">Remark</Label>
+                                    <Input
+                                        id="remark"
+                                        name="remark"
+                                        required={mode === 'edit'}
+                                        defaultValue={
+                                            mode === 'create'
+                                                ? 'Create vehicle'
+                                                : ''
+                                        }
+                                    />
+                                    <InputError message={errors.remark} />
+                                </div>
+                                <div className="flex gap-3">
+                                    <Button
+                                        type="submit"
+                                        variant="primary"
+                                        disabled={processing}
+                                    >
+                                        {processing ? 'Saving…' : 'Save'}
+                                    </Button>
+                                    <Button asChild variant="outline">
+                                        <Link href={links.show ?? links.index}>
+                                            Cancel
+                                        </Link>
+                                    </Button>
+                                </div>
+                            </FormSection>
                         </>
                     )}
                 </Form>
-            </div>
+            </PageShell>
         </>
     );
 }

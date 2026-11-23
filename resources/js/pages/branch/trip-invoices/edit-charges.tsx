@@ -1,5 +1,5 @@
 import { Form, Head, Link } from '@inertiajs/react';
-import { MasterPageHeader } from '@/components/masters/master-page-header';
+import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 
@@ -45,10 +45,11 @@ export default function TripInvoiceEditCharges({
     return (
         <>
             <Head title={`Edit charges — ${invoice.invoice_number}`} />
-            <div className="flex h-full flex-1 flex-col gap-4 p-4 md:p-6">
-                <MasterPageHeader
-                    title={`Edit additional charges — ${invoice.invoice_number}`}
-                />
+            <PageShell
+                width="form"
+                title={`Edit additional charges — ${invoice.invoice_number}`}
+                description="Adjust supplemental charge lines before settlement."
+            >
                 <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
                     {sampleBanner}
                 </p>
@@ -154,7 +155,7 @@ export default function TripInvoiceEditCharges({
                         )}
                     </Form>
                 )}
-            </div>
+            </PageShell>
         </>
     );
 }

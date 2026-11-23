@@ -1,5 +1,5 @@
 import { Form, Head, Link } from '@inertiajs/react';
-import { MasterPageHeader } from '@/components/masters/master-page-header';
+import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 
@@ -32,15 +32,14 @@ export default function TripInvoiceConsolidate({
     return (
         <>
             <Head title="Consolidated Invoice" />
-            <div className="flex h-full flex-1 flex-col gap-4 p-4 md:p-6">
-                <MasterPageHeader title="Consolidated OwnFleet Invoice" />
+            <PageShell width="form" title="Consolidated OwnFleet Invoice">
                 <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
                     {sampleBanner}
                 </p>
                 <Form
                     action="/trip-invoices/consolidated"
                     method="post"
-                    className="flex max-w-3xl flex-col gap-4"
+                    className="flex w-full flex-col gap-4"
                 >
                     {({ processing }) => (
                         <>
@@ -102,7 +101,7 @@ export default function TripInvoiceConsolidate({
                         </>
                     )}
                 </Form>
-            </div>
+            </PageShell>
         </>
     );
 }

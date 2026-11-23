@@ -1,6 +1,11 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { useState } from 'react';
-import { MasterPageHeader } from '@/components/masters/master-page-header';
+import { ArrowLeft, Pencil } from 'lucide-react';
+import { AppIconAction } from '@/components/app-icon-action';
+import { FormSection } from '@/components/form-section';
+import { PageShell } from '@/components/page-shell';
+import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
+import { formatDisplayDate } from '@/lib/dates';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -84,16 +89,28 @@ export default function LorryReceiptShow({
     return (
         <>
             <Head title={`LR ${lorryReceipt.lr_number}`} />
-            <div className="flex h-full flex-1 flex-col gap-4 p-4 md:p-6">
-                <div className="space-y-2">
-                    <Link
-                        href={urls.index}
-                        className="text-sm text-muted-foreground underline-offset-4 hover:underline"
-                    >
-                        ← Lorry Receipts
-                    </Link>
-                    <MasterPageHeader title={`LR ${lorryReceipt.lr_number}`} />
-                </div>
+            <PageShell
+                title={`LR ${lorryReceipt.lr_number}`}
+                description={lorryReceipt.workflow_context.replaceAll('_', ' ')}
+                actions={
+                    <>
+                        <AppIconAction
+                            icon={ArrowLeft}
+                            label="Back to list"
+                            href={urls.index}
+                            variant="outline"
+                        />
+                        <AppIconAction
+                            icon={Pencil}
+                            label="Edit LR"
+                            href={urls.edit}
+                            variant="warning"
+                            visible={permissions.can_edit && isPending}
+                        />
+                    </>
+                }
+            >
+                <WorkspaceStatusBadge status={lorryReceipt.status} />
 
                 {flash?.success ? (
                     <p
@@ -184,7 +201,10 @@ export default function LorryReceiptShow({
                             ' ',
                         )}
                     />
-                    <Detail label="Date" value={lorryReceipt.lr_date || '—'} />
+                    <Detail
+                        label="Date"
+                        value={formatDisplayDate(lorryReceipt.lr_date)}
+                    />
                     <Detail
                         label="From"
                         value={
@@ -372,7 +392,7 @@ export default function LorryReceiptShow({
                         Cancellation remark: {lorryReceipt.cancellation_remark}
                     </p>
                 ) : null}
-            </div>
+            </PageShell>
         </>
     );
 }

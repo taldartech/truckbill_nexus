@@ -1,6 +1,7 @@
 import { Form, Head, Link } from '@inertiajs/react';
 import InputError from '@/components/input-error';
-import { MasterPageHeader } from '@/components/masters/master-page-header';
+import { FormSection } from '@/components/form-section';
+import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -37,43 +38,44 @@ export default function StationForm({ mode, station, links }: Props) {
                         : `Edit ${station?.name}`
                 }
             />
-            <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <MasterPageHeader
-                    title={
-                        mode === 'create'
-                            ? 'Create station'
-                            : `Edit ${station?.name}`
-                    }
-                />
+            <PageShell
+                width="form"
+                title={
+                    mode === 'create'
+                        ? 'Create station'
+                        : `Edit ${station?.name}`
+                }
+                description="Owner-shared station directory."
+            >
                 <Form
                     action={action}
                     method={mode === 'create' ? 'post' : 'patch'}
-                    className="mx-auto grid w-full max-w-2xl gap-4 md:max-w-4xl"
+                    className="grid w-full gap-5"
                 >
                     {({ errors, processing }) => (
                         <>
-                            {mode === 'create' ? (
+                            <FormSection title="Station details" columns={2}>
+                                {mode === 'create' ? (
+                                    <div className="space-y-2">
+                                        <Label htmlFor="code">Code</Label>
+                                        <Input id="code" name="code" required />
+                                        <InputError message={errors.code} />
+                                    </div>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground">
+                                        Code: {station?.code}
+                                    </p>
+                                )}
                                 <div className="space-y-2">
-                                    <Label htmlFor="code">Code</Label>
-                                    <Input id="code" name="code" required />
-                                    <InputError message={errors.code} />
+                                    <Label htmlFor="name">Name</Label>
+                                    <Input
+                                        id="name"
+                                        name="name"
+                                        required
+                                        defaultValue={station?.name ?? ''}
+                                    />
+                                    <InputError message={errors.name} />
                                 </div>
-                            ) : (
-                                <p className="text-sm text-muted-foreground">
-                                    Code: {station?.code}
-                                </p>
-                            )}
-                            <div className="space-y-2">
-                                <Label htmlFor="name">Name</Label>
-                                <Input
-                                    id="name"
-                                    name="name"
-                                    required
-                                    defaultValue={station?.name ?? ''}
-                                />
-                                <InputError message={errors.name} />
-                            </div>
-                            <div className="grid gap-4 sm:grid-cols-2">
                                 <div className="space-y-2">
                                     <Label htmlFor="state">State</Label>
                                     <Input
@@ -90,44 +92,52 @@ export default function StationForm({ mode, station, links }: Props) {
                                         defaultValue={station?.city ?? ''}
                                     />
                                 </div>
-                            </div>
-                            <label className="flex items-center gap-2 text-sm">
-                                <input
-                                    type="checkbox"
-                                    name="is_active"
-                                    value="1"
-                                    defaultChecked={station?.is_active ?? true}
-                                />{' '}
-                                Active
-                            </label>
-                            <div className="space-y-2">
-                                <Label htmlFor="remark">Remark</Label>
-                                <Input
-                                    id="remark"
-                                    name="remark"
-                                    required={mode === 'edit'}
-                                    defaultValue={
-                                        mode === 'create'
-                                            ? 'Create station'
-                                            : ''
-                                    }
-                                />
-                                <InputError message={errors.remark} />
-                            </div>
-                            <div className="flex gap-3">
-                                <Button type="submit" disabled={processing}>
-                                    {processing ? 'Saving…' : 'Save'}
-                                </Button>
-                                <Button asChild variant="outline">
-                                    <Link href={links.show ?? links.index}>
-                                        Cancel
-                                    </Link>
-                                </Button>
-                            </div>
+                                <label className="flex items-center gap-2 text-sm md:col-span-2">
+                                    <input
+                                        type="checkbox"
+                                        name="is_active"
+                                        value="1"
+                                        defaultChecked={
+                                            station?.is_active ?? true
+                                        }
+                                    />{' '}
+                                    Active
+                                </label>
+                            </FormSection>
+                            <FormSection title="Remark" columns={1}>
+                                <div className="space-y-2">
+                                    <Label htmlFor="remark">Remark</Label>
+                                    <Input
+                                        id="remark"
+                                        name="remark"
+                                        required={mode === 'edit'}
+                                        defaultValue={
+                                            mode === 'create'
+                                                ? 'Create station'
+                                                : ''
+                                        }
+                                    />
+                                    <InputError message={errors.remark} />
+                                </div>
+                                <div className="flex gap-3">
+                                    <Button
+                                        type="submit"
+                                        variant="primary"
+                                        disabled={processing}
+                                    >
+                                        {processing ? 'Saving…' : 'Save'}
+                                    </Button>
+                                    <Button asChild variant="outline">
+                                        <Link href={links.show ?? links.index}>
+                                            Cancel
+                                        </Link>
+                                    </Button>
+                                </div>
+                            </FormSection>
                         </>
                     )}
                 </Form>
-            </div>
+            </PageShell>
         </>
     );
 }

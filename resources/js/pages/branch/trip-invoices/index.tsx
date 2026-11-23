@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { MasterPageHeader } from '@/components/masters/master-page-header';
+import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
 
 type InvoiceRow = {
@@ -32,8 +32,7 @@ export default function TripInvoicesIndex({
     return (
         <>
             <Head title="OwnFleet Invoices" />
-            <div className="flex h-full flex-1 flex-col gap-4 p-4 md:p-6">
-                <MasterPageHeader title="OwnFleet Invoices" />
+            <PageShell title={'OwnFleet Invoices'}>
                 <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
                     {sampleBanner}
                 </p>
@@ -148,7 +147,7 @@ export default function TripInvoicesIndex({
                 <p className="text-xs text-muted-foreground">
                     {invoices.meta.total} invoice(s)
                 </p>
-            </div>
+            </PageShell>
         </>
     );
 }

@@ -1,5 +1,14 @@
 import { Head, Link } from '@inertiajs/react';
-import { MasterPageHeader } from '@/components/masters/master-page-header';
+import { Eye } from 'lucide-react';
+import { useMemo } from 'react';
+import { AppIconAction } from '@/components/app-icon-action';
+import {
+    ResponsiveDataTable,
+    type DataTableColumn,
+} from '@/components/data-table';
+import { PageShell } from '@/components/page-shell';
+import { MetricCard } from '@/components/ui/metric-card';
+import { formatDisplayDate } from '@/lib/dates';
 
 type PaymentRow = {
     id: string;
@@ -16,61 +25,103 @@ type Props = {
     payments: PaymentRow[];
 };
 
+function formatMoney(value: string): string {
+    return `₹${value}`;
+}
+
 export default function PaymentsIndex({ payments }: Props) {
+    const settlementTotal = useMemo(
+        () =>
+            payments.reduce(
+                (sum, row) => sum + Number.parseFloat(row.settlement_amount),
+                0,
+            ),
+        [payments],
+    );
+
+    const columns = useMemo<DataTableColumn<PaymentRow>[]>(
+        () => [
+            {
+                id: 'date',
+                header: 'Date',
+                priority: 0,
+                cell: (row) => formatDisplayDate(row.payment_date),
+            },
+            {
+                id: 'invoice',
+                header: 'Invoice',
+                priority: 1,
+                cell: (row) => row.invoice_number ?? '—',
+            },
+            {
+                id: 'received',
+                header: 'Received',
+                priority: 2,
+                cell: (row) => formatMoney(row.amount_received),
+            },
+            {
+                id: 'tds',
+                header: 'TDS',
+                priority: 2,
+                cell: (row) => formatMoney(row.tds_amount),
+            },
+            {
+                id: 'settlement',
+                header: 'Settlement',
+                priority: 1,
+                cell: (row) => formatMoney(row.settlement_amount),
+            },
+            {
+                id: 'mode',
+                header: 'Mode',
+                priority: 3,
+                cell: (row) => row.payment_mode ?? '—',
+            },
+        ],
+        [],
+    );
+
     return (
         <>
             <Head title="OwnFleet Payments" />
-            <div className="flex h-full flex-1 flex-col gap-4 p-4 md:p-6">
-                <MasterPageHeader title="OwnFleet Invoice Payments" />
-                <div className="overflow-x-auto rounded-lg border">
-                    <table className="min-w-full text-sm">
-                        <thead className="bg-muted/50 text-left">
-                            <tr>
-                                <th className="px-3 py-2">Date</th>
-                                <th className="px-3 py-2">Invoice</th>
-                                <th className="px-3 py-2">Received</th>
-                                <th className="px-3 py-2">TDS</th>
-                                <th className="px-3 py-2">Settlement</th>
-                                <th className="px-3 py-2">Mode</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {payments.map((row) => (
-                                <tr key={row.id} className="border-t">
-                                    <td className="px-3 py-2">
-                                        {row.payment_date}
-                                    </td>
-                                    <td className="px-3 py-2">
-                                        <Link
-                                            href={`/trip-invoices/${row.invoice_id}`}
-                                            className="text-primary underline"
-                                        >
-                                            {row.invoice_number}
-                                        </Link>
-                                    </td>
-                                    <td className="px-3 py-2">
-                                        ₹{row.amount_received}
-                                    </td>
-                                    <td className="px-3 py-2">
-                                        ₹{row.tds_amount}
-                                    </td>
-                                    <td className="px-3 py-2">
-                                        ₹{row.settlement_amount}
-                                    </td>
-                                    <td className="px-3 py-2">
-                                        {row.payment_mode ?? '—'}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                    {payments.length === 0 && (
-                        <p className="p-4 text-sm text-muted-foreground">
-                            No payments recorded.
-                        </p>
-                    )}
+            <PageShell
+                title="OwnFleet Invoice Payments"
+                description="Settlement history with TDS and payment mode."
+            >
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <MetricCard
+                        label="Payments"
+                        value={payments.length}
+                        tone="blue"
+                    />
+                    <MetricCard
+                        label="Settlement total"
+                        value={
+                            Number.isFinite(settlementTotal)
+                                ? formatMoney(settlementTotal.toFixed(2))
+                                : '—'
+                        }
+                        tone="green"
+                    />
                 </div>
-            </div>
+
+                <ResponsiveDataTable
+                    caption="Invoice payments"
+                    columns={columns}
+                    rows={payments}
+                    rowKey={(row) => row.id}
+                    emptyTitle="No payments recorded"
+                    emptyDescription="Record a payment from an OwnFleet invoice."
+                    actions={(row) => (
+                        <AppIconAction
+                            icon={Eye}
+                            label="View invoice"
+                            href={`/trip-invoices/${row.invoice_id}`}
+                            variant="info"
+                        />
+                    )}
+                />
+            </PageShell>
         </>
     );
 }

@@ -1,5 +1,5 @@
 import { Form, Head, Link } from '@inertiajs/react';
-import { MasterPageHeader } from '@/components/masters/master-page-header';
+import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 
@@ -30,8 +30,7 @@ export default function TripInvoiceCreate({
     return (
         <>
             <Head title="Create OwnFleet Invoice" />
-            <div className="flex h-full flex-1 flex-col gap-4 p-4 md:p-6">
-                <MasterPageHeader title="Individual OwnFleet Invoice" />
+            <PageShell title={'Individual OwnFleet Invoice'}>
                 <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
                     {sampleBanner}
                 </p>
@@ -148,7 +147,7 @@ export default function TripInvoiceCreate({
                         </>
                     )}
                 </Form>
-            </div>
+            </PageShell>
         </>
     );
 }
