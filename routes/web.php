@@ -17,6 +17,7 @@ use App\Http\Controllers\Branch\BranchSettingsController;
 use App\Http\Controllers\Branch\BrokerAdjustmentController;
 use App\Http\Controllers\Branch\BrokerDailyPaymentsController;
 use App\Http\Controllers\Branch\BrokerDeliveryController;
+use App\Http\Controllers\Branch\BrokerInvoiceController;
 use App\Http\Controllers\Branch\CatalogueController;
 use App\Http\Controllers\Branch\DocumentAttachmentController;
 use App\Http\Controllers\Branch\EnquiryController;
@@ -222,6 +223,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/broker/daily-payments/bulk-status', [BrokerDailyPaymentsController::class, 'bulkStatus'])->name('branch.broker.daily-payments.bulk-status');
 
         Route::get('/broker/transporter-balances', [TransporterBookBalanceController::class, 'index'])->name('branch.broker.transporter-balances.index');
+
+        Route::get('/broker/invoices', [BrokerInvoiceController::class, 'index'])->name('branch.broker.invoices.index');
+        Route::get('/broker/invoices/create', [BrokerInvoiceController::class, 'create'])->name('branch.broker.invoices.create');
+        Route::post('/broker/invoices/preview', [BrokerInvoiceController::class, 'preview'])->name('branch.broker.invoices.preview');
+        Route::post('/broker/invoices', [BrokerInvoiceController::class, 'store'])->name('branch.broker.invoices.store');
+        Route::get('/broker/invoices/{brokerInvoice}', [BrokerInvoiceController::class, 'show'])->name('branch.broker.invoices.show');
+        Route::post('/broker/invoices/{brokerInvoice}/cancel', [BrokerInvoiceController::class, 'cancel'])->name('branch.broker.invoices.cancel');
+        Route::post('/broker/invoices/{brokerInvoice}/payments', [BrokerInvoiceController::class, 'storePayment'])->name('branch.broker.invoices.payments.store');
 
         Route::get('/trips', [TripController::class, 'index'])->name('branch.trips.index');
         Route::get('/trips/{trip}', [TripController::class, 'show'])->name('branch.trips.show');

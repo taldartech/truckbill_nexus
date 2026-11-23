@@ -182,6 +182,11 @@ export function AppSidebar() {
             icon: Truck,
         },
         {
+            title: 'Customer Invoices',
+            href: '/broker/invoices',
+            icon: Receipt,
+        },
+        {
             title: 'Voucher Payments',
             href: '/broker/vouchers',
             icon: CreditCard,

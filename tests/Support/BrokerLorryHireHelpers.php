@@ -1,5 +1,6 @@
 <?php
 
+use App\Domains\Broker\Delivery\BrokerDeliveryService;
 use App\Domains\Broker\LorryHire\LorryHireService;
 use App\Domains\Consignment\Enums\FreightRateType;
 use App\Domains\Consignment\Enums\LrWorkflowContext;
@@ -47,6 +48,45 @@ if (! function_exists('brokerGrantDeliveryAdjustmentPermissions')) {
         ] as $code) {
             tripGrant('customer.admin', $code);
         }
+    }
+}
+
+if (! function_exists('brokerGrantInvoicePermissions')) {
+    function brokerGrantInvoicePermissions(): void
+    {
+        foreach ([
+            PermissionCodes::BROKER_INVOICE_VIEW,
+            PermissionCodes::BROKER_INVOICE_CREATE,
+            PermissionCodes::BROKER_INVOICE_CANCEL,
+            PermissionCodes::BROKER_INVOICE_PRINT,
+        ] as $code) {
+            tripGrant('customer.admin', $code);
+        }
+    }
+}
+
+if (! function_exists('brokerDeliverLr')) {
+    /**
+     * @param  array<string, mixed>  $ctx
+     */
+    function brokerDeliverLr(LorryReceipt $lr, array $ctx, ?string $memoNumber = null): LorryReceipt
+    {
+        brokerGrantDeliveryAdjustmentPermissions();
+
+        $delivery = app(BrokerDeliveryService::class);
+
+        if ($memoNumber !== null) {
+            $delivery->assignMemoPod($ctx['company'], $ctx['branch'], $ctx['member'], [
+                'lorry_receipt_ids' => [$lr->id],
+                'memo_number' => $memoNumber,
+            ]);
+        }
+
+        $delivery->recordDelivery($lr->fresh(), $ctx['member'], [
+            'delivery_date' => now()->toDateString(),
+        ]);
+
+        return $lr->fresh(['delivery', 'lorryHire']);
     }
 }
 
