@@ -1,10 +1,17 @@
-import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { Form, Head, usePage } from '@inertiajs/react';
+import { Eye } from 'lucide-react';
 import { useMemo } from 'react';
+import { PortalFlashBanner } from '@/components/admin/portal-feedback';
+import { AppIconAction } from '@/components/app-icon-action';
 import {
     ResponsiveDataTable,
     type DataTableColumn,
 } from '@/components/data-table';
+import { FormSection, PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 
 type CompanyRow = {
     id: string;
@@ -25,6 +32,9 @@ type Props = {
     };
 };
 
+const selectClass =
+    'flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
+
 export default function AdminCompaniesIndex({
     filters,
     index_url,
@@ -42,7 +52,7 @@ export default function AdminCompaniesIndex({
                 priority: 0,
                 cell: (row) => (
                     <>
-                        <div>{row.name}</div>
+                        <div className="font-medium">{row.name}</div>
                         {row.pan ? (
                             <div className="font-mono text-xs text-muted-foreground">
                                 {row.pan}
@@ -71,7 +81,11 @@ export default function AdminCompaniesIndex({
                 id: 'status',
                 header: 'Status',
                 priority: 1,
-                cell: (row) => (row.is_active ? 'Active' : 'Deactivated'),
+                cell: (row) => (
+                    <WorkspaceStatusBadge
+                        status={row.is_active ? 'active' : 'deactivated'}
+                    />
+                ),
             },
         ],
         [],
@@ -80,81 +94,68 @@ export default function AdminCompaniesIndex({
     return (
         <>
             <Head title="Company lifecycle" />
-            <div className="mx-auto flex max-w-5xl flex-col gap-6 p-4 md:p-8">
-                <div className="space-y-2">
-                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                        Internal · Lifecycle
-                    </p>
-                    <h1 className="text-2xl font-semibold tracking-tight">
-                        Companies
-                    </h1>
-                    <p className="text-sm text-muted-foreground">
-                        Deactivate and reactivate companies with mandatory
-                        remarks. Ownership transfer is available on company
-                        detail.
+            <PageShell
+                title="Companies"
+                description="Deactivate and reactivate companies with mandatory remarks. Ownership transfer is available on company detail."
+            >
+                <PortalFlashBanner message={flash?.success} />
+
+                <FormSection title="Search & filters" columns={2}>
+                    <Form action={index_url} method="get" className="contents">
+                        <div className="space-y-2 md:col-span-1">
+                            <Label htmlFor="q">Search</Label>
+                            <Input
+                                id="q"
+                                name="q"
+                                defaultValue={filters.q}
+                                placeholder="Name, PAN, or owner"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="status">Status</Label>
+                            <select
+                                id="status"
+                                name="status"
+                                defaultValue={filters.status}
+                                className={selectClass}
+                            >
+                                <option value="all">All</option>
+                                <option value="active">Active</option>
+                                <option value="deactivated">Deactivated</option>
+                            </select>
+                        </div>
+                        <div className="flex items-end md:col-span-2">
+                            <Button type="submit" variant="info">
+                                Apply filters
+                            </Button>
+                        </div>
+                    </Form>
+                </FormSection>
+
+                <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+                    <ResponsiveDataTable
+                        caption="Companies"
+                        columns={columns}
+                        rows={companies.data}
+                        rowKey={(row) => row.id}
+                        emptyTitle="No companies match these filters"
+                        emptyDescription="Try adjusting search or status filters."
+                        actions={(company) => (
+                            <AppIconAction
+                                icon={Eye}
+                                label="View company"
+                                href={company.show_url}
+                                variant="info"
+                            />
+                        )}
+                    />
+                    <p className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
+                        Showing page {companies.meta.current_page} of{' '}
+                        {companies.meta.last_page} ({companies.meta.total}{' '}
+                        total)
                     </p>
                 </div>
-
-                {flash?.success ? (
-                    <p
-                        role="status"
-                        className="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm"
-                    >
-                        {flash.success}
-                    </p>
-                ) : null}
-
-                <Form
-                    action={index_url}
-                    method="get"
-                    className="flex flex-col gap-3 rounded-xl border border-border p-4 md:flex-row md:items-end"
-                >
-                    <label className="flex flex-1 flex-col gap-1 text-sm">
-                        Search
-                        <input
-                            name="q"
-                            defaultValue={filters.q}
-                            className="rounded-md border border-border bg-background px-3 py-2"
-                            placeholder="Name, PAN, or owner"
-                        />
-                    </label>
-                    <label className="flex flex-col gap-1 text-sm">
-                        Status
-                        <select
-                            name="status"
-                            defaultValue={filters.status}
-                            className="rounded-md border border-border bg-background px-3 py-2"
-                        >
-                            <option value="all">All</option>
-                            <option value="active">Active</option>
-                            <option value="deactivated">Deactivated</option>
-                        </select>
-                    </label>
-                    <Button type="submit">Filter</Button>
-                </Form>
-
-                <ResponsiveDataTable
-                    caption="Companies"
-                    columns={columns}
-                    rows={companies.data}
-                    rowKey={(row) => row.id}
-                    emptyTitle="No companies match these filters"
-                    emptyDescription="Try adjusting search or status filters."
-                    actions={(company) => (
-                        <Link
-                            href={company.show_url}
-                            className="text-sm font-medium underline-offset-4 hover:underline"
-                        >
-                            Open
-                        </Link>
-                    )}
-                />
-
-                <p className="text-xs text-muted-foreground">
-                    Showing page {companies.meta.current_page} of{' '}
-                    {companies.meta.last_page} ({companies.meta.total} total)
-                </p>
-            </div>
+            </PageShell>
         </>
     );
 }

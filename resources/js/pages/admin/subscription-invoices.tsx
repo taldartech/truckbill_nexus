@@ -1,10 +1,18 @@
 import { Form, Head, usePage } from '@inertiajs/react';
 import { useMemo } from 'react';
 import {
+    PortalErrorList,
+    PortalFlashBanner,
+} from '@/components/admin/portal-feedback';
+import {
     ResponsiveDataTable,
     type DataTableColumn,
 } from '@/components/data-table';
+import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
+
 type InvoiceRow = {
     id: string;
     company_name: string | null;
@@ -39,6 +47,12 @@ export default function AdminSubscriptionInvoices({
                 cell: (row) => row.company_name || '—',
             },
             {
+                id: 'status',
+                header: 'Status',
+                priority: 1,
+                cell: (row) => <WorkspaceStatusBadge status={row.status} />,
+            },
+            {
                 id: 'proposed',
                 header: 'Proposed',
                 priority: 2,
@@ -64,57 +78,45 @@ export default function AdminSubscriptionInvoices({
     return (
         <>
             <Head title="Subscription invoice approval" />
-            <div className="mx-auto flex max-w-5xl flex-col gap-6 p-4 md:p-8">
-                <div className="space-y-2">
-                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                        Internal · Super Admin
-                    </p>
-                    <h1 className="text-2xl font-semibold tracking-tight">
-                        Subscription invoice numbers
-                    </h1>
-                    <p className="text-sm text-muted-foreground">
-                        {issuer_note}
-                    </p>
+            <PageShell
+                title="Subscription invoice numbers"
+                description={issuer_note}
+            >
+                <PortalFlashBanner message={flash?.success} />
+                <PortalErrorList errors={errors} keys={['approved_number']} />
+
+                <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+                    <ResponsiveDataTable
+                        caption="Invoices awaiting approval"
+                        columns={columns}
+                        rows={invoices}
+                        rowKey={(row) => row.id}
+                        emptyTitle="No invoices awaiting approval"
+                        emptyDescription="Approved invoices are removed from this queue."
+                        actions={(invoice) => (
+                            <Form
+                                action={invoice.approve_url}
+                                method="post"
+                                className="flex flex-wrap items-center justify-end gap-2"
+                            >
+                                <Input
+                                    name="approved_number"
+                                    defaultValue={invoice.proposed_number || ''}
+                                    aria-label={`Approved number for ${invoice.company_name || invoice.id}`}
+                                    className="h-8 max-w-[9rem] font-mono text-xs"
+                                />
+                                <Button
+                                    type="submit"
+                                    size="sm"
+                                    variant="default"
+                                >
+                                    Approve
+                                </Button>
+                            </Form>
+                        )}
+                    />
                 </div>
-                {flash?.success ? (
-                    <p
-                        role="status"
-                        className="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm"
-                    >
-                        {flash.success}
-                    </p>
-                ) : null}
-                {errors?.approved_number ? (
-                    <p className="text-sm text-destructive" role="alert">
-                        {errors.approved_number}
-                    </p>
-                ) : null}
-                <ResponsiveDataTable
-                    caption="Invoices awaiting approval"
-                    columns={columns}
-                    rows={invoices}
-                    rowKey={(row) => row.id}
-                    emptyTitle="No invoices awaiting approval"
-                    emptyDescription="Approved invoices are removed from this queue."
-                    actions={(invoice) => (
-                        <Form
-                            action={invoice.approve_url}
-                            method="post"
-                            className="flex flex-wrap items-center justify-end gap-2"
-                        >
-                            <input
-                                name="approved_number"
-                                defaultValue={invoice.proposed_number || ''}
-                                aria-label={`Approved number for ${invoice.company_name || invoice.id}`}
-                                className="max-w-[7rem] rounded-md border border-border bg-background px-2 py-1 font-mono text-xs"
-                            />
-                            <Button type="submit" size="sm">
-                                Approve
-                            </Button>
-                        </Form>
-                    )}
-                />
-            </div>
+            </PageShell>
         </>
     );
 }

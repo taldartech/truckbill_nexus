@@ -1,10 +1,16 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { Eye, Plus } from 'lucide-react';
 import { useMemo } from 'react';
+import { PortalFlashBanner } from '@/components/admin/portal-feedback';
+import { AppIconAction } from '@/components/app-icon-action';
 import {
     ResponsiveDataTable,
     type DataTableColumn,
 } from '@/components/data-table';
+import { FormSection, PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { formatDisplayDateSmart } from '@/lib/dates';
 
 type TicketRow = {
@@ -29,6 +35,9 @@ type Props = {
     };
 };
 
+const selectClass =
+    'flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
+
 export default function CrmTicketsIndex({
     filters,
     statuses,
@@ -47,7 +56,7 @@ export default function CrmTicketsIndex({
                 priority: 0,
                 cell: (ticket) => (
                     <>
-                        <div>{ticket.subject}</div>
+                        <div className="font-medium">{ticket.subject}</div>
                         <div className="text-xs text-muted-foreground">
                             {ticket.category}
                             {ticket.assignee ? ` · ${ticket.assignee}` : ''}
@@ -65,16 +74,22 @@ export default function CrmTicketsIndex({
                 id: 'status',
                 header: 'Status',
                 priority: 1,
-                cell: (ticket) => ticket.status,
+                cell: (ticket) => (
+                    <WorkspaceStatusBadge status={ticket.status} />
+                ),
             },
             {
                 id: 'due',
                 header: 'Due',
                 priority: 2,
                 cell: (ticket) =>
-                    ticket.is_overdue
-                        ? 'Overdue'
-                        : formatDisplayDateSmart(ticket.due_at),
+                    ticket.is_overdue ? (
+                        <span className="font-medium text-amber-700">
+                            Overdue
+                        </span>
+                    ) : (
+                        formatDisplayDateSmart(ticket.due_at)
+                    ),
             },
         ],
         [],
@@ -83,70 +98,69 @@ export default function CrmTicketsIndex({
     return (
         <>
             <Head title="Support tickets" />
-            <div className="mx-auto flex max-w-5xl flex-col gap-6 p-4 md:p-8">
-                <div className="flex flex-wrap items-end justify-between gap-3">
-                    <div className="space-y-2">
-                        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                            Internal · CRM
-                        </p>
-                        <h1 className="text-2xl font-semibold tracking-tight">
-                            Support tickets
-                        </h1>
-                    </div>
-                    <Button asChild>
-                        <Link href={urls.create}>Create ticket</Link>
-                    </Button>
-                </div>
-
-                {flash?.success ? (
-                    <p
-                        role="status"
-                        className="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm"
-                    >
-                        {flash.success}
-                    </p>
-                ) : null}
-
-                <Form
-                    action={urls.index}
-                    method="get"
-                    className="flex flex-col gap-3 rounded-xl border border-border p-4 md:flex-row md:items-end"
-                >
-                    <label className="flex flex-col gap-1 text-sm">
-                        Status
-                        <select
-                            name="status"
-                            defaultValue={filters.status}
-                            className="rounded-md border border-border bg-background px-3 py-2"
-                        >
-                            <option value="all">All</option>
-                            {statuses.map((status) => (
-                                <option key={status} value={status}>
-                                    {status}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
-                    <Button type="submit">Filter</Button>
-                </Form>
-
-                <ResponsiveDataTable
-                    caption="Support tickets"
-                    columns={columns}
-                    rows={tickets.data}
-                    rowKey={(ticket) => ticket.id}
-                    emptyTitle="No tickets found"
-                    emptyDescription="Create a ticket or adjust filters."
-                    actions={(ticket) => (
-                        <Link
-                            href={ticket.show_url}
-                            className="font-medium underline-offset-4 hover:underline"
-                        >
-                            Open
+            <PageShell
+                title="Support tickets"
+                description="Internal CRM · triage, assign, and resolve customer issues."
+                actions={
+                    <Button asChild variant="default">
+                        <Link href={urls.create}>
+                            <Plus className="size-4" aria-hidden />
+                            Create ticket
                         </Link>
-                    )}
-                />
-            </div>
+                    </Button>
+                }
+            >
+                <PortalFlashBanner message={flash?.success} />
+
+                <FormSection title="Filters" columns={2}>
+                    <Form action={urls.index} method="get" className="contents">
+                        <div className="space-y-2">
+                            <Label htmlFor="status">Status</Label>
+                            <select
+                                id="status"
+                                name="status"
+                                defaultValue={filters.status}
+                                className={selectClass}
+                            >
+                                <option value="all">All</option>
+                                {statuses.map((status) => (
+                                    <option key={status} value={status}>
+                                        {status}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="flex items-end">
+                            <Button type="submit" variant="info">
+                                Apply filters
+                            </Button>
+                        </div>
+                    </Form>
+                </FormSection>
+
+                <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+                    <ResponsiveDataTable
+                        caption="Support tickets"
+                        columns={columns}
+                        rows={tickets.data}
+                        rowKey={(ticket) => ticket.id}
+                        emptyTitle="No tickets found"
+                        emptyDescription="Create a ticket or adjust filters."
+                        actions={(ticket) => (
+                            <AppIconAction
+                                icon={Eye}
+                                label="View ticket"
+                                href={ticket.show_url}
+                                variant="info"
+                            />
+                        )}
+                    />
+                    <p className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
+                        Page {tickets.meta.current_page} of{' '}
+                        {tickets.meta.last_page} ({tickets.meta.total} total)
+                    </p>
+                </div>
+            </PageShell>
         </>
     );
 }

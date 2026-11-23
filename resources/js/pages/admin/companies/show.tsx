@@ -1,5 +1,16 @@
-import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { Form, Head, usePage } from '@inertiajs/react';
+import { ArrowLeft } from 'lucide-react';
+import {
+    DetailItem,
+    PortalErrorList,
+    PortalFlashBanner,
+} from '@/components/admin/portal-feedback';
+import { AppIconAction } from '@/components/app-icon-action';
+import { FormSection } from '@/components/form-section';
+import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 
 type Props = {
     company: {
@@ -34,6 +45,12 @@ type Props = {
     };
 };
 
+const selectClass =
+    'flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
+
+const textareaClass =
+    'min-h-24 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
+
 export default function AdminCompanyShow({
     company,
     customer_candidates,
@@ -49,111 +66,117 @@ export default function AdminCompanyShow({
     return (
         <>
             <Head title={`${company.name} · lifecycle`} />
-            <div className="mx-auto flex max-w-5xl flex-col gap-6 p-4 md:p-8">
-                <div className="space-y-2">
-                    <Link
-                        href={urls.index}
-                        className="text-sm text-muted-foreground underline-offset-4 hover:underline"
-                    >
-                        ← Companies
-                    </Link>
-                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                        Internal · Lifecycle
-                    </p>
-                    <h1 className="text-2xl font-semibold tracking-tight">
-                        {company.name}
-                    </h1>
-                    <p className="text-sm text-muted-foreground">
-                        Status:{' '}
-                        <span className="font-medium text-foreground">
-                            {company.is_active ? 'Active' : 'Deactivated'}
-                        </span>
-                        {company.owner
-                            ? ` · Owner ${company.owner.email}`
-                            : null}
-                    </p>
-                </div>
+            <PageShell
+                title={company.name}
+                description="Company lifecycle, ownership transfer, and audit trail."
+                actions={
+                    <div className="flex flex-wrap items-center gap-2">
+                        <WorkspaceStatusBadge
+                            status={
+                                company.is_active ? 'active' : 'deactivated'
+                            }
+                        />
+                        <AppIconAction
+                            icon={ArrowLeft}
+                            label="Back to companies"
+                            href={urls.index}
+                            variant="outline"
+                        />
+                    </div>
+                }
+            >
+                <PortalFlashBanner message={flash?.success} />
+                <PortalErrorList
+                    errors={errors}
+                    keys={['remark', 'target_user_id']}
+                />
 
-                {flash?.success ? (
-                    <p
-                        role="status"
-                        className="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm"
-                    >
-                        {flash.success}
-                    </p>
-                ) : null}
-                {errors?.remark || errors?.target_user_id ? (
-                    <p className="text-sm text-destructive" role="alert">
-                        {errors.remark || errors.target_user_id}
-                    </p>
-                ) : null}
+                <FormSection title="Profile" columns={2}>
+                    <dl className="contents">
+                        <DetailItem label="PAN" value={company.pan ?? '—'} />
+                        <DetailItem
+                            label="GSTIN"
+                            value={company.gstin ?? '—'}
+                        />
+                        <DetailItem
+                            label="Owner"
+                            value={company.owner?.email ?? '—'}
+                        />
+                        {company.deactivated_at ? (
+                            <DetailItem
+                                label="Deactivated at"
+                                value={company.deactivated_at}
+                            />
+                        ) : null}
+                    </dl>
+                </FormSection>
 
-                <section className="space-y-3 rounded-xl border border-border p-4">
-                    <h2 className="font-semibold">
-                        {company.is_active ? 'Deactivate' : 'Reactivate'}
-                    </h2>
-                    <p className="text-sm text-muted-foreground">
-                        Mandatory remark and confirmation. Soft-delete and
-                        restore are prohibited (DEC-003).
-                    </p>
-                    <Form
-                        action={
+                <Form
+                    action={
+                        company.is_active ? urls.deactivate : urls.reactivate
+                    }
+                    method="post"
+                >
+                    <FormSection
+                        title={
                             company.is_active
-                                ? urls.deactivate
-                                : urls.reactivate
+                                ? 'Deactivate company'
+                                : 'Reactivate company'
                         }
-                        method="post"
-                        className="grid gap-3"
+                        description="Mandatory remark and confirmation. Soft-delete and restore are prohibited (DEC-003)."
+                        columns={2}
                     >
-                        <label className="flex flex-col gap-1 text-sm">
-                            Remark
+                        <div className="space-y-2 md:col-span-2">
+                            <Label htmlFor="lifecycle-remark">Remark</Label>
                             <textarea
+                                id="lifecycle-remark"
                                 name="remark"
                                 required
                                 rows={3}
-                                className="rounded-md border border-border bg-background px-3 py-2"
+                                className={textareaClass}
                                 placeholder="Reason for lifecycle change"
                             />
-                        </label>
-                        <label className="flex items-center gap-2 text-sm">
+                        </div>
+                        <label className="flex items-center gap-2 text-sm md:col-span-2">
                             <input
                                 type="checkbox"
                                 name="confirm"
                                 value="1"
                                 required
+                                className="size-4 rounded border border-input"
                             />
                             I confirm this lifecycle change
                         </label>
-                        <Button
-                            type="submit"
-                            variant={
-                                company.is_active ? 'destructive' : 'default'
-                            }
-                        >
-                            {company.is_active
-                                ? 'Deactivate company'
-                                : 'Reactivate company'}
-                        </Button>
-                    </Form>
-                </section>
+                        <div className="md:col-span-2">
+                            <Button
+                                type="submit"
+                                variant={
+                                    company.is_active
+                                        ? 'destructive'
+                                        : 'default'
+                                }
+                            >
+                                {company.is_active
+                                    ? 'Deactivate company'
+                                    : 'Reactivate company'}
+                            </Button>
+                        </div>
+                    </FormSection>
+                </Form>
 
-                <section className="space-y-3 rounded-xl border border-border p-4">
-                    <h2 className="font-semibold">Ownership transfer</h2>
-                    <p className="text-sm text-muted-foreground">
-                        Transfers ownership to an existing active Customer.
-                        Memberships and subscriptions are preserved.
-                    </p>
-                    <Form
-                        action={urls.transfer}
-                        method="post"
-                        className="grid gap-3"
+                <Form action={urls.transfer} method="post">
+                    <FormSection
+                        title="Ownership transfer"
+                        description="Transfers ownership to an existing active Customer. Memberships and subscriptions are preserved."
+                        columns={2}
                     >
-                        <label className="flex flex-col gap-1 text-sm">
-                            New owner
+                        <div className="space-y-2 md:col-span-2">
+                            <Label htmlFor="target_user_id">New owner</Label>
                             <select
+                                id="target_user_id"
                                 name="target_user_id"
                                 required
-                                className="rounded-md border border-border bg-background px-3 py-2"
+                                className={selectClass}
                                 defaultValue=""
                             >
                                 <option value="" disabled>
@@ -173,31 +196,36 @@ export default function AdminCompanyShow({
                                         </option>
                                     ))}
                             </select>
-                        </label>
-                        <label className="flex flex-col gap-1 text-sm">
-                            Remark
+                        </div>
+                        <div className="space-y-2 md:col-span-2">
+                            <Label htmlFor="transfer-remark">Remark</Label>
                             <textarea
+                                id="transfer-remark"
                                 name="remark"
                                 required
                                 rows={3}
-                                className="rounded-md border border-border bg-background px-3 py-2"
+                                className={textareaClass}
                             />
-                        </label>
-                        <label className="flex items-center gap-2 text-sm">
+                        </div>
+                        <label className="flex items-center gap-2 text-sm md:col-span-2">
                             <input
                                 type="checkbox"
                                 name="confirm"
                                 value="1"
                                 required
+                                className="size-4 rounded border border-input"
                             />
                             I confirm ownership transfer
                         </label>
-                        <Button type="submit">Transfer ownership</Button>
-                    </Form>
-                </section>
+                        <div className="md:col-span-2">
+                            <Button type="submit" variant="warning">
+                                Transfer ownership
+                            </Button>
+                        </div>
+                    </FormSection>
+                </Form>
 
-                <section className="space-y-3 rounded-xl border border-border p-4">
-                    <h2 className="font-semibold">Transfer history</h2>
+                <FormSection title="Transfer history" columns={1}>
                     {transfers.length === 0 ? (
                         <p className="text-sm text-muted-foreground">
                             No ownership transfers recorded.
@@ -207,7 +235,7 @@ export default function AdminCompanyShow({
                             {transfers.map((transfer) => (
                                 <li
                                     key={transfer.id}
-                                    className="rounded-md border border-border px-3 py-2"
+                                    className="rounded-md border border-border bg-muted/20 px-3 py-2"
                                 >
                                     {transfer.previous_owner} →{' '}
                                     {transfer.new_owner}
@@ -219,10 +247,9 @@ export default function AdminCompanyShow({
                             ))}
                         </ul>
                     )}
-                </section>
+                </FormSection>
 
-                <section className="space-y-3 rounded-xl border border-border p-4">
-                    <h2 className="font-semibold">Recent company audit</h2>
+                <FormSection title="Recent company audit" columns={1}>
                     {audit_entries.length === 0 ? (
                         <p className="text-sm text-muted-foreground">
                             No company audit entries.
@@ -232,7 +259,7 @@ export default function AdminCompanyShow({
                             {audit_entries.map((entry) => (
                                 <li
                                     key={entry.id}
-                                    className="rounded-md border border-border px-3 py-2"
+                                    className="rounded-md border border-border bg-muted/20 px-3 py-2"
                                 >
                                     <span className="font-medium">
                                         {entry.action}
@@ -245,8 +272,8 @@ export default function AdminCompanyShow({
                             ))}
                         </ul>
                     )}
-                </section>
-            </div>
+                </FormSection>
+            </PageShell>
         </>
     );
 }

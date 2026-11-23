@@ -1,10 +1,19 @@
 import { Form, Head, usePage } from '@inertiajs/react';
 import { useMemo } from 'react';
 import {
+    PortalErrorList,
+    PortalFlashBanner,
+} from '@/components/admin/portal-feedback';
+import {
     ResponsiveDataTable,
     type DataTableColumn,
 } from '@/components/data-table';
+import { FormSection } from '@/components/form-section';
+import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { formatDisplayDateSmart } from '@/lib/dates';
 
 type GstRateRow = {
@@ -76,7 +85,11 @@ export default function AdminGstRates({
                 id: 'active',
                 header: 'Active',
                 priority: 1,
-                cell: (row) => (row.is_active ? 'Yes' : 'No'),
+                cell: (row) => (
+                    <WorkspaceStatusBadge
+                        status={row.is_active ? 'active' : 'deactivated'}
+                    />
+                ),
             },
         ],
         [],
@@ -85,128 +98,108 @@ export default function AdminGstRates({
     return (
         <>
             <Head title="GST rate master" />
-            <div className="mx-auto flex max-w-5xl flex-col gap-6 p-4 md:p-8">
-                <div className="space-y-2">
-                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                        Internal · Tax masters
-                    </p>
-                    <h1 className="text-2xl font-semibold tracking-tight">
-                        GST rate versions
-                    </h1>
-                    <p className="text-sm text-muted-foreground">
-                        {compliance_note}
-                    </p>
-                </div>
-                {flash?.success ? (
-                    <p
-                        role="status"
-                        className="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm"
-                    >
-                        {flash.success}
-                    </p>
-                ) : null}
-                {errors?.code || errors?.remark ? (
-                    <p className="text-sm text-destructive" role="alert">
-                        {errors.code || errors.remark}
-                    </p>
-                ) : null}
+            <PageShell title="GST rate versions" description={compliance_note}>
+                <PortalFlashBanner message={flash?.success} />
+                <PortalErrorList errors={errors} keys={['code', 'remark']} />
 
-                <section className="space-y-3 rounded-xl border border-border p-4">
-                    <h2 className="font-semibold">Create version</h2>
-                    <Form
-                        action={store_url}
-                        method="post"
-                        className="grid gap-3 md:grid-cols-2"
-                    >
-                        <label className="flex flex-col gap-1 text-sm">
-                            Code
-                            <input
+                <Form action={store_url} method="post">
+                    <FormSection title="Create version" columns={2}>
+                        <div className="space-y-2">
+                            <Label htmlFor="code">Code</Label>
+                            <Input
+                                id="code"
                                 name="code"
                                 required
-                                className="rounded-md border border-border bg-background px-3 py-2 font-mono text-sm"
+                                className="font-mono"
                                 placeholder="GST18"
                             />
-                        </label>
-                        <label className="flex flex-col gap-1 text-sm">
-                            Name
-                            <input
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="name">Name</Label>
+                            <Input
+                                id="name"
                                 name="name"
                                 required
-                                className="rounded-md border border-border bg-background px-3 py-2"
                                 placeholder="GST 18%"
                             />
-                        </label>
-                        <label className="flex flex-col gap-1 text-sm">
-                            Rate percent
-                            <input
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="rate_percent">Rate percent</Label>
+                            <Input
+                                id="rate_percent"
                                 name="rate_percent"
                                 type="number"
                                 step="0.001"
                                 min="0"
                                 max="100"
                                 required
-                                className="rounded-md border border-border bg-background px-3 py-2"
                                 placeholder="18.000"
                             />
-                        </label>
-                        <label className="flex flex-col gap-1 text-sm">
-                            Effective from
-                            <input
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="effective_from">
+                                Effective from
+                            </Label>
+                            <Input
+                                id="effective_from"
                                 name="effective_from"
                                 type="date"
                                 required
-                                className="rounded-md border border-border bg-background px-3 py-2"
                             />
-                        </label>
-                        <label className="flex flex-col gap-1 text-sm md:col-span-2">
-                            Remark
-                            <input
+                        </div>
+                        <div className="space-y-2 md:col-span-2">
+                            <Label htmlFor="remark">Remark</Label>
+                            <Input
+                                id="remark"
                                 name="remark"
-                                className="rounded-md border border-border bg-background px-3 py-2"
                                 placeholder="Optional audit remark"
                             />
-                        </label>
-                        <div className="md:col-span-2">
-                            <Button type="submit">Create GST version</Button>
                         </div>
-                    </Form>
-                </section>
+                        <div className="md:col-span-2">
+                            <Button type="submit" variant="default">
+                                Create GST version
+                            </Button>
+                        </div>
+                    </FormSection>
+                </Form>
 
-                <ResponsiveDataTable
-                    caption="GST rate versions"
-                    columns={columns}
-                    rows={rates}
-                    rowKey={(row) => row.id}
-                    emptyTitle="No GST rate versions yet"
-                    emptyDescription="Create a version using the form above."
-                    actions={(rate) =>
-                        rate.is_active ? (
-                            <Form
-                                action={rate.deactivate_url}
-                                method="post"
-                                className="flex flex-wrap items-center justify-end gap-2"
-                            >
-                                <input
-                                    name="remark"
-                                    required
-                                    placeholder="Deactivate remark"
-                                    aria-label={`Deactivate remark for ${rate.code} v${rate.version}`}
-                                    className="max-w-[8rem] rounded-md border border-border bg-background px-2 py-1 text-xs"
-                                />
-                                <Button
-                                    type="submit"
-                                    size="sm"
-                                    variant="outline"
+                <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+                    <ResponsiveDataTable
+                        caption="GST rate versions"
+                        columns={columns}
+                        rows={rates}
+                        rowKey={(row) => row.id}
+                        emptyTitle="No GST rate versions yet"
+                        emptyDescription="Create a version using the form above."
+                        actions={(rate) =>
+                            rate.is_active ? (
+                                <Form
+                                    action={rate.deactivate_url}
+                                    method="post"
+                                    className="flex flex-wrap items-center justify-end gap-2"
                                 >
-                                    Deactivate
-                                </Button>
-                            </Form>
-                        ) : (
-                            <span className="text-muted-foreground">—</span>
-                        )
-                    }
-                />
-            </div>
+                                    <Input
+                                        name="remark"
+                                        required
+                                        placeholder="Deactivate remark"
+                                        aria-label={`Deactivate remark for ${rate.code} v${rate.version}`}
+                                        className="h-8 max-w-[10rem] text-xs"
+                                    />
+                                    <Button
+                                        type="submit"
+                                        size="sm"
+                                        variant="destructive"
+                                    >
+                                        Deactivate
+                                    </Button>
+                                </Form>
+                            ) : (
+                                <span className="text-muted-foreground">—</span>
+                            )
+                        }
+                    />
+                </div>
+            </PageShell>
         </>
     );
 }

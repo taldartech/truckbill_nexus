@@ -1,5 +1,14 @@
-import { Form, Head, Link, usePage } from '@inertiajs/react';
-import { Button } from '@/components/ui/button';
+import { Form, Head, usePage } from '@inertiajs/react';
+import { ArrowLeft, Save, UserPlus } from 'lucide-react';
+import {
+    DetailItem,
+    PortalErrorList,
+    PortalFlashBanner,
+} from '@/components/admin/portal-feedback';
+import { AppIconAction } from '@/components/app-icon-action';
+import { FormSection } from '@/components/form-section';
+import { PageShell } from '@/components/page-shell';
+import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 
 type AssignableUser = { id: number; name: string; email: string };
 
@@ -31,6 +40,12 @@ type Props = {
     };
 };
 
+const selectClass =
+    'flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
+
+const textareaClass =
+    'min-h-20 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
+
 export default function CrmTicketShow({
     ticket,
     assignable_users,
@@ -45,60 +60,62 @@ export default function CrmTicketShow({
     return (
         <>
             <Head title={`${ticket.subject} · ticket`} />
-            <div className="mx-auto flex max-w-5xl flex-col gap-6 p-4 md:p-8">
-                <div className="space-y-2">
-                    <Link
-                        href={urls.index}
-                        className="text-sm text-muted-foreground underline-offset-4 hover:underline"
-                    >
-                        ← Tickets
-                    </Link>
-                    <h1 className="text-2xl font-semibold tracking-tight">
-                        {ticket.subject}
-                    </h1>
-                    <p className="text-sm text-muted-foreground">
-                        {ticket.status} · {ticket.priority} · {ticket.category}
-                    </p>
-                </div>
+            <PageShell
+                title={ticket.subject}
+                description={`${ticket.category} · ${ticket.priority} priority`}
+                actions={
+                    <div className="flex flex-wrap items-center gap-2">
+                        <WorkspaceStatusBadge status={ticket.status} />
+                        <AppIconAction
+                            icon={ArrowLeft}
+                            label="Back to tickets"
+                            href={urls.index}
+                            variant="outline"
+                        />
+                    </div>
+                }
+            >
+                <PortalFlashBanner message={flash?.success} />
+                <PortalErrorList errors={errors} />
 
-                {flash?.success ? (
-                    <p
-                        role="status"
-                        className="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm"
-                    >
-                        {flash.success}
-                    </p>
-                ) : null}
-                {Object.values(errors ?? {}).map((message) => (
-                    <p
-                        key={message}
-                        className="text-sm text-destructive"
-                        role="alert"
-                    >
-                        {message}
-                    </p>
-                ))}
-
-                <section className="space-y-2 rounded-xl border border-border p-4 text-sm">
-                    <p>{ticket.description}</p>
-                    <p>Assignee: {ticket.assignee ?? 'Unassigned'}</p>
-                    <p>Due: {ticket.due_at ?? '—'}</p>
-                </section>
+                <FormSection title="Ticket details" columns={2}>
+                    <dl className="contents">
+                        <DetailItem
+                            className="md:col-span-2"
+                            label="Description"
+                            value={ticket.description}
+                        />
+                        <DetailItem
+                            label="Assignee"
+                            value={ticket.assignee ?? 'Unassigned'}
+                        />
+                        <DetailItem label="Due" value={ticket.due_at ?? '—'} />
+                    </dl>
+                </FormSection>
 
                 {ticket.can_assign ? (
-                    <section className="space-y-3 rounded-xl border border-border p-4">
-                        <h2 className="font-semibold">Assign ticket</h2>
-                        <Form
-                            action={urls.assign}
-                            method="post"
-                            className="grid gap-3 md:grid-cols-2"
+                    <Form
+                        action={urls.assign}
+                        method="post"
+                        className="space-y-0"
+                    >
+                        <FormSection
+                            title="Assign ticket"
+                            description="Route to an internal owner with audit remark."
+                            columns={2}
                         >
-                            <label className="flex flex-col gap-1 text-sm">
-                                Assignee
+                            <div className="space-y-2">
+                                <label
+                                    htmlFor="assigned_to_user_id"
+                                    className="text-sm font-medium"
+                                >
+                                    Assignee
+                                </label>
                                 <select
+                                    id="assigned_to_user_id"
                                     name="assigned_to_user_id"
                                     required
-                                    className="rounded-md border border-border bg-background px-3 py-2"
+                                    className={selectClass}
                                 >
                                     <option value="" disabled>
                                         Select internal user
@@ -109,36 +126,64 @@ export default function CrmTicketShow({
                                         </option>
                                     ))}
                                 </select>
-                            </label>
-                            <label className="flex flex-col gap-1 text-sm md:col-span-2">
-                                Remark
+                            </div>
+                            <div className="space-y-2 md:col-span-2">
+                                <label
+                                    htmlFor="assign-remark"
+                                    className="text-sm font-medium"
+                                >
+                                    Remark
+                                </label>
                                 <textarea
+                                    id="assign-remark"
                                     name="remark"
                                     required
                                     rows={2}
-                                    className="rounded-md border border-border bg-background px-3 py-2"
+                                    className={textareaClass}
                                 />
-                            </label>
-                            <Button type="submit">Assign</Button>
-                        </Form>
-                    </section>
+                            </div>
+                            <div className="md:col-span-2">
+                                <AppIconAction
+                                    icon={UserPlus}
+                                    label="Assign ticket"
+                                    type="submit"
+                                    variant="default"
+                                    size="default"
+                                    className="gap-2 px-3"
+                                >
+                                    <span className="text-sm font-medium">
+                                        Assign
+                                    </span>
+                                </AppIconAction>
+                            </div>
+                        </FormSection>
+                    </Form>
                 ) : null}
 
                 {ticket.allowed_transitions.length > 0 ? (
-                    <section className="space-y-3 rounded-xl border border-border p-4">
-                        <h2 className="font-semibold">Update status</h2>
-                        <Form
-                            action={urls.transition}
-                            method="post"
-                            className="grid gap-3"
+                    <Form
+                        action={urls.transition}
+                        method="post"
+                        className="space-y-0"
+                    >
+                        <FormSection
+                            title="Update status"
+                            description="Reopen and close require a remark."
+                            columns={2}
                         >
-                            <label className="flex flex-col gap-1 text-sm">
-                                New status
+                            <div className="space-y-2">
+                                <label
+                                    htmlFor="status"
+                                    className="text-sm font-medium"
+                                >
+                                    New status
+                                </label>
                                 <select
+                                    id="status"
                                     name="status"
                                     required
                                     defaultValue={ticket.allowed_transitions[0]}
-                                    className="rounded-md border border-border bg-background px-3 py-2"
+                                    className={selectClass}
                                 >
                                     {ticket.allowed_transitions.map(
                                         (status) => (
@@ -148,23 +193,41 @@ export default function CrmTicketShow({
                                         ),
                                     )}
                                 </select>
-                            </label>
-                            <label className="flex flex-col gap-1 text-sm">
-                                Remark
+                            </div>
+                            <div className="space-y-2 md:col-span-2">
+                                <label
+                                    htmlFor="transition-remark"
+                                    className="text-sm font-medium"
+                                >
+                                    Remark
+                                </label>
                                 <textarea
+                                    id="transition-remark"
                                     name="remark"
                                     rows={2}
-                                    className="rounded-md border border-border bg-background px-3 py-2"
+                                    className={textareaClass}
                                     placeholder="Required for reopen/close"
                                 />
-                            </label>
-                            <Button type="submit">Save status</Button>
-                        </Form>
-                    </section>
+                            </div>
+                            <div className="md:col-span-2">
+                                <AppIconAction
+                                    icon={Save}
+                                    label="Save status"
+                                    type="submit"
+                                    variant="warning"
+                                    size="default"
+                                    className="gap-2 px-3"
+                                >
+                                    <span className="text-sm font-medium">
+                                        Save status
+                                    </span>
+                                </AppIconAction>
+                            </div>
+                        </FormSection>
+                    </Form>
                 ) : null}
 
-                <section className="space-y-3 rounded-xl border border-border p-4">
-                    <h2 className="font-semibold">Activity</h2>
+                <FormSection title="Activity" columns={1}>
                     {activities.length === 0 ? (
                         <p className="text-sm text-muted-foreground">
                             No activity yet.
@@ -174,7 +237,7 @@ export default function CrmTicketShow({
                             {activities.map((activity) => (
                                 <li
                                     key={activity.id}
-                                    className="rounded-md border border-border px-3 py-2"
+                                    className="rounded-md border border-border bg-muted/20 px-3 py-2"
                                 >
                                     <span className="font-medium">
                                         {activity.activity_type}
@@ -187,8 +250,8 @@ export default function CrmTicketShow({
                             ))}
                         </ul>
                     )}
-                </section>
-            </div>
+                </FormSection>
+            </PageShell>
         </>
     );
 }

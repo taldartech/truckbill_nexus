@@ -1,7 +1,8 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { ArrowLeft, Save } from 'lucide-react';
 import { AppIconAction } from '@/components/app-icon-action';
-import { FormSection, PageShell } from '@/components/page-shell';
+import { FormSection } from '@/components/form-section';
+import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,7 +26,6 @@ export default function CrmTicketCreate({
         <>
             <Head title="Create support ticket" />
             <PageShell
-                width="form"
                 title="Create support ticket"
                 description="Capture the issue clearly so Support can triage and respond."
                 actions={
@@ -43,7 +43,7 @@ export default function CrmTicketCreate({
                 ) : null}
 
                 <Form action={store_url} method="post" className="space-y-6">
-                    <FormSection title="Ticket details">
+                    <FormSection title="Ticket details" columns={2}>
                         <div className="space-y-2 md:col-span-2">
                             <Label htmlFor="subject">Subject</Label>
                             <Input id="subject" name="subject" required />
@@ -70,7 +70,7 @@ export default function CrmTicketCreate({
                         </div>
                     </FormSection>
 
-                    <FormSection title="Classification">
+                    <FormSection title="Classification" columns={2}>
                         <div className="space-y-2">
                             <Label htmlFor="category">Category</Label>
                             <Input

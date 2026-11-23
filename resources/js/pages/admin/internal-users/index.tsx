@@ -1,10 +1,21 @@
-import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { Form, Head, usePage } from '@inertiajs/react';
+import { Eye } from 'lucide-react';
 import { useMemo } from 'react';
+import {
+    PortalErrorList,
+    PortalFlashBanner,
+} from '@/components/admin/portal-feedback';
+import { AppIconAction } from '@/components/app-icon-action';
 import {
     ResponsiveDataTable,
     type DataTableColumn,
 } from '@/components/data-table';
+import { FormSection } from '@/components/form-section';
+import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 
 type InternalUserRow = {
     id: number;
@@ -22,6 +33,9 @@ type Props = {
     roles: { id: string; name: string; slug: string }[];
     users: InternalUserRow[];
 };
+
+const selectClass =
+    'flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
 
 export default function AdminInternalUsersIndex({
     note,
@@ -42,7 +56,7 @@ export default function AdminInternalUsersIndex({
                 priority: 0,
                 cell: (row) => (
                     <>
-                        <div>{row.name}</div>
+                        <div className="font-medium">{row.name}</div>
                         <div className="text-xs text-muted-foreground">
                             {row.email}
                         </div>
@@ -60,7 +74,11 @@ export default function AdminInternalUsersIndex({
                 id: 'status',
                 header: 'Status',
                 priority: 1,
-                cell: (row) => (row.is_active ? 'Active' : 'Deactivated'),
+                cell: (row) => (
+                    <WorkspaceStatusBadge
+                        status={row.is_active ? 'active' : 'deactivated'}
+                    />
+                ),
             },
         ],
         [],
@@ -69,80 +87,53 @@ export default function AdminInternalUsersIndex({
     return (
         <>
             <Head title="Internal users" />
-            <div className="mx-auto flex max-w-5xl flex-col gap-6 p-4 md:p-8">
-                <div className="space-y-2">
-                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                        Internal · Administration
-                    </p>
-                    <h1 className="text-2xl font-semibold tracking-tight">
-                        Internal users
-                    </h1>
-                    <p className="text-sm text-muted-foreground">{note}</p>
-                </div>
+            <PageShell title="Internal users" description={note}>
+                <PortalFlashBanner message={flash?.success} />
+                <PortalErrorList errors={errors} keys={['email', 'password']} />
 
-                {flash?.success ? (
-                    <p
-                        role="status"
-                        className="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm"
-                    >
-                        {flash.success}
-                    </p>
-                ) : null}
-                {errors?.email || errors?.password ? (
-                    <p className="text-sm text-destructive" role="alert">
-                        {errors.email || errors.password}
-                    </p>
-                ) : null}
-
-                <section className="space-y-3 rounded-xl border border-border p-4">
-                    <h2 className="font-semibold">Create Internal user</h2>
-                    <Form
-                        action={store_url}
-                        method="post"
-                        className="grid gap-3 md:grid-cols-2"
-                    >
-                        <label className="flex flex-col gap-1 text-sm">
-                            Name
-                            <input
-                                name="name"
-                                required
-                                className="rounded-md border border-border bg-background px-3 py-2"
-                            />
-                        </label>
-                        <label className="flex flex-col gap-1 text-sm">
-                            Email
-                            <input
+                <Form action={store_url} method="post">
+                    <FormSection title="Create internal user" columns={2}>
+                        <div className="space-y-2">
+                            <Label htmlFor="name">Name</Label>
+                            <Input id="name" name="name" required />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="email">Email</Label>
+                            <Input
+                                id="email"
                                 name="email"
                                 type="email"
                                 required
-                                className="rounded-md border border-border bg-background px-3 py-2"
                             />
-                        </label>
-                        <label className="flex flex-col gap-1 text-sm">
-                            Password
-                            <input
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="password">Password</Label>
+                            <Input
+                                id="password"
                                 name="password"
                                 type="password"
                                 required
                                 autoComplete="new-password"
-                                className="rounded-md border border-border bg-background px-3 py-2"
                             />
-                        </label>
-                        <label className="flex flex-col gap-1 text-sm">
-                            Confirm password
-                            <input
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="password_confirmation">
+                                Confirm password
+                            </Label>
+                            <Input
+                                id="password_confirmation"
                                 name="password_confirmation"
                                 type="password"
                                 required
                                 autoComplete="new-password"
-                                className="rounded-md border border-border bg-background px-3 py-2"
                             />
-                        </label>
-                        <label className="flex flex-col gap-1 text-sm">
-                            Role (optional)
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="role_id">Role (optional)</Label>
                             <select
+                                id="role_id"
                                 name="role_id"
-                                className="rounded-md border border-border bg-background px-3 py-2"
+                                className={selectClass}
                                 defaultValue=""
                             >
                                 <option value="">None</option>
@@ -152,41 +143,43 @@ export default function AdminInternalUsersIndex({
                                     </option>
                                 ))}
                             </select>
-                        </label>
-                        <label className="flex items-center gap-2 text-sm md:pt-7">
+                        </div>
+                        <label className="flex items-center gap-2 text-sm md:self-end">
                             <input
                                 type="checkbox"
                                 name="is_super_admin"
                                 value="1"
+                                className="size-4 rounded border border-input"
                             />
                             Grant Super Admin
                         </label>
-                        <Button
-                            type="submit"
-                            className="md:col-span-2 md:w-fit"
-                        >
-                            Create Internal user
-                        </Button>
-                    </Form>
-                </section>
+                        <div className="md:col-span-2">
+                            <Button type="submit" variant="default">
+                                Create internal user
+                            </Button>
+                        </div>
+                    </FormSection>
+                </Form>
 
-                <ResponsiveDataTable
-                    caption="Internal users"
-                    columns={columns}
-                    rows={users}
-                    rowKey={(row) => String(row.id)}
-                    emptyTitle="No internal users"
-                    emptyDescription="Create an internal user above."
-                    actions={(user) => (
-                        <Link
-                            href={user.show_url}
-                            className="text-sm font-medium underline-offset-4 hover:underline"
-                        >
-                            Lifecycle
-                        </Link>
-                    )}
-                />
-            </div>
+                <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+                    <ResponsiveDataTable
+                        caption="Internal users"
+                        columns={columns}
+                        rows={users}
+                        rowKey={(row) => String(row.id)}
+                        emptyTitle="No internal users"
+                        emptyDescription="Create an internal user above."
+                        actions={(user) => (
+                            <AppIconAction
+                                icon={Eye}
+                                label="View lifecycle"
+                                href={user.show_url}
+                                variant="info"
+                            />
+                        )}
+                    />
+                </div>
+            </PageShell>
         </>
     );
 }

@@ -1,5 +1,12 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { ArrowLeft, Save } from 'lucide-react';
+import { PortalErrorList } from '@/components/admin/portal-feedback';
+import { AppIconAction } from '@/components/app-icon-action';
+import { FormSection } from '@/components/form-section';
+import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 type AssignableUser = { id: number; name: string; email: string };
 
@@ -11,6 +18,12 @@ type Props = {
     store_url: string;
     index_url: string;
 };
+
+const selectClass =
+    'flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
+
+const textareaClass =
+    'min-h-20 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
 
 export default function CrmLeadCreate({
     sources,
@@ -27,130 +40,154 @@ export default function CrmLeadCreate({
     return (
         <>
             <Head title="Create lead" />
-            <div className="mx-auto flex max-w-3xl flex-col gap-6 p-4 md:p-8">
-                <div className="space-y-2">
-                    <Link
+            <PageShell
+                title="Create lead"
+                description="Capture prospect details for qualification and follow-up."
+                actions={
+                    <AppIconAction
+                        icon={ArrowLeft}
+                        label="Back to leads"
                         href={index_url}
-                        className="text-sm text-muted-foreground underline-offset-4 hover:underline"
-                    >
-                        ← Leads
-                    </Link>
-                    <h1 className="text-2xl font-semibold tracking-tight">
-                        Create lead
-                    </h1>
-                </div>
+                        variant="outline"
+                    />
+                }
+            >
+                <PortalErrorList errors={errors} keys={['email']} />
 
-                {errors?.email ? (
-                    <p className="text-sm text-destructive" role="alert">
-                        {errors.email}
-                    </p>
-                ) : null}
+                <Form action={store_url} method="post" className="space-y-6">
+                    <FormSection title="Contact" columns={2}>
+                        <div className="space-y-2">
+                            <Label htmlFor="contact_name">Contact name</Label>
+                            <Input
+                                id="contact_name"
+                                name="contact_name"
+                                required
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="email">Email</Label>
+                            <Input id="email" name="email" type="email" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="mobile">Mobile</Label>
+                            <Input id="mobile" name="mobile" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="company_name">Company name</Label>
+                            <Input id="company_name" name="company_name" />
+                        </div>
+                    </FormSection>
 
-                <Form action={store_url} method="post" className="grid gap-3">
-                    <label className="flex flex-col gap-1 text-sm">
-                        Contact name
-                        <input
-                            name="contact_name"
-                            required
-                            className="rounded-md border border-border bg-background px-3 py-2"
-                        />
-                    </label>
-                    <label className="flex flex-col gap-1 text-sm">
-                        Email
-                        <input
-                            name="email"
-                            type="email"
-                            className="rounded-md border border-border bg-background px-3 py-2"
-                        />
-                    </label>
-                    <label className="flex flex-col gap-1 text-sm">
-                        Mobile
-                        <input
-                            name="mobile"
-                            className="rounded-md border border-border bg-background px-3 py-2"
-                        />
-                    </label>
-                    <label className="flex flex-col gap-1 text-sm">
-                        Company name
-                        <input
-                            name="company_name"
-                            className="rounded-md border border-border bg-background px-3 py-2"
-                        />
-                    </label>
-                    <label className="flex flex-col gap-1 text-sm">
-                        Source
-                        <select
-                            name="source"
-                            required
-                            className="rounded-md border border-border bg-background px-3 py-2"
-                            defaultValue={sources[0]}
-                        >
-                            {sources.map((source) => (
-                                <option key={source} value={source}>
-                                    {source}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
-                    <label className="flex flex-col gap-1 text-sm">
-                        Interested product
-                        <select
-                            name="interested_product"
-                            required
-                            className="rounded-md border border-border bg-background px-3 py-2"
-                            defaultValue={products[0]}
-                        >
-                            {products.map((product) => (
-                                <option key={product} value={product}>
-                                    {product}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
-                    {can_assign ? (
-                        <label className="flex flex-col gap-1 text-sm">
-                            Assign to
+                    <FormSection title="Pipeline" columns={2}>
+                        <div className="space-y-2">
+                            <Label htmlFor="source">Source</Label>
                             <select
-                                name="assigned_to_user_id"
-                                className="rounded-md border border-border bg-background px-3 py-2"
-                                defaultValue=""
+                                id="source"
+                                name="source"
+                                required
+                                className={selectClass}
+                                defaultValue={sources[0]}
                             >
-                                <option value="">Unassigned</option>
-                                {assignable_users.map((user) => (
-                                    <option key={user.id} value={user.id}>
-                                        {user.name} ({user.email})
+                                {sources.map((source) => (
+                                    <option key={source} value={source}>
+                                        {source}
                                     </option>
                                 ))}
                             </select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="interested_product">
+                                Interested product
+                            </Label>
+                            <select
+                                id="interested_product"
+                                name="interested_product"
+                                required
+                                className={selectClass}
+                                defaultValue={products[0]}
+                            >
+                                {products.map((product) => (
+                                    <option key={product} value={product}>
+                                        {product}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        {can_assign ? (
+                            <div className="space-y-2 md:col-span-2">
+                                <Label htmlFor="assigned_to_user_id">
+                                    Assign to
+                                </Label>
+                                <select
+                                    id="assigned_to_user_id"
+                                    name="assigned_to_user_id"
+                                    className={selectClass}
+                                    defaultValue=""
+                                >
+                                    <option value="">Unassigned</option>
+                                    {assignable_users.map((user) => (
+                                        <option key={user.id} value={user.id}>
+                                            {user.name} ({user.email})
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                        ) : null}
+                        <div className="space-y-2 md:col-span-2">
+                            <Label htmlFor="remarks">Remarks</Label>
+                            <textarea
+                                id="remarks"
+                                name="remarks"
+                                rows={3}
+                                className={textareaClass}
+                            />
+                        </div>
+                    </FormSection>
+
+                    <FormSection
+                        title="Duplicate handling"
+                        description="Override only when the duplicate warning is a false positive."
+                        columns={2}
+                    >
+                        <label className="flex items-center gap-2 text-sm md:col-span-2">
+                            <input
+                                type="checkbox"
+                                name="duplicate_override"
+                                value="1"
+                                className="size-4 rounded border border-input"
+                            />
+                            Override potential duplicate warning
                         </label>
-                    ) : null}
-                    <label className="flex flex-col gap-1 text-sm">
-                        Remarks
-                        <textarea
-                            name="remarks"
-                            rows={3}
-                            className="rounded-md border border-border bg-background px-3 py-2"
-                        />
-                    </label>
-                    <label className="flex items-center gap-2 text-sm">
-                        <input
-                            type="checkbox"
-                            name="duplicate_override"
-                            value="1"
-                        />
-                        Override potential duplicate warning
-                    </label>
-                    <label className="flex flex-col gap-1 text-sm">
-                        Duplicate override remark
-                        <textarea
-                            name="duplicate_override_remark"
-                            rows={2}
-                            className="rounded-md border border-border bg-background px-3 py-2"
-                        />
-                    </label>
-                    <Button type="submit">Save lead</Button>
+                        <div className="space-y-2 md:col-span-2">
+                            <Label htmlFor="duplicate_override_remark">
+                                Duplicate override remark
+                            </Label>
+                            <textarea
+                                id="duplicate_override_remark"
+                                name="duplicate_override_remark"
+                                rows={2}
+                                className={textareaClass}
+                            />
+                        </div>
+                    </FormSection>
+
+                    <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border pt-4">
+                        <Button asChild variant="outline">
+                            <Link href={index_url}>Cancel</Link>
+                        </Button>
+                        <AppIconAction
+                            icon={Save}
+                            label="Save lead"
+                            type="submit"
+                            variant="default"
+                            size="default"
+                            className="gap-2 px-3"
+                        >
+                            <span className="text-sm font-medium">Save</span>
+                        </AppIconAction>
+                    </div>
                 </Form>
-            </div>
+            </PageShell>
         </>
     );
 }

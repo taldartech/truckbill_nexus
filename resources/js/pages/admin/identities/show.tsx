@@ -1,5 +1,15 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { ArrowLeft } from 'lucide-react';
+import {
+    PortalErrorList,
+    PortalFlashBanner,
+} from '@/components/admin/portal-feedback';
+import { AppIconAction } from '@/components/app-icon-action';
+import { FormSection } from '@/components/form-section';
+import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 
 type Props = {
     identity: {
@@ -25,6 +35,9 @@ type Props = {
     };
 };
 
+const textareaClass =
+    'min-h-24 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
+
 export default function AdminIdentityShow({
     identity,
     owned_companies,
@@ -38,83 +51,76 @@ export default function AdminIdentityShow({
     return (
         <>
             <Head title={`${identity.email} · identity`} />
-            <div className="mx-auto flex max-w-5xl flex-col gap-6 p-4 md:p-8">
-                <div className="space-y-2">
-                    <Link
-                        href={urls.index}
-                        className="text-sm text-muted-foreground underline-offset-4 hover:underline"
-                    >
-                        ← Identities
-                    </Link>
-                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                        Internal · Lifecycle
-                    </p>
-                    <h1 className="text-2xl font-semibold tracking-tight">
-                        {identity.name}
-                    </h1>
-                    <p className="text-sm text-muted-foreground">
-                        {identity.email} · {identity.identity_type}
-                        {identity.is_super_admin ? ' · Super Admin' : ''} ·{' '}
-                        {identity.is_active ? 'Active' : 'Deactivated'}
-                    </p>
-                </div>
+            <PageShell
+                title={identity.name}
+                description={`${identity.email} · ${identity.identity_type ?? '—'}${identity.is_super_admin ? ' · Super Admin' : ''}`}
+                actions={
+                    <div className="flex flex-wrap items-center gap-2">
+                        <WorkspaceStatusBadge
+                            status={
+                                identity.is_active ? 'active' : 'deactivated'
+                            }
+                        />
+                        <AppIconAction
+                            icon={ArrowLeft}
+                            label="Back to identities"
+                            href={urls.index}
+                            variant="outline"
+                        />
+                    </div>
+                }
+            >
+                <PortalFlashBanner message={flash?.success} />
+                <PortalErrorList errors={errors} keys={['remark']} />
 
-                {flash?.success ? (
-                    <p
-                        role="status"
-                        className="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm"
-                    >
-                        {flash.success}
-                    </p>
-                ) : null}
-                {errors?.remark ? (
-                    <p className="text-sm text-destructive" role="alert">
-                        {errors.remark}
-                    </p>
-                ) : null}
-
-                <section className="space-y-3 rounded-xl border border-border p-4">
-                    <h2 className="font-semibold">
-                        {identity.is_active ? 'Deactivate' : 'Reactivate'}
-                    </h2>
+                <FormSection
+                    title={
+                        identity.is_active
+                            ? 'Deactivate identity'
+                            : 'Reactivate identity'
+                    }
+                    columns={2}
+                >
                     {identity.is_self ? (
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-sm text-muted-foreground md:col-span-2">
                             You cannot change your own identity lifecycle from
                             this screen.
                         </p>
                     ) : (
-                        <>
-                            <p className="text-sm text-muted-foreground">
+                        <Form
+                            action={
+                                identity.is_active
+                                    ? urls.deactivate
+                                    : urls.reactivate
+                            }
+                            method="post"
+                            className="contents"
+                        >
+                            <p className="text-sm text-muted-foreground md:col-span-2">
                                 Deactivation revokes active sessions. Last Super
                                 Admin protection remains enforced.
                             </p>
-                            <Form
-                                action={
-                                    identity.is_active
-                                        ? urls.deactivate
-                                        : urls.reactivate
-                                }
-                                method="post"
-                                className="grid gap-3"
-                            >
-                                <label className="flex flex-col gap-1 text-sm">
-                                    Remark
-                                    <textarea
-                                        name="remark"
-                                        required
-                                        rows={3}
-                                        className="rounded-md border border-border bg-background px-3 py-2"
-                                    />
-                                </label>
-                                <label className="flex items-center gap-2 text-sm">
-                                    <input
-                                        type="checkbox"
-                                        name="confirm"
-                                        value="1"
-                                        required
-                                    />
-                                    I confirm this identity lifecycle change
-                                </label>
+                            <div className="space-y-2 md:col-span-2">
+                                <Label htmlFor="remark">Remark</Label>
+                                <textarea
+                                    id="remark"
+                                    name="remark"
+                                    required
+                                    rows={3}
+                                    className={textareaClass}
+                                />
+                            </div>
+                            <label className="flex items-center gap-2 text-sm md:col-span-2">
+                                <input
+                                    type="checkbox"
+                                    name="confirm"
+                                    value="1"
+                                    required
+                                    className="size-4 rounded border border-input"
+                                />
+                                I confirm this identity lifecycle change
+                            </label>
+                            <div className="md:col-span-2">
                                 <Button
                                     type="submit"
                                     variant={
@@ -127,13 +133,12 @@ export default function AdminIdentityShow({
                                         ? 'Deactivate identity'
                                         : 'Reactivate identity'}
                                 </Button>
-                            </Form>
-                        </>
+                            </div>
+                        </Form>
                     )}
-                </section>
+                </FormSection>
 
-                <section className="space-y-3 rounded-xl border border-border p-4">
-                    <h2 className="font-semibold">Owned companies</h2>
+                <FormSection title="Owned companies" columns={1}>
                     {owned_companies.length === 0 ? (
                         <p className="text-sm text-muted-foreground">
                             No owned companies.
@@ -141,26 +146,29 @@ export default function AdminIdentityShow({
                     ) : (
                         <ul className="space-y-2 text-sm">
                             {owned_companies.map((company) => (
-                                <li key={company.id}>
+                                <li
+                                    key={company.id}
+                                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-muted/20 px-3 py-2"
+                                >
                                     <Link
                                         href={company.show_url}
-                                        className="font-medium underline-offset-4 hover:underline"
+                                        className="font-medium text-[#2D8CFF] underline-offset-4 hover:underline"
                                     >
                                         {company.name}
                                     </Link>
-                                    <span className="text-muted-foreground">
-                                        {' '}
-                                        ·{' '}
-                                        {company.is_active
-                                            ? 'Active'
-                                            : 'Deactivated'}
-                                    </span>
+                                    <WorkspaceStatusBadge
+                                        status={
+                                            company.is_active
+                                                ? 'active'
+                                                : 'deactivated'
+                                        }
+                                    />
                                 </li>
                             ))}
                         </ul>
                     )}
-                </section>
-            </div>
+                </FormSection>
+            </PageShell>
         </>
     );
 }

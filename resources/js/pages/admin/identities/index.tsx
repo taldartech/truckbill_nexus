@@ -1,10 +1,17 @@
-import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { Form, Head, usePage } from '@inertiajs/react';
+import { Eye } from 'lucide-react';
 import { useMemo } from 'react';
+import { PortalFlashBanner } from '@/components/admin/portal-feedback';
+import { AppIconAction } from '@/components/app-icon-action';
 import {
     ResponsiveDataTable,
     type DataTableColumn,
 } from '@/components/data-table';
+import { FormSection, PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 
 type IdentityRow = {
     id: number;
@@ -26,6 +33,9 @@ type Props = {
     };
 };
 
+const selectClass =
+    'flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
+
 export default function AdminIdentitiesIndex({
     filters,
     index_url,
@@ -43,7 +53,7 @@ export default function AdminIdentitiesIndex({
                 priority: 0,
                 cell: (row) => (
                     <>
-                        <div>{row.name}</div>
+                        <div className="font-medium">{row.name}</div>
                         <div className="text-xs text-muted-foreground">
                             {row.email}
                         </div>
@@ -61,7 +71,11 @@ export default function AdminIdentitiesIndex({
                 id: 'status',
                 header: 'Status',
                 priority: 1,
-                cell: (row) => (row.is_active ? 'Active' : 'Deactivated'),
+                cell: (row) => (
+                    <WorkspaceStatusBadge
+                        status={row.is_active ? 'active' : 'deactivated'}
+                    />
+                ),
             },
         ],
         [],
@@ -70,94 +84,81 @@ export default function AdminIdentitiesIndex({
     return (
         <>
             <Head title="Identity lifecycle" />
-            <div className="mx-auto flex max-w-5xl flex-col gap-6 p-4 md:p-8">
-                <div className="space-y-2">
-                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                        Internal · Lifecycle
-                    </p>
-                    <h1 className="text-2xl font-semibold tracking-tight">
-                        Identities
-                    </h1>
-                    <p className="text-sm text-muted-foreground">
-                        Deactivate or reactivate Customer and Internal
-                        identities. Hard delete and restore are prohibited.
+            <PageShell
+                title="Identities"
+                description="Deactivate or reactivate Customer and Internal identities. Hard delete and restore are prohibited."
+            >
+                <PortalFlashBanner message={flash?.success} />
+
+                <FormSection title="Search & filters" columns={2}>
+                    <Form action={index_url} method="get" className="contents">
+                        <div className="space-y-2 md:col-span-2 lg:col-span-1">
+                            <Label htmlFor="q">Search</Label>
+                            <Input
+                                id="q"
+                                name="q"
+                                defaultValue={filters.q}
+                                placeholder="Name or email"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="status">Status</Label>
+                            <select
+                                id="status"
+                                name="status"
+                                defaultValue={filters.status}
+                                className={selectClass}
+                            >
+                                <option value="all">All</option>
+                                <option value="active">Active</option>
+                                <option value="deactivated">Deactivated</option>
+                            </select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="type">Type</Label>
+                            <select
+                                id="type"
+                                name="type"
+                                defaultValue={filters.type}
+                                className={selectClass}
+                            >
+                                <option value="all">All</option>
+                                <option value="customer">Customer</option>
+                                <option value="internal">Internal</option>
+                            </select>
+                        </div>
+                        <div className="flex items-end md:col-span-2">
+                            <Button type="submit" variant="info">
+                                Apply filters
+                            </Button>
+                        </div>
+                    </Form>
+                </FormSection>
+
+                <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+                    <ResponsiveDataTable
+                        caption="Identities"
+                        columns={columns}
+                        rows={identities.data}
+                        rowKey={(row) => String(row.id)}
+                        emptyTitle="No identities match these filters"
+                        emptyDescription="Try adjusting search or filter options."
+                        actions={(identity) => (
+                            <AppIconAction
+                                icon={Eye}
+                                label="View identity"
+                                href={identity.show_url}
+                                variant="info"
+                            />
+                        )}
+                    />
+                    <p className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
+                        Showing page {identities.meta.current_page} of{' '}
+                        {identities.meta.last_page} ({identities.meta.total}{' '}
+                        total)
                     </p>
                 </div>
-
-                {flash?.success ? (
-                    <p
-                        role="status"
-                        className="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm"
-                    >
-                        {flash.success}
-                    </p>
-                ) : null}
-
-                <Form
-                    action={index_url}
-                    method="get"
-                    className="grid gap-3 rounded-xl border border-border p-4 md:grid-cols-4 md:items-end"
-                >
-                    <label className="flex flex-col gap-1 text-sm md:col-span-2">
-                        Search
-                        <input
-                            name="q"
-                            defaultValue={filters.q}
-                            className="rounded-md border border-border bg-background px-3 py-2"
-                            placeholder="Name or email"
-                        />
-                    </label>
-                    <label className="flex flex-col gap-1 text-sm">
-                        Status
-                        <select
-                            name="status"
-                            defaultValue={filters.status}
-                            className="rounded-md border border-border bg-background px-3 py-2"
-                        >
-                            <option value="all">All</option>
-                            <option value="active">Active</option>
-                            <option value="deactivated">Deactivated</option>
-                        </select>
-                    </label>
-                    <label className="flex flex-col gap-1 text-sm">
-                        Type
-                        <select
-                            name="type"
-                            defaultValue={filters.type}
-                            className="rounded-md border border-border bg-background px-3 py-2"
-                        >
-                            <option value="all">All</option>
-                            <option value="customer">Customer</option>
-                            <option value="internal">Internal</option>
-                        </select>
-                    </label>
-                    <Button type="submit" className="md:col-span-4 md:w-fit">
-                        Filter
-                    </Button>
-                </Form>
-
-                <ResponsiveDataTable
-                    caption="Identities"
-                    columns={columns}
-                    rows={identities.data}
-                    rowKey={(row) => String(row.id)}
-                    emptyTitle="No identities match these filters"
-                    emptyDescription="Try adjusting search or filter options."
-                    actions={(identity) => (
-                        <Link
-                            href={identity.show_url}
-                            className="text-sm font-medium underline-offset-4 hover:underline"
-                        >
-                            Open
-                        </Link>
-                    )}
-                />
-
-                <p className="text-xs text-muted-foreground">
-                    Showing page {identities.meta.current_page} of{' '}
-                    {identities.meta.last_page} ({identities.meta.total} total)
-                </p>
-            </div>
+            </PageShell>
         </>
     );
 }

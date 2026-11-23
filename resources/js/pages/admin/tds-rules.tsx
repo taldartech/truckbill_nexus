@@ -1,5 +1,16 @@
 import { Form, Head, usePage } from '@inertiajs/react';
+import { Save } from 'lucide-react';
+import {
+    PortalErrorList,
+    PortalFlashBanner,
+} from '@/components/admin/portal-feedback';
+import { AppIconAction } from '@/components/app-icon-action';
+import { FormSection } from '@/components/form-section';
+import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 
 type Props = {
     compliance_note: string;
@@ -18,6 +29,12 @@ type Props = {
     }[];
 };
 
+const selectClass =
+    'flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
+
+const textareaClass =
+    'min-h-20 w-full rounded-md border border-input bg-transparent px-3 py-2 font-mono text-xs shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
+
 export default function AdminTdsRules({
     compliance_note,
     store_url,
@@ -31,121 +48,94 @@ export default function AdminTdsRules({
     return (
         <>
             <Head title="TDS rule master" />
-            <div className="mx-auto flex max-w-5xl flex-col gap-6 p-4 md:p-8">
-                <div className="space-y-2">
-                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                        Internal · Tax masters
-                    </p>
-                    <h1 className="text-2xl font-semibold tracking-tight">
-                        TDS rules
-                    </h1>
-                    <p className="text-sm text-muted-foreground">
-                        {compliance_note}
-                    </p>
-                </div>
-                {flash?.success ? (
-                    <p
-                        role="status"
-                        className="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm"
-                    >
-                        {flash.success}
-                    </p>
-                ) : null}
-                {(errors?.code ||
-                    errors?.remark ||
-                    errors?.conditions_json) && (
-                    <p className="text-sm text-destructive" role="alert">
-                        {errors.code || errors.remark || errors.conditions_json}
-                    </p>
-                )}
+            <PageShell title="TDS rules" description={compliance_note}>
+                <PortalFlashBanner message={flash?.success} />
+                <PortalErrorList
+                    errors={errors}
+                    keys={['code', 'remark', 'conditions_json']}
+                />
 
-                <section className="space-y-3 rounded-xl border border-border p-4">
-                    <h2 className="font-semibold">Create rule</h2>
-                    <Form
-                        action={store_url}
-                        method="post"
-                        className="grid gap-3 md:grid-cols-2"
-                    >
-                        <label className="flex flex-col gap-1 text-sm">
-                            Code
-                            <input
+                <Form action={store_url} method="post">
+                    <FormSection title="Create rule" columns={2}>
+                        <div className="space-y-2">
+                            <Label htmlFor="code">Code</Label>
+                            <Input
+                                id="code"
                                 name="code"
                                 required
-                                className="rounded-md border border-border bg-background px-3 py-2 font-mono text-sm"
+                                className="font-mono"
                                 placeholder="PAN_INDIVIDUAL_1"
                             />
-                        </label>
-                        <label className="flex flex-col gap-1 text-sm">
-                            Name
-                            <input
-                                name="name"
-                                required
-                                className="rounded-md border border-border bg-background px-3 py-2"
-                            />
-                        </label>
-                        <label className="flex flex-col gap-1 text-sm">
-                            Priority
-                            <input
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="name">Name</Label>
+                            <Input id="name" name="name" required />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="priority">Priority</Label>
+                            <Input
+                                id="priority"
                                 name="priority"
                                 type="number"
                                 min="1"
                                 required
                                 defaultValue={100}
-                                className="rounded-md border border-border bg-background px-3 py-2"
                             />
-                        </label>
-                        <label className="flex flex-col gap-1 text-sm">
-                            Condition logic
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="condition_logic">
+                                Condition logic
+                            </Label>
                             <select
+                                id="condition_logic"
                                 name="condition_logic"
                                 defaultValue="AND"
-                                className="rounded-md border border-border bg-background px-3 py-2"
+                                className={selectClass}
                             >
                                 <option value="AND">AND</option>
                                 <option value="OR">OR</option>
                             </select>
-                        </label>
-                        <label className="flex flex-col gap-1 text-sm">
-                            Rate percent
-                            <input
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="rate_percent">Rate percent</Label>
+                            <Input
+                                id="rate_percent"
                                 name="rate_percent"
                                 type="number"
                                 step="0.001"
                                 min="0"
                                 max="100"
                                 required
-                                className="rounded-md border border-border bg-background px-3 py-2"
                             />
-                        </label>
-                        <label className="flex flex-col gap-1 text-sm">
-                            Description
-                            <input
-                                name="description"
-                                className="rounded-md border border-border bg-background px-3 py-2"
-                            />
-                        </label>
-                        <label className="flex flex-col gap-1 text-sm md:col-span-2">
-                            Conditions JSON
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="description">Description</Label>
+                            <Input id="description" name="description" />
+                        </div>
+                        <div className="space-y-2 md:col-span-2">
+                            <Label htmlFor="conditions_json">
+                                Conditions JSON
+                            </Label>
                             <textarea
+                                id="conditions_json"
                                 name="conditions_json"
                                 required
                                 rows={3}
-                                className="rounded-md border border-border bg-background px-3 py-2 font-mono text-xs"
+                                className={textareaClass}
                                 defaultValue='[{"field":"pan_status","operator":"eq","value":"valid"}]'
                             />
-                        </label>
-                        <label className="flex flex-col gap-1 text-sm md:col-span-2">
-                            Remark
-                            <input
-                                name="remark"
-                                className="rounded-md border border-border bg-background px-3 py-2"
-                            />
-                        </label>
-                        <div className="md:col-span-2">
-                            <Button type="submit">Create TDS rule</Button>
                         </div>
-                    </Form>
-                </section>
+                        <div className="space-y-2 md:col-span-2">
+                            <Label htmlFor="create-remark">Remark</Label>
+                            <Input id="create-remark" name="remark" />
+                        </div>
+                        <div className="md:col-span-2">
+                            <Button type="submit" variant="default">
+                                Create TDS rule
+                            </Button>
+                        </div>
+                    </FormSection>
+                </Form>
 
                 {rules.length === 0 ? (
                     <p className="text-sm text-muted-foreground">
@@ -154,81 +144,107 @@ export default function AdminTdsRules({
                 ) : (
                     <ul className="space-y-4">
                         {rules.map((rule) => (
-                            <li
-                                key={rule.id}
-                                className="space-y-3 rounded-xl border border-border p-4"
-                            >
-                                <div className="flex flex-wrap items-start justify-between gap-2">
-                                    <div>
-                                        <p className="font-semibold">
-                                            {rule.name}{' '}
-                                            <span className="font-mono text-xs text-muted-foreground">
-                                                {rule.code}
-                                            </span>
-                                        </p>
-                                        <p className="text-sm text-muted-foreground">
-                                            Priority {rule.priority} ·{' '}
-                                            {rule.condition_logic} ·{' '}
-                                            {rule.rate_percent}% ·{' '}
-                                            {rule.is_active
-                                                ? 'Active'
-                                                : 'Inactive'}
-                                        </p>
-                                    </div>
-                                </div>
-                                <pre className="overflow-x-auto rounded-md bg-muted/40 p-2 text-xs">
-                                    {JSON.stringify(rule.conditions, null, 2)}
-                                </pre>
-                                <Form
-                                    action={rule.update_url}
-                                    method="post"
-                                    className="flex flex-wrap items-end gap-2"
+                            <li key={rule.id}>
+                                <FormSection
+                                    title={rule.name}
+                                    description={`${rule.code} · Priority ${rule.priority} · ${rule.condition_logic} · ${rule.rate_percent}%`}
+                                    columns={2}
                                 >
-                                    <input
-                                        type="hidden"
-                                        name="_method"
-                                        value="put"
-                                    />
-                                    <label className="flex flex-col gap-1 text-sm">
-                                        Active
-                                        <select
-                                            name="is_active"
-                                            defaultValue={
-                                                rule.is_active ? '1' : '0'
+                                    <div className="flex flex-wrap items-center gap-2 md:col-span-2">
+                                        <WorkspaceStatusBadge
+                                            status={
+                                                rule.is_active
+                                                    ? 'active'
+                                                    : 'deactivated'
                                             }
-                                            className="rounded-md border border-border bg-background px-2 py-1"
-                                        >
-                                            <option value="1">Active</option>
-                                            <option value="0">Inactive</option>
-                                        </select>
-                                    </label>
-                                    <label className="flex flex-col gap-1 text-sm">
-                                        Priority
-                                        <input
-                                            name="priority"
-                                            type="number"
-                                            defaultValue={rule.priority}
-                                            className="w-24 rounded-md border border-border bg-background px-2 py-1"
                                         />
-                                    </label>
-                                    <label className="flex min-w-[12rem] flex-1 flex-col gap-1 text-sm">
-                                        Remark
+                                    </div>
+                                    <pre className="overflow-x-auto rounded-md bg-muted/40 p-2 text-xs md:col-span-2">
+                                        {JSON.stringify(
+                                            rule.conditions,
+                                            null,
+                                            2,
+                                        )}
+                                    </pre>
+                                    <Form
+                                        action={rule.update_url}
+                                        method="post"
+                                        className="contents"
+                                    >
                                         <input
-                                            name="remark"
-                                            required
-                                            className="rounded-md border border-border bg-background px-2 py-1"
-                                            placeholder="Required audit remark"
+                                            type="hidden"
+                                            name="_method"
+                                            value="put"
                                         />
-                                    </label>
-                                    <Button type="submit" size="sm">
-                                        Update
-                                    </Button>
-                                </Form>
+                                        <div className="space-y-2">
+                                            <Label
+                                                htmlFor={`active-${rule.id}`}
+                                            >
+                                                Active
+                                            </Label>
+                                            <select
+                                                id={`active-${rule.id}`}
+                                                name="is_active"
+                                                defaultValue={
+                                                    rule.is_active ? '1' : '0'
+                                                }
+                                                className={selectClass}
+                                            >
+                                                <option value="1">
+                                                    Active
+                                                </option>
+                                                <option value="0">
+                                                    Inactive
+                                                </option>
+                                            </select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label
+                                                htmlFor={`priority-${rule.id}`}
+                                            >
+                                                Priority
+                                            </Label>
+                                            <Input
+                                                id={`priority-${rule.id}`}
+                                                name="priority"
+                                                type="number"
+                                                defaultValue={rule.priority}
+                                            />
+                                        </div>
+                                        <div className="space-y-2 md:col-span-2">
+                                            <Label
+                                                htmlFor={`remark-${rule.id}`}
+                                            >
+                                                Remark
+                                            </Label>
+                                            <Input
+                                                id={`remark-${rule.id}`}
+                                                name="remark"
+                                                required
+                                                placeholder="Required audit remark"
+                                            />
+                                        </div>
+                                        <div className="md:col-span-2">
+                                            <AppIconAction
+                                                icon={Save}
+                                                label="Update TDS rule"
+                                                type="submit"
+                                                variant="warning"
+                                                size="default"
+                                                className="gap-2 px-3"
+                                            >
+                                                <span className="text-sm font-medium">
+                                                    Update
+                                                </span>
+                                            </AppIconAction>
+                                        </div>
+                                    </Form>
+                                </FormSection>
                             </li>
                         ))}
                     </ul>
                 )}
-            </div>
+            </PageShell>
         </>
     );
 }

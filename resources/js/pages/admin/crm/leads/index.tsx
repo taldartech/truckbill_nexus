@@ -1,10 +1,17 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { Eye, Plus } from 'lucide-react';
 import { useMemo } from 'react';
+import { PortalFlashBanner } from '@/components/admin/portal-feedback';
+import { AppIconAction } from '@/components/app-icon-action';
 import {
     ResponsiveDataTable,
     type DataTableColumn,
 } from '@/components/data-table';
+import { FormSection, PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 
 type LeadRow = {
     id: string;
@@ -28,6 +35,9 @@ type Props = {
     };
 };
 
+const selectClass =
+    'flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
+
 export default function CrmLeadsIndex({
     filters,
     statuses,
@@ -46,7 +56,7 @@ export default function CrmLeadsIndex({
                 priority: 0,
                 cell: (lead) => (
                     <>
-                        <div>{lead.contact_name}</div>
+                        <div className="font-medium">{lead.contact_name}</div>
                         <div className="text-xs text-muted-foreground">
                             {lead.email ?? '—'}
                             {lead.company_name ? ` · ${lead.company_name}` : ''}
@@ -64,7 +74,7 @@ export default function CrmLeadsIndex({
                 id: 'status',
                 header: 'Status',
                 priority: 1,
-                cell: (lead) => lead.status,
+                cell: (lead) => <WorkspaceStatusBadge status={lead.status} />,
             },
             {
                 id: 'assignee',
@@ -79,83 +89,78 @@ export default function CrmLeadsIndex({
     return (
         <>
             <Head title="CRM Leads" />
-            <div className="mx-auto flex max-w-5xl flex-col gap-6 p-4 md:p-8">
-                <div className="flex flex-wrap items-end justify-between gap-3">
-                    <div className="space-y-2">
-                        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                            Internal · CRM
-                        </p>
-                        <h1 className="text-2xl font-semibold tracking-tight">
-                            Leads
-                        </h1>
-                    </div>
-                    <Button asChild>
-                        <Link href={urls.create}>Create lead</Link>
-                    </Button>
-                </div>
-
-                {flash?.success ? (
-                    <p
-                        role="status"
-                        className="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm"
-                    >
-                        {flash.success}
-                    </p>
-                ) : null}
-
-                <Form
-                    action={urls.index}
-                    method="get"
-                    className="flex flex-col gap-3 rounded-xl border border-border p-4 md:flex-row md:items-end"
-                >
-                    <label className="flex flex-1 flex-col gap-1 text-sm">
-                        Search
-                        <input
-                            name="q"
-                            defaultValue={filters.q}
-                            className="rounded-md border border-border bg-background px-3 py-2"
-                        />
-                    </label>
-                    <label className="flex flex-col gap-1 text-sm">
-                        Status
-                        <select
-                            name="status"
-                            defaultValue={filters.status}
-                            className="rounded-md border border-border bg-background px-3 py-2"
-                        >
-                            <option value="all">All</option>
-                            {statuses.map((status) => (
-                                <option key={status} value={status}>
-                                    {status}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
-                    <Button type="submit">Filter</Button>
-                </Form>
-
-                <ResponsiveDataTable
-                    caption="CRM leads"
-                    columns={columns}
-                    rows={leads.data}
-                    rowKey={(lead) => lead.id}
-                    emptyTitle="No leads found"
-                    emptyDescription="Create a lead or adjust filters."
-                    actions={(lead) => (
-                        <Link
-                            href={lead.show_url}
-                            className="font-medium underline-offset-4 hover:underline"
-                        >
-                            Open
+            <PageShell
+                title="Leads"
+                description="Internal CRM · qualify, assign, and convert inbound prospects."
+                actions={
+                    <Button asChild variant="default">
+                        <Link href={urls.create}>
+                            <Plus className="size-4" aria-hidden />
+                            Create lead
                         </Link>
-                    )}
-                />
+                    </Button>
+                }
+            >
+                <PortalFlashBanner message={flash?.success} />
 
-                <p className="text-xs text-muted-foreground">
-                    Page {leads.meta.current_page} of {leads.meta.last_page} (
-                    {leads.meta.total} total)
-                </p>
-            </div>
+                <FormSection title="Search & filters" columns={2}>
+                    <Form action={urls.index} method="get" className="contents">
+                        <div className="space-y-2 md:col-span-1">
+                            <Label htmlFor="q">Search</Label>
+                            <Input
+                                id="q"
+                                name="q"
+                                defaultValue={filters.q}
+                                placeholder="Name, email, company"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="status">Status</Label>
+                            <select
+                                id="status"
+                                name="status"
+                                defaultValue={filters.status}
+                                className={selectClass}
+                            >
+                                <option value="all">All</option>
+                                {statuses.map((status) => (
+                                    <option key={status} value={status}>
+                                        {status}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="flex items-end md:col-span-2">
+                            <Button type="submit" variant="info">
+                                Apply filters
+                            </Button>
+                        </div>
+                    </Form>
+                </FormSection>
+
+                <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
+                    <ResponsiveDataTable
+                        caption="CRM leads"
+                        columns={columns}
+                        rows={leads.data}
+                        rowKey={(lead) => lead.id}
+                        emptyTitle="No leads found"
+                        emptyDescription="Create a lead or adjust filters."
+                        actions={(lead) => (
+                            <AppIconAction
+                                icon={Eye}
+                                label="View lead"
+                                href={lead.show_url}
+                                variant="info"
+                            />
+                        )}
+                    />
+                    <p className="border-t border-border px-4 py-3 text-xs text-muted-foreground">
+                        Page {leads.meta.current_page} of {leads.meta.last_page}{' '}
+                        ({leads.meta.total} total)
+                    </p>
+                </div>
+            </PageShell>
         </>
     );
 }
