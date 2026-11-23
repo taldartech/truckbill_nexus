@@ -21,13 +21,24 @@
 
 ## Not in this checkpoint (authorized, remaining)
 
-| Item                                                         | Batch |
-| ------------------------------------------------------------ | ----- |
-| Full-app page-by-page UI audit + shared form system          | B     |
-| Enquiry goods multi-row / masters form polish                | B     |
-| Phase 4 Unified LR / conversion / quotation completion       | C     |
-| Phase 5 OwnFleet domain + Operations nav                     | D     |
-| Full Playwright visual matrix + authenticated k6 Owner lists | E     |
+| Item                                                         | Batch                            |
+| ------------------------------------------------------------ | -------------------------------- |
+| Full-app page-by-page UI audit + shared form system          | Premium UI B                     |
+| Enquiry goods multi-row / masters form polish                | Premium UI B                     |
+| Phase 4 Batch C — assignment + follow-ups                    | Phase 4 C (`PO-P4-BATCH-C-AUTH`) |
+| Phase 4 Batches D–F — quotation, Unified LR ops, conversion  | Phase 4 D–F                      |
+| Phase 5 OwnFleet domain + Operations nav                     | Phase 5 (after D–F)              |
+| Full Playwright visual matrix + authenticated k6 Owner lists | Premium UI E                     |
+
+## Phase 4 / 5 codebase fact
+
+Verified by [Phase 4 / OwnFleet audit](432d0e12-3046-4aeb-bf65-0e8ac14bf4e1):
+
+- Phase 4 in code = **Batch A (schema) + Batch B (enquiry intake only)**.
+- Quotation, Unified LR HTTP/UI, and conversion are **schema/models only**.
+- OwnFleet ops are **absent** (enum/hook stubs + subscription SKU only).
+- **Do not start OwnFleet** until Phase 4 **D → E → F** deliver real `LorryReceipt` workflows.
+- Next operational slice: **Phase 4 Batch C** (assignment + follow-ups), then D/E/F.
 
 ## Verification (local)
 
