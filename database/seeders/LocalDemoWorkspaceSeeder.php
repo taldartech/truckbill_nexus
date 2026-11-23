@@ -1808,7 +1808,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
             ),
         ]);
 
-        if (($result['conversion']->lorryReceiptLinks()->count() ?? 0) < 1) {
+        if ($result['conversion']->lorryReceiptLinks()->count() < 1) {
             throw new RuntimeException(
                 'Local demo CDF conversion did not create LR links ('.$convertFixtureKey.').'
             );
