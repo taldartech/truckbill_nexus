@@ -90,8 +90,8 @@ class OwnerAuditController extends Controller
                 ],
             ],
             'links' => [
-                'dashboard' => route('owner.dashboard', ['company' => $company]),
-                'index' => route('owner.audit', ['company' => $company]),
+                'dashboard' => route('owner.home'),
+                'index' => route('owner.audit'),
             ],
         ]);
     }

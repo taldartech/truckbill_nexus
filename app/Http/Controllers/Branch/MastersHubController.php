@@ -38,35 +38,35 @@ class MastersHubController extends Controller
                 'key' => 'parties',
                 'title' => 'Party Master',
                 'description' => 'Customers, transporters, drivers, vendors and multi-role parties.',
-                'href' => route('branch.parties.index', [$company, $branch]),
+                'href' => route('branch.parties.index'),
                 'visible' => true,
             ],
             [
                 'key' => 'vehicles',
                 'title' => 'Vehicle Master',
                 'description' => 'Registration, capacity and vehicle attributes.',
-                'href' => route('branch.vehicles.index', [$company, $branch]),
+                'href' => route('branch.vehicles.index'),
                 'visible' => true,
             ],
             [
                 'key' => 'bank_cash',
                 'title' => 'Bank / Cash Accounts',
                 'description' => 'Bank and cash accounts with masked account numbers.',
-                'href' => route('branch.bank-cash.index', [$company, $branch]),
+                'href' => route('branch.bank-cash.index'),
                 'visible' => true,
             ],
             [
                 'key' => 'stations',
                 'title' => 'Stations',
                 'description' => 'Shared station directory and default transporters.',
-                'href' => route('branch.stations.index', [$company, $branch]),
+                'href' => route('branch.stations.index'),
                 'visible' => true,
             ],
             [
                 'key' => 'catalogues',
                 'title' => 'Supporting Masters',
                 'description' => 'Goods types, truck types, document types and more.',
-                'href' => route('branch.catalogues.index', [$company, $branch]),
+                'href' => route('branch.catalogues.index'),
                 'visible' => true,
             ],
         ];
@@ -77,7 +77,7 @@ class MastersHubController extends Controller
             'permissions' => $permissions,
             'categories' => $categories,
             'links' => [
-                'dashboard' => route('branch.dashboard', [$company, $branch]),
+                'dashboard' => route('branch.dashboard'),
             ],
         ]);
     }

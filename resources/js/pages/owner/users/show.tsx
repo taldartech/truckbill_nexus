@@ -68,7 +68,6 @@ export default function OwnerUsersShow({
         () =>
             assignBranchId
                 ? OwnerUsersController.assignBranch.form({
-                      company: company.id,
                       membership: membership.id,
                       branch: assignBranchId,
                   })
@@ -79,7 +78,6 @@ export default function OwnerUsersShow({
         () =>
             roleBranchId
                 ? OwnerUsersController.assignRole.form({
-                      company: company.id,
                       membership: membership.id,
                       branch: roleBranchId,
                   })
@@ -232,7 +230,6 @@ export default function OwnerUsersShow({
                                             <Form
                                                 {...OwnerUsersController.revokeRole.form(
                                                     {
-                                                        company: company.id,
                                                         roleAssignment:
                                                             assignment.id,
                                                     },
@@ -366,7 +363,6 @@ export default function OwnerUsersShow({
                         </p>
                         <Form
                             {...OwnerUsersController.deactivateMembership.form({
-                                company: company.id,
                                 membership: membership.id,
                             })}
                             className="space-y-3"

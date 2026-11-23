@@ -79,7 +79,7 @@ export default function OwnerBranchesAll({
                             {companyOptions[0] ? (
                                 <Button asChild>
                                     <Link
-                                        href={`/owner/companies/${company || companyOptions[0].id}/branches/create`}
+                                        href={`/management/companies/${company || companyOptions[0].id}/branches/create`}
                                     >
                                         Create branch
                                     </Link>

@@ -226,7 +226,7 @@ test('owner can update complete company profile from settings', function () {
         'gst_rate_id' => $newRate->id,
         'data_visibility' => DataVisibility::SharedData->value,
         'timezone' => 'Asia/Kolkata',
-    ])->assertRedirect(route('owner.settings', ['company' => $company]));
+    ])->assertRedirect(route('owner.settings'));
 
     $company->refresh();
     expect($company->name)->toBe('Editable Co Renamed')

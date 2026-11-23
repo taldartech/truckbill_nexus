@@ -63,10 +63,9 @@ export default function OwnerUsersIndex({
         () =>
             inviteBranchId
                 ? OwnerUsersController.inviteForBranch.form({
-                      company: company.id,
                       branch: inviteBranchId,
                   })
-                : OwnerUsersController.invite.form(company.id),
+                : OwnerUsersController.invite.form(),
         [company.id, inviteBranchId],
     );
 
@@ -291,7 +290,6 @@ export default function OwnerUsersIndex({
                                             <Form
                                                 {...OwnerUsersController.revokeInvitation.form(
                                                     {
-                                                        company: company.id,
                                                         invitation:
                                                             invitation.id,
                                                     },

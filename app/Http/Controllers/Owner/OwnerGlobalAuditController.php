@@ -57,7 +57,7 @@ class OwnerGlobalAuditController extends Controller
                             'id' => $entry->company_id,
                             'name' => $names[$entry->company_id] ?? '—',
                         ],
-                        'company_audit_url' => route('owner.audit', ['company' => $entry->company_id]),
+                        'company_audit_url' => route('owner.companies.index'),
                     ];
                 })->values(),
                 'links' => $paginator->linkCollection()->toArray(),

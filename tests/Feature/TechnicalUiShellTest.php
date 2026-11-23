@@ -26,7 +26,7 @@ test('operational business module routes remain absent', function () {
         )->toBeFalse();
     }
 
-    expect(Route::has('owner.dashboard'))->toBeTrue()
+    expect(Route::has('owner.home'))->toBeTrue()
         ->and(Route::has('branch.dashboard'))->toBeTrue()
         ->and(Route::has('workspace.landing'))->toBeTrue();
 });

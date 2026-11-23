@@ -117,9 +117,7 @@ test('existing owner can create an additional company', function () {
         'name' => 'Second Owned Co',
         'create_initial_branch' => true,
         'initial_branch_name' => 'Main',
-    ]))->assertRedirect(route('owner.dashboard', [
-        'company' => Company::query()->where('name', 'Second Owned Co')->firstOrFail(),
-    ]));
+    ]))->assertRedirect(route('owner.home'));
 
     $second = Company::query()->where('name', 'Second Owned Co')->firstOrFail();
     expect($second->owner_user_id)->toBe($owner->id)
@@ -150,7 +148,7 @@ test('member-only customer can access the approved creation entry', function () 
 
     // Member cannot open Owner Panel for a company they do not own, but shared
     // workspace props still expose Create Company for eligible Customers.
-    $this->get(route('owner.dashboard', ['company' => $company]))->assertForbidden();
+    $this->get(route('owner.home'))->assertForbidden();
 
     $this->get(route('branch.dashboard', ['company' => $company, 'branch' => $branch]))
         ->assertOk()
@@ -218,7 +216,7 @@ test('owner dashboard exposes the correct creation url', function () {
 
     accessLoginCustomer($owner);
 
-    $this->get(route('owner.dashboard', ['company' => $company]))
+    $this->get(route('owner.home'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('owner/dashboard')
@@ -234,7 +232,7 @@ test('company switcher shared props expose creation to eligible customers', func
 
     accessLoginCustomer($owner);
 
-    $this->get(route('owner.dashboard', ['company' => $company]))
+    $this->get(route('owner.home'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('workspace.can_create_company', true)
@@ -331,8 +329,8 @@ test('cross-company authorization remains secure for owner panel', function () {
 
     accessLoginCustomer($ownerA);
 
-    $this->get(route('owner.dashboard', ['company' => $companyB]))->assertForbidden();
-    $this->get(route('owner.settings', ['company' => $companyB]))->assertForbidden();
+    $this->get(route('owner.home'))->assertForbidden();
+    $this->get(route('owner.settings'))->assertForbidden();
 
     expect($companyA->isOwnedBy($ownerA))->toBeTrue()
         ->and($companyB->isOwnedBy($ownerA))->toBeFalse();

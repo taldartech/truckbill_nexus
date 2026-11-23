@@ -62,17 +62,19 @@ export function AppSidebar() {
     const inBranchPanel =
         Boolean(activeCompanyId && activeBranchId) ||
         pathname.startsWith('/branch/');
-    const inOwnerPanel = isCustomer && pathname.startsWith('/owner');
+    const inOwnerPanel =
+        isCustomer &&
+        (pathname.startsWith('/management') || pathname.startsWith('/owner'));
     const inOwnerCompanyDetail =
         isCustomer &&
         ownsAnyCompany &&
-        /^\/owner\/companies\/(?!create$)[^/]+/.test(pathname);
+        pathname.startsWith('/management/company');
 
     const ownerOverview: NavItem[] = ownsAnyCompany
         ? [
               {
                   title: 'Dashboard',
-                  href: '/owner',
+                  href: '/management',
                   icon: LayoutDashboard,
               },
           ]
@@ -82,27 +84,27 @@ export function AppSidebar() {
         ? [
               {
                   title: 'Companies',
-                  href: '/owner/companies',
+                  href: '/management/companies',
                   icon: Building2,
               },
               {
                   title: 'Branches',
-                  href: '/owner/branches',
+                  href: '/management/branches',
                   icon: GitBranch,
               },
               {
                   title: 'Users',
-                  href: '/owner/users',
+                  href: '/management/users',
                   icon: Users,
               },
               {
                   title: 'Subscriptions',
-                  href: '/owner/subscriptions',
+                  href: '/management/subscriptions',
                   icon: CreditCard,
               },
               {
                   title: 'Audit',
-                  href: '/owner/audit',
+                  href: '/management/audit',
                   icon: FileSearch,
               },
           ]
@@ -113,22 +115,22 @@ export function AppSidebar() {
             ? [
                   {
                       title: 'Branch Dashboard',
-                      href: `/branch/companies/${activeCompanyId}/branches/${activeBranchId}`,
+                      href: '/branch',
                       icon: LayoutDashboard,
                   },
                   {
                       title: 'Masters',
-                      href: `/branch/companies/${activeCompanyId}/branches/${activeBranchId}/masters`,
+                      href: '/branch/masters',
                       icon: Warehouse,
                   },
                   {
                       title: 'Enquiries',
-                      href: `/branch/companies/${activeCompanyId}/branches/${activeBranchId}/enquiries`,
+                      href: '/branch/enquiries',
                       icon: Ticket,
                   },
                   {
                       title: 'Branch Settings',
-                      href: `/branch/companies/${activeCompanyId}/branches/${activeBranchId}/settings`,
+                      href: '/branch/settings',
                       icon: Settings,
                   },
               ]
@@ -261,7 +263,7 @@ export function AppSidebar() {
                                 href={
                                     isCustomer
                                         ? ownsAnyCompany
-                                            ? '/owner'
+                                            ? '/management'
                                             : '/workspace'
                                         : dashboard()
                                 }
@@ -298,11 +300,11 @@ export function AppSidebar() {
                         <SidebarMenuItem>
                             <SidebarMenuButton
                                 asChild
-                                tooltip="Return to Owner Panel"
+                                tooltip="Return to Management"
                             >
-                                <Link href="/owner" prefetch>
+                                <Link href="/management" prefetch>
                                     <Building2 />
-                                    <span>Return to Owner Panel</span>
+                                    <span>Return to Management</span>
                                 </Link>
                             </SidebarMenuButton>
                         </SidebarMenuItem>

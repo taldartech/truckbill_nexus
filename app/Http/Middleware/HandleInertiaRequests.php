@@ -45,7 +45,8 @@ class HandleInertiaRequests extends Middleware
 
         return [
             ...parent::share($request),
-            'name' => config('app.name'),
+            // Product branding is fixed — do not let APP_NAME="Laravel" leak into UI.
+            'name' => 'TruckBill',
             'auth' => [
                 'user' => $user === null ? null : [
                     'id' => $user->id,
@@ -60,6 +61,7 @@ class HandleInertiaRequests extends Middleware
             ],
             'flash' => [
                 'success' => $request->session()->get('success'),
+                'error' => $request->session()->get('error'),
             ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'workspace' => $this->workspaceShare($request, $user),
@@ -84,8 +86,7 @@ class HandleInertiaRequests extends Middleware
             ? $routeCompany->id
             : WorkspaceSession::companyId($request);
 
-        // Owner Panel is company-scoped. Clear any prior Branch Panel session branch
-        // before sharing props so Owner chrome is not overridden by a stale branch.
+        // Management (Owner) routes clear branch chrome; Branch Panel keeps session branch.
         if ($request->routeIs('owner.*')) {
             $request->session()->forget(WorkspaceSession::BRANCH_KEY);
             $activeBranchId = null;
@@ -95,11 +96,11 @@ class HandleInertiaRequests extends Middleware
                 : WorkspaceSession::branchId($request);
         }
 
-        // Active Customer-only path (guarded above); Create Company is always eligible here.
         return [
             'companies' => $navigation->accessibleCompanies($user)->values(),
             'active_company_id' => $activeCompanyId,
             'active_branch_id' => $activeBranchId,
+            'context_version' => WorkspaceSession::version($request),
             'can_create_company' => true,
             'create_company_url' => route('owner.companies.create'),
         ];

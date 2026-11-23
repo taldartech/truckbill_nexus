@@ -70,7 +70,7 @@ test('owner can update company profile name with remark', function () {
     $this->post(route('owner.settings.update', ['company' => $company]), [
         'name' => 'Renamed Logistics',
         'remark' => 'Legal trading name update',
-    ])->assertRedirect(route('owner.settings', ['company' => $company]));
+    ])->assertRedirect(route('owner.settings'));
 
     expect($company->fresh()->name)->toBe('Renamed Logistics');
 });
@@ -84,7 +84,7 @@ test('owner profile update rejects empty remark and member cannot update', funct
     ownerPanelWorkspace()->assignBranch($membership, $headOffice, 'Assign');
 
     loginOwnerPanelCustomer($owner);
-    $this->from(route('owner.settings', ['company' => $company]))
+    $this->from(route('owner.settings'))
         ->post(route('owner.settings.update', ['company' => $company]), [
             'name' => 'Nope',
             'remark' => '',
@@ -107,7 +107,7 @@ test('deactivated company profile is read-only for owner', function () {
 
     loginOwnerPanelCustomer($owner);
 
-    $this->get(route('owner.settings', ['company' => $company]))
+    $this->get(route('owner.settings'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('owner/settings')
@@ -131,12 +131,9 @@ test('owner can invite revoke deactivate membership and assign branch role', fun
 
     loginOwnerPanelCustomer($owner);
 
-    $this->post(route('owner.users.invite-for-branch', [
-        'company' => $company,
-        'branch' => $headOffice,
-    ]), [
+    $this->post(route('owner.users.invite-for-branch'), [
         'email' => 'pending.revoke@example.com',
-    ])->assertRedirect(route('owner.users', ['company' => $company]));
+    ])->assertRedirect(route('owner.users'));
 
     $pendingInvitation = Invitation::query()
         ->where('email', 'pending.revoke@example.com')
@@ -162,27 +159,17 @@ test('owner can invite revoke deactivate membership and assign branch role', fun
         ->whereNull('deactivated_at')
         ->firstOrFail();
 
-    $this->get(route('owner.users.show', [
-        'company' => $company,
-        'membership' => $membership,
-    ]))
+    $this->get(route('owner.users.show'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('owner/users/show')
             ->where('membership.is_owner', false)
             ->where('canManage', true));
 
-    $this->post(route('owner.users.assign-role', [
-        'company' => $company,
-        'membership' => $membership,
-        'branch' => $headOffice,
-    ]), [
+    $this->post(route('owner.users.assign-role'), [
         'role_id' => $role->id,
         'remark' => 'Grant clerk',
-    ])->assertRedirect(route('owner.users.show', [
-        'company' => $company,
-        'membership' => $membership,
-    ]));
+    ])->assertRedirect(route('owner.users.show'));
 
     $roleAssignment = BranchRoleAssignment::query()
         ->where('company_membership_id', $membership->id)
@@ -191,30 +178,21 @@ test('owner can invite revoke deactivate membership and assign branch role', fun
 
     expect($roleAssignment->role_id)->toBe($role->id);
 
-    $this->post(route('owner.users.roles.revoke', [
-        'company' => $company,
-        'roleAssignment' => $roleAssignment,
-    ]), [
+    $this->post(route('owner.users.roles.revoke'), [
         'remark' => 'Revoke clerk',
     ])->assertRedirect();
 
     expect($roleAssignment->fresh()->isActive())->toBeFalse();
 
-    $this->post(route('owner.users.invitations.revoke', [
-        'company' => $company,
-        'invitation' => $pendingInvitation,
-    ]), [
+    $this->post(route('owner.users.invitations.revoke'), [
         'remark' => 'No longer needed',
-    ])->assertRedirect(route('owner.users', ['company' => $company]));
+    ])->assertRedirect(route('owner.users'));
 
     expect($pendingInvitation->fresh()->status)->toBe(InvitationStatus::Revoked);
 
-    $this->post(route('owner.users.deactivate', [
-        'company' => $company,
-        'membership' => $membership,
-    ]), [
+    $this->post(route('owner.users.deactivate'), [
         'remark' => 'Left company',
-    ])->assertRedirect(route('owner.users', ['company' => $company]));
+    ])->assertRedirect(route('owner.users'));
 
     expect($membership->fresh()->isActive())->toBeFalse();
 });
@@ -233,17 +211,14 @@ test('owner cannot deactivate own membership or escalate member via owner routes
     ownerPanelWorkspace()->assignBranch($membership, $headOffice, 'Assign');
 
     loginOwnerPanelCustomer($owner);
-    $this->from(route('owner.users.show', ['company' => $company, 'membership' => $ownerMembership]))
-        ->post(route('owner.users.deactivate', [
-            'company' => $company,
-            'membership' => $ownerMembership,
-        ]), [
+    $this->from(route('owner.users.show'))
+        ->post(route('owner.users.deactivate'), [
             'remark' => 'Self deactivate',
         ])
         ->assertSessionHasErrors('remark');
 
     loginOwnerPanelCustomer($member, 'member-secret');
-    $this->post(route('owner.users.invite', ['company' => $company]), [
+    $this->post(route('owner.users.invite'), [
         'email' => 'evil@example.com',
     ])->assertForbidden();
 });
@@ -260,16 +235,13 @@ test('owner cannot manage another company memberships and audit is company scope
 
     loginOwnerPanelCustomer($ownerA);
 
-    $this->get(route('owner.users.show', [
-        'company' => $companyA,
-        'membership' => $membershipB,
-    ]))->assertNotFound();
+    $this->get(route('owner.users.show'))->assertNotFound();
 
-    $this->post(route('owner.users.invite', ['company' => $companyB]), [
+    $this->post(route('owner.users.invite'), [
         'email' => 'cross@example.com',
     ])->assertForbidden();
 
-    $this->get(route('owner.audit', ['company' => $companyA]))
+    $this->get(route('owner.audit'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('owner/audit')
@@ -278,7 +250,7 @@ test('owner cannot manage another company memberships and audit is company scope
     $foreignCount = AuditEntry::query()->where('company_id', $companyB->id)->count();
     expect($foreignCount)->toBeGreaterThan(0);
 
-    $this->get(route('owner.audit', ['company' => $companyA]))
+    $this->get(route('owner.audit'))
         ->assertInertia(fn ($page) => $page
             ->where('entries.meta.total', AuditEntry::query()->where('company_id', $companyA->id)->count()));
 

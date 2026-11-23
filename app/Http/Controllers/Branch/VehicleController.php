@@ -68,10 +68,10 @@ class VehicleController extends Controller
                 ],
             ],
             'links' => [
-                'hub' => route('branch.masters.index', [$company, $branch]),
-                'index' => route('branch.vehicles.index', [$company, $branch]),
-                'create' => route('branch.vehicles.create', [$company, $branch]),
-                'store' => route('branch.vehicles.store', [$company, $branch]),
+                'hub' => route('branch.masters.index'),
+                'index' => route('branch.vehicles.index'),
+                'create' => route('branch.vehicles.create'),
+                'store' => route('branch.vehicles.store'),
             ],
         ]);
     }
@@ -93,9 +93,9 @@ class VehicleController extends Controller
             'vehicle' => null,
             'dataVisibility' => $this->dataVisibilityPresentation($company),
             'links' => [
-                'hub' => route('branch.masters.index', [$company, $branch]),
-                'index' => route('branch.vehicles.index', [$company, $branch]),
-                'store' => route('branch.vehicles.store', [$company, $branch]),
+                'hub' => route('branch.masters.index'),
+                'index' => route('branch.vehicles.index'),
+                'store' => route('branch.vehicles.store'),
             ],
         ]);
     }
@@ -133,11 +133,11 @@ class VehicleController extends Controller
         }
 
         return redirect()
-            ->route('branch.vehicles.show', [$company, $branch, $vehicle])
+            ->route('branch.vehicles.show', [$vehicle])
             ->with('success', 'Vehicle created.');
     }
 
-    public function show(Request $request, Company $company, Branch $branch, Vehicle $vehicle): Response
+    public function show(Request $request, Vehicle $vehicle, Company $company, Branch $branch): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertVehicle($company, $vehicle);
@@ -164,11 +164,11 @@ class VehicleController extends Controller
                 $permissions,
             ),
             'links' => [
-                'hub' => route('branch.masters.index', [$company, $branch]),
-                'index' => route('branch.vehicles.index', [$company, $branch]),
-                'edit' => route('branch.vehicles.edit', [$company, $branch, $vehicle]),
-                'update' => route('branch.vehicles.update', [$company, $branch, $vehicle]),
-                'destroy' => route('branch.vehicles.destroy', [$company, $branch, $vehicle]),
+                'hub' => route('branch.masters.index'),
+                'index' => route('branch.vehicles.index'),
+                'edit' => route('branch.vehicles.edit', [$vehicle]),
+                'update' => route('branch.vehicles.update', [$vehicle]),
+                'destroy' => route('branch.vehicles.destroy', [$vehicle]),
                 'documents' => route('branch.documents.index', [
                     'company' => $company,
                     'branch' => $branch,
@@ -179,7 +179,7 @@ class VehicleController extends Controller
         ]);
     }
 
-    public function edit(Request $request, Company $company, Branch $branch, Vehicle $vehicle): Response
+    public function edit(Request $request, Vehicle $vehicle, Company $company, Branch $branch): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertVehicle($company, $vehicle);
@@ -196,15 +196,15 @@ class VehicleController extends Controller
             'mode' => 'edit',
             'vehicle' => $this->vehiclePayload($vehicle),
             'links' => [
-                'hub' => route('branch.masters.index', [$company, $branch]),
-                'index' => route('branch.vehicles.index', [$company, $branch]),
-                'show' => route('branch.vehicles.show', [$company, $branch, $vehicle]),
-                'update' => route('branch.vehicles.update', [$company, $branch, $vehicle]),
+                'hub' => route('branch.masters.index'),
+                'index' => route('branch.vehicles.index'),
+                'show' => route('branch.vehicles.show', [$vehicle]),
+                'update' => route('branch.vehicles.update', [$vehicle]),
             ],
         ]);
     }
 
-    public function update(Request $request, Company $company, Branch $branch, Vehicle $vehicle): RedirectResponse
+    public function update(Request $request, Vehicle $vehicle, Company $company, Branch $branch): RedirectResponse
     {
         $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertVehicle($company, $vehicle);
@@ -232,11 +232,11 @@ class VehicleController extends Controller
         }
 
         return redirect()
-            ->route('branch.vehicles.show', [$company, $branch, $vehicle])
+            ->route('branch.vehicles.show', [$vehicle])
             ->with('success', 'Vehicle updated.');
     }
 
-    public function destroy(Request $request, Company $company, Branch $branch, Vehicle $vehicle): RedirectResponse
+    public function destroy(Request $request, Vehicle $vehicle, Company $company, Branch $branch): RedirectResponse
     {
         $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertVehicle($company, $vehicle);
@@ -255,7 +255,7 @@ class VehicleController extends Controller
         }
 
         return redirect()
-            ->route('branch.vehicles.index', [$company, $branch])
+            ->route('branch.vehicles.index')
             ->with('success', 'Vehicle deleted.');
     }
 

@@ -65,11 +65,11 @@ class EnquiryController extends Controller
         }
 
         return redirect()
-            ->route('branch.enquiries.show', [$company, $branch, $enquiry])
+            ->route('branch.enquiries.show', [$enquiry])
             ->with('success', 'Enquiry created.');
     }
 
-    public function update(Request $request, Company $company, Branch $branch, Enquiry $enquiry): JsonResponse
+    public function update(Request $request, Enquiry $enquiry, Company $company, Branch $branch): JsonResponse
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertPermission($actor, $company, $branch, PermissionCodes::ENQUIRY_EDIT);
@@ -149,9 +149,9 @@ class EnquiryController extends Controller
             'can_include_unassigned' => $this->authorizer->allowsCustomer($actor, PermissionCodes::ENQUIRY_ASSIGN, $company, $branch),
             'enquiries' => $payload,
             'urls' => [
-                'index' => route('branch.enquiries.index', [$company, $branch]),
-                'create' => route('branch.enquiries.create', [$company, $branch]),
-                'masters' => route('branch.masters.index', [$company, $branch]),
+                'index' => route('branch.enquiries.index'),
+                'create' => route('branch.enquiries.create'),
+                'masters' => route('branch.masters.index'),
             ],
         ]);
     }
@@ -189,13 +189,13 @@ class EnquiryController extends Controller
                 'name' => $type->name,
             ])->values()->all(),
             'urls' => [
-                'index' => route('branch.enquiries.index', [$company, $branch]),
-                'store' => route('branch.enquiries.store', [$company, $branch]),
+                'index' => route('branch.enquiries.index'),
+                'store' => route('branch.enquiries.store'),
             ],
         ]);
     }
 
-    public function show(Request $request, Company $company, Branch $branch, Enquiry $enquiry): JsonResponse|Response
+    public function show(Request $request, Enquiry $enquiry, Company $company, Branch $branch): JsonResponse|Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertPermission($actor, $company, $branch, PermissionCodes::ENQUIRY_VIEW);
@@ -222,7 +222,7 @@ class EnquiryController extends Controller
             'branch' => ['id' => $branch->id, 'name' => $branch->name],
             'enquiry' => $data,
             'urls' => [
-                'index' => route('branch.enquiries.index', [$company, $branch]),
+                'index' => route('branch.enquiries.index'),
             ],
         ]);
     }

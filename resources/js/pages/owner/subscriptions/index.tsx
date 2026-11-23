@@ -1,10 +1,13 @@
 import { Head, Link, router } from '@inertiajs/react';
+import { CreditCard } from 'lucide-react';
 import { useState } from 'react';
 import { OwnerPageHeader } from '@/components/owner/owner-page-header';
 import ShellEmptyState from '@/components/shell-empty-state';
+import { WorkspaceContextAction } from '@/components/workspace-context-action';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { formatDisplayDateSmart } from '@/lib/dates';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 
 type SubscriptionRow = {
@@ -17,7 +20,7 @@ type SubscriptionRow = {
     paid_through_date: string | null;
     common_renewal_date: string | null;
     notes: string[];
-    urls: { subscription: string; company: string };
+    urls: { context: string; subscription: string; company_settings: string };
 };
 
 type Props = {
@@ -127,12 +130,7 @@ export default function OwnerSubscriptionsIndex({
                                         className="border-b border-border last:border-0"
                                     >
                                         <td className="px-3 py-3 font-medium">
-                                            <Link
-                                                href={row.urls.company}
-                                                className="underline-offset-2 hover:underline"
-                                            >
-                                                {row.name}
-                                            </Link>
+                                            {row.name}
                                         </td>
                                         <td className="px-3 py-3">
                                             <WorkspaceStatusBadge
@@ -159,21 +157,20 @@ export default function OwnerSubscriptionsIndex({
                                         </td>
                                         <td className="px-3 py-3 text-xs text-muted-foreground">
                                             {row.trial_ends_at
-                                                ? `Trial ends ${row.trial_ends_at}`
+                                                ? `Trial ends ${formatDisplayDateSmart(row.trial_ends_at)}`
                                                 : row.common_renewal_date
-                                                  ? `Renews ${row.common_renewal_date}`
+                                                  ? `Renews ${formatDisplayDateSmart(row.common_renewal_date)}`
                                                   : row.paid_through_date
-                                                    ? `Paid through ${row.paid_through_date}`
+                                                    ? `Paid through ${formatDisplayDateSmart(row.paid_through_date)}`
                                                     : '—'}
                                         </td>
                                         <td className="px-3 py-3">
-                                            <Button asChild size="sm">
-                                                <Link
-                                                    href={row.urls.subscription}
-                                                >
-                                                    Manage
-                                                </Link>
-                                            </Button>
+                                            <WorkspaceContextAction
+                                                contextUrl={row.urls.context}
+                                                redirect={row.urls.subscription}
+                                                icon={CreditCard}
+                                                label="Manage subscription"
+                                            />
                                         </td>
                                     </tr>
                                 ))}

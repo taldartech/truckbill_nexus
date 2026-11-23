@@ -116,7 +116,7 @@ export default function OwnerBranchesCreate({
                     />
                 ) : (
                     <Form
-                        {...OwnerBranchesController.store.form(company.id)}
+                        {...OwnerBranchesController.store.form()}
                         className="max-w-2xl space-y-6 rounded-xl border border-border p-4"
                     >
                         {({ processing, errors: formErrors }) => (

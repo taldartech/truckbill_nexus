@@ -90,19 +90,20 @@ afterEach(function () {
 test('masters hub and party inertia screens render for authorized branch users', function () {
     ['owner' => $owner, 'company' => $company, 'branch' => $branch] = uiMastersWorkspace();
     uiActingAsCustomer($owner);
+    enterBranchWorkspace($company, $branch)->assertRedirect();
 
-    $this->get(route('branch.masters.index', [$company, $branch]))
+    $this->get(route('branch.masters.index'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('branch/masters/index')
             ->has('categories')
             ->where('permissions.can_view', true));
 
-    $this->get(route('branch.parties.index', [$company, $branch]))
+    $this->get(route('branch.parties.index'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->component('branch/masters/parties/index'));
 
-    $this->get(route('branch.parties.create', [$company, $branch]))
+    $this->get(route('branch.parties.create'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->component('branch/masters/parties/form')->where('mode', 'create'));
 });
@@ -110,8 +111,9 @@ test('masters hub and party inertia screens render for authorized branch users',
 test('party create edit detail soft-delete workflow through inertia', function () {
     ['owner' => $owner, 'company' => $company, 'branch' => $branch] = uiMastersWorkspace();
     uiActingAsCustomer($owner);
+    enterBranchWorkspace($company, $branch)->assertRedirect();
 
-    $this->post(route('branch.parties.store', [$company, $branch]), [
+    $this->post(route('branch.parties.store'), [
         'name' => 'UI Party',
         'contact_number' => '9000011111',
         'state' => 'MH',
@@ -125,23 +127,23 @@ test('party create edit detail soft-delete workflow through inertia', function (
 
     $party = Party::query()->where('company_id', $company->id)->where('name', 'UI Party')->firstOrFail();
 
-    $this->get(route('branch.parties.show', [$company, $branch, $party]))
+    $this->get(route('branch.parties.show', $party))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('branch/masters/parties/show')
             ->where('party.name', 'UI Party')
             ->has('party.roles', 2));
 
-    $this->patch(route('branch.parties.update', [$company, $branch, $party]), [
+    $this->patch(route('branch.parties.update', $party), [
         'name' => 'UI Party Updated',
         'remark' => 'Rename party',
-    ])->assertRedirect(route('branch.parties.show', [$company, $branch, $party]));
+    ])->assertRedirect(route('branch.parties.show', $party));
 
     expect($party->fresh()->name)->toBe('UI Party Updated');
 
-    $this->delete(route('branch.parties.destroy', [$company, $branch, $party]), [
+    $this->delete(route('branch.parties.destroy', $party), [
         'remark' => 'Soft delete party',
-    ])->assertRedirect(route('branch.parties.index', [$company, $branch]));
+    ])->assertRedirect(route('branch.parties.index'));
 
     expect($party->fresh()->trashed())->toBeTrue();
 });
@@ -158,14 +160,16 @@ test('viewer cannot create parties and cross-company party urls are isolated', f
     ] = uiMastersWorkspace();
 
     uiActingAsCustomer($viewer, 'viewer-secret');
-    $this->get(route('branch.parties.create', [$company, $branch]))->assertForbidden();
-    $this->post(route('branch.parties.store', [$company, $branch]), [
+    enterBranchWorkspace($company, $branch)->assertRedirect();
+    $this->get(route('branch.parties.create'))->assertForbidden();
+    $this->post(route('branch.parties.store'), [
         'name' => 'Denied',
         'roles' => [['role' => 'customer', 'attributes' => []]],
     ])->assertForbidden();
 
     uiActingAsCustomer($owner);
-    $this->post(route('branch.parties.store', [$company, $branch]), [
+    enterBranchWorkspace($company, $branch)->assertRedirect();
+    $this->post(route('branch.parties.store'), [
         'name' => 'Owned Party',
         'roles' => [['role' => 'customer', 'attributes' => []]],
         'remark' => 'Create',
@@ -174,14 +178,16 @@ test('viewer cannot create parties and cross-company party urls are isolated', f
     $party = Party::query()->where('name', 'Owned Party')->firstOrFail();
 
     uiActingAsCustomer($otherOwner, 'password');
-    $this->get(route('branch.parties.show', [$otherCompany, $otherBranch, $party]))->assertNotFound();
+    enterBranchWorkspace($otherCompany, $otherBranch)->assertRedirect();
+    $this->get(route('branch.parties.show', $party))->assertNotFound();
 });
 
 test('vehicle and bank cash inertia crud masks account numbers', function () {
     ['owner' => $owner, 'company' => $company, 'branch' => $branch] = uiMastersWorkspace();
     uiActingAsCustomer($owner);
+    enterBranchWorkspace($company, $branch)->assertRedirect();
 
-    $this->post(route('branch.vehicles.store', [$company, $branch]), [
+    $this->post(route('branch.vehicles.store'), [
         'registration_number' => 'MH12AB1234',
         'make' => 'Tata',
         'model' => '407',
@@ -189,11 +195,11 @@ test('vehicle and bank cash inertia crud masks account numbers', function () {
     ])->assertRedirect();
 
     $vehicle = Vehicle::query()->where('registration_number', 'MH12AB1234')->firstOrFail();
-    $this->get(route('branch.vehicles.show', [$company, $branch, $vehicle]))
+    $this->get(route('branch.vehicles.show', $vehicle))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->component('branch/masters/vehicles/show')->where('vehicle.registration_number', 'MH12AB1234'));
 
-    $this->post(route('branch.bank-cash.store', [$company, $branch]), [
+    $this->post(route('branch.bank-cash.store'), [
         'account_kind' => 'bank',
         'name' => 'Ops Bank',
         'bank_name' => 'HDFC',
@@ -205,14 +211,14 @@ test('vehicle and bank cash inertia crud masks account numbers', function () {
 
     $account = BankCashAccount::query()->where('name', 'Ops Bank')->firstOrFail();
 
-    $this->get(route('branch.bank-cash.show', [$company, $branch, $account]))
+    $this->get(route('branch.bank-cash.show', $account))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('branch/masters/bank-cash/show')
             ->where('account.account_number_masked', fn ($value) => is_string($value) && ! str_contains($value, '123456789012'))
             ->missing('account.account_number'));
 
-    $this->get(route('branch.bank-cash.edit', [$company, $branch, $account]))
+    $this->get(route('branch.bank-cash.edit', $account))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->missing('account.account_number'));
 });
@@ -221,13 +227,15 @@ test('station create is owner-only while members can view directory', function (
     ['owner' => $owner, 'company' => $company, 'branch' => $branch, 'member' => $member] = uiMastersWorkspace();
 
     uiActingAsCustomer($member, 'member-secret');
-    $this->get(route('branch.stations.index', [$company, $branch]))
+    enterBranchWorkspace($company, $branch)->assertRedirect();
+    $this->get(route('branch.stations.index'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->component('branch/masters/stations/index')->where('canManageOwnerStations', false));
-    $this->get(route('branch.stations.create', [$company, $branch]))->assertForbidden();
+    $this->get(route('branch.stations.create'))->assertForbidden();
 
     uiActingAsCustomer($owner);
-    $this->post(route('branch.stations.store', [$company, $branch]), [
+    enterBranchWorkspace($company, $branch)->assertRedirect();
+    $this->post(route('branch.stations.store'), [
         'code' => 'PUN',
         'name' => 'Pune',
         'city' => 'Pune',
@@ -238,8 +246,9 @@ test('station create is owner-only while members can view directory', function (
 test('supporting catalogues page lists payment modes read-only', function () {
     ['owner' => $owner, 'company' => $company, 'branch' => $branch] = uiMastersWorkspace();
     uiActingAsCustomer($owner);
+    enterBranchWorkspace($company, $branch)->assertRedirect();
 
-    $this->get(route('branch.catalogues.index', [$company, $branch]))
+    $this->get(route('branch.catalogues.index'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('branch/masters/catalogues/index')

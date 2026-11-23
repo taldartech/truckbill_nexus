@@ -152,7 +152,7 @@ export default function SubscriptionOverview({
                         </Link>
                         <span aria-hidden>/</span>
                         <Link
-                            href="/owner/subscriptions"
+                            href="/management/subscriptions"
                             className="hover:underline"
                         >
                             Subscriptions
@@ -184,12 +184,12 @@ export default function SubscriptionOverview({
                         </div>
                         <div className="flex flex-wrap gap-2">
                             <Button asChild variant="outline">
-                                <Link href="/owner/subscriptions">
+                                <Link href="/management/subscriptions">
                                     Back to Subscriptions
                                 </Link>
                             </Button>
                             <Button asChild variant="outline">
-                                <Link href={`/owner/companies/${company.id}`}>
+                                <Link href="/management/companies">
                                     View Company
                                 </Link>
                             </Button>

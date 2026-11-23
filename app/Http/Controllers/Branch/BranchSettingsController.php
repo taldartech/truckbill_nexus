@@ -57,7 +57,7 @@ class BranchSettingsController extends Controller
             'links' => [
                 'dashboard' => route('branch.dashboard', ['company' => $company, 'branch' => $branch]),
                 'owner_panel' => $this->access->isCompanyOwner($user, $company)
-                    ? route('owner.dashboard', ['company' => $company])
+                    ? route('owner.home')
                     : null,
             ],
         ]);

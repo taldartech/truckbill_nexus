@@ -66,7 +66,7 @@ test('owner can list create edit and enter branch management screens', function 
 
     loginBranchAdminCustomer($owner);
 
-    $this->get(route('owner.branches', ['company' => $company]))
+    $this->get(route('owner.branches'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('owner/branches/index')
@@ -74,13 +74,13 @@ test('owner can list create edit and enter branch management screens', function 
             ->has('capacity')
             ->has('branches.data', 1));
 
-    $this->get(route('owner.branches.create', ['company' => $company]))
+    $this->get(route('owner.branches.create'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('owner/branches/create')
             ->where('canCreate', true));
 
-    $this->post(route('owner.branches.store', ['company' => $company]), [
+    $this->post(route('owner.branches.store'), [
         'name' => 'Warehouse West',
         'remark' => 'Opened west warehouse',
     ])->assertRedirect();
@@ -92,10 +92,7 @@ test('owner can list create edit and enter branch management screens', function 
 
     expect($warehouse->isActive())->toBeTrue();
 
-    $this->get(route('owner.branches.show', [
-        'company' => $company,
-        'branch' => $warehouse,
-    ]))
+    $this->get(route('owner.branches.show'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('owner/branches/show')
@@ -103,16 +100,10 @@ test('owner can list create edit and enter branch management screens', function 
             ->where('canManage', true)
             ->where('canDeactivate', true));
 
-    $this->post(route('owner.branches.update', [
-        'company' => $company,
-        'branch' => $warehouse,
-    ]), [
+    $this->post(route('owner.branches.update'), [
         'name' => 'Warehouse West Renamed',
         'remark' => 'Rename for clarity',
-    ])->assertRedirect(route('owner.branches.show', [
-        'company' => $company,
-        'branch' => $warehouse,
-    ]));
+    ])->assertRedirect(route('owner.branches.show'));
 
     expect($warehouse->fresh()->name)->toBe('Warehouse West Renamed');
 
@@ -141,7 +132,7 @@ test('branch create may assign existing members and roles without granting other
 
     loginBranchAdminCustomer($owner);
 
-    $this->post(route('owner.branches.store', ['company' => $company]), [
+    $this->post(route('owner.branches.store'), [
         'name' => 'Depot North',
         'remark' => 'New depot with clerk',
         'assignments' => [
@@ -185,13 +176,13 @@ test('branch capacity is enforced for owner create', function () {
 
     loginBranchAdminCustomer($owner);
 
-    $this->post(route('owner.branches.store', ['company' => $company]), [
+    $this->post(route('owner.branches.store'), [
         'name' => 'Second Branch',
         'remark' => 'Uses remaining included slot',
     ])->assertRedirect();
 
-    $this->from(route('owner.branches.create', ['company' => $company]))
-        ->post(route('owner.branches.store', ['company' => $company]), [
+    $this->from(route('owner.branches.create'))
+        ->post(route('owner.branches.store'), [
             'name' => 'Third Branch',
             'remark' => 'Should exceed default included capacity',
         ])
@@ -207,7 +198,7 @@ test('owner can deactivate non-last branch and cannot deactivate last active bra
     ['owner' => $owner, 'company' => $company, 'headOffice' => $headOffice] = createBranchAdminWorkspace();
     loginBranchAdminCustomer($owner);
 
-    $this->post(route('owner.branches.store', ['company' => $company]), [
+    $this->post(route('owner.branches.store'), [
         'name' => 'Closeable',
         'remark' => 'Will deactivate',
     ])->assertRedirect();
@@ -217,23 +208,14 @@ test('owner can deactivate non-last branch and cannot deactivate last active bra
         ->where('name', 'Closeable')
         ->firstOrFail();
 
-    $this->post(route('owner.branches.deactivate', [
-        'company' => $company,
-        'branch' => $closeable,
-    ]), [
+    $this->post(route('owner.branches.deactivate'), [
         'remark' => 'Closing depot',
-    ])->assertRedirect(route('owner.branches', ['company' => $company]));
+    ])->assertRedirect(route('owner.branches'));
 
     expect($closeable->fresh()->isActive())->toBeFalse();
 
-    $this->from(route('owner.branches.show', [
-        'company' => $company,
-        'branch' => $headOffice,
-    ]))
-        ->post(route('owner.branches.deactivate', [
-            'company' => $company,
-            'branch' => $headOffice,
-        ]), [
+    $this->from(route('owner.branches.show'))
+        ->post(route('owner.branches.deactivate'), [
             'remark' => 'Attempt last branch',
         ])
         ->assertSessionHasErrors('remark');
@@ -252,8 +234,8 @@ test('non-owner and cross-company branch mutations are denied', function () {
     branchAdminWorkspace()->assignBranch($membership, $headA, 'Assign');
 
     loginBranchAdminCustomer($member, 'member-secret');
-    $this->get(route('owner.branches', ['company' => $companyA]))->assertForbidden();
-    $this->post(route('owner.branches.store', ['company' => $companyA]), [
+    $this->get(route('owner.branches'))->assertForbidden();
+    $this->post(route('owner.branches.store'), [
         'name' => 'Hijack',
         'remark' => 'No',
     ])->assertForbidden();

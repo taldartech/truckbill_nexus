@@ -86,9 +86,9 @@ class CatalogueController extends Controller
                 'is_active' => (bool) $mode->is_active,
             ])->values()->all(),
             'links' => [
-                'hub' => route('branch.masters.index', [$company, $branch]),
-                'index' => route('branch.catalogues.index', [$company, $branch]),
-                'store' => route('branch.catalogues.store', [$company, $branch]),
+                'hub' => route('branch.masters.index'),
+                'index' => route('branch.catalogues.index'),
+                'store' => route('branch.catalogues.store'),
             ],
         ]);
     }
@@ -127,7 +127,7 @@ class CatalogueController extends Controller
             ->with('success', 'Catalogue item created.');
     }
 
-    public function update(Request $request, Company $company, Branch $branch, OwnerCatalogueItem $catalogueItem): RedirectResponse
+    public function update(Request $request, OwnerCatalogueItem $catalogueItem, Company $company, Branch $branch): RedirectResponse
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertItem($company, $catalogueItem);
@@ -148,7 +148,7 @@ class CatalogueController extends Controller
         return back()->with('success', 'Catalogue item updated.');
     }
 
-    public function destroy(Request $request, Company $company, Branch $branch, OwnerCatalogueItem $catalogueItem): RedirectResponse
+    public function destroy(Request $request, OwnerCatalogueItem $catalogueItem, Company $company, Branch $branch): RedirectResponse
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertItem($company, $catalogueItem);

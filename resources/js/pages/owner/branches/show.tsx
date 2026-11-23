@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
-import { enter } from '@/routes/workspace/branches';
+import { branch as enterBranchContext } from '@/routes/workspace/context';
 
 type OwnerBranchesShowProps = {
     company: { id: string; name: string; status: string };
@@ -113,15 +113,22 @@ export default function OwnerBranchesShow({
                     </Button>
                     {canEnterBranch ? (
                         <Form
-                            {...enter.form({
+                            {...enterBranchContext.form({
                                 company: company.id,
                                 branch: branch.id,
                             })}
                         >
                             {({ processing }) => (
-                                <Button type="submit" disabled={processing}>
-                                    Enter Branch Panel
-                                </Button>
+                                <>
+                                    <input
+                                        type="hidden"
+                                        name="redirect"
+                                        value="/branch"
+                                    />
+                                    <Button type="submit" disabled={processing}>
+                                        Enter Branch Panel
+                                    </Button>
+                                </>
                             )}
                         </Form>
                     ) : null}
@@ -130,7 +137,6 @@ export default function OwnerBranchesShow({
                 {canManage ? (
                     <Form
                         {...OwnerBranchesController.update.form({
-                            company: company.id,
                             branch: branch.id,
                         })}
                         className="max-w-xl space-y-4 rounded-xl border border-border p-4"
@@ -270,7 +276,6 @@ export default function OwnerBranchesShow({
                         ) : (
                             <Form
                                 {...OwnerBranchesController.deactivate.form({
-                                    company: company.id,
                                     branch: branch.id,
                                 })}
                                 className="space-y-4"

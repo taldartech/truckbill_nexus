@@ -6,6 +6,8 @@ use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\ManageTenantContextLifecycle;
 use App\Http\Middleware\RejectClientTenantIdentifiers;
+use App\Http\Middleware\ResolveBranchWorkspace;
+use App\Http\Middleware\ResolveManagementCompany;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -26,6 +28,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->validateCsrfTokens(except: [
             'webhooks/razorpay',
             'webhooks/enquiries',
+        ]);
+
+        $middleware->alias([
+            'branch.workspace' => ResolveBranchWorkspace::class,
+            'management.company' => ResolveManagementCompany::class,
         ]);
 
         // Global: Lifecycle must wrap Reject so context is cleared even on abort.

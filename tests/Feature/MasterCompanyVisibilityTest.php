@@ -169,7 +169,7 @@ test('forged scope cannot override company data visibility on http create', func
     ['owner' => $owner, 'company' => $company, 'branchA' => $branchA] = visibilityWorkspace(DataVisibility::BranchWiseRestricted);
     visibilityLogin($owner);
 
-    $this->post(route('branch.parties.store', [$company, $branchA]), [
+    $this->post(route('branch.parties.store'), [
         'scope' => 'shared',
         'name' => 'Forged Shared Party',
         'roles' => [['role' => PartyRoleType::Customer->value]],
@@ -182,7 +182,7 @@ test('forged scope cannot override company data visibility on http create', func
     ['owner' => $owner2, 'company' => $company2, 'branchA' => $branch2] = visibilityWorkspace(DataVisibility::SharedData);
     visibilityLogin($owner2);
 
-    $this->post(route('branch.vehicles.store', [$company2, $branch2]), [
+    $this->post(route('branch.vehicles.store'), [
         'scope' => 'branch',
         'registration_number' => 'MH01ZZ0001',
         'remark' => 'Forge branch',
@@ -207,8 +207,8 @@ test('cross-company master access remains denied', function () {
 
     visibilityLogin($ownerB);
 
-    $this->get(route('branch.parties.show', [$companyA, $branchA, $party]))->assertForbidden();
-    $this->get(route('branch.parties.show', [$companyB, $branchB, $party]))->assertNotFound();
+    $this->get(route('branch.parties.show', $party))->assertForbidden();
+    $this->get(route('branch.parties.show', $party))->assertNotFound();
 });
 
 test('visibility change is blocked when operational masters exist', function () {
@@ -251,7 +251,7 @@ test('create forms expose company visibility without scope control', function ()
     ['owner' => $owner, 'company' => $company, 'branchA' => $branchA] = visibilityWorkspace(DataVisibility::SharedData);
     visibilityLogin($owner);
 
-    $this->get(route('branch.parties.create', [$company, $branchA]))
+    $this->get(route('branch.parties.create'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('branch/masters/parties/form')

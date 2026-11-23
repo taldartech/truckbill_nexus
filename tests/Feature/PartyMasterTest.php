@@ -123,7 +123,8 @@ test('party endpoints enforce permissions and hide cross-company records', funct
     ] = partyWorkspace();
 
     actingAsCustomer($member);
-    $this->postJson(route('branch.parties.store', [$company, $branch]), [
+    seedBranchSession($company, $branch);
+    $this->postJson(route('branch.parties.store'), [
         'name' => 'Branch Party',
         'contact_number' => '9999999999',
         'state' => 'Gujarat',
@@ -134,7 +135,8 @@ test('party endpoints enforce permissions and hide cross-company records', funct
     ])->assertCreated();
 
     actingAsCustomer($viewer);
-    $this->postJson(route('branch.parties.store', [$company, $branch]), [
+    seedBranchSession($company, $branch);
+    $this->postJson(route('branch.parties.store'), [
         'name' => 'Denied',
         'roles' => [['role' => 'customer', 'attributes' => []]],
     ])->assertForbidden();
@@ -145,7 +147,8 @@ test('party endpoints enforce permissions and hide cross-company records', funct
         ->toThrow(PartyDomainException::class);
 
     actingAsCustomer($owner);
-    $this->getJson(route('branch.parties.index', [$company, $branch]).'?q=Branch')
+    seedBranchSession($company, $branch);
+    $this->getJson(route('branch.parties.index').'?q=Branch')
         ->assertOk()
         ->assertJsonPath('data.0.name', 'Branch Party');
 

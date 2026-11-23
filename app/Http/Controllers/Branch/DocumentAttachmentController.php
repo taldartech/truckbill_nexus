@@ -34,7 +34,7 @@ class DocumentAttachmentController extends Controller
         private readonly DocumentAttachmentService $documents,
     ) {}
 
-    public function index(Request $request, Company $company, Branch $branch, string $parentType, string $parentId): Response
+    public function index(Request $request, string $parentType, string $parentId, Company $company, Branch $branch): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $permissions = $this->masterPermissions($actor, $company, $branch, $this->access, $this->authorizer);
@@ -69,7 +69,7 @@ class DocumentAttachmentController extends Controller
             'max_upload_bytes' => self::MAX_UPLOAD_BYTES,
             'attachments' => $attachments->map(fn (DocumentAttachment $attachment): array => $this->presentDocumentAttachment($attachment, $company, $branch))->values()->all(),
             'links' => [
-                'hub' => route('branch.masters.index', [$company, $branch]),
+                'hub' => route('branch.masters.index'),
                 'manager' => route('branch.documents.index', [
                     'company' => $company,
                     'branch' => $branch,
@@ -86,7 +86,7 @@ class DocumentAttachmentController extends Controller
         ]);
     }
 
-    public function store(Request $request, Company $company, Branch $branch, string $parentType, string $parentId): RedirectResponse
+    public function store(Request $request, string $parentType, string $parentId, Company $company, Branch $branch): RedirectResponse
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertParentType($parentType);
@@ -117,7 +117,7 @@ class DocumentAttachmentController extends Controller
         return back()->with('success', 'Document uploaded.');
     }
 
-    public function replace(Request $request, Company $company, Branch $branch, DocumentAttachment $attachment): RedirectResponse
+    public function replace(Request $request, DocumentAttachment $attachment, Company $company, Branch $branch): RedirectResponse
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertAttachment($company, $attachment);
@@ -141,7 +141,7 @@ class DocumentAttachmentController extends Controller
         return back()->with('success', 'Document replaced.');
     }
 
-    public function download(Request $request, Company $company, Branch $branch, DocumentAttachment $attachment): StreamedResponse
+    public function download(Request $request, DocumentAttachment $attachment, Company $company, Branch $branch): StreamedResponse
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertAttachment($company, $attachment);
@@ -153,7 +153,7 @@ class DocumentAttachmentController extends Controller
         }
     }
 
-    public function destroy(Request $request, Company $company, Branch $branch, DocumentAttachment $attachment): RedirectResponse
+    public function destroy(Request $request, DocumentAttachment $attachment, Company $company, Branch $branch): RedirectResponse
     {
         $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertAttachment($company, $attachment);

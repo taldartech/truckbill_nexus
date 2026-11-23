@@ -38,9 +38,6 @@ class EnterBranchController extends Controller
 
         WorkspaceSession::put($request, $company->id, $branch->id);
 
-        return redirect()->route('branch.dashboard', [
-            'company' => $company,
-            'branch' => $branch,
-        ]);
+        return redirect()->route('branch.dashboard');
     }
 }

@@ -167,32 +167,32 @@ class OwnerSubscriptionController extends Controller
             'entitlement_note' => 'Confirmed Rules §15 lifecycle enforcement is active for Branch mutations during paid grace/restricted states. Fine-grained AUD-CON-006 action cells remain Pending. Live Razorpay production charges remain gated (PO-P3-PAY-PROD).',
             'payment_gate_note' => 'Razorpay Test Mode checkout is authorized (PO-P3-PAY-TEST). Production charges require PO-P3-PAY-PROD. Dashboard→local webhook delivery remains operationally evidenced separately from CI doubles.',
             'links' => [
-                'dashboard' => route('owner.dashboard', $company),
-                'catalogue' => route('owner.subscription.catalogue', $company),
-                'drafts' => route('owner.subscription.drafts', $company),
-                'credits' => route('owner.subscription.credits', $company),
-                'payments' => route('owner.subscription.payments', $company),
-                'invoices' => route('owner.subscription.invoices', $company),
-                'cancel' => route('owner.subscription.cancel', $company),
-                'withdraw_cancel' => route('owner.subscription.cancel.withdraw', $company),
+                'dashboard' => route('owner.home'),
+                'catalogue' => route('owner.subscription.catalogue'),
+                'drafts' => route('owner.subscription.drafts'),
+                'credits' => route('owner.subscription.credits'),
+                'payments' => route('owner.subscription.payments'),
+                'invoices' => route('owner.subscription.invoices'),
+                'cancel' => route('owner.subscription.cancel'),
+                'withdraw_cancel' => route('owner.subscription.cancel.withdraw'),
                 'checkout' => $activeOrDraft !== null
-                    ? route('owner.subscription.checkout', [$company, $activeOrDraft])
+                    ? route('owner.subscription.checkout', $activeOrDraft)
                     : null,
-                'renew' => route('owner.subscription.renew', $company),
+                'renew' => route('owner.subscription.renew'),
             ],
             'payment_gateway' => $this->gateway->name(),
             'razorpay_test_ready' => $this->paymentAuth->isRazorpayTestModeAvailable(),
         ]);
     }
 
-    public function checkout(Request $request, Company $company, CompanySubscription $subscription): Response|RedirectResponse
+    public function checkout(Request $request, CompanySubscription $subscription, Company $company): Response|RedirectResponse
     {
         ['user' => $user, 'scope' => $scope] = $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
         $this->assertCompanySubscription($company, $subscription);
 
         if (! in_array($subscription->status, ['draft', 'pending_payment', 'active'], true)) {
             return redirect()
-                ->route('owner.subscription', $company)
+                ->route('owner.subscription')
                 ->withErrors(['checkout' => 'Subscription is not payable in its current status.']);
         }
 
@@ -209,7 +209,7 @@ class OwnerSubscriptionController extends Controller
             );
         } catch (SubscriptionDomainException $e) {
             return redirect()
-                ->route('owner.subscription', $company)
+                ->route('owner.subscription')
                 ->withErrors(['checkout' => $e->getMessage()]);
         }
 
@@ -223,7 +223,7 @@ class OwnerSubscriptionController extends Controller
 
         if ($mode === 'fake' && ! $allowFakeSimulate) {
             return redirect()
-                ->route('owner.subscription', $company)
+                ->route('owner.subscription')
                 ->withErrors([
                     'checkout' => 'Razorpay Test Mode credentials are required for Owner checkout. Configure RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, and RAZORPAY_WEBHOOK_SECRET (rzp_test_* only).',
                 ]);
@@ -254,16 +254,16 @@ class OwnerSubscriptionController extends Controller
             ],
             'allow_fake_simulate' => $allowFakeSimulate,
             'links' => [
-                'overview' => route('owner.subscription', $company),
-                'verify' => route('owner.subscription.checkout.verify', [$company, $subscription]),
+                'overview' => route('owner.subscription'),
+                'verify' => route('owner.subscription.checkout.verify', $subscription),
                 'simulate' => $allowFakeSimulate
-                    ? route('owner.subscription.checkout.simulate', [$company, $subscription])
+                    ? route('owner.subscription.checkout.simulate', $subscription)
                     : null,
             ],
         ]);
     }
 
-    public function verifyCheckout(Request $request, Company $company, CompanySubscription $subscription): RedirectResponse
+    public function verifyCheckout(Request $request, CompanySubscription $subscription, Company $company): RedirectResponse
     {
         ['user' => $user] = $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
         $this->assertCompanySubscription($company, $subscription);
@@ -284,19 +284,19 @@ class OwnerSubscriptionController extends Controller
             $this->checkout->verifyOwnerCallback($user, $company, $intent, $validated);
         } catch (SubscriptionDomainException $e) {
             return redirect()
-                ->route('owner.subscription.checkout', [$company, $subscription])
+                ->route('owner.subscription.checkout', $subscription)
                 ->withErrors(['checkout' => $e->getMessage()]);
         }
 
         return redirect()
-            ->route('owner.subscription', $company)
+            ->route('owner.subscription')
             ->with('success', 'Payment verified. Subscription updated from server-side verification.');
     }
 
     /**
      * Deterministic fake-gateway capture for local/CI when Razorpay credentials are absent.
      */
-    public function simulateCheckout(Request $request, Company $company, CompanySubscription $subscription): RedirectResponse
+    public function simulateCheckout(Request $request, CompanySubscription $subscription, Company $company): RedirectResponse
     {
         ['user' => $user] = $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
         $this->assertCompanySubscription($company, $subscription);
@@ -333,7 +333,7 @@ class OwnerSubscriptionController extends Controller
         }
 
         return redirect()
-            ->route('owner.subscription', $company)
+            ->route('owner.subscription')
             ->with('success', 'Simulated Test Mode capture verified (fake gateway).');
     }
 
@@ -352,7 +352,7 @@ class OwnerSubscriptionController extends Controller
             return back()->withErrors(['subscription_id' => 'Only active subscriptions can be renewed.']);
         }
 
-        return redirect()->route('owner.subscription.checkout', [$company, $subscription]);
+        return redirect()->route('owner.subscription.checkout', $subscription);
     }
 
     public function catalogue(Request $request, Company $company): Response
@@ -444,10 +444,10 @@ class OwnerSubscriptionController extends Controller
             'breakdown' => $breakdown,
             'gst_note' => 'GST presentation follows confirmed catalogue pricing; internal tax administration UI is not in this scope.',
             'links' => [
-                'overview' => route('owner.subscription', $company),
-                'calculate' => route('owner.subscription.catalogue', $company),
-                'create_draft' => route('owner.subscription.drafts.store', $company),
-                'drafts' => route('owner.subscription.drafts', $company),
+                'overview' => route('owner.subscription'),
+                'calculate' => route('owner.subscription.catalogue'),
+                'create_draft' => route('owner.subscription.drafts.store'),
+                'drafts' => route('owner.subscription.drafts'),
             ],
         ]);
     }
@@ -470,12 +470,12 @@ class OwnerSubscriptionController extends Controller
             'drafts' => $drafts->map(fn (CompanySubscription $draft): array => $this->subscriptionPayload($draft, includeSnapshots: true))->values()->all(),
             'activation_note' => 'Draft contracts do not activate a subscription. Live payment and issuance remain gated (PO-P3-PAY).',
             'links' => [
-                'overview' => route('owner.subscription', $company),
-                'catalogue' => route('owner.subscription.catalogue', $company),
-                'store' => route('owner.subscription.drafts.store', $company),
+                'overview' => route('owner.subscription'),
+                'catalogue' => route('owner.subscription.catalogue'),
+                'store' => route('owner.subscription.drafts.store'),
             ],
             'editLinks' => $drafts->mapWithKeys(fn (CompanySubscription $draft): array => [
-                $draft->id => route('owner.subscription.drafts.edit', [$company, $draft]),
+                $draft->id => route('owner.subscription.drafts.edit', $draft),
             ])->all(),
         ]);
     }
@@ -515,11 +515,11 @@ class OwnerSubscriptionController extends Controller
         }
 
         return redirect()
-            ->route('owner.subscription.drafts', $company)
+            ->route('owner.subscription.drafts')
             ->with('success', 'Draft contract created (not activated).');
     }
 
-    public function editDraft(Request $request, Company $company, CompanySubscription $subscription): Response
+    public function editDraft(Request $request, CompanySubscription $subscription, Company $company): Response
     {
         ['user' => $user, 'scope' => $scope] = $this->authorizeOwnerPanel($request, $company, $this->access);
         $this->assertCompanySubscription($company, $subscription);
@@ -621,15 +621,15 @@ class OwnerSubscriptionController extends Controller
             'preview_breakdown' => $previewBreakdown,
             'edit_note' => 'Editing updates the draft only. Catalogue version is locked to this draft. Payment and activation remain gated (PO-P3-PAY).',
             'links' => [
-                'drafts' => route('owner.subscription.drafts', $company),
-                'preview' => route('owner.subscription.drafts.edit', [$company, $subscription]),
-                'update' => route('owner.subscription.drafts.update', [$company, $subscription]),
-                'overview' => route('owner.subscription', $company),
+                'drafts' => route('owner.subscription.drafts'),
+                'preview' => route('owner.subscription.drafts.edit', $subscription),
+                'update' => route('owner.subscription.drafts.update', $subscription),
+                'overview' => route('owner.subscription'),
             ],
         ]);
     }
 
-    public function updateDraft(Request $request, Company $company, CompanySubscription $subscription): RedirectResponse
+    public function updateDraft(Request $request, CompanySubscription $subscription, Company $company): RedirectResponse
     {
         ['user' => $user] = $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
         $this->assertCompanySubscription($company, $subscription);
@@ -663,7 +663,7 @@ class OwnerSubscriptionController extends Controller
         }
 
         return redirect()
-            ->route('owner.subscription.drafts.edit', [$company, $updated])
+            ->route('owner.subscription.drafts.edit', $updated)
             ->with('success', 'Draft contract updated (not activated).');
     }
 
@@ -686,7 +686,7 @@ class OwnerSubscriptionController extends Controller
         }
 
         return redirect()
-            ->route('owner.subscription', $company)
+            ->route('owner.subscription')
             ->with('success', 'Cancellation scheduled for the common renewal date.');
     }
 
@@ -709,7 +709,7 @@ class OwnerSubscriptionController extends Controller
         }
 
         return redirect()
-            ->route('owner.subscription', $company)
+            ->route('owner.subscription')
             ->with('success', 'Pending cancellation withdrawn.');
     }
 
@@ -740,7 +740,7 @@ class OwnerSubscriptionController extends Controller
                 'created_at' => $intent->created_at?->toIso8601String(),
             ])->values()->all(),
             'links' => [
-                'overview' => route('owner.subscription', $company),
+                'overview' => route('owner.subscription'),
             ],
         ]);
     }
@@ -770,19 +770,19 @@ class OwnerSubscriptionController extends Controller
                 'email_status' => $invoice->email_status,
                 'approved_at' => $invoice->approved_at?->toIso8601String(),
                 'created_at' => $invoice->created_at?->toIso8601String(),
-                'preview_url' => route('owner.subscription.invoices.show', [$company, $invoice]),
-                'download_url' => route('owner.subscription.invoices.download', [$company, $invoice]),
+                'preview_url' => route('owner.subscription.invoices.show', $invoice),
+                'download_url' => route('owner.subscription.invoices.download', $invoice),
                 'email_url' => in_array($invoice->status, ['approved', 'issued', 'emailed'], true)
-                    ? route('owner.subscription.invoices.email', [$company, $invoice])
+                    ? route('owner.subscription.invoices.email', $invoice)
                     : null,
             ])->values()->all(),
             'links' => [
-                'overview' => route('owner.subscription', $company),
+                'overview' => route('owner.subscription'),
             ],
         ]);
     }
 
-    public function invoiceShow(Request $request, Company $company, SubscriptionInvoice $invoice): Response
+    public function invoiceShow(Request $request, SubscriptionInvoice $invoice, Company $company): Response
     {
         ['scope' => $scope] = $this->authorizeOwnerPanel($request, $company, $this->access);
         $this->assertCompanyInvoice($company, $invoice);
@@ -792,16 +792,16 @@ class OwnerSubscriptionController extends Controller
             'ownerPanelScope' => $scope,
             'document' => $this->invoiceDocuments->presentation($invoice),
             'links' => [
-                'invoices' => route('owner.subscription.invoices', $company),
-                'download' => route('owner.subscription.invoices.download', [$company, $invoice]),
+                'invoices' => route('owner.subscription.invoices'),
+                'download' => route('owner.subscription.invoices.download', $invoice),
                 'email' => in_array($invoice->status, ['approved', 'issued', 'emailed'], true)
-                    ? route('owner.subscription.invoices.email', [$company, $invoice])
+                    ? route('owner.subscription.invoices.email', $invoice)
                     : null,
             ],
         ]);
     }
 
-    public function invoiceDownload(Request $request, Company $company, SubscriptionInvoice $invoice): HttpResponse
+    public function invoiceDownload(Request $request, SubscriptionInvoice $invoice, Company $company): HttpResponse
     {
         $this->authorizeOwnerPanel($request, $company, $this->access);
         $this->assertCompanyInvoice($company, $invoice);
@@ -815,7 +815,7 @@ class OwnerSubscriptionController extends Controller
         ]);
     }
 
-    public function invoiceEmail(Request $request, Company $company, SubscriptionInvoice $invoice): RedirectResponse
+    public function invoiceEmail(Request $request, SubscriptionInvoice $invoice, Company $company): RedirectResponse
     {
         ['user' => $user] = $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
         $this->assertCompanyInvoice($company, $invoice);
@@ -878,7 +878,7 @@ class OwnerSubscriptionController extends Controller
             'quotas' => $this->quotaPayloads($quotaCounters, consumedKey: true),
             'presentation_note' => 'Credits are non-cash balances in their ledger units. They are never shown as a generic ₹ cash wallet. Broker/Partload quotas are server-calculated; LR/Bilty operational gates remain Phase 4+',
             'links' => [
-                'overview' => route('owner.subscription', $company),
+                'overview' => route('owner.subscription'),
             ],
         ]);
     }

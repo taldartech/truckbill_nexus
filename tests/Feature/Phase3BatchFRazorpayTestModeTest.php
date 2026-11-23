@@ -264,7 +264,7 @@ test('owner checkout simulate activates subscription with fake gateway', functio
     ['owner' => $owner, 'company' => $company, 'draft' => $draft] = batchFOwnerDraft();
     batchFLogin($owner);
 
-    $this->get(route('owner.subscription.checkout', [$company, $draft]))
+    $this->get(route('owner.subscription.checkout'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('owner/subscription/checkout')
@@ -274,7 +274,7 @@ test('owner checkout simulate activates subscription with fake gateway', functio
 
     $intent = PaymentIntent::query()->where('company_id', $company->id)->latest('created_at')->firstOrFail();
 
-    $this->post(route('owner.subscription.checkout.simulate', [$company, $draft]), [
+    $this->post(route('owner.subscription.checkout.simulate'), [
         'payment_intent_id' => $intent->id,
     ])->assertRedirect(route('owner.subscription', $company));
 

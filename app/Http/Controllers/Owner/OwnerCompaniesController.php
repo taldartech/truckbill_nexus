@@ -180,7 +180,7 @@ class OwnerCompaniesController extends Controller
         WorkspaceSession::put($request, $company->id);
 
         return redirect()
-            ->route('owner.dashboard', ['company' => $company])
+            ->route('owner.home')
             ->with('success', $createBranch
                 ? 'Company created with initial branch.'
                 : 'Company created. You may create a branch next or continue in Owner Dashboard.');

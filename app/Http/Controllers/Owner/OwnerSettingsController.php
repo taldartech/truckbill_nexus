@@ -98,8 +98,8 @@ class OwnerSettingsController extends Controller
                 ],
             ],
             'links' => [
-                'dashboard' => route('owner.dashboard', ['company' => $company]),
-                'update' => route('owner.settings.update', ['company' => $company]),
+                'dashboard' => route('owner.home'),
+                'update' => route('owner.settings.update'),
             ],
         ]);
     }
@@ -151,7 +151,7 @@ class OwnerSettingsController extends Controller
         }
 
         return redirect()
-            ->route('owner.settings', ['company' => $company])
+            ->route('owner.settings')
             ->with('success', 'Company profile updated.');
     }
 }

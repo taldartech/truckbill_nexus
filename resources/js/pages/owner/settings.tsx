@@ -126,7 +126,7 @@ export default function OwnerSettings({
 
                     {canEditProfile ? (
                         <Form
-                            {...OwnerSettingsController.update.form(company.id)}
+                            {...OwnerSettingsController.update.form()}
                             options={{ preserveScroll: true }}
                             className="space-y-4"
                         >

@@ -84,10 +84,10 @@ class PartyController extends Controller
                 ],
             ],
             'links' => [
-                'hub' => route('branch.masters.index', [$company, $branch]),
-                'index' => route('branch.parties.index', [$company, $branch]),
-                'create' => route('branch.parties.create', [$company, $branch]),
-                'store' => route('branch.parties.store', [$company, $branch]),
+                'hub' => route('branch.masters.index'),
+                'index' => route('branch.parties.index'),
+                'create' => route('branch.parties.create'),
+                'store' => route('branch.parties.store'),
             ],
         ]);
     }
@@ -113,9 +113,9 @@ class PartyController extends Controller
                 'label' => str_replace('_', ' ', ucfirst($role->value)),
             ])->values()->all(),
             'links' => [
-                'hub' => route('branch.masters.index', [$company, $branch]),
-                'index' => route('branch.parties.index', [$company, $branch]),
-                'store' => route('branch.parties.store', [$company, $branch]),
+                'hub' => route('branch.masters.index'),
+                'index' => route('branch.parties.index'),
+                'store' => route('branch.parties.store'),
             ],
         ]);
     }
@@ -163,11 +163,11 @@ class PartyController extends Controller
         }
 
         return redirect()
-            ->route('branch.parties.show', [$company, $branch, $party])
+            ->route('branch.parties.show', [$party])
             ->with('success', 'Party created.');
     }
 
-    public function show(Request $request, Company $company, Branch $branch, Party $party): Response
+    public function show(Request $request, Party $party, Company $company, Branch $branch): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertParty($company, $party);
@@ -200,12 +200,12 @@ class PartyController extends Controller
                 $permissions,
             ),
             'links' => [
-                'hub' => route('branch.masters.index', [$company, $branch]),
-                'index' => route('branch.parties.index', [$company, $branch]),
-                'edit' => route('branch.parties.edit', [$company, $branch, $party]),
-                'update' => route('branch.parties.update', [$company, $branch, $party]),
-                'assign_role' => route('branch.parties.roles.assign', [$company, $branch, $party]),
-                'destroy' => route('branch.parties.destroy', [$company, $branch, $party]),
+                'hub' => route('branch.masters.index'),
+                'index' => route('branch.parties.index'),
+                'edit' => route('branch.parties.edit', [$party]),
+                'update' => route('branch.parties.update', [$party]),
+                'assign_role' => route('branch.parties.roles.assign', [$party]),
+                'destroy' => route('branch.parties.destroy', [$party]),
                 'documents' => route('branch.documents.index', [
                     'company' => $company,
                     'branch' => $branch,
@@ -216,7 +216,7 @@ class PartyController extends Controller
         ]);
     }
 
-    public function edit(Request $request, Company $company, Branch $branch, Party $party): Response
+    public function edit(Request $request, Party $party, Company $company, Branch $branch): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertParty($company, $party);
@@ -239,15 +239,15 @@ class PartyController extends Controller
                 'label' => str_replace('_', ' ', ucfirst($role->value)),
             ])->values()->all(),
             'links' => [
-                'hub' => route('branch.masters.index', [$company, $branch]),
-                'index' => route('branch.parties.index', [$company, $branch]),
-                'show' => route('branch.parties.show', [$company, $branch, $party]),
-                'update' => route('branch.parties.update', [$company, $branch, $party]),
+                'hub' => route('branch.masters.index'),
+                'index' => route('branch.parties.index'),
+                'show' => route('branch.parties.show', [$party]),
+                'update' => route('branch.parties.update', [$party]),
             ],
         ]);
     }
 
-    public function update(Request $request, Company $company, Branch $branch, Party $party): RedirectResponse|JsonResponse
+    public function update(Request $request, Party $party, Company $company, Branch $branch): RedirectResponse|JsonResponse
     {
         $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertParty($company, $party);
@@ -280,11 +280,11 @@ class PartyController extends Controller
         }
 
         return redirect()
-            ->route('branch.parties.show', [$company, $branch, $party])
+            ->route('branch.parties.show', [$party])
             ->with('success', 'Party updated.');
     }
 
-    public function assignRole(Request $request, Company $company, Branch $branch, Party $party): RedirectResponse|JsonResponse
+    public function assignRole(Request $request, Party $party, Company $company, Branch $branch): RedirectResponse|JsonResponse
     {
         $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertParty($company, $party);
@@ -317,13 +317,8 @@ class PartyController extends Controller
         return back()->with('success', 'Role assigned.');
     }
 
-    public function removeRole(
-        Request $request,
-        Company $company,
-        Branch $branch,
-        Party $party,
-        PartyRole $partyRole,
-    ): RedirectResponse|JsonResponse {
+    public function removeRole(Request $request, Party $party, PartyRole $partyRole, Company $company, Branch $branch): RedirectResponse|JsonResponse
+    {
         $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertParty($company, $party);
 
@@ -353,7 +348,7 @@ class PartyController extends Controller
         return back()->with('success', 'Role removed.');
     }
 
-    public function destroy(Request $request, Company $company, Branch $branch, Party $party): RedirectResponse|JsonResponse
+    public function destroy(Request $request, Party $party, Company $company, Branch $branch): RedirectResponse|JsonResponse
     {
         $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertParty($company, $party);
@@ -376,7 +371,7 @@ class PartyController extends Controller
         }
 
         return redirect()
-            ->route('branch.parties.index', [$company, $branch])
+            ->route('branch.parties.index')
             ->with('success', 'Party deleted.');
     }
 

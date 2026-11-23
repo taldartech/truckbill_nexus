@@ -193,12 +193,12 @@ export default function DraftEdit({
                         aria-label="Breadcrumb"
                         className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
                     >
-                        <Link href="/owner" className="hover:underline">
+                        <Link href="/management" className="hover:underline">
                             Owner Panel
                         </Link>
                         <span aria-hidden>/</span>
                         <Link
-                            href="/owner/subscriptions"
+                            href="/management/subscriptions"
                             className="hover:underline"
                         >
                             Subscriptions

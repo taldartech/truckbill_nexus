@@ -102,28 +102,22 @@ test('owner cannot mutate or audit another company via owner panel routes', func
     ])->assertForbidden();
     expect($companyB->fresh()->name)->toBe('Cert Beta');
 
-    $this->post(route('owner.users.invite', ['company' => $companyB]), [
+    $this->post(route('owner.users.invite'), [
         'email' => 'cross.invite@example.com',
     ])->assertForbidden();
 
-    $this->post(route('owner.users.invite-for-branch', [
-        'company' => $companyB,
-        'branch' => $branchB,
-    ]), [
+    $this->post(route('owner.users.invite-for-branch'), [
         'email' => 'cross.branch.invite@example.com',
     ])->assertForbidden();
 
-    $this->get(route('owner.audit', ['company' => $companyB]))->assertForbidden();
+    $this->get(route('owner.audit'))->assertForbidden();
 
-    $this->post(route('owner.users.deactivate', [
-        'company' => $companyB,
-        'membership' => $membershipB,
-    ]), [
+    $this->post(route('owner.users.deactivate'), [
         'remark' => 'Cross deactivate',
     ])->assertForbidden();
     expect($membershipB->fresh()->isActive())->toBeTrue();
 
-    $this->get(route('owner.settings', ['company' => $companyA]))->assertOk();
+    $this->get(route('owner.settings'))->assertOk();
     expect($ownerB->id)->not->toBe($ownerA->id);
 });
 
@@ -132,7 +126,7 @@ test('owner panel rejects client-supplied tenant identifiers on management route
 
     certLogin($owner);
 
-    $this->get(route('owner.settings', ['company' => $company]).'?company_id='.$company->id)
+    $this->get(route('owner.settings').'?company_id='.$company->id)
         ->assertForbidden();
 
     $this->post(route('owner.settings.update', ['company' => $company]), [
@@ -141,16 +135,16 @@ test('owner panel rejects client-supplied tenant identifiers on management route
         'company_id' => $company->id,
     ])->assertForbidden();
 
-    $this->post(route('owner.users.invite', ['company' => $company]), [
+    $this->post(route('owner.users.invite'), [
         'email' => 'tenant.key@example.com',
         'branch_id' => '00000000-0000-0000-0000-000000000001',
     ])->assertForbidden();
 
-    $this->get(route('owner.audit', ['company' => $company]).'?owner_id='.$owner->id)
+    $this->get(route('owner.audit').'?owner_id='.$owner->id)
         ->assertForbidden();
 
     $this->withHeaders(['X-Company-Id' => $company->id])
-        ->get(route('owner.users', ['company' => $company]))
+        ->get(route('owner.users'))
         ->assertForbidden();
 });
 
@@ -191,7 +185,7 @@ test('stale mru owned company cannot authorize owner panel after ownership trans
             ->where('totals.companies', 1)
             ->where('companies.0.id', $retained->id));
 
-    $this->get(route('owner.dashboard', ['company' => $transferred]))->assertForbidden();
+    $this->get(route('owner.home'))->assertForbidden();
     $this->post(route('workspace.companies.enter', ['company' => $transferred]))->assertForbidden();
 });
 
@@ -210,11 +204,7 @@ test('customer branch role revoke takes effect immediately for permission checks
 
     certLogin($owner);
 
-    $this->post(route('owner.users.assign-role', [
-        'company' => $company,
-        'membership' => $membership,
-        'branch' => $branch,
-    ]), [
+    $this->post(route('owner.users.assign-role'), [
         'role_id' => $role->id,
         'remark' => 'Grant operator',
     ])->assertRedirect();
@@ -228,10 +218,7 @@ test('customer branch role revoke takes effect immediately for permission checks
         ->whereNull('deactivated_at')
         ->firstOrFail();
 
-    $this->post(route('owner.users.roles.revoke', [
-        'company' => $company,
-        'roleAssignment' => $roleAssignment,
-    ]), [
+    $this->post(route('owner.users.roles.revoke'), [
         'remark' => 'Revoke operator',
     ])->assertRedirect();
 
@@ -329,7 +316,7 @@ test('deactivated company blocks branch panel and owner write routes while audit
 
     certLogin($owner);
 
-    $this->get(route('owner.dashboard', ['company' => $company]))
+    $this->get(route('owner.home'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('ownerPanelScope', CompanyAccessService::OWNER_PANEL_ADMIN_BILLING_ONLY));
@@ -339,7 +326,7 @@ test('deactivated company blocks branch panel and owner write routes while audit
         'remark' => 'Write while deactivated',
     ])->assertForbidden();
 
-    $this->post(route('owner.users.invite', ['company' => $company]), [
+    $this->post(route('owner.users.invite'), [
         'email' => 'deactivated.invite@example.com',
     ])->assertForbidden();
 
@@ -348,8 +335,8 @@ test('deactivated company blocks branch panel and owner write routes while audit
         'branch' => $branch,
     ]))->assertForbidden();
 
-    $this->get(route('owner.audit', ['company' => $company]))->assertOk();
-    $this->get(route('owner.subscription', ['company' => $company]))
+    $this->get(route('owner.audit'))->assertOk();
+    $this->get(route('owner.subscription'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('owner/subscription/overview')
@@ -368,16 +355,16 @@ test('member cannot escalate to owner panel or assign customer roles', function 
     certLogin($member, 'member-secret');
 
     foreach ([
-        route('owner.dashboard', ['company' => $company]),
-        route('owner.users', ['company' => $company]),
-        route('owner.settings', ['company' => $company]),
-        route('owner.audit', ['company' => $company]),
-        route('owner.subscription', ['company' => $company]),
+        route('owner.home'),
+        route('owner.users'),
+        route('owner.settings'),
+        route('owner.audit'),
+        route('owner.subscription'),
     ] as $url) {
         $this->get($url)->assertForbidden();
     }
 
-    $this->post(route('owner.users.invite', ['company' => $company]), [
+    $this->post(route('owner.users.invite'), [
         'email' => 'escalation@example.com',
     ])->assertForbidden();
 

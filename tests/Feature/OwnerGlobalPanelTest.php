@@ -132,7 +132,6 @@ test('global branch list links to company-specific detail', function () {
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('branches.data.0.urls.show', route('owner.branches.show', [
-                'company' => $company,
                 'branch' => $branch,
             ])));
 });
@@ -153,14 +152,11 @@ test('owner can open company-specific subscription from global list', function (
             ->has('companies.data', 1)
             ->where('companies.data.0.id', $company->id)
             ->where('companies.data.0.active_modules', [])
-            ->where('companies.data.0.urls.subscription', route('owner.subscription', [
-                'company' => $company,
-            ]))
-            ->where('companies.data.0.urls.company', route('owner.dashboard', [
-                'company' => $company,
-            ])));
+            ->where('companies.data.0.urls.subscription', route('owner.subscription'))
+            ->where('companies.data.0.urls.company_settings', route('owner.settings')));
 
-    $this->get(route('owner.subscription', ['company' => $company]))
+    enterManagementCompany($company, route('owner.subscription'))->assertRedirect();
+    $this->get(route('owner.subscription'))
         ->assertOk();
 });
 
@@ -181,7 +177,7 @@ test('deactivated company retains informational owner access on global list', fu
             ->where('companies.data.0.status', 'Deactivated')
             ->where('companies.data.0.can_manage', false));
 
-    $this->get(route('owner.dashboard', ['company' => $company]))->assertOk();
+    $this->get(route('owner.home'))->assertOk();
 });
 
 test('customer member cannot access owner global management', function () {

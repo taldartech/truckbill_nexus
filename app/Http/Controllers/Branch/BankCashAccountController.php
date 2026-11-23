@@ -68,10 +68,10 @@ class BankCashAccountController extends Controller
                 ],
             ],
             'links' => [
-                'hub' => route('branch.masters.index', [$company, $branch]),
-                'index' => route('branch.bank-cash.index', [$company, $branch]),
-                'create' => route('branch.bank-cash.create', [$company, $branch]),
-                'store' => route('branch.bank-cash.store', [$company, $branch]),
+                'hub' => route('branch.masters.index'),
+                'index' => route('branch.bank-cash.index'),
+                'create' => route('branch.bank-cash.create'),
+                'store' => route('branch.bank-cash.store'),
             ],
         ]);
     }
@@ -93,9 +93,9 @@ class BankCashAccountController extends Controller
             'account' => null,
             'dataVisibility' => $this->dataVisibilityPresentation($company),
             'links' => [
-                'hub' => route('branch.masters.index', [$company, $branch]),
-                'index' => route('branch.bank-cash.index', [$company, $branch]),
-                'store' => route('branch.bank-cash.store', [$company, $branch]),
+                'hub' => route('branch.masters.index'),
+                'index' => route('branch.bank-cash.index'),
+                'store' => route('branch.bank-cash.store'),
             ],
         ]);
     }
@@ -131,11 +131,11 @@ class BankCashAccountController extends Controller
         }
 
         return redirect()
-            ->route('branch.bank-cash.show', [$company, $branch, $account])
+            ->route('branch.bank-cash.show', [$account])
             ->with('success', 'Account created.');
     }
 
-    public function show(Request $request, Company $company, Branch $branch, BankCashAccount $bankCashAccount): Response
+    public function show(Request $request, BankCashAccount $bankCashAccount, Company $company, Branch $branch): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertAccount($company, $bankCashAccount);
@@ -162,11 +162,11 @@ class BankCashAccountController extends Controller
                 $permissions,
             ),
             'links' => [
-                'hub' => route('branch.masters.index', [$company, $branch]),
-                'index' => route('branch.bank-cash.index', [$company, $branch]),
-                'edit' => route('branch.bank-cash.edit', [$company, $branch, $bankCashAccount]),
-                'update' => route('branch.bank-cash.update', [$company, $branch, $bankCashAccount]),
-                'destroy' => route('branch.bank-cash.destroy', [$company, $branch, $bankCashAccount]),
+                'hub' => route('branch.masters.index'),
+                'index' => route('branch.bank-cash.index'),
+                'edit' => route('branch.bank-cash.edit', [$bankCashAccount]),
+                'update' => route('branch.bank-cash.update', [$bankCashAccount]),
+                'destroy' => route('branch.bank-cash.destroy', [$bankCashAccount]),
                 'documents' => route('branch.documents.index', [
                     'company' => $company,
                     'branch' => $branch,
@@ -177,7 +177,7 @@ class BankCashAccountController extends Controller
         ]);
     }
 
-    public function edit(Request $request, Company $company, Branch $branch, BankCashAccount $bankCashAccount): Response
+    public function edit(Request $request, BankCashAccount $bankCashAccount, Company $company, Branch $branch): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertAccount($company, $bankCashAccount);
@@ -195,15 +195,15 @@ class BankCashAccountController extends Controller
             'mode' => 'edit',
             'account' => $this->accounts->present($bankCashAccount),
             'links' => [
-                'hub' => route('branch.masters.index', [$company, $branch]),
-                'index' => route('branch.bank-cash.index', [$company, $branch]),
-                'show' => route('branch.bank-cash.show', [$company, $branch, $bankCashAccount]),
-                'update' => route('branch.bank-cash.update', [$company, $branch, $bankCashAccount]),
+                'hub' => route('branch.masters.index'),
+                'index' => route('branch.bank-cash.index'),
+                'show' => route('branch.bank-cash.show', [$bankCashAccount]),
+                'update' => route('branch.bank-cash.update', [$bankCashAccount]),
             ],
         ]);
     }
 
-    public function update(Request $request, Company $company, Branch $branch, BankCashAccount $bankCashAccount): RedirectResponse
+    public function update(Request $request, BankCashAccount $bankCashAccount, Company $company, Branch $branch): RedirectResponse
     {
         $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertAccount($company, $bankCashAccount);
@@ -233,11 +233,11 @@ class BankCashAccountController extends Controller
         }
 
         return redirect()
-            ->route('branch.bank-cash.show', [$company, $branch, $bankCashAccount])
+            ->route('branch.bank-cash.show', [$bankCashAccount])
             ->with('success', 'Account updated.');
     }
 
-    public function destroy(Request $request, Company $company, Branch $branch, BankCashAccount $bankCashAccount): RedirectResponse
+    public function destroy(Request $request, BankCashAccount $bankCashAccount, Company $company, Branch $branch): RedirectResponse
     {
         $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertAccount($company, $bankCashAccount);
@@ -256,7 +256,7 @@ class BankCashAccountController extends Controller
         }
 
         return redirect()
-            ->route('branch.bank-cash.index', [$company, $branch])
+            ->route('branch.bank-cash.index')
             ->with('success', 'Account deleted.');
     }
 

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
-import { enter } from '@/routes/workspace/branches';
+import { branch as enterBranchContext } from '@/routes/workspace/context';
 
 type BranchRow = {
     id: string;
@@ -198,20 +198,30 @@ export default function OwnerBranchesIndex({
                                             {canEnterBranch &&
                                             branch.status === 'Active' ? (
                                                 <Form
-                                                    {...enter.form({
-                                                        company: company.id,
-                                                        branch: branch.id,
-                                                    })}
+                                                    {...enterBranchContext.form(
+                                                        {
+                                                            company: company.id,
+                                                            branch: branch.id,
+                                                        },
+                                                    )}
                                                 >
                                                     {({ processing }) => (
-                                                        <Button
-                                                            type="submit"
-                                                            disabled={
-                                                                processing
-                                                            }
-                                                        >
-                                                            Enter Branch Panel
-                                                        </Button>
+                                                        <>
+                                                            <input
+                                                                type="hidden"
+                                                                name="redirect"
+                                                                value="/branch"
+                                                            />
+                                                            <Button
+                                                                type="submit"
+                                                                disabled={
+                                                                    processing
+                                                                }
+                                                            >
+                                                                Enter Branch
+                                                                Panel
+                                                            </Button>
+                                                        </>
                                                     )}
                                                 </Form>
                                             ) : null}

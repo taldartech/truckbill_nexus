@@ -80,14 +80,12 @@ class OwnerBranchesController extends Controller
                 'status' => $status,
             ],
             'branches' => [
-                'data' => $paginator->getCollection()->map(function (Branch $branch) use ($company): array {
+                'data' => $paginator->getCollection()->map(function (Branch $branch): array {
                     return [
                         'id' => $branch->id,
                         'name' => $branch->name,
                         'status' => $branch->isActive() ? 'Active' : 'Deactivated',
-                        'show_url' => route('owner.branches.show', [
-                            'company' => $company,
-                            'branch' => $branch,
+                        'show_url' => route('owner.branches.show', ['branch' => $branch,
                         ]),
                     ];
                 })->values(),
@@ -102,9 +100,9 @@ class OwnerBranchesController extends Controller
                 ? null
                 : 'Branch administration is unavailable while this company is deactivated.',
             'links' => [
-                'dashboard' => route('owner.dashboard', ['company' => $company]),
-                'index' => route('owner.branches', ['company' => $company]),
-                'create' => route('owner.branches.create', ['company' => $company]),
+                'dashboard' => route('owner.home'),
+                'index' => route('owner.branches'),
+                'create' => route('owner.branches.create'),
             ],
         ]);
     }
@@ -147,8 +145,8 @@ class OwnerBranchesController extends Controller
                 'slug' => $role->slug,
             ])->values(),
             'links' => [
-                'index' => route('owner.branches', ['company' => $company]),
-                'store' => route('owner.branches.store', ['company' => $company]),
+                'index' => route('owner.branches'),
+                'store' => route('owner.branches.store'),
             ],
         ]);
     }
@@ -212,11 +210,11 @@ class OwnerBranchesController extends Controller
         }
 
         return redirect()
-            ->route('owner.branches.show', ['company' => $company, 'branch' => $branch])
+            ->route('owner.branches.show', ['branch' => $branch])
             ->with('success', 'Branch created.');
     }
 
-    public function show(Request $request, Company $company, Branch $branch): Response
+    public function show(Request $request, Branch $branch, Company $company): Response
     {
         ['scope' => $scope] = $this->authorizeOwnerPanel($request, $company, $this->access);
         $this->assertBranchBelongsToCompany($company, $branch);
@@ -298,16 +296,16 @@ class OwnerBranchesController extends Controller
                 'actor_id' => $entry->actor_id,
             ])->values(),
             'links' => [
-                'index' => route('owner.branches', ['company' => $company]),
-                'update' => route('owner.branches.update', ['company' => $company, 'branch' => $branch]),
-                'deactivate' => route('owner.branches.deactivate', ['company' => $company, 'branch' => $branch]),
+                'index' => route('owner.branches'),
+                'update' => route('owner.branches.update', ['branch' => $branch]),
+                'deactivate' => route('owner.branches.deactivate', ['branch' => $branch]),
                 'enter' => route('workspace.branches.enter', ['company' => $company, 'branch' => $branch]),
-                'users' => route('owner.users', ['company' => $company]),
+                'users' => route('owner.users'),
             ],
         ]);
     }
 
-    public function update(Request $request, Company $company, Branch $branch): RedirectResponse
+    public function update(Request $request, Branch $branch, Company $company): RedirectResponse
     {
         ['user' => $user] = $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
         $this->assertBranchBelongsToCompany($company, $branch);
@@ -324,11 +322,11 @@ class OwnerBranchesController extends Controller
         }
 
         return redirect()
-            ->route('owner.branches.show', ['company' => $company, 'branch' => $branch])
+            ->route('owner.branches.show', ['branch' => $branch])
             ->with('success', 'Branch updated.');
     }
 
-    public function deactivate(Request $request, Company $company, Branch $branch): RedirectResponse
+    public function deactivate(Request $request, Branch $branch, Company $company): RedirectResponse
     {
         ['user' => $user] = $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
         $this->assertBranchBelongsToCompany($company, $branch);
@@ -344,7 +342,7 @@ class OwnerBranchesController extends Controller
         }
 
         return redirect()
-            ->route('owner.branches', ['company' => $company])
+            ->route('owner.branches')
             ->with('success', 'Branch deactivated.');
     }
 

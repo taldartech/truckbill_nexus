@@ -85,10 +85,10 @@ class StationController extends Controller
                 ],
             ],
             'links' => [
-                'hub' => route('branch.masters.index', [$company, $branch]),
-                'index' => route('branch.stations.index', [$company, $branch]),
-                'create' => route('branch.stations.create', [$company, $branch]),
-                'store' => route('branch.stations.store', [$company, $branch]),
+                'hub' => route('branch.masters.index'),
+                'index' => route('branch.stations.index'),
+                'create' => route('branch.stations.create'),
+                'store' => route('branch.stations.store'),
             ],
         ]);
     }
@@ -109,9 +109,9 @@ class StationController extends Controller
             'mode' => 'create',
             'station' => null,
             'links' => [
-                'hub' => route('branch.masters.index', [$company, $branch]),
-                'index' => route('branch.stations.index', [$company, $branch]),
-                'store' => route('branch.stations.store', [$company, $branch]),
+                'hub' => route('branch.masters.index'),
+                'index' => route('branch.stations.index'),
+                'store' => route('branch.stations.store'),
             ],
         ]);
     }
@@ -136,11 +136,11 @@ class StationController extends Controller
         }
 
         return redirect()
-            ->route('branch.stations.show', [$company, $branch, $station])
+            ->route('branch.stations.show', [$station])
             ->with('success', 'Station created.');
     }
 
-    public function show(Request $request, Company $company, Branch $branch, Station $station): Response
+    public function show(Request $request, Station $station, Company $company, Branch $branch): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertStationVisible($company, $station);
@@ -185,12 +185,12 @@ class StationController extends Controller
                 $permissions,
             ),
             'links' => [
-                'hub' => route('branch.masters.index', [$company, $branch]),
-                'index' => route('branch.stations.index', [$company, $branch]),
-                'edit' => route('branch.stations.edit', [$company, $branch, $station]),
-                'update' => route('branch.stations.update', [$company, $branch, $station]),
-                'destroy' => route('branch.stations.destroy', [$company, $branch, $station]),
-                'set_default_transporter' => route('branch.stations.default-transporter', [$company, $branch, $station]),
+                'hub' => route('branch.masters.index'),
+                'index' => route('branch.stations.index'),
+                'edit' => route('branch.stations.edit', [$station]),
+                'update' => route('branch.stations.update', [$station]),
+                'destroy' => route('branch.stations.destroy', [$station]),
+                'set_default_transporter' => route('branch.stations.default-transporter', [$station]),
                 'documents' => route('branch.documents.index', [
                     'company' => $company,
                     'branch' => $branch,
@@ -201,7 +201,7 @@ class StationController extends Controller
         ]);
     }
 
-    public function edit(Request $request, Company $company, Branch $branch, Station $station): Response
+    public function edit(Request $request, Station $station, Company $company, Branch $branch): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertStationVisible($company, $station);
@@ -225,15 +225,15 @@ class StationController extends Controller
                 'is_active' => (bool) $station->is_active,
             ],
             'links' => [
-                'hub' => route('branch.masters.index', [$company, $branch]),
-                'index' => route('branch.stations.index', [$company, $branch]),
-                'show' => route('branch.stations.show', [$company, $branch, $station]),
-                'update' => route('branch.stations.update', [$company, $branch, $station]),
+                'hub' => route('branch.masters.index'),
+                'index' => route('branch.stations.index'),
+                'show' => route('branch.stations.show', [$station]),
+                'update' => route('branch.stations.update', [$station]),
             ],
         ]);
     }
 
-    public function update(Request $request, Company $company, Branch $branch, Station $station): RedirectResponse
+    public function update(Request $request, Station $station, Company $company, Branch $branch): RedirectResponse
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertStationVisible($company, $station);
@@ -253,11 +253,11 @@ class StationController extends Controller
         }
 
         return redirect()
-            ->route('branch.stations.show', [$company, $branch, $station])
+            ->route('branch.stations.show', [$station])
             ->with('success', 'Station updated.');
     }
 
-    public function destroy(Request $request, Company $company, Branch $branch, Station $station): RedirectResponse
+    public function destroy(Request $request, Station $station, Company $company, Branch $branch): RedirectResponse
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertStationVisible($company, $station);
@@ -273,11 +273,11 @@ class StationController extends Controller
         }
 
         return redirect()
-            ->route('branch.stations.index', [$company, $branch])
+            ->route('branch.stations.index')
             ->with('success', 'Station deleted.');
     }
 
-    public function setDefaultTransporter(Request $request, Company $company, Branch $branch, Station $station): RedirectResponse
+    public function setDefaultTransporter(Request $request, Station $station, Company $company, Branch $branch): RedirectResponse
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertStationVisible($company, $station);

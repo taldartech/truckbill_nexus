@@ -118,12 +118,12 @@ final class OwnerGlobalPanelService
             'created_at' => $company->created_at?->toIso8601String(),
             'can_manage' => $canAccess && $company->isActive(),
             'urls' => [
-                'dashboard' => route('owner.dashboard', ['company' => $company]),
-                'settings' => route('owner.settings', ['company' => $company]),
-                'branches' => route('owner.branches', ['company' => $company]),
-                'subscription' => route('owner.subscription', ['company' => $company]),
-                'audit' => route('owner.audit', ['company' => $company]),
-                'users' => route('owner.users', ['company' => $company]),
+                'context' => route('workspace.context.company', ['company' => $company]),
+                'settings' => route('owner.settings'),
+                'branches' => route('owner.branches'),
+                'subscription' => route('owner.subscription'),
+                'audit' => route('owner.audit'),
+                'users' => route('owner.users'),
             ],
         ];
     }
@@ -289,9 +289,7 @@ final class OwnerGlobalPanelService
             'branches' => $branchNames,
             'roles' => $roleNames,
             'urls' => [
-                'show' => $company === null ? null : route('owner.users.show', [
-                    'company' => $company,
-                    'membership' => $membership,
+                'show' => $company === null ? null : route('owner.users.show', ['membership' => $membership,
                 ]),
             ],
         ];
@@ -420,15 +418,15 @@ final class OwnerGlobalPanelService
             ],
             'urls' => [
                 'show' => $company === null ? null : route('owner.branches.show', [
-                    'company' => $company,
                     'branch' => $branch,
                 ]),
-                'enter_branch' => ($company !== null && $companyActive && $branch->isActive())
-                    ? route('branch.dashboard', ['company' => $company, 'branch' => $branch])
+                'enter_branch_context' => ($company !== null && $companyActive && $branch->isActive())
+                    ? route('workspace.context.branch', ['company' => $company, 'branch' => $branch])
                     : null,
-                'create_for_company' => $company === null ? null : route('owner.branches.create', [
-                    'company' => $company,
-                ]),
+                'enter_branch' => ($company !== null && $companyActive && $branch->isActive())
+                    ? route('branch.dashboard')
+                    : null,
+                'create_for_company' => $company === null ? null : route('owner.branches.create'),
             ],
         ];
     }
@@ -480,8 +478,9 @@ final class OwnerGlobalPanelService
             'common_renewal_date' => $activeSubscription?->common_renewal_date?->toDateString(),
             'notes' => $lifecycle['notes'],
             'urls' => [
-                'subscription' => route('owner.subscription', ['company' => $company]),
-                'company' => route('owner.dashboard', ['company' => $company]),
+                'context' => route('workspace.context.company', ['company' => $company]),
+                'subscription' => route('owner.subscription'),
+                'company_settings' => route('owner.settings'),
             ],
         ];
     }

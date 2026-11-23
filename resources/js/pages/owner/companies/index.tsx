@@ -1,10 +1,21 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
+import {
+    CreditCard,
+    GitBranch,
+    History,
+    Pencil,
+    Plus,
+    Users,
+} from 'lucide-react';
 import { useState } from 'react';
+import { AppIconAction } from '@/components/app-icon-action';
 import { OwnerPageHeader } from '@/components/owner/owner-page-header';
 import ShellEmptyState from '@/components/shell-empty-state';
+import { WorkspaceContextAction } from '@/components/workspace-context-action';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { formatDisplayDateSmart } from '@/lib/dates';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 
 type CompanyRow = {
@@ -23,7 +34,7 @@ type CompanyRow = {
     created_at: string | null;
     can_manage: boolean;
     urls: {
-        dashboard: string;
+        context: string;
         settings: string;
         branches: string;
         subscription: string;
@@ -75,20 +86,22 @@ export default function OwnerCompaniesIndex({
 
     return (
         <>
-            <Head title="Owner · Companies" />
+            <Head title="Management · Companies" />
             <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
                 <OwnerPageHeader
                     title="Companies"
-                    description="Manage every company you own from one list — open a company for settings, users, and billing."
+                    description="Manage every company you own from one list — open settings, users, branches, or billing directly."
                     actions={
-                        <Button asChild>
-                            <Link
-                                href={links.create}
-                                aria-label="Create a new company"
-                            >
-                                Create company
-                            </Link>
-                        </Button>
+                        <AppIconAction
+                            icon={Plus}
+                            label="Create company"
+                            href={links.create}
+                            variant="default"
+                            size="default"
+                            className="gap-2 px-3"
+                        >
+                            <span className="text-sm font-medium">Create</span>
+                        </AppIconAction>
                     }
                 />
 
@@ -126,11 +139,20 @@ export default function OwnerCompaniesIndex({
                 {companies.data.length === 0 ? (
                     <ShellEmptyState
                         title="No companies yet"
-                        description="Create your first company to open Owner management for branches and subscriptions."
+                        description="Create your first company to open management for branches and subscriptions."
                         action={
-                            <Button asChild>
-                                <Link href={links.create}>Create company</Link>
-                            </Button>
+                            <AppIconAction
+                                icon={Plus}
+                                label="Create company"
+                                href={links.create}
+                                variant="default"
+                                size="default"
+                                className="gap-2 px-3"
+                            >
+                                <span className="text-sm font-medium">
+                                    Create
+                                </span>
+                            </AppIconAction>
                         }
                     />
                 ) : (
@@ -148,7 +170,7 @@ export default function OwnerCompaniesIndex({
                                         PAN
                                     </th>
                                     <th className="hidden px-3 py-2 font-medium lg:table-cell">
-                                        Contact
+                                        Created
                                     </th>
                                     <th className="px-3 py-2 font-medium">
                                         Visibility
@@ -183,10 +205,9 @@ export default function OwnerCompaniesIndex({
                                             {company.pan ?? '—'}
                                         </td>
                                         <td className="hidden px-3 py-3 text-xs text-muted-foreground lg:table-cell">
-                                            <div>
-                                                {company.contact_person ?? '—'}
-                                            </div>
-                                            <div>{company.mobile ?? ''}</div>
+                                            {formatDisplayDateSmart(
+                                                company.created_at,
+                                            )}
                                         </td>
                                         <td className="px-3 py-3">
                                             {company.data_visibility ===
@@ -212,42 +233,61 @@ export default function OwnerCompaniesIndex({
                                             )}
                                         </td>
                                         <td className="px-3 py-3">
-                                            <div className="flex flex-wrap gap-2">
-                                                <Link
-                                                    href={
-                                                        company.urls.dashboard
+                                            <div className="flex flex-wrap gap-1">
+                                                <WorkspaceContextAction
+                                                    contextUrl={
+                                                        company.urls.context
                                                     }
-                                                    className="text-xs font-medium text-primary underline"
-                                                >
-                                                    View
-                                                </Link>
-                                                <Link
-                                                    href={company.urls.settings}
-                                                    className="text-xs font-medium text-primary underline"
-                                                >
-                                                    Settings
-                                                </Link>
-                                                <Link
-                                                    href={company.urls.branches}
-                                                    className="text-xs font-medium text-primary underline"
-                                                >
-                                                    Branches
-                                                </Link>
-                                                <Link
-                                                    href={
+                                                    redirect={
+                                                        company.urls.settings
+                                                    }
+                                                    icon={Pencil}
+                                                    label="Edit company"
+                                                    disabled={
+                                                        !company.can_manage
+                                                    }
+                                                />
+                                                <WorkspaceContextAction
+                                                    contextUrl={
+                                                        company.urls.context
+                                                    }
+                                                    redirect={
+                                                        company.urls.branches
+                                                    }
+                                                    icon={GitBranch}
+                                                    label="Manage branches"
+                                                />
+                                                <WorkspaceContextAction
+                                                    contextUrl={
+                                                        company.urls.context
+                                                    }
+                                                    redirect={
+                                                        company.urls.users
+                                                    }
+                                                    icon={Users}
+                                                    label="Manage users"
+                                                />
+                                                <WorkspaceContextAction
+                                                    contextUrl={
+                                                        company.urls.context
+                                                    }
+                                                    redirect={
                                                         company.urls
                                                             .subscription
                                                     }
-                                                    className="text-xs font-medium text-primary underline"
-                                                >
-                                                    Subscription
-                                                </Link>
-                                                <Link
-                                                    href={company.urls.audit}
-                                                    className="text-xs font-medium text-primary underline"
-                                                >
-                                                    History
-                                                </Link>
+                                                    icon={CreditCard}
+                                                    label="Manage subscription"
+                                                />
+                                                <WorkspaceContextAction
+                                                    contextUrl={
+                                                        company.urls.context
+                                                    }
+                                                    redirect={
+                                                        company.urls.audit
+                                                    }
+                                                    icon={History}
+                                                    label="View audit"
+                                                />
                                             </div>
                                         </td>
                                     </tr>

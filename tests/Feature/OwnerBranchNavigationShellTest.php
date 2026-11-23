@@ -69,11 +69,13 @@ test('owner global and company subscription routes clear workspace and open with
         route('owner.users.all'),
         route('owner.subscriptions.index'),
         route('owner.audit.all'),
-        route('owner.subscription', ['company' => $company]),
-        route('owner.settings', ['company' => $company]),
     ] as $url) {
         $this->get($url)->assertOk();
     }
+
+    enterManagementCompany($company, route('owner.subscription'))->assertRedirect();
+    $this->get(route('owner.subscription'))->assertOk();
+    $this->get(route('owner.settings'))->assertOk();
 });
 
 test('branch member cannot open owner panel return target', function () {

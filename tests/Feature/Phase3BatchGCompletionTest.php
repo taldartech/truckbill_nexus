@@ -213,7 +213,7 @@ test('invoice html preview download and email do not reverse approval', function
         ->and($html)->toContain('TB/2026-2027/G001');
 
     $this->actingAs($owner)
-        ->get(route('owner.subscription.invoices.show', [$company, $approved]))
+        ->get(route('owner.subscription.invoices.show'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('owner/subscription/invoice-preview')

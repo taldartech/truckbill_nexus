@@ -6,6 +6,7 @@ use App\Domains\Company\CompanyAccessService;
 use App\Domains\Company\Exceptions\CompanyAccessException;
 use App\Domains\Company\WorkspaceNavigationService;
 use App\Http\Controllers\Controller;
+use App\Models\Branch;
 use App\Models\Company;
 use App\Models\User;
 use App\Support\Workspace\WorkspaceSession;
@@ -34,12 +35,11 @@ class EnterCompanyController extends Controller
             abort(403, 'Company access denied.');
         }
 
-        WorkspaceSession::put($request, $company->id);
-
         if ($this->access->isCompanyOwner($user, $company)) {
             $this->navigation->rememberOwnedCompany($user, $company);
+            WorkspaceSession::put($request, $company->id, null);
 
-            return redirect()->route('owner.dashboard', ['company' => $company]);
+            return redirect()->route('owner.home');
         }
 
         if (! $this->access->canAccessBranchPanel($user, $company)) {
@@ -52,11 +52,19 @@ class EnterCompanyController extends Controller
         }
 
         if ($branches->count() === 1) {
-            return redirect()->route('branch.dashboard', [
-                'company' => $company,
-                'branch' => $branches->first()['id'],
-            ]);
+            $branchId = $branches->first()['id'];
+            $branch = Branch::query()->findOrFail($branchId);
+            try {
+                $this->access->activateContext($user, $company, $branch);
+            } catch (CompanyAccessException) {
+                abort(403, 'Branch access denied.');
+            }
+            WorkspaceSession::put($request, $company->id, $branch->id);
+
+            return redirect()->route('branch.dashboard');
         }
+
+        WorkspaceSession::put($request, $company->id, null);
 
         return redirect()->route('workspace.branches.select', ['company' => $company]);
     }

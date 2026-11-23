@@ -61,7 +61,7 @@ class BranchDashboardController extends Controller
             'links' => [
                 'settings' => route('branch.settings', ['company' => $company, 'branch' => $branch]),
                 'owner_panel' => $isOwner
-                    ? route('owner.dashboard', ['company' => $company])
+                    ? route('owner.home')
                     : null,
                 'select_branch' => $siblingBranches->count() > 1
                     ? route('workspace.branches.select', ['company' => $company])

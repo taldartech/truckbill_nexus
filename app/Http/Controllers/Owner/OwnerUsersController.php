@@ -107,9 +107,7 @@ class OwnerUsersController extends Controller
                             'name' => $membership->user?->name,
                             'email' => $membership->user?->email,
                         ],
-                        'show_url' => route('owner.users.show', [
-                            'company' => $company,
-                            'membership' => $membership,
+                        'show_url' => route('owner.users.show', ['membership' => $membership,
                         ]),
                     ];
                 })->values(),
@@ -131,14 +129,14 @@ class OwnerUsersController extends Controller
                 'name' => $branch->name,
             ])->values(),
             'links' => [
-                'dashboard' => route('owner.dashboard', ['company' => $company]),
-                'invite' => route('owner.users.invite', ['company' => $company]),
-                'index' => route('owner.users', ['company' => $company]),
+                'dashboard' => route('owner.home'),
+                'invite' => route('owner.users.invite'),
+                'index' => route('owner.users'),
             ],
         ]);
     }
 
-    public function show(Request $request, Company $company, CompanyMembership $membership): Response
+    public function show(Request $request, CompanyMembership $membership, Company $company): Response
     {
         ['scope' => $scope] = $this->authorizeOwnerPanel($request, $company, $this->access);
         $this->assertMembershipBelongsToCompany($company, $membership);
@@ -226,11 +224,9 @@ class OwnerUsersController extends Controller
                 'slug' => $role->slug,
             ])->values(),
             'links' => [
-                'index' => route('owner.users', ['company' => $company]),
-                'dashboard' => route('owner.dashboard', ['company' => $company]),
-                'deactivate' => route('owner.users.deactivate', [
-                    'company' => $company,
-                    'membership' => $membership,
+                'index' => route('owner.users'),
+                'dashboard' => route('owner.home'),
+                'deactivate' => route('owner.users.deactivate', ['membership' => $membership,
                 ]),
             ],
         ]);
@@ -241,7 +237,7 @@ class OwnerUsersController extends Controller
         return $this->storeInvitation($request, $company, null);
     }
 
-    public function inviteForBranch(Request $request, Company $company, Branch $branch): RedirectResponse
+    public function inviteForBranch(Request $request, Branch $branch, Company $company): RedirectResponse
     {
         if ($branch->company_id !== $company->id) {
             abort(404);
@@ -250,7 +246,7 @@ class OwnerUsersController extends Controller
         return $this->storeInvitation($request, $company, $branch);
     }
 
-    public function revokeInvitation(Request $request, Company $company, Invitation $invitation): RedirectResponse
+    public function revokeInvitation(Request $request, Invitation $invitation, Company $company): RedirectResponse
     {
         ['user' => $user] = $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
 
@@ -269,11 +265,11 @@ class OwnerUsersController extends Controller
         }
 
         return redirect()
-            ->route('owner.users', ['company' => $company])
+            ->route('owner.users')
             ->with('success', 'Invitation revoked.');
     }
 
-    public function deactivateMembership(Request $request, Company $company, CompanyMembership $membership): RedirectResponse
+    public function deactivateMembership(Request $request, CompanyMembership $membership, Company $company): RedirectResponse
     {
         $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
         $this->assertMembershipBelongsToCompany($company, $membership);
@@ -289,16 +285,12 @@ class OwnerUsersController extends Controller
         }
 
         return redirect()
-            ->route('owner.users', ['company' => $company])
+            ->route('owner.users')
             ->with('success', 'Membership deactivated.');
     }
 
-    public function assignBranch(
-        Request $request,
-        Company $company,
-        CompanyMembership $membership,
-        Branch $branch,
-    ): RedirectResponse {
+    public function assignBranch(Request $request, CompanyMembership $membership, Branch $branch, Company $company): RedirectResponse
+    {
         $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
         $this->assertMembershipBelongsToCompany($company, $membership);
 
@@ -317,16 +309,12 @@ class OwnerUsersController extends Controller
         }
 
         return redirect()
-            ->route('owner.users.show', ['company' => $company, 'membership' => $membership])
+            ->route('owner.users.show', ['membership' => $membership])
             ->with('success', 'Branch access assigned.');
     }
 
-    public function assignRole(
-        Request $request,
-        Company $company,
-        CompanyMembership $membership,
-        Branch $branch,
-    ): RedirectResponse {
+    public function assignRole(Request $request, CompanyMembership $membership, Branch $branch, Company $company): RedirectResponse
+    {
         ['user' => $user] = $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
         $this->assertMembershipBelongsToCompany($company, $membership);
 
@@ -368,7 +356,7 @@ class OwnerUsersController extends Controller
         }
 
         return redirect()
-            ->route('owner.users.show', ['company' => $company, 'membership' => $membership])
+            ->route('owner.users.show', ['membership' => $membership])
             ->with('success', 'Branch role assigned.');
     }
 
@@ -387,11 +375,11 @@ class OwnerUsersController extends Controller
         }
 
         return redirect()
-            ->route('owner.users', ['company' => $company])
+            ->route('owner.users')
             ->with('success', 'Invitation created.');
     }
 
-    public function revokeRole(Request $request, Company $company, BranchRoleAssignment $roleAssignment): RedirectResponse
+    public function revokeRole(Request $request, BranchRoleAssignment $roleAssignment, Company $company): RedirectResponse
     {
         ['user' => $user] = $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
 
@@ -410,9 +398,7 @@ class OwnerUsersController extends Controller
         }
 
         return redirect()
-            ->route('owner.users.show', [
-                'company' => $company,
-                'membership' => $roleAssignment->company_membership_id,
+            ->route('owner.users.show', ['membership' => $roleAssignment->company_membership_id,
             ])
             ->with('success', 'Branch role revoked.');
     }

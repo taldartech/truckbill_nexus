@@ -62,7 +62,7 @@ test('customer with one owned company lands on global owner dashboard', function
             ->component('owner/home')
             ->where('companies.0.id', $company->id));
 
-    $this->get(route('owner.dashboard', ['company' => $company]))
+    $this->get(route('owner.home'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('owner/dashboard')
@@ -83,7 +83,7 @@ test('customer with multiple owned companies lands on global owner dashboard', f
         ->assertRedirect(route('owner.home'));
 
     $this->post(route('workspace.companies.enter', ['company' => $companyB]))
-        ->assertRedirect(route('owner.dashboard', ['company' => $companyB]));
+        ->assertRedirect(route('owner.home'));
 
     expect($owner->fresh()->mru_owned_company_id)->toBe($companyB->id);
 
@@ -109,7 +109,7 @@ test('member-only customer lands on branch panel for sole assignment', function 
             'branch' => $headOffice,
         ]));
 
-    $this->get(route('owner.dashboard', ['company' => $company]))
+    $this->get(route('owner.home'))
         ->assertForbidden();
 });
 
@@ -159,7 +159,7 @@ test('invalid company context is forbidden', function () {
 
     loginCustomer($owner);
 
-    $this->get(route('owner.dashboard', ['company' => $strangerCompany]))
+    $this->get(route('owner.home'))
         ->assertForbidden();
 
     $this->post(route('workspace.companies.enter', ['company' => $strangerCompany]))
@@ -185,7 +185,7 @@ test('deactivated company limits owner panel and blocks branch panel', function 
 
     loginCustomer($owner);
 
-    $this->get(route('owner.dashboard', ['company' => $company]))
+    $this->get(route('owner.home'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('ownerPanelScope', CompanyAccessService::OWNER_PANEL_ADMIN_BILLING_ONLY)
@@ -202,7 +202,7 @@ test('client supplied tenant identifiers are rejected on workspace routes', func
 
     loginCustomer($owner);
 
-    $this->get(route('owner.dashboard', ['company' => $company]).'?company_id='.$company->id)
+    $this->get(route('owner.home').'?company_id='.$company->id)
         ->assertForbidden();
 });
 
@@ -228,7 +228,7 @@ test('subscription presentation does not invent entitlement actions', function (
 
     loginCustomer($owner);
 
-    $this->get(route('owner.subscription', ['company' => $company]))
+    $this->get(route('owner.subscription'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('owner/subscription/overview')
@@ -241,7 +241,7 @@ test('owner dashboard exposes Region B management entry points', function () {
 
     loginCustomer($owner);
 
-    $this->get(route('owner.dashboard', ['company' => $company]))
+    $this->get(route('owner.home'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('owner/dashboard')
@@ -249,19 +249,19 @@ test('owner dashboard exposes Region B management entry points', function () {
             ->has('links.settings')
             ->has('links.audit'));
 
-    $this->get(route('owner.users', ['company' => $company]))
+    $this->get(route('owner.users'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('owner/users/index')
             ->where('canManage', true));
 
-    $this->get(route('owner.settings', ['company' => $company]))
+    $this->get(route('owner.settings'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('owner/settings')
             ->where('canEditProfile', true));
 
-    $this->get(route('owner.audit', ['company' => $company]))
+    $this->get(route('owner.audit'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->component('owner/audit'));
 });
@@ -276,9 +276,9 @@ test('member cannot open owner management entry points', function () {
 
     loginCustomer($member, 'member-secret');
 
-    $this->get(route('owner.users', ['company' => $company]))->assertForbidden();
-    $this->get(route('owner.settings', ['company' => $company]))->assertForbidden();
-    $this->get(route('owner.audit', ['company' => $company]))->assertForbidden();
+    $this->get(route('owner.users'))->assertForbidden();
+    $this->get(route('owner.settings'))->assertForbidden();
+    $this->get(route('owner.audit'))->assertForbidden();
 });
 
 test('branch settings remain branch-scoped', function () {
@@ -321,7 +321,7 @@ test('returning to owner panel clears active branch chrome after branch visit', 
         ->assertInertia(fn ($page) => $page
             ->where('workspace.active_branch_id', $headOffice->id));
 
-    $this->get(route('owner.dashboard', ['company' => $company]))
+    $this->get(route('owner.home'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('owner/dashboard')
@@ -356,6 +356,6 @@ test('direct url to owner panel is forbidden for members', function () {
 
     loginCustomer($member, 'member-secret');
 
-    $this->get(route('owner.subscription', ['company' => $company]))
+    $this->get(route('owner.subscription'))
         ->assertForbidden();
 });
