@@ -315,7 +315,7 @@ export function AppSidebar() {
 
     return (
         <Sidebar collapsible="icon" variant="inset">
-            <SidebarHeader>
+            <SidebarHeader className="border-b border-sidebar-border/80 bg-gradient-to-r from-[#2FB36F]/10 to-[#2D8CFF]/10">
                 <SidebarMenu>
                     <SidebarMenuItem>
                         <SidebarMenuButton size="lg" asChild>
@@ -335,7 +335,7 @@ export function AppSidebar() {
                     </SidebarMenuItem>
                 </SidebarMenu>
                 {inOwnerPanel ? (
-                    <div className="px-3 pt-2 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
+                    <div className="px-3 pt-2 text-xs font-medium text-muted-foreground group-data-[collapsible=icon]:hidden">
                         {inOwnerCompanyDetail && activeCompany
                             ? activeCompany.name
                             : 'All owned companies'}

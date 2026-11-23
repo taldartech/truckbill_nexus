@@ -64,7 +64,7 @@ export function AppTopbar({
 
     return (
         <header
-            className="flex h-12 shrink-0 items-center gap-3 border-b border-sidebar-border/50 px-4 transition-[width,height] ease-linear md:px-4"
+            className="flex h-12 shrink-0 items-center gap-3 border-b border-sidebar-border/60 bg-card/90 px-4 shadow-xs backdrop-blur transition-[width,height] ease-linear md:px-4"
             data-testid="app-topbar"
         >
             <div className="flex min-w-0 flex-1 items-center gap-2">

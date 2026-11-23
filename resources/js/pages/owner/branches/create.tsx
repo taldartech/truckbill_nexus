@@ -49,7 +49,7 @@ type PageErrors = {
 export default function OwnerBranchesCreate({
     company,
     ownerPanelScope,
-    capacity,
+    capacity: _capacity,
     canCreate,
     members,
     customerRoles,
