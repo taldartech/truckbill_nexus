@@ -11,6 +11,7 @@ import {
 import { cn } from '@/lib/utils';
 import { Spinner } from '@/components/ui/spinner';
 
+/** Passes through Button semantic variants (default/primary, info, warning, destructive, …). */
 type ButtonVariant = ComponentProps<typeof Button>['variant'];
 type ButtonSize = ComponentProps<typeof Button>['size'];
 
@@ -21,6 +22,7 @@ type AppIconActionProps = {
     href?: string;
     onClick?: () => void;
     type?: 'button' | 'submit' | 'reset';
+    /** Semantic Button variant — info/warning/primary included. */
     variant?: ButtonVariant;
     size?: ButtonSize;
     disabled?: boolean;

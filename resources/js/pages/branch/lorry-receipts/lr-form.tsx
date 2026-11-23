@@ -1068,12 +1068,16 @@ export default function LrForm({
                             </section>
 
                             <div className="flex items-center justify-end gap-3">
-                                <Button variant="secondary" asChild>
+                                <Button variant="outline" asChild>
                                     <Link href={urls.show ?? urls.index}>
                                         Cancel
                                     </Link>
                                 </Button>
-                                <Button type="submit" disabled={processing}>
+                                <Button
+                                    type="submit"
+                                    variant="primary"
+                                    disabled={processing}
+                                >
                                     {mode === 'create'
                                         ? 'Create LR'
                                         : 'Save changes'}

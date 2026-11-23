@@ -102,3 +102,6 @@ Dated workstream records with verified local commit SHAs. Living product Memory 
 | 2026-11-23 | P0 action regression + responsive tables | `3676ea8f154b6d54e808a542bc9db92dd824aa36` | SafeInternalRedirect; flash toast; Pest 509/2; ResponsiveDataTable on 22 lists; ADR-015 amendment; see `ACTION_REGRESSION_CERTIFICATION.md`. |
 | 2026-11-23 | Enter Branch Panel redirect fix | `00d6ed6` | Global Branches uses context POST + LogIn icon; `WorkspaceSession::sync`; Playwright enter-branch green; see `ENTER_BRANCH_PANEL_FIX.md`. |
 | 2026-11-23 | Branch nav + visibility (A/B) | `6b19c46ddc648717bb5c97b56907b6209141fa22` | Direct Masters sidebar; no Branch CompanySwitcher; Return to Owner Portal; Scope columns removed; OwnFleet/LR deferred — `BRANCH_NAVIGATION_OWNFLEET_CHECKPOINT.md`. |
+| 2026-11-23 | Dual-DB SoftDeleteUniqueIndex | `03c7e8fb4652bc24b270c6f990c113f76ef1f2c5` | PostgreSQL/MySQL soft-delete uniqueness, scope keys, identifier/FK fixes; MySQL 8.4 migrate proven. |
+| 2026-11-23 | Transporter TDS + April 1 reset | `f0b0281ecd9cb92efcfc0128ed990410c23ebbae` | Calculation service, Party preview, reference seeder, annual reset; Pest §6 scenarios. |
+| 2026-11-23 | Premium Party UI + CI mysql | _(following commit)_ | FormSection Party form, semantic buttons, MySQL CI job, certification docs. |

@@ -1,10 +1,12 @@
-import { Form, Head, Link } from '@inertiajs/react';
-import { useMemo, useState } from 'react';
+import { Form, Head, Link, useHttp } from '@inertiajs/react';
+import { useEffect, useMemo, useState } from 'react';
+import { FormSection } from '@/components/form-section';
 import InputError from '@/components/input-error';
 import { MasterPageHeader } from '@/components/masters/master-page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 
 type RolePayload = {
     id?: string;
@@ -40,11 +42,13 @@ type Props = {
         store?: string;
         update?: string;
         show?: string;
+        tdsPreview?: string;
     };
 };
 
 const CUSTOMER_FAMILY = new Set(['customer', 'consignor', 'consignee']);
 const VENDOR_ROLES = new Set(['general_vendor', 'pump_vendor']);
+const TDS_PREVIEW_URL = '/parties/tds-preview';
 
 type TransporterAttrs = {
     pan_status: string;
@@ -72,6 +76,28 @@ type DriverAttrs = {
     emergency_contact_name: string;
     emergency_contact_mobile: string;
     monthly_payment_base: string;
+};
+
+type TdsPreviewRequest = {
+    pan: string;
+    pan_status: string;
+    declaration: boolean;
+    declaration_type: string;
+    goods_vehicles_count: string;
+};
+
+type TdsPreviewPayload = {
+    applicable_rate?: string | number;
+    calculated_rate?: string | number;
+    applicable_tds_percentage?: string | number;
+    rate_percent?: string | number;
+    explanation?: string;
+    message?: string;
+};
+
+/** Backend wraps the calculation in `{ data: … }`; also accept a flat payload. */
+type TdsPreviewResponse = TdsPreviewPayload & {
+    data?: TdsPreviewPayload;
 };
 
 function attrString(
@@ -159,6 +185,445 @@ function initialDriver(roles: RolePayload[] | undefined): DriverAttrs {
     };
 }
 
+function unwrapTdsPreview(response: TdsPreviewResponse): TdsPreviewPayload {
+    return response.data ?? response;
+}
+
+function resolveApplicableTds(response: TdsPreviewResponse): string {
+    const payload = unwrapTdsPreview(response);
+    const value =
+        payload.applicable_rate ??
+        payload.applicable_tds_percentage ??
+        payload.rate_percent ??
+        payload.calculated_rate ??
+        '';
+
+    return value === '' || value === null || value === undefined
+        ? ''
+        : String(value);
+}
+
+function resolveTdsExplanation(response: TdsPreviewResponse): string | null {
+    const payload = unwrapTdsPreview(response);
+
+    return payload.explanation ?? payload.message ?? null;
+}
+
+function TransporterTdsPanel({
+    roleIndex,
+    pan,
+    setPan,
+    transporter,
+    setTransporter,
+    errors,
+    previewUrl,
+}: {
+    roleIndex: number;
+    pan: string;
+    setPan: (value: string) => void;
+    transporter: TransporterAttrs;
+    setTransporter: (
+        updater: (current: TransporterAttrs) => TransporterAttrs,
+    ) => void;
+    errors: Record<string, string>;
+    previewUrl: string;
+}) {
+    const [previewPercent, setPreviewPercent] = useState<string | null>(null);
+    const [previewExplanation, setPreviewExplanation] = useState<string | null>(
+        null,
+    );
+    const [previewMessage, setPreviewMessage] = useState<string | null>(null);
+    const {
+        setData,
+        post,
+        processing: previewLoading,
+        cancel,
+    } = useHttp<TdsPreviewRequest, TdsPreviewResponse>({
+        pan: '',
+        pan_status: 'active',
+        declaration: false,
+        declaration_type: 'owner',
+        goods_vehicles_count: '',
+    });
+
+    useEffect(() => {
+        const timer = window.setTimeout(() => {
+            setData({
+                pan,
+                pan_status: transporter.pan_status,
+                declaration: transporter.declaration,
+                declaration_type: transporter.declaration_type,
+                goods_vehicles_count: transporter.goods_vehicles_count,
+            });
+            void post(previewUrl, {
+                onSuccess: (response) => {
+                    setPreviewPercent(resolveApplicableTds(response));
+                    setPreviewExplanation(resolveTdsExplanation(response));
+                    setPreviewMessage(null);
+                },
+                onError: (validationErrors) => {
+                    setPreviewPercent(null);
+                    setPreviewExplanation(null);
+                    const first = Object.values(validationErrors)[0];
+                    setPreviewMessage(
+                        typeof first === 'string'
+                            ? first
+                            : 'TDS preview validation failed. Check declaration fields.',
+                    );
+                },
+                onHttpException: (response) => {
+                    setPreviewPercent(null);
+                    setPreviewExplanation(null);
+                    if (response.status === 404) {
+                        setPreviewMessage(
+                            'TDS preview is not available yet. You can still save transporter details.',
+                        );
+                    } else {
+                        setPreviewMessage(
+                            'Unable to load TDS preview. Try again after updating declaration fields.',
+                        );
+                    }
+
+                    return false;
+                },
+                onNetworkError: () => {
+                    setPreviewPercent(null);
+                    setPreviewExplanation(null);
+                    setPreviewMessage(
+                        'Unable to reach TDS preview. Check your connection and try again.',
+                    );
+
+                    return false;
+                },
+            });
+        }, 400);
+
+        return () => {
+            window.clearTimeout(timer);
+            cancel();
+        };
+    }, [
+        pan,
+        transporter.pan_status,
+        transporter.declaration,
+        transporter.declaration_type,
+        transporter.goods_vehicles_count,
+        previewUrl,
+        setData,
+        post,
+        cancel,
+    ]);
+
+    return (
+        <FormSection
+            title="Transporter · TDS"
+            description="Declaration inputs drive the live applicable TDS preview."
+            className="border-info/20"
+            data-testid="transporter-tds-panel"
+        >
+            <div className="grid gap-4 sm:grid-cols-2">
+                <input
+                    type="hidden"
+                    name={`roles[${roleIndex}][attributes][pan]`}
+                    value={pan}
+                />
+                <div className="space-y-2">
+                    <Label htmlFor="declaration_type">
+                        Declaration type (Owner / Agency)
+                    </Label>
+                    <select
+                        id="declaration_type"
+                        className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                        value={transporter.declaration_type}
+                        onChange={(event) =>
+                            setTransporter((current) => ({
+                                ...current,
+                                declaration_type: event.target.value,
+                            }))
+                        }
+                    >
+                        <option value="owner">Owner</option>
+                        <option value="agency">Agency</option>
+                    </select>
+                    <input
+                        type="hidden"
+                        name={`roles[${roleIndex}][attributes][declaration_type]`}
+                        value={transporter.declaration_type}
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="transporter_pan">PAN *</Label>
+                    <Input
+                        id="transporter_pan"
+                        required
+                        value={pan}
+                        onChange={(event) =>
+                            setPan(event.target.value.toUpperCase())
+                        }
+                        autoComplete="off"
+                    />
+                    <InputError message={errors.pan} />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="pan_status">PAN status *</Label>
+                    <select
+                        id="pan_status"
+                        className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                        value={transporter.pan_status}
+                        onChange={(event) =>
+                            setTransporter((current) => ({
+                                ...current,
+                                pan_status: event.target.value,
+                            }))
+                        }
+                    >
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="invalid">Invalid</option>
+                        <option value="valid">Valid</option>
+                    </select>
+                    <input
+                        type="hidden"
+                        name={`roles[${roleIndex}][attributes][pan_status]`}
+                        value={transporter.pan_status}
+                    />
+                    <InputError
+                        message={errors['roles.attributes.pan_status']}
+                    />
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="goods_vehicles_count">
+                        Goods vehicles count
+                    </Label>
+                    <Input
+                        id="goods_vehicles_count"
+                        type="number"
+                        min={0}
+                        value={transporter.goods_vehicles_count}
+                        onChange={(event) =>
+                            setTransporter((current) => ({
+                                ...current,
+                                goods_vehicles_count: event.target.value,
+                            }))
+                        }
+                    />
+                    {transporter.goods_vehicles_count !== '' ? (
+                        <input
+                            type="hidden"
+                            name={`roles[${roleIndex}][attributes][goods_vehicles_count]`}
+                            value={transporter.goods_vehicles_count}
+                        />
+                    ) : null}
+                </div>
+                <label className="flex items-center gap-2 text-sm sm:col-span-2">
+                    <input
+                        type="checkbox"
+                        checked={transporter.declaration}
+                        onChange={(event) =>
+                            setTransporter((current) => ({
+                                ...current,
+                                declaration: event.target.checked,
+                            }))
+                        }
+                    />
+                    Declaration affirmed *
+                    <input
+                        type="hidden"
+                        name={`roles[${roleIndex}][attributes][declaration]`}
+                        value={transporter.declaration ? '1' : '0'}
+                    />
+                </label>
+                <InputError message={errors['roles.attributes.declaration']} />
+
+                <div
+                    className="space-y-2 rounded-md border border-dashed border-info/40 bg-info/5 p-3 sm:col-span-2"
+                    data-testid="tds-preview-panel"
+                    aria-live="polite"
+                >
+                    <p className="text-xs font-medium tracking-wide text-info uppercase">
+                        Live TDS preview
+                    </p>
+                    {previewLoading ? (
+                        <p className="text-sm text-muted-foreground">
+                            Calculating applicable TDS…
+                        </p>
+                    ) : null}
+                    {!previewLoading && previewPercent !== null ? (
+                        <p className="text-sm font-semibold text-foreground">
+                            Applicable TDS{' '}
+                            <span className="text-primary">
+                                {previewPercent}%
+                            </span>
+                        </p>
+                    ) : null}
+                    {!previewLoading && previewExplanation ? (
+                        <p className="text-sm text-muted-foreground">
+                            {previewExplanation}
+                        </p>
+                    ) : null}
+                    {!previewLoading && previewMessage ? (
+                        <p className="text-sm text-muted-foreground">
+                            {previewMessage}
+                        </p>
+                    ) : null}
+                    {!previewLoading &&
+                    previewPercent === null &&
+                    !previewMessage ? (
+                        <p className="text-sm text-muted-foreground">
+                            Update declaration fields to refresh the preview.
+                        </p>
+                    ) : null}
+                </div>
+
+                <label className="flex items-center gap-2 text-sm sm:col-span-2">
+                    <input
+                        type="checkbox"
+                        checked={transporter.tds_override}
+                        onChange={(event) =>
+                            setTransporter((current) => ({
+                                ...current,
+                                tds_override: event.target.checked,
+                            }))
+                        }
+                    />
+                    Override applicable TDS
+                    <input
+                        type="hidden"
+                        name={`roles[${roleIndex}][attributes][tds_override]`}
+                        value={transporter.tds_override ? '1' : '0'}
+                    />
+                </label>
+                {transporter.tds_override ? (
+                    <>
+                        <div className="space-y-2">
+                            <Label htmlFor="tds_percentage">TDS % *</Label>
+                            <Input
+                                id="tds_percentage"
+                                required
+                                value={transporter.tds_percentage}
+                                onChange={(event) =>
+                                    setTransporter((current) => ({
+                                        ...current,
+                                        tds_percentage: event.target.value,
+                                    }))
+                                }
+                            />
+                            {transporter.tds_percentage !== '' ? (
+                                <input
+                                    type="hidden"
+                                    name={`roles[${roleIndex}][attributes][tds_percentage]`}
+                                    value={transporter.tds_percentage}
+                                />
+                            ) : null}
+                            <InputError
+                                message={
+                                    errors['roles.attributes.tds_percentage']
+                                }
+                            />
+                        </div>
+                        <div className="space-y-2 sm:col-span-2">
+                            <Label htmlFor="tds_adjustment_remark">
+                                TDS adjustment remark *
+                            </Label>
+                            <Input
+                                id="tds_adjustment_remark"
+                                required
+                                value={transporter.tds_adjustment_remark}
+                                onChange={(event) =>
+                                    setTransporter((current) => ({
+                                        ...current,
+                                        tds_adjustment_remark:
+                                            event.target.value,
+                                    }))
+                                }
+                            />
+                            <input
+                                type="hidden"
+                                name={`roles[${roleIndex}][attributes][tds_adjustment_remark]`}
+                                value={transporter.tds_adjustment_remark}
+                            />
+                            <InputError
+                                message={
+                                    errors[
+                                        'roles.attributes.tds_adjustment_remark'
+                                    ]
+                                }
+                            />
+                        </div>
+                    </>
+                ) : transporter.tds_percentage !== '' ? (
+                    <input
+                        type="hidden"
+                        name={`roles[${roleIndex}][attributes][tds_percentage]`}
+                        value={transporter.tds_percentage}
+                    />
+                ) : null}
+
+                <div className="space-y-2">
+                    <Label htmlFor="short_name">Short name</Label>
+                    <Input
+                        id="short_name"
+                        value={transporter.short_name}
+                        onChange={(event) =>
+                            setTransporter((current) => ({
+                                ...current,
+                                short_name: event.target.value,
+                            }))
+                        }
+                    />
+                    {transporter.short_name !== '' ? (
+                        <input
+                            type="hidden"
+                            name={`roles[${roleIndex}][attributes][short_name]`}
+                            value={transporter.short_name}
+                        />
+                    ) : null}
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="beneficiary_id">Beneficiary ID</Label>
+                    <Input
+                        id="beneficiary_id"
+                        value={transporter.beneficiary_id}
+                        onChange={(event) =>
+                            setTransporter((current) => ({
+                                ...current,
+                                beneficiary_id: event.target.value,
+                            }))
+                        }
+                    />
+                    {transporter.beneficiary_id !== '' ? (
+                        <input
+                            type="hidden"
+                            name={`roles[${roleIndex}][attributes][beneficiary_id]`}
+                            value={transporter.beneficiary_id}
+                        />
+                    ) : null}
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                    <Label htmlFor="bank_account">Bank account</Label>
+                    <Input
+                        id="bank_account"
+                        value={transporter.bank_account}
+                        onChange={(event) =>
+                            setTransporter((current) => ({
+                                ...current,
+                                bank_account: event.target.value,
+                            }))
+                        }
+                    />
+                    {transporter.bank_account !== '' ? (
+                        <input
+                            type="hidden"
+                            name={`roles[${roleIndex}][attributes][bank_account]`}
+                            value={transporter.bank_account}
+                        />
+                    ) : null}
+                </div>
+            </div>
+        </FormSection>
+    );
+}
+
 export default function PartyForm({ mode, party, roleOptions, links }: Props) {
     const [selectedRoles, setSelectedRoles] = useState<string[]>(() => {
         if (mode === 'edit' && party?.roles?.length) {
@@ -207,6 +672,7 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
 
     const action = mode === 'create' ? links.store! : links.update!;
     const method = mode === 'create' ? 'post' : 'patch';
+    const tdsPreviewUrl = links.tdsPreview ?? TDS_PREVIEW_URL;
 
     return (
         <>
@@ -226,14 +692,14 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
                 <Form
                     action={action}
                     method={method}
-                    className="mx-auto grid w-full max-w-3xl gap-6 md:max-w-5xl"
+                    className="mx-auto grid w-full max-w-3xl gap-5 md:max-w-5xl"
                 >
                     {({ errors, processing }) => (
                         <>
-                            <section className="space-y-3">
-                                <h2 className="text-sm font-medium">
-                                    Common details
-                                </h2>
+                            <FormSection
+                                title="Common details"
+                                description="Shared identity and contact fields for every role."
+                            >
                                 <div className="grid gap-4 sm:grid-cols-2">
                                     <div className="space-y-2 sm:col-span-2">
                                         <Label htmlFor="name">Name *</Label>
@@ -370,12 +836,12 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
                                         />
                                     </div>
                                 </div>
-                            </section>
+                            </FormSection>
 
-                            <fieldset className="space-y-3 rounded-xl border border-border p-4">
-                                <legend className="px-1 text-sm font-medium">
-                                    Party roles *
-                                </legend>
+                            <FormSection
+                                title="Party roles *"
+                                description="Select one or more roles. Role-specific panels appear below."
+                            >
                                 <InputError message={errors.roles} />
                                 <InputError
                                     message={
@@ -384,25 +850,35 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
                                             | undefined
                                     }
                                 />
-                                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                                <div
+                                    className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3"
+                                    role="group"
+                                    aria-label="Party roles"
+                                >
                                     {roleOptions.map((option) => {
                                         const checked = selectedRoles.includes(
                                             option.value,
                                         );
 
                                         return (
-                                            <label
+                                            <button
                                                 key={option.value}
-                                                className="flex items-center gap-2 text-sm"
+                                                type="button"
+                                                role="checkbox"
+                                                aria-checked={checked}
+                                                onClick={() =>
+                                                    toggleRole(option.value)
+                                                }
+                                                className={cn(
+                                                    'rounded-lg border px-3 py-2.5 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+                                                    checked
+                                                        ? 'border-primary bg-accent text-accent-foreground shadow-xs'
+                                                        : 'border-border bg-background hover:border-primary/40',
+                                                )}
                                             >
-                                                <input
-                                                    type="checkbox"
-                                                    checked={checked}
-                                                    onChange={() =>
-                                                        toggleRole(option.value)
-                                                    }
-                                                />
-                                                {option.label}
+                                                <span className="font-medium">
+                                                    {option.label}
+                                                </span>
                                                 {checked ? (
                                                     <input
                                                         type="hidden"
@@ -410,641 +886,252 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
                                                         value={option.value}
                                                     />
                                                 ) : null}
-                                            </label>
+                                            </button>
                                         );
                                     })}
                                 </div>
-                            </fieldset>
+                            </FormSection>
 
-                            {needsTransporter || needsDriver ? (
-                                <section className="space-y-4">
-                                    <h2 className="text-sm font-medium">
-                                        Role details
-                                    </h2>
+                            {needsTransporter ? (
+                                <TransporterTdsPanel
+                                    roleIndex={roleIndex.transporter}
+                                    pan={pan}
+                                    setPan={setPan}
+                                    transporter={transporter}
+                                    setTransporter={setTransporter}
+                                    errors={errors}
+                                    previewUrl={tdsPreviewUrl}
+                                />
+                            ) : null}
 
-                                    {needsTransporter ? (
-                                        <div className="grid gap-4 rounded-xl border border-border p-4 sm:grid-cols-2">
-                                            <p className="text-sm font-medium sm:col-span-2">
-                                                Transporter
-                                            </p>
+                            {needsDriver ? (
+                                <FormSection title="Driver details">
+                                    <div className="grid gap-4 sm:grid-cols-2">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="driver_type">
+                                                Driver type *
+                                            </Label>
+                                            <select
+                                                id="driver_type"
+                                                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                                value={driver.driver_type}
+                                                onChange={(event) =>
+                                                    setDriver((current) => ({
+                                                        ...current,
+                                                        driver_type:
+                                                            event.target
+                                                                .value ===
+                                                            'market'
+                                                                ? 'market'
+                                                                : 'permanent',
+                                                    }))
+                                                }
+                                            >
+                                                <option value="permanent">
+                                                    Permanent
+                                                </option>
+                                                <option value="market">
+                                                    Market
+                                                </option>
+                                            </select>
                                             <input
                                                 type="hidden"
-                                                name={`roles[${roleIndex.transporter}][attributes][pan]`}
-                                                value={pan}
+                                                name={`roles[${roleIndex.driver}][attributes][driver_type]`}
+                                                value={driver.driver_type}
                                             />
-                                            <div className="space-y-2">
-                                                <Label htmlFor="pan_status">
-                                                    PAN status *
-                                                </Label>
-                                                <select
-                                                    id="pan_status"
-                                                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                                    value={
-                                                        transporter.pan_status
-                                                    }
-                                                    onChange={(event) =>
-                                                        setTransporter(
-                                                            (current) => ({
-                                                                ...current,
-                                                                pan_status:
-                                                                    event.target
-                                                                        .value,
-                                                            }),
-                                                        )
-                                                    }
-                                                >
-                                                    <option value="active">
-                                                        Active
-                                                    </option>
-                                                    <option value="inactive">
-                                                        Inactive
-                                                    </option>
-                                                    <option value="invalid">
-                                                        Invalid
-                                                    </option>
-                                                    <option value="valid">
-                                                        Valid
-                                                    </option>
-                                                </select>
-                                                <input
-                                                    type="hidden"
-                                                    name={`roles[${roleIndex.transporter}][attributes][pan_status]`}
-                                                    value={
-                                                        transporter.pan_status
-                                                    }
-                                                />
-                                                <InputError
-                                                    message={
-                                                        errors[
-                                                            'roles.attributes.pan_status'
-                                                        ]
-                                                    }
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="declaration_type">
-                                                    Declaration type
-                                                </Label>
-                                                <select
-                                                    id="declaration_type"
-                                                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                                    value={
-                                                        transporter.declaration_type
-                                                    }
-                                                    onChange={(event) =>
-                                                        setTransporter(
-                                                            (current) => ({
-                                                                ...current,
-                                                                declaration_type:
-                                                                    event.target
-                                                                        .value,
-                                                            }),
-                                                        )
-                                                    }
-                                                >
-                                                    <option value="owner">
-                                                        Owner
-                                                    </option>
-                                                    <option value="agency">
-                                                        Agency
-                                                    </option>
-                                                </select>
-                                                <input
-                                                    type="hidden"
-                                                    name={`roles[${roleIndex.transporter}][attributes][declaration_type]`}
-                                                    value={
-                                                        transporter.declaration_type
-                                                    }
-                                                />
-                                            </div>
-                                            <label className="flex items-center gap-2 text-sm sm:col-span-2">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={
-                                                        transporter.declaration
-                                                    }
-                                                    onChange={(event) =>
-                                                        setTransporter(
-                                                            (current) => ({
-                                                                ...current,
-                                                                declaration:
-                                                                    event.target
-                                                                        .checked,
-                                                            }),
-                                                        )
-                                                    }
-                                                />
-                                                Declaration affirmed *
-                                                <input
-                                                    type="hidden"
-                                                    name={`roles[${roleIndex.transporter}][attributes][declaration]`}
-                                                    value={
-                                                        transporter.declaration
-                                                            ? '1'
-                                                            : '0'
-                                                    }
-                                                />
-                                            </label>
                                             <InputError
                                                 message={
                                                     errors[
-                                                        'roles.attributes.declaration'
+                                                        'roles.attributes.driver_type'
                                                     ]
                                                 }
                                             />
-                                            <div className="space-y-2">
-                                                <Label htmlFor="tds_percentage">
-                                                    TDS %
-                                                </Label>
-                                                <Input
-                                                    id="tds_percentage"
-                                                    value={
-                                                        transporter.tds_percentage
-                                                    }
-                                                    onChange={(event) =>
-                                                        setTransporter(
-                                                            (current) => ({
-                                                                ...current,
-                                                                tds_percentage:
-                                                                    event.target
-                                                                        .value,
-                                                            }),
-                                                        )
-                                                    }
-                                                />
-                                                {transporter.tds_percentage !==
-                                                '' ? (
-                                                    <input
-                                                        type="hidden"
-                                                        name={`roles[${roleIndex.transporter}][attributes][tds_percentage]`}
-                                                        value={
-                                                            transporter.tds_percentage
-                                                        }
-                                                    />
-                                                ) : null}
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="goods_vehicles_count">
-                                                    Goods vehicles count
-                                                </Label>
-                                                <Input
-                                                    id="goods_vehicles_count"
-                                                    type="number"
-                                                    min={0}
-                                                    value={
-                                                        transporter.goods_vehicles_count
-                                                    }
-                                                    onChange={(event) =>
-                                                        setTransporter(
-                                                            (current) => ({
-                                                                ...current,
-                                                                goods_vehicles_count:
-                                                                    event.target
-                                                                        .value,
-                                                            }),
-                                                        )
-                                                    }
-                                                />
-                                                {transporter.goods_vehicles_count !==
-                                                '' ? (
-                                                    <input
-                                                        type="hidden"
-                                                        name={`roles[${roleIndex.transporter}][attributes][goods_vehicles_count]`}
-                                                        value={
-                                                            transporter.goods_vehicles_count
-                                                        }
-                                                    />
-                                                ) : null}
-                                            </div>
-                                            <label className="flex items-center gap-2 text-sm sm:col-span-2">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={
-                                                        transporter.tds_override
-                                                    }
-                                                    onChange={(event) =>
-                                                        setTransporter(
-                                                            (current) => ({
-                                                                ...current,
-                                                                tds_override:
-                                                                    event.target
-                                                                        .checked,
-                                                            }),
-                                                        )
-                                                    }
-                                                />
-                                                Manual TDS override
-                                                <input
-                                                    type="hidden"
-                                                    name={`roles[${roleIndex.transporter}][attributes][tds_override]`}
-                                                    value={
-                                                        transporter.tds_override
-                                                            ? '1'
-                                                            : '0'
-                                                    }
-                                                />
-                                            </label>
-                                            {transporter.tds_override ? (
-                                                <div className="space-y-2 sm:col-span-2">
-                                                    <Label htmlFor="tds_adjustment_remark">
-                                                        TDS adjustment remark *
-                                                    </Label>
-                                                    <Input
-                                                        id="tds_adjustment_remark"
-                                                        required
-                                                        value={
-                                                            transporter.tds_adjustment_remark
-                                                        }
-                                                        onChange={(event) =>
-                                                            setTransporter(
-                                                                (current) => ({
-                                                                    ...current,
-                                                                    tds_adjustment_remark:
-                                                                        event
-                                                                            .target
-                                                                            .value,
-                                                                }),
-                                                            )
-                                                        }
-                                                    />
-                                                    <input
-                                                        type="hidden"
-                                                        name={`roles[${roleIndex.transporter}][attributes][tds_adjustment_remark]`}
-                                                        value={
-                                                            transporter.tds_adjustment_remark
-                                                        }
-                                                    />
-                                                    <InputError
-                                                        message={
-                                                            errors[
-                                                                'roles.attributes.tds_adjustment_remark'
-                                                            ]
-                                                        }
-                                                    />
-                                                </div>
-                                            ) : null}
-                                            <div className="space-y-2">
-                                                <Label htmlFor="short_name">
-                                                    Short name
-                                                </Label>
-                                                <Input
-                                                    id="short_name"
-                                                    value={
-                                                        transporter.short_name
-                                                    }
-                                                    onChange={(event) =>
-                                                        setTransporter(
-                                                            (current) => ({
-                                                                ...current,
-                                                                short_name:
-                                                                    event.target
-                                                                        .value,
-                                                            }),
-                                                        )
-                                                    }
-                                                />
-                                                {transporter.short_name !==
-                                                '' ? (
-                                                    <input
-                                                        type="hidden"
-                                                        name={`roles[${roleIndex.transporter}][attributes][short_name]`}
-                                                        value={
-                                                            transporter.short_name
-                                                        }
-                                                    />
-                                                ) : null}
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="beneficiary_id">
-                                                    Beneficiary ID
-                                                </Label>
-                                                <Input
-                                                    id="beneficiary_id"
-                                                    value={
-                                                        transporter.beneficiary_id
-                                                    }
-                                                    onChange={(event) =>
-                                                        setTransporter(
-                                                            (current) => ({
-                                                                ...current,
-                                                                beneficiary_id:
-                                                                    event.target
-                                                                        .value,
-                                                            }),
-                                                        )
-                                                    }
-                                                />
-                                                {transporter.beneficiary_id !==
-                                                '' ? (
-                                                    <input
-                                                        type="hidden"
-                                                        name={`roles[${roleIndex.transporter}][attributes][beneficiary_id]`}
-                                                        value={
-                                                            transporter.beneficiary_id
-                                                        }
-                                                    />
-                                                ) : null}
-                                            </div>
-                                            <div className="space-y-2 sm:col-span-2">
-                                                <Label htmlFor="bank_account">
-                                                    Bank account
-                                                </Label>
-                                                <Input
-                                                    id="bank_account"
-                                                    value={
-                                                        transporter.bank_account
-                                                    }
-                                                    onChange={(event) =>
-                                                        setTransporter(
-                                                            (current) => ({
-                                                                ...current,
-                                                                bank_account:
-                                                                    event.target
-                                                                        .value,
-                                                            }),
-                                                        )
-                                                    }
-                                                />
-                                                {transporter.bank_account !==
-                                                '' ? (
-                                                    <input
-                                                        type="hidden"
-                                                        name={`roles[${roleIndex.transporter}][attributes][bank_account]`}
-                                                        value={
-                                                            transporter.bank_account
-                                                        }
-                                                    />
-                                                ) : null}
-                                            </div>
                                         </div>
-                                    ) : null}
-
-                                    {needsDriver ? (
-                                        <div className="grid gap-4 rounded-xl border border-border p-4 sm:grid-cols-2">
-                                            <p className="text-sm font-medium sm:col-span-2">
-                                                Driver
-                                            </p>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="driver_type">
-                                                    Driver type *
-                                                </Label>
-                                                <select
-                                                    id="driver_type"
-                                                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                                    value={driver.driver_type}
-                                                    onChange={(event) =>
-                                                        setDriver(
-                                                            (current) => ({
-                                                                ...current,
-                                                                driver_type:
-                                                                    event.target
-                                                                        .value ===
-                                                                    'market'
-                                                                        ? 'market'
-                                                                        : 'permanent',
-                                                            }),
-                                                        )
-                                                    }
-                                                >
-                                                    <option value="permanent">
-                                                        Permanent
-                                                    </option>
-                                                    <option value="market">
-                                                        Market
-                                                    </option>
-                                                </select>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="license_number">
+                                                License number
+                                                {driver.driver_type ===
+                                                'permanent'
+                                                    ? ' *'
+                                                    : ''}
+                                            </Label>
+                                            <Input
+                                                id="license_number"
+                                                required={
+                                                    driver.driver_type ===
+                                                    'permanent'
+                                                }
+                                                value={driver.license_number}
+                                                onChange={(event) =>
+                                                    setDriver((current) => ({
+                                                        ...current,
+                                                        license_number:
+                                                            event.target.value,
+                                                    }))
+                                                }
+                                            />
+                                            {driver.license_number !== '' ? (
                                                 <input
                                                     type="hidden"
-                                                    name={`roles[${roleIndex.driver}][attributes][driver_type]`}
-                                                    value={driver.driver_type}
-                                                />
-                                                <InputError
-                                                    message={
-                                                        errors[
-                                                            'roles.attributes.driver_type'
-                                                        ]
-                                                    }
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="license_number">
-                                                    License number
-                                                    {driver.driver_type ===
-                                                    'permanent'
-                                                        ? ' *'
-                                                        : ''}
-                                                </Label>
-                                                <Input
-                                                    id="license_number"
-                                                    required={
-                                                        driver.driver_type ===
-                                                        'permanent'
-                                                    }
+                                                    name={`roles[${roleIndex.driver}][attributes][license_number]`}
                                                     value={
                                                         driver.license_number
                                                     }
-                                                    onChange={(event) =>
-                                                        setDriver(
-                                                            (current) => ({
-                                                                ...current,
-                                                                license_number:
-                                                                    event.target
-                                                                        .value,
-                                                            }),
-                                                        )
-                                                    }
                                                 />
-                                                {driver.license_number !==
-                                                '' ? (
-                                                    <input
-                                                        type="hidden"
-                                                        name={`roles[${roleIndex.driver}][attributes][license_number]`}
-                                                        value={
-                                                            driver.license_number
-                                                        }
-                                                    />
-                                                ) : null}
-                                                <InputError
-                                                    message={
-                                                        errors[
-                                                            'roles.attributes.license_number'
-                                                        ]
-                                                    }
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="license_expiry">
-                                                    License expiry
-                                                </Label>
-                                                <Input
-                                                    id="license_expiry"
-                                                    type="date"
+                                            ) : null}
+                                            <InputError
+                                                message={
+                                                    errors[
+                                                        'roles.attributes.license_number'
+                                                    ]
+                                                }
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="license_expiry">
+                                                License expiry
+                                            </Label>
+                                            <Input
+                                                id="license_expiry"
+                                                type="date"
+                                                value={driver.license_expiry}
+                                                onChange={(event) =>
+                                                    setDriver((current) => ({
+                                                        ...current,
+                                                        license_expiry:
+                                                            event.target.value,
+                                                    }))
+                                                }
+                                            />
+                                            {driver.license_expiry !== '' ? (
+                                                <input
+                                                    type="hidden"
+                                                    name={`roles[${roleIndex.driver}][attributes][license_expiry]`}
                                                     value={
                                                         driver.license_expiry
                                                     }
-                                                    onChange={(event) =>
-                                                        setDriver(
-                                                            (current) => ({
-                                                                ...current,
-                                                                license_expiry:
-                                                                    event.target
-                                                                        .value,
-                                                            }),
-                                                        )
-                                                    }
                                                 />
-                                                {driver.license_expiry !==
-                                                '' ? (
-                                                    <input
-                                                        type="hidden"
-                                                        name={`roles[${roleIndex.driver}][attributes][license_expiry]`}
-                                                        value={
-                                                            driver.license_expiry
-                                                        }
-                                                    />
-                                                ) : null}
-                                            </div>
-                                            {driver.driver_type ===
-                                            'permanent' ? (
-                                                <>
-                                                    {(
-                                                        [
-                                                            [
-                                                                'joining_date',
-                                                                'Joining date',
-                                                                'date',
-                                                            ],
-                                                            [
-                                                                'aadhaar',
-                                                                'Aadhaar',
-                                                                'text',
-                                                            ],
-                                                            [
-                                                                'pan',
-                                                                'Driver PAN',
-                                                                'text',
-                                                            ],
-                                                            [
-                                                                'bank_name',
-                                                                'Bank name',
-                                                                'text',
-                                                            ],
-                                                            [
-                                                                'bank_account_number',
-                                                                'Bank account number',
-                                                                'text',
-                                                            ],
-                                                            [
-                                                                'ifsc',
-                                                                'IFSC',
-                                                                'text',
-                                                            ],
-                                                            [
-                                                                'emergency_contact_name',
-                                                                'Emergency contact name',
-                                                                'text',
-                                                            ],
-                                                            [
-                                                                'emergency_contact_mobile',
-                                                                'Emergency contact mobile',
-                                                                'text',
-                                                            ],
-                                                            [
-                                                                'monthly_payment_base',
-                                                                'Monthly payment base',
-                                                                'text',
-                                                            ],
-                                                        ] as const
-                                                    ).map(
-                                                        ([
-                                                            key,
-                                                            label,
-                                                            type,
-                                                        ]) => (
-                                                            <div
-                                                                key={key}
-                                                                className="space-y-2"
-                                                            >
-                                                                <Label
-                                                                    htmlFor={
-                                                                        key
-                                                                    }
-                                                                >
-                                                                    {label}
-                                                                </Label>
-                                                                <Input
-                                                                    id={key}
-                                                                    type={type}
-                                                                    value={
-                                                                        driver[
-                                                                            key
-                                                                        ]
-                                                                    }
-                                                                    onChange={(
-                                                                        event,
-                                                                    ) =>
-                                                                        setDriver(
-                                                                            (
-                                                                                current,
-                                                                            ) => ({
-                                                                                ...current,
-                                                                                [key]: event
-                                                                                    .target
-                                                                                    .value,
-                                                                            }),
-                                                                        )
-                                                                    }
-                                                                />
-                                                                {driver[key] !==
-                                                                '' ? (
-                                                                    <input
-                                                                        type="hidden"
-                                                                        name={`roles[${roleIndex.driver}][attributes][${key}]`}
-                                                                        value={
-                                                                            driver[
-                                                                                key
-                                                                            ]
-                                                                        }
-                                                                    />
-                                                                ) : null}
-                                                            </div>
-                                                        ),
-                                                    )}
-                                                </>
                                             ) : null}
                                         </div>
-                                    ) : null}
-                                </section>
+                                        {driver.driver_type === 'permanent'
+                                            ? (
+                                                  [
+                                                      [
+                                                          'joining_date',
+                                                          'Joining date',
+                                                          'date',
+                                                      ],
+                                                      [
+                                                          'aadhaar',
+                                                          'Aadhaar',
+                                                          'text',
+                                                      ],
+                                                      [
+                                                          'pan',
+                                                          'Driver PAN',
+                                                          'text',
+                                                      ],
+                                                      [
+                                                          'bank_name',
+                                                          'Bank name',
+                                                          'text',
+                                                      ],
+                                                      [
+                                                          'bank_account_number',
+                                                          'Bank account number',
+                                                          'text',
+                                                      ],
+                                                      ['ifsc', 'IFSC', 'text'],
+                                                      [
+                                                          'emergency_contact_name',
+                                                          'Emergency contact name',
+                                                          'text',
+                                                      ],
+                                                      [
+                                                          'emergency_contact_mobile',
+                                                          'Emergency contact mobile',
+                                                          'text',
+                                                      ],
+                                                      [
+                                                          'monthly_payment_base',
+                                                          'Monthly payment base',
+                                                          'text',
+                                                      ],
+                                                  ] as const
+                                              ).map(([key, label, type]) => (
+                                                  <div
+                                                      key={key}
+                                                      className="space-y-2"
+                                                  >
+                                                      <Label htmlFor={key}>
+                                                          {label}
+                                                      </Label>
+                                                      <Input
+                                                          id={key}
+                                                          type={type}
+                                                          value={driver[key]}
+                                                          onChange={(event) =>
+                                                              setDriver(
+                                                                  (
+                                                                      current,
+                                                                  ) => ({
+                                                                      ...current,
+                                                                      [key]: event
+                                                                          .target
+                                                                          .value,
+                                                                  }),
+                                                              )
+                                                          }
+                                                      />
+                                                      {driver[key] !== '' ? (
+                                                          <input
+                                                              type="hidden"
+                                                              name={`roles[${roleIndex.driver}][attributes][${key}]`}
+                                                              value={
+                                                                  driver[key]
+                                                              }
+                                                          />
+                                                      ) : null}
+                                                  </div>
+                                              ))
+                                            : null}
+                                    </div>
+                                </FormSection>
                             ) : null}
 
-                            <div className="space-y-2">
-                                <Label htmlFor="remark">
-                                    Remark{mode === 'edit' ? ' *' : ''}
-                                </Label>
-                                <Input
-                                    id="remark"
-                                    name="remark"
-                                    required={mode === 'edit'}
-                                    defaultValue={
-                                        mode === 'create' ? 'Create party' : ''
-                                    }
-                                />
-                                <InputError message={errors.remark} />
-                            </div>
+                            <FormSection title="Remark">
+                                <div className="space-y-2">
+                                    <Label htmlFor="remark">
+                                        Remark{mode === 'edit' ? ' *' : ''}
+                                    </Label>
+                                    <Input
+                                        id="remark"
+                                        name="remark"
+                                        required={mode === 'edit'}
+                                        defaultValue={
+                                            mode === 'create'
+                                                ? 'Create party'
+                                                : ''
+                                        }
+                                    />
+                                    <InputError message={errors.remark} />
+                                </div>
+                            </FormSection>
 
-                            <div className="flex flex-wrap gap-3">
+                            <div className="sticky bottom-0 z-10 -mx-1 flex flex-wrap items-center justify-end gap-3 border-t border-border bg-background/95 px-1 py-3 backdrop-blur supports-backdrop-filter:bg-background/80">
+                                <Button asChild variant="outline">
+                                    <Link href={links.show ?? links.index}>
+                                        Cancel
+                                    </Link>
+                                </Button>
                                 <Button
                                     type="submit"
+                                    variant="primary"
                                     disabled={
                                         processing || selectedRoles.length === 0
                                     }
                                 >
                                     {processing ? 'Saving…' : 'Save'}
-                                </Button>
-                                <Button asChild variant="outline">
-                                    <Link href={links.show ?? links.index}>
-                                        Cancel
-                                    </Link>
                                 </Button>
                             </div>
                         </>
