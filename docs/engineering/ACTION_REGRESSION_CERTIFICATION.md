@@ -2,6 +2,7 @@
 
 **Date:** 23 November 2026  
 **Baseline (remote HEAD before fix):** `15b39cd0684f99de563bfcf5544f50d40ca8e4d2`  
+**Feature commit:** `3676ea8f154b6d54e808a542bc9db92dd824aa36`  
 **GitHub Actions #77:** FAILED (444 passed / 59 failed) — session-routing migration regressions.
 
 ## Root causes (P0)
