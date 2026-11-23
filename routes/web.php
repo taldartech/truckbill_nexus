@@ -26,8 +26,10 @@ use App\Http\Controllers\Owner\OwnerAuditController;
 use App\Http\Controllers\Owner\OwnerBranchesController;
 use App\Http\Controllers\Owner\OwnerCompaniesController;
 use App\Http\Controllers\Owner\OwnerDashboardController;
+use App\Http\Controllers\Owner\OwnerGlobalBranchesController;
 use App\Http\Controllers\Owner\OwnerSettingsController;
 use App\Http\Controllers\Owner\OwnerSubscriptionController;
+use App\Http\Controllers\Owner\OwnerSubscriptionsController;
 use App\Http\Controllers\Owner\OwnerUsersController;
 use App\Http\Controllers\Webhooks\EnquiryWebhookController;
 use App\Http\Controllers\Webhooks\RazorpayWebhookController;
@@ -65,8 +67,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->scopeBindings()
         ->name('workspace.branches.enter');
 
+    Route::get('/owner/companies', [OwnerCompaniesController::class, 'index'])->name('owner.companies.index');
     Route::get('/owner/companies/create', [OwnerCompaniesController::class, 'create'])->name('owner.companies.create');
     Route::post('/owner/companies', [OwnerCompaniesController::class, 'store'])->name('owner.companies.store');
+    Route::get('/owner/branches', OwnerGlobalBranchesController::class)->name('owner.branches.all');
+    Route::get('/owner/subscriptions', [OwnerSubscriptionsController::class, 'index'])->name('owner.subscriptions.index');
     Route::get('/owner/companies/{company}', OwnerDashboardController::class)->name('owner.dashboard');
     Route::get('/owner/companies/{company}/subscription', [OwnerSubscriptionController::class, 'overview'])->name('owner.subscription');
     Route::get('/owner/companies/{company}/subscription/catalogue', [OwnerSubscriptionController::class, 'catalogue'])->name('owner.subscription.catalogue');

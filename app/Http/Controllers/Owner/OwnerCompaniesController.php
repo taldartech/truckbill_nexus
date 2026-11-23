@@ -8,6 +8,7 @@ use App\Domains\Company\Enums\DataVisibility;
 use App\Domains\Company\Enums\GstRegistrationType;
 use App\Domains\Company\Enums\TaxLiability;
 use App\Domains\Company\Exceptions\CompanyDomainException;
+use App\Domains\Company\OwnerGlobalPanelService;
 use App\Domains\Tax\GstRateService;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
@@ -22,7 +23,7 @@ use Inertia\Response;
 use InvalidArgumentException;
 
 /**
- * Authenticated Customer company create / list entry (D1 / PO-P1-P5-FULLSTACK-AUTH).
+ * Authenticated Customer company create / global list (D1 / PO-OWNER-GLOBAL-MANAGEMENT).
  */
 class OwnerCompaniesController extends Controller
 {
@@ -30,7 +31,54 @@ class OwnerCompaniesController extends Controller
         private readonly CompanyAccessService $access,
         private readonly CompanyWorkspaceService $workspace,
         private readonly GstRateService $gstRates,
+        private readonly OwnerGlobalPanelService $panel,
     ) {}
+
+    public function index(Request $request): Response
+    {
+        /** @var User $user */
+        $user = $request->user();
+        $this->panel->assertCustomerOwnerActor($user);
+
+        $search = trim((string) $request->query('q', ''));
+        $status = (string) $request->query('status', 'all');
+        $sort = (string) $request->query('sort', 'name');
+        $direction = (string) $request->query('direction', 'asc');
+
+        $paginator = $this->panel->paginateOwnedCompanies(
+            $user,
+            $search,
+            $status,
+            $sort,
+            $direction,
+        );
+
+        return Inertia::render('owner/companies/index', [
+            'filters' => [
+                'q' => $search,
+                'status' => $status,
+                'sort' => $sort,
+                'direction' => $direction,
+            ],
+            'companies' => [
+                'data' => $paginator->getCollection()->map(
+                    fn (Company $company): array => $this->panel->presentCompanyRow($company, $user),
+                )->values(),
+                'links' => $paginator->linkCollection()->toArray(),
+                'meta' => [
+                    'current_page' => $paginator->currentPage(),
+                    'last_page' => $paginator->lastPage(),
+                    'total' => $paginator->total(),
+                ],
+            ],
+            'links' => [
+                'index' => route('owner.companies.index'),
+                'create' => route('owner.companies.create'),
+                'branches_all' => route('owner.branches.all'),
+                'subscriptions' => route('owner.subscriptions.index'),
+            ],
+        ]);
+    }
 
     public function create(Request $request): Response
     {
