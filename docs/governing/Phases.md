@@ -33,6 +33,80 @@ Phase 0 approval satisfies the DEC-004 approval prerequisite. Phase 1 implementa
 
 Global identity, internal/customer separation, auth, customer single session, company/branch, Owner/Branch Panels, membership, branch roles, Permission Masters, ownership transfer, deactivation/suspension, dashboards. Exit: cross-company/branch negative tests, Owner isolation, session revocation, immediate permission invalidation.
 
+## Phase 2A — Internal CRM & Customer Onboarding
+
+**Status:** Planned — requires separate Product Owner authorization and formal UI design approval.
+
+**Purpose:** Manage TruckBill's internal sales, customer onboarding and support operations. Internal CRM is distinct from Phase 4 logistics Enquiry Management.
+
+### Scope
+
+**Lead Management**
+- Lead creation and capture from approved sources.
+- Lead status, source and interested product.
+- Lead assignment to Sales Executives.
+- Qualification, follow-ups and activity history.
+- Lead conversion tracking and duplicate prevention.
+
+**Customer Onboarding**
+- Convert qualified leads into Customer identities.
+- Reuse existing identities without overwriting credentials.
+- Create and associate companies through approved Company Management services.
+- Integrate company onboarding with subscription and trial eligibility.
+
+**Sales Management**
+- Sales pipeline and conversion tracking.
+- Assigned leads and scheduled follow-ups.
+- Sales activities and performance dashboards.
+
+**Support Management**
+- Support tickets with category, priority, status and assignee.
+- Ticket lifecycle, overdue tracking and resolution history.
+- Assigned-to-me and team-level support views.
+
+**Internal CRM Dashboards**
+
+Follow PRD §6 role-specific visibility:
+
+- Total Leads and breakdowns by Status, Source and Product: all Internal roles.
+- Sales Conversion and follow-ups: Super Admin, Admin and Sales.
+- Recent Activities: all Internal roles.
+- Subscription Revenue and Financial Performance: Super Admin and Admin.
+- Support Statistics: Super Admin, Admin and Support.
+- Internal User Management: Super Admin only.
+
+Dashboard permissions must remain separate from ticket permissions.
+
+### Dependencies
+
+- Phase 2 Identity, Company and RBAC foundations.
+- Approved Phase 2 company-creation decisions.
+- Phase 3 subscription data for authorized reporting.
+- Approved CRM lead, conversion and support lifecycle rules.
+
+### Implementation Requirements
+
+Deliver complete Laravel backend, React/Inertia UI, PostgreSQL persistence, permissions, audit history and automated tests together.
+
+Use Pest, Playwright and applicable k6 performance testing after tooling authorization.
+
+### Exit Criteria
+
+- Complete authorized lead-to-customer onboarding workflow.
+- Secure role-specific dashboards.
+- Complete approved sales and support workflows.
+- Verified duplicate-conversion prevention.
+- Internal/Customer authorization boundaries.
+- Full-stack functional and security testing.
+- Browser and performance certification evidence.
+
+### Authorization
+
+**PO-P2A-AUTH: Pending**  
+**PO-P2A-DESIGN-FORMAL: Pending**
+
+Adding this phase does not authorize its implementation, reopen accepted Phases 2–3 or change the numbering of Phases 3–11.
+
 ## Phase 3 — Masters/documents/subscription
 
 Party/Vehicle/Bank/Station/other masters; GST/TDS masters; common document service; catalogue, contracts, entitlements, trial, capacity, quotas, credits, **initial manual Razorpay renewals** (no auto-renew), invoice-number approval, Owner billing. Exit: pricing calculation, webhook idempotency, entitlement, storage/credit reconciliation, immutable contracts.
