@@ -67,7 +67,7 @@ final class BulkVoucherService
 
         $previewLines = [];
         foreach ($lines as $index => $line) {
-            $hireId = (string) ($line['lorry_hire_id'] ?? '');
+            $hireId = $line['lorry_hire_id'];
             /** @var LorryHire|null $hire */
             $hire = $hires->get($hireId);
             if ($hire === null) {
@@ -83,35 +83,39 @@ final class BulkVoucherService
                 continue;
             }
 
+            $amount = '';
+            $allocatable = '0.00';
+            $accepted = false;
+            $reason = 'Invalid amount.';
+
             try {
-                $amount = $this->money($line['amount'] ?? '', 'lines.'.$index.'.amount');
+                $amount = $this->money($line['amount'], 'lines.'.$index.'.amount');
                 $allocatable = $this->vouchers->allocatableAmount($hire);
                 $accepted = bccomp($amount, $allocatable, 2) !== 1 && bccomp($amount, '0', 2) === 1;
                 $reason = $accepted ? null : 'Amount exceeds allocatable balance.';
-            } catch (ValidationException $e) {
-                $amount = '';
-                $allocatable = '0.00';
-                $accepted = false;
-                $reason = 'Invalid amount.';
+            } catch (ValidationException) {
             }
 
             $previewLines[] = [
                 'lorry_hire_id' => $hire->id,
                 'hire_number' => $hire->hire_number,
                 'amount' => $amount,
-                'allocatable' => $allocatable ?? '0.00',
+                'allocatable' => $allocatable,
                 'accepted' => $accepted,
                 'reason' => $reason,
             ];
         }
 
         $first = $hires->first();
+        if (! $first instanceof LorryHire) {
+            throw new BrokerDomainException('Bulk voucher preview requires at least one Lorry Hire.');
+        }
 
         return [
-            'transporter_party_id' => $first?->transporter_party_id ?? '',
-            'vehicle_id' => $first?->vehicle_id ?? '',
-            'payment_type' => $common['payment_type'] ?? '',
-            'payment_mode' => $common['payment_mode'] ?? '',
+            'transporter_party_id' => $first->transporter_party_id,
+            'vehicle_id' => $first->vehicle_id,
+            'payment_type' => $this->paymentTypeValue($common['payment_type']),
+            'payment_mode' => $this->paymentModeValue($common['payment_mode']),
             'lines' => $previewLines,
         ];
     }
@@ -142,25 +146,18 @@ final class BulkVoucherService
 
         $created = [];
         foreach ($lines as $index => $line) {
-            $hireId = (string) ($line['lorry_hire_id'] ?? '');
-            /** @var LorryHire $hire */
+            $hireId = $line['lorry_hire_id'];
             $hire = $hires->get($hireId);
-            if ($hire === null) {
+            if (! $hire instanceof LorryHire) {
                 throw new BrokerDomainException('Bulk voucher line references an unknown Lorry Hire.');
             }
 
-            $amount = $this->money($line['amount'] ?? '', 'lines.'.$index.'.amount');
-            $paymentType = $common['payment_type'] instanceof VoucherPaymentType
-                ? $common['payment_type']->value
-                : (string) $common['payment_type'];
-            $paymentMode = $common['payment_mode'] instanceof VoucherPaymentMode
-                ? $common['payment_mode']->value
-                : (string) $common['payment_mode'];
+            $amount = $this->money($line['amount'], 'lines.'.$index.'.amount');
 
             $created[] = $this->vouchers->createForLorryHire($hire, $actor, [
                 'amount' => $amount,
-                'payment_type' => $paymentType,
-                'payment_mode' => $paymentMode,
+                'payment_type' => $this->paymentTypeValue($common['payment_type']),
+                'payment_mode' => $this->paymentModeValue($common['payment_mode']),
                 'remark' => $common['remark'] ?? null,
                 'bank_cash_account_id' => $common['bank_cash_account_id'] ?? null,
                 'cash_reference' => $common['cash_reference'] ?? null,
@@ -169,6 +166,16 @@ final class BulkVoucherService
         }
 
         return $created;
+    }
+
+    private function paymentTypeValue(VoucherPaymentType|string $value): string
+    {
+        return $value instanceof VoucherPaymentType ? $value->value : $value;
+    }
+
+    private function paymentModeValue(VoucherPaymentMode|string $value): string
+    {
+        return $value instanceof VoucherPaymentMode ? $value->value : $value;
     }
 
     /**
@@ -185,7 +192,7 @@ final class BulkVoucherService
 
         $hireIds = [];
         foreach ($lines as $index => $line) {
-            $hireId = (string) ($line['lorry_hire_id'] ?? '');
+            $hireId = $line['lorry_hire_id'];
             if ($hireId === '') {
                 throw ValidationException::withMessages([
                     "lines.{$index}.lorry_hire_id" => 'Lorry Hire is required.',

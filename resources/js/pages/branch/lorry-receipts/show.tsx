@@ -59,10 +59,16 @@ type Props = {
         can_cancel: boolean;
         can_delete: boolean;
         can_create_trip?: boolean;
+        can_create_lorry_hire?: boolean;
     };
     linkedTrip?: {
         id: string;
         status: string;
+        show_url: string;
+    } | null;
+    linkedLorryHire?: {
+        id: string;
+        hire_number: string;
         show_url: string;
     } | null;
     urls: {
@@ -72,6 +78,7 @@ type Props = {
         destroy: string;
         print: string;
         create_trip?: string;
+        create_lorry_hire?: string;
     };
 };
 
@@ -79,6 +86,7 @@ export default function LorryReceiptShow({
     lorryReceipt,
     permissions,
     linkedTrip = null,
+    linkedLorryHire = null,
     urls,
 }: Props) {
     const { flash, errors } = usePage<{
@@ -184,6 +192,25 @@ export default function LorryReceiptShow({
                                 >
                                     <Link href={urls.create_trip}>
                                         Create Trip
+                                    </Link>
+                                </Button>
+                            ) : null}
+                            {permissions.can_create_lorry_hire &&
+                            urls.create_lorry_hire ? (
+                                <Button
+                                    asChild
+                                    className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                                >
+                                    <Link href={urls.create_lorry_hire}>
+                                        Create Lorry Hire
+                                    </Link>
+                                </Button>
+                            ) : null}
+                            {linkedLorryHire ? (
+                                <Button asChild variant="secondary">
+                                    <Link href={linkedLorryHire.show_url}>
+                                        Open Lorry Hire{' '}
+                                        {linkedLorryHire.hire_number}
                                     </Link>
                                 </Button>
                             ) : null}

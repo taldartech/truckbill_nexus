@@ -325,14 +325,14 @@ class TransporterVoucherController extends Controller
      */
     private function statusOptions(): array
     {
-        return collect(VoucherStatus::cases())->map(fn (VoucherStatus $status): array => [
+        return array_values(collect(VoucherStatus::cases())->map(fn (VoucherStatus $status): array => [
             'value' => $status->value,
             'label' => match ($status) {
                 VoucherStatus::Pending => 'Pending',
                 VoucherStatus::InProgress => 'In Progress',
                 VoucherStatus::Paid => 'Paid',
             },
-        ])->values()->all();
+        ])->all());
     }
 
     /**
@@ -340,7 +340,7 @@ class TransporterVoucherController extends Controller
      */
     private function paymentModeOptions(): array
     {
-        return collect(VoucherPaymentMode::cases())->map(fn (VoucherPaymentMode $mode): array => [
+        return array_values(collect(VoucherPaymentMode::cases())->map(fn (VoucherPaymentMode $mode): array => [
             'value' => $mode->value,
             'label' => match ($mode) {
                 VoucherPaymentMode::Bank => 'Bank',
@@ -348,7 +348,7 @@ class TransporterVoucherController extends Controller
                 VoucherPaymentMode::PaidToPump => 'Paid to Pump',
                 VoucherPaymentMode::AdjustInAdvance => 'Adjust in Advance',
             },
-        ])->values()->all();
+        ])->all());
     }
 
     /**
@@ -356,14 +356,14 @@ class TransporterVoucherController extends Controller
      */
     private function paymentTypeOptions(): array
     {
-        return collect(VoucherPaymentType::cases())->map(fn (VoucherPaymentType $type): array => [
+        return array_values(collect(VoucherPaymentType::cases())->map(fn (VoucherPaymentType $type): array => [
             'value' => $type->value,
             'label' => match ($type) {
                 VoucherPaymentType::Advance => 'Advance',
                 VoucherPaymentType::Final => 'Final',
                 VoucherPaymentType::Partial => 'Partial',
             },
-        ])->values()->all();
+        ])->all());
     }
 
     private function nextStatus(VoucherStatus $current): ?string

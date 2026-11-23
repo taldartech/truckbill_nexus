@@ -106,4 +106,6 @@ Dated workstream records with verified local commit SHAs. Living product Memory 
 | 2026-11-23 | Transporter TDS + April 1 reset | `f0b0281ecd9cb92efcfc0128ed990410c23ebbae` | Calculation service, Party preview, reference seeder, annual reset; Pest §6 scenarios. |
 | 2026-11-23 | Premium Party UI + CI mysql | `7507e5dff23081327fb4e7dedc08dc8dc4f980e3` | FormSection Party form, semantic buttons, MySQL CI job, certification docs. |
 | 2026-11-24 | GA #87 Larastan fix | `ae48109f9b4e9afaf45c01b7c3c445c9ee14e295` | Remove non-nullable `??` on demo CDF conversion LR-link count; business assertion preserved; PHPStan + LocalDemoWorkspaceSeederTest green. |
-| 2026-11-24 | PO-P6-AUTH + Batch 0 parity | _(docs commit pending)_ | Phase 6 authorized; `PHASE_6_AUTHORIZATION_RECORD.md`; `LEGACY_TO_NEXUS_COMPREHENSIVE_PARITY_MATRIX.md`; handoff status updated; Memory entry; Phase 7 still deferred. |
+| 2026-11-24 | PO-P6-AUTH + Batch 0 parity | _(in `7d22303` docs)_ | Phase 6 authorized; `PHASE_6_AUTHORIZATION_RECORD.md`; `LEGACY_TO_NEXUS_COMPREHENSIVE_PARITY_MATRIX.md`; handoff status updated; Memory entry; Phase 7 still deferred. |
+| 2026-11-24 | P6 Batch A/B | `7d2230375fcf9178345d39e8c9ec06a78fc43f3f` | Broker permissions, portable foundations migration, LorryHireService + TDS snapshot, dependency guard, Inertia create/show/index, Pest 9 green. |
+| 2026-11-24 | P6 Batch C (in progress) | _(working tree)_ | Voucher/BookBalance services, bulk vouchers, daily payments UI, controllers/routes; PHPStan polish + Pest under concurrent-test contention. |

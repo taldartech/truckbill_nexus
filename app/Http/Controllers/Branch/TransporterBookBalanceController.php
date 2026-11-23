@@ -6,6 +6,7 @@ use App\Domains\Broker\Voucher\TransporterBookBalanceService;
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Rbac\PermissionAuthorizer;
+use App\Domains\Rbac\PermissionCodes;
 use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
 use App\Domains\Subscription\Enums\SubscriptionModule;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
@@ -74,14 +75,9 @@ class TransporterBookBalanceController extends Controller
                 ? $this->freightPresentation->presentAmount($runningBalance, $maySeeFreight)
                 : null,
             'entries' => [
-                'data' => collect($page->items())->map(fn (TransporterBookBalanceEntry $entry): array => [
-                    'id' => $entry->id,
-                    'entry_type' => $entry->entry_type->value,
-                    'amount' => $this->freightPresentation->presentAmount($entry->amount, $maySeeFreight),
-                    'hire_number' => $entry->lorryHire?->hire_number,
-                    'remark' => $entry->remark,
-                    'created_at' => $entry->created_at?->format('d-m-Y H:i'),
-                ])->values()->all(),
+                'data' => collect($page->items())->map(
+                    fn (TransporterBookBalanceEntry $entry): array => $this->bookBalanceEntryRow($entry, $maySeeFreight),
+                )->values()->all(),
                 'meta' => [
                     'current_page' => $page->currentPage(),
                     'last_page' => $page->lastPage(),
@@ -98,15 +94,28 @@ class TransporterBookBalanceController extends Controller
         ]);
     }
 
+    /**
+     * @return array<string, mixed>
+     */
+    private function bookBalanceEntryRow(TransporterBookBalanceEntry $entry, bool $maySeeFreight): array
+    {
+        return [
+            'id' => $entry->id,
+            'entry_type' => $entry->entry_type->value,
+            'amount' => $this->freightPresentation->presentAmount($entry->amount, $maySeeFreight),
+            'hire_number' => $entry->lorryHire?->hire_number,
+            'remark' => $entry->remark,
+            'created_at' => $entry->created_at?->format('d-m-Y H:i'),
+        ];
+    }
+
     private function assertPermission(User $actor, Company $company, Branch $branch): void
     {
         if (! $this->moduleEntitlements->isEntitled($company, SubscriptionModule::Broker)) {
             abort(403, 'Broker module is not entitled for this company.');
         }
 
-        try {
-            $this->balances->assertCanViewBookBalance($actor, $company, $branch);
-        } catch (\Throwable) {
+        if (! $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_BOOK_BALANCE_VIEW, $company, $branch)) {
             abort(403, 'Not authorized to view transporter book balance.');
         }
     }

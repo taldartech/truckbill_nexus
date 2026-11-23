@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Branch;
 
+use App\Domains\Broker\LorryHire\LorryHireService;
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Consignment\Enums\FreightRateType;
 use App\Domains\Consignment\Enums\LrStatus;
@@ -18,6 +19,8 @@ use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
 use App\Domains\OwnFleet\Trip\TripService;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
+use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
+use App\Domains\Subscription\Enums\SubscriptionModule;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
@@ -53,7 +56,9 @@ class LorryReceiptController extends Controller
         private readonly LrWorkflowContextResolver $contextResolver,
         private readonly LrVehicleClassificationService $vehicleClassification,
         private readonly TripService $trips,
+        private readonly LorryHireService $lorryHires,
         private readonly FreightAmountPresentation $freightPresentation,
+        private readonly CoreModuleEntitlementResolver $moduleEntitlements = new CoreModuleEntitlementResolver,
     ) {}
 
     public function index(Request $request, Company $company, Branch $branch): Response
@@ -238,7 +243,7 @@ class LorryReceiptController extends Controller
         $this->assertPermission($actor, $company, $branch, PermissionCodes::LR_VIEW);
         $this->assertLr($lorryReceipt, $company, $branch);
 
-        $lorryReceipt->load(['goodsRows', 'ewayBills', 'additionalCharges', 'consignor', 'consignee', 'fromStation', 'toStation']);
+        $lorryReceipt->load(['goodsRows', 'ewayBills', 'additionalCharges', 'consignor', 'consignee', 'fromStation', 'toStation', 'vehicle']);
 
         $linkedTrip = $this->trips->tripForLorryReceipt($lorryReceipt);
         $canCreateTrip = $lorryReceipt->workflow_context === LrWorkflowContext::OwnFleet
@@ -246,17 +251,31 @@ class LorryReceiptController extends Controller
             && $linkedTrip === null
             && $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_CREATE, $company, $branch);
 
+        $linkedLorryHire = $this->lorryHires->hireForLorryReceipt($lorryReceipt);
+        $canCreateLorryHire = $lorryReceipt->workflow_context === LrWorkflowContext::Broker
+            && $lorryReceipt->status === LrStatus::Pending
+            && $linkedLorryHire === null
+            && $lorryReceipt->vehicle?->ownership === VehicleOwnership::Market
+            && $this->moduleEntitlements->isEntitled($company, SubscriptionModule::Broker)
+            && $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_LORRY_HIRE_CREATE, $company, $branch);
+
         $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
 
         return Inertia::render('branch/lorry-receipts/show', [
             'lorryReceipt' => $this->detailPayload($lorryReceipt, $maySeeFreight),
             'permissions' => array_merge($this->lrPermissions($actor, $company, $branch, $maySeeFreight), [
                 'can_create_trip' => $canCreateTrip,
+                'can_create_lorry_hire' => $canCreateLorryHire,
             ]),
             'linkedTrip' => $linkedTrip === null ? null : [
                 'id' => $linkedTrip->id,
                 'status' => $linkedTrip->status->value,
                 'show_url' => route('branch.trips.show', [$linkedTrip], absolute: false),
+            ],
+            'linkedLorryHire' => $linkedLorryHire === null ? null : [
+                'id' => $linkedLorryHire->id,
+                'hire_number' => $linkedLorryHire->hire_number,
+                'show_url' => route('branch.broker.lorry-hires.show', [$linkedLorryHire], absolute: false),
             ],
             'urls' => [
                 'index' => route('branch.lorry-receipts.index', absolute: false),
@@ -265,6 +284,7 @@ class LorryReceiptController extends Controller
                 'destroy' => route('branch.lorry-receipts.destroy', [$lorryReceipt], absolute: false),
                 'print' => route('branch.lorry-receipts.print', [$lorryReceipt], absolute: false),
                 'create_trip' => route('branch.trips.create-from-lr', [$lorryReceipt], absolute: false),
+                'create_lorry_hire' => route('branch.broker.lorry-hires.create-from-lr', [$lorryReceipt], absolute: false),
             ],
         ]);
     }

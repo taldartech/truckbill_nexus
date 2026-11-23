@@ -8,6 +8,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
+/**
+ * @property BookBalanceEntryType $entry_type
+ * @property string $amount
+ */
 class TransporterBookBalanceEntry extends Model
 {
     use SoftDeletes;

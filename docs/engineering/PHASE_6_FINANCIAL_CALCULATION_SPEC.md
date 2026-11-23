@@ -13,13 +13,13 @@
 
 ## Goods-line transporter freight
 
-| Mode | Formula |
-| --- | --- |
-| Fixed amount | `freight = approved_fixed_amount` |
-| Per kg / actual weight | `freight = rate × applicable_weight` |
-| Per MT | `freight = rate × (applicable_weight / 1000)` |
-| Per package | `freight = rate × package_count` |
-| Per charged weight | `freight = rate × charged_weight` |
+| Mode                   | Formula                                       |
+| ---------------------- | --------------------------------------------- |
+| Fixed amount           | `freight = approved_fixed_amount`             |
+| Per kg / actual weight | `freight = rate × applicable_weight`          |
+| Per MT                 | `freight = rate × (applicable_weight / 1000)` |
+| Per package            | `freight = rate × package_count`              |
+| Per charged weight     | `freight = rate × charged_weight`             |
 
 `applicable_weight` at create = loading weight (charged preferred, else actual).  
 After unloading adjustments: `applicable_weight = min(loading_weight, unloading_weight)` for variable rates. Fixed amount unchanged.
@@ -50,12 +50,12 @@ Negative outstanding / advance situations are handled via controlled Book Balanc
 
 ## Voucher defaults (Rules §11)
 
-| Mode | Default status |
-| --- | --- |
-| Bank | Pending |
-| Paid to Pump | Pending |
-| Cash | In Progress |
-| Adjust in Advance | In Progress |
+| Mode              | Default status |
+| ----------------- | -------------- |
+| Bank              | Pending        |
+| Paid to Pump      | Pending        |
+| Cash              | In Progress    |
+| Adjust in Advance | In Progress    |
 
 Flow: `Pending → In Progress → Paid` (Paid terminal unless authorized reversal procedure exists).
 

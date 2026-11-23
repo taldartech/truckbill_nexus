@@ -273,19 +273,18 @@ final class TransporterVoucherService
                     ->lockForUpdate()
                     ->firstOrFail();
 
-                $from = $locked->status instanceof VoucherStatus
-                    ? $locked->status
-                    : VoucherStatus::from((string) $locked->status);
+                $from = $locked->status;
 
                 if ($from === VoucherStatus::Paid) {
                     throw new BrokerConflictException('Paid vouchers are terminal.');
                 }
 
-                $allowed = match ($from) {
-                    VoucherStatus::Pending => [VoucherStatus::InProgress],
-                    VoucherStatus::InProgress => [VoucherStatus::Paid],
-                    default => [],
-                };
+                $allowed = [];
+                if ($from === VoucherStatus::Pending) {
+                    $allowed = [VoucherStatus::InProgress];
+                } elseif ($from === VoucherStatus::InProgress) {
+                    $allowed = [VoucherStatus::Paid];
+                }
 
                 if (! in_array($to, $allowed, true)) {
                     throw new BrokerConflictException("Cannot transition voucher from {$from->value} to {$to->value}.");
@@ -326,39 +325,36 @@ final class TransporterVoucherService
 
         $paid = '0.00';
         foreach ($hire->vouchers as $voucher) {
-            $status = $voucher->status instanceof VoucherStatus
-                ? $voucher->status
-                : VoucherStatus::from((string) $voucher->status);
-            if ($status === VoucherStatus::Paid) {
+            if ($voucher->status === VoucherStatus::Paid) {
                 $paid = bcadd($paid, $this->money($voucher->amount), 2);
             }
         }
 
         $hire->forceFill([
             'paid_amount' => $paid,
-            'outstanding_amount' => $summary['outstanding_amount'],
+            'outstanding_amount' => $this->money($summary['outstanding_amount']),
         ])->save();
     }
 
+    /**
+     * @param  numeric-string  $amount
+     */
     private function assertAmountWithinOutstanding(LorryHire $hire, string $amount, VoucherStatus $status): void
     {
         $hire->loadMissing(['adjustments', 'vouchers', 'bookBalanceEntries']);
         $summary = $this->calculations->summarize($hire);
-        $outstanding = $summary['outstanding_amount'];
+        $outstanding = $this->money($summary['outstanding_amount']);
 
         // Pending vouchers reserve capacity against unpaid outstanding.
         $reserved = '0.00';
         foreach ($hire->vouchers as $voucher) {
-            $vStatus = $voucher->status instanceof VoucherStatus
-                ? $voucher->status
-                : VoucherStatus::from((string) $voucher->status);
-            if ($vStatus !== VoucherStatus::Paid) {
+            if ($voucher->status !== VoucherStatus::Paid) {
                 $reserved = bcadd($reserved, $this->money($voucher->amount), 2);
             }
         }
 
         $available = bcsub($outstanding, $reserved, 2);
-        if (bccomp($amount, $available, 2) > 0) {
+        if (bccomp($this->money($amount), $available, 2) > 0) {
             throw new BrokerConflictException('Voucher amount would overpay the Lorry Hire outstanding balance.');
         }
 
@@ -375,15 +371,12 @@ final class TransporterVoucherService
 
         $reserved = '0.00';
         foreach ($hire->vouchers as $voucher) {
-            $vStatus = $voucher->status instanceof VoucherStatus
-                ? $voucher->status
-                : VoucherStatus::from((string) $voucher->status);
-            if ($vStatus !== VoucherStatus::Paid) {
+            if ($voucher->status !== VoucherStatus::Paid) {
                 $reserved = bcadd($reserved, $this->money($voucher->amount), 2);
             }
         }
 
-        $room = bcsub($summary['outstanding_amount'], $reserved, 2);
+        $room = bcsub($this->money($summary['outstanding_amount']), $reserved, 2);
 
         return bccomp($room, '0', 2) === -1 ? '0.00' : $room;
     }

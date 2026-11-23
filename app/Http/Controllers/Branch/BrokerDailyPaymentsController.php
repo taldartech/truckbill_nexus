@@ -67,23 +67,9 @@ class BrokerDailyPaymentsController extends Controller
                 'can_status' => $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_VOUCHER_STATUS, $company, $branch),
                 'can_view_freight' => $maySeeFreight,
             ],
-            'vouchers' => collect($page->items())->map(fn (TransporterVoucher $row): array => [
-                'id' => $row->id,
-                'voucher_number' => $row->voucher_number,
-                'status' => $row->status->value,
-                'payment_mode' => $row->payment_mode?->value,
-                'amount' => $this->freightPresentation->presentAmount($row->amount, $maySeeFreight),
-                'hire_number' => $row->lorryHire?->hire_number,
-                'transporter_name' => $row->lorryHire?->transporter?->name,
-                'next_status' => match ($row->status) {
-                    VoucherStatus::Pending => VoucherStatus::InProgress->value,
-                    VoucherStatus::InProgress => VoucherStatus::Paid->value,
-                    VoucherStatus::Paid => null,
-                },
-                'urls' => [
-                    'show' => route('branch.broker.vouchers.show', [$row], absolute: false),
-                ],
-            ])->values()->all(),
+            'vouchers' => collect($page->items())->map(
+                fn (TransporterVoucher $row): array => $this->dailyPaymentVoucherRow($row, $maySeeFreight),
+            )->values()->all(),
             'urls' => [
                 'index' => route('branch.broker.daily-payments.index', absolute: false),
                 'bulk_status' => route('branch.broker.daily-payments.bulk-status', absolute: false),
@@ -116,6 +102,30 @@ class BrokerDailyPaymentsController extends Controller
         return redirect()
             ->route('branch.broker.daily-payments.index', ['date' => $request->input('date')])
             ->with('success', 'Voucher statuses updated.');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function dailyPaymentVoucherRow(TransporterVoucher $row, bool $maySeeFreight): array
+    {
+        return [
+            'id' => $row->id,
+            'voucher_number' => $row->voucher_number,
+            'status' => $row->status->value,
+            'payment_mode' => $row->payment_mode?->value,
+            'amount' => $this->freightPresentation->presentAmount($row->amount, $maySeeFreight),
+            'hire_number' => $row->lorryHire?->hire_number,
+            'transporter_name' => $row->lorryHire?->transporter?->name,
+            'next_status' => match ($row->status) {
+                VoucherStatus::Pending => VoucherStatus::InProgress->value,
+                VoucherStatus::InProgress => VoucherStatus::Paid->value,
+                VoucherStatus::Paid => null,
+            },
+            'urls' => [
+                'show' => route('branch.broker.vouchers.show', [$row], absolute: false),
+            ],
+        ];
     }
 
     private function assertPermission(User $actor, Company $company, Branch $branch, string $code): void

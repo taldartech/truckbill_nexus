@@ -12,6 +12,8 @@ use Illuminate\Support\Str;
 
 /**
  * @property VoucherStatus $status
+ * @property VoucherPaymentType $payment_type
+ * @property VoucherPaymentMode|null $payment_mode
  * @property string $amount
  */
 class TransporterVoucher extends Model
