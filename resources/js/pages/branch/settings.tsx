@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
 import { AppIconAction } from '@/components/app-icon-action';
 import { PageShell } from '@/components/page-shell';

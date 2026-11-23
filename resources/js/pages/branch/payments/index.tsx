@@ -1,4 +1,4 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import { Eye } from 'lucide-react';
 import { useMemo } from 'react';
 import { AppIconAction } from '@/components/app-icon-action';

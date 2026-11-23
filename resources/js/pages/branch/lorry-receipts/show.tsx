@@ -2,7 +2,6 @@ import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import { ArrowLeft, Pencil } from 'lucide-react';
 import { AppIconAction } from '@/components/app-icon-action';
-import { FormSection } from '@/components/form-section';
 import { PageShell } from '@/components/page-shell';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { formatDisplayDate } from '@/lib/dates';
