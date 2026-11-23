@@ -216,7 +216,11 @@ class TripController extends Controller
         return Inertia::render('branch/trips/show', [
             'trip' => $this->detailPayload($trip, $maySeeFreight),
             'movements' => $this->movementsPayload($trip, $maySeeFreight),
-            'reconciliation' => $this->movements->reconciliationSummary($trip),
+            'reconciliation' => $this->freightPresentation->redactKeys(
+                $this->movements->reconciliationSummary($trip),
+                ['total_freight'],
+                $maySeeFreight,
+            ),
             'expenses' => $trip->expenses->map(fn (TripExpense $expense): array => [
                 'id' => $expense->id,
                 'expense_date' => $expense->expense_date->format('d-m-Y'),
