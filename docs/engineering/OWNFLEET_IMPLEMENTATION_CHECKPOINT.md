@@ -3,7 +3,7 @@
 **Date:** 23 November 2026  
 **PO Phase 5 AUTH:** Approved  
 **Implementation status:** **Batches A–G complete (invoices + payments); Batch H remaining**  
-**HEAD tip (local):** `71ebdb988828377d0c864560e23910cec6a14ccd` (Larastan level 7 — OwnFleet invoice/payment/trip money helpers)
+**HEAD tip (local):** `32c748e826fa6d2b4b6addfd5d005480f23dac98` (Larastan level 7 + certification polish)
 **Batch F commit:** `a31b073b739e8d34e0b24ab935bfbf312bb2014f`
 **Batch G commit:** `9d2e0a8356ac1bbb3c950d5b0e9332f2a2922829`
 

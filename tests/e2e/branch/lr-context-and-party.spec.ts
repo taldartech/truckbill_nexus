@@ -43,30 +43,33 @@ test.describe('LR context resolution and Party Master', () => {
             page.getByRole('heading', { name: /choose workflow context/i }),
         ).toHaveCount(0);
 
+        // Never a Broker/OwnFleet/Partload Create LR dropdown.
+        await expect(page.getByTestId('create-lr-menu')).toHaveCount(0);
+        await expect(page.getByTestId('create-lr-broker')).toHaveCount(0);
+        await expect(page.getByTestId('create-lr-own_fleet')).toHaveCount(0);
+        await expect(page.getByTestId('create-lr-partload')).toHaveCount(0);
+
         const direct = page.getByTestId('create-lr-direct');
-        const menu = page.getByTestId('create-lr-menu');
-        if (await direct.count()) {
-            await direct.click();
-        } else {
-            await expect(menu).toBeVisible();
-            await menu.click();
-            await page.getByTestId('create-lr-broker').click();
-        }
+        await expect(direct).toBeVisible();
+        await direct.click();
 
         await expect(page).toHaveURL(/\/lorry-receipts\/create/);
-        await expect(page.getByLabel(/workflow context/i)).toHaveCount(0);
+        await expect(page.getByLabel(/^workflow context$/i)).toHaveCount(0);
         await expect(
             page.locator('select[name="workflow_context"]'),
         ).toHaveCount(0);
         await expect(
             page.getByRole('heading', { name: /choose workflow context/i }),
         ).toHaveCount(0);
+        // Shared truck form exposes vehicle; classification is not a module chooser.
+        await expect(page.locator('select[name="vehicle_id"]')).toBeVisible();
 
-        // Deep link without origin must not invent a module or show chooser page.
+        // Deep link without origin must open the shared form (no chooser page).
         await page.goto('/lorry-receipts/create');
         await expect(
             page.getByRole('heading', { name: /choose workflow context/i }),
         ).toHaveCount(0);
+        await expect(page.locator('select[name="vehicle_id"]')).toBeVisible();
     });
 
     test('party create page loads without duplicated company badges', async ({

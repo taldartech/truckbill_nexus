@@ -115,7 +115,7 @@ export default function LorryReceiptsIndex({
             {
                 id: 'lr_number',
                 header: 'LR No',
-                priority: 'p0',
+                priority: 0,
                 cell: (row) => (
                     <Link
                         href={`/lorry-receipts/${row.id}`}
@@ -128,13 +128,13 @@ export default function LorryReceiptsIndex({
             {
                 id: 'lr_date',
                 header: 'LR Date',
-                priority: 'p0',
+                priority: 0,
                 cell: (row) => formatLrDate(row.lr_date),
             },
             {
                 id: 'status',
                 header: 'Status',
-                priority: 'p1',
+                priority: 1,
                 cell: (row) => (
                     <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-xs font-medium capitalize">
                         {statusLabel(row.status)}
@@ -144,13 +144,13 @@ export default function LorryReceiptsIndex({
             {
                 id: 'workflow_context',
                 header: 'Module',
-                priority: 'p2',
+                priority: 2,
                 cell: (row) => contextLabel(row.workflow_context),
             },
             {
                 id: 'route',
                 header: 'Route',
-                priority: 'p2',
+                priority: 2,
                 cell: (row) =>
                     [row.from_text, row.to_text].filter(Boolean).join(' → ') ||
                     '—',
@@ -158,7 +158,7 @@ export default function LorryReceiptsIndex({
             {
                 id: 'freight_total',
                 header: 'Freight',
-                priority: 'p1',
+                priority: 1,
                 cell: (row) => row.freight_total,
             },
         ],
