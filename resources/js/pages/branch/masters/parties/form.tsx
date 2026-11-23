@@ -316,7 +316,7 @@ function TransporterTdsPanel({
 
     return (
         <FormSection
-            title="Transporter · TDS"
+            title="Transporter TDS"
             description="Declaration inputs drive the live applicable TDS preview."
             className="border-info/20"
             data-testid="transporter-tds-panel"
@@ -558,67 +558,6 @@ function TransporterTdsPanel({
                         value={transporter.tds_percentage}
                     />
                 ) : null}
-
-                <div className="space-y-2">
-                    <Label htmlFor="short_name">Short name</Label>
-                    <Input
-                        id="short_name"
-                        value={transporter.short_name}
-                        onChange={(event) =>
-                            setTransporter((current) => ({
-                                ...current,
-                                short_name: event.target.value,
-                            }))
-                        }
-                    />
-                    {transporter.short_name !== '' ? (
-                        <input
-                            type="hidden"
-                            name={`roles[${roleIndex}][attributes][short_name]`}
-                            value={transporter.short_name}
-                        />
-                    ) : null}
-                </div>
-                <div className="space-y-2">
-                    <Label htmlFor="beneficiary_id">Beneficiary ID</Label>
-                    <Input
-                        id="beneficiary_id"
-                        value={transporter.beneficiary_id}
-                        onChange={(event) =>
-                            setTransporter((current) => ({
-                                ...current,
-                                beneficiary_id: event.target.value,
-                            }))
-                        }
-                    />
-                    {transporter.beneficiary_id !== '' ? (
-                        <input
-                            type="hidden"
-                            name={`roles[${roleIndex}][attributes][beneficiary_id]`}
-                            value={transporter.beneficiary_id}
-                        />
-                    ) : null}
-                </div>
-                <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="bank_account">Bank account</Label>
-                    <Input
-                        id="bank_account"
-                        value={transporter.bank_account}
-                        onChange={(event) =>
-                            setTransporter((current) => ({
-                                ...current,
-                                bank_account: event.target.value,
-                            }))
-                        }
-                    />
-                    {transporter.bank_account !== '' ? (
-                        <input
-                            type="hidden"
-                            name={`roles[${roleIndex}][attributes][bank_account]`}
-                            value={transporter.bank_account}
-                        />
-                    ) : null}
-                </div>
             </div>
         </FormSection>
     );
@@ -686,7 +625,7 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
                 title={
                     mode === 'create' ? 'Create party' : `Edit ${party?.name}`
                 }
-                description="Multi-role party master with TDS-aware transporter and driver panels."
+                description="Sectioned party master — roles unlock transporter TDS and driver panels."
             >
                 <Form
                     action={action}
@@ -696,11 +635,11 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
                     {({ errors, processing }) => (
                         <>
                             <FormSection
-                                title="Common details"
-                                description="Shared identity and contact fields for every role."
-                                columns={2}
+                                title="Basic"
+                                description="Legal or trading name for this party."
+                                columns={1}
                             >
-                                <div className="space-y-2 md:col-span-2">
+                                <div className="space-y-2">
                                     <Label htmlFor="name">Name *</Label>
                                     <Input
                                         id="name"
@@ -710,6 +649,13 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
                                     />
                                     <InputError message={errors.name} />
                                 </div>
+                            </FormSection>
+
+                            <FormSection
+                                title="Contact"
+                                description="Reachable contact for operations and billing."
+                                columns={2}
+                            >
                                 <div className="space-y-2">
                                     <Label htmlFor="contact_person">
                                         Contact person
@@ -744,7 +690,7 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
                                         message={errors.contact_number}
                                     />
                                 </div>
-                                <div className="space-y-2">
+                                <div className="space-y-2 md:col-span-2">
                                     <Label htmlFor="email">Email</Label>
                                     <Input
                                         id="email"
@@ -754,51 +700,13 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
                                     />
                                     <InputError message={errors.email} />
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="gstin">GSTIN</Label>
-                                    <Input
-                                        id="gstin"
-                                        name="gstin"
-                                        defaultValue={party?.gstin ?? ''}
-                                    />
-                                    <InputError message={errors.gstin} />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="pan">
-                                        PAN
-                                        {needsTransporter ? ' *' : ''}
-                                    </Label>
-                                    <Input
-                                        id="pan"
-                                        name="pan"
-                                        required={needsTransporter}
-                                        value={pan}
-                                        onChange={(event) =>
-                                            setPan(
-                                                event.target.value.toUpperCase(),
-                                            )
-                                        }
-                                    />
-                                    <InputError message={errors.pan} />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="is_gst_applicable">
-                                        GST applicable
-                                    </Label>
-                                    <select
-                                        id="is_gst_applicable"
-                                        name="is_gst_applicable"
-                                        className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                        defaultValue={
-                                            party?.is_gst_applicable === false
-                                                ? '0'
-                                                : '1'
-                                        }
-                                    >
-                                        <option value="1">Yes</option>
-                                        <option value="0">No</option>
-                                    </select>
-                                </div>
+                            </FormSection>
+
+                            <FormSection
+                                title="Address"
+                                description="Location used on LR and invoice documents."
+                                columns={2}
+                            >
                                 <div className="space-y-2">
                                     <Label htmlFor="state">
                                         State
@@ -836,7 +744,7 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
                             </FormSection>
 
                             <FormSection
-                                title="Party roles *"
+                                title="Roles"
                                 description="Select one or more roles. Role-specific panels appear below."
                                 columns={3}
                             >
@@ -890,20 +798,12 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
                                 </div>
                             </FormSection>
 
-                            {needsTransporter ? (
-                                <TransporterTdsPanel
-                                    roleIndex={roleIndex.transporter}
-                                    pan={pan}
-                                    setPan={setPan}
-                                    transporter={transporter}
-                                    setTransporter={setTransporter}
-                                    errors={errors}
-                                    previewUrl={tdsPreviewUrl}
-                                />
-                            ) : null}
-
                             {needsDriver ? (
-                                <FormSection title="Driver details" columns={2}>
+                                <FormSection
+                                    title="Driver details"
+                                    description="Shown when the driver role is selected."
+                                    columns={2}
+                                >
                                     <div className="space-y-2">
                                         <Label htmlFor="driver_type">
                                             Driver type *
@@ -1019,17 +919,6 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
                                                   ],
                                                   ['pan', 'Driver PAN', 'text'],
                                                   [
-                                                      'bank_name',
-                                                      'Bank name',
-                                                      'text',
-                                                  ],
-                                                  [
-                                                      'bank_account_number',
-                                                      'Bank account number',
-                                                      'text',
-                                                  ],
-                                                  ['ifsc', 'IFSC', 'text'],
-                                                  [
                                                       'emergency_contact_name',
                                                       'Emergency contact name',
                                                       'text',
@@ -1079,6 +968,231 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
                                           ))
                                         : null}
                                 </FormSection>
+                            ) : null}
+
+                            <FormSection
+                                title="GST & PAN"
+                                description="Tax identifiers shared across roles."
+                                columns={2}
+                            >
+                                <div className="space-y-2">
+                                    <Label htmlFor="gstin">GSTIN</Label>
+                                    <Input
+                                        id="gstin"
+                                        name="gstin"
+                                        defaultValue={party?.gstin ?? ''}
+                                    />
+                                    <InputError message={errors.gstin} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="is_gst_applicable">
+                                        GST applicable
+                                    </Label>
+                                    <select
+                                        id="is_gst_applicable"
+                                        name="is_gst_applicable"
+                                        className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                        defaultValue={
+                                            party?.is_gst_applicable === false
+                                                ? '0'
+                                                : '1'
+                                        }
+                                    >
+                                        <option value="1">Yes</option>
+                                        <option value="0">No</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-2 md:col-span-2">
+                                    <Label htmlFor="pan">
+                                        PAN
+                                        {needsTransporter ? ' *' : ''}
+                                    </Label>
+                                    <Input
+                                        id="pan"
+                                        name="pan"
+                                        required={needsTransporter}
+                                        value={pan}
+                                        onChange={(event) =>
+                                            setPan(
+                                                event.target.value.toUpperCase(),
+                                            )
+                                        }
+                                    />
+                                    <InputError message={errors.pan} />
+                                </div>
+                            </FormSection>
+
+                            {needsTransporter ||
+                            (needsDriver &&
+                                driver.driver_type === 'permanent') ? (
+                                <FormSection
+                                    title="Bank"
+                                    description="Settlement accounts for transporter payouts and driver payroll."
+                                    columns={2}
+                                >
+                                    {needsTransporter ? (
+                                        <>
+                                            <p className="text-xs font-medium text-muted-foreground md:col-span-2">
+                                                Transporter payout
+                                            </p>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="short_name">
+                                                    Short name
+                                                </Label>
+                                                <Input
+                                                    id="short_name"
+                                                    value={
+                                                        transporter.short_name
+                                                    }
+                                                    onChange={(event) =>
+                                                        setTransporter(
+                                                            (current) => ({
+                                                                ...current,
+                                                                short_name:
+                                                                    event.target
+                                                                        .value,
+                                                            }),
+                                                        )
+                                                    }
+                                                />
+                                                {transporter.short_name !==
+                                                '' ? (
+                                                    <input
+                                                        type="hidden"
+                                                        name={`roles[${roleIndex.transporter}][attributes][short_name]`}
+                                                        value={
+                                                            transporter.short_name
+                                                        }
+                                                    />
+                                                ) : null}
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="beneficiary_id">
+                                                    Beneficiary ID
+                                                </Label>
+                                                <Input
+                                                    id="beneficiary_id"
+                                                    value={
+                                                        transporter.beneficiary_id
+                                                    }
+                                                    onChange={(event) =>
+                                                        setTransporter(
+                                                            (current) => ({
+                                                                ...current,
+                                                                beneficiary_id:
+                                                                    event.target
+                                                                        .value,
+                                                            }),
+                                                        )
+                                                    }
+                                                />
+                                                {transporter.beneficiary_id !==
+                                                '' ? (
+                                                    <input
+                                                        type="hidden"
+                                                        name={`roles[${roleIndex.transporter}][attributes][beneficiary_id]`}
+                                                        value={
+                                                            transporter.beneficiary_id
+                                                        }
+                                                    />
+                                                ) : null}
+                                            </div>
+                                            <div className="space-y-2 md:col-span-2">
+                                                <Label htmlFor="bank_account">
+                                                    Bank account
+                                                </Label>
+                                                <Input
+                                                    id="bank_account"
+                                                    value={
+                                                        transporter.bank_account
+                                                    }
+                                                    onChange={(event) =>
+                                                        setTransporter(
+                                                            (current) => ({
+                                                                ...current,
+                                                                bank_account:
+                                                                    event.target
+                                                                        .value,
+                                                            }),
+                                                        )
+                                                    }
+                                                />
+                                                {transporter.bank_account !==
+                                                '' ? (
+                                                    <input
+                                                        type="hidden"
+                                                        name={`roles[${roleIndex.transporter}][attributes][bank_account]`}
+                                                        value={
+                                                            transporter.bank_account
+                                                        }
+                                                    />
+                                                ) : null}
+                                            </div>
+                                        </>
+                                    ) : null}
+                                    {needsDriver &&
+                                    driver.driver_type === 'permanent' ? (
+                                        <>
+                                            <p className="text-xs font-medium text-muted-foreground md:col-span-2">
+                                                Driver payroll
+                                            </p>
+                                            {(
+                                                [
+                                                    ['bank_name', 'Bank name'],
+                                                    [
+                                                        'bank_account_number',
+                                                        'Bank account number',
+                                                    ],
+                                                    ['ifsc', 'IFSC'],
+                                                ] as const
+                                            ).map(([key, label]) => (
+                                                <div
+                                                    key={key}
+                                                    className="space-y-2"
+                                                >
+                                                    <Label
+                                                        htmlFor={`driver_${key}`}
+                                                    >
+                                                        {label}
+                                                    </Label>
+                                                    <Input
+                                                        id={`driver_${key}`}
+                                                        value={driver[key]}
+                                                        onChange={(event) =>
+                                                            setDriver(
+                                                                (current) => ({
+                                                                    ...current,
+                                                                    [key]: event
+                                                                        .target
+                                                                        .value,
+                                                                }),
+                                                            )
+                                                        }
+                                                    />
+                                                    {driver[key] !== '' ? (
+                                                        <input
+                                                            type="hidden"
+                                                            name={`roles[${roleIndex.driver}][attributes][${key}]`}
+                                                            value={driver[key]}
+                                                        />
+                                                    ) : null}
+                                                </div>
+                                            ))}
+                                        </>
+                                    ) : null}
+                                </FormSection>
+                            ) : null}
+
+                            {needsTransporter ? (
+                                <TransporterTdsPanel
+                                    roleIndex={roleIndex.transporter}
+                                    pan={pan}
+                                    setPan={setPan}
+                                    transporter={transporter}
+                                    setTransporter={setTransporter}
+                                    errors={errors}
+                                    previewUrl={tdsPreviewUrl}
+                                />
                             ) : null}
 
                             <FormSection title="Remark" columns={1}>
