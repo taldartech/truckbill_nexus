@@ -2,6 +2,7 @@
 
 **Date:** 23 November 2026  
 **Initial HEAD:** `463e9502e4959bd07c8ddca1ddce5f1dbfca0670`  
+**Feature commit:** `a74ac07cdf135ae6b4f1b7adefc259b936256e7c`  
 **GitHub Actions #79:** Remediated — unused destructured props removed; `npm run check` exits 0.
 
 ## Verdict
