@@ -38,8 +38,6 @@ type Props = {
     };
 };
 export default function StationShow({
-    company,
-    branch,
     canManageOwnerStations,
     permissions,
     station,

@@ -32,13 +32,7 @@ type Props = {
     };
 };
 
-export default function BankCashForm({
-    company,
-    branch,
-    mode,
-    account,
-    links,
-}: Props) {
+export default function BankCashForm({ mode, account, links }: Props) {
     const [kind, setKind] = useState(account?.account_kind ?? 'bank');
     const action = mode === 'create' ? links.store! : links.update!;
     return (

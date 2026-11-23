@@ -59,8 +59,6 @@ type Props = {
 };
 
 export default function PartyShow({
-    company,
-    branch,
     permissions,
     party,
     roleOptions,

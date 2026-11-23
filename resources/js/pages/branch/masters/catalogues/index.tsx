@@ -33,7 +33,6 @@ type Props = {
     links: { hub: string; index: string; store: string };
 };
 export default function CataloguesIndex({
-    company,
     branch,
     canManageOwnerCatalogues,
     filters,

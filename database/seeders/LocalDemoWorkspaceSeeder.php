@@ -16,6 +16,7 @@ use App\Domains\Rbac\PermissionCodes;
 use App\Domains\Rbac\RoleAssignmentService;
 use App\Domains\Subscription\Contract\CompanySubscriptionContractService;
 use App\Domains\Subscription\Enums\SubscriptionTenure;
+use App\Domains\Subscription\Lifecycle\SubscriptionLifecycleService;
 use App\Models\BankCashAccount;
 use App\Models\Branch;
 use App\Models\BranchAssignment;
@@ -325,9 +326,11 @@ class LocalDemoWorkspaceSeeder extends Seeder
                 [
                     'role' => PartyRoleType::Transporter->value,
                     'attributes' => [
-                        'pan' => 'ABCDE'.substr((string) abs(crc32($company->id)), 0, 4).'F',
-                        'pan_status' => 'verified_demo',
-                        'declaration' => 'Local demo transporter declaration only.',
+                        'pan' => 'ABCDE'.str_pad(substr((string) abs(crc32($company->id)), 0, 4), 4, '0').'F',
+                        'pan_status' => 'active',
+                        'declaration' => true,
+                        'declaration_type' => 'owner',
+                        'goods_vehicles_count' => 4,
                     ],
                 ],
             ],
@@ -380,7 +383,14 @@ class LocalDemoWorkspaceSeeder extends Seeder
         $this->ensureBank($company, $head, 'demo-bank:'.$company->id.':1');
         $this->ensureStation($owner, 'demo-station:'.$company->id.':1', $companyName === self::COMPANY_A_NAME ? 'Bhiwandi Hub' : 'Vatva Hub');
 
-        $this->ensureDraftSubscription($contracts, $owner, $company);
+        $modules = $companyName === self::COMPANY_A_NAME
+            ? ['broker', 'ownfleet', 'partload']
+            : ['broker', 'ownfleet'];
+        $this->ensureActiveSubscription($contracts, $owner, $company, $modules);
+
+        if ($companyName === self::COMPANY_A_NAME) {
+            $this->ensureExtendedPartyFixtures($parties, $owner, $company, $head);
+        }
 
         $manualCount = match ($profile) {
             'small' => 1,
@@ -778,6 +788,14 @@ class LocalDemoWorkspaceSeeder extends Seeder
             return $existing;
         }
 
+        $pan = null;
+        foreach ($rolePayload as $role) {
+            if ($role['role'] === PartyRoleType::Transporter->value) {
+                $pan = $role['attributes']['pan'] ?? null;
+                break;
+            }
+        }
+
         return $parties->create(
             actor: $owner,
             company: $company,
@@ -785,8 +803,9 @@ class LocalDemoWorkspaceSeeder extends Seeder
             attributes: [
                 'name' => $name,
                 'contact_person' => 'Demo Contact',
-                'contact_number' => '98'.substr((string) abs(crc32($fixtureKey)), 0, 8),
+                'contact_number' => '98'.str_pad(substr((string) abs(crc32($fixtureKey)), 0, 8), 8, '0'),
                 'email' => $email,
+                'pan' => $pan,
                 'state' => 'Maharashtra',
                 'city' => $city,
                 'address' => 'Demo address for '.$fixtureKey,
@@ -872,17 +891,22 @@ class LocalDemoWorkspaceSeeder extends Seeder
         ]);
     }
 
-    private function ensureDraftSubscription(
+    /**
+     * @param  list<string>  $modules  SubscriptionModule values (broker|ownfleet|partload)
+     */
+    private function ensureActiveSubscription(
         CompanySubscriptionContractService $contracts,
         User $owner,
         Company $company,
+        array $modules,
     ): void {
-        $hasDraft = CompanySubscription::query()
+        $hasActive = CompanySubscription::query()
             ->where('company_id', $company->id)
-            ->where('status', 'draft')
+            ->where('status', 'active')
+            ->whereNull('deleted_at')
             ->exists();
 
-        if ($hasDraft) {
+        if ($hasActive) {
             return;
         }
 
@@ -891,31 +915,131 @@ class LocalDemoWorkspaceSeeder extends Seeder
             return;
         }
 
-        $plans = SubscriptionPlan::query()
-            ->where('catalogue_version_id', $catalogue->id)
-            ->where('is_active', true)
-            ->get()
-            ->unique('module')
-            ->take(2)
-            ->values();
+        $planIds = [];
+        foreach ($modules as $module) {
+            $plan = SubscriptionPlan::query()
+                ->where('catalogue_version_id', $catalogue->id)
+                ->where('module', $module)
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->first();
+            if ($plan !== null) {
+                $planIds[] = (string) $plan->id;
+            }
+        }
 
-        if ($plans->count() < 1) {
+        if ($planIds === []) {
             return;
         }
 
-        $planIds = [];
-        foreach ($plans as $plan) {
-            $planIds[] = (string) $plan->id;
-        }
-
-        $contracts->createDraftContract(
+        $paidThrough = CarbonImmutable::now()->addYear();
+        $draft = $contracts->createDraftContract(
             actor: $owner,
             company: $company,
             catalogue: $catalogue,
             planIds: $planIds,
             tenure: SubscriptionTenure::Yearly,
-            commonRenewalDate: CarbonImmutable::now()->addYear(),
-            remark: 'Local demo: draft subscription fixture',
+            commonRenewalDate: $paidThrough,
+            remark: 'Local demo: subscription draft for activation',
+        );
+
+        app(SubscriptionLifecycleService::class)
+            ->activateAfterVerifiedPayment(
+                $draft,
+                $paidThrough,
+                $owner,
+                'Local demo: activate verified subscription fixture',
+            );
+    }
+
+    private function ensureExtendedPartyFixtures(
+        PartyService $parties,
+        User $owner,
+        Company $company,
+        Branch $branch,
+    ): void {
+        $this->ensurePartyWithRoles(
+            $parties,
+            $owner,
+            $company,
+            $branch,
+            'demo-party:'.$company->id.':driver-permanent',
+            'Alpha Permanent Driver',
+            [
+                [
+                    'role' => PartyRoleType::Driver->value,
+                    'attributes' => [
+                        'driver_type' => 'permanent',
+                        'license_number' => 'MH12DEMO1001',
+                        'joining_date' => '2024-01-15',
+                    ],
+                ],
+            ],
+            'Pune',
+        );
+
+        $this->ensurePartyWithRoles(
+            $parties,
+            $owner,
+            $company,
+            $branch,
+            'demo-party:'.$company->id.':driver-market',
+            'Alpha Market Driver',
+            [
+                [
+                    'role' => PartyRoleType::Driver->value,
+                    'attributes' => [
+                        'driver_type' => 'market',
+                    ],
+                ],
+            ],
+            'Nashik',
+        );
+
+        $this->ensurePartyWithRoles(
+            $parties,
+            $owner,
+            $company,
+            null,
+            'demo-party:'.$company->id.':pump-vendor',
+            'Alpha Pump Vendor',
+            [
+                [
+                    'role' => PartyRoleType::PumpVendor->value,
+                    'attributes' => [],
+                ],
+            ],
+            'Pune',
+        );
+
+        $this->ensurePartyWithRoles(
+            $parties,
+            $owner,
+            $company,
+            null,
+            'demo-party:'.$company->id.':general-vendor',
+            'Alpha General Vendor',
+            [
+                [
+                    'role' => PartyRoleType::GeneralVendor->value,
+                    'attributes' => [],
+                ],
+            ],
+            'Mumbai',
+        );
+
+        $this->ensurePartyWithRoles(
+            $parties,
+            $owner,
+            $company,
+            null,
+            'demo-party:'.$company->id.':multi-role',
+            'Alpha Customer Consignor',
+            [
+                ['role' => PartyRoleType::Customer->value, 'attributes' => []],
+                ['role' => PartyRoleType::Consignor->value, 'attributes' => []],
+            ],
+            'Pune',
         );
     }
 

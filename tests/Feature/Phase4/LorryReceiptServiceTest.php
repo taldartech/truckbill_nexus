@@ -151,6 +151,9 @@ function lrWorkspace(bool $withPermissions = true): array
         branch: null,
         attributes: [
             'name' => 'Consignor Mills',
+            'contact_number' => '9800020001',
+            'state' => 'MH',
+            'city' => 'Mumbai',
             'is_gst_applicable' => false,
         ],
         roles: [['role' => PartyRoleType::Consignor->value]],
@@ -162,6 +165,9 @@ function lrWorkspace(bool $withPermissions = true): array
         branch: null,
         attributes: [
             'name' => 'Consignee Depot',
+            'contact_number' => '9800020002',
+            'state' => 'MH',
+            'city' => 'Pune',
             'is_gst_applicable' => false,
         ],
         roles: [['role' => PartyRoleType::Consignee->value]],
@@ -383,15 +389,24 @@ test('http authorization denial and happy path index create store', function () 
     lrLoginAs($ctx['member'], 'member-secret');
     enterBranchWorkspace($ctx['company'], $ctx['branch'])->assertRedirect();
 
+    // First-company trial entitles all core modules → choose page without origin.
     $this->get(route('branch.lorry-receipts.create'))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->component('branch/lorry-receipts/create'));
+        ->assertInertia(fn ($page) => $page->component('branch/lorry-receipts/choose-context'));
+
+    $this->get(route('branch.lorry-receipts.create', ['context' => 'broker']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('branch/lorry-receipts/create')
+            ->where('workflowContext', 'broker'));
 
     $this->get(route('branch.lorry-receipts.index'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->component('branch/lorry-receipts/index'));
 
-    $response = $this->post(route('branch.lorry-receipts.store'), lrPayload($ctx));
+    $response = $this->post(route('branch.lorry-receipts.store'), lrPayload($ctx, [
+        'context' => 'broker',
+    ]));
     $response->assertRedirect();
 
     $lr = LorryReceipt::query()

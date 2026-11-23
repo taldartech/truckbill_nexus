@@ -170,6 +170,9 @@ test('viewer cannot create parties and cross-company party urls are isolated', f
     enterBranchWorkspace($company, $branch)->assertRedirect();
     $this->post(route('branch.parties.store'), [
         'name' => 'Owned Party',
+        'contact_number' => '9000022222',
+        'state' => 'MH',
+        'city' => 'Mumbai',
         'roles' => [['role' => 'customer', 'attributes' => []]],
         'remark' => 'Create',
     ])->assertRedirect();

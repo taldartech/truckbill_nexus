@@ -39,8 +39,6 @@ type Props = {
 };
 
 export default function BankCashShow({
-    company,
-    branch,
     permissions,
     account,
     documentDrawer,

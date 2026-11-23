@@ -18,12 +18,7 @@ type Props = {
 
 type Flash = { flash?: { success?: string | null } };
 
-export default function MastersHub({
-    company,
-    branch,
-    categories,
-    links,
-}: Props) {
+export default function MastersHub({ branch, categories }: Props) {
     const { flash } = usePage<Flash>().props;
     return (
         <>

@@ -30,8 +30,6 @@ type Props = {
 };
 
 export default function VehicleShow({
-    company,
-    branch,
     permissions,
     vehicle,
     documentDrawer,

@@ -16,6 +16,8 @@ use App\Domains\Numbering\DocumentNumberAllocator;
 use App\Domains\Numbering\Enums\DocumentNumberScopeType;
 use App\Domains\Numbering\Enums\DocumentNumberType;
 use App\Domains\Numbering\Exceptions\DocumentNumberConflictException;
+use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
+use App\Domains\Subscription\Entitlement\SubscriptionEntitlementGate;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\DocumentNumberAllocation;
@@ -49,6 +51,8 @@ final class LorryReceiptService
         private readonly CompositeLrDependencyGuard $dependencyGuard = new CompositeLrDependencyGuard([]),
         private readonly AuditedTransaction $auditedTransaction = new AuditedTransaction,
         private readonly AuditWriter $audit = new AuditWriter,
+        private readonly CoreModuleEntitlementResolver $entitlements = new CoreModuleEntitlementResolver,
+        private readonly SubscriptionEntitlementGate $entitlementGate = new SubscriptionEntitlementGate,
     ) {}
 
     /**
@@ -110,8 +114,10 @@ final class LorryReceiptService
         }
 
         $this->ensureTenantMatches($company, $branch);
+        $this->assertLifecycleAllowsMutation($company);
 
-        $normalized = $this->normalizePayload($company, $payload);
+        $normalized = $this->normalizePayload($company, $payload, forUpdate: false, lockedContext: null);
+        $this->assertContextEntitled($company, $normalized['workflow_context']);
 
         return $this->auditedTransaction->run(function () use ($company, $branch, $actor, $normalized): LorryReceipt {
             return $this->withTenant($company, $branch, function () use ($company, $branch, $actor, $normalized): LorryReceipt {
@@ -183,7 +189,20 @@ final class LorryReceiptService
             throw new LorryReceiptDomainException('Only pending Lorry Receipts can be edited.');
         }
 
-        $normalized = $this->normalizePayload($company, $payload, forUpdate: true);
+        $this->assertLifecycleAllowsMutation($company);
+
+        $lockedContext = $lorryReceipt->workflow_context;
+        if (array_key_exists('workflow_context', $payload)) {
+            $requested = trim((string) $payload['workflow_context']);
+            if ($requested !== '' && $requested !== $lockedContext->value) {
+                throw ValidationException::withMessages([
+                    'workflow_context' => 'Workflow context cannot be changed after create.',
+                ]);
+            }
+        }
+
+        $payload['workflow_context'] = $lockedContext->value;
+        $normalized = $this->normalizePayload($company, $payload, forUpdate: true, lockedContext: $lockedContext);
 
         return $this->auditedTransaction->run(function () use ($company, $branch, $lorryReceipt, $normalized): LorryReceipt {
             return $this->withTenant($company, $branch, function () use ($lorryReceipt, $normalized): LorryReceipt {
@@ -330,10 +349,18 @@ final class LorryReceiptService
      * @param  array<string, mixed>  $payload
      * @return array<string, mixed>
      */
-    private function normalizePayload(Company $company, array $payload, bool $forUpdate = false): array
-    {
-        $contextValue = (string) ($payload['workflow_context'] ?? '');
-        $context = LrWorkflowContext::tryFrom($contextValue);
+    private function normalizePayload(
+        Company $company,
+        array $payload,
+        bool $forUpdate = false,
+        ?LrWorkflowContext $lockedContext = null,
+    ): array {
+        $context = $lockedContext;
+        if ($context === null) {
+            $contextValue = (string) ($payload['workflow_context'] ?? '');
+            $context = LrWorkflowContext::tryFrom($contextValue);
+        }
+
         if ($context === null) {
             throw ValidationException::withMessages([
                 'workflow_context' => 'Workflow context must be broker, own_fleet, or partload.',
@@ -346,6 +373,23 @@ final class LorryReceiptService
         $toStationId = $this->optionalUuid($payload['to_station_id'] ?? null);
         $consignorId = $this->optionalUuid($payload['consignor_party_id'] ?? null);
         $consigneeId = $this->optionalUuid($payload['consignee_party_id'] ?? null);
+
+        [
+            $fromText,
+            $toText,
+            $fromStationId,
+            $toStationId,
+            $consignorId,
+            $consigneeId,
+        ] = $this->enforceContextFieldShape(
+            $context,
+            $fromText,
+            $toText,
+            $fromStationId,
+            $toStationId,
+            $consignorId,
+            $consigneeId,
+        );
 
         $this->assertWorkflowContextFields(
             $company,
@@ -423,6 +467,69 @@ final class LorryReceiptService
             'additional_charges_total' => number_format((float) $chargesTotal, 2, '.', ''),
             'goods_value' => $resolvedGoodsValue,
         ];
+    }
+
+    /**
+     * Reject fields that do not belong to the resolved workflow context and clear
+     * hidden counterparts to null for persistence.
+     *
+     * @return array{0: ?string, 1: ?string, 2: ?string, 3: ?string, 4: ?string, 5: ?string}
+     */
+    private function enforceContextFieldShape(
+        LrWorkflowContext $context,
+        ?string $fromText,
+        ?string $toText,
+        ?string $fromStationId,
+        ?string $toStationId,
+        ?string $consignorId,
+        ?string $consigneeId,
+    ): array {
+        $errors = [];
+
+        if ($context === LrWorkflowContext::Broker) {
+            if ($fromStationId !== null) {
+                $errors['from_station_id'] = 'From station is not used for Broker LRs.';
+            }
+            if ($toStationId !== null) {
+                $errors['to_station_id'] = 'To station is not used for Broker LRs.';
+            }
+            $fromStationId = null;
+            $toStationId = null;
+        } else {
+            if ($fromText !== null) {
+                $errors['from_text'] = 'From text is not used for OwnFleet/Partload LRs.';
+            }
+            if ($toText !== null) {
+                $errors['to_text'] = 'To text is not used for OwnFleet/Partload LRs.';
+            }
+            $fromText = null;
+            $toText = null;
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+
+        return [$fromText, $toText, $fromStationId, $toStationId, $consignorId, $consigneeId];
+    }
+
+    private function assertLifecycleAllowsMutation(Company $company): void
+    {
+        if (! $this->entitlementGate->allowsBranchMutation($company)) {
+            $decision = $this->entitlementGate->evaluate($company);
+            throw new LorryReceiptAuthorizationException(
+                $decision['restriction_reason'] ?? 'Branch mutations are not permitted for the current subscription lifecycle status.'
+            );
+        }
+    }
+
+    private function assertContextEntitled(Company $company, LrWorkflowContext $context): void
+    {
+        if (! $this->entitlements->isEntitled($company, $context)) {
+            throw new LorryReceiptAuthorizationException(
+                'Workflow context is not entitled by the company subscription.'
+            );
+        }
     }
 
     /**

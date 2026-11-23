@@ -33,13 +33,7 @@ type Props = {
     };
 };
 
-export default function VehicleForm({
-    company,
-    branch,
-    mode,
-    vehicle,
-    links,
-}: Props) {
+export default function VehicleForm({ mode, vehicle, links }: Props) {
     const action = mode === 'create' ? links.store! : links.update!;
     return (
         <>

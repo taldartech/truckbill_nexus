@@ -140,6 +140,9 @@ class PartyController extends Controller
             'remark' => ['nullable', 'string', 'max:1000'],
         ]);
 
+        $roles = $this->normalizeIncomingRoles($validated['roles']);
+        $attributes = $this->normalizePartyAttributes($validated);
+
         // PO-MASTER-COMPANY-VISIBILITY: ignore any client-submitted scope.
         $scopeBranch = app(MasterDataVisibilityResolver::class)
             ->scopeBranchForCreate($company, $branch);
@@ -149,12 +152,14 @@ class PartyController extends Controller
                 actor: $actor,
                 company: $company,
                 branch: $scopeBranch,
-                attributes: $validated,
-                roles: $validated['roles'],
+                attributes: $attributes,
+                roles: $roles,
                 remark: $validated['remark'] ?? 'Create party',
             );
         } catch (PartyDomainException $e) {
             abort(403, $e->getMessage());
+        } catch (ValidationException $e) {
+            throw $e;
         }
 
         if ($request->expectsJson()) {
@@ -263,13 +268,29 @@ class PartyController extends Controller
             'state' => ['nullable', 'string', 'max:100'],
             'city' => ['nullable', 'string', 'max:100'],
             'address' => ['nullable', 'string', 'max:2000'],
+            'roles' => ['sometimes', 'array', 'min:1'],
+            'roles.*.role' => ['required_with:roles', Rule::enum(PartyRoleType::class)],
+            'roles.*.attributes' => ['nullable', 'array'],
             'remark' => ['required', 'string', 'max:1000'],
         ]);
 
+        $roles = array_key_exists('roles', $validated)
+            ? $this->normalizeIncomingRoles($validated['roles'])
+            : null;
+        $attributes = $this->normalizePartyAttributes($validated);
+
         try {
-            $updated = $this->parties->update($actor, $party, $validated, $validated['remark']);
+            $updated = $this->parties->update(
+                $actor,
+                $party,
+                $attributes,
+                $validated['remark'],
+                $roles,
+            );
         } catch (PartyDomainException $e) {
             abort(403, $e->getMessage());
+        } catch (ValidationException $e) {
+            throw $e;
         }
 
         if ($request->expectsJson()) {
@@ -425,5 +446,74 @@ class PartyController extends Controller
         if ($party->company_id !== $company->id) {
             abort(404);
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $validated
+     * @return array<string, mixed>
+     */
+    private function normalizePartyAttributes(array $validated): array
+    {
+        $attributes = collect($validated)->except(['roles', 'remark'])->all();
+
+        if (array_key_exists('is_gst_applicable', $attributes)) {
+            $attributes['is_gst_applicable'] = filter_var(
+                $attributes['is_gst_applicable'],
+                FILTER_VALIDATE_BOOLEAN,
+                FILTER_NULL_ON_FAILURE,
+            ) ?? (bool) $attributes['is_gst_applicable'];
+        }
+
+        return $attributes;
+    }
+
+    /**
+     * @param  list<array{role: string|\BackedEnum, attributes?: array<string, mixed>|null}>  $roles
+     * @return list<array{role: string, attributes: array<string, mixed>}>
+     */
+    private function normalizeIncomingRoles(array $roles): array
+    {
+        $normalized = [];
+        foreach ($roles as $role) {
+            $value = $role['role'];
+            $roleValue = $value instanceof \BackedEnum ? (string) $value->value : (string) $value;
+            $normalized[] = [
+                'role' => $roleValue,
+                'attributes' => $this->normalizeIncomingRoleAttributes($role['attributes'] ?? []),
+            ];
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * Coerce checkbox / string boolean fields from HTML forms.
+     *
+     * @param  array<string, mixed>  $attributes
+     * @return array<string, mixed>
+     */
+    private function normalizeIncomingRoleAttributes(array $attributes): array
+    {
+        foreach (['declaration', 'tds_override'] as $boolKey) {
+            if (! array_key_exists($boolKey, $attributes)) {
+                continue;
+            }
+
+            $raw = $attributes[$boolKey];
+            if (is_bool($raw)) {
+                continue;
+            }
+
+            if (is_string($raw)) {
+                $lower = strtolower(trim($raw));
+                if (in_array($lower, ['1', 'true', 'yes', 'on'], true)) {
+                    $attributes[$boolKey] = true;
+                } elseif (in_array($lower, ['0', 'false', 'no', 'off', ''], true)) {
+                    $attributes[$boolKey] = false;
+                }
+            }
+        }
+
+        return $attributes;
     }
 }

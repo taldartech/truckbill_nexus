@@ -26,13 +26,7 @@ type Props = {
         show?: string;
     };
 };
-export default function StationForm({
-    company,
-    branch,
-    mode,
-    station,
-    links,
-}: Props) {
+export default function StationForm({ mode, station, links }: Props) {
     const action = mode === 'create' ? links.store! : links.update!;
     return (
         <>

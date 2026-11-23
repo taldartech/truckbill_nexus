@@ -23,8 +23,6 @@ type Props = {
 };
 
 export default function DocumentsIndex({
-    company,
-    branch,
     permissions,
     parent,
     storage,

@@ -34,6 +34,7 @@ final class PartyService
         private readonly PermissionAuthorizer $authorizer = new PermissionAuthorizer,
         private readonly AuditedTransaction $auditedTransaction = new AuditedTransaction,
         private readonly AuditWriter $audit = new AuditWriter,
+        private readonly PartyRoleAttributeValidator $roleAttributes = new PartyRoleAttributeValidator,
     ) {}
 
     /**
@@ -58,8 +59,14 @@ final class PartyService
             throw new PartyDomainException('Branch does not belong to company.');
         }
 
-        return $this->auditedTransaction->run(function () use ($actor, $company, $branch, $attributes, $roles): Party {
-            return $this->withTenant($actor, $company, $branch, function () use ($company, $branch, $attributes, $roles): Party {
+        $normalizedRoles = $this->normalizeRolePayloads($roles, $attributes);
+        $this->roleAttributes->validatePartyAttributes(
+            $attributes,
+            array_column($normalizedRoles, 'role'),
+        );
+
+        return $this->auditedTransaction->run(function () use ($actor, $company, $branch, $attributes, $normalizedRoles): Party {
+            return $this->withTenant($actor, $company, $branch, function () use ($company, $branch, $attributes, $normalizedRoles): Party {
                 $party = Party::query()->create([
                     'id' => (string) Str::uuid(),
                     'company_id' => $company->id,
@@ -68,22 +75,25 @@ final class PartyService
                     'contact_person' => $attributes['contact_person'] ?? null,
                     'contact_number' => $attributes['contact_number'] ?? null,
                     'email' => $attributes['email'] ?? null,
-                    'gstin' => $attributes['gstin'] ?? null,
-                    'pan' => $attributes['pan'] ?? null,
+                    'gstin' => isset($attributes['gstin']) && filled($attributes['gstin'])
+                        ? strtoupper(trim((string) $attributes['gstin']))
+                        : null,
+                    'pan' => isset($attributes['pan']) && filled($attributes['pan'])
+                        ? strtoupper(trim((string) $attributes['pan']))
+                        : null,
                     'is_gst_applicable' => $attributes['is_gst_applicable'] ?? true,
                     'state' => $attributes['state'] ?? null,
                     'city' => $attributes['city'] ?? null,
                     'address' => $attributes['address'] ?? null,
                 ]);
 
-                foreach ($roles as $rolePayload) {
-                    $this->assertValidRolePayload($rolePayload);
+                foreach ($normalizedRoles as $rolePayload) {
                     PartyRole::query()->create([
                         'id' => (string) Str::uuid(),
                         'company_id' => $company->id,
                         'party_id' => $party->id,
                         'role' => $rolePayload['role'],
-                        'role_attributes' => $rolePayload['attributes'] ?? [],
+                        'role_attributes' => $rolePayload['attributes'],
                     ]);
                 }
 
@@ -103,9 +113,15 @@ final class PartyService
 
     /**
      * @param  array<string, mixed>  $attributes
+     * @param  list<array{role: string, attributes?: array<string, mixed>}>|null  $roles
      */
-    public function update(User $actor, Party $party, array $attributes, string $remark): Party
-    {
+    public function update(
+        User $actor,
+        Party $party,
+        array $attributes,
+        string $remark,
+        ?array $roles = null,
+    ): Party {
         $company = $party->company()->firstOrFail();
         $branch = $party->branch_id !== null
             ? Branch::query()->where('company_id', $company->id)->whereKey($party->branch_id)->first()
@@ -113,10 +129,48 @@ final class PartyService
 
         $this->assertCanMutate($actor, $company, $branch ?? $this->resolveActorBranch($actor, $company));
 
-        return $this->auditedTransaction->run(function () use ($actor, $party, $company, $branch, $attributes, $remark): Party {
-            return $this->withTenant($actor, $company, $branch, function () use ($party, $attributes, $remark): Party {
-                $before = $party->toArray();
-                $party->fill(collect($attributes)->only([
+        $mergedPartyAttributes = array_merge($party->only([
+            'name',
+            'contact_person',
+            'contact_number',
+            'email',
+            'gstin',
+            'pan',
+            'is_gst_applicable',
+            'state',
+            'city',
+            'address',
+        ]), collect($attributes)->only([
+            'name',
+            'contact_person',
+            'contact_number',
+            'email',
+            'gstin',
+            'pan',
+            'is_gst_applicable',
+            'state',
+            'city',
+            'address',
+        ])->all());
+
+        $normalizedRoles = null;
+        if ($roles !== null) {
+            $normalizedRoles = $this->normalizeRolePayloads($roles, $mergedPartyAttributes);
+            $this->roleAttributes->validatePartyAttributes(
+                $mergedPartyAttributes,
+                array_column($normalizedRoles, 'role'),
+            );
+        } else {
+            $this->roleAttributes->validatePartyAttributes(
+                $mergedPartyAttributes,
+                array_values($party->roles()->whereNull('deactivated_at')->pluck('role')->all()),
+            );
+        }
+
+        return $this->auditedTransaction->run(function () use ($actor, $party, $company, $branch, $attributes, $remark, $normalizedRoles): Party {
+            return $this->withTenant($actor, $company, $branch, function () use ($party, $company, $attributes, $remark, $normalizedRoles): Party {
+                $before = $party->load('roles')->toArray();
+                $fill = collect($attributes)->only([
                     'name',
                     'contact_person',
                     'contact_number',
@@ -127,8 +181,21 @@ final class PartyService
                     'state',
                     'city',
                     'address',
-                ])->all());
+                ])->all();
+
+                if (isset($fill['gstin']) && filled($fill['gstin'])) {
+                    $fill['gstin'] = strtoupper(trim((string) $fill['gstin']));
+                }
+                if (isset($fill['pan']) && filled($fill['pan'])) {
+                    $fill['pan'] = strtoupper(trim((string) $fill['pan']));
+                }
+
+                $party->fill($fill);
                 $party->save();
+
+                if ($normalizedRoles !== null) {
+                    $this->applyRoleSync($party, $company, $normalizedRoles, $remark);
+                }
 
                 $this->audit->write(
                     AuditAction::Updated,
@@ -136,8 +203,54 @@ final class PartyService
                     $party->id,
                     remark: $remark,
                     before: $before,
-                    after: $party->fresh()?->toArray(),
+                    after: $party->fresh(['roles'])?->toArray(),
                 );
+
+                return $party->fresh(['roles']) ?? $party;
+            });
+        });
+    }
+
+    /**
+     * Add or update active roles without deactivating omitted roles.
+     *
+     * @param  list<array{role: string, attributes?: array<string, mixed>}>  $roles
+     */
+    public function syncRoles(User $actor, Party $party, array $roles, string $remark): Party
+    {
+        if ($roles === []) {
+            throw ValidationException::withMessages(['roles' => 'At least one party role is required.']);
+        }
+
+        $company = $party->company()->firstOrFail();
+        $branch = $party->branch_id !== null
+            ? Branch::query()->where('company_id', $company->id)->whereKey($party->branch_id)->first()
+            : null;
+
+        $this->assertCanMutate($actor, $company, $branch ?? $this->resolveActorBranch($actor, $company));
+
+        $partyAttributes = $party->only([
+            'name',
+            'contact_person',
+            'contact_number',
+            'email',
+            'gstin',
+            'pan',
+            'is_gst_applicable',
+            'state',
+            'city',
+            'address',
+        ]);
+
+        $normalizedRoles = $this->normalizeRolePayloads($roles, $partyAttributes);
+        $this->roleAttributes->validatePartyAttributes(
+            $partyAttributes,
+            array_column($normalizedRoles, 'role'),
+        );
+
+        return $this->auditedTransaction->run(function () use ($actor, $party, $company, $branch, $normalizedRoles, $remark): Party {
+            return $this->withTenant($actor, $company, $branch, function () use ($party, $company, $normalizedRoles, $remark): Party {
+                $this->applyRoleSync($party, $company, $normalizedRoles, $remark);
 
                 return $party->fresh(['roles']) ?? $party;
             });
@@ -161,8 +274,30 @@ final class PartyService
 
         $this->assertCanMutate($actor, $company, $branch ?? $this->resolveActorBranch($actor, $company));
 
-        return $this->auditedTransaction->run(function () use ($actor, $party, $company, $branch, $role, $roleAttributes, $remark): PartyRole {
-            return $this->withTenant($actor, $company, $branch, function () use ($party, $company, $role, $roleAttributes, $remark): PartyRole {
+        $partyAttributes = $party->only([
+            'name',
+            'contact_person',
+            'contact_number',
+            'email',
+            'gstin',
+            'pan',
+            'is_gst_applicable',
+            'state',
+            'city',
+            'address',
+        ]);
+
+        $normalized = $this->roleAttributes->validateAndNormalize($role, $roleAttributes, $partyAttributes);
+        $this->roleAttributes->validatePartyAttributes(
+            $partyAttributes,
+            array_values(array_merge(
+                $party->roles()->whereNull('deactivated_at')->pluck('role')->all(),
+                [$role->value],
+            )),
+        );
+
+        return $this->auditedTransaction->run(function () use ($actor, $party, $company, $branch, $role, $normalized, $remark): PartyRole {
+            return $this->withTenant($actor, $company, $branch, function () use ($party, $company, $role, $normalized, $remark): PartyRole {
                 $existing = PartyRole::query()
                     ->where('party_id', $party->id)
                     ->where('role', $role->value)
@@ -175,7 +310,7 @@ final class PartyService
                 if ($existing !== null) {
                     $before = $existing->toArray();
                     $existing->deactivated_at = null;
-                    $existing->role_attributes = $roleAttributes;
+                    $existing->role_attributes = $normalized;
                     $existing->save();
 
                     $this->audit->write(
@@ -195,7 +330,7 @@ final class PartyService
                     'company_id' => $company->id,
                     'party_id' => $party->id,
                     'role' => $role->value,
-                    'role_attributes' => $roleAttributes,
+                    'role_attributes' => $normalized,
                 ]);
 
                 $this->audit->write(
@@ -316,6 +451,107 @@ final class PartyService
         return $builder->paginate($perPage);
     }
 
+    /**
+     * @param  list<array{role: string, attributes: array<string, mixed>}>  $normalizedRoles
+     */
+    private function applyRoleSync(Party $party, Company $company, array $normalizedRoles, string $remark): void
+    {
+        foreach ($normalizedRoles as $rolePayload) {
+            $existing = PartyRole::query()
+                ->where('party_id', $party->id)
+                ->where('role', $rolePayload['role'])
+                ->first();
+
+            if ($existing !== null && $existing->isActive()) {
+                $before = $existing->toArray();
+                $existing->role_attributes = $rolePayload['attributes'];
+                $existing->save();
+
+                $this->audit->write(
+                    AuditAction::Updated,
+                    PartyRole::class,
+                    $existing->id,
+                    remark: $remark,
+                    before: $before,
+                    after: $existing->fresh()?->toArray(),
+                );
+
+                continue;
+            }
+
+            if ($existing !== null) {
+                $before = $existing->toArray();
+                $existing->deactivated_at = null;
+                $existing->role_attributes = $rolePayload['attributes'];
+                $existing->save();
+
+                $this->audit->write(
+                    AuditAction::Updated,
+                    PartyRole::class,
+                    $existing->id,
+                    remark: $remark,
+                    before: $before,
+                    after: $existing->fresh()?->toArray(),
+                );
+
+                continue;
+            }
+
+            $created = PartyRole::query()->create([
+                'id' => (string) Str::uuid(),
+                'company_id' => $company->id,
+                'party_id' => $party->id,
+                'role' => $rolePayload['role'],
+                'role_attributes' => $rolePayload['attributes'],
+            ]);
+
+            $this->audit->write(
+                AuditAction::Created,
+                PartyRole::class,
+                $created->id,
+                remark: $remark,
+                before: null,
+                after: $created->toArray(),
+            );
+        }
+    }
+
+    /**
+     * @param  list<array{role?: string, attributes?: array<string, mixed>}>  $roles
+     * @param  array<string, mixed>  $partyAttributes
+     * @return list<array{role: string, attributes: array<string, mixed>}>
+     */
+    private function normalizeRolePayloads(array $roles, array $partyAttributes): array
+    {
+        $seen = [];
+        $normalized = [];
+
+        foreach ($roles as $rolePayload) {
+            $role = $rolePayload['role'] ?? null;
+            if (! is_string($role) || PartyRoleType::tryFrom($role) === null) {
+                throw ValidationException::withMessages(['roles' => 'Invalid party role.']);
+            }
+
+            if (isset($seen[$role])) {
+                throw ValidationException::withMessages(['roles' => 'Duplicate party role: '.$role.'.']);
+            }
+            $seen[$role] = true;
+
+            $attributes = $this->roleAttributes->validateAndNormalize(
+                PartyRoleType::from($role),
+                $rolePayload['attributes'] ?? [],
+                $partyAttributes,
+            );
+
+            $normalized[] = [
+                'role' => $role,
+                'attributes' => $attributes,
+            ];
+        }
+
+        return $normalized;
+    }
+
     private function assertCanView(User $actor, Company $company, Branch $branch): void
     {
         $this->assertCompanyBranchAccess($actor, $company, $branch);
@@ -418,49 +654,6 @@ final class PartyService
 
         return $company->branches()->whereNull('deactivated_at')->get()
             ->first(fn (Branch $b) => $this->access->canAccessBranch($actor, $company, $b));
-    }
-
-    /**
-     * @param  array{role?: string, attributes?: array<string, mixed>}  $rolePayload
-     */
-    private function assertValidRolePayload(array $rolePayload): void
-    {
-        $role = $rolePayload['role'] ?? null;
-        if (! is_string($role) || PartyRoleType::tryFrom($role) === null) {
-            throw ValidationException::withMessages(['roles' => 'Invalid party role.']);
-        }
-
-        $this->validateRoleAttributes(PartyRoleType::from($role), $rolePayload['attributes'] ?? []);
-    }
-
-    /**
-     * @param  array<string, mixed>  $attributes
-     */
-    private function validateRoleAttributes(PartyRoleType $role, array $attributes): void
-    {
-        if ($role === PartyRoleType::Transporter) {
-            foreach (['pan', 'pan_status', 'declaration'] as $required) {
-                if (! filled($attributes[$required] ?? null)) {
-                    throw ValidationException::withMessages([
-                        "roles.attributes.{$required}" => "Transporter requires {$required}.",
-                    ]);
-                }
-            }
-        }
-
-        if ($role === PartyRoleType::Driver) {
-            $type = $attributes['driver_type'] ?? null;
-            if (! in_array($type, ['permanent', 'market'], true)) {
-                throw ValidationException::withMessages([
-                    'roles.attributes.driver_type' => 'Driver type must be permanent or market.',
-                ]);
-            }
-            if ($type === 'permanent' && ! filled($attributes['license_number'] ?? null)) {
-                throw ValidationException::withMessages([
-                    'roles.attributes.license_number' => 'Permanent drivers require a license number.',
-                ]);
-            }
-        }
     }
 
     /**

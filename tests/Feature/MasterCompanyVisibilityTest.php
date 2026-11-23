@@ -103,7 +103,7 @@ test('shared data party vehicle and bank persist company-wide', function () {
         $owner,
         $company,
         app(MasterDataVisibilityResolver::class)->scopeBranchForCreate($company, $branchA),
-        ['name' => 'Shared Party'],
+        ['name' => 'Shared Party', 'contact_number' => '9000010001', 'state' => 'MH', 'city' => 'Pune'],
         [['role' => PartyRoleType::Customer->value]],
         'Create',
     );
@@ -138,7 +138,7 @@ test('restricted party vehicle and bank persist to authorized branch', function 
         $owner,
         $company,
         $resolver->scopeBranchForCreate($company, $branchA),
-        ['name' => 'Restricted Party'],
+        ['name' => 'Restricted Party', 'contact_number' => '9000010002', 'state' => 'MH', 'city' => 'Pune'],
         [['role' => PartyRoleType::Customer->value]],
         'Create',
     );
@@ -173,6 +173,9 @@ test('forged scope cannot override company data visibility on http create', func
     $this->post(route('branch.parties.store'), [
         'scope' => 'shared',
         'name' => 'Forged Shared Party',
+        'contact_number' => '9000044444',
+        'state' => 'MH',
+        'city' => 'Nagpur',
         'roles' => [['role' => PartyRoleType::Customer->value]],
         'remark' => 'Forge',
     ])->assertRedirect();
@@ -202,7 +205,7 @@ test('cross-company master access remains denied', function () {
         $ownerA,
         $companyA,
         null,
-        ['name' => 'Owned Party'],
+        ['name' => 'Owned Party', 'contact_number' => '9000010003', 'state' => 'MH', 'city' => 'Pune'],
         [['role' => PartyRoleType::Customer->value]],
         'Create',
     );
@@ -220,7 +223,7 @@ test('visibility change is blocked when operational masters exist', function () 
         $owner,
         $company,
         null,
-        ['name' => 'Lock Visibility'],
+        ['name' => 'Lock Visibility', 'contact_number' => '9000010004', 'state' => 'MH', 'city' => 'Pune'],
         [['role' => PartyRoleType::Customer->value]],
         'Create',
     );

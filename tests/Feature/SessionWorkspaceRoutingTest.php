@@ -173,6 +173,9 @@ test('global branches enter panel posts context then opens selected branch dashb
     // Valid mutation against current context still succeeds.
     $this->post(route('branch.parties.store'), [
         'name' => 'Context Party',
+        'contact_number' => '9000033333',
+        'state' => 'MH',
+        'city' => 'Pune',
         'roles' => [
             ['role' => 'consignor', 'attributes' => []],
         ],

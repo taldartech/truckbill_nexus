@@ -79,7 +79,12 @@ test('authorized users can open document manager for a party parent', function (
         actor: $owner,
         company: $company,
         branch: $branch,
-        attributes: ['name' => 'Docs Party', 'contact_number' => '9111111111'],
+        attributes: [
+            'name' => 'Docs Party',
+            'contact_number' => '9111111111',
+            'state' => 'MH',
+            'city' => 'Pune',
+        ],
         roles: [['role' => PartyRoleType::Customer->value, 'attributes' => []]],
     );
 
@@ -129,7 +134,12 @@ test('document upload download authorization respects company isolation and scan
         actor: $owner,
         company: $company,
         branch: $branch,
-        attributes: ['name' => 'Upload Party'],
+        attributes: [
+            'name' => 'Upload Party',
+            'contact_number' => '9111111112',
+            'state' => 'MH',
+            'city' => 'Pune',
+        ],
         roles: [['role' => PartyRoleType::Customer->value, 'attributes' => []]],
     );
 

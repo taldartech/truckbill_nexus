@@ -10,7 +10,9 @@ use App\Domains\Consignment\Exceptions\LorryReceiptAuthorizationException;
 use App\Domains\Consignment\Exceptions\LorryReceiptConflictException;
 use App\Domains\Consignment\Exceptions\LorryReceiptDomainException;
 use App\Domains\Consignment\LorryReceiptService;
+use App\Domains\Consignment\LrWorkflowContextResolver;
 use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
+use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
@@ -43,6 +45,7 @@ class LorryReceiptController extends Controller
         private readonly CompanyAccessService $access,
         private readonly PermissionAuthorizer $authorizer,
         private readonly LorryReceiptService $lorryReceipts,
+        private readonly LrWorkflowContextResolver $contextResolver,
     ) {}
 
     public function index(Request $request, Company $company, Branch $branch): Response
@@ -92,8 +95,33 @@ class LorryReceiptController extends Controller
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertPermission($actor, $company, $branch, PermissionCodes::LR_CREATE);
 
+        $origin = $this->requestOrigin($request);
+        $resolution = $this->contextResolver->resolveForCreate($company, $actor, $branch, $origin);
+
+        if ($resolution['status'] === 'choose') {
+            return Inertia::render('branch/lorry-receipts/choose-context', [
+                'options' => $resolution['options'],
+                'urls' => [
+                    'index' => route('branch.lorry-receipts.index', absolute: false),
+                ],
+            ]);
+        }
+
+        if ($resolution['status'] === 'blocked') {
+            return Inertia::render('branch/lorry-receipts/blocked', [
+                'reason' => $resolution['reason'],
+                'urls' => [
+                    'index' => route('branch.lorry-receipts.index', absolute: false),
+                ],
+            ]);
+        }
+
+        $context = $resolution['context'];
+
         return Inertia::render('branch/lorry-receipts/create', [
             'mode' => 'create',
+            'workflowContext' => $context->value,
+            'contextLabel' => $this->contextResolver->labelFor($context),
             'lorryReceipt' => null,
             'formOptions' => $this->formOptions($company),
             'permissions' => $this->lrPermissions($actor, $company, $branch),
@@ -109,7 +137,31 @@ class LorryReceiptController extends Controller
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertPermission($actor, $company, $branch, PermissionCodes::LR_CREATE);
 
+        $origin = $this->requestOrigin($request)
+            ?? (is_string($request->input('workflow_context')) ? (string) $request->input('workflow_context') : null);
+        $resolution = $this->contextResolver->resolveForCreate($company, $actor, $branch, $origin);
+
+        if ($resolution['status'] !== 'ready') {
+            throw ValidationException::withMessages([
+                'workflow_context' => $resolution['status'] === 'blocked'
+                    ? $resolution['reason']
+                    : 'Select a workflow context before creating a Lorry Receipt.',
+            ]);
+        }
+
+        $resolvedContext = $resolution['context'];
         $payload = $this->validatedPayload($request);
+
+        if (
+            array_key_exists('workflow_context', $payload)
+            && (string) $payload['workflow_context'] !== $resolvedContext->value
+        ) {
+            throw ValidationException::withMessages([
+                'workflow_context' => 'Workflow context does not match the entitled originating action.',
+            ]);
+        }
+
+        $payload['workflow_context'] = $resolvedContext->value;
 
         try {
             $lr = $this->lorryReceipts->create($company, $branch, $actor, $payload);
@@ -160,9 +212,12 @@ class LorryReceiptController extends Controller
         }
 
         $lorryReceipt->load(['goodsRows', 'ewayBills', 'additionalCharges']);
+        $context = $lorryReceipt->workflow_context;
 
         return Inertia::render('branch/lorry-receipts/edit', [
             'mode' => 'edit',
+            'workflowContext' => $context->value,
+            'contextLabel' => $this->contextResolver->labelFor($context),
             'lorryReceipt' => $this->detailPayload($lorryReceipt),
             'formOptions' => $this->formOptions($company),
             'permissions' => $this->lrPermissions($actor, $company, $branch),
@@ -181,6 +236,7 @@ class LorryReceiptController extends Controller
         $this->assertLr($lorryReceipt, $company, $branch);
 
         $payload = $this->validatedPayload($request, forUpdate: true);
+        $payload['workflow_context'] = $lorryReceipt->workflow_context->value;
 
         try {
             $updated = $this->lorryReceipts->update($lorryReceipt, $actor, $payload);
@@ -259,6 +315,18 @@ class LorryReceiptController extends Controller
         ]);
     }
 
+    private function requestOrigin(Request $request): ?string
+    {
+        $context = trim($request->string('context')->toString());
+        if ($context !== '') {
+            return $context;
+        }
+
+        $origin = trim($request->string('origin')->toString());
+
+        return $origin !== '' ? $origin : null;
+    }
+
     private function assertPermission(User $actor, Company $company, Branch $branch, string $code): void
     {
         if (! $this->authorizer->allowsCustomer($actor, $code, $company, $branch)) {
@@ -299,7 +367,7 @@ class LorryReceiptController extends Controller
     private function validatedPayload(Request $request, bool $forUpdate = false): array
     {
         $rules = [
-            'workflow_context' => ['required', Rule::enum(LrWorkflowContext::class)],
+            'workflow_context' => ['nullable', Rule::enum(LrWorkflowContext::class)],
             'lr_date' => ['nullable', 'date'],
             'from_text' => ['nullable', 'string', 'max:255'],
             'to_text' => ['nullable', 'string', 'max:255'],
@@ -330,6 +398,8 @@ class LorryReceiptController extends Controller
         if (! $forUpdate) {
             $rules['number_mode'] = ['required', Rule::in(['auto', 'manual'])];
             $rules['lr_number'] = ['nullable', 'string', 'max:64', 'required_if:number_mode,manual'];
+            $rules['context'] = ['nullable', 'string', 'max:32'];
+            $rules['origin'] = ['nullable', 'string', 'max:32'];
         }
 
         return $request->validate($rules);
@@ -340,9 +410,26 @@ class LorryReceiptController extends Controller
      */
     private function formOptions(Company $company): array
     {
-        $parties = Party::query()
+        $consignors = Party::query()
             ->where('company_id', $company->id)
             ->whereNull('deleted_at')
+            ->whereHas('roles', function ($query): void {
+                $query->where('role', PartyRoleType::Consignor->value)
+                    ->whereNull('deleted_at')
+                    ->whereNull('deactivated_at');
+            })
+            ->orderBy('name')
+            ->limit(300)
+            ->get(['id', 'name']);
+
+        $consignees = Party::query()
+            ->where('company_id', $company->id)
+            ->whereNull('deleted_at')
+            ->whereHas('roles', function ($query): void {
+                $query->where('role', PartyRoleType::Consignee->value)
+                    ->whereNull('deleted_at')
+                    ->whereNull('deactivated_at');
+            })
             ->orderBy('name')
             ->limit(300)
             ->get(['id', 'name']);
@@ -374,12 +461,15 @@ class LorryReceiptController extends Controller
             ->get(['id', 'name']);
 
         return [
-            'contextOptions' => $this->contextOptions(),
             'rateTypeOptions' => collect(FreightRateType::cases())->map(fn (FreightRateType $type): array => [
                 'value' => $type->value,
                 'label' => str_replace('_', ' ', ucfirst($type->value)),
             ])->values()->all(),
-            'parties' => $parties->map(fn (Party $party): array => [
+            'consignors' => $consignors->map(fn (Party $party): array => [
+                'id' => $party->id,
+                'name' => $party->name,
+            ])->values()->all(),
+            'consignees' => $consignees->map(fn (Party $party): array => [
                 'id' => $party->id,
                 'name' => $party->name,
             ])->values()->all(),
@@ -408,11 +498,7 @@ class LorryReceiptController extends Controller
         foreach (LrWorkflowContext::cases() as $context) {
             $options[] = [
                 'value' => $context->value,
-                'label' => match ($context) {
-                    LrWorkflowContext::Broker => 'Broker',
-                    LrWorkflowContext::OwnFleet => 'OwnFleet',
-                    LrWorkflowContext::Partload => 'Partload',
-                },
+                'label' => $this->contextResolver->labelFor($context),
             ];
         }
 
