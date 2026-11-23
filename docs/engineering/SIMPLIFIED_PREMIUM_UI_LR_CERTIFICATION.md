@@ -6,7 +6,11 @@
 
 ## A. Git HEAD
 
-Recorded at commit time in local history (see commit SHA after local commit). Pre-change tip was ahead of remote `18d0834` (docs tip `3a12b9e` family).
+| Ref                      | SHA                                        |
+| ------------------------ | ------------------------------------------ |
+| Remote observed          | `18d083430f4df64ebcf9e68648841b80b2d88d58` |
+| Pre-change local tip     | `3a12b9ee468e6a336aae9a292d3ef9e799b50cf2` |
+| This wave feature commit | `c8e8ee0d70e87fc0d30813fb9be9f2cfaf876f0b` |
 
 ## B–D. UI simplification & topbar
 
