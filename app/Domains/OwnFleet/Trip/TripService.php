@@ -271,7 +271,7 @@ final class TripService
             throw new TripAuthorizationException('Not authorized to dispatch OwnFleet Trips.');
         }
 
-        $starting = $this->requireNonNegativeDecimal($payload['starting_odometer'], 'starting_odometer', 1);
+        $starting = $this->requireNonNegativeDecimal($payload['starting_odometer'] ?? null, 'starting_odometer', 1);
         $timezone = filled($company->timezone) ? (string) $company->timezone : 'Asia/Kolkata';
         $departure = filled($payload['departure_at'] ?? null)
             ? CarbonImmutable::parse((string) $payload['departure_at'], $timezone)->utc()
@@ -322,7 +322,7 @@ final class TripService
             throw new TripAuthorizationException('Not authorized to complete OwnFleet Trips.');
         }
 
-        $ending = $this->requireNonNegativeDecimal($payload['ending_odometer'], 'ending_odometer', 1);
+        $ending = $this->requireNonNegativeDecimal($payload['ending_odometer'] ?? null, 'ending_odometer', 1);
         $timezone = filled($company->timezone) ? (string) $company->timezone : 'Asia/Kolkata';
         $arrival = filled($payload['actual_arrival_at'] ?? null)
             ? CarbonImmutable::parse((string) $payload['actual_arrival_at'], $timezone)->utc()
