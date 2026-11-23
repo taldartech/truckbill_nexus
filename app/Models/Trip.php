@@ -135,4 +135,10 @@ class Trip extends Model
     {
         return $this->hasMany(TripDropPickupAllocation::class);
     }
+
+    /** @return HasMany<TripExpense, $this> */
+    public function expenses(): HasMany
+    {
+        return $this->hasMany(TripExpense::class)->orderByDesc('expense_date');
+    }
 }

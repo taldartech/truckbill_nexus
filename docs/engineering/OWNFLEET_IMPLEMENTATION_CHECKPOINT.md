@@ -2,11 +2,11 @@
 
 **Date:** 23 November 2026  
 **PO Phase 5 AUTH:** Approved  
-**Implementation status:** **Batches A–C complete; Batches D–H remaining**
+**Implementation status:** **Batches A–D complete; Batches E–H remaining**
 
 ## Verdict
 
-Do **not** certify Phase 5 complete. Trip foundation, multi-point allocation, and dispatch/completion are implemented; expenses through payments remain.
+Do **not** certify Phase 5 complete. Trip ops through expenses/diesel/profit are implemented; POD, cancel/delete, invoices, payments, Playwright/k6/cert remain.
 
 ## Completed — Batch A
 
@@ -30,9 +30,14 @@ Do **not** certify Phase 5 complete. Trip foundation, multi-point allocation, an
 - Trip Detail dispatch & completion forms
 - Pest: `OwnFleetTripLifecycleTest`
 
+## Completed — Batch D
+
+- `trip_expenses` migration + `TripExpenseService` (diesel litres×rate, planned diesel, profit = LR freight + charges − expenses; mileage N/A until attributable)
+- Trip Detail expenses/profit UI
+- Pest: `OwnFleetTripExpenseTest`
+
 ## Remaining (authorized sequence)
 
-- **D** Expenses, diesel, profitability
 - **E** POD, documents, cancel/delete
 - **F** OwnFleet invoices
 - **G** Payments

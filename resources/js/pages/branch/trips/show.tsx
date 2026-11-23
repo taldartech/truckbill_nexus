@@ -75,6 +75,9 @@ type Props = {
         stations: Array<{ id: string; name: string }>;
         consignors: Array<{ id: string; name: string }>;
         consignees: Array<{ id: string; name: string }>;
+        expense_categories: Array<{ id: string; name: string }>;
+        payment_modes: Array<{ id: string; name: string }>;
+        bank_cash_accounts: Array<{ id: string; name: string }>;
     };
     permissions: {
         can_edit: boolean;
@@ -92,6 +95,26 @@ type Props = {
         remove_allocation: string;
         dispatch: string;
         complete: string;
+        add_expense: string;
+        remove_expense: string;
+    };
+    expenses: Array<{
+        id: string;
+        expense_date: string | null;
+        category_name: string | null;
+        amount: string;
+        is_diesel: boolean;
+        diesel_litres: string | null;
+        remarks: string | null;
+    }>;
+    profit: {
+        agreed_freight: string;
+        additional_charges: string;
+        diesel_cost: string;
+        other_expenses: string;
+        total_expenses: string;
+        trip_profit: string;
+        trip_mileage_label: string;
     };
 };
 
@@ -117,6 +140,8 @@ export default function TripShow({
     formOptions,
     permissions,
     urls,
+    expenses,
+    profit,
 }: Props) {
     const { flash, errors } = usePage<{
         flash?: { success?: string | null; info?: string | null };
@@ -794,6 +819,200 @@ export default function TripShow({
                                         className="bg-[#2FB36F] text-white hover:bg-[#279960] md:col-span-2"
                                     >
                                         Save allocation
+                                    </Button>
+                                </>
+                            )}
+                        </Form>
+                    ) : null}
+                </section>
+
+                <section className="rounded-lg border border-border p-4">
+                    <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+                        Expenses, diesel & profit
+                    </h2>
+                    <dl className="mt-3 grid gap-2 text-sm md:grid-cols-2">
+                        <div className="flex justify-between gap-4">
+                            <dt className="text-muted-foreground">
+                                Agreed freight
+                            </dt>
+                            <dd>₹{profit.agreed_freight}</dd>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                            <dt className="text-muted-foreground">
+                                Additional charges
+                            </dt>
+                            <dd>₹{profit.additional_charges}</dd>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                            <dt className="text-muted-foreground">Diesel</dt>
+                            <dd>₹{profit.diesel_cost}</dd>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                            <dt className="text-muted-foreground">
+                                Other expenses
+                            </dt>
+                            <dd>₹{profit.other_expenses}</dd>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                            <dt className="text-muted-foreground">
+                                Total expenses
+                            </dt>
+                            <dd>₹{profit.total_expenses}</dd>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                            <dt className="text-muted-foreground">
+                                Trip profit
+                            </dt>
+                            <dd
+                                className={
+                                    Number(profit.trip_profit) > 0
+                                        ? 'text-[#2FB36F]'
+                                        : Number(profit.trip_profit) < 0
+                                          ? 'text-destructive'
+                                          : ''
+                                }
+                            >
+                                ₹{profit.trip_profit}
+                            </dd>
+                        </div>
+                        <div className="flex justify-between gap-4 md:col-span-2">
+                            <dt className="text-muted-foreground">
+                                Trip mileage
+                            </dt>
+                            <dd>{profit.trip_mileage_label}</dd>
+                        </div>
+                    </dl>
+
+                    {expenses.length === 0 ? (
+                        <p className="mt-3 text-sm text-muted-foreground">
+                            No expenses yet.
+                        </p>
+                    ) : (
+                        <ul className="mt-3 space-y-2 text-sm">
+                            {expenses.map((expense) => (
+                                <li
+                                    key={expense.id}
+                                    className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border px-3 py-2"
+                                >
+                                    <div>
+                                        <p className="font-medium">
+                                            {expense.category_name} · ₹
+                                            {expense.amount}
+                                            {expense.is_diesel
+                                                ? ` · Diesel ${expense.diesel_litres} L`
+                                                : ''}
+                                        </p>
+                                        <p className="text-muted-foreground">
+                                            {expense.expense_date}
+                                            {expense.remarks
+                                                ? ` · ${expense.remarks}`
+                                                : ''}
+                                        </p>
+                                    </div>
+                                    {mutable ? (
+                                        <Form
+                                            action={urls.remove_expense.replace(
+                                                'EXPENSE_ID',
+                                                expense.id,
+                                            )}
+                                            method="delete"
+                                        >
+                                            {({ processing }) => (
+                                                <Button
+                                                    type="submit"
+                                                    variant="destructive"
+                                                    size="sm"
+                                                    disabled={processing}
+                                                >
+                                                    Remove
+                                                </Button>
+                                            )}
+                                        </Form>
+                                    ) : null}
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+
+                    {mutable ? (
+                        <Form
+                            action={urls.add_expense}
+                            method="post"
+                            className="mt-4 grid gap-2 rounded-md border border-dashed border-border p-3 md:grid-cols-2"
+                        >
+                            {({ processing }) => (
+                                <>
+                                    <select
+                                        name="expense_category_id"
+                                        required
+                                        className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                                        defaultValue=""
+                                    >
+                                        <option value="" disabled>
+                                            Category
+                                        </option>
+                                        {formOptions.expense_categories.map(
+                                            (category) => (
+                                                <option
+                                                    key={category.id}
+                                                    value={category.id}
+                                                >
+                                                    {category.name}
+                                                </option>
+                                            ),
+                                        )}
+                                    </select>
+                                    <Input
+                                        name="expense_date"
+                                        type="date"
+                                        required
+                                    />
+                                    <Input
+                                        name="amount"
+                                        type="number"
+                                        step="0.01"
+                                        min="0.01"
+                                        placeholder="Amount (non-diesel)"
+                                    />
+                                    <label className="flex items-center gap-2 text-sm md:col-span-2">
+                                        <input
+                                            type="checkbox"
+                                            name="is_diesel"
+                                            value="1"
+                                        />
+                                        Diesel expense (amount = litres × rate)
+                                    </label>
+                                    <Input
+                                        name="diesel_litres"
+                                        type="number"
+                                        step="0.001"
+                                        min="0"
+                                        placeholder="Litres"
+                                    />
+                                    <Input
+                                        name="diesel_rate_per_litre"
+                                        type="number"
+                                        step="0.0001"
+                                        min="0"
+                                        placeholder="Rate / litre"
+                                    />
+                                    <Input
+                                        name="diesel_odometer"
+                                        type="number"
+                                        step="0.1"
+                                        min="0"
+                                        placeholder="Diesel odometer"
+                                    />
+                                    <Input
+                                        name="remarks"
+                                        placeholder="Remarks"
+                                    />
+                                    <Button
+                                        type="submit"
+                                        disabled={processing}
+                                        className="bg-[#2FB36F] text-white hover:bg-[#279960] md:col-span-2"
+                                    >
+                                        Add expense
                                     </Button>
                                 </>
                             )}

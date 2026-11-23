@@ -4,25 +4,31 @@ namespace App\Http\Controllers\Branch;
 
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Consignment\Enums\LrWorkflowContext;
+use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\OwnFleet\Enums\TripStatus;
 use App\Domains\OwnFleet\Trip\Exceptions\TripAuthorizationException;
 use App\Domains\OwnFleet\Trip\Exceptions\TripConflictException;
 use App\Domains\OwnFleet\Trip\Exceptions\TripDomainException;
+use App\Domains\OwnFleet\Trip\TripExpenseService;
 use App\Domains\OwnFleet\Trip\TripMovementService;
 use App\Domains\OwnFleet\Trip\TripService;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Controller;
+use App\Models\BankCashAccount;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\LorryReceipt;
+use App\Models\OwnerCatalogueItem;
 use App\Models\Party;
 use App\Models\PartyRole;
+use App\Models\PaymentMode;
 use App\Models\Station;
 use App\Models\Trip;
 use App\Models\TripDropPickupAllocation;
+use App\Models\TripExpense;
 use App\Models\User;
 use App\Models\Vehicle;
 use Illuminate\Http\RedirectResponse;
@@ -43,6 +49,7 @@ class TripController extends Controller
         private readonly PermissionAuthorizer $authorizer,
         private readonly TripService $trips,
         private readonly TripMovementService $movements,
+        private readonly TripExpenseService $expenses,
     ) {}
 
     public function index(Request $request, Company $company, Branch $branch): Response
@@ -182,6 +189,8 @@ class TripController extends Controller
             'drops.station',
             'drops.consignee',
             'allocations',
+            'expenses.category',
+            'expenses.paymentMode',
             'lorryReceipt.fromStation',
             'lorryReceipt.toStation',
         ]);
@@ -190,10 +199,37 @@ class TripController extends Controller
             'trip' => $this->detailPayload($trip),
             'movements' => $this->movementsPayload($trip),
             'reconciliation' => $this->movements->reconciliationSummary($trip),
+            'expenses' => $trip->expenses->map(fn (TripExpense $expense): array => [
+                'id' => $expense->id,
+                'expense_date' => $expense->expense_date?->format('d-m-Y'),
+                'category_name' => $expense->category?->name,
+                'amount' => $expense->amount,
+                'is_diesel' => (bool) $expense->is_diesel,
+                'diesel_litres' => $expense->diesel_litres,
+                'diesel_rate_per_litre' => $expense->diesel_rate_per_litre,
+                'diesel_odometer' => $expense->diesel_odometer,
+                'remarks' => $expense->remarks,
+                'payment_mode' => $expense->paymentMode?->name,
+            ])->values()->all(),
+            'profit' => $this->expenses->profitSummary($trip),
             'formOptions' => [
                 'stations' => $this->stationOptions($company),
                 'consignors' => $this->partyRoleOptions($company, $branch, PartyRoleType::Consignor),
                 'consignees' => $this->partyRoleOptions($company, $branch, PartyRoleType::Consignee),
+                'expense_categories' => $this->expenseCategoryOptions($company),
+                'payment_modes' => PaymentMode::query()->orderBy('sort_order')->get(['id', 'name'])
+                    ->map(fn (PaymentMode $mode): array => ['id' => $mode->id, 'name' => $mode->name])
+                    ->values()->all(),
+                'bank_cash_accounts' => BankCashAccount::query()
+                    ->where('company_id', $company->id)
+                    ->whereNull('deleted_at')
+                    ->where(function ($query) use ($branch): void {
+                        $query->whereNull('branch_id')->orWhere('branch_id', $branch->id);
+                    })
+                    ->orderBy('name')
+                    ->get(['id', 'name'])
+                    ->map(fn (BankCashAccount $account): array => ['id' => $account->id, 'name' => $account->name])
+                    ->values()->all(),
             ],
             'permissions' => $this->tripPermissions($actor, $company, $branch),
             'urls' => [
@@ -205,8 +241,71 @@ class TripController extends Controller
                 'remove_allocation' => route('branch.trips.allocations.destroy', [$trip, 'ALLOCATION_ID'], absolute: false),
                 'dispatch' => route('branch.trips.dispatch', [$trip], absolute: false),
                 'complete' => route('branch.trips.complete', [$trip], absolute: false),
+                'add_expense' => route('branch.trips.expenses.store', [$trip], absolute: false),
+                'remove_expense' => route('branch.trips.expenses.destroy', [$trip, 'EXPENSE_ID'], absolute: false),
             ],
         ]);
+    }
+
+    public function storeExpense(Request $request, Trip $trip, Company $company, Branch $branch): RedirectResponse
+    {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertPermission($actor, $company, $branch, PermissionCodes::TRIP_EDIT);
+        $this->assertTrip($trip, $company, $branch);
+
+        $validated = $request->validate([
+            'expense_category_id' => ['required', 'uuid'],
+            'expense_date' => ['required', 'date'],
+            'amount' => ['nullable', 'numeric', 'gt:0'],
+            'payment_mode_id' => ['nullable', 'uuid'],
+            'paid_from_bank_cash_account_id' => ['nullable', 'uuid'],
+            'remarks' => ['nullable', 'string', 'max:2000'],
+            'is_diesel' => ['sometimes', 'boolean'],
+            'diesel_litres' => ['nullable', 'numeric', 'gt:0'],
+            'diesel_rate_per_litre' => ['nullable', 'numeric', 'gt:0'],
+            'diesel_odometer' => ['nullable', 'numeric', 'min:0'],
+            'planned_diesel_quantity' => ['nullable', 'numeric', 'min:0'],
+            'planned_diesel_rate' => ['nullable', 'numeric', 'min:0'],
+            'planned_efficiency' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        try {
+            $this->expenses->add($trip, $actor, $validated);
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (TripAuthorizationException $e) {
+            abort(403, $e->getMessage());
+        } catch (TripDomainException $e) {
+            throw ValidationException::withMessages(['amount' => $e->getMessage()]);
+        }
+
+        return redirect()
+            ->route('branch.trips.show', [$trip])
+            ->with('success', 'Expense saved.');
+    }
+
+    public function destroyExpense(
+        Request $request,
+        Trip $trip,
+        TripExpense $expense,
+        Company $company,
+        Branch $branch,
+    ): RedirectResponse {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertPermission($actor, $company, $branch, PermissionCodes::TRIP_EDIT);
+        $this->assertTrip($trip, $company, $branch);
+
+        try {
+            $this->expenses->softDelete($trip, $actor, $expense);
+        } catch (TripAuthorizationException $e) {
+            abort(403, $e->getMessage());
+        } catch (TripDomainException $e) {
+            throw ValidationException::withMessages(['expense' => $e->getMessage()]);
+        }
+
+        return redirect()
+            ->route('branch.trips.show', [$trip])
+            ->with('success', 'Expense removed.');
     }
 
     public function dispatch(Request $request, Trip $trip, Company $company, Branch $branch): RedirectResponse
@@ -607,6 +706,26 @@ class TripController extends Controller
     /**
      * @return list<array{id: string, name: string}>
      */
+    /**
+     * @return list<array{id: string, name: string}>
+     */
+    private function expenseCategoryOptions(Company $company): array
+    {
+        return OwnerCatalogueItem::query()
+            ->where('owner_user_id', $company->owner_user_id)
+            ->where('catalogue_type', OwnerCatalogueType::ExpenseCategory->value)
+            ->where('is_active', true)
+            ->whereNull('deleted_at')
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (OwnerCatalogueItem $item): array => [
+                'id' => $item->id,
+                'name' => $item->name,
+            ])
+            ->values()
+            ->all();
+    }
+
     private function partyRoleOptions(Company $company, Branch $branch, PartyRoleType $role): array
     {
         $partyIds = PartyRole::query()
