@@ -257,7 +257,7 @@ final class TripService
 
     /**
      * @param  array{
-     *     starting_odometer: string|float|int,
+     *     starting_odometer?: string|float|int|null,
      *     departure_at?: string|null
      * }  $payload
      */
@@ -308,7 +308,7 @@ final class TripService
 
     /**
      * @param  array{
-     *     ending_odometer: string|float|int,
+     *     ending_odometer?: string|float|int|null,
      *     actual_arrival_at?: string|null
      * }  $payload
      */
