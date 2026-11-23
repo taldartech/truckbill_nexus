@@ -46,14 +46,6 @@ type PageProps = {
     workspace: WorkspaceShare;
 };
 
-function isOwnerGlobalPath(pathname: string): boolean {
-    if (!pathname.startsWith('/owner')) {
-        return false;
-    }
-    // Company-specific Owner routes: /owner/companies/{uuid}/...
-    return !/^\/owner\/companies\/(?!create$)[^/]+/.test(pathname);
-}
-
 export function AppSidebar() {
     const page = usePage<PageProps>();
     const { auth, workspace } = page.props;
@@ -70,8 +62,7 @@ export function AppSidebar() {
     const inBranchPanel =
         Boolean(activeCompanyId && activeBranchId) ||
         pathname.startsWith('/branch/');
-    const inOwnerGlobal =
-        isCustomer && ownsAnyCompany && isOwnerGlobalPath(pathname);
+    const inOwnerPanel = isCustomer && pathname.startsWith('/owner');
     const inOwnerCompanyDetail =
         isCustomer &&
         ownsAnyCompany &&
@@ -117,32 +108,6 @@ export function AppSidebar() {
           ]
         : [];
 
-    const ownerCompanyAdmin: NavItem[] =
-        inOwnerCompanyDetail && activeCompanyId && activeCompany?.is_owner
-            ? [
-                  {
-                      title: 'Company home',
-                      href: `/owner/companies/${activeCompanyId}`,
-                      icon: Building2,
-                  },
-                  {
-                      title: 'Company users',
-                      href: `/owner/companies/${activeCompanyId}/users`,
-                      icon: UserCog,
-                  },
-                  {
-                      title: 'Settings',
-                      href: `/owner/companies/${activeCompanyId}/settings`,
-                      icon: Settings,
-                  },
-                  {
-                      title: 'Company audit',
-                      href: `/owner/companies/${activeCompanyId}/audit`,
-                      icon: FileSearch,
-                  },
-              ]
-            : [];
-
     const branchNav: NavItem[] =
         activeCompanyId && activeBranchId
             ? [
@@ -166,37 +131,35 @@ export function AppSidebar() {
                       href: `/branch/companies/${activeCompanyId}/branches/${activeBranchId}/settings`,
                       icon: Settings,
                   },
-                  ...(ownsAnyCompany
-                      ? [
-                            {
-                                title: 'Owner Panel',
-                                href: '/owner',
-                                icon: Building2,
-                            },
-                        ]
-                      : []),
               ]
             : [];
 
     const customerGroups =
         inBranchPanel && activeCompanyId && activeBranchId
             ? [
-                  { label: 'Operations', items: branchNav },
-                  ...(ownsAnyCompany
-                      ? [{ label: 'Owner', items: ownerOverview }]
-                      : []),
+                  { label: 'Overview', items: branchNav.slice(0, 1) },
+                  {
+                      label: 'Operations',
+                      items: branchNav.filter((item) =>
+                          ['Enquiries'].includes(item.title),
+                      ),
+                  },
+                  {
+                      label: 'Masters',
+                      items: branchNav.filter((item) =>
+                          ['Masters'].includes(item.title),
+                      ),
+                  },
+                  {
+                      label: 'Branch',
+                      items: branchNav.filter((item) =>
+                          ['Branch Settings'].includes(item.title),
+                      ),
+                  },
               ]
             : [
                   { label: 'Overview', items: ownerOverview },
                   { label: 'Management', items: ownerManagement },
-                  ...(ownerCompanyAdmin.length > 0
-                      ? [
-                            {
-                                label: 'This company',
-                                items: ownerCompanyAdmin,
-                            },
-                        ]
-                      : []),
                   ...(!ownsAnyCompany
                       ? [
                             {
@@ -280,7 +243,13 @@ export function AppSidebar() {
             : []),
     ];
 
-    const showCompanySwitcher = isCustomer && inBranchPanel;
+    // Company switcher: Branch Panel operational context only — never Owner Panel.
+    const showCompanySwitcher = isCustomer && inBranchPanel && !inOwnerPanel;
+    const showReturnToOwner =
+        isCustomer &&
+        inBranchPanel &&
+        ownsAnyCompany &&
+        Boolean(activeCompanyId && activeBranchId);
 
     return (
         <Sidebar collapsible="icon" variant="inset">
@@ -308,10 +277,10 @@ export function AppSidebar() {
                         <CompanySwitcher />
                     </div>
                 ) : null}
-                {inOwnerGlobal || inOwnerCompanyDetail ? (
+                {inOwnerPanel ? (
                     <div className="px-3 pt-2 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
                         {inOwnerCompanyDetail && activeCompany
-                            ? `Managing ${activeCompany.name}`
+                            ? `Context: ${activeCompany.name}`
                             : 'All owned companies'}
                     </div>
                 ) : null}
@@ -324,6 +293,21 @@ export function AppSidebar() {
             </SidebarContent>
 
             <SidebarFooter>
+                {showReturnToOwner ? (
+                    <SidebarMenu>
+                        <SidebarMenuItem>
+                            <SidebarMenuButton
+                                asChild
+                                tooltip="Return to Owner Panel"
+                            >
+                                <Link href="/owner" prefetch>
+                                    <Building2 />
+                                    <span>Return to Owner Panel</span>
+                                </Link>
+                            </SidebarMenuButton>
+                        </SidebarMenuItem>
+                    </SidebarMenu>
+                ) : null}
                 <NavUser />
             </SidebarFooter>
         </Sidebar>

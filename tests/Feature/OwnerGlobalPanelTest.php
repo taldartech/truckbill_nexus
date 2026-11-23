@@ -152,7 +152,11 @@ test('owner can open company-specific subscription from global list', function (
             ->component('owner/subscriptions/index')
             ->has('companies.data', 1)
             ->where('companies.data.0.id', $company->id)
+            ->where('companies.data.0.active_modules', [])
             ->where('companies.data.0.urls.subscription', route('owner.subscription', [
+                'company' => $company,
+            ]))
+            ->where('companies.data.0.urls.company', route('owner.dashboard', [
                 'company' => $company,
             ])));
 

@@ -1,6 +1,9 @@
 # Local Demo Workspace Data Setup
 
-**Seeder:** `Database\Seeders\LocalDemoWorkspaceSeeder`  
+**Authoritative demo seeder (only one):** `Database\Seeders\LocalDemoWorkspaceSeeder`
+
+`LocalDemoUserSeeder` has been **removed**. Do not add module-specific demo seeders (`CrmDemoSeeder`, `OwnFleetDemoSeeder`, etc.). Every authorized feature batch must extend this seeder with valid fixtures in the same delivery.
+
 **Command:**
 
 ```bash
@@ -9,7 +12,7 @@ LOCAL_DEMO_PROFILE=standard \
 php artisan db:seed --class=LocalDemoWorkspaceSeeder
 ```
 
-**Safety:** Runs only in `local` or `testing`. Refuses production. **Never** called by `DatabaseSeeder`. Does not call Razorpay, send mail/SMS, or print passwords.
+**Safety:** Runs only in `local` or `testing`. Refuses production. **Never** called by `DatabaseSeeder`. Does not call Razorpay, send mail/SMS, or print passwords. Idempotent and deterministic.
 
 ---
 

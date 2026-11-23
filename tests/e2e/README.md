@@ -37,3 +37,5 @@ tests/e2e/
 ## CI
 
 GitHub Actions installs Chromium and runs `npm run test:e2e:smoke` after the app build.
+
+**CI #75 root cause:** `PLAYWRIGHT_SKIP_WEBSERVER: '0'` is truthy in JavaScript, so Playwright never started `php artisan serve` → `net::ERR_CONNECTION_REFUSED`. Fix: treat only `1` / `true` / `yes` as skip; omit the env var in CI and let Playwright manage the webServer (ready URL `/login`, 180s timeout, piped logs).

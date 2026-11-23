@@ -1,7 +1,6 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import OwnerBranchesController from '@/actions/App/Http/Controllers/Owner/OwnerBranchesController';
-import { CompanySwitcher } from '@/components/company-switcher';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -93,9 +92,6 @@ export default function OwnerBranchesShow({
                             <span>{company.name}</span>
                             <span>Scope: {ownerPanelScope}</span>
                         </div>
-                    </div>
-                    <div className="w-full max-w-sm">
-                        <CompanySwitcher />
                     </div>
                 </div>
 

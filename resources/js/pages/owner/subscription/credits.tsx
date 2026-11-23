@@ -1,5 +1,4 @@
 import { Head, Link } from '@inertiajs/react';
-import { CompanySwitcher } from '@/components/company-switcher';
 import { Button } from '@/components/ui/button';
 
 type Props = {
@@ -60,9 +59,6 @@ export default function SubscriptionCredits({
                         <p className="text-sm text-muted-foreground">
                             {presentation_note}
                         </p>
-                    </div>
-                    <div className="w-full max-w-sm">
-                        <CompanySwitcher />
                     </div>
                 </div>
                 <Button asChild variant="outline" className="self-start">

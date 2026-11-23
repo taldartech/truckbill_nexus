@@ -7,8 +7,9 @@ use App\Models\Role;
 use App\Models\RolePermission;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
-use Database\Seeders\LocalDemoUserSeeder;
+use Database\Seeders\LocalDemoWorkspaceSeeder;
 use Database\Seeders\RbacSeeder;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 
 /**
@@ -133,18 +134,21 @@ test('default database seeder is idempotent and does not create unsafe demo logi
         ->and(Role::query()->count())->toBe($roleCount)
         ->and(RolePermission::query()->count())->toBe($pivotCount)
         ->and(User::query()->where('email', 'test@example.com')->exists())->toBeFalse()
-        ->and(User::query()->where('email', LocalDemoUserSeeder::DEMO_EMAIL)->exists())->toBeFalse();
+        ->and(User::query()->where('email', LocalDemoWorkspaceSeeder::OWNER_A_EMAIL)->exists())->toBeFalse()
+        ->and(User::query()->where('email', 'demo.local@example.com')->exists())->toBeFalse();
 });
 
-test('local demo user seeder is opt-in and environment gated', function () {
-    $this->seed(DatabaseSeeder::class);
-    expect(User::query()->where('email', LocalDemoUserSeeder::DEMO_EMAIL)->exists())->toBeFalse();
+test('only one comprehensive demo workspace seeder class remains', function () {
+    $seeders = collect(File::files(database_path('seeders')))
+        ->map(fn ($file) => $file->getFilename())
+        ->sort()
+        ->values()
+        ->all();
 
-    config(['local_demo.password' => 'demo-test-password-not-for-production']);
-
-    $this->seed(LocalDemoUserSeeder::class);
-    expect(User::query()->where('email', LocalDemoUserSeeder::DEMO_EMAIL)->exists())->toBeTrue();
-
-    $this->seed(LocalDemoUserSeeder::class);
-    expect(User::query()->where('email', LocalDemoUserSeeder::DEMO_EMAIL)->count())->toBe(1);
+    expect($seeders)->toBe([
+        'DatabaseSeeder.php',
+        'LocalDemoWorkspaceSeeder.php',
+        'RbacSeeder.php',
+        'SubscriptionCatalogueSeeder.php',
+    ])->and(File::exists(database_path('seeders/LocalDemoUserSeeder.php')))->toBeFalse();
 });

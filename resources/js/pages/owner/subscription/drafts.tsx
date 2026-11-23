@@ -1,5 +1,4 @@
 import { Head, Link, usePage } from '@inertiajs/react';
-import { CompanySwitcher } from '@/components/company-switcher';
 import ShellEmptyState from '@/components/shell-empty-state';
 import { Button } from '@/components/ui/button';
 import { pricingBreakdownRows } from '@/lib/pricing-breakdown-labels';
@@ -54,9 +53,6 @@ export default function SubscriptionDrafts({
                         <p className="text-sm text-muted-foreground">
                             {activation_note}
                         </p>
-                    </div>
-                    <div className="w-full max-w-sm">
-                        <CompanySwitcher />
                     </div>
                 </div>
                 {flash?.success ? (

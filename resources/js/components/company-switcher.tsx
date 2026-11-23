@@ -37,6 +37,7 @@ export function CompanySwitcher() {
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
                 <Button
+                    data-testid="company-switcher"
                     variant="outline"
                     className="h-auto w-full justify-between gap-2 px-3 py-2 text-left"
                     aria-label={

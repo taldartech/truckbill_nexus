@@ -42,12 +42,19 @@ export default defineConfig({
             },
         },
     ],
-    webServer: process.env.PLAYWRIGHT_SKIP_WEBSERVER
+    // Only skip when explicitly "1"/"true". The string "0" must NOT disable the server
+    // (CI #75: PLAYWRIGHT_SKIP_WEBSERVER=0 was truthy and caused ERR_CONNECTION_REFUSED).
+    webServer: ['1', 'true', 'yes'].includes(
+        String(process.env.PLAYWRIGHT_SKIP_WEBSERVER ?? '').toLowerCase(),
+    )
         ? undefined
         : {
-              command: 'php artisan serve --host=127.0.0.1 --port=8000',
-              url: baseURL,
+              command:
+                  'php artisan serve --host=127.0.0.1 --port=8000 --no-reload',
+              url: `${baseURL}/login`,
               reuseExistingServer: !process.env.CI,
-              timeout: 120_000,
+              timeout: 180_000,
+              stdout: 'pipe',
+              stderr: 'pipe',
           },
 });

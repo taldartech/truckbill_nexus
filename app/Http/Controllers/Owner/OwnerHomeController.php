@@ -23,7 +23,8 @@ class OwnerHomeController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
-        $this->panel->assertCustomerOwnerActor($user);
+        // Designated Owners only — branch members must not open /owner via direct URL.
+        $this->panel->assertOwnsAtLeastOneCompany($user);
 
         // Global Owner management is list-driven — clear active company/branch context.
         WorkspaceSession::clear($request);

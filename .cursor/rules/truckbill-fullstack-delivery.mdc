@@ -49,6 +49,10 @@ Do **not** present placeholders, fake metrics, non-functional buttons, or client
 - Batch G is integrated QA / polish / certification — **not** the first time earlier backend features become usable in the UI.  
 - Preserve Pending gates (`PO-P4-DESIGN-FORMAL`, `PO-P4-CNV-CARDINALITY`, Phase 3 EX-01…EX-07, etc.). Never self-approve.
 
+## Demo data (permanent)
+
+`database/seeders/LocalDemoWorkspaceSeeder.php` is the **only** demo-data seeder. Every authorized feature batch must update it with valid fixtures in the same delivery. Do not add module-specific demo seeders. `DatabaseSeeder` must never create demo logins.
+
 ## Quality bar
 
 Production-ready means deployable **quality** (security, maintainability, tests, Clean Code). It does **not** authorize production deployment, live payments, or git push.

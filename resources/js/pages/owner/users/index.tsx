@@ -1,7 +1,6 @@
 import { Form, Head, Link, router, usePage } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 import OwnerUsersController from '@/actions/App/Http/Controllers/Owner/OwnerUsersController';
-import { CompanySwitcher } from '@/components/company-switcher';
 import InputError from '@/components/input-error';
 import ShellEmptyState from '@/components/shell-empty-state';
 import { Button } from '@/components/ui/button';
@@ -96,9 +95,6 @@ export default function OwnerUsersIndex({
                             <WorkspaceStatusBadge status={company.status} />
                             <span>Scope: {ownerPanelScope}</span>
                         </div>
-                    </div>
-                    <div className="w-full max-w-sm">
-                        <CompanySwitcher />
                     </div>
                 </div>
 

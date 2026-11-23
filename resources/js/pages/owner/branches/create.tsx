@@ -1,7 +1,6 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import OwnerBranchesController from '@/actions/App/Http/Controllers/Owner/OwnerBranchesController';
-import { CompanySwitcher } from '@/components/company-switcher';
 import InputError from '@/components/input-error';
 import ShellEmptyState from '@/components/shell-empty-state';
 import { Button } from '@/components/ui/button';
@@ -107,9 +106,6 @@ export default function OwnerBranchesCreate({
                                 {capacity.branch_limit}
                             </span>
                         </div>
-                    </div>
-                    <div className="w-full max-w-sm">
-                        <CompanySwitcher />
                     </div>
                 </div>
 

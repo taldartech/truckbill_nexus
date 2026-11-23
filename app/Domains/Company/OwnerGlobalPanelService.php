@@ -10,6 +10,7 @@ use App\Models\BranchAssignment;
 use App\Models\BranchRoleAssignment;
 use App\Models\Company;
 use App\Models\CompanyMembership;
+use App\Models\CompanySubscription;
 use App\Models\Party;
 use App\Models\User;
 use App\Models\Vehicle;
@@ -451,16 +452,36 @@ final class OwnerGlobalPanelService
     {
         $lifecycle = $this->subscriptions->evaluate($company);
 
+        $activeSubscription = CompanySubscription::query()
+            ->where('company_id', $company->id)
+            ->where('status', 'active')
+            ->whereNull('deleted_at')
+            ->with('items')
+            ->orderByDesc('activated_at')
+            ->first();
+
+        $activeModules = $activeSubscription === null
+            ? []
+            : $activeSubscription->items
+                ->pluck('module')
+                ->filter(fn (mixed $module): bool => is_string($module) && $module !== '')
+                ->unique()
+                ->values()
+                ->all();
+
         return [
             'id' => $company->id,
             'name' => $company->name,
             'status' => $company->isActive() ? 'Active' : 'Deactivated',
             'subscription_status' => $lifecycle['status']->value,
+            'active_modules' => array_values($activeModules),
             'trial_ends_at' => $lifecycle['trial_ends_at'],
             'paid_through_date' => $lifecycle['paid_through_date'],
+            'common_renewal_date' => $activeSubscription?->common_renewal_date?->toDateString(),
             'notes' => $lifecycle['notes'],
             'urls' => [
                 'subscription' => route('owner.subscription', ['company' => $company]),
+                'company' => route('owner.dashboard', ['company' => $company]),
             ],
         ];
     }

@@ -109,8 +109,17 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install chromium --with-deps
 
+      # Do not set PLAYWRIGHT_SKIP_WEBSERVER=0 — that string is truthy in JS and
+      # disables Playwright's webServer (CI #75 ERR_CONNECTION_REFUSED).
       - name: Playwright smoke (login)
         run: npm run test:e2e:smoke
         env:
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:8000
-          PLAYWRIGHT_SKIP_WEBSERVER: '0'
+          APP_ENV: testing
+          APP_KEY: base64:2fl+KtvkdmxDJcq4+UZC0c41+6ehMy/PoKCjpTbOF0A=
+          DB_CONNECTION: pgsql
+          DB_HOST: 127.0.0.1
+          DB_PORT: 5432
+          DB_DATABASE: nexus_test
+          DB_USERNAME: nexus_user
+          DB_PASSWORD: secret

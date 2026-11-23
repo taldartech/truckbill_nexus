@@ -12,10 +12,12 @@ type SubscriptionRow = {
     name: string;
     status: string;
     subscription_status: string;
+    active_modules: string[];
     trial_ends_at: string | null;
     paid_through_date: string | null;
+    common_renewal_date: string | null;
     notes: string[];
-    urls: { subscription: string };
+    urls: { subscription: string; company: string };
 };
 
 type Props = {
@@ -50,7 +52,7 @@ export default function OwnerSubscriptionsIndex({
             <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
                 <OwnerPageHeader
                     title="Subscriptions"
-                    description="Select a company to open its subscription workspace."
+                    description="Choose a company to manage modules, plans, renewals, and payments. Pricing is always calculated on the server."
                     actions={
                         <Button asChild variant="outline">
                             <Link href={links.companies}>Companies</Link>
@@ -102,13 +104,16 @@ export default function OwnerSubscriptionsIndex({
                                         Company
                                     </th>
                                     <th className="px-3 py-2 font-medium">
-                                        Company status
+                                        Status
+                                    </th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Active modules
                                     </th>
                                     <th className="px-3 py-2 font-medium">
                                         Subscription
                                     </th>
                                     <th className="px-3 py-2 font-medium">
-                                        Trial / paid through
+                                        Trial / renewal
                                     </th>
                                     <th className="px-3 py-2 font-medium">
                                         Action
@@ -122,12 +127,29 @@ export default function OwnerSubscriptionsIndex({
                                         className="border-b border-border last:border-0"
                                     >
                                         <td className="px-3 py-3 font-medium">
-                                            {row.name}
+                                            <Link
+                                                href={row.urls.company}
+                                                className="underline-offset-2 hover:underline"
+                                            >
+                                                {row.name}
+                                            </Link>
                                         </td>
                                         <td className="px-3 py-3">
                                             <WorkspaceStatusBadge
                                                 status={row.status}
                                             />
+                                        </td>
+                                        <td className="px-3 py-3 text-xs">
+                                            {row.active_modules.length > 0
+                                                ? row.active_modules
+                                                      .map((module) =>
+                                                          module.replaceAll(
+                                                              '_',
+                                                              ' ',
+                                                          ),
+                                                      )
+                                                      .join(', ')
+                                                : '—'}
                                         </td>
                                         <td className="px-3 py-3 capitalize">
                                             {row.subscription_status.replaceAll(
@@ -138,17 +160,20 @@ export default function OwnerSubscriptionsIndex({
                                         <td className="px-3 py-3 text-xs text-muted-foreground">
                                             {row.trial_ends_at
                                                 ? `Trial ends ${row.trial_ends_at}`
-                                                : row.paid_through_date
-                                                  ? `Paid through ${row.paid_through_date}`
-                                                  : '—'}
+                                                : row.common_renewal_date
+                                                  ? `Renews ${row.common_renewal_date}`
+                                                  : row.paid_through_date
+                                                    ? `Paid through ${row.paid_through_date}`
+                                                    : '—'}
                                         </td>
                                         <td className="px-3 py-3">
-                                            <Link
-                                                href={row.urls.subscription}
-                                                className="text-xs font-medium text-primary underline"
-                                            >
-                                                View subscription
-                                            </Link>
+                                            <Button asChild size="sm">
+                                                <Link
+                                                    href={row.urls.subscription}
+                                                >
+                                                    Manage
+                                                </Link>
+                                            </Button>
                                         </td>
                                     </tr>
                                 ))}

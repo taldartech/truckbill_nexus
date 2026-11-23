@@ -1,6 +1,5 @@
 import { Form, Head, Link, router, usePage } from '@inertiajs/react';
-import { useState } from 'react';
-import { CompanySwitcher } from '@/components/company-switcher';
+import { useMemo, useState } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -61,6 +60,8 @@ type Props = {
     };
 };
 
+const STEPS = ['Modules', 'Plans', 'Add-ons', 'Tenure', 'Review'] as const;
+
 function BreakdownPanel({
     title,
     breakdown,
@@ -108,6 +109,7 @@ export default function DraftEdit({
     links,
 }: Props) {
     const { flash } = usePage<{ flash?: { success?: string | null } }>().props;
+    const [step, setStep] = useState(0);
     const [planIds, setPlanIds] = useState<string[]>(selection.plan_ids);
     const [addonIds, setAddonIds] = useState<string[]>(selection.addon_ids);
     const [tenure, setTenure] = useState(selection.tenure);
@@ -116,20 +118,50 @@ export default function DraftEdit({
         selection.common_renewal_date ?? '',
     );
 
-    const togglePlan = (id: string, module: string) => {
+    const modules = useMemo(() => {
+        const names = [...new Set(plans.map((plan) => plan.module))];
+        return names.sort();
+    }, [plans]);
+
+    const selectedModules = useMemo(() => {
+        return [
+            ...new Set(
+                planIds
+                    .map((id) => plans.find((plan) => plan.id === id)?.module)
+                    .filter((module): module is string => Boolean(module)),
+            ),
+        ];
+    }, [planIds, plans]);
+
+    const toggleModule = (module: string) => {
+        const modulePlans = plans.filter((plan) => plan.module === module);
+        const hasAny = modulePlans.some((plan) => planIds.includes(plan.id));
         setPlanIds((current) => {
-            const withoutModule = current.filter(
-                (planId) =>
-                    plans.find((p) => p.id === planId)?.module !== module,
+            const without = current.filter(
+                (id) => plans.find((plan) => plan.id === id)?.module !== module,
             );
-            return current.includes(id)
-                ? withoutModule
-                : [...withoutModule, id];
+            if (hasAny) {
+                return without;
+            }
+            const preferred =
+                modulePlans.find((plan) =>
+                    selection.plan_ids.includes(plan.id),
+                ) ?? modulePlans[0];
+            return preferred ? [...without, preferred.id] : without;
         });
     };
 
-    const preview = (event: React.FormEvent) => {
-        event.preventDefault();
+    const selectPlan = (id: string, module: string) => {
+        setPlanIds((current) => {
+            const withoutModule = current.filter(
+                (planId) =>
+                    plans.find((plan) => plan.id === planId)?.module !== module,
+            );
+            return [...withoutModule, id];
+        });
+    };
+
+    const preview = () => {
         router.get(
             links.preview,
             {
@@ -143,30 +175,71 @@ export default function DraftEdit({
         );
     };
 
+    const canAdvance =
+        step === 0
+            ? selectedModules.length > 0
+            : step === 1
+              ? planIds.length > 0
+              : step === 3
+                ? Boolean(tenure && renewalDate)
+                : true;
+
     return (
         <>
-            <Head title={`Edit draft · ${company.name}`} />
+            <Head title={`Configure subscription · ${company.name}`} />
             <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <div className="flex flex-col gap-4 lg:flex-row lg:justify-between">
+                <div className="space-y-3">
+                    <nav
+                        aria-label="Breadcrumb"
+                        className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
+                    >
+                        <Link href="/owner" className="hover:underline">
+                            Owner Panel
+                        </Link>
+                        <span aria-hidden>/</span>
+                        <Link
+                            href="/owner/subscriptions"
+                            className="hover:underline"
+                        >
+                            Subscriptions
+                        </Link>
+                        <span aria-hidden>/</span>
+                        <Link href={links.overview} className="hover:underline">
+                            {company.name}
+                        </Link>
+                        <span aria-hidden>/</span>
+                        <span className="text-foreground">Configure</span>
+                    </nav>
                     <div className="space-y-2">
-                        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                            Owner Panel · Edit draft
-                        </p>
                         <h1 className="text-2xl font-semibold tracking-tight">
-                            Edit draft contract
+                            Configure subscription — {company.name}
                         </h1>
                         <p className="text-sm text-muted-foreground">
-                            {edit_note}
-                        </p>
-                        <p className="text-sm text-muted-foreground">
-                            Catalogue locked: {catalogue.name} ({catalogue.code}
-                            )
+                            {edit_note} Catalogue locked: {catalogue.name} (
+                            {catalogue.code}).
                         </p>
                     </div>
-                    <div className="w-full max-w-sm">
-                        <CompanySwitcher />
-                    </div>
+                    <ol className="flex flex-wrap gap-2">
+                        {STEPS.map((label, index) => (
+                            <li key={label}>
+                                <button
+                                    type="button"
+                                    onClick={() => setStep(index)}
+                                    className={`rounded-full border px-3 py-1 text-xs font-medium ${
+                                        index === step
+                                            ? 'border-primary bg-primary/10 text-primary'
+                                            : index < step
+                                              ? 'border-border bg-muted/40'
+                                              : 'border-border text-muted-foreground'
+                                    }`}
+                                >
+                                    {index + 1}. {label}
+                                </button>
+                            </li>
+                        ))}
+                    </ol>
                 </div>
+
                 {flash?.success ? (
                     <p
                         role="status"
@@ -175,147 +248,409 @@ export default function DraftEdit({
                         {flash.success}
                     </p>
                 ) : null}
-                <div className="flex flex-wrap gap-2">
-                    <Button asChild variant="outline">
-                        <Link href={links.drafts}>Back to drafts</Link>
-                    </Button>
-                    <Button asChild variant="outline">
-                        <Link href={links.overview}>Overview</Link>
-                    </Button>
-                </div>
 
                 <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
-                    <form onSubmit={preview} className="space-y-6">
-                        <section className="space-y-3">
-                            <h2 className="font-semibold">Core modules</h2>
-                            <ul className="space-y-2">
-                                {plans.map((plan) => (
-                                    <li
-                                        key={plan.id}
-                                        className="flex items-start gap-3 rounded-xl border border-border p-3"
-                                    >
-                                        <input
-                                            type="checkbox"
-                                            checked={planIds.includes(plan.id)}
-                                            onChange={() =>
-                                                togglePlan(plan.id, plan.module)
-                                            }
-                                            className="mt-1"
-                                            disabled={!canManage}
-                                            aria-label={`Select ${plan.name}`}
-                                        />
-                                        <div className="flex-1">
-                                            <p className="font-medium">
-                                                {plan.name}
-                                            </p>
-                                            <p className="text-sm text-muted-foreground">
-                                                {plan.module} · ₹
-                                                {plan.annual_price}/yr
-                                            </p>
+                    <div className="space-y-6">
+                        {step === 0 ? (
+                            <section className="space-y-3">
+                                <h2 className="font-semibold">
+                                    Step 1 — Select modules
+                                </h2>
+                                <p className="text-sm text-muted-foreground">
+                                    Choose one or more Core modules for this
+                                    company subscription.
+                                </p>
+                                <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                    {modules.map((module) => {
+                                        const selected =
+                                            selectedModules.includes(module);
+                                        return (
+                                            <li key={module}>
+                                                <button
+                                                    type="button"
+                                                    disabled={!canManage}
+                                                    onClick={() =>
+                                                        toggleModule(module)
+                                                    }
+                                                    className={`w-full rounded-xl border p-4 text-left transition ${
+                                                        selected
+                                                            ? 'border-primary bg-primary/5 ring-1 ring-primary/40'
+                                                            : 'border-border hover:bg-muted/30'
+                                                    }`}
+                                                >
+                                                    <p className="font-medium capitalize">
+                                                        {module.replaceAll(
+                                                            '_',
+                                                            ' ',
+                                                        )}
+                                                    </p>
+                                                    <p className="mt-1 text-xs text-muted-foreground">
+                                                        {
+                                                            plans.filter(
+                                                                (plan) =>
+                                                                    plan.module ===
+                                                                    module,
+                                                            ).length
+                                                        }{' '}
+                                                        plan
+                                                        {plans.filter(
+                                                            (plan) =>
+                                                                plan.module ===
+                                                                module,
+                                                        ).length === 1
+                                                            ? ''
+                                                            : 's'}{' '}
+                                                        available
+                                                    </p>
+                                                </button>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            </section>
+                        ) : null}
+
+                        {step === 1 ? (
+                            <section className="space-y-4">
+                                <h2 className="font-semibold">
+                                    Step 2 — Select plans
+                                </h2>
+                                {selectedModules.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground">
+                                        Select at least one module first.
+                                    </p>
+                                ) : (
+                                    selectedModules.map((module) => (
+                                        <div key={module} className="space-y-2">
+                                            <h3 className="text-sm font-medium capitalize">
+                                                {module.replaceAll('_', ' ')}
+                                            </h3>
+                                            <ul className="grid gap-3 sm:grid-cols-2">
+                                                {plans
+                                                    .filter(
+                                                        (plan) =>
+                                                            plan.module ===
+                                                            module,
+                                                    )
+                                                    .map((plan) => {
+                                                        const selected =
+                                                            planIds.includes(
+                                                                plan.id,
+                                                            );
+                                                        return (
+                                                            <li key={plan.id}>
+                                                                <button
+                                                                    type="button"
+                                                                    disabled={
+                                                                        !canManage
+                                                                    }
+                                                                    onClick={() =>
+                                                                        selectPlan(
+                                                                            plan.id,
+                                                                            plan.module,
+                                                                        )
+                                                                    }
+                                                                    className={`w-full rounded-xl border p-4 text-left transition ${
+                                                                        selected
+                                                                            ? 'border-primary bg-primary/5 ring-1 ring-primary/40'
+                                                                            : 'border-border hover:bg-muted/30'
+                                                                    }`}
+                                                                >
+                                                                    <p className="font-medium">
+                                                                        {
+                                                                            plan.name
+                                                                        }
+                                                                    </p>
+                                                                    <p className="mt-1 text-sm text-muted-foreground">
+                                                                        ₹
+                                                                        {
+                                                                            plan.annual_price
+                                                                        }
+                                                                        /yr
+                                                                    </p>
+                                                                </button>
+                                                            </li>
+                                                        );
+                                                    })}
+                                            </ul>
                                         </div>
-                                    </li>
-                                ))}
-                            </ul>
-                        </section>
-                        <section className="space-y-3">
-                            <h2 className="font-semibold">Add-ons</h2>
-                            <ul className="space-y-2">
-                                {addons.map((addon) => (
-                                    <li
-                                        key={addon.id}
-                                        className="flex items-start gap-3 rounded-xl border border-border p-3"
-                                    >
-                                        <input
-                                            type="checkbox"
-                                            checked={addonIds.includes(
+                                    ))
+                                )}
+                            </section>
+                        ) : null}
+
+                        {step === 2 ? (
+                            <section className="space-y-3">
+                                <h2 className="font-semibold">
+                                    Step 3 — Configure add-ons
+                                </h2>
+                                {addons.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground">
+                                        No add-ons in the active catalogue.
+                                    </p>
+                                ) : (
+                                    <ul className="grid gap-3 sm:grid-cols-2">
+                                        {addons.map((addon) => {
+                                            const selected = addonIds.includes(
                                                 addon.id,
-                                            )}
-                                            onChange={() =>
-                                                setAddonIds((c) =>
-                                                    c.includes(addon.id)
-                                                        ? c.filter(
-                                                              (x) =>
-                                                                  x !==
-                                                                  addon.id,
-                                                          )
-                                                        : [...c, addon.id],
+                                            );
+                                            return (
+                                                <li key={addon.id}>
+                                                    <button
+                                                        type="button"
+                                                        disabled={!canManage}
+                                                        onClick={() =>
+                                                            setAddonIds(
+                                                                (current) =>
+                                                                    current.includes(
+                                                                        addon.id,
+                                                                    )
+                                                                        ? current.filter(
+                                                                              (
+                                                                                  id,
+                                                                              ) =>
+                                                                                  id !==
+                                                                                  addon.id,
+                                                                          )
+                                                                        : [
+                                                                              ...current,
+                                                                              addon.id,
+                                                                          ],
+                                                            )
+                                                        }
+                                                        className={`w-full rounded-xl border p-4 text-left transition ${
+                                                            selected
+                                                                ? 'border-primary bg-primary/5 ring-1 ring-primary/40'
+                                                                : 'border-border hover:bg-muted/30'
+                                                        }`}
+                                                    >
+                                                        <p className="font-medium">
+                                                            {addon.name}
+                                                        </p>
+                                                        <p className="mt-1 text-sm text-muted-foreground">
+                                                            ₹
+                                                            {addon.annual_price}
+                                                            /yr
+                                                        </p>
+                                                    </button>
+                                                </li>
+                                            );
+                                        })}
+                                    </ul>
+                                )}
+                            </section>
+                        ) : null}
+
+                        {step === 3 ? (
+                            <section className="space-y-4">
+                                <h2 className="font-semibold">
+                                    Step 4 — Select tenure
+                                </h2>
+                                <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                                    {tenureOptions.map((option) => {
+                                        const selected =
+                                            tenure === option.value;
+                                        return (
+                                            <li key={option.value}>
+                                                <button
+                                                    type="button"
+                                                    disabled={!canManage}
+                                                    onClick={() =>
+                                                        setTenure(option.value)
+                                                    }
+                                                    className={`w-full rounded-xl border p-4 text-left transition ${
+                                                        selected
+                                                            ? 'border-primary bg-primary/5 ring-1 ring-primary/40'
+                                                            : 'border-border hover:bg-muted/30'
+                                                    }`}
+                                                >
+                                                    <p className="font-medium">
+                                                        {option.label}
+                                                    </p>
+                                                    <p className="mt-1 text-xs text-muted-foreground">
+                                                        −
+                                                        {
+                                                            option.discount_percent
+                                                        }
+                                                        % tenure discount
+                                                    </p>
+                                                </button>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                                <label className="flex items-center gap-2 text-sm">
+                                    <input
+                                        type="checkbox"
+                                        checked={renewal}
+                                        onChange={(event) =>
+                                            setRenewal(event.target.checked)
+                                        }
+                                        disabled={!canManage}
+                                    />
+                                    Renewal eligible (additional discount when
+                                    applicable)
+                                </label>
+                                <div className="max-w-sm space-y-2">
+                                    <Label htmlFor="common_renewal_date">
+                                        Common renewal date
+                                    </Label>
+                                    <Input
+                                        id="common_renewal_date"
+                                        type="date"
+                                        value={renewalDate}
+                                        onChange={(event) =>
+                                            setRenewalDate(event.target.value)
+                                        }
+                                        disabled={!canManage}
+                                        required
+                                    />
+                                </div>
+                            </section>
+                        ) : null}
+
+                        {step === 4 ? (
+                            <section className="space-y-4">
+                                <h2 className="font-semibold">
+                                    Step 5 — Review subscription
+                                </h2>
+                                <dl className="grid gap-3 rounded-xl border border-border p-4 text-sm sm:grid-cols-2">
+                                    <div>
+                                        <dt className="text-muted-foreground">
+                                            Company
+                                        </dt>
+                                        <dd className="font-medium">
+                                            {company.name}
+                                        </dd>
+                                    </div>
+                                    <div>
+                                        <dt className="text-muted-foreground">
+                                            Modules
+                                        </dt>
+                                        <dd className="font-medium capitalize">
+                                            {selectedModules
+                                                .map((module) =>
+                                                    module.replaceAll('_', ' '),
                                                 )
-                                            }
-                                            className="mt-1"
-                                            disabled={!canManage}
-                                            aria-label={`Select ${addon.name}`}
-                                        />
-                                        <div>
-                                            <p className="font-medium">
-                                                {addon.name}
-                                            </p>
-                                            <p className="text-sm text-muted-foreground">
-                                                ₹{addon.annual_price}/yr
-                                            </p>
-                                        </div>
-                                    </li>
-                                ))}
-                            </ul>
-                        </section>
-                        <div className="grid gap-4 sm:grid-cols-2">
-                            <div className="space-y-2">
-                                <Label htmlFor="tenure">Tenure</Label>
-                                <select
-                                    id="tenure"
-                                    value={tenure}
-                                    onChange={(e) => setTenure(e.target.value)}
-                                    disabled={!canManage}
-                                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                                .join(', ') || '—'}
+                                        </dd>
+                                    </div>
+                                    <div>
+                                        <dt className="text-muted-foreground">
+                                            Plans
+                                        </dt>
+                                        <dd className="font-medium">
+                                            {planIds
+                                                .map(
+                                                    (id) =>
+                                                        plans.find(
+                                                            (plan) =>
+                                                                plan.id === id,
+                                                        )?.name,
+                                                )
+                                                .filter(Boolean)
+                                                .join(', ') || '—'}
+                                        </dd>
+                                    </div>
+                                    <div>
+                                        <dt className="text-muted-foreground">
+                                            Add-ons
+                                        </dt>
+                                        <dd className="font-medium">
+                                            {addonIds
+                                                .map(
+                                                    (id) =>
+                                                        addons.find(
+                                                            (addon) =>
+                                                                addon.id === id,
+                                                        )?.name,
+                                                )
+                                                .filter(Boolean)
+                                                .join(', ') || 'None'}
+                                        </dd>
+                                    </div>
+                                    <div>
+                                        <dt className="text-muted-foreground">
+                                            Tenure
+                                        </dt>
+                                        <dd className="font-medium">
+                                            {tenureOptions.find(
+                                                (option) =>
+                                                    option.value === tenure,
+                                            )?.label ?? tenure}
+                                        </dd>
+                                    </div>
+                                    <div>
+                                        <dt className="text-muted-foreground">
+                                            Common renewal
+                                        </dt>
+                                        <dd className="font-medium">
+                                            {renewalDate || '—'}
+                                        </dd>
+                                    </div>
+                                </dl>
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    onClick={preview}
+                                    disabled={
+                                        !canManage || planIds.length === 0
+                                    }
                                 >
-                                    {tenureOptions.map((o) => (
-                                        <option key={o.value} value={o.value}>
-                                            {o.label} (−{o.discount_percent}%)
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                            <label className="flex items-center gap-2 self-end text-sm">
-                                <input
-                                    type="checkbox"
-                                    checked={renewal}
-                                    onChange={(e) =>
-                                        setRenewal(e.target.checked)
-                                    }
-                                    disabled={!canManage}
-                                />{' '}
-                                Renewal eligible (5%)
-                            </label>
-                            <div className="space-y-2 sm:col-span-2">
-                                <Label htmlFor="common_renewal_date">
-                                    Common renewal date
-                                </Label>
-                                <Input
-                                    id="common_renewal_date"
-                                    type="date"
-                                    value={renewalDate}
-                                    onChange={(e) =>
-                                        setRenewalDate(e.target.value)
-                                    }
-                                    disabled={!canManage}
-                                    required
-                                />
+                                    Refresh server price preview
+                                </Button>
+                                <p className="text-xs text-muted-foreground">
+                                    Totals below are authoritative backend
+                                    quotes. The frontend never invents pricing.
+                                </p>
+                            </section>
+                        ) : null}
+
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                disabled={step === 0}
+                                onClick={() =>
+                                    setStep((current) => current - 1)
+                                }
+                            >
+                                Back
+                            </Button>
+                            <div className="flex flex-wrap gap-2">
+                                <Button asChild variant="ghost">
+                                    <Link href={links.drafts}>
+                                        Back to drafts
+                                    </Link>
+                                </Button>
+                                {step < STEPS.length - 1 ? (
+                                    <Button
+                                        type="button"
+                                        disabled={!canAdvance}
+                                        onClick={() => {
+                                            if (step === 3) {
+                                                preview();
+                                            }
+                                            setStep((current) => current + 1);
+                                        }}
+                                    >
+                                        Next
+                                    </Button>
+                                ) : null}
                             </div>
                         </div>
-                        <Button type="submit" variant="secondary">
-                            Recalculate preview
-                        </Button>
-                    </form>
+                    </div>
 
                     <aside className="h-fit space-y-4 xl:sticky xl:top-4">
                         <BreakdownPanel
-                            title="Saved draft (before)"
+                            title="Saved draft"
                             breakdown={before_breakdown}
                         />
                         <BreakdownPanel
-                            title="Preview (after recalculation)"
+                            title="Live preview"
                             breakdown={preview_breakdown}
                         />
-                        {canManage ? (
+                        {canManage && step === 4 ? (
                             <Form
                                 action={links.update}
                                 method="put"
@@ -324,7 +659,7 @@ export default function DraftEdit({
                                 {({ processing, errors }) => (
                                     <>
                                         <h3 className="font-medium">
-                                            Save updated draft
+                                            Save draft
                                         </h3>
                                         <input
                                             type="hidden"
@@ -405,8 +740,9 @@ export default function DraftEdit({
                             </Form>
                         ) : (
                             <p className="text-sm text-muted-foreground">
-                                View-only access. Draft changes require full
-                                owner scope.
+                                {canManage
+                                    ? 'Complete the steps, then save the draft from Review.'
+                                    : 'View-only access. Draft changes require full owner scope.'}
                             </p>
                         )}
                         {draft.snapshots && draft.snapshots.length > 0 ? (

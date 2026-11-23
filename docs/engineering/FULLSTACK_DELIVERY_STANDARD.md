@@ -68,7 +68,24 @@ Batch G must **not** be the first UI implementation for Batches C–F.
 
 ---
 
-## 6. Prohibited “fake complete” patterns
+## 6. Demo data (permanent)
+
+**`database/seeders/LocalDemoWorkspaceSeeder.php` is the only demo-data seeder.**
+
+- Do **not** add phase-specific or module-specific demo seeder classes (`CrmDemoSeeder`, `OwnFleetDemoSeeder`, etc.).
+- Do **not** resurrect `LocalDemoUserSeeder` or other legacy demo seeders.
+- Keep `DatabaseSeeder`, `RbacSeeder`, and `SubscriptionCatalogueSeeder` for essential application/reference data only — never wire demo personas into `DatabaseSeeder`.
+- **Whenever an authorized feature ships, the same batch must update `LocalDemoWorkspaceSeeder` with meaningful, valid fixtures** (identity, masters, subscriptions, enquiries, LR/OwnFleet states that the domain actually supports).
+- A feature is not demo-ready if required fixtures are missing.
+- Profiles remain `small` / `standard` / `large`. Local/testing only; refuse production; idempotent; no live payments or outbound messaging.
+
+Delivery checklist for every new module:
+
+`Backend + UI + Pest + Playwright + LocalDemoWorkspaceSeeder update + Documentation + Certification`
+
+---
+
+## 7. Prohibited “fake complete” patterns
 
 - Dummy/hardcoded operational metrics presented as live
 - Buttons without implemented actions
@@ -80,6 +97,6 @@ Batch G must **not** be the first UI implementation for Batches C–F.
 
 ---
 
-## 7. Compatibility
+## 8. Compatibility
 
 Does not override governing PRD / Rules / Architecture / ADRs or Product Owner decisions. Prefer existing project patterns when they already satisfy this standard.

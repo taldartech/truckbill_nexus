@@ -38,7 +38,7 @@ class OwnerCompaniesController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
-        $this->panel->assertCustomerOwnerActor($user);
+        $this->panel->assertOwnsAtLeastOneCompany($user);
         WorkspaceSession::clear($request);
 
         $search = trim((string) $request->query('q', ''));

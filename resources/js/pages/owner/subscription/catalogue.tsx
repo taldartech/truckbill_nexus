@@ -1,6 +1,5 @@
 import { Form, Head, Link, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
-import { CompanySwitcher } from '@/components/company-switcher';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -109,9 +108,6 @@ export default function SubscriptionCatalogue({
                         <p className="text-sm text-muted-foreground">
                             Server-calculated totals only. {gst_note}
                         </p>
-                    </div>
-                    <div className="w-full max-w-sm">
-                        <CompanySwitcher />
                     </div>
                 </div>
                 {flash?.success ? (

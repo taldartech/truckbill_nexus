@@ -1,6 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
-import { CompanySwitcher } from '@/components/company-switcher';
 import ShellEmptyState from '@/components/shell-empty-state';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -80,9 +79,6 @@ export default function OwnerAudit({
                             Read-only activity history. Audit records cannot be
                             edited or deleted.
                         </p>
-                    </div>
-                    <div className="w-full max-w-sm">
-                        <CompanySwitcher />
                     </div>
                 </div>
 

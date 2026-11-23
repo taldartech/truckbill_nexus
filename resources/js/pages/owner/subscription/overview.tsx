@@ -1,5 +1,4 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
-import { CompanySwitcher } from '@/components/company-switcher';
 import ShellEmptyState from '@/components/shell-empty-state';
 import { Button } from '@/components/ui/button';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
@@ -131,28 +130,70 @@ export default function SubscriptionOverview({
         errors?: { remark?: string; checkout?: string };
     }>().props;
 
+    const modules = (subscription?.items ?? [])
+        .map((item) => item.module)
+        .filter((module): module is string => Boolean(module));
+    const uniqueModules = [...new Set(modules)];
+
     return (
         <>
-            <Head title={`Subscription · ${company.name}`} />
+            <Head title={`Subscription — ${company.name}`} />
             <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="space-y-2">
-                        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                            Owner Panel · Subscription
-                        </p>
-                        <h1 className="text-2xl font-semibold tracking-tight">
-                            {company.name}
-                        </h1>
-                        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                            <WorkspaceStatusBadge status={company.status} />
-                            <span>Scope: {ownerPanelScope}</span>
-                            <span className="rounded-md border border-border px-2 py-0.5 text-xs">
-                                Lifecycle: {lifecycle.status}
-                            </span>
+                <div className="space-y-3">
+                    <nav
+                        aria-label="Breadcrumb"
+                        className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
+                    >
+                        <Link
+                            href={links.dashboard}
+                            className="hover:underline"
+                        >
+                            Owner Panel
+                        </Link>
+                        <span aria-hidden>/</span>
+                        <Link
+                            href="/owner/subscriptions"
+                            className="hover:underline"
+                        >
+                            Subscriptions
+                        </Link>
+                        <span aria-hidden>/</span>
+                        <span className="text-foreground">{company.name}</span>
+                    </nav>
+                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div className="space-y-2">
+                            <h1 className="text-2xl font-semibold tracking-tight">
+                                Subscription — {company.name}
+                            </h1>
+                            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                                <WorkspaceStatusBadge status={company.status} />
+                                <span className="rounded-md border border-border px-2 py-0.5 text-xs">
+                                    {lifecycle.status.replaceAll('_', ' ')}
+                                </span>
+                                {uniqueModules.length > 0 ? (
+                                    <span className="text-xs">
+                                        Modules:{' '}
+                                        {uniqueModules
+                                            .map((module) =>
+                                                module.replaceAll('_', ' '),
+                                            )
+                                            .join(', ')}
+                                    </span>
+                                ) : null}
+                            </div>
                         </div>
-                    </div>
-                    <div className="w-full max-w-sm">
-                        <CompanySwitcher />
+                        <div className="flex flex-wrap gap-2">
+                            <Button asChild variant="outline">
+                                <Link href="/owner/subscriptions">
+                                    Back to Subscriptions
+                                </Link>
+                            </Button>
+                            <Button asChild variant="outline">
+                                <Link href={`/owner/companies/${company.id}`}>
+                                    View Company
+                                </Link>
+                            </Button>
+                        </div>
                     </div>
                 </div>
                 {flash?.success ? (
@@ -168,57 +209,76 @@ export default function SubscriptionOverview({
                         {errors.checkout}
                     </p>
                 ) : null}
-                <div className="flex flex-wrap gap-2">
-                    <Button asChild variant="outline">
-                        <Link href={links.catalogue}>Catalogue & pricing</Link>
-                    </Button>
-                    <Button asChild variant="outline">
-                        <Link href={links.drafts}>Draft contracts</Link>
-                    </Button>
-                    <Button asChild variant="outline">
-                        <Link href={links.credits}>Credits & quotas</Link>
-                    </Button>
-                    <Button asChild variant="outline">
-                        <Link href={links.payments}>Payment history</Link>
-                    </Button>
-                    <Button asChild variant="outline">
-                        <Link href={links.invoices}>Invoices</Link>
-                    </Button>
-                    {canManage && links.checkout ? (
-                        <Button asChild>
-                            <Link href={links.checkout}>
-                                Pay / activate (Test Mode)
+                <section className="space-y-3 rounded-xl border border-border p-4">
+                    <h2 className="font-semibold">Main actions</h2>
+                    <div className="flex flex-wrap gap-2">
+                        {canManage ? (
+                            <Button asChild>
+                                <Link href={links.drafts}>
+                                    {subscription
+                                        ? 'Add Module / Upgrade'
+                                        : 'Subscribe'}
+                                </Link>
+                            </Button>
+                        ) : null}
+                        {canManage && links.checkout ? (
+                            <Button asChild>
+                                <Link href={links.checkout}>
+                                    Pay / activate (Test Mode)
+                                </Link>
+                            </Button>
+                        ) : null}
+                        {canManage &&
+                        subscription?.status === 'active' &&
+                        links.renew ? (
+                            <Form
+                                action={links.renew}
+                                method="post"
+                                className="inline"
+                            >
+                                <input
+                                    type="hidden"
+                                    name="subscription_id"
+                                    value={subscription.id}
+                                />
+                                <Button type="submit">Renew</Button>
+                            </Form>
+                        ) : null}
+                        <Button asChild variant="outline">
+                            <Link href={links.catalogue}>
+                                Catalogue & pricing
                             </Link>
                         </Button>
-                    ) : null}
-                    {canManage &&
-                    subscription?.status === 'active' &&
-                    links.renew ? (
-                        <Form
-                            action={links.renew}
-                            method="post"
-                            className="inline"
-                        >
-                            <input
-                                type="hidden"
-                                name="subscription_id"
-                                value={subscription.id}
-                            />
-                            <Button type="submit" variant="outline">
-                                Renew (Test Mode)
-                            </Button>
-                        </Form>
-                    ) : null}
-                    <Button asChild variant="ghost">
-                        <Link href={links.dashboard}>Owner dashboard</Link>
-                    </Button>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                    {entitlement_note}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                    {payment_gate_note}
-                </p>
+                        <Button asChild variant="outline">
+                            <Link href={links.invoices}>View Invoices</Link>
+                        </Button>
+                        <Button asChild variant="outline">
+                            <Link href={links.payments}>Payment History</Link>
+                        </Button>
+                        <Button asChild variant="outline">
+                            <Link href={links.credits}>Credits & quotas</Link>
+                        </Button>
+                        <Button asChild variant="ghost">
+                            <Link href={links.drafts}>Draft contracts</Link>
+                        </Button>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                        {entitlement_note}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                        {payment_gate_note}
+                    </p>
+                    {catalogue ? (
+                        <p className="text-xs text-muted-foreground">
+                            Active catalogue: {catalogue.name} ({catalogue.code}
+                            ) · Scope: {ownerPanelScope}
+                        </p>
+                    ) : (
+                        <p className="text-sm text-muted-foreground">
+                            No active catalogue configured.
+                        </p>
+                    )}
+                </section>
                 {lifecycle.restriction_reason ? (
                     <p
                         role="status"
@@ -227,18 +287,9 @@ export default function SubscriptionOverview({
                         {lifecycle.restriction_reason}
                     </p>
                 ) : null}
-                {catalogue ? (
-                    <p className="text-sm">
-                        Active catalogue: {catalogue.name} ({catalogue.code})
-                    </p>
-                ) : (
-                    <p className="text-sm text-muted-foreground">
-                        No active catalogue configured.
-                    </p>
-                )}
                 <section className="grid gap-4 rounded-xl border border-border p-4 md:grid-cols-3">
                     <div>
-                        <h2 className="font-semibold">Lifecycle</h2>
+                        <h2 className="font-semibold">Current subscription</h2>
                         <dl className="mt-3 space-y-2 text-sm">
                             <div className="flex justify-between gap-4">
                                 <dt className="text-muted-foreground">
