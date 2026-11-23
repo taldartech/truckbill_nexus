@@ -13,7 +13,7 @@
 | Dual-DB | `03c7e8fb4652bc24b270c6f990c113f76ef1f2c5` |
 | TDS     | `f0b0281ecd9cb92efcfc0128ed990410c23ebbae` |
 | UI/CI   | `7507e5dff23081327fb4e7dedc08dc8dc4f980e3` |
-| Final   | `a2ba8fc6d6784b8d81a6ffc7aacb95ee6059de5f` |
+| Final   | `e73ef9356204dee3c5094d62143039fa3d509c4d` |
 
 ## B. Premium design changes
 
