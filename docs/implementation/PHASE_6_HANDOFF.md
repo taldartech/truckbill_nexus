@@ -2,7 +2,7 @@
 
 **Date:** 24 November 2026  
 **Status:** **FUNCTIONALLY COMPLETE (local)** — Batches A–H delivered; certification batches I–J documented; external production activations Pending.  
-**Baseline:** `d114c1e` (Batch G) → Batch H–J commit(s) on `main` (local, not pushed).
+**Baseline:** `d114c1e` (Batch G) → `4f7509e37e3ace895f7f762db0c9d64a2fd27675` (Batch H–J, local, not pushed).
 
 ## Prerequisite from Phase 5
 

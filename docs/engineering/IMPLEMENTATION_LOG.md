@@ -114,4 +114,4 @@ Dated workstream records with verified local commit SHAs. Living product Memory 
 | 2026-11-24 | P6 Batch E | `06c0726de0195fafe373e3a9446c6ad9466f9f96` | Lorry hire cancellation, LR guards. |
 | 2026-11-24 | P6 Batch F | `103d41d6c962233ef254e6f04cd2edc04f54ed35` | Broker customer invoices. |
 | 2026-11-24 | P6 Batch G | `d114c1ed66768b5c333ca5a22a7e724aeccfdd51` | Linked bilty groups, proportional payment. |
-| 2026-11-24 | P6 Batch H–J | _(this delivery commit)_ | Registers hub, demo broker fixtures, certification docs, Phase 7 handoff. |
+| 2026-11-24 | P6 Batch H–J | `4f7509e37e3ace895f7f762db0c9d64a2fd27675` | Registers hub, demo broker fixtures, certification docs, Phase 7 handoff; Pest 57 Broker+seeder pass locally. |

@@ -2,7 +2,7 @@
 
 **Date:** 24 November 2026  
 **Baseline HEAD (Batch G):** `d114c1e` — linked bilty and group payment  
-**Batches H–J:** see final local commit SHAs after Batch H–J delivery (this pass).
+**Batch H–J:** `4f7509e37e3ace895f7f762db0c9d64a2fd27675`
 
 ## Batch evidence (local commits)
 
@@ -14,8 +14,8 @@
 | E     | Lorry hire cancellation, LR guards                                  | `06c0726`          |
 | F     | Broker customer invoices                                            | `103d41d`          |
 | G     | Linked bilty groups, proportional pay                               | `d114c1e`          |
-| H     | Operational registers hub `/broker/registers`, demo broker fixtures | _(this delivery)_  |
-| I/J   | Certification docs, Phase 7 handoff, seeder test extensions         | _(this delivery)_  |
+| H     | Operational registers hub `/broker/registers`, demo broker fixtures | `4f7509e`          |
+| I/J   | Certification docs, Phase 7 handoff, seeder test extensions         | `4f7509e`          |
 
 ## Implemented surfaces
 
