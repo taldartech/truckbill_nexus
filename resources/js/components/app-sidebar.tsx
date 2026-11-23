@@ -14,7 +14,11 @@ import {
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { dashboard } from '@/routes';
-import { gstRates, subscriptionInvoices, tdsRules } from '@/routes/admin';
+import admin, {
+    gstRates,
+    subscriptionInvoices,
+    tdsRules,
+} from '@/routes/admin';
 import type { NavItem } from '@/types';
 import type { WorkspaceShare } from '@/types/workspace';
 
@@ -119,6 +123,21 @@ export function AppSidebar() {
               },
               ...(isSuperAdmin
                   ? [
+                        {
+                            title: 'Companies',
+                            href: admin.companies.index.url(),
+                            icon: LayoutGrid,
+                        },
+                        {
+                            title: 'Identities',
+                            href: admin.identities.index.url(),
+                            icon: LayoutGrid,
+                        },
+                        {
+                            title: 'Internal users',
+                            href: admin.internalUsers.index.url(),
+                            icon: LayoutGrid,
+                        },
                         {
                             title: 'Subscription invoices',
                             href: subscriptionInvoices.url(),

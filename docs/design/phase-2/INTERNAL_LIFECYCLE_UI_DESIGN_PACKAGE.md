@@ -1,8 +1,8 @@
 # Design Package — Internal Lifecycle Administration UI
 
-**Status:** **Pending Product Owner / design approval** (Internal Team IA remains out of scope of PO-P2-DESIGN-FORMAL customer package).  
+**Status:** **APPROVED** via `PO-P2-INTERNAL-IA` / `PO-P2-INTERNAL-UI-AUTH` (`PO-P1-P5-FULLSTACK-AUTH`, 23 November 2026).  
 **Date:** 23 November 2026  
-**Backend already exists:** `CompanyLifecycleController`, `IdentityLifecycleController`, `OwnershipTransferController`, `InternalUserController` (HTTP; no product Inertia screens).
+**Backend + UI:** Controllers and Inertia screens under `/admin/companies`, `/admin/identities`, `/admin/internal-users`.
 
 ---
 

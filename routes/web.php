@@ -248,19 +248,31 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('admin.invitations.store-for-branch');
     Route::post('/admin/invitations/{invitation}/revoke', [InvitationController::class, 'revoke'])
         ->name('admin.invitations.revoke');
-    Route::post('/admin/internal-users', [InternalUserController::class, 'store'])
-        ->name('admin.internal-users.store');
 
+    Route::get('/admin/companies', [CompanyLifecycleController::class, 'index'])
+        ->name('admin.companies.index');
+    Route::get('/admin/companies/{company}', [CompanyLifecycleController::class, 'show'])
+        ->name('admin.companies.show');
     Route::post('/admin/companies/{company}/deactivate', [CompanyLifecycleController::class, 'deactivate'])
         ->name('admin.companies.deactivate');
     Route::post('/admin/companies/{company}/reactivate', [CompanyLifecycleController::class, 'reactivate'])
         ->name('admin.companies.reactivate');
     Route::post('/admin/companies/{company}/ownership-transfers', [OwnershipTransferController::class, 'store'])
         ->name('admin.companies.ownership-transfers.store');
+
+    Route::get('/admin/identities', [IdentityLifecycleController::class, 'index'])
+        ->name('admin.identities.index');
+    Route::get('/admin/identities/{user}', [IdentityLifecycleController::class, 'show'])
+        ->name('admin.identities.show');
     Route::post('/admin/identities/{user}/deactivate', [IdentityLifecycleController::class, 'deactivate'])
         ->name('admin.identities.deactivate');
     Route::post('/admin/identities/{user}/reactivate', [IdentityLifecycleController::class, 'reactivate'])
         ->name('admin.identities.reactivate');
+
+    Route::get('/admin/internal-users', [InternalUserController::class, 'index'])
+        ->name('admin.internal-users.index');
+    Route::post('/admin/internal-users', [InternalUserController::class, 'store'])
+        ->name('admin.internal-users.store');
 
     Route::get('/admin/subscription-invoices', [SubscriptionInvoiceController::class, 'index'])
         ->name('admin.subscription-invoices');

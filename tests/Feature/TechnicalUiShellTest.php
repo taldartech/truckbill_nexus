@@ -78,6 +78,9 @@ test('internal sidebar exposes Batch G admin screens with super-admin invoice ga
     expect($sidebar)->toContain('gstRates');
     expect($sidebar)->toContain('tdsRules');
     expect($sidebar)->toContain('subscriptionInvoices');
+    expect($sidebar)->toContain('admin.companies.index');
+    expect($sidebar)->toContain('admin.identities.index');
+    expect($sidebar)->toContain('admin.internalUsers.index');
     expect($sidebar)->toContain('is_super_admin');
 
     $super = User::factory()->superAdmin()->create();

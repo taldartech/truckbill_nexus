@@ -49,6 +49,8 @@ class OwnershipTransferController extends Controller
             ]);
         }
 
-        return back();
+        return redirect()
+            ->route('admin.companies.show', $company)
+            ->with('success', 'Ownership transferred.');
     }
 }

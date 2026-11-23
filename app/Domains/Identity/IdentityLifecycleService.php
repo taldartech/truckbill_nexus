@@ -10,6 +10,8 @@ use App\Models\User;
 use App\Support\Audit\AuditAction;
 use App\Support\Audit\AuditedTransaction;
 use App\Support\Audit\AuditWriter;
+use App\Support\Tenant\TenantContext;
+use App\Support\Tenant\TenantContextHolder;
 use InvalidArgumentException;
 
 /**
@@ -37,28 +39,30 @@ final class IdentityLifecycleService
 
         $this->assertSuperAdminConsistency($type, $isSuperAdmin);
 
-        return $this->auditedTransaction->run(function () use ($attributes, $type, $isSuperAdmin): User {
-            $user = new User;
-            $user->forceFill([
-                'name' => $attributes['name'],
-                'email' => $attributes['email'],
-                'password' => $attributes['password'],
-                'identity_type' => $type,
-                'is_super_admin' => $isSuperAdmin,
-                'deactivated_at' => null,
-            ]);
-            $user->save();
+        return $this->withPlatformTenant(function () use ($attributes, $type, $isSuperAdmin): User {
+            return $this->auditedTransaction->run(function () use ($attributes, $type, $isSuperAdmin): User {
+                $user = new User;
+                $user->forceFill([
+                    'name' => $attributes['name'],
+                    'email' => $attributes['email'],
+                    'password' => $attributes['password'],
+                    'identity_type' => $type,
+                    'is_super_admin' => $isSuperAdmin,
+                    'deactivated_at' => null,
+                ]);
+                $user->save();
 
-            $this->auditWriter->write(
-                AuditAction::Created,
-                User::class,
-                $user->id,
-                remark: null,
-                before: null,
-                after: $this->auditableSnapshot($user),
-            );
+                $this->auditWriter->write(
+                    AuditAction::Created,
+                    User::class,
+                    $user->id,
+                    remark: null,
+                    before: null,
+                    after: $this->auditableSnapshot($user),
+                );
 
-            return $user->refresh();
+                return $user->refresh();
+            });
         });
     }
 
@@ -74,23 +78,25 @@ final class IdentityLifecycleService
             );
         }
 
-        $user = $this->auditedTransaction->run(function () use ($user, $remark): User {
-            $before = $this->auditableSnapshot($user);
+        $user = $this->withPlatformTenant(function () use ($user, $remark): User {
+            return $this->auditedTransaction->run(function () use ($user, $remark): User {
+                $before = $this->auditableSnapshot($user);
 
-            $user->forceFill([
-                'deactivated_at' => now(),
-            ])->save();
+                $user->forceFill([
+                    'deactivated_at' => now(),
+                ])->save();
 
-            $this->auditWriter->write(
-                AuditAction::Updated,
-                User::class,
-                $user->id,
-                remark: $remark,
-                before: $before,
-                after: $this->auditableSnapshot($user->refresh()),
-            );
+                $this->auditWriter->write(
+                    AuditAction::Updated,
+                    User::class,
+                    $user->id,
+                    remark: $remark,
+                    before: $before,
+                    after: $this->auditableSnapshot($user->refresh()),
+                );
 
-            return $user;
+                return $user;
+            });
         });
 
         $this->webSessions->revokeAllSessionsForIdentityLifecycle(
@@ -119,23 +125,25 @@ final class IdentityLifecycleService
             throw new InvalidArgumentException('Identity is not deactivated.');
         }
 
-        return $this->auditedTransaction->run(function () use ($user, $remark): User {
-            $before = $this->auditableSnapshot($user);
+        return $this->withPlatformTenant(function () use ($user, $remark): User {
+            return $this->auditedTransaction->run(function () use ($user, $remark): User {
+                $before = $this->auditableSnapshot($user);
 
-            $user->forceFill([
-                'deactivated_at' => null,
-            ])->save();
+                $user->forceFill([
+                    'deactivated_at' => null,
+                ])->save();
 
-            $this->auditWriter->write(
-                AuditAction::Updated,
-                User::class,
-                $user->id,
-                remark: $remark,
-                before: $before,
-                after: $this->auditableSnapshot($user->refresh()),
-            );
+                $this->auditWriter->write(
+                    AuditAction::Updated,
+                    User::class,
+                    $user->id,
+                    remark: $remark,
+                    before: $before,
+                    after: $this->auditableSnapshot($user->refresh()),
+                );
 
-            return $user->refresh();
+                return $user->refresh();
+            });
         });
     }
 
@@ -147,24 +155,26 @@ final class IdentityLifecycleService
             );
         }
 
-        $trashed = $this->auditedTransaction->run(function () use ($user, $remark): User {
-            $before = $this->auditableSnapshot($user);
-            $userId = $user->id;
+        $trashed = $this->withPlatformTenant(function () use ($user, $remark): User {
+            return $this->auditedTransaction->run(function () use ($user, $remark): User {
+                $before = $this->auditableSnapshot($user);
+                $userId = $user->id;
 
-            $user->delete();
+                $user->delete();
 
-            $trashed = User::withTrashed()->findOrFail($userId);
+                $trashed = User::withTrashed()->findOrFail($userId);
 
-            $this->auditWriter->write(
-                AuditAction::Deleted,
-                User::class,
-                $userId,
-                remark: $remark,
-                before: $before,
-                after: $this->auditableSnapshot($trashed),
-            );
+                $this->auditWriter->write(
+                    AuditAction::Deleted,
+                    User::class,
+                    $userId,
+                    remark: $remark,
+                    before: $before,
+                    after: $this->auditableSnapshot($trashed),
+                );
 
-            return $trashed;
+                return $trashed;
+            });
         });
 
         $this->webSessions->revokeAllSessionsForIdentityLifecycle(
@@ -293,6 +303,28 @@ final class IdentityLifecycleService
             throw new IdentityTypeBoundaryException(
                 'Customer identities cannot hold Super Admin privilege.'
             );
+        }
+    }
+
+    /**
+     * @template T
+     *
+     * @param  callable(): T  $callback
+     * @return T
+     */
+    private function withPlatformTenant(callable $callback): mixed
+    {
+        $previous = TenantContextHolder::get();
+        TenantContextHolder::set(new TenantContext(isInternal: true));
+
+        try {
+            return $callback();
+        } finally {
+            if ($previous === null) {
+                TenantContextHolder::clear();
+            } else {
+                TenantContextHolder::set($previous);
+            }
         }
     }
 

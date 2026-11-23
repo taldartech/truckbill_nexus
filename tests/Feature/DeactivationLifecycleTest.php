@@ -143,7 +143,7 @@ test('unauthorized actors cannot deactivate or reactivate companies', function (
 
     $this->actingAs($customer)
         ->post(route('admin.companies.deactivate', $company), ['remark' => 'Hack'])
-        ->assertRedirect();
+        ->assertForbidden();
 
     expect($company->fresh()->isDeactivated())->toBeTrue();
 });
