@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\TdsRuleController;
 use App\Http\Controllers\Branch\BankCashAccountController;
 use App\Http\Controllers\Branch\BranchDashboardController;
 use App\Http\Controllers\Branch\BranchSettingsController;
+use App\Http\Controllers\Branch\BrokerDailyPaymentsController;
 use App\Http\Controllers\Branch\CatalogueController;
 use App\Http\Controllers\Branch\DocumentAttachmentController;
 use App\Http\Controllers\Branch\EnquiryController;
@@ -22,6 +23,8 @@ use App\Http\Controllers\Branch\LorryReceiptController;
 use App\Http\Controllers\Branch\MastersHubController;
 use App\Http\Controllers\Branch\PartyController;
 use App\Http\Controllers\Branch\StationController;
+use App\Http\Controllers\Branch\TransporterBookBalanceController;
+use App\Http\Controllers\Branch\TransporterVoucherController;
 use App\Http\Controllers\Branch\TripController;
 use App\Http\Controllers\Branch\TripInvoiceController;
 use App\Http\Controllers\Branch\VehicleController;
@@ -197,6 +200,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('/broker/lorry-hires', [LorryHireController::class, 'index'])->name('branch.broker.lorry-hires.index');
         Route::get('/broker/lorry-hires/{lorryHire}', [LorryHireController::class, 'show'])->name('branch.broker.lorry-hires.show');
+
+        Route::get('/broker/vouchers', [TransporterVoucherController::class, 'index'])->name('branch.broker.vouchers.index');
+        Route::get('/broker/vouchers/create', [TransporterVoucherController::class, 'create'])->name('branch.broker.vouchers.create');
+        Route::post('/broker/vouchers', [TransporterVoucherController::class, 'store'])->name('branch.broker.vouchers.store');
+        Route::post('/broker/vouchers/bulk/preview', [TransporterVoucherController::class, 'bulkPreview'])->name('branch.broker.vouchers.bulk.preview');
+        Route::post('/broker/vouchers/bulk', [TransporterVoucherController::class, 'bulkStore'])->name('branch.broker.vouchers.bulk.store');
+        Route::get('/broker/vouchers/{voucher}', [TransporterVoucherController::class, 'show'])->name('branch.broker.vouchers.show');
+        Route::post('/broker/vouchers/{voucher}/status', [TransporterVoucherController::class, 'updateStatus'])->name('branch.broker.vouchers.status');
+
+        Route::get('/broker/daily-payments', [BrokerDailyPaymentsController::class, 'index'])->name('branch.broker.daily-payments.index');
+        Route::post('/broker/daily-payments/bulk-status', [BrokerDailyPaymentsController::class, 'bulkStatus'])->name('branch.broker.daily-payments.bulk-status');
+
+        Route::get('/broker/transporter-balances', [TransporterBookBalanceController::class, 'index'])->name('branch.broker.transporter-balances.index');
 
         Route::get('/trips', [TripController::class, 'index'])->name('branch.trips.index');
         Route::get('/trips/{trip}', [TripController::class, 'show'])->name('branch.trips.show');

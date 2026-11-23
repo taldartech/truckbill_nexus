@@ -76,6 +76,7 @@ export function AppSidebar() {
         '/trips',
         '/trip-invoices',
         '/payments',
+        '/broker',
     ];
     const inOpsPath =
         opsRoots.some(

@@ -18,8 +18,8 @@ class TransporterBookBalanceEntry extends Model
 
     protected $fillable = [
         'id', 'company_id', 'branch_id', 'transporter_party_id', 'lorry_hire_id',
-        'transporter_voucher_id', 'amount', 'entry_type', 'source_type', 'source_id',
-        'remark', 'created_by_user_id',
+        'transporter_voucher_id', 'amount', 'entry_type', 'entry_date', 'source_type', 'source_id',
+        'idempotency_key', 'reversal_of_entry_id', 'remark', 'created_by_user_id',
     ];
 
     protected function casts(): array
@@ -27,6 +27,7 @@ class TransporterBookBalanceEntry extends Model
         return [
             'amount' => 'decimal:2',
             'entry_type' => BookBalanceEntryType::class,
+            'entry_date' => 'date',
         ];
     }
 
@@ -43,5 +44,11 @@ class TransporterBookBalanceEntry extends Model
     public function lorryHire(): BelongsTo
     {
         return $this->belongsTo(LorryHire::class);
+    }
+
+    /** @return BelongsTo<Party, $this> */
+    public function transporter(): BelongsTo
+    {
+        return $this->belongsTo(Party::class, 'transporter_party_id');
     }
 }

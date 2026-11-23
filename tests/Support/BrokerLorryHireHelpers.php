@@ -1,5 +1,6 @@
 <?php
 
+use App\Domains\Broker\LorryHire\LorryHireService;
 use App\Domains\Consignment\Enums\FreightRateType;
 use App\Domains\Consignment\Enums\LrWorkflowContext;
 use App\Domains\Consignment\LorryReceiptService;
@@ -8,6 +9,7 @@ use App\Domains\Master\Party\PartyService;
 use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
 use App\Domains\Rbac\PermissionCodes;
 use App\Domains\Subscription\Enums\SubscriptionModule;
+use App\Models\LorryHire;
 use App\Models\LorryReceipt;
 use App\Models\Party;
 use App\Models\Vehicle;
@@ -31,6 +33,37 @@ if (! function_exists('brokerGrantLorryHirePermissions')) {
         }
 
         tripGrant('customer.viewer', PermissionCodes::BROKER_LORRY_HIRE_VIEW);
+    }
+}
+
+if (! function_exists('brokerGrantVoucherPermissions')) {
+    function brokerGrantVoucherPermissions(): void
+    {
+        foreach ([
+            PermissionCodes::BROKER_VOUCHER_VIEW,
+            PermissionCodes::BROKER_VOUCHER_CREATE,
+            PermissionCodes::BROKER_VOUCHER_EDIT,
+            PermissionCodes::BROKER_VOUCHER_STATUS,
+            PermissionCodes::BROKER_VOUCHER_BULK,
+            PermissionCodes::BROKER_BOOK_BALANCE_VIEW,
+        ] as $code) {
+            tripGrant('customer.admin', $code);
+        }
+    }
+}
+
+if (! function_exists('brokerCreateLorryHire')) {
+    /**
+     * @param  array<string, mixed>  $ctx
+     */
+    function brokerCreateLorryHire(array $ctx): LorryHire
+    {
+        brokerGrantLorryHirePermissions();
+        $lr = brokerCreateBrokerLr($ctx);
+
+        return app(LorryHireService::class)->createFromLorryReceipt($lr, $ctx['member'], [
+            'goods_lines' => brokerGoodsPayloadFromLr($lr),
+        ]);
     }
 }
 
@@ -87,7 +120,7 @@ if (! function_exists('brokerCreateTransporterAndMarketVehicle')) {
 
         $vehicle = Vehicle::query()->create([
             'company_id' => $ctx['company']->id,
-            'registration_number' => 'MH12BRK0001',
+            'registration_number' => 'MH12BRK'.strtoupper(substr(md5((string) microtime(true)), 0, 4)),
             'is_active' => true,
             'ownership' => VehicleOwnership::Market->value,
             'owner_party_id' => $transporter->id,

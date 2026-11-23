@@ -23,14 +23,16 @@ class TransporterVoucher extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
-        'id', 'company_id', 'branch_id', 'lorry_hire_id', 'voucher_number',
-        'transporter_party_id', 'vehicle_id', 'amount', 'payment_type', 'payment_mode',
-        'status', 'bank_cash_account_id', 'cash_reference', 'pump_reference', 'remark', 'created_by_user_id',
+        'id', 'company_id', 'branch_id', 'lorry_hire_id', 'linked_bilty_group_id', 'voucher_number',
+        'voucher_date', 'transporter_party_id', 'vehicle_id', 'amount', 'payment_type', 'payment_mode',
+        'status', 'bank_cash_account_id', 'cash_reference', 'pump_reference', 'pump_vendor_party_id',
+        'remark', 'created_by_user_id',
     ];
 
     protected function casts(): array
     {
         return [
+            'voucher_date' => 'date',
             'amount' => 'decimal:2',
             'payment_type' => VoucherPaymentType::class,
             'payment_mode' => VoucherPaymentMode::class,
@@ -51,5 +53,17 @@ class TransporterVoucher extends Model
     public function lorryHire(): BelongsTo
     {
         return $this->belongsTo(LorryHire::class);
+    }
+
+    /** @return BelongsTo<Party, $this> */
+    public function transporter(): BelongsTo
+    {
+        return $this->belongsTo(Party::class, 'transporter_party_id');
+    }
+
+    /** @return BelongsTo<Vehicle, $this> */
+    public function vehicle(): BelongsTo
+    {
+        return $this->belongsTo(Vehicle::class);
     }
 }
