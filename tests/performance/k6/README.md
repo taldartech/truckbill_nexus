@@ -1,34 +1,26 @@
-# Grafana k6 Performance Tests (gated)
+# Grafana k6 Performance Tests
 
-**Status:** **Blocked pending Product Owner approval** (`PO-P1-DEPS-K6`).
-
-## Do not
-
-- Run against production, shared customer DBs, or live Razorpay/comms.
-- Claim 5,000 concurrent user support without measured evidence.
-- Make heavy stress tests mandatory on every PR.
-
-## After approval
-
-1. Document required k6 CLI version for macOS/Linux CI agents.
-2. Add scripts: `smoke.js`, `baseline.js`, `load.js` (+ stress/spike/soak for scheduled runs).
-3. Use synthetic auth against a dedicated performance environment.
-4. Capture RPS, p50/p95/p99, error rate; attach reports to `PHASE_1_TO_5_PERFORMANCE_REPORT.md`.
-
-## Proposed workloads
-
-- Auth/session
-- Workspace company/branch navigation
-- Masters list/search
-- Enquiry create/list (when available)
-- Webhook intake (synthetic)
-- LR numbering contention (when available)
-- Mixed concurrent operational users
+**Status:** **Authorized** (`PO-P1-DEPS-K6` via `PO-P1-P5-FULLSTACK-AUTH`).  
+**Tooling:** Grafana k6 CLI (install separately; pin agent/CI version in reports).
 
 ## Profiles
 
-| Profile                      | When                               |
-| ---------------------------- | ---------------------------------- |
-| Smoke                        | After script changes / optional CI |
-| Baseline                     | Release candidate                  |
-| Load / Stress / Spike / Soak | Scheduled dedicated environment    |
+| Script       | Purpose                          |
+| ------------ | -------------------------------- |
+| `smoke.js`   | Quick health after script changes |
+| `baseline.js`| Release-candidate baseline       |
+| `load.js`    | Sustained load                   |
+| `stress.js`  | Elevated load                    |
+| `spike.js`   | Sudden traffic spike             |
+| `soak.js`    | Long-running endurance           |
+
+```bash
+# Example (non-production only):
+k6 run -e BASE_URL=http://127.0.0.1:8000 tests/performance/k6/smoke.js
+```
+
+## Rules
+
+- Never run against production, shared customer DBs, or live Razorpay/comms.
+- Do not claim 5,000 concurrent users without measured evidence and hardware notes.
+- Record RPS, p50/p95/p99, errors, and environment details in `PHASE_1_TO_5_PERFORMANCE_REPORT.md`.

@@ -1,34 +1,39 @@
-# Playwright E2E (gated)
+# Playwright E2E
 
-**Status:** **Blocked pending Product Owner dependency approval** (`PO-P1-DEPS-E2E`).
+**Status:** **Authorized** (`PO-P1-DEPS-E2E` via `PO-P1-P5-FULLSTACK-AUTH`).  
+**Package:** `@playwright/test@1.57.0` (pinned).  
+**Browser:** Chromium.
 
-This directory is a placeholder for the production Playwright suite requested in the Phase 1–5 master prompt.
+## Commands
 
-## Do not
+```bash
+npx playwright install chromium
+npm run test:e2e:smoke
+# Authenticated journeys after LocalDemoWorkspaceSeeder:
+E2E_REQUIRE_DEMO=1 npm run test:e2e
+```
 
-- Silently `npm install @playwright/test` without approval (project dependency gate).
-- Claim E2E passed while packages are absent.
-- Point tests at production or real customer accounts.
+## Rules
 
-## After approval
+- Non-production environments only.
+- Do not point at production or real customer accounts.
+- Prefer stable labels / roles over brittle CSS selectors.
+- Traces and screenshots on failure under `storage/playwright-*` (gitignored).
 
-1. Add `@playwright/test` (version pinned) to `package.json` with PO-P1-DEPS-E2E recorded.
-2. Add `playwright.config.ts`, auth fixtures, Chromium project.
-3. Seed via `LocalDemoWorkspaceSeeder` + `LOCAL_DEMO_PASSWORD`.
-4. Wire CI smoke job + artifact upload (traces/screenshots).
-5. Encode journeys listed in `docs/implementation/PHASE_1_TO_5_TEST_STRATEGY.md`.
-
-## Proposed tree
+## Layout
 
 ```
 tests/e2e/
-  README.md          ← this file
-  playwright.config.ts
-  fixtures/
   auth/
-  company/
+  fixtures/
+  company/      # expand as journeys land
   masters/
   subscription/
-  enquiry/           ← after Phase 4 UI
-  ownfleet/          ← after Phase 5
+  crm/
+  enquiry/
+  ownfleet/
 ```
+
+## CI
+
+GitHub Actions installs Chromium and runs `npm run test:e2e:smoke` after the app build.

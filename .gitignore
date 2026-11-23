@@ -7,6 +7,11 @@
 /public/storage
 /storage/*.key
 /storage/pail
+/storage/playwright-report
+/storage/playwright-results
+/test-results
+/playwright-report
+/blob-report
 /resources/js/actions
 /resources/js/routes
 /resources/js/wayfinder
