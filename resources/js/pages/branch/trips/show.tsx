@@ -1,6 +1,8 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { MasterPageHeader } from '@/components/masters/master-page-header';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 type Trip = {
     id: string;
@@ -14,23 +16,59 @@ type Trip = {
     driver: { id: string; name: string } | null;
     primary_driver: { id: string; name: string } | null;
     substitute_driver: { id: string; name: string } | null;
-    starting_odometer: string | null;
-    ending_odometer: string | null;
-    trip_distance: string | null;
-    departure_at: string | null;
-    actual_arrival_at: string | null;
-    expected_end_at: string | null;
-    timing_performance: string | null;
-    cancelled_at: string | null;
-    cancellation_remark: string | null;
     pickup_count: number;
     drop_count: number;
     allocation_count: number;
     created_at: string | null;
 };
 
+type Movements = {
+    pickups: Array<{
+        id: string;
+        position: number;
+        station_name: string | null;
+        consignor_name: string | null;
+        goods_description: string | null;
+        weight: string;
+        pickup_date: string | null;
+    }>;
+    drops: Array<{
+        id: string;
+        position: number;
+        station_name: string | null;
+        consignee_name: string | null;
+    }>;
+    allocations: Array<{
+        id: string;
+        trip_pickup_id: string;
+        trip_drop_id: string;
+        allocation_weight: string;
+        rate: string;
+        freight: string;
+    }>;
+};
+
 type Props = {
     trip: Trip;
+    movements: Movements;
+    reconciliation: {
+        pickups: Array<{
+            id: string;
+            weight: string;
+            allocated: string;
+            remaining: string;
+            reconciled: boolean;
+        }>;
+        total_freight: string;
+        all_reconciled: boolean;
+        freight_positive: boolean;
+        completion_ready: boolean;
+    };
+    formOptions: {
+        stations: Array<{ id: string; name: string }>;
+        consignors: Array<{ id: string; name: string }>;
+        consignees: Array<{ id: string; name: string }>;
+    };
     permissions: {
         can_edit: boolean;
         can_dispatch: boolean;
@@ -41,6 +79,10 @@ type Props = {
     urls: {
         index: string;
         lr_show: string;
+        add_pickup: string;
+        add_drop: string;
+        upsert_allocation: string;
+        remove_allocation: string;
     };
 };
 
@@ -59,10 +101,21 @@ function statusLabel(status: string): string {
     }
 }
 
-export default function TripShow({ trip, urls }: Props) {
-    const { flash } = usePage<{
+export default function TripShow({
+    trip,
+    movements,
+    reconciliation,
+    formOptions,
+    permissions,
+    urls,
+}: Props) {
+    const { flash, errors } = usePage<{
         flash?: { success?: string | null; info?: string | null };
+        errors?: Record<string, string>;
     }>().props;
+    const mutable =
+        permissions.can_edit &&
+        (trip.status === 'pending' || trip.status === 'in_progress');
 
     return (
         <>
@@ -132,76 +185,468 @@ export default function TripShow({ trip, urls }: Props) {
                                 </dt>
                                 <dd>{trip.driver?.name ?? '—'}</dd>
                             </div>
-                            <div className="flex justify-between gap-4">
-                                <dt className="text-muted-foreground">
-                                    Primary driver
-                                </dt>
-                                <dd>{trip.primary_driver?.name ?? '—'}</dd>
-                            </div>
-                            <div className="flex justify-between gap-4">
-                                <dt className="text-muted-foreground">
-                                    Substitute
-                                </dt>
-                                <dd>
-                                    {trip.substitute_driver?.name ?? 'None'}
-                                </dd>
-                            </div>
-                            <div className="flex justify-between gap-4">
-                                <dt className="text-muted-foreground">
-                                    Created
-                                </dt>
-                                <dd>{trip.created_at ?? '—'}</dd>
-                            </div>
                         </dl>
                     </section>
 
                     <section className="rounded-lg border border-border p-4">
                         <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-                            Financial (LR)
+                            Allocation summary
                         </h2>
                         <dl className="mt-3 grid gap-2 text-sm">
                             <div className="flex justify-between gap-4">
                                 <dt className="text-muted-foreground">
-                                    Agreed freight
+                                    Total freight
                                 </dt>
-                                <dd>₹{trip.lr_freight_total ?? '0.00'}</dd>
+                                <dd>₹{reconciliation.total_freight}</dd>
                             </div>
                             <div className="flex justify-between gap-4">
                                 <dt className="text-muted-foreground">
-                                    Additional charges
+                                    Fully reconciled
                                 </dt>
                                 <dd>
-                                    ₹
-                                    {trip.lr_additional_charges_total ??
-                                        '0.00'}
+                                    {reconciliation.all_reconciled
+                                        ? 'Yes'
+                                        : 'No'}
+                                </dd>
+                            </div>
+                            <div className="flex justify-between gap-4">
+                                <dt className="text-muted-foreground">
+                                    Completion ready
+                                </dt>
+                                <dd
+                                    className={
+                                        reconciliation.completion_ready
+                                            ? 'text-[#2FB36F]'
+                                            : 'text-muted-foreground'
+                                    }
+                                >
+                                    {reconciliation.completion_ready
+                                        ? 'Ready'
+                                        : 'Blocked'}
                                 </dd>
                             </div>
                         </dl>
-                        <p className="mt-4 text-xs text-muted-foreground">
-                            Dispatch, multi-point allocations, expenses and
-                            completion land in subsequent OwnFleet batches on
-                            this Trip detail.
-                        </p>
-                        <dl className="mt-3 grid gap-2 text-sm">
-                            <div className="flex justify-between gap-4">
-                                <dt className="text-muted-foreground">
-                                    Pickups
-                                </dt>
-                                <dd>{trip.pickup_count}</dd>
-                            </div>
-                            <div className="flex justify-between gap-4">
-                                <dt className="text-muted-foreground">Drops</dt>
-                                <dd>{trip.drop_count}</dd>
-                            </div>
-                            <div className="flex justify-between gap-4">
-                                <dt className="text-muted-foreground">
-                                    Allocations
-                                </dt>
-                                <dd>{trip.allocation_count}</dd>
-                            </div>
-                        </dl>
+                        <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
+                            {reconciliation.pickups.map((row) => (
+                                <li key={row.id}>
+                                    Pickup remaining {row.remaining} /{' '}
+                                    {row.weight}
+                                    {row.reconciled ? ' · OK' : ''}
+                                </li>
+                            ))}
+                        </ul>
                     </section>
                 </div>
+
+                <section className="rounded-lg border border-border p-4">
+                    <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+                        Pickups & drops
+                    </h2>
+                    <div className="mt-4 grid gap-6 lg:grid-cols-2">
+                        <div className="space-y-3">
+                            <h3 className="text-sm font-medium">Pickups</h3>
+                            {movements.pickups.length === 0 ? (
+                                <p className="text-sm text-muted-foreground">
+                                    No pickups yet.
+                                </p>
+                            ) : (
+                                <ul className="space-y-2 text-sm">
+                                    {movements.pickups.map((pickup) => (
+                                        <li
+                                            key={pickup.id}
+                                            className="rounded-md border border-border px-3 py-2"
+                                        >
+                                            <p className="font-medium">
+                                                #{pickup.position}{' '}
+                                                {pickup.station_name}
+                                            </p>
+                                            <p className="text-muted-foreground">
+                                                {pickup.weight} kg ·{' '}
+                                                {pickup.pickup_date}
+                                                {pickup.consignor_name
+                                                    ? ` · ${pickup.consignor_name}`
+                                                    : ''}
+                                            </p>
+                                            {pickup.goods_description ? (
+                                                <p className="text-muted-foreground">
+                                                    {pickup.goods_description}
+                                                </p>
+                                            ) : null}
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                            {mutable ? (
+                                <Form
+                                    action={urls.add_pickup}
+                                    method="post"
+                                    className="grid gap-2 rounded-md border border-dashed border-border p-3"
+                                >
+                                    {({ processing }) => (
+                                        <>
+                                            <Label htmlFor="pickup_station_id">
+                                                Add pickup
+                                            </Label>
+                                            <select
+                                                id="pickup_station_id"
+                                                name="station_id"
+                                                required
+                                                className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                                                defaultValue=""
+                                            >
+                                                <option value="" disabled>
+                                                    Station
+                                                </option>
+                                                {formOptions.stations.map(
+                                                    (station) => (
+                                                        <option
+                                                            key={station.id}
+                                                            value={station.id}
+                                                        >
+                                                            {station.name}
+                                                        </option>
+                                                    ),
+                                                )}
+                                            </select>
+                                            <select
+                                                name="consignor_party_id"
+                                                className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                                                defaultValue=""
+                                            >
+                                                <option value="">
+                                                    Consignor (optional)
+                                                </option>
+                                                {formOptions.consignors.map(
+                                                    (party) => (
+                                                        <option
+                                                            key={party.id}
+                                                            value={party.id}
+                                                        >
+                                                            {party.name}
+                                                        </option>
+                                                    ),
+                                                )}
+                                            </select>
+                                            <Input
+                                                name="goods_description"
+                                                placeholder="Goods"
+                                            />
+                                            <Input
+                                                name="weight"
+                                                type="number"
+                                                step="0.001"
+                                                min="0.001"
+                                                required
+                                                placeholder="Weight"
+                                            />
+                                            <Input
+                                                name="pickup_date"
+                                                type="date"
+                                                required
+                                            />
+                                            {errors?.weight ? (
+                                                <p className="text-sm text-destructive">
+                                                    {errors.weight}
+                                                </p>
+                                            ) : null}
+                                            <Button
+                                                type="submit"
+                                                disabled={processing}
+                                                className="bg-[#2D8CFF] text-white hover:bg-[#2476db]"
+                                            >
+                                                Add pickup
+                                            </Button>
+                                        </>
+                                    )}
+                                </Form>
+                            ) : null}
+                        </div>
+
+                        <div className="space-y-3">
+                            <h3 className="text-sm font-medium">Drops</h3>
+                            {movements.drops.length === 0 ? (
+                                <p className="text-sm text-muted-foreground">
+                                    No drops yet.
+                                </p>
+                            ) : (
+                                <ul className="space-y-2 text-sm">
+                                    {movements.drops.map((drop) => (
+                                        <li
+                                            key={drop.id}
+                                            className="rounded-md border border-border px-3 py-2"
+                                        >
+                                            <p className="font-medium">
+                                                #{drop.position}{' '}
+                                                {drop.station_name}
+                                            </p>
+                                            <p className="text-muted-foreground">
+                                                {drop.consignee_name ??
+                                                    'Consignee optional'}
+                                            </p>
+                                        </li>
+                                    ))}
+                                </ul>
+                            )}
+                            {mutable ? (
+                                <Form
+                                    action={urls.add_drop}
+                                    method="post"
+                                    className="grid gap-2 rounded-md border border-dashed border-border p-3"
+                                >
+                                    {({ processing }) => (
+                                        <>
+                                            <Label htmlFor="drop_station_id">
+                                                Add drop
+                                            </Label>
+                                            <select
+                                                id="drop_station_id"
+                                                name="station_id"
+                                                required
+                                                className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                                                defaultValue=""
+                                            >
+                                                <option value="" disabled>
+                                                    Station
+                                                </option>
+                                                {formOptions.stations.map(
+                                                    (station) => (
+                                                        <option
+                                                            key={station.id}
+                                                            value={station.id}
+                                                        >
+                                                            {station.name}
+                                                        </option>
+                                                    ),
+                                                )}
+                                            </select>
+                                            <select
+                                                name="consignee_party_id"
+                                                className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                                                defaultValue=""
+                                            >
+                                                <option value="">
+                                                    Consignee (optional)
+                                                </option>
+                                                {formOptions.consignees.map(
+                                                    (party) => (
+                                                        <option
+                                                            key={party.id}
+                                                            value={party.id}
+                                                        >
+                                                            {party.name}
+                                                        </option>
+                                                    ),
+                                                )}
+                                            </select>
+                                            <Button
+                                                type="submit"
+                                                disabled={processing}
+                                                className="bg-[#2D8CFF] text-white hover:bg-[#2476db]"
+                                            >
+                                                Add drop
+                                            </Button>
+                                        </>
+                                    )}
+                                </Form>
+                            ) : null}
+                        </div>
+                    </div>
+                </section>
+
+                <section className="rounded-lg border border-border p-4">
+                    <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
+                        Allocations
+                    </h2>
+                    {movements.allocations.length === 0 ? (
+                        <p className="mt-3 text-sm text-muted-foreground">
+                            No allocations yet.
+                        </p>
+                    ) : (
+                        <div className="mt-3 overflow-hidden rounded-md border border-border">
+                            <table className="w-full text-left text-sm">
+                                <thead className="bg-muted/40 text-muted-foreground">
+                                    <tr>
+                                        <th className="px-3 py-2">Pickup</th>
+                                        <th className="px-3 py-2">Drop</th>
+                                        <th className="px-3 py-2">Weight</th>
+                                        <th className="px-3 py-2">Freight</th>
+                                        {mutable ? (
+                                            <th className="px-3 py-2" />
+                                        ) : null}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {movements.allocations.map(
+                                        (allocation) => {
+                                            const pickup =
+                                                movements.pickups.find(
+                                                    (row) =>
+                                                        row.id ===
+                                                        allocation.trip_pickup_id,
+                                                );
+                                            const drop = movements.drops.find(
+                                                (row) =>
+                                                    row.id ===
+                                                    allocation.trip_drop_id,
+                                            );
+                                            const removeUrl =
+                                                urls.remove_allocation.replace(
+                                                    'ALLOCATION_ID',
+                                                    allocation.id,
+                                                );
+                                            return (
+                                                <tr
+                                                    key={allocation.id}
+                                                    className="border-t border-border"
+                                                >
+                                                    <td className="px-3 py-2">
+                                                        {pickup?.station_name ??
+                                                            '—'}
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        {drop?.station_name ??
+                                                            '—'}
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        {
+                                                            allocation.allocation_weight
+                                                        }
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        ₹{allocation.freight}
+                                                    </td>
+                                                    {mutable ? (
+                                                        <td className="px-3 py-2 text-right">
+                                                            <Form
+                                                                action={
+                                                                    removeUrl
+                                                                }
+                                                                method="delete"
+                                                            >
+                                                                {({
+                                                                    processing,
+                                                                }) => (
+                                                                    <Button
+                                                                        type="submit"
+                                                                        variant="destructive"
+                                                                        size="sm"
+                                                                        disabled={
+                                                                            processing
+                                                                        }
+                                                                    >
+                                                                        Remove
+                                                                    </Button>
+                                                                )}
+                                                            </Form>
+                                                        </td>
+                                                    ) : null}
+                                                </tr>
+                                            );
+                                        },
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+
+                    {mutable &&
+                    movements.pickups.length > 0 &&
+                    movements.drops.length > 0 ? (
+                        <Form
+                            action={urls.upsert_allocation}
+                            method="post"
+                            className="mt-4 grid gap-2 rounded-md border border-dashed border-border p-3 md:grid-cols-2"
+                        >
+                            {({ processing }) => (
+                                <>
+                                    <div className="grid gap-1 md:col-span-2">
+                                        <Label>Add / update allocation</Label>
+                                    </div>
+                                    <select
+                                        name="trip_pickup_id"
+                                        required
+                                        className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                                        defaultValue=""
+                                    >
+                                        <option value="" disabled>
+                                            Pickup
+                                        </option>
+                                        {movements.pickups.map((pickup) => (
+                                            <option
+                                                key={pickup.id}
+                                                value={pickup.id}
+                                            >
+                                                #{pickup.position}{' '}
+                                                {pickup.station_name} (
+                                                {pickup.weight})
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <select
+                                        name="trip_drop_id"
+                                        required
+                                        className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+                                        defaultValue=""
+                                    >
+                                        <option value="" disabled>
+                                            Drop
+                                        </option>
+                                        {movements.drops.map((drop) => (
+                                            <option
+                                                key={drop.id}
+                                                value={drop.id}
+                                            >
+                                                #{drop.position}{' '}
+                                                {drop.station_name}
+                                            </option>
+                                        ))}
+                                    </select>
+                                    <Input
+                                        name="allocation_weight"
+                                        type="number"
+                                        step="0.001"
+                                        min="0.001"
+                                        required
+                                        placeholder="Allocation weight"
+                                    />
+                                    <Input
+                                        name="rate"
+                                        type="number"
+                                        step="0.0001"
+                                        min="0"
+                                        placeholder="Rate (may be 0)"
+                                    />
+                                    <Input
+                                        name="freight"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        placeholder="Freight (may be 0)"
+                                    />
+                                    <Input
+                                        name="distance"
+                                        type="number"
+                                        step="0.1"
+                                        min="0"
+                                        placeholder="Distance (optional)"
+                                    />
+                                    {errors?.allocation_weight ? (
+                                        <p className="text-sm text-destructive md:col-span-2">
+                                            {errors.allocation_weight}
+                                        </p>
+                                    ) : null}
+                                    <Button
+                                        type="submit"
+                                        disabled={processing}
+                                        className="bg-[#2FB36F] text-white hover:bg-[#279960] md:col-span-2"
+                                    >
+                                        Save allocation
+                                    </Button>
+                                </>
+                            )}
+                        </Form>
+                    ) : null}
+                </section>
             </div>
         </>
     );

@@ -2,11 +2,11 @@
 
 **Date:** 23 November 2026  
 **PO Phase 5 AUTH:** Approved  
-**Implementation status:** **Batch A complete (Trip foundation); Batches B–H remaining**
+**Implementation status:** **Batches A–B complete; Batches C–H remaining**
 
 ## Verdict
 
-Do **not** certify Phase 5 complete. OwnFleet Trip foundation (LR → Trip) is implemented; multi-point through payments remain.
+Do **not** certify Phase 5 complete. Trip foundation and multi-point allocation are implemented; dispatch through payments remain.
 
 ## Completed — Batch A
 
@@ -14,12 +14,18 @@ Do **not** certify Phase 5 complete. OwnFleet Trip foundation (LR → Trip) is i
 - Domain: `TripService::createFromLorryReceipt` (1 OwnFleet LR = 1 Trip), `TripLrDependencyGuard` bound into `CompositeLrDependencyGuard`
 - Permissions `trip.*` registered (no blanket role grants); demo roles grant Trip codes for local fixtures
 - Routes/UI: `/trips`, `/trips/{trip}`, `/lorry-receipts/{lr}/create-trip` + Create Trip CTA on OwnFleet LR show
-- Pest: `tests/Feature/Phase5/OwnFleetTripFoundationTest.php` (7 passed)
+- Pest: `tests/Feature/Phase5/OwnFleetTripFoundationTest.php`
 - Demo seeder: OwnFleet pending LR + linked Pending Trip; drivers + primary driver on vehicles
+
+## Completed — Batch B
+
+- `TripMovementService` pickup/drop/allocation with lock-for-update over-allocation protection
+- Trip Detail UI: add pickup/drop, allocation editor, reconciliation summary
+- Pest: `OwnFleetTripAllocationTest` (split, combine, over-allocation, completion gate)
+- Demo seeder: multi-point fixtures with partial allocation example
 
 ## Remaining (authorized sequence)
 
-- **B** Multi-point pickup/drop/allocation + reconciliation UI
 - **C** Dispatch & completion
 - **D** Expenses, diesel, profitability
 - **E** POD, documents, cancel/delete

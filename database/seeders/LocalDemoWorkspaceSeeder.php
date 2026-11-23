@@ -12,6 +12,7 @@ use App\Domains\Enquiry\EnquiryService;
 use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Party\PartyService;
+use App\Domains\OwnFleet\Trip\TripMovementService;
 use App\Domains\OwnFleet\Trip\TripService;
 use App\Domains\Rbac\Enums\PermissionDomain;
 use App\Domains\Rbac\PermissionCodes;
@@ -1257,8 +1258,48 @@ class LocalDemoWorkspaceSeeder extends Seeder
             return;
         }
 
-        $trips->createFromLorryReceipt($existingLr, $actor, [
+        $trip = $trips->createFromLorryReceipt($existingLr, $actor, [
             'vehicle_id' => $vehicle->id,
+        ]);
+
+        $movements = app(TripMovementService::class);
+        $pickupA = $movements->addPickup($trip, $actor, [
+            'station_id' => $fromStation->id,
+            'weight' => '800',
+            'pickup_date' => CarbonImmutable::now()->subDay()->toDateString(),
+            'goods_description' => 'Demo OwnFleet pickup A',
+        ]);
+        $pickupB = $movements->addPickup($trip, $actor, [
+            'station_id' => $fromStation->id,
+            'weight' => '400',
+            'pickup_date' => CarbonImmutable::now()->subDay()->toDateString(),
+            'goods_description' => 'Demo OwnFleet pickup B (partial example keeps 100 unallocated)',
+        ]);
+        $dropA = $movements->addDrop($trip, $actor, [
+            'station_id' => $toStation->id,
+        ]);
+        $dropB = $movements->addDrop($trip, $actor, [
+            'station_id' => $toStation->id,
+        ]);
+
+        $movements->upsertAllocation($trip, $actor, [
+            'trip_pickup_id' => $pickupA->id,
+            'trip_drop_id' => $dropA->id,
+            'allocation_weight' => '500',
+            'freight' => '9000',
+        ]);
+        $movements->upsertAllocation($trip, $actor, [
+            'trip_pickup_id' => $pickupA->id,
+            'trip_drop_id' => $dropB->id,
+            'allocation_weight' => '300',
+            'freight' => '5400',
+        ]);
+        $movements->upsertAllocation($trip, $actor, [
+            'trip_pickup_id' => $pickupB->id,
+            'trip_drop_id' => $dropA->id,
+            'allocation_weight' => '300',
+            'freight' => '0',
+            'rate' => '0',
         ]);
     }
 

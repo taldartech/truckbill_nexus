@@ -9,6 +9,7 @@ use App\Domains\OwnFleet\Enums\TripStatus;
 use App\Domains\OwnFleet\Trip\Exceptions\TripAuthorizationException;
 use App\Domains\OwnFleet\Trip\Exceptions\TripConflictException;
 use App\Domains\OwnFleet\Trip\Exceptions\TripDomainException;
+use App\Domains\OwnFleet\Trip\TripMovementService;
 use App\Domains\OwnFleet\Trip\TripService;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
@@ -19,7 +20,9 @@ use App\Models\Company;
 use App\Models\LorryReceipt;
 use App\Models\Party;
 use App\Models\PartyRole;
+use App\Models\Station;
 use App\Models\Trip;
+use App\Models\TripDropPickupAllocation;
 use App\Models\User;
 use App\Models\Vehicle;
 use Illuminate\Http\RedirectResponse;
@@ -39,6 +42,7 @@ class TripController extends Controller
         private readonly CompanyAccessService $access,
         private readonly PermissionAuthorizer $authorizer,
         private readonly TripService $trips,
+        private readonly TripMovementService $movements,
     ) {}
 
     public function index(Request $request, Company $company, Branch $branch): Response
@@ -172,14 +176,154 @@ class TripController extends Controller
             abort(404, $e->getMessage());
         }
 
+        $trip->load([
+            'pickups.station',
+            'pickups.consignor',
+            'drops.station',
+            'drops.consignee',
+            'allocations',
+            'lorryReceipt.fromStation',
+            'lorryReceipt.toStation',
+        ]);
+
         return Inertia::render('branch/trips/show', [
             'trip' => $this->detailPayload($trip),
+            'movements' => $this->movementsPayload($trip),
+            'reconciliation' => $this->movements->reconciliationSummary($trip),
+            'formOptions' => [
+                'stations' => $this->stationOptions($company),
+                'consignors' => $this->partyRoleOptions($company, $branch, PartyRoleType::Consignor),
+                'consignees' => $this->partyRoleOptions($company, $branch, PartyRoleType::Consignee),
+            ],
             'permissions' => $this->tripPermissions($actor, $company, $branch),
             'urls' => [
                 'index' => route('branch.trips.index', absolute: false),
                 'lr_show' => route('branch.lorry-receipts.show', [$trip->lorry_receipt_id], absolute: false),
+                'add_pickup' => route('branch.trips.pickups.store', [$trip], absolute: false),
+                'add_drop' => route('branch.trips.drops.store', [$trip], absolute: false),
+                'upsert_allocation' => route('branch.trips.allocations.store', [$trip], absolute: false),
+                'remove_allocation' => route('branch.trips.allocations.destroy', [$trip, 'ALLOCATION_ID'], absolute: false),
             ],
         ]);
+    }
+
+    public function storePickup(Request $request, Trip $trip, Company $company, Branch $branch): RedirectResponse
+    {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertPermission($actor, $company, $branch, PermissionCodes::TRIP_EDIT);
+        $this->assertTrip($trip, $company, $branch);
+
+        $validated = $request->validate([
+            'station_id' => ['required', 'uuid'],
+            'consignor_party_id' => ['nullable', 'uuid'],
+            'goods_description' => ['nullable', 'string', 'max:500'],
+            'weight' => ['required', 'numeric', 'gt:0'],
+            'pickup_date' => ['required', 'date'],
+        ]);
+
+        try {
+            $this->movements->addPickup($trip, $actor, $validated);
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (TripAuthorizationException $e) {
+            abort(403, $e->getMessage());
+        } catch (TripDomainException $e) {
+            throw ValidationException::withMessages(['weight' => $e->getMessage()]);
+        }
+
+        return redirect()
+            ->route('branch.trips.show', [$trip])
+            ->with('success', 'Pickup added.');
+    }
+
+    public function storeDrop(Request $request, Trip $trip, Company $company, Branch $branch): RedirectResponse
+    {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertPermission($actor, $company, $branch, PermissionCodes::TRIP_EDIT);
+        $this->assertTrip($trip, $company, $branch);
+
+        $validated = $request->validate([
+            'station_id' => ['required', 'uuid'],
+            'consignee_party_id' => ['nullable', 'uuid'],
+        ]);
+
+        try {
+            $this->movements->addDrop($trip, $actor, $validated);
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (TripAuthorizationException $e) {
+            abort(403, $e->getMessage());
+        } catch (TripDomainException $e) {
+            throw ValidationException::withMessages(['station_id' => $e->getMessage()]);
+        }
+
+        return redirect()
+            ->route('branch.trips.show', [$trip])
+            ->with('success', 'Drop added.');
+    }
+
+    public function storeAllocation(Request $request, Trip $trip, Company $company, Branch $branch): RedirectResponse
+    {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertPermission($actor, $company, $branch, PermissionCodes::TRIP_EDIT);
+        $this->assertTrip($trip, $company, $branch);
+
+        $validated = $request->validate([
+            'trip_pickup_id' => ['required', 'uuid'],
+            'trip_drop_id' => ['required', 'uuid'],
+            'allocation_weight' => ['required', 'numeric', 'gt:0'],
+            'rate' => ['nullable', 'numeric', 'min:0'],
+            'freight' => ['nullable', 'numeric', 'min:0'],
+            'distance' => ['nullable', 'numeric', 'min:0'],
+            'package_count' => ['nullable', 'numeric', 'min:0'],
+            'ewb_number' => ['nullable', 'string', 'max:64'],
+            'goods_value' => ['nullable', 'numeric', 'min:0'],
+        ]);
+
+        try {
+            $this->movements->upsertAllocation($trip, $actor, $validated);
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (TripAuthorizationException $e) {
+            abort(403, $e->getMessage());
+        } catch (TripConflictException|TripDomainException $e) {
+            throw ValidationException::withMessages(['allocation_weight' => $e->getMessage()]);
+        }
+
+        return redirect()
+            ->route('branch.trips.show', [$trip])
+            ->with('success', 'Allocation saved.');
+    }
+
+    public function destroyAllocation(
+        Request $request,
+        Trip $trip,
+        TripDropPickupAllocation $allocation,
+        Company $company,
+        Branch $branch,
+    ): RedirectResponse {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertPermission($actor, $company, $branch, PermissionCodes::TRIP_EDIT);
+        $this->assertTrip($trip, $company, $branch);
+
+        try {
+            $this->movements->removeAllocation($trip, $actor, $allocation);
+        } catch (TripAuthorizationException $e) {
+            abort(403, $e->getMessage());
+        } catch (TripDomainException $e) {
+            throw ValidationException::withMessages(['allocation' => $e->getMessage()]);
+        }
+
+        return redirect()
+            ->route('branch.trips.show', [$trip])
+            ->with('success', 'Allocation removed.');
+    }
+
+    private function assertTrip(Trip $trip, Company $company, Branch $branch): void
+    {
+        if ($trip->company_id !== $company->id || $trip->branch_id !== $branch->id || $trip->trashed()) {
+            abort(404);
+        }
     }
 
     private function assertPermission(User $actor, Company $company, Branch $branch, string $code): void
@@ -340,5 +484,98 @@ class TripController extends Controller
             'allocation_count' => $trip->allocations->count(),
             'created_at' => $trip->created_at?->timezone('Asia/Kolkata')->format('d-m-Y H:i'),
         ];
+    }
+
+    /**
+     * @return array{
+     *     pickups: list<array<string, mixed>>,
+     *     drops: list<array<string, mixed>>,
+     *     allocations: list<array<string, mixed>>
+     * }
+     */
+    private function movementsPayload(Trip $trip): array
+    {
+        return [
+            'pickups' => $trip->pickups->map(fn ($pickup): array => [
+                'id' => $pickup->id,
+                'position' => $pickup->position,
+                'station_id' => $pickup->station_id,
+                'station_name' => $pickup->station?->name,
+                'consignor_party_id' => $pickup->consignor_party_id,
+                'consignor_name' => $pickup->consignor?->name,
+                'goods_description' => $pickup->goods_description,
+                'weight' => $pickup->weight,
+                'pickup_date' => $pickup->pickup_date?->format('d-m-Y'),
+            ])->values()->all(),
+            'drops' => $trip->drops->map(fn ($drop): array => [
+                'id' => $drop->id,
+                'position' => $drop->position,
+                'station_id' => $drop->station_id,
+                'station_name' => $drop->station?->name,
+                'consignee_party_id' => $drop->consignee_party_id,
+                'consignee_name' => $drop->consignee?->name,
+            ])->values()->all(),
+            'allocations' => $trip->allocations->map(fn (TripDropPickupAllocation $allocation): array => [
+                'id' => $allocation->id,
+                'trip_pickup_id' => $allocation->trip_pickup_id,
+                'trip_drop_id' => $allocation->trip_drop_id,
+                'allocation_weight' => $allocation->allocation_weight,
+                'rate' => $allocation->rate,
+                'freight' => $allocation->freight,
+                'distance' => $allocation->distance,
+                'package_count' => $allocation->package_count,
+                'ewb_number' => $allocation->ewb_number,
+                'goods_value' => $allocation->goods_value,
+            ])->values()->all(),
+        ];
+    }
+
+    /**
+     * @return list<array{id: string, name: string}>
+     */
+    private function stationOptions(Company $company): array
+    {
+        return Station::query()
+            ->where('owner_user_id', $company->owner_user_id)
+            ->where('is_active', true)
+            ->whereNull('deleted_at')
+            ->orderBy('name')
+            ->limit(300)
+            ->get(['id', 'name'])
+            ->map(fn (Station $station): array => [
+                'id' => $station->id,
+                'name' => $station->name,
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return list<array{id: string, name: string}>
+     */
+    private function partyRoleOptions(Company $company, Branch $branch, PartyRoleType $role): array
+    {
+        $partyIds = PartyRole::query()
+            ->where('company_id', $company->id)
+            ->where('role', $role->value)
+            ->whereNull('deleted_at')
+            ->whereNull('deactivated_at')
+            ->pluck('party_id');
+
+        return Party::query()
+            ->where('company_id', $company->id)
+            ->whereIn('id', $partyIds)
+            ->whereNull('deleted_at')
+            ->where(function ($query) use ($branch): void {
+                $query->whereNull('branch_id')->orWhere('branch_id', $branch->id);
+            })
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (Party $party): array => [
+                'id' => $party->id,
+                'name' => $party->name,
+            ])
+            ->values()
+            ->all();
     }
 }
