@@ -13,6 +13,8 @@ export const options = {
 const BASE_URL = __ENV.BASE_URL || 'http://127.0.0.1:8000';
 
 export default function () {
-    check(http.get(`${BASE_URL}/login`), { 'login ok': (r) => r.status === 200 });
+    check(http.get(`${BASE_URL}/login`), {
+        'login ok': (r) => r.status === 200,
+    });
     sleep(1);
 }

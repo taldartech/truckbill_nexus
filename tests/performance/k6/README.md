@@ -5,14 +5,14 @@
 
 ## Profiles
 
-| Script       | Purpose                          |
-| ------------ | -------------------------------- |
-| `smoke.js`   | Quick health after script changes |
-| `baseline.js`| Release-candidate baseline       |
-| `load.js`    | Sustained load                   |
-| `stress.js`  | Elevated load                    |
-| `spike.js`   | Sudden traffic spike             |
-| `soak.js`    | Long-running endurance           |
+| Script        | Purpose                           |
+| ------------- | --------------------------------- |
+| `smoke.js`    | Quick health after script changes |
+| `baseline.js` | Release-candidate baseline        |
+| `load.js`     | Sustained load                    |
+| `stress.js`   | Elevated load                     |
+| `spike.js`    | Sudden traffic spike              |
+| `soak.js`     | Long-running endurance            |
 
 ```bash
 # Example (non-production only):

@@ -23,7 +23,9 @@ export default function () {
     check(login, { 'login 200': (r) => r.status === 200 });
 
     const home = http.get(`${BASE_URL}/`);
-    check(home, { 'home responds': (r) => r.status === 200 || r.status === 302 });
+    check(home, {
+        'home responds': (r) => r.status === 200 || r.status === 302,
+    });
 
     sleep(1);
 }
