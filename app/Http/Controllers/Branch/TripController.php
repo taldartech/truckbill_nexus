@@ -16,6 +16,8 @@ use App\Domains\OwnFleet\Trip\TripMovementService;
 use App\Domains\OwnFleet\Trip\TripService;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
+use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
+use App\Domains\Subscription\Enums\SubscriptionModule;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Branch\Concerns\PresentsDocumentDrawer;
 use App\Http\Controllers\Controller;
@@ -58,11 +60,13 @@ class TripController extends Controller
         private readonly TripExpenseService $expenses,
         private readonly DocumentAttachmentService $documents,
         private readonly FreightAmountPresentation $freightPresentation,
+        private readonly CoreModuleEntitlementResolver $moduleEntitlements = new CoreModuleEntitlementResolver,
     ) {}
 
     public function index(Request $request, Company $company, Branch $branch): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertOwnFleetModule($company);
         $this->assertPermission($actor, $company, $branch, PermissionCodes::TRIP_VIEW);
 
         $page = $this->trips->search(
@@ -570,8 +574,17 @@ class TripController extends Controller
 
     private function assertPermission(User $actor, Company $company, Branch $branch, string $code): void
     {
+        $this->assertOwnFleetModule($company);
+
         if (! $this->authorizer->allowsCustomer($actor, $code, $company, $branch)) {
             abort(403, 'Not authorized for OwnFleet Trip operation.');
+        }
+    }
+
+    private function assertOwnFleetModule(Company $company): void
+    {
+        if (! $this->moduleEntitlements->isEntitled($company, SubscriptionModule::OwnFleet)) {
+            abort(403, 'OwnFleet module is not entitled for this company.');
         }
     }
 

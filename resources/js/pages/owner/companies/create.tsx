@@ -60,243 +60,301 @@ export default function OwnerCompanyCreate({
             >
                 <Form
                     {...OwnerCompaniesController.store.form()}
-                    className="space-y-5"
+                    className="space-y-6"
                 >
                     {({ processing, errors }) => (
                         <>
-                            <FormSection title="Company identity" columns={2}>
-                                <Field
-                                    id="name"
-                                    label="Company name"
-                                    name="name"
-                                    required
-                                    error={errors.name}
-                                />
-                                <Field
-                                    id="pan"
-                                    label="PAN"
-                                    name="pan"
-                                    required
-                                    maxLength={10}
-                                    error={errors.pan}
-                                />
-                                <div className="space-y-2 md:col-span-2">
-                                    <Label htmlFor="registered_address">
-                                        Registered address
-                                    </Label>
-                                    <textarea
-                                        id="registered_address"
-                                        name="registered_address"
-                                        required
-                                        rows={3}
-                                        className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs"
-                                    />
-                                    <InputError
-                                        message={errors.registered_address}
-                                    />
-                                </div>
-                                <div className="grid gap-4 md:col-span-2 md:grid-cols-3">
-                                    <Field
-                                        id="state"
-                                        label="State"
-                                        name="state"
-                                        required
-                                        error={errors.state}
-                                    />
-                                    <Field
-                                        id="city"
-                                        label="City"
-                                        name="city"
-                                        required
-                                        error={errors.city}
-                                    />
-                                    <Field
-                                        id="pin"
-                                        label="PIN"
-                                        name="pin"
-                                        required
-                                        maxLength={6}
-                                        error={errors.pin}
-                                    />
-                                </div>
-                            </FormSection>
-
-                            <FormSection title="Contact" columns={2}>
-                                <Field
-                                    id="contact_person"
-                                    label="Contact person"
-                                    name="contact_person"
-                                    defaultValue={defaults.contact_person}
-                                    error={errors.contact_person}
-                                />
-                                <>
-                                    <Field
-                                        id="mobile"
-                                        label="Mobile"
-                                        name="mobile"
-                                        required
-                                        defaultValue={defaults.mobile}
-                                        error={errors.mobile}
-                                    />
-                                    <Field
-                                        id="email"
-                                        label="Email"
-                                        name="email"
-                                        type="email"
-                                        defaultValue={defaults.email}
-                                        error={errors.email}
-                                    />
-                                </>
-                            </FormSection>
-
-                            <FormSection title="GST" columns={2}>
-                                <>
-                                    <SelectField
-                                        id="gst_registration_type"
-                                        label="Registration type"
-                                        name="gst_registration_type"
-                                        value={gstType}
-                                        options={options.gst_registration_types}
-                                        onChange={setGstType}
-                                        error={errors.gst_registration_type}
-                                    />
-                                    <SelectField
-                                        id="tax_liability"
-                                        label="Tax liability"
-                                        name="tax_liability"
-                                        defaultValue={defaults.tax_liability}
-                                        options={options.tax_liabilities}
-                                        error={errors.tax_liability}
-                                    />
-                                </>
-                                {needsGstin ? (
-                                    <Field
-                                        id="gstin"
-                                        label="GSTIN"
-                                        name="gstin"
-                                        required
-                                        maxLength={15}
-                                        error={errors.gstin}
-                                    />
-                                ) : null}
-                                {needsGstin ? (
-                                    <div className="space-y-2">
-                                        <Label htmlFor="gst_rate_id">
-                                            GST rate
-                                        </Label>
-                                        <select
-                                            id="gst_rate_id"
-                                            name="gst_rate_id"
+                            <div className="grid gap-6 lg:grid-cols-12">
+                                <div className="space-y-5 lg:col-span-8">
+                                    <FormSection
+                                        title="Basic details"
+                                        description="Legal identity and registered address."
+                                        columns={2}
+                                    >
+                                        <Field
+                                            id="name"
+                                            label="Company name"
+                                            name="name"
                                             required
-                                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs"
-                                            defaultValue={gstRates[0]?.id ?? ''}
-                                        >
-                                            {gstRates.map((rate) => (
-                                                <option
-                                                    key={rate.id}
-                                                    value={rate.id}
-                                                >
-                                                    {rate.code} — {rate.name} (
-                                                    {rate.rate_percent}%)
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <InputError
-                                            message={errors.gst_rate_id}
+                                            error={errors.name}
                                         />
-                                    </div>
-                                ) : null}
-                            </FormSection>
+                                        <Field
+                                            id="pan"
+                                            label="PAN"
+                                            name="pan"
+                                            required
+                                            maxLength={10}
+                                            error={errors.pan}
+                                        />
+                                        <div className="space-y-2 md:col-span-2">
+                                            <Label htmlFor="registered_address">
+                                                Registered address
+                                            </Label>
+                                            <textarea
+                                                id="registered_address"
+                                                name="registered_address"
+                                                required
+                                                rows={3}
+                                                className="flex w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs"
+                                            />
+                                            <InputError
+                                                message={
+                                                    errors.registered_address
+                                                }
+                                            />
+                                        </div>
+                                        <div className="grid gap-4 md:col-span-2 md:grid-cols-3">
+                                            <Field
+                                                id="state"
+                                                label="State"
+                                                name="state"
+                                                required
+                                                error={errors.state}
+                                            />
+                                            <Field
+                                                id="city"
+                                                label="City"
+                                                name="city"
+                                                required
+                                                error={errors.city}
+                                            />
+                                            <Field
+                                                id="pin"
+                                                label="PIN"
+                                                name="pin"
+                                                required
+                                                maxLength={6}
+                                                error={errors.pin}
+                                            />
+                                        </div>
+                                    </FormSection>
 
-                            <FormSection title="Configuration" columns={2}>
-                                <SelectField
-                                    id="data_visibility"
-                                    label="Data visibility"
-                                    name="data_visibility"
-                                    defaultValue={defaults.data_visibility}
-                                    options={options.data_visibilities}
-                                    error={errors.data_visibility}
-                                />
-                                <input
-                                    type="hidden"
-                                    name="timezone"
-                                    value={defaults.timezone}
-                                />
-                                <label className="flex items-center gap-2 text-sm">
-                                    <input
-                                        type="checkbox"
-                                        name="create_initial_branch"
-                                        value="1"
-                                        checked={createBranch}
-                                        onChange={(event) =>
-                                            setCreateBranch(
-                                                event.target.checked,
-                                            )
-                                        }
-                                    />
-                                    Create an initial branch now (optional)
-                                </label>
-                                {createBranch ? (
-                                    <Field
-                                        id="initial_branch_name"
-                                        label="Initial branch name"
-                                        name="initial_branch_name"
-                                        defaultValue={
-                                            defaults.initial_branch_name
-                                        }
-                                        error={errors.initial_branch_name}
-                                    />
-                                ) : null}
-                            </FormSection>
+                                    <FormSection
+                                        title="Tax registration"
+                                        description="GST posture and default rate when GSTIN applies."
+                                        columns={2}
+                                    >
+                                        <>
+                                            <SelectField
+                                                id="gst_registration_type"
+                                                label="Registration type"
+                                                name="gst_registration_type"
+                                                value={gstType}
+                                                options={
+                                                    options.gst_registration_types
+                                                }
+                                                onChange={setGstType}
+                                                error={
+                                                    errors.gst_registration_type
+                                                }
+                                            />
+                                            <SelectField
+                                                id="tax_liability"
+                                                label="Tax liability"
+                                                name="tax_liability"
+                                                defaultValue={
+                                                    defaults.tax_liability
+                                                }
+                                                options={
+                                                    options.tax_liabilities
+                                                }
+                                                error={errors.tax_liability}
+                                            />
+                                        </>
+                                        {needsGstin ? (
+                                            <Field
+                                                id="gstin"
+                                                label="GSTIN"
+                                                name="gstin"
+                                                required
+                                                maxLength={15}
+                                                error={errors.gstin}
+                                            />
+                                        ) : null}
+                                        {needsGstin ? (
+                                            <div className="space-y-2">
+                                                <Label htmlFor="gst_rate_id">
+                                                    GST rate
+                                                </Label>
+                                                <select
+                                                    id="gst_rate_id"
+                                                    name="gst_rate_id"
+                                                    required
+                                                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs"
+                                                    defaultValue={
+                                                        gstRates[0]?.id ?? ''
+                                                    }
+                                                >
+                                                    {gstRates.map((rate) => (
+                                                        <option
+                                                            key={rate.id}
+                                                            value={rate.id}
+                                                        >
+                                                            {rate.code} —{' '}
+                                                            {rate.name} (
+                                                            {rate.rate_percent}
+                                                            %)
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                <InputError
+                                                    message={errors.gst_rate_id}
+                                                />
+                                            </div>
+                                        ) : null}
+                                    </FormSection>
 
-                            <section className="space-y-2 rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">
-                                <h2 className="font-medium text-foreground">
-                                    Logo &amp; signature
-                                </h2>
-                                <p>
-                                    Private logo and digital signature upload is
-                                    approved (PRD §7). Upload controls attach
-                                    after the company exists via Owner Settings
-                                    document-asset controls (PrivateFile tenant
-                                    context).
+                                    <FormSection
+                                        title="Contact"
+                                        description="Primary operator reachability for onboarding."
+                                        columns={2}
+                                    >
+                                        <Field
+                                            id="contact_person"
+                                            label="Contact person"
+                                            name="contact_person"
+                                            defaultValue={
+                                                defaults.contact_person
+                                            }
+                                            error={errors.contact_person}
+                                        />
+                                        <>
+                                            <Field
+                                                id="mobile"
+                                                label="Mobile"
+                                                name="mobile"
+                                                required
+                                                defaultValue={defaults.mobile}
+                                                error={errors.mobile}
+                                            />
+                                            <Field
+                                                id="email"
+                                                label="Email"
+                                                name="email"
+                                                type="email"
+                                                defaultValue={defaults.email}
+                                                error={errors.email}
+                                            />
+                                        </>
+                                    </FormSection>
+
+                                    <FormSection
+                                        title="Optional opening bank account"
+                                        description="Provide all three fields to create the first bank account. Branch-wise restricted companies need an initial branch first."
+                                        columns={2}
+                                    >
+                                        <Field
+                                            id="bank_name"
+                                            label="Bank name"
+                                            name="bank_name"
+                                            error={errors.bank_name}
+                                        />
+                                        <>
+                                            <Field
+                                                id="account_number"
+                                                label="Account number"
+                                                name="account_number"
+                                                error={errors.account_number}
+                                            />
+                                            <Field
+                                                id="ifsc"
+                                                label="IFSC"
+                                                name="ifsc"
+                                                error={errors.ifsc}
+                                            />
+                                        </>
+                                    </FormSection>
+                                </div>
+
+                                <aside className="space-y-5 lg:col-span-4">
+                                    <FormSection
+                                        title="Visibility & branch"
+                                        description="Tenant data scope and optional first branch."
+                                        columns={1}
+                                    >
+                                        <SelectField
+                                            id="data_visibility"
+                                            label="Data visibility"
+                                            name="data_visibility"
+                                            defaultValue={
+                                                defaults.data_visibility
+                                            }
+                                            options={options.data_visibilities}
+                                            error={errors.data_visibility}
+                                        />
+                                        <input
+                                            type="hidden"
+                                            name="timezone"
+                                            value={defaults.timezone}
+                                        />
+                                        <label className="flex items-center gap-2 text-sm">
+                                            <input
+                                                type="checkbox"
+                                                name="create_initial_branch"
+                                                value="1"
+                                                checked={createBranch}
+                                                onChange={(event) =>
+                                                    setCreateBranch(
+                                                        event.target.checked,
+                                                    )
+                                                }
+                                            />
+                                            Create an initial branch now
+                                            (optional)
+                                        </label>
+                                        {createBranch ? (
+                                            <Field
+                                                id="initial_branch_name"
+                                                label="Initial branch name"
+                                                name="initial_branch_name"
+                                                defaultValue={
+                                                    defaults.initial_branch_name
+                                                }
+                                                error={
+                                                    errors.initial_branch_name
+                                                }
+                                            />
+                                        ) : null}
+                                    </FormSection>
+
+                                    <section className="space-y-2 rounded-xl border border-dashed border-border bg-muted/20 p-4 text-sm text-muted-foreground">
+                                        <h2 className="font-medium text-foreground">
+                                            Logo &amp; signature
+                                        </h2>
+                                        <p>
+                                            Private logo and digital signature
+                                            upload is approved (PRD §7). Upload
+                                            controls attach after the company
+                                            exists via Owner Settings
+                                            document-asset controls (PrivateFile
+                                            tenant context).
+                                        </p>
+                                    </section>
+                                </aside>
+                            </div>
+
+                            <div className="sticky bottom-0 z-10 -mx-1 flex flex-wrap items-center justify-between gap-3 border-t border-border bg-background/95 px-1 py-4 backdrop-blur supports-backdrop-filter:bg-background/80">
+                                <p className="text-xs text-muted-foreground">
+                                    Creates company workspace · trial applies
+                                    when eligible
                                 </p>
-                            </section>
-
-                            <FormSection
-                                title="Optional opening bank account"
-                                description="Provide all three fields to create the first bank account. Branch-wise restricted companies need an initial branch first."
-                                columns={2}
-                            >
-                                <Field
-                                    id="bank_name"
-                                    label="Bank name"
-                                    name="bank_name"
-                                    error={errors.bank_name}
-                                />
-                                <>
-                                    <Field
-                                        id="account_number"
-                                        label="Account number"
-                                        name="account_number"
-                                        error={errors.account_number}
-                                    />
-                                    <Field
-                                        id="ifsc"
-                                        label="IFSC"
-                                        name="ifsc"
-                                        error={errors.ifsc}
-                                    />
-                                </>
-                            </FormSection>
-
-                            <div className="flex flex-wrap gap-2">
-                                <Button type="submit" disabled={processing}>
-                                    <Save className="size-4" />
-                                    Create company
-                                </Button>
-                                <Button variant="outline" asChild>
-                                    <Link href={links.workspace}>Cancel</Link>
-                                </Button>
+                                <div className="flex flex-wrap gap-2">
+                                    <Button
+                                        type="submit"
+                                        disabled={processing}
+                                        variant="default"
+                                    >
+                                        <Save className="size-4" />
+                                        {processing
+                                            ? 'Creating…'
+                                            : 'Create company'}
+                                    </Button>
+                                    <Button variant="outline" asChild>
+                                        <Link href={links.workspace}>
+                                            Cancel
+                                        </Link>
+                                    </Button>
+                                </div>
                             </div>
                         </>
                     )}
