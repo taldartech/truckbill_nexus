@@ -112,6 +112,12 @@ test('local demo seeder creates isolated companies roles masters and enquiries i
         ->and($enquiriesA->contains(fn (Enquiry $e) => $e->branch_id !== null && $e->source->value === 'website'))->toBeTrue()
         ->and($enquiriesA->contains(fn (Enquiry $e) => $e->status->value === 'converted'))->toBeTrue();
 
+    $converted = $enquiriesA->first(fn (Enquiry $e) => $e->status->value === 'converted');
+    expect($converted)->not->toBeNull()
+        ->and($converted?->instructions)->toContain('demo-cdf-convert:'.$companyA->id)
+        ->and($converted?->conversion)->not->toBeNull()
+        ->and($converted?->conversion?->lorryReceiptLinks()->count())->toBeGreaterThanOrEqual(1);
+
     expect(EnquiryExternalReference::query()->where('company_id', $companyA->id)->count())->toBeGreaterThanOrEqual(1);
 
     $managerRole = Role::query()->where('slug', LocalDemoWorkspaceSeeder::ROLE_MANAGER)->firstOrFail();

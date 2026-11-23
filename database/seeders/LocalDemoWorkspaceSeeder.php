@@ -556,6 +556,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
             $access->activateContext($owner, $company, $head);
             $this->ensureEnquiryCdfDemoFixtures(
                 $access,
+                $enquiries,
                 app(EnquiryAssignmentService::class),
                 app(EnquiryQuotationService::class),
                 app(EnquiryConversionService::class),
@@ -565,6 +566,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
                 $customerParty,
                 $transporterParty,
                 $marketVehicle,
+                $catalogues,
             );
         }
         TenantContextHolder::clear();
@@ -1676,8 +1678,17 @@ class LocalDemoWorkspaceSeeder extends Seeder
         ]);
     }
 
+    /**
+     * Deterministic Company A fixture:
+     * Manual Enquiry → Assign (already branch-scoped) → Quote → Preferred → Convert → LRs.
+     *
+     * Never select conversion candidates by created_at order alone (MySQL timestamp ties).
+     *
+     * @param  array{truck: OwnerCatalogueItem, goods: OwnerCatalogueItem, package: OwnerCatalogueItem}  $catalogues
+     */
     private function ensureEnquiryCdfDemoFixtures(
         CompanyAccessService $access,
+        EnquiryService $enquiries,
         EnquiryAssignmentService $assignments,
         EnquiryQuotationService $quotations,
         EnquiryConversionService $conversions,
@@ -1687,65 +1698,120 @@ class LocalDemoWorkspaceSeeder extends Seeder
         Party $customerParty,
         Party $transporterParty,
         Vehicle $marketVehicle,
+        array $catalogues,
     ): void {
-        $marker = 'demo-cdf:'.$company->id;
+        $assignMarker = 'demo-cdf-assign:'.$company->id;
+        $convertFixtureKey = 'demo-cdf-convert:'.$company->id;
 
         $unassigned = Enquiry::query()
             ->where('company_id', $company->id)
             ->whereNull('branch_id')
             ->whereNull('deleted_at')
+            ->orderBy('id')
             ->first();
-        if ($unassigned !== null && $unassigned->branch_id === null) {
+        if ($unassigned !== null) {
             $assignments->assign($company, $branch, $unassigned, $actor, [
                 'to_branch_id' => $branch->id,
                 'to_assigned_user_id' => $actor->id,
-                'remark' => 'Demo assign website enquiry '.$marker,
+                'remark' => 'Demo assign website enquiry '.$assignMarker,
             ]);
         }
 
-        $quoted = Enquiry::query()
+        $convertEnquiry = Enquiry::query()
             ->where('company_id', $company->id)
             ->where('branch_id', $branch->id)
+            ->where('instructions', 'like', '%'.$convertFixtureKey.'%')
             ->whereNull('deleted_at')
-            ->where('status', '!=', 'converted')
-            ->orderBy('created_at')
             ->first();
-        if ($quoted !== null) {
-            $hasQuote = $quoted->quotations()->where('transporter_party_id', $transporterParty->id)->exists();
-            if (! $hasQuote) {
-                $quote = $quotations->create($company, $branch, $quoted, $actor, [
-                    'transporter_party_id' => $transporterParty->id,
-                    'quoted_freight' => 18500,
-                ]);
-                $quotations->selectPreferred($company, $branch, $quoted, $quote, $actor, 'Demo preferred quote '.$marker);
-            }
+
+        if ($convertEnquiry === null) {
+            $convertEnquiry = $enquiries->createManual($company, $branch, $actor, [
+                'customer_party_id' => $customerParty->id,
+                'pickup_location' => 'CDF Demo Pickup Yard',
+                'delivery_location' => 'CDF Demo Delivery Gate',
+                'vehicle_type_id' => $catalogues['truck']->id,
+                'vehicle_quantity' => 1,
+                'expected_loading_date' => CarbonImmutable::now()->addDays(4)->toDateString(),
+                'instructions' => 'Deterministic Option C conversion fixture ['.$convertFixtureKey.']',
+                'goods' => [
+                    [
+                        'goods_type_id' => $catalogues['goods']->id,
+                        'package_type_id' => $catalogues['package']->id,
+                        'goods_description' => 'CDF conversion cargo',
+                        'package_count' => 12,
+                        'actual_weight' => 120,
+                        'charged_weight' => 130,
+                    ],
+                ],
+            ]);
         }
 
-        $convertCandidate = Enquiry::query()
-            ->where('company_id', $company->id)
-            ->where('branch_id', $branch->id)
+        $convertEnquiry = $convertEnquiry->fresh() ?? $convertEnquiry;
+
+        if ($convertEnquiry->status->value === 'converted' || $convertEnquiry->conversion()->exists()) {
+            return;
+        }
+
+        $quote = $convertEnquiry->quotations()
+            ->where('transporter_party_id', $transporterParty->id)
             ->whereNull('deleted_at')
-            ->where('vehicle_quantity', 1)
-            ->where('status', 'selected')
-            ->whereDoesntHave('conversion')
-            ->where('customer_party_id', $customerParty->id)
-            ->orderByDesc('created_at')
+            ->orderBy('id')
             ->first();
 
-        if ($convertCandidate !== null) {
-            $access->activateContext($actor, $company, $branch);
-            $preview = $conversions->preview($company, $branch, $convertCandidate);
-            if (($preview['eligible'] ?? false) === true) {
-                $conversions->convert($company, $branch, $convertCandidate, $actor, [
-                    'workflow_context' => LrWorkflowContext::Broker->value,
-                    'vehicle_id' => $marketVehicle->id,
-                    'idempotency_key' => 'demo-convert-'.$convertCandidate->id,
-                    'vehicles' => array_map(
-                        fn (array $vehicle): array => ['goods' => $vehicle['goods']],
-                        array_values(is_array($preview['suggested_vehicles'] ?? null) ? $preview['suggested_vehicles'] : []),
-                    ),
-                ]);
-            }
+        if ($quote === null) {
+            $quote = $quotations->create($company, $branch, $convertEnquiry, $actor, [
+                'transporter_party_id' => $transporterParty->id,
+                'quoted_freight' => 18500,
+            ]);
+        }
+
+        if ($convertEnquiry->fresh()?->status->value !== 'selected') {
+            $quotations->selectPreferred(
+                $company,
+                $branch,
+                $convertEnquiry->fresh() ?? $convertEnquiry,
+                $quote,
+                $actor,
+                'Demo preferred quote '.$convertFixtureKey,
+            );
+        }
+
+        $convertEnquiry = $convertEnquiry->fresh() ?? $convertEnquiry;
+        $access->activateContext($actor, $company, $branch);
+        $preview = $conversions->preview($company, $branch, $convertEnquiry);
+
+        if (($preview['eligible'] ?? false) !== true) {
+            $errors = is_array($preview['eligibility_errors'] ?? null)
+                ? implode('; ', $preview['eligibility_errors'])
+                : 'unknown eligibility failure';
+
+            throw new RuntimeException(
+                'Local demo CDF conversion fixture is not eligible ('.$convertFixtureKey.'): '.$errors
+            );
+        }
+
+        $suggested = is_array($preview['suggested_vehicles'] ?? null) ? $preview['suggested_vehicles'] : [];
+        if ($suggested === []) {
+            throw new RuntimeException(
+                'Local demo CDF conversion fixture has no suggested vehicle allocations ('.$convertFixtureKey.').'
+            );
+        }
+
+        $result = $conversions->convert($company, $branch, $convertEnquiry, $actor, [
+            'workflow_context' => LrWorkflowContext::Broker->value,
+            'vehicle_id' => $marketVehicle->id,
+            'idempotency_key' => 'demo-convert-'.$convertFixtureKey,
+            'remark' => 'Demo Option C conversion '.$convertFixtureKey,
+            'vehicles' => array_map(
+                fn (array $vehicle): array => ['goods' => $vehicle['goods']],
+                array_values($suggested),
+            ),
+        ]);
+
+        if (($result['conversion']->lorryReceiptLinks()->count() ?? 0) < 1) {
+            throw new RuntimeException(
+                'Local demo CDF conversion did not create LR links ('.$convertFixtureKey.').'
+            );
         }
     }
 
