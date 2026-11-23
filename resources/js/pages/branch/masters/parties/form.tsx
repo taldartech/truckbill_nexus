@@ -26,7 +26,6 @@ type Props = {
     branch: { id: string; name: string; status: string };
     mode: 'create' | 'edit';
     party: Party | null;
-    dataVisibility?: { mode: string; label: string; message: string };
     roleOptions: { value: string; label: string }[];
     links: {
         hub: string;
@@ -43,7 +42,6 @@ export default function PartyForm({
     branch,
     mode,
     party,
-    dataVisibility,
     roleOptions,
     links,
 }: Props) {
@@ -72,35 +70,19 @@ export default function PartyForm({
             />
             <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
                 <MasterPageHeader
-                    eyebrow="Branch Panel · Party Master"
                     title={
                         mode === 'create'
                             ? 'Create party'
                             : `Edit ${party?.name}`
                     }
-                    company={company}
-                    branch={branch}
-                    crumbs={[
-                        { label: 'Branch', href: links.dashboard },
-                        { label: 'Parties', href: links.index },
-                        { label: mode === 'create' ? 'Create' : 'Edit' },
-                    ]}
                 />
                 <Form
                     action={action}
                     method={method}
-                    className="mx-auto grid w-full max-w-3xl gap-4"
+                    className="mx-auto grid w-full max-w-3xl gap-4 md:max-w-5xl"
                 >
                     {({ errors, processing }) => (
                         <>
-                            {mode === 'create' && dataVisibility ? (
-                                <p
-                                    role="status"
-                                    className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground"
-                                >
-                                    {dataVisibility.message}
-                                </p>
-                            ) : null}
                             <div className="grid gap-4 sm:grid-cols-2">
                                 <div className="space-y-2 sm:col-span-2">
                                     <Label htmlFor="name">Name</Label>

@@ -210,7 +210,7 @@ export default function OwnerBranchesIndex({
                                                             <input
                                                                 type="hidden"
                                                                 name="redirect"
-                                                                value="/branch"
+                                                                value="/operations"
                                                             />
                                                             <Button
                                                                 type="submit"

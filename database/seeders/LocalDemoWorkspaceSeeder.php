@@ -5,6 +5,8 @@ namespace Database\Seeders;
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Company\CompanyWorkspaceService;
 use App\Domains\Company\Enums\DataVisibility;
+use App\Domains\Consignment\Enums\FreightRateType;
+use App\Domains\Consignment\LorryReceiptService;
 use App\Domains\Enquiry\EnquiryService;
 use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Master\Party\Enums\PartyRoleType;
@@ -22,6 +24,7 @@ use App\Models\Company;
 use App\Models\CompanyMembership;
 use App\Models\CompanySubscription;
 use App\Models\Enquiry;
+use App\Models\LorryReceipt;
 use App\Models\OwnerCatalogueItem;
 use App\Models\Party;
 use App\Models\Permission;
@@ -116,6 +119,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
         $rbac = app(RoleAssignmentService::class);
         $parties = app(PartyService::class);
         $enquiries = app(EnquiryService::class);
+        $lorryReceipts = app(LorryReceiptService::class);
         $contracts = app(CompanySubscriptionContractService::class);
 
         $alpha = $this->seedCompanyWorkspace(
@@ -124,6 +128,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
             rbac: $rbac,
             parties: $parties,
             enquiries: $enquiries,
+            lorryReceipts: $lorryReceipts,
             contracts: $contracts,
             password: $password,
             profile: $profile,
@@ -141,6 +146,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
             rbac: $rbac,
             parties: $parties,
             enquiries: $enquiries,
+            lorryReceipts: $lorryReceipts,
             contracts: $contracts,
             password: $password,
             profile: $profile,
@@ -193,6 +199,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
         RoleAssignmentService $rbac,
         PartyService $parties,
         EnquiryService $enquiries,
+        LorryReceiptService $lorryReceipts,
         CompanySubscriptionContractService $contracts,
         string $password,
         string $profile,
@@ -327,6 +334,28 @@ class LocalDemoWorkspaceSeeder extends Seeder
             $companyName === self::COMPANY_A_NAME ? 'Thane' : 'Rajkot',
         );
 
+        $consignorParty = $this->ensureParty(
+            $parties,
+            $owner,
+            $company,
+            null,
+            'demo-party:'.$company->id.':consignor-1',
+            $companyName === self::COMPANY_A_NAME ? 'Alpha Consignor Mills' : 'Beta Consignor Works',
+            [PartyRoleType::Consignor->value],
+            $companyName === self::COMPANY_A_NAME ? 'Pune' : 'Surat',
+        );
+
+        $consigneeParty = $this->ensureParty(
+            $parties,
+            $owner,
+            $company,
+            null,
+            'demo-party:'.$company->id.':consignee-1',
+            $companyName === self::COMPANY_A_NAME ? 'Alpha Consignee Depot' : 'Beta Consignee Yard',
+            [PartyRoleType::Consignee->value],
+            $companyName === self::COMPANY_A_NAME ? 'Nagpur' : 'Vadodara',
+        );
+
         $partyCount = match ($profile) {
             'small' => 2,
             'large' => 28,
@@ -374,6 +403,28 @@ class LocalDemoWorkspaceSeeder extends Seeder
             );
         }
 
+        $lrCount = match ($profile) {
+            'small' => 1,
+            'large' => 4,
+            default => 2,
+        };
+
+        for ($i = 1; $i <= $lrCount; $i++) {
+            $branch = $i % 2 === 0 ? $second : $head;
+            $access->activateContext($owner, $company, $branch);
+            $this->ensureManualLorryReceipt(
+                $lorryReceipts,
+                $company,
+                $branch,
+                $owner,
+                $consignorParty,
+                $consigneeParty,
+                $catalogues,
+                'demo-lr:'.$company->id.':'.$branch->id.':'.$i,
+                $i,
+            );
+        }
+
         TenantContextHolder::inject(new TenantContext(
             companyId: $company->id,
             branchId: null,
@@ -412,6 +463,10 @@ class LocalDemoWorkspaceSeeder extends Seeder
                     PermissionCodes::ENQUIRY_CREATE,
                     PermissionCodes::ENQUIRY_EDIT,
                     PermissionCodes::ENQUIRY_ASSIGN,
+                    PermissionCodes::LR_VIEW,
+                    PermissionCodes::LR_CREATE,
+                    PermissionCodes::LR_EDIT,
+                    PermissionCodes::LR_CANCEL,
                 ],
             ],
             self::ROLE_OPERATOR => [
@@ -423,6 +478,8 @@ class LocalDemoWorkspaceSeeder extends Seeder
                     PermissionCodes::PLATFORM_VIEW_FREIGHT,
                     PermissionCodes::ENQUIRY_VIEW,
                     PermissionCodes::ENQUIRY_CREATE,
+                    PermissionCodes::LR_VIEW,
+                    PermissionCodes::LR_CREATE,
                 ],
             ],
             self::ROLE_VIEWER => [
@@ -432,6 +489,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
                     PermissionCodes::PLATFORM_PRINT,
                     PermissionCodes::PLATFORM_VIEW_FREIGHT,
                     PermissionCodes::ENQUIRY_VIEW,
+                    PermissionCodes::LR_VIEW,
                 ],
             ],
         ];
@@ -859,6 +917,68 @@ class LocalDemoWorkspaceSeeder extends Seeder
             commonRenewalDate: CarbonImmutable::now()->addYear(),
             remark: 'Local demo: draft subscription fixture',
         );
+    }
+
+    /**
+     * @param  array{truck: OwnerCatalogueItem, goods: OwnerCatalogueItem, package: OwnerCatalogueItem}  $catalogues
+     */
+    private function ensureManualLorryReceipt(
+        LorryReceiptService $lorryReceipts,
+        Company $company,
+        Branch $branch,
+        User $actor,
+        Party $consignor,
+        Party $consignee,
+        array $catalogues,
+        string $fixtureKey,
+        int $index,
+    ): void {
+        $existing = LorryReceipt::query()
+            ->where('company_id', $company->id)
+            ->where('branch_id', $branch->id)
+            ->where('from_text', 'like', '%'.$fixtureKey.'%')
+            ->whereNull('deleted_at')
+            ->first();
+
+        if ($existing !== null) {
+            return;
+        }
+
+        $lorryReceipts->create($company, $branch, $actor, [
+            'workflow_context' => 'broker',
+            'number_mode' => 'auto',
+            'lr_date' => CarbonImmutable::now()->subDays($index)->toDateString(),
+            'from_text' => 'Demo From '.$fixtureKey,
+            'to_text' => 'Demo To '.$fixtureKey,
+            'consignor_party_id' => $consignor->id,
+            'consignee_party_id' => $consignee->id,
+            'goods' => [
+                [
+                    'goods_type_id' => $catalogues['goods']->id,
+                    'package_type_id' => $catalogues['package']->id,
+                    'goods_description' => 'Demo LR cargo '.$index,
+                    'package_count' => 10 + $index,
+                    'actual_weight' => 250 + ($index * 25),
+                    'charged_weight' => 260 + ($index * 25),
+                    'freight_rate_type' => FreightRateType::PerPackageUnit->value,
+                    'freight_rate' => 150,
+                    'goods_value' => 25000 + ($index * 1000),
+                ],
+            ],
+            'eway_bills' => [
+                [
+                    'ewb_number' => 'EWB'.substr((string) abs(crc32($fixtureKey)), 0, 10),
+                    'ewb_date' => CarbonImmutable::now()->subDays($index)->toDateString(),
+                    'valid_until' => CarbonImmutable::now()->addDays(7 + $index)->toDateString(),
+                ],
+            ],
+            'additional_charges' => $index === 1 ? [
+                [
+                    'description' => 'Loading surcharge',
+                    'amount' => 500,
+                ],
+            ] : [],
+        ]);
     }
 
     /**

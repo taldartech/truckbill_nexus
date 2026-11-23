@@ -10,6 +10,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
+/**
+ * @property FreightRateType $freight_rate_type
+ */
 class LrGoodsRow extends Model
 {
     /** @use HasFactory<LrGoodsRowFactory> */

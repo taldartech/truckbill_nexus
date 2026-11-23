@@ -60,7 +60,7 @@ test.describe('Owner global panel', () => {
             .getByRole('button', { name: 'Enter Branch Panel' })
             .first()
             .click();
-        await expect(page).toHaveURL(/\/branch\/?$/);
+        await expect(page).toHaveURL(/\/operations\/?$/);
         await expect(page.getByRole('heading', { level: 1 })).not.toHaveText(
             /Companies|Management/i,
         );
@@ -90,7 +90,7 @@ test.describe('Owner global panel', () => {
 
         // D — Shared party via session branch context
         await page.request.post(branchContextUrl(fixture.shared, 'a'), {
-            form: { redirect: '/branch/parties/create' },
+            form: { redirect: '/parties/create' },
         });
         const sharedParty = `Shared Party ${Date.now()}`;
         await page.goto(partyCreateUrl());
@@ -103,17 +103,17 @@ test.describe('Owner global panel', () => {
         await expect(page.locator('select[name="scope"]')).toHaveCount(0);
         await page.locator('#name').fill(sharedParty);
         await page.getByRole('button', { name: /save|Create party/i }).click();
-        await expect(page).toHaveURL(/\/branch\/parties\/.+/);
+        await expect(page).toHaveURL(/\/parties\/.+/);
 
         await page.request.post(branchContextUrl(fixture.shared, 'b'), {
-            form: { redirect: '/branch/parties' },
+            form: { redirect: '/parties' },
         });
         await page.goto(partiesIndexUrl());
         await expect(page.getByText(sharedParty).first()).toBeVisible();
 
         // E — Restricted party stays on creating branch
         await page.request.post(branchContextUrl(fixture.restricted, 'a'), {
-            form: { redirect: '/branch/parties/create' },
+            form: { redirect: '/parties/create' },
         });
         const restrictedParty = `Restricted Party ${Date.now()}`;
         await page.goto(partyCreateUrl());
@@ -122,16 +122,16 @@ test.describe('Owner global panel', () => {
         ).toBeVisible();
         await page.locator('#name').fill(restrictedParty);
         await page.getByRole('button', { name: /save|Create party/i }).click();
-        await expect(page).toHaveURL(/\/branch\/parties\/.+/);
+        await expect(page).toHaveURL(/\/parties\/.+/);
 
         await page.request.post(branchContextUrl(fixture.restricted, 'a'), {
-            form: { redirect: '/branch/parties' },
+            form: { redirect: '/parties' },
         });
         await page.goto(partiesIndexUrl());
         await expect(page.getByText(restrictedParty).first()).toBeVisible();
 
         await page.request.post(branchContextUrl(fixture.restricted, 'b'), {
-            form: { redirect: '/branch/parties' },
+            form: { redirect: '/parties' },
         });
         await page.goto(partiesIndexUrl());
         await expect(page.getByText(restrictedParty)).toHaveCount(0);

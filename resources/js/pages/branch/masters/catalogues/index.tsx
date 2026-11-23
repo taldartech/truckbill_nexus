@@ -75,16 +75,7 @@ export default function CataloguesIndex({
         <>
             <Head title={`Supporting masters · ${branch.name}`} />
             <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <MasterPageHeader
-                    eyebrow="Branch Panel · Supporting Masters"
-                    title="Supporting masters"
-                    company={company}
-                    branch={branch}
-                    crumbs={[
-                        { label: 'Masters', href: links.hub },
-                        { label: 'Supporting masters' },
-                    ]}
-                />
+                <MasterPageHeader title="Supporting masters" />
                 {flash?.success ? (
                     <p
                         role="status"
@@ -192,7 +183,7 @@ export default function CataloguesIndex({
                         canManageOwnerCatalogues
                             ? (item) => (
                                   <Form
-                                      action={`/branch/catalogues/${item.id}`}
+                                      action={`/catalogues/${item.id}`}
                                       method="delete"
                                       className="inline"
                                   >

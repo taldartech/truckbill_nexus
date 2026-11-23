@@ -52,17 +52,7 @@ export default function StationShow({
         <>
             <Head title={station.name} />
             <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <MasterPageHeader
-                    eyebrow="Branch Panel · Stations"
-                    title={station.name}
-                    company={company}
-                    branch={branch}
-                    crumbs={[
-                        { label: 'Masters', href: links.hub },
-                        { label: 'Stations', href: links.index },
-                        { label: station.name },
-                    ]}
-                />
+                <MasterPageHeader title={station.name} />
                 {flash?.success ? (
                     <p
                         role="status"

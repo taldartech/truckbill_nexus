@@ -36,12 +36,12 @@ export function loadOwnerGlobalPanelFixture(): OwnerGlobalPanelFixture {
 
 /** Canonical Branch Panel parties create (session context must already be set). */
 export function partyCreateUrl(): string {
-    return '/branch/parties/create';
+    return '/parties/create';
 }
 
 /** Canonical Branch Panel parties index (session context must already be set). */
 export function partiesIndexUrl(): string {
-    return '/branch/parties';
+    return '/parties';
 }
 
 export function branchContextUrl(

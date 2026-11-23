@@ -29,16 +29,7 @@ export default function MastersHub({
         <>
             <Head title={`Masters · ${branch.name}`} />
             <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <MasterPageHeader
-                    eyebrow="Branch Panel · Masters"
-                    title="Masters"
-                    company={company}
-                    branch={branch}
-                    crumbs={[
-                        { label: 'Branch', href: links.dashboard },
-                        { label: 'Masters' },
-                    ]}
-                />
+                <MasterPageHeader title="Masters" />
                 {flash?.success ? (
                     <p
                         role="status"

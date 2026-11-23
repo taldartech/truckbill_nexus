@@ -107,7 +107,7 @@ test('member-only customer lands on branch panel for sole assignment', function 
 
     $landing = $this->get(route('workspace.landing'));
     $landing->assertRedirect();
-    expect(parse_url($landing->headers->get('Location'), PHP_URL_PATH))->toBe('/branch');
+    expect(parse_url($landing->headers->get('Location'), PHP_URL_PATH))->toBe('/operations');
 
     enterBranchWorkspace($company, $headOffice)->assertRedirect();
 

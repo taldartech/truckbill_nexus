@@ -8,8 +8,8 @@ test('relative paths are accepted unchanged', function () {
     expect(SafeInternalRedirect::normalize('/management/company/settings', '/management'))
         ->toBe('/management/company/settings');
 
-    expect(SafeInternalRedirect::normalize('/branch/parties?q=acme', '/branch'))
-        ->toBe('/branch/parties?q=acme');
+    expect(SafeInternalRedirect::normalize('/parties?q=acme', '/operations'))
+        ->toBe('/parties?q=acme');
 });
 
 test('same-origin absolute urls are normalized to relative paths', function () {

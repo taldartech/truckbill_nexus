@@ -44,17 +44,7 @@ export default function VehicleShow({
         <>
             <Head title={String(vehicle.registration_number)} />
             <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <MasterPageHeader
-                    eyebrow="Branch Panel · Vehicle Master"
-                    title={String(vehicle.registration_number)}
-                    company={company}
-                    branch={branch}
-                    crumbs={[
-                        { label: 'Branch', href: links.dashboard },
-                        { label: 'Vehicles', href: links.index },
-                        { label: String(vehicle.registration_number) },
-                    ]}
-                />
+                <MasterPageHeader title={String(vehicle.registration_number)} />
                 {flash?.success ? (
                     <p
                         role="status"

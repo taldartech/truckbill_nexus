@@ -39,16 +39,7 @@ export default function DocumentsIndex({
         <>
             <Head title={`Documents · ${parent.type}`} />
             <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <MasterPageHeader
-                    eyebrow="Branch Panel · Documents"
-                    title="Document management"
-                    company={company}
-                    branch={branch}
-                    crumbs={[
-                        { label: 'Masters', href: links.hub },
-                        { label: 'Documents' },
-                    ]}
-                />
+                <MasterPageHeader title="Document management" />
                 {flash?.success ? (
                     <p
                         role="status"

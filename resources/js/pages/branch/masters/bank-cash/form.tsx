@@ -22,7 +22,6 @@ type Props = {
     branch: { id: string; name: string; status: string };
     mode: 'create' | 'edit';
     account: Account | null;
-    dataVisibility?: { mode: string; label: string; message: string };
     links: {
         hub: string;
         dashboard: string;
@@ -38,7 +37,6 @@ export default function BankCashForm({
     branch,
     mode,
     account,
-    dataVisibility,
     links,
 }: Props) {
     const [kind, setKind] = useState(account?.account_kind ?? 'bank');
@@ -54,37 +52,21 @@ export default function BankCashForm({
             />
             <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
                 <MasterPageHeader
-                    eyebrow="Branch Panel · Bank / Cash"
                     title={
                         mode === 'create'
                             ? 'Create account'
                             : `Edit ${account?.name}`
                     }
-                    company={company}
-                    branch={branch}
-                    crumbs={[
-                        { label: 'Branch', href: links.dashboard },
-                        { label: 'Bank / Cash', href: links.index },
-                        { label: mode },
-                    ]}
                 />
                 <Form
                     action={action}
                     method={mode === 'create' ? 'post' : 'patch'}
-                    className="mx-auto grid w-full max-w-3xl gap-4"
+                    className="mx-auto grid w-full max-w-3xl gap-4 md:max-w-5xl"
                 >
                     {({ errors, processing }) => (
                         <>
                             {mode === 'create' ? (
                                 <>
-                                    {dataVisibility ? (
-                                        <p
-                                            role="status"
-                                            className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground"
-                                        >
-                                            {dataVisibility.message}
-                                        </p>
-                                    ) : null}
                                     <div className="space-y-2">
                                         <Label htmlFor="account_kind">
                                             Kind

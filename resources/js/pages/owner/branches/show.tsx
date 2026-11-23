@@ -123,7 +123,7 @@ export default function OwnerBranchesShow({
                                     <input
                                         type="hidden"
                                         name="redirect"
-                                        value="/branch"
+                                        value="/operations"
                                     />
                                     <Button type="submit" disabled={processing}>
                                         Enter Branch Panel

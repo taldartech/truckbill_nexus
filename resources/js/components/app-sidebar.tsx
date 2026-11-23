@@ -59,13 +59,31 @@ export function AppSidebar() {
     const activeBranchId = workspace?.active_branch_id ?? null;
     const ownsAnyCompany =
         workspace?.companies.some((company) => company.is_owner) === true;
-    const inBranchPanel =
-        Boolean(activeCompanyId && activeBranchId) ||
-        pathname === '/branch' ||
-        pathname.startsWith('/branch/');
     const inOwnerPanel =
         isCustomer &&
         (pathname.startsWith('/management') || pathname.startsWith('/owner'));
+    const opsRoots = [
+        '/operations',
+        '/enquiries',
+        '/parties',
+        '/vehicles',
+        '/bank-cash',
+        '/stations',
+        '/catalogues',
+        '/documents',
+        '/settings/branch',
+        '/lorry-receipts',
+        '/trips',
+        '/trip-invoices',
+        '/payments',
+    ];
+    const inOpsPath =
+        opsRoots.some(
+            (root) => pathname === root || pathname.startsWith(`${root}/`),
+        ) || pathname.startsWith('/branch');
+    const inBranchPanel =
+        (Boolean(activeCompanyId && activeBranchId) && !inOwnerPanel) ||
+        inOpsPath;
     const inOwnerCompanyDetail =
         isCustomer &&
         ownsAnyCompany &&
@@ -115,8 +133,8 @@ export function AppSidebar() {
 
     const branchOverview: NavItem[] = [
         {
-            title: 'Branch Dashboard',
-            href: '/branch',
+            title: 'Dashboard',
+            href: '/operations',
             icon: LayoutDashboard,
         },
     ];
@@ -124,35 +142,40 @@ export function AppSidebar() {
     const branchOperations: NavItem[] = [
         {
             title: 'Enquiries',
-            href: '/branch/enquiries',
+            href: '/enquiries',
             icon: Ticket,
+        },
+        {
+            title: 'Unified LR',
+            href: '/lorry-receipts',
+            icon: Receipt,
         },
     ];
 
     const branchMasters: NavItem[] = [
         {
             title: 'Party Master',
-            href: '/branch/parties',
+            href: '/parties',
             icon: Users,
         },
         {
             title: 'Vehicle Master',
-            href: '/branch/vehicles',
+            href: '/vehicles',
             icon: Truck,
         },
         {
             title: 'Bank/Cash Accounts',
-            href: '/branch/bank-cash',
+            href: '/bank-cash',
             icon: Landmark,
         },
         {
             title: 'Station Master',
-            href: '/branch/stations',
+            href: '/stations',
             icon: MapPin,
         },
         {
             title: 'Supporting Catalogues',
-            href: '/branch/catalogues',
+            href: '/catalogues',
             icon: Package,
         },
     ];
@@ -160,7 +183,7 @@ export function AppSidebar() {
     const branchSettings: NavItem[] = [
         {
             title: 'Branch Settings',
-            href: '/branch/settings',
+            href: '/settings/branch',
             icon: Settings,
         },
     ];
@@ -171,7 +194,7 @@ export function AppSidebar() {
                   { label: 'Overview', items: branchOverview },
                   { label: 'Operations', items: branchOperations },
                   { label: 'Masters', items: branchMasters },
-                  { label: 'Branch', items: branchSettings },
+                  { label: 'Settings', items: branchSettings },
               ]
             : [
                   { label: 'Overview', items: ownerOverview },
@@ -265,12 +288,6 @@ export function AppSidebar() {
         ownsAnyCompany &&
         Boolean(activeCompanyId && activeBranchId);
 
-    const showBranchContext =
-        isCustomer &&
-        inBranchPanel &&
-        Boolean(activeCompanyId && activeBranchId) &&
-        Boolean(workspace?.active_company_name || activeCompany?.name);
-
     return (
         <Sidebar collapsible="icon" variant="inset">
             <SidebarHeader>
@@ -292,24 +309,10 @@ export function AppSidebar() {
                         </SidebarMenuButton>
                     </SidebarMenuItem>
                 </SidebarMenu>
-                {showBranchContext ? (
-                    <div
-                        className="space-y-0.5 px-3 pt-2 group-data-[collapsible=icon]:hidden"
-                        data-testid="branch-context-readonly"
-                    >
-                        <p className="truncate text-sm font-medium text-foreground">
-                            {workspace?.active_company_name ??
-                                activeCompany?.name}
-                        </p>
-                        <p className="truncate text-xs text-muted-foreground">
-                            {workspace?.active_branch_name ?? 'Branch'}
-                        </p>
-                    </div>
-                ) : null}
                 {inOwnerPanel ? (
                     <div className="px-3 pt-2 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
                         {inOwnerCompanyDetail && activeCompany
-                            ? `Context: ${activeCompany.name}`
+                            ? activeCompany.name
                             : 'All owned companies'}
                     </div>
                 ) : null}

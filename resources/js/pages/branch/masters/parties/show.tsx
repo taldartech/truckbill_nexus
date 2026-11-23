@@ -74,17 +74,7 @@ export default function PartyShow({
         <>
             <Head title={party.name} />
             <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <MasterPageHeader
-                    eyebrow="Branch Panel · Party Master"
-                    title={party.name}
-                    company={company}
-                    branch={branch}
-                    crumbs={[
-                        { label: 'Branch', href: links.dashboard },
-                        { label: 'Parties', href: links.index },
-                        { label: party.name },
-                    ]}
-                />
+                <MasterPageHeader title={party.name} />
                 {flash?.success ? (
                     <p
                         role="status"
@@ -169,7 +159,7 @@ export default function PartyShow({
                                 </div>
                                 {role.is_active && permissions.can_edit ? (
                                     <Form
-                                        action={`/branch/parties/${party.id}/roles/${role.id}/remove`}
+                                        action={`/parties/${party.id}/roles/${role.id}/remove`}
                                         method="post"
                                         className="flex items-end gap-2"
                                     >

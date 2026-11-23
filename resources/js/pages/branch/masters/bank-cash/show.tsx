@@ -52,17 +52,7 @@ export default function BankCashShow({
         <>
             <Head title={account.name} />
             <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <MasterPageHeader
-                    eyebrow="Branch Panel · Bank / Cash"
-                    title={account.name}
-                    company={company}
-                    branch={branch}
-                    crumbs={[
-                        { label: 'Branch', href: links.dashboard },
-                        { label: 'Bank / Cash', href: links.index },
-                        { label: account.name },
-                    ]}
-                />
+                <MasterPageHeader title={account.name} />
                 {flash?.success ? (
                     <p
                         role="status"

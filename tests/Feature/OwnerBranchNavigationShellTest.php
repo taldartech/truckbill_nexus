@@ -73,13 +73,23 @@ test('branch panel pages and sidebar never expose CompanySwitcher', function () 
     expect($sidebar)
         ->not->toContain('CompanySwitcher')
         ->and($sidebar)->toContain('Return to Owner Portal')
-        ->and($sidebar)->toContain('/branch/parties')
-        ->and($sidebar)->toContain('/branch/vehicles')
-        ->and($sidebar)->toContain('/branch/bank-cash')
-        ->and($sidebar)->not->toContain("href: '/branch/masters'");
+        ->and($sidebar)->toContain('/parties')
+        ->and($sidebar)->toContain('/vehicles')
+        ->and($sidebar)->toContain('/bank-cash')
+        ->and($sidebar)->not->toContain("href: '/masters'")
+        ->and($sidebar)->not->toContain('branch-context-readonly');
 
     $masterHeader = File::get(resource_path('js/components/masters/master-page-header.tsx'));
-    expect($masterHeader)->not->toContain('CompanySwitcher');
+    expect($masterHeader)
+        ->not->toContain('CompanySwitcher')
+        ->and($masterHeader)->not->toContain('dataVisibility')
+        ->and($masterHeader)->not->toContain('WorkspaceStatusBadge');
+
+    $topbar = File::get(resource_path('js/components/app-topbar.tsx'));
+    expect($topbar)
+        ->toContain('app-topbar-context')
+        ->and($topbar)->toContain('Owner Portal')
+        ->and($topbar)->toContain('Internal Portal');
 });
 
 test('branch inertia share exposes read-only company and branch names without switcher', function () {

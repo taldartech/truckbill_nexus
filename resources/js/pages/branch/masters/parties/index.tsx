@@ -32,25 +32,21 @@ type Props = {
         data: PartyRow[];
         meta: { current_page: number; last_page: number; total: number };
     };
-    dataVisibility?: { mode: string; label: string; message: string };
     links: { hub: string; dashboard: string; index: string; create: string };
 };
 
 export default function PartiesIndex({
-    company,
-    branch,
     permissions,
     filters,
     roleOptions,
     parties,
-    dataVisibility,
     links,
 }: Props) {
     const { flash } = usePage<{ flash?: { success?: string | null } }>().props;
     const [q, setQ] = useState(filters.q);
     const [role, setRole] = useState(filters.role);
 
-    const partyShowUrl = (id: string) => `/branch/parties/${id}`;
+    const partyShowUrl = (id: string) => `/parties/${id}`;
 
     const applyFilters = (event: React.FormEvent) => {
         event.preventDefault();
@@ -97,35 +93,18 @@ export default function PartiesIndex({
                 cell: (row) => row.city || '—',
             },
         ],
-        [company.id, branch.id],
+        [],
     );
 
     return (
         <>
-            <Head title={`Parties · ${branch.name}`} />
-            <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <MasterPageHeader
-                    eyebrow="Branch Panel · Party Master"
-                    title="Parties"
-                    company={company}
-                    branch={branch}
-                    dataVisibility={
-                        dataVisibility
-                            ? {
-                                  label: dataVisibility.label,
-                                  message: dataVisibility.message,
-                              }
-                            : null
-                    }
-                    crumbs={[
-                        { label: 'Branch', href: links.dashboard },
-                        { label: 'Parties' },
-                    ]}
-                />
+            <Head title="Parties" />
+            <div className="flex h-full flex-1 flex-col gap-4 p-4 md:p-6">
+                <MasterPageHeader title="Parties" />
                 {flash?.success ? (
                     <p
                         role="status"
-                        className="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm"
+                        className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm"
                     >
                         {flash.success}
                     </p>

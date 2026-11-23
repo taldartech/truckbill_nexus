@@ -1,0 +1,424 @@
+<?php
+
+use App\Domains\Auth\WebSessionService;
+use App\Domains\Company\CompanyWorkspaceService;
+use App\Domains\Consignment\Enums\FreightRateType;
+use App\Domains\Consignment\Enums\LrStatus;
+use App\Domains\Consignment\Exceptions\LorryReceiptAuthorizationException;
+use App\Domains\Consignment\Exceptions\LorryReceiptConflictException;
+use App\Domains\Consignment\Exceptions\LorryReceiptDomainException;
+use App\Domains\Consignment\Freight\FreightCalculator;
+use App\Domains\Consignment\LorryReceiptService;
+use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
+use App\Domains\Master\Party\Enums\PartyRoleType;
+use App\Domains\Master\Party\PartyService;
+use App\Domains\Numbering\DocumentNumberAllocator;
+use App\Domains\Numbering\Enums\DocumentNumberScopeType;
+use App\Domains\Numbering\Enums\DocumentNumberType;
+use App\Domains\Rbac\Enums\PermissionDomain;
+use App\Domains\Rbac\PermissionCodes;
+use App\Domains\Rbac\RoleAssignmentService;
+use App\Models\Branch;
+use App\Models\Company;
+use App\Models\LorryReceipt;
+use App\Models\OwnerCatalogueItem;
+use App\Models\Party;
+use App\Models\Permission;
+use App\Models\Role;
+use App\Models\RolePermission;
+use App\Models\User;
+use App\Support\Tenant\TenantContext;
+use App\Support\Tenant\TenantContextHolder;
+use Database\Seeders\RbacSeeder;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
+
+beforeEach(function () {
+    TenantContextHolder::clear();
+    Cache::flush();
+    (new RbacSeeder)->run();
+});
+
+afterEach(function () {
+    TenantContextHolder::clear();
+});
+
+function lrGrantRolePermission(string $roleSlug, string $permissionCode): void
+{
+    $role = Role::query()
+        ->where('domain', PermissionDomain::Customer->value)
+        ->where('slug', $roleSlug)
+        ->firstOrFail();
+    $permission = Permission::query()->where('code', $permissionCode)->firstOrFail();
+
+    RolePermission::query()->firstOrCreate(
+        [
+            'role_id' => $role->id,
+            'permission_id' => $permission->id,
+        ],
+        [
+            'deactivated_at' => null,
+        ],
+    );
+
+    Cache::flush();
+}
+
+/**
+ * @return array{
+ *     owner: User,
+ *     company: Company,
+ *     branch: Branch,
+ *     member: User,
+ *     viewer: User,
+ *     consignor: Party,
+ *     consignee: Party,
+ *     goodsType: OwnerCatalogueItem,
+ *     packageType: OwnerCatalogueItem,
+ *     otherCompany: Company,
+ *     otherBranch: Branch
+ * }
+ */
+function lrWorkspace(bool $withPermissions = true): array
+{
+    $workspace = app(CompanyWorkspaceService::class);
+    $rbac = app(RoleAssignmentService::class);
+
+    if ($withPermissions) {
+        foreach ([
+            PermissionCodes::LR_VIEW,
+            PermissionCodes::LR_CREATE,
+            PermissionCodes::LR_EDIT,
+            PermissionCodes::LR_CANCEL,
+            PermissionCodes::LR_DELETE,
+        ] as $code) {
+            lrGrantRolePermission('customer.admin', $code);
+        }
+        lrGrantRolePermission('customer.viewer', PermissionCodes::LR_VIEW);
+    }
+
+    $owner = User::factory()->customer()->create(['password' => Hash::make('owner-secret')]);
+    $company = $workspace->createCompany($owner, 'LR Co');
+    $branch = $company->branches()->firstOrFail();
+
+    test()->actingAs($owner);
+    session()->forget(WebSessionService::SESSION_VERSION_KEY);
+
+    $member = User::factory()->customer()->create(['password' => Hash::make('member-secret')]);
+    $membership = $workspace->addMembership($company, $member, 'Join');
+    $memberAssignment = $workspace->assignBranch($membership, $branch, 'Assign');
+    $rbac->assignCustomerBranchRole(
+        $owner,
+        $membership,
+        $branch,
+        $memberAssignment,
+        Role::query()->where('slug', 'customer.admin')->where('domain', PermissionDomain::Customer->value)->firstOrFail(),
+        'Grant admin',
+    );
+
+    $viewer = User::factory()->customer()->create(['password' => Hash::make('viewer-secret')]);
+    $viewerMembership = $workspace->addMembership($company, $viewer, 'Join viewer');
+    $viewerAssignment = $workspace->assignBranch($viewerMembership, $branch, 'Assign viewer');
+    $rbac->assignCustomerBranchRole(
+        $owner,
+        $viewerMembership,
+        $branch,
+        $viewerAssignment,
+        Role::query()->where('slug', 'customer.viewer')->where('domain', PermissionDomain::Customer->value)->firstOrFail(),
+        'Grant viewer',
+    );
+
+    $goodsType = OwnerCatalogueItem::factory()->create([
+        'owner_user_id' => $owner->id,
+        'catalogue_type' => OwnerCatalogueType::GoodsType->value,
+        'name' => 'General',
+        'code' => 'GEN',
+        'is_active' => true,
+    ]);
+    $packageType = OwnerCatalogueItem::factory()->create([
+        'owner_user_id' => $owner->id,
+        'catalogue_type' => OwnerCatalogueType::PackageType->value,
+        'name' => 'Bag',
+        'code' => 'BAG',
+        'is_active' => true,
+    ]);
+
+    $parties = app(PartyService::class);
+    $consignor = $parties->create(
+        actor: $owner,
+        company: $company,
+        branch: null,
+        attributes: [
+            'name' => 'Consignor Mills',
+            'is_gst_applicable' => false,
+        ],
+        roles: [['role' => PartyRoleType::Consignor->value]],
+        remark: 'Create consignor',
+    );
+    $consignee = $parties->create(
+        actor: $owner,
+        company: $company,
+        branch: null,
+        attributes: [
+            'name' => 'Consignee Depot',
+            'is_gst_applicable' => false,
+        ],
+        roles: [['role' => PartyRoleType::Consignee->value]],
+        remark: 'Create consignee',
+    );
+
+    $otherOwner = User::factory()->customer()->create();
+    $otherCompany = $workspace->createCompany($otherOwner, 'Other LR Co');
+    $otherBranch = $otherCompany->branches()->firstOrFail();
+
+    return [
+        'owner' => $owner,
+        'company' => $company,
+        'branch' => $branch,
+        'member' => $member,
+        'viewer' => $viewer,
+        'consignor' => $consignor,
+        'consignee' => $consignee,
+        'goodsType' => $goodsType,
+        'packageType' => $packageType,
+        'otherCompany' => $otherCompany,
+        'otherBranch' => $otherBranch,
+    ];
+}
+
+function lrActivate(Company $company, Branch $branch): void
+{
+    TenantContextHolder::inject(new TenantContext(
+        companyId: $company->id,
+        branchId: $branch->id,
+        ownerId: (string) $company->owner_user_id,
+    ));
+}
+
+function lrPayload(array $ctx, array $overrides = []): array
+{
+    return array_merge([
+        'workflow_context' => 'broker',
+        'number_mode' => 'auto',
+        'lr_date' => now()->toDateString(),
+        'from_text' => 'Mumbai',
+        'to_text' => 'Pune',
+        'consignor_party_id' => $ctx['consignor']->id,
+        'consignee_party_id' => $ctx['consignee']->id,
+        'goods' => [
+            [
+                'goods_type_id' => $ctx['goodsType']->id,
+                'package_type_id' => $ctx['packageType']->id,
+                'goods_description' => 'Cartons',
+                'package_count' => 10,
+                'actual_weight' => 100,
+                'charged_weight' => 110,
+                'freight_rate_type' => FreightRateType::PerPackageUnit->value,
+                'freight_rate' => 150,
+                'goods_value' => 5000,
+            ],
+        ],
+        'eway_bills' => [
+            [
+                'ewb_number' => 'EWB1234567890',
+                'ewb_date' => now()->toDateString(),
+                'valid_until' => now()->addDays(5)->toDateString(),
+            ],
+        ],
+        'additional_charges' => [
+            [
+                'description' => 'Loading',
+                'amount' => 250,
+            ],
+        ],
+    ], $overrides);
+}
+
+test('freight calculator covers all rate types', function () {
+    $calc = new FreightCalculator;
+
+    expect($calc->compute(FreightRateType::FixedAmount, '1250.5'))->toBe('1250.50')
+        ->and($calc->compute(FreightRateType::PerPackageUnit, '10', '12'))->toBe('120.00')
+        ->and($calc->compute(FreightRateType::PerKg, '2.5', null, '40'))->toBe('100.00')
+        ->and($calc->compute(FreightRateType::PerActualWeight, '3', null, '20'))->toBe('60.00')
+        ->and($calc->compute(FreightRateType::PerMt, '1000', null, '2500'))->toBe('2500.00')
+        ->and($calc->compute(FreightRateType::PerChargedWeight, '4', null, null, '15'))->toBe('60.00');
+});
+
+test('create computes goods freight totals and persists ewb charges', function () {
+    $ctx = lrWorkspace();
+    lrActivate($ctx['company'], $ctx['branch']);
+
+    $service = app(LorryReceiptService::class);
+    $lr = $service->create($ctx['company'], $ctx['branch'], $ctx['member'], lrPayload($ctx));
+
+    expect($lr->status)->toBe(LrStatus::Pending)
+        ->and($lr->freight_total)->toBe('1500.00')
+        ->and($lr->additional_charges_total)->toBe('250.00')
+        ->and($lr->goods_value)->toBe('5000.00')
+        ->and($lr->goodsRows)->toHaveCount(1)
+        ->and($lr->goodsRows->first()->freight_amount)->toBe('1500.00')
+        ->and($lr->ewayBills)->toHaveCount(1)
+        ->and($lr->additionalCharges)->toHaveCount(1);
+});
+
+test('manual numbering uniqueness collision is rejected', function () {
+    $ctx = lrWorkspace();
+    lrActivate($ctx['company'], $ctx['branch']);
+
+    $allocator = new DocumentNumberAllocator;
+    $allocator->allocateManual(
+        $ctx['company']->id,
+        DocumentNumberType::LorryReceipt,
+        DocumentNumberScopeType::Company,
+        'LR-MANUAL-1',
+    );
+
+    $service = app(LorryReceiptService::class);
+
+    expect(fn () => $service->create(
+        $ctx['company'],
+        $ctx['branch'],
+        $ctx['member'],
+        lrPayload($ctx, [
+            'number_mode' => 'manual',
+            'lr_number' => 'LR-MANUAL-1',
+        ]),
+    ))->toThrow(LorryReceiptConflictException::class);
+});
+
+test('tenant isolation blocks cross-company party usage', function () {
+    $ctx = lrWorkspace();
+    lrActivate($ctx['company'], $ctx['branch']);
+
+    $otherParty = Party::factory()->create(['company_id' => $ctx['otherCompany']->id]);
+    $service = app(LorryReceiptService::class);
+
+    expect(fn () => $service->create(
+        $ctx['company'],
+        $ctx['branch'],
+        $ctx['member'],
+        lrPayload($ctx, [
+            'consignor_party_id' => $otherParty->id,
+        ]),
+    ))->toThrow(ValidationException::class);
+});
+
+test('cancel and soft-delete enforce pending rules', function () {
+    $ctx = lrWorkspace();
+    lrActivate($ctx['company'], $ctx['branch']);
+    $service = app(LorryReceiptService::class);
+
+    $lr = $service->create($ctx['company'], $ctx['branch'], $ctx['member'], lrPayload($ctx));
+    $cancelled = $service->cancel($lr, $ctx['member'], 'Customer cancelled');
+
+    expect($cancelled->status)->toBe(LrStatus::Cancelled)
+        ->and($cancelled->cancellation_remark)->toBe('Customer cancelled');
+
+    expect(fn () => $service->softDelete($cancelled, $ctx['member']))
+        ->toThrow(LorryReceiptDomainException::class);
+
+    $pending = $service->create(
+        $ctx['company'],
+        $ctx['branch'],
+        $ctx['member'],
+        lrPayload($ctx, [
+            'eway_bills' => [[
+                'ewb_number' => 'EWB999',
+                'valid_until' => now()->addDays(3)->toDateString(),
+            ]],
+        ]),
+    );
+    $service->softDelete($pending, $ctx['member']);
+
+    expect(LorryReceipt::query()->whereKey($pending->id)->exists())->toBeFalse()
+        ->and(LorryReceipt::withTrashed()->whereKey($pending->id)->exists())->toBeTrue();
+});
+
+test('update is rejected when delivered', function () {
+    $ctx = lrWorkspace();
+    lrActivate($ctx['company'], $ctx['branch']);
+    $service = app(LorryReceiptService::class);
+
+    $lr = $service->create($ctx['company'], $ctx['branch'], $ctx['member'], lrPayload($ctx));
+    $lr->forceFill([
+        'status' => LrStatus::Delivered,
+        'delivered_at' => now(),
+    ])->save();
+
+    expect(fn () => $service->update($lr->fresh(), $ctx['member'], lrPayload($ctx)))
+        ->toThrow(LorryReceiptDomainException::class);
+
+    expect(fn () => $service->cancel($lr->fresh(), $ctx['member'], 'too late'))
+        ->toThrow(LorryReceiptDomainException::class);
+});
+
+function lrLoginAs(User $user, string $password): void
+{
+    if (auth()->check()) {
+        test()->post(route('logout'));
+    }
+
+    test()->flushSession();
+    $response = test()->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => $password,
+    ]);
+    $response->assertRedirect();
+    foreach ($response->headers->getCookies() as $cookie) {
+        test()->withUnencryptedCookie($cookie->getName(), $cookie->getValue());
+    }
+}
+
+test('http authorization denial and happy path index create store', function () {
+    $ctx = lrWorkspace();
+
+    lrLoginAs($ctx['viewer'], 'viewer-secret');
+    enterBranchWorkspace($ctx['company'], $ctx['branch'])->assertRedirect();
+
+    $this->get(route('branch.lorry-receipts.create'))->assertForbidden();
+    $this->get(route('branch.lorry-receipts.index'))->assertOk();
+
+    lrLoginAs($ctx['member'], 'member-secret');
+    enterBranchWorkspace($ctx['company'], $ctx['branch'])->assertRedirect();
+
+    $this->get(route('branch.lorry-receipts.create'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->component('branch/lorry-receipts/create'));
+
+    $this->get(route('branch.lorry-receipts.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->component('branch/lorry-receipts/index'));
+
+    $response = $this->post(route('branch.lorry-receipts.store'), lrPayload($ctx));
+    $response->assertRedirect();
+
+    $lr = LorryReceipt::query()
+        ->where('company_id', $ctx['company']->id)
+        ->where('branch_id', $ctx['branch']->id)
+        ->first();
+
+    expect($lr)->not->toBeNull()
+        ->and($lr->freight_total)->toBe('1500.00');
+
+    $response->assertRedirect(route('branch.lorry-receipts.show', [$lr]));
+});
+
+test('tenant mismatch raises authorization exception', function () {
+    $ctx = lrWorkspace();
+    TenantContextHolder::inject(new TenantContext(
+        companyId: $ctx['otherCompany']->id,
+        branchId: $ctx['otherBranch']->id,
+        ownerId: (string) $ctx['otherCompany']->owner_user_id,
+    ));
+
+    $service = app(LorryReceiptService::class);
+
+    expect(fn () => $service->create(
+        $ctx['company'],
+        $ctx['branch'],
+        $ctx['member'],
+        lrPayload($ctx),
+    ))->toThrow(LorryReceiptAuthorizationException::class);
+});

@@ -45,24 +45,16 @@ export default function StationForm({
             />
             <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
                 <MasterPageHeader
-                    eyebrow="Branch Panel · Stations"
                     title={
                         mode === 'create'
                             ? 'Create station'
                             : `Edit ${station?.name}`
                     }
-                    company={company}
-                    branch={branch}
-                    crumbs={[
-                        { label: 'Masters', href: links.hub },
-                        { label: 'Stations', href: links.index },
-                        { label: mode },
-                    ]}
                 />
                 <Form
                     action={action}
                     method={mode === 'create' ? 'post' : 'patch'}
-                    className="mx-auto grid w-full max-w-2xl gap-4"
+                    className="mx-auto grid w-full max-w-2xl gap-4 md:max-w-4xl"
                 >
                     {({ errors, processing }) => (
                         <>

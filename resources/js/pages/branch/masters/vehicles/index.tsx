@@ -27,7 +27,6 @@ type Props = {
         data: Row[];
         meta: { current_page: number; last_page: number; total: number };
     };
-    dataVisibility?: { mode: string; label: string; message: string };
     links: { hub: string; dashboard: string; index: string; create: string };
 };
 
@@ -37,12 +36,11 @@ export default function VehiclesIndex({
     permissions,
     filters,
     vehicles,
-    dataVisibility,
     links,
 }: Props) {
     const { flash } = usePage<{ flash?: { success?: string | null } }>().props;
     const [q, setQ] = useState(filters.q);
-    const showUrl = (id: string) => `/branch/vehicles/${id}`;
+    const showUrl = (id: string) => `/vehicles/${id}`;
 
     const columns = useMemo<DataTableColumn<Row>[]>(
         () => [
@@ -86,24 +84,7 @@ export default function VehiclesIndex({
         <>
             <Head title={`Vehicles · ${branch.name}`} />
             <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <MasterPageHeader
-                    eyebrow="Branch Panel · Vehicle Master"
-                    title="Vehicles"
-                    company={company}
-                    branch={branch}
-                    dataVisibility={
-                        dataVisibility
-                            ? {
-                                  label: dataVisibility.label,
-                                  message: dataVisibility.message,
-                              }
-                            : null
-                    }
-                    crumbs={[
-                        { label: 'Branch', href: links.dashboard },
-                        { label: 'Vehicles' },
-                    ]}
-                />
+                <MasterPageHeader title="Vehicles" />
                 {flash?.success ? (
                     <p
                         role="status"

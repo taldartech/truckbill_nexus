@@ -35,7 +35,7 @@ export default function StationsIndex({
 }: Props) {
     const { flash } = usePage<{ flash?: { success?: string | null } }>().props;
     const [q, setQ] = useState(filters.q);
-    const showUrl = (id: string) => `/branch/stations/${id}`;
+    const showUrl = (id: string) => `/stations/${id}`;
 
     const columns = useMemo<DataTableColumn<Row>[]>(
         () => [
@@ -78,16 +78,7 @@ export default function StationsIndex({
         <>
             <Head title={`Stations · ${branch.name}`} />
             <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <MasterPageHeader
-                    eyebrow="Branch Panel · Stations"
-                    title="Stations"
-                    company={company}
-                    branch={branch}
-                    crumbs={[
-                        { label: 'Masters', href: links.hub },
-                        { label: 'Stations' },
-                    ]}
-                />
+                <MasterPageHeader title="Stations" />
                 {flash?.success ? (
                     <p
                         role="status"

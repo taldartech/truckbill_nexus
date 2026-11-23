@@ -209,7 +209,8 @@ export default function OwnerBranchesAll({
                                         branch.urls.enter_branch_context
                                     }
                                     redirect={
-                                        branch.urls.enter_branch ?? '/branch'
+                                        branch.urls.enter_branch ??
+                                        '/operations'
                                     }
                                     icon={LogIn}
                                     label="Enter Branch Panel"

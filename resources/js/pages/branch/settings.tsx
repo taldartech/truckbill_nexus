@@ -1,4 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
+import { MasterPageHeader } from '@/components/masters/master-page-header';
 import ShellEmptyState from '@/components/shell-empty-state';
 import { Button } from '@/components/ui/button';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
@@ -15,26 +16,21 @@ type BranchSettingsProps = {
 };
 
 export default function BranchSettings({
-    company,
     branch,
     preferences,
     links,
 }: BranchSettingsProps) {
+    const showStatus = branch.status !== 'Active';
+
     return (
         <>
-            <Head title={`Settings · ${branch.name}`} />
-            <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <div className="space-y-2">
-                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                        Branch Panel · Settings
-                    </p>
-                    <h1 className="text-2xl font-semibold tracking-tight">
-                        {branch.name}
-                    </h1>
-                    <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                        <span>{company.name}</span>
+            <Head title="Branch settings" />
+            <div className="flex h-full flex-1 flex-col gap-4 p-4 md:p-6">
+                <div className="flex flex-wrap items-center gap-2">
+                    <MasterPageHeader title="Branch settings" />
+                    {showStatus ? (
                         <WorkspaceStatusBadge status={branch.status} />
-                    </div>
+                    ) : null}
                 </div>
 
                 <ShellEmptyState
@@ -43,7 +39,7 @@ export default function BranchSettings({
                     action={
                         <Button asChild variant="outline">
                             <Link href={links.dashboard}>
-                                Back to Branch Dashboard
+                                Back to dashboard
                             </Link>
                         </Button>
                     }

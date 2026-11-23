@@ -47,16 +47,14 @@ test.describe('Enter Branch Panel', () => {
         const posted = await contextResponse;
         expect(posted.status()).toBeLessThan(400);
 
-        await expect(page).toHaveURL(/\/branch\/?$/);
-        const heading = page.getByRole('heading', { level: 1 });
-        await expect(heading).toBeVisible();
-        const firstBranchName = (await heading.textContent())?.trim() ?? '';
-        expect(firstBranchName.length).toBeGreaterThan(0);
-        await expect(
-            page
-                .getByText(fixture.shared.company_name, { exact: true })
-                .first(),
-        ).toBeVisible();
+        await expect(page).toHaveURL(/\/operations\/?$/);
+        await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+            'Dashboard',
+        );
+        await expect(page.getByTestId('app-topbar')).toBeVisible();
+        await expect(page.getByTestId('app-topbar-context')).toContainText(
+            fixture.shared.company_name,
+        );
         await expect(page.getByText(/^Owner Panel$/i)).toHaveCount(0);
         await expect(
             page.getByRole('link', { name: 'Return to Owner Portal' }),
@@ -65,7 +63,9 @@ test.describe('Enter Branch Panel', () => {
             page.getByRole('link', { name: 'Return to Owner Portal' }),
         ).toBeVisible();
         await expect(page.getByTestId('company-switcher')).toHaveCount(0);
-        await expect(page.getByTestId('branch-context-readonly')).toBeVisible();
+        await expect(page.getByTestId('branch-context-readonly')).toHaveCount(
+            0,
+        );
         await expect(
             page.getByRole('link', { name: 'Party Master' }),
         ).toBeVisible();
@@ -81,13 +81,11 @@ test.describe('Enter Branch Panel', () => {
         await page.getByRole('button', { name: /apply/i }).click();
         await expect(enterButtons.nth(1)).toBeVisible();
         await enterButtons.nth(1).click();
-        await expect(page).toHaveURL(/\/branch\/?$/);
-        const secondBranchName =
-            (
-                await page.getByRole('heading', { level: 1 }).textContent()
-            )?.trim() ?? '';
-        expect(secondBranchName.length).toBeGreaterThan(0);
-        expect(secondBranchName).not.toBe(firstBranchName);
+        await expect(page).toHaveURL(/\/operations\/?$/);
+        await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+            'Dashboard',
+        );
+        await expect(page.getByTestId('app-topbar-context')).toBeVisible();
 
         // Mobile viewport — Enter Branch icon still reachable from Branches list.
         await page.goto('/management/branches');
