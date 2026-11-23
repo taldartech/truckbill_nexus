@@ -1,7 +1,7 @@
 # Phase 1–5 Implementation Checkpoint
 
 **Updated:** 23 November 2026  
-**Local HEAD:** _(set after remediation commit)_  
+**Local HEAD:** `d66459bf3ef24357f8411cb2d5d5de23a27203fe`  
 **Baseline at PO auth:** `448d85fc7f697d8124eb7c1874d2e12a49058bee`  
 **Authority:** `PO-P1-P5-FULLSTACK-AUTH`  
 **Latest remediation:** **COMPANY CREATION ACCESSIBLE & CI REMEDIATION LOCALLY CERTIFIED**  
@@ -11,16 +11,16 @@
 
 ## Completed (verified commits)
 
-| Slice                                  | HEAD                   | Evidence                                                                     |
-| -------------------------------------- | ---------------------- | ---------------------------------------------------------------------------- |
-| PO D1–D8 authorization records         | `3a589a0…`             | Final auth + decision registers                                              |
-| Stage 1 company PRD §7 create/settings | `3a589a0…`             | Owner UI + `CompanyPrd7ProfileTest`                                          |
-| Stage 1 Internal lifecycle UI (D2)     | `0978192…`             | Admin companies/identities/users + `InternalLifecycleUiTest`                 |
-| D7 Playwright + k6 scaffolding         | `25ab11a…`             | `@playwright/test@1.57.0`, k6 scripts, CI smoke step                         |
-| Stage 2A CRM leads foundation          | `98d8d93…`             | Schema, LeadService, lead UI, `CrmLeadManagementTest`                        |
-| Stage 2A tickets + conversion service  | `a94a99b…`             | Support ticket UI; LeadConversionService; Pest                               |
-| Stage 4 Batch B Enquiry UI             | `392f5ca…`             | Inertia list/create/show; JSON API retained                                  |
-| Company create nav + GA #72 formatting | _(remediation commit)_ | Dashboard / switcher / no-access; k6 `vp check --fix`; Pest + Playwright A–D |
+| Slice                                  | HEAD       | Evidence                                                                     |
+| -------------------------------------- | ---------- | ---------------------------------------------------------------------------- |
+| PO D1–D8 authorization records         | `3a589a0…` | Final auth + decision registers                                              |
+| Stage 1 company PRD §7 create/settings | `3a589a0…` | Owner UI + `CompanyPrd7ProfileTest`                                          |
+| Stage 1 Internal lifecycle UI (D2)     | `0978192…` | Admin companies/identities/users + `InternalLifecycleUiTest`                 |
+| D7 Playwright + k6 scaffolding         | `25ab11a…` | `@playwright/test@1.57.0`, k6 scripts, CI smoke step                         |
+| Stage 2A CRM leads foundation          | `98d8d93…` | Schema, LeadService, lead UI, `CrmLeadManagementTest`                        |
+| Stage 2A tickets + conversion service  | `a94a99b…` | Support ticket UI; LeadConversionService; Pest                               |
+| Stage 4 Batch B Enquiry UI             | `392f5ca…` | Inertia list/create/show; JSON API retained                                  |
+| Company create nav + GA #72 formatting | `d66459b…` | Dashboard / switcher / no-access; k6 `vp check --fix`; Pest + Playwright A–D |
 
 ## Outstanding (exact next steps)
 
