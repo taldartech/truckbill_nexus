@@ -44,7 +44,10 @@ export default function CrmDashboard({ metrics, urls }: Props) {
                             CRM Dashboard
                         </h1>
                         <p className="text-sm text-muted-foreground">
-                            Scope: {metrics.scope === 'team' ? 'Team' : 'Assigned to me'}
+                            Scope:{' '}
+                            {metrics.scope === 'team'
+                                ? 'Team'
+                                : 'Assigned to me'}
                         </p>
                     </div>
                     <div className="flex flex-wrap gap-2">
@@ -133,7 +136,9 @@ export default function CrmDashboard({ metrics, urls }: Props) {
                         <div className="mb-3 flex items-center justify-between">
                             <h2 className="font-semibold">Recent tickets</h2>
                             <Button asChild size="sm" variant="outline">
-                                <Link href={urls.create_ticket}>New ticket</Link>
+                                <Link href={urls.create_ticket}>
+                                    New ticket
+                                </Link>
                             </Button>
                         </div>
                         <ul className="space-y-2 text-sm">

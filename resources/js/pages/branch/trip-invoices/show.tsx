@@ -42,7 +42,10 @@ type Props = {
     sampleBanner: string;
 };
 
-function moneyLabel(value: string | null | undefined, mayView: boolean): string {
+function moneyLabel(
+    value: string | null | undefined,
+    mayView: boolean,
+): string {
     if (!mayView || value === null || value === undefined) {
         return '—';
     }

@@ -82,7 +82,8 @@ export default function CrmLeadShow({
                         {lead.contact_name}
                     </h1>
                     <p className="text-sm text-muted-foreground">
-                        {lead.status} · {lead.interested_product} · {lead.source}
+                        {lead.status} · {lead.interested_product} ·{' '}
+                        {lead.source}
                     </p>
                 </div>
 
@@ -95,7 +96,11 @@ export default function CrmLeadShow({
                     </p>
                 ) : null}
                 {Object.values(errors ?? {}).map((message) => (
-                    <p key={message} className="text-sm text-destructive" role="alert">
+                    <p
+                        key={message}
+                        className="text-sm text-destructive"
+                        role="alert"
+                    >
                         {message}
                     </p>
                 ))}
@@ -298,10 +303,13 @@ export default function CrmLeadShow({
 
                 {lead.can_convert ? (
                     <section className="space-y-3 rounded-xl border border-border p-4">
-                        <h2 className="font-semibold">Convert to customer company</h2>
+                        <h2 className="font-semibold">
+                            Convert to customer company
+                        </h2>
                         <p className="text-sm text-muted-foreground">
-                            Creates or reuses the Customer identity and a company
-                            profile. Existing passwords are never overwritten.
+                            Creates or reuses the Customer identity and a
+                            company profile. Existing passwords are never
+                            overwritten.
                         </p>
                         <Form
                             action={urls.convert}
@@ -472,7 +480,10 @@ export default function CrmLeadShow({
                                     autoComplete="new-password"
                                 />
                             </label>
-                            <Button type="submit" className="bg-[#2FB36F] hover:bg-[#2FB36F]/90">
+                            <Button
+                                type="submit"
+                                className="bg-[#2FB36F] hover:bg-[#2FB36F]/90"
+                            >
                                 Convert lead
                             </Button>
                         </Form>

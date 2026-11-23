@@ -198,7 +198,11 @@ export default function BranchEnquiryShow({
                 {capabilities.assign ? (
                     <section className="space-y-3 rounded-xl border border-border p-4">
                         <h2 className="font-semibold">Assignment</h2>
-                        <Form action={urls.assign} method="post" className="space-y-3">
+                        <Form
+                            action={urls.assign}
+                            method="post"
+                            className="space-y-3"
+                        >
                             <div className="grid gap-3 md:grid-cols-2">
                                 <div className="space-y-1">
                                     <Label htmlFor="to_branch_id">Branch</Label>
@@ -206,7 +210,9 @@ export default function BranchEnquiryShow({
                                         id="to_branch_id"
                                         name="to_branch_id"
                                         className={fieldClass}
-                                        defaultValue={enquiry.branch_id ?? branch.id}
+                                        defaultValue={
+                                            enquiry.branch_id ?? branch.id
+                                        }
                                     >
                                         {branches.map((b) => (
                                             <option key={b.id} value={b.id}>
@@ -227,9 +233,14 @@ export default function BranchEnquiryShow({
                                             enquiry.assigned_user_id ?? ''
                                         }
                                     >
-                                        <option value="">Unassigned user</option>
+                                        <option value="">
+                                            Unassigned user
+                                        </option>
                                         {assignable_users.map((user) => (
-                                            <option key={user.id} value={user.id}>
+                                            <option
+                                                key={user.id}
+                                                value={user.id}
+                                            >
                                                 {user.name}
                                             </option>
                                         ))}
@@ -278,7 +289,11 @@ export default function BranchEnquiryShow({
                                 </div>
                                 <div className="space-y-1">
                                     <Label htmlFor="remarks">Remarks</Label>
-                                    <Input id="remarks" name="remarks" required />
+                                    <Input
+                                        id="remarks"
+                                        name="remarks"
+                                        required
+                                    />
                                 </div>
                             </div>
                             <Button type="submit">Add follow-up</Button>
@@ -349,7 +364,8 @@ export default function BranchEnquiryShow({
                                     className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border px-3 py-2"
                                 >
                                     <span>
-                                        {quote.transporter_name ?? quote.transporter_party_id}{' '}
+                                        {quote.transporter_name ??
+                                            quote.transporter_party_id}{' '}
                                         · ₹{quote.quoted_freight} ·{' '}
                                         {quote.selection_status}
                                     </span>
@@ -415,10 +431,11 @@ export default function BranchEnquiryShow({
                         <h2 className="font-semibold">
                             Conversion (Option C — N vehicles → N LRs)
                         </h2>
-                        {conversion_preview &&
-                        !conversion_preview.eligible ? (
+                        {conversion_preview && !conversion_preview.eligible ? (
                             <p className="text-sm text-destructive">
-                                {conversion_preview.eligibility_errors.join(' ')}
+                                {conversion_preview.eligibility_errors.join(
+                                    ' ',
+                                )}
                             </p>
                         ) : null}
                         <Button
@@ -492,7 +509,9 @@ export default function BranchEnquiryShow({
                                         ', ',
                                     )}
                                 </p>
-                                <Button type="submit">Confirm conversion</Button>
+                                <Button type="submit">
+                                    Confirm conversion
+                                </Button>
                             </Form>
                         ) : null}
                     </section>

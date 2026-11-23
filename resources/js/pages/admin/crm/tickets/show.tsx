@@ -70,7 +70,11 @@ export default function CrmTicketShow({
                     </p>
                 ) : null}
                 {Object.values(errors ?? {}).map((message) => (
-                    <p key={message} className="text-sm text-destructive" role="alert">
+                    <p
+                        key={message}
+                        className="text-sm text-destructive"
+                        role="alert"
+                    >
                         {message}
                     </p>
                 ))}
@@ -136,11 +140,13 @@ export default function CrmTicketShow({
                                     defaultValue={ticket.allowed_transitions[0]}
                                     className="rounded-md border border-border bg-background px-3 py-2"
                                 >
-                                    {ticket.allowed_transitions.map((status) => (
-                                        <option key={status} value={status}>
-                                            {status}
-                                        </option>
-                                    ))}
+                                    {ticket.allowed_transitions.map(
+                                        (status) => (
+                                            <option key={status} value={status}>
+                                                {status}
+                                            </option>
+                                        ),
+                                    )}
                                 </select>
                             </label>
                             <label className="flex flex-col gap-1 text-sm">

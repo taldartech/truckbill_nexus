@@ -108,8 +108,9 @@ test('local demo seeder creates isolated companies roles masters and enquiries i
         ->and($enquiriesB)->not->toBeEmpty()
         ->and($enquiriesA->pluck('enquiry_number')->unique()->count())->toBe($enquiriesA->count())
         ->and($enquiriesA->every(fn (Enquiry $e) => $e->goodsRows()->whereNull('deleted_at')->count() >= 1))->toBeTrue()
-        ->and($enquiriesA->contains(fn (Enquiry $e) => $e->branch_id === null && $e->source->value === 'website'))->toBeTrue()
-        ->and($enquiriesA->contains(fn (Enquiry $e) => $e->status->value === 'converted'))->toBeFalse();
+        ->and($enquiriesA->contains(fn (Enquiry $e) => $e->source->value === 'website'))->toBeTrue()
+        ->and($enquiriesA->contains(fn (Enquiry $e) => $e->branch_id !== null && $e->source->value === 'website'))->toBeTrue()
+        ->and($enquiriesA->contains(fn (Enquiry $e) => $e->status->value === 'converted'))->toBeTrue();
 
     expect(EnquiryExternalReference::query()->where('company_id', $companyA->id)->count())->toBeGreaterThanOrEqual(1);
 
