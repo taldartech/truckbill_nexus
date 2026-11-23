@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\CompanyLifecycleController;
+use App\Http\Controllers\Admin\Crm\LeadController as CrmLeadController;
 use App\Http\Controllers\Admin\GstRateController;
 use App\Http\Controllers\Admin\IdentityLifecycleController;
 use App\Http\Controllers\Admin\InternalUserController;
@@ -273,6 +274,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('admin.internal-users.index');
     Route::post('/admin/internal-users', [InternalUserController::class, 'store'])
         ->name('admin.internal-users.store');
+
+    Route::get('/admin/crm/leads', [CrmLeadController::class, 'index'])
+        ->name('admin.crm.leads.index');
+    Route::get('/admin/crm/leads/create', [CrmLeadController::class, 'create'])
+        ->name('admin.crm.leads.create');
+    Route::post('/admin/crm/leads', [CrmLeadController::class, 'store'])
+        ->name('admin.crm.leads.store');
+    Route::get('/admin/crm/leads/{lead}', [CrmLeadController::class, 'show'])
+        ->name('admin.crm.leads.show');
+    Route::post('/admin/crm/leads/{lead}/transition', [CrmLeadController::class, 'transition'])
+        ->name('admin.crm.leads.transition');
 
     Route::get('/admin/subscription-invoices', [SubscriptionInvoiceController::class, 'index'])
         ->name('admin.subscription-invoices');

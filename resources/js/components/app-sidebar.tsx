@@ -139,6 +139,11 @@ export function AppSidebar() {
                             icon: LayoutGrid,
                         },
                         {
+                            title: 'CRM Leads',
+                            href: '/admin/crm/leads',
+                            icon: LayoutGrid,
+                        },
+                        {
                             title: 'Subscription invoices',
                             href: subscriptionInvoices.url(),
                             icon: LayoutGrid,

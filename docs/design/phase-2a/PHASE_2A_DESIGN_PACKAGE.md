@@ -1,8 +1,8 @@
 # Phase 2A Design Package — Internal CRM (Draft for Formal Approval)
 
-**Status:** **DRAFT — awaiting `PO-P2A-DESIGN-FORMAL`**  
+**Status:** **APPROVED** (`PO-P2A-DESIGN-FORMAL` via `PO-P1-P5-FULLSTACK-AUTH`, 23 November 2026).  
 **Date:** 23 November 2026  
-**Does not authorize implementation.**
+**Implementation authorized.** Screen specs + independent UX/QA review remain required before each new surface ships; do not claim personal Product Owner review of post-authorization artifacts.
 
 ---
 

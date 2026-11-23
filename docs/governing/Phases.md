@@ -35,7 +35,7 @@ Global identity, internal/customer separation, auth, customer single session, co
 
 ## Phase 2A — Internal CRM & Customer Onboarding
 
-**Status:** Planned — requires separate Product Owner authorization and formal UI design approval.
+**Status:** Authorized — `PO-P2A-AUTH` / `PO-P2A-DESIGN-FORMAL` approved via `PO-P1-P5-FULLSTACK-AUTH` (23 November 2026). Implementation in progress.
 
 **Purpose:** Manage TruckBill's internal sales, customer onboarding and support operations. Internal CRM is distinct from Phase 4 logistics Enquiry Management.
 

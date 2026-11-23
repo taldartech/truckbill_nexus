@@ -1,8 +1,8 @@
 # Phase 2A Authorization Request — Internal CRM & Customer Onboarding
 
-**Status:** **READY FOR PRODUCT OWNER DECISION** — implementation **not** authorized until `PO-P2A-AUTH` and `PO-P2A-DESIGN-FORMAL` are Approved.  
+**Status:** **APPROVED** via `PO-P1-P5-FULLSTACK-AUTH` / `PHASE_2A_AUTHORIZATION_RECORD.md` (23 November 2026). Historical request retained.  
 **Date:** 23 November 2026  
-**Baseline:** `f1a12011ad172399d97e7d935dc15bf3713d3e8a`  
+**Baseline at request:** `f1a12011ad172399d97e7d935dc15bf3713d3e8a`  
 **Governing:** `Phases.md` Phase 2A; PRD §5–§6; Identity/Company/Subscription foundations
 
 ---
