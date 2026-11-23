@@ -89,17 +89,15 @@ export default function OwnerAuditAll({
     return (
         <>
             <Head title="Owner · Audit" />
-            <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6 lg:p-8">
-                <OwnerPageHeader
-                    title="Audit"
-                    description="Recent audited actions across your owned companies. Open a company audit for filtered history."
-                    actions={
-                        <Button asChild variant="outline">
-                            <Link href={links.companies}>Companies</Link>
-                        </Button>
-                    }
-                />
-
+            <OwnerPageHeader
+                title="Audit"
+                description="Recent audited actions across your owned companies. Open a company audit for filtered history."
+                actions={
+                    <Button asChild variant="outline">
+                        <Link href={links.companies}>Companies</Link>
+                    </Button>
+                }
+            >
                 <form
                     onSubmit={applyFilters}
                     className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-end"
@@ -146,7 +144,7 @@ export default function OwnerAuditAll({
                     Page {entries.meta.current_page} of {entries.meta.last_page}{' '}
                     · {entries.meta.total} total
                 </p>
-            </div>
+            </OwnerPageHeader>
         </>
     );
 }

@@ -1,4 +1,7 @@
 import { Form, Head, Link } from '@inertiajs/react';
+import { Save } from 'lucide-react';
+import { FormSection } from '@/components/form-section';
+import { PageShell } from '@/components/page-shell';
 import { useState } from 'react';
 import OwnerCompaniesController from '@/actions/App/Http/Controllers/Owner/OwnerCompaniesController';
 import InputError from '@/components/input-error';
@@ -50,30 +53,18 @@ export default function OwnerCompanyCreate({
     return (
         <>
             <Head title="Create company" />
-            <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-6 p-4 md:p-6">
-                <div className="space-y-2">
-                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                        Owner · Create company
-                    </p>
-                    <h1 className="text-2xl font-semibold tracking-tight">
-                        New company
-                    </h1>
-                    <p className="text-sm text-muted-foreground">
-                        Complete PRD §7 company details. First eligible owned
-                        company receives the applicable trial.
-                    </p>
-                </div>
-
+            <PageShell
+                width="form"
+                title="New company"
+                description="Complete PRD §7 company details. First eligible owned company receives the applicable trial."
+            >
                 <Form
                     {...OwnerCompaniesController.store.form()}
-                    className="space-y-6 rounded-xl border border-border p-4"
+                    className="space-y-5"
                 >
                     {({ processing, errors }) => (
                         <>
-                            <section className="space-y-4">
-                                <h2 className="font-medium">
-                                    Company identity
-                                </h2>
+                            <FormSection title="Company identity" columns={2}>
                                 <Field
                                     id="name"
                                     label="Company name"
@@ -89,7 +80,7 @@ export default function OwnerCompanyCreate({
                                     maxLength={10}
                                     error={errors.pan}
                                 />
-                                <div className="space-y-2">
+                                <div className="space-y-2 md:col-span-2">
                                     <Label htmlFor="registered_address">
                                         Registered address
                                     </Label>
@@ -104,7 +95,7 @@ export default function OwnerCompanyCreate({
                                         message={errors.registered_address}
                                     />
                                 </div>
-                                <div className="grid gap-4 sm:grid-cols-3">
+                                <div className="grid gap-4 md:col-span-2 md:grid-cols-3">
                                     <Field
                                         id="state"
                                         label="State"
@@ -128,10 +119,9 @@ export default function OwnerCompanyCreate({
                                         error={errors.pin}
                                     />
                                 </div>
-                            </section>
+                            </FormSection>
 
-                            <section className="space-y-4">
-                                <h2 className="font-medium">Contact</h2>
+                            <FormSection title="Contact" columns={2}>
                                 <Field
                                     id="contact_person"
                                     label="Contact person"
@@ -139,7 +129,7 @@ export default function OwnerCompanyCreate({
                                     defaultValue={defaults.contact_person}
                                     error={errors.contact_person}
                                 />
-                                <div className="grid gap-4 sm:grid-cols-2">
+                                <>
                                     <Field
                                         id="mobile"
                                         label="Mobile"
@@ -156,12 +146,11 @@ export default function OwnerCompanyCreate({
                                         defaultValue={defaults.email}
                                         error={errors.email}
                                     />
-                                </div>
-                            </section>
+                                </>
+                            </FormSection>
 
-                            <section className="space-y-4">
-                                <h2 className="font-medium">GST</h2>
-                                <div className="grid gap-4 sm:grid-cols-2">
+                            <FormSection title="GST" columns={2}>
+                                <>
                                     <SelectField
                                         id="gst_registration_type"
                                         label="Registration type"
@@ -179,7 +168,7 @@ export default function OwnerCompanyCreate({
                                         options={options.tax_liabilities}
                                         error={errors.tax_liability}
                                     />
-                                </div>
+                                </>
                                 {needsGstin ? (
                                     <Field
                                         id="gstin"
@@ -217,10 +206,9 @@ export default function OwnerCompanyCreate({
                                         />
                                     </div>
                                 ) : null}
-                            </section>
+                            </FormSection>
 
-                            <section className="space-y-4">
-                                <h2 className="font-medium">Configuration</h2>
+                            <FormSection title="Configuration" columns={2}>
                                 <SelectField
                                     id="data_visibility"
                                     label="Data visibility"
@@ -259,7 +247,7 @@ export default function OwnerCompanyCreate({
                                         error={errors.initial_branch_name}
                                     />
                                 ) : null}
-                            </section>
+                            </FormSection>
 
                             <section className="space-y-2 rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">
                                 <h2 className="font-medium text-foreground">
@@ -274,22 +262,18 @@ export default function OwnerCompanyCreate({
                                 </p>
                             </section>
 
-                            <section className="space-y-4">
-                                <h2 className="font-medium">
-                                    Optional opening bank account
-                                </h2>
-                                <p className="text-sm text-muted-foreground">
-                                    Provide all three fields to create the first
-                                    Bank Account. Branch-wise Restricted
-                                    companies need an initial branch first.
-                                </p>
+                            <FormSection
+                                title="Optional opening bank account"
+                                description="Provide all three fields to create the first bank account. Branch-wise restricted companies need an initial branch first."
+                                columns={2}
+                            >
                                 <Field
                                     id="bank_name"
                                     label="Bank name"
                                     name="bank_name"
                                     error={errors.bank_name}
                                 />
-                                <div className="grid gap-4 sm:grid-cols-2">
+                                <>
                                     <Field
                                         id="account_number"
                                         label="Account number"
@@ -302,11 +286,12 @@ export default function OwnerCompanyCreate({
                                         name="ifsc"
                                         error={errors.ifsc}
                                     />
-                                </div>
-                            </section>
+                                </>
+                            </FormSection>
 
                             <div className="flex flex-wrap gap-2">
                                 <Button type="submit" disabled={processing}>
+                                    <Save className="size-4" />
                                     Create company
                                 </Button>
                                 <Button variant="outline" asChild>
@@ -316,7 +301,7 @@ export default function OwnerCompanyCreate({
                         </>
                     )}
                 </Form>
-            </div>
+            </PageShell>
         </>
     );
 }

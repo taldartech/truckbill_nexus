@@ -106,17 +106,15 @@ export default function OwnerSubscriptionsIndex({
     return (
         <>
             <Head title="Owner · Subscriptions" />
-            <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <OwnerPageHeader
-                    title="Subscriptions"
-                    description="Choose a company to manage modules, plans, renewals, and payments. Pricing is always calculated on the server."
-                    actions={
-                        <Button asChild variant="outline">
-                            <Link href={links.companies}>Companies</Link>
-                        </Button>
-                    }
-                />
-
+            <OwnerPageHeader
+                title="Subscriptions"
+                description="Choose a company to manage modules, plans, renewals, and payments. Pricing is always calculated on the server."
+                actions={
+                    <Button asChild variant="outline">
+                        <Link href={links.companies}>Companies</Link>
+                    </Button>
+                }
+            >
                 <form
                     onSubmit={applyFilters}
                     className="flex flex-col gap-3 sm:flex-row sm:items-end"
@@ -168,7 +166,7 @@ export default function OwnerSubscriptionsIndex({
                     Page {companies.meta.current_page} of{' '}
                     {companies.meta.last_page} · {companies.meta.total} total
                 </p>
-            </div>
+            </OwnerPageHeader>
         </>
     );
 }

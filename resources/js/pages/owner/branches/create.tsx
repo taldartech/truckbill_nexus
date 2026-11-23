@@ -6,7 +6,7 @@ import ShellEmptyState from '@/components/shell-empty-state';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
+import { CompanyOwnerPageShell } from '@/components/owner/owner-page-header';
 
 type MemberOption = {
     user_id: number;
@@ -89,26 +89,12 @@ export default function OwnerBranchesCreate({
     return (
         <>
             <Head title={`Create branch · ${company.name}`} />
-            <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="space-y-2">
-                        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                            Owner Panel · Create branch
-                        </p>
-                        <h1 className="text-2xl font-semibold tracking-tight">
-                            {company.name}
-                        </h1>
-                        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                            <WorkspaceStatusBadge status={company.status} />
-                            <span>Scope: {ownerPanelScope}</span>
-                            <span>
-                                Capacity {capacity.used_branches}/
-                                {capacity.branch_limit}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-
+            <CompanyOwnerPageShell
+                company={company}
+                ownerPanelScope={ownerPanelScope}
+                section="Create branch"
+                width="form"
+            >
                 {!canCreate ? (
                     <ShellEmptyState
                         title="Branch capacity reached"
@@ -281,7 +267,7 @@ export default function OwnerBranchesCreate({
                         )}
                     </Form>
                 )}
-            </div>
+            </CompanyOwnerPageShell>
         </>
     );
 }

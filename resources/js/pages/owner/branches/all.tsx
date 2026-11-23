@@ -11,6 +11,7 @@ import { WorkspaceContextAction } from '@/components/workspace-context-action';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { FormSection } from '@/components/form-section';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 
 type BranchRow = {
@@ -113,78 +114,77 @@ export default function OwnerBranchesAll({
     return (
         <>
             <Head title="Owner · Branches" />
-            <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <OwnerPageHeader
-                    title="Branches"
-                    description="Branches across every company you own."
-                    actions={
-                        <>
-                            <Button asChild variant="outline">
-                                <Link href={links.companies}>Companies</Link>
-                            </Button>
-                            {createSource?.urls.company_context &&
-                            createSource.urls.create_for_company ? (
-                                <WorkspaceContextAction
-                                    contextUrl={
-                                        createSource.urls.company_context
-                                    }
-                                    redirect={
-                                        createSource.urls.create_for_company
-                                    }
-                                    icon={Plus}
-                                    label="Create branch"
-                                />
-                            ) : null}
-                        </>
-                    }
-                />
-
-                <form
-                    onSubmit={applyFilters}
-                    className="grid gap-3 md:grid-cols-4"
-                >
-                    <div className="space-y-2 md:col-span-2">
-                        <Label htmlFor="q">Branch name</Label>
-                        <Input
-                            id="q"
-                            value={search}
-                            onChange={(event) => setSearch(event.target.value)}
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="company">Company</Label>
-                        <select
-                            id="company"
-                            value={company}
-                            onChange={(event) => setCompany(event.target.value)}
-                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
-                        >
-                            <option value="">All owned companies</option>
-                            {companyOptions.map((option) => (
-                                <option key={option.id} value={option.id}>
-                                    {option.name}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="status">Status</Label>
-                        <select
-                            id="status"
-                            value={status}
-                            onChange={(event) => setStatus(event.target.value)}
-                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
-                        >
-                            <option value="active">Active</option>
-                            <option value="inactive">Deactivated</option>
-                            <option value="all">All</option>
-                        </select>
-                    </div>
-                    <div className="md:col-span-4">
-                        <Button type="submit" variant="secondary">
-                            Apply filters
+            <OwnerPageHeader
+                title="Branches"
+                description="Branches across every company you own."
+                actions={
+                    <>
+                        <Button asChild variant="outline">
+                            <Link href={links.companies}>Companies</Link>
                         </Button>
-                    </div>
+                        {createSource?.urls.company_context &&
+                        createSource.urls.create_for_company ? (
+                            <WorkspaceContextAction
+                                contextUrl={createSource.urls.company_context}
+                                redirect={createSource.urls.create_for_company}
+                                icon={Plus}
+                                label="Create branch"
+                            />
+                        ) : null}
+                    </>
+                }
+            >
+                <form onSubmit={applyFilters}>
+                    <FormSection title="Filters" columns={2}>
+                        <div className="space-y-2 md:col-span-2">
+                            <Label htmlFor="q">Branch name</Label>
+                            <Input
+                                id="q"
+                                value={search}
+                                onChange={(event) =>
+                                    setSearch(event.target.value)
+                                }
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="company">Company</Label>
+                            <select
+                                id="company"
+                                value={company}
+                                onChange={(event) =>
+                                    setCompany(event.target.value)
+                                }
+                                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+                            >
+                                <option value="">All owned companies</option>
+                                {companyOptions.map((option) => (
+                                    <option key={option.id} value={option.id}>
+                                        {option.name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="status">Status</Label>
+                            <select
+                                id="status"
+                                value={status}
+                                onChange={(event) =>
+                                    setStatus(event.target.value)
+                                }
+                                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+                            >
+                                <option value="active">Active</option>
+                                <option value="inactive">Deactivated</option>
+                                <option value="all">All</option>
+                            </select>
+                        </div>
+                        <div className="md:col-span-2">
+                            <Button type="submit" variant="secondary">
+                                Apply filters
+                            </Button>
+                        </div>
+                    </FormSection>
                 </form>
 
                 <ResponsiveDataTable
@@ -201,6 +201,7 @@ export default function OwnerBranchesAll({
                                     icon={Eye}
                                     label="View or edit branch"
                                     href={branch.urls.show}
+                                    variant="info"
                                 />
                             ) : null}
                             {branch.urls.enter_branch_context ? (
@@ -224,7 +225,7 @@ export default function OwnerBranchesAll({
                     Page {branches.meta.current_page} of{' '}
                     {branches.meta.last_page} · {branches.meta.total} total
                 </p>
-            </div>
+            </OwnerPageHeader>
         </>
     );
 }

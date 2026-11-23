@@ -1,5 +1,6 @@
 import { Form, Head, Link } from '@inertiajs/react';
-import { Building2 } from 'lucide-react';
+import { Building2, Plus } from 'lucide-react';
+import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { enter } from '@/routes/workspace/companies';
@@ -25,30 +26,24 @@ export default function SelectCompany({
     return (
         <>
             <Head title={heading} />
-            <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 p-6">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="space-y-1">
-                        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                            {mode === 'owned'
-                                ? 'Owner Panel landing'
-                                : 'Workspace'}
-                        </p>
-                        <h1 className="text-2xl font-semibold tracking-tight">
-                            {heading}
-                        </h1>
-                        <p className="text-sm text-muted-foreground">
-                            {description}
-                        </p>
-                    </div>
-                    {canCreateCompany && links?.createCompany ? (
+            <PageShell
+                width="form"
+                title={heading}
+                description={description}
+                actions={
+                    canCreateCompany && links?.createCompany ? (
                         <Button asChild>
                             <Link href={links.createCompany}>
+                                <Plus className="size-4" />
                                 Create company
                             </Link>
                         </Button>
-                    ) : null}
-                </div>
-
+                    ) : null
+                }
+            >
+                <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                    {mode === 'owned' ? 'Owner Panel landing' : 'Workspace'}
+                </p>
                 <ul className="space-y-3" role="list">
                     {companies.map((company) => (
                         <li key={company.id}>
@@ -61,7 +56,7 @@ export default function SelectCompany({
                                         className="h-auto w-full justify-start gap-3 px-4 py-3 text-left"
                                     >
                                         <Building2
-                                            className="size-5 shrink-0"
+                                            className="size-5 shrink-0 text-[#2FB36F]"
                                             aria-hidden
                                         />
                                         <span className="min-w-0 flex-1">
@@ -83,7 +78,7 @@ export default function SelectCompany({
                         </li>
                     ))}
                 </ul>
-            </div>
+            </PageShell>
         </>
     );
 }

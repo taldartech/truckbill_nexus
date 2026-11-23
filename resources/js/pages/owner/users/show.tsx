@@ -2,6 +2,7 @@ import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 import OwnerUsersController from '@/actions/App/Http/Controllers/Owner/OwnerUsersController';
 import InputError from '@/components/input-error';
+import { OwnerPageHeader } from '@/components/owner/owner-page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -90,26 +91,11 @@ export default function OwnerUsersShow({
             <Head
                 title={`${membership.user.name ?? 'User'} · ${company.name}`}
             />
-            <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="space-y-2">
-                        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                            Owner Panel · Membership
-                        </p>
-                        <h1 className="text-2xl font-semibold tracking-tight">
-                            {membership.user.name}
-                            {membership.is_owner ? ' · Owner' : ''}
-                        </h1>
-                        <p className="text-sm text-muted-foreground">
-                            {membership.user.email}
-                        </p>
-                        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                            <WorkspaceStatusBadge status={membership.status} />
-                            <span>Scope: {ownerPanelScope}</span>
-                        </div>
-                    </div>
-                </div>
-
+            <OwnerPageHeader
+                title={`${membership.user.name ?? 'User'}${membership.is_owner ? ' · Owner' : ''}`}
+                description={`${membership.user.email ?? ''} · ${company.name} · Scope: ${ownerPanelScope}`}
+                actions={<WorkspaceStatusBadge status={membership.status} />}
+            >
                 {flash?.success ? (
                     <p
                         role="status"
@@ -402,7 +388,7 @@ export default function OwnerUsersShow({
                         <Link href={links.dashboard}>Owner Panel</Link>
                     </Button>
                 </div>
-            </div>
+            </OwnerPageHeader>
         </>
     );
 }

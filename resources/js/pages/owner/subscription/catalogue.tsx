@@ -1,10 +1,10 @@
 import { Form, Head, Link, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import InputError from '@/components/input-error';
+import { CompanyOwnerPageShell } from '@/components/owner/owner-page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { pricingBreakdownRows } from '@/lib/pricing-breakdown-labels';
 
 type Plan = {
@@ -43,6 +43,7 @@ type Props = {
 
 export default function SubscriptionCatalogue({
     company,
+    ownerPanelScope,
     canManage,
     catalogue,
     plans,
@@ -95,21 +96,15 @@ export default function SubscriptionCatalogue({
     return (
         <>
             <Head title={`Catalogue · ${company.name}`} />
-            <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <div className="flex flex-col gap-4 lg:flex-row lg:justify-between">
-                    <div className="space-y-2">
-                        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                            Owner Panel · Catalogue & pricing
-                        </p>
-                        <h1 className="text-2xl font-semibold tracking-tight">
-                            Pricing calculator
-                        </h1>
-                        <WorkspaceStatusBadge status={company.status} />
-                        <p className="text-sm text-muted-foreground">
-                            Server-calculated totals only. {gst_note}
-                        </p>
-                    </div>
-                </div>
+            <CompanyOwnerPageShell
+                company={company}
+                ownerPanelScope={ownerPanelScope}
+                section="Catalogue & pricing"
+            >
+                <p className="text-sm text-muted-foreground">
+                    Pricing calculator — server-calculated totals only.{' '}
+                    {gst_note}
+                </p>
                 {flash?.success ? (
                     <p
                         role="status"
@@ -379,7 +374,7 @@ export default function SubscriptionCatalogue({
                         </aside>
                     </div>
                 )}
-            </div>
+            </CompanyOwnerPageShell>
         </>
     );
 }

@@ -7,8 +7,8 @@ import {
     Users,
 } from 'lucide-react';
 import { OwnerPageHeader } from '@/components/owner/owner-page-header';
-import { SummaryCard } from '@/components/owner/summary-card';
 import { Button } from '@/components/ui/button';
+import { MetricCard } from '@/components/ui/metric-card';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 
 type CompanyCard = {
@@ -70,60 +70,54 @@ export default function OwnerHome({
     return (
         <>
             <Head title="Owner · Dashboard" />
-            <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6 lg:p-8">
-                <OwnerPageHeader
-                    title={`${greeting}, ${owner_name}`}
-                    description="Health of your owned companies — open any company for settings, users, or billing."
-                    actions={
-                        <>
-                            <Button asChild variant="outline">
-                                <Link href={links.companies}>
-                                    All companies
-                                </Link>
-                            </Button>
-                            <Button asChild>
-                                <Link
-                                    href={links.create_company}
-                                    aria-label="Create a new company"
-                                >
-                                    Create company
-                                </Link>
-                            </Button>
-                        </>
-                    }
-                />
-
+            <OwnerPageHeader
+                title={`${greeting}, ${owner_name}`}
+                description="Health of your owned companies — open any company for settings, users, or billing."
+                actions={
+                    <>
+                        <Button asChild variant="outline">
+                            <Link href={links.companies}>All companies</Link>
+                        </Button>
+                        <Button asChild>
+                            <Link
+                                href={links.create_company}
+                                aria-label="Create a new company"
+                            >
+                                Create company
+                            </Link>
+                        </Button>
+                    </>
+                }
+            >
                 <section
                     aria-label="Summary"
                     className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
                 >
-                    <SummaryCard
+                    <MetricCard
                         label="Companies"
                         value={totals.companies}
                         hint={`${totals.active_companies} active`}
                         icon={Building2}
-                        tone="info"
+                        tone="blue"
                     />
-                    <SummaryCard
+                    <MetricCard
                         label="Branches"
                         value={totals.branches}
                         icon={GitBranch}
-                        tone="default"
+                        tone="green"
                     />
-                    <SummaryCard
+                    <MetricCard
                         label="Active subscriptions"
                         value={totals.active_subscriptions}
                         icon={CreditCard}
-                        tone="success"
+                        tone="green"
                     />
-                    <SummaryCard
+                    <MetricCard
                         label="Needs attention"
                         value={totals.trial_or_attention}
                         icon={TriangleAlert}
                         tone={
-                            totals.trial_or_attention > 0
-                                ? 'warning'
-                                : 'default'
+                            totals.trial_or_attention > 0 ? 'amber' : 'neutral'
                         }
                     />
                 </section>
@@ -148,7 +142,7 @@ export default function OwnerHome({
                             {companies.map((company) => (
                                 <div
                                     key={company.id}
-                                    className="rounded-xl border border-border bg-card p-4 shadow-sm"
+                                    className="rounded-xl border border-border bg-card p-4 shadow-xs"
                                 >
                                     <div className="min-w-0 space-y-1">
                                         <p className="truncate font-semibold">
@@ -176,7 +170,7 @@ export default function OwnerHome({
                                         <Button
                                             asChild
                                             size="sm"
-                                            variant="secondary"
+                                            variant="info"
                                         >
                                             <Link href={company.urls.dashboard}>
                                                 Open
@@ -223,7 +217,7 @@ export default function OwnerHome({
                                 Subscriptions
                             </Link>
                         </div>
-                        <div className="rounded-xl border border-border bg-card shadow-sm">
+                        <div className="rounded-xl border border-border bg-card shadow-xs">
                             {attention.length === 0 ? (
                                 <p className="p-4 text-sm text-muted-foreground">
                                     No subscription or lifecycle items need
@@ -271,7 +265,7 @@ export default function OwnerHome({
                         </div>
                     </section>
                 </div>
-            </div>
+            </OwnerPageHeader>
         </>
     );
 }

@@ -1,4 +1,5 @@
 import { Form, Head, Link, router, usePage } from '@inertiajs/react';
+import { OwnerPageHeader } from '@/components/owner/owner-page-header';
 import { useMemo, useState } from 'react';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -187,58 +188,38 @@ export default function DraftEdit({
     return (
         <>
             <Head title={`Configure subscription · ${company.name}`} />
-            <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <div className="space-y-3">
-                    <nav
-                        aria-label="Breadcrumb"
-                        className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
-                    >
-                        <Link href="/management" className="hover:underline">
-                            Owner Panel
-                        </Link>
-                        <span aria-hidden>/</span>
-                        <Link
-                            href="/management/subscriptions"
-                            className="hover:underline"
-                        >
-                            Subscriptions
-                        </Link>
-                        <span aria-hidden>/</span>
-                        <Link href={links.overview} className="hover:underline">
-                            {company.name}
-                        </Link>
-                        <span aria-hidden>/</span>
-                        <span className="text-foreground">Configure</span>
-                    </nav>
-                    <div className="space-y-2">
-                        <h1 className="text-2xl font-semibold tracking-tight">
-                            Configure subscription — {company.name}
-                        </h1>
-                        <p className="text-sm text-muted-foreground">
-                            {edit_note} Catalogue locked: {catalogue.name} (
-                            {catalogue.code}).
-                        </p>
-                    </div>
-                    <ol className="flex flex-wrap gap-2">
-                        {STEPS.map((label, index) => (
-                            <li key={label}>
-                                <button
-                                    type="button"
-                                    onClick={() => setStep(index)}
-                                    className={`rounded-full border px-3 py-1 text-xs font-medium ${
-                                        index === step
-                                            ? 'border-primary bg-primary/10 text-primary'
-                                            : index < step
-                                              ? 'border-border bg-muted/40'
-                                              : 'border-border text-muted-foreground'
-                                    }`}
-                                >
-                                    {index + 1}. {label}
-                                </button>
-                            </li>
-                        ))}
-                    </ol>
-                </div>
+            <OwnerPageHeader
+                title={`Configure subscription — ${company.name}`}
+                description={`${edit_note} Catalogue locked: ${catalogue.name} (${catalogue.code}).`}
+                breadcrumbs={[
+                    { label: 'Owner Panel', href: '/management' },
+                    {
+                        label: 'Subscriptions',
+                        href: '/management/subscriptions',
+                    },
+                    { label: company.name, href: links.overview },
+                    { label: 'Configure' },
+                ]}
+            >
+                <ol className="flex flex-wrap gap-2">
+                    {STEPS.map((label, index) => (
+                        <li key={label}>
+                            <button
+                                type="button"
+                                onClick={() => setStep(index)}
+                                className={`rounded-full border px-3 py-1 text-xs font-medium ${
+                                    index === step
+                                        ? 'border-primary bg-primary/10 text-primary'
+                                        : index < step
+                                          ? 'border-border bg-muted/40'
+                                          : 'border-border text-muted-foreground'
+                                }`}
+                            >
+                                {index + 1}. {label}
+                            </button>
+                        </li>
+                    ))}
+                </ol>
 
                 {flash?.success ? (
                     <p
@@ -762,7 +743,7 @@ export default function DraftEdit({
                         ) : null}
                     </aside>
                 </div>
-            </div>
+            </OwnerPageHeader>
         </>
     );
 }

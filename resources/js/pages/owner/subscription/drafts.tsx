@@ -1,4 +1,5 @@
 import { Head, Link, usePage } from '@inertiajs/react';
+import { CompanyOwnerPageShell } from '@/components/owner/owner-page-header';
 import ShellEmptyState from '@/components/shell-empty-state';
 import { Button } from '@/components/ui/button';
 import { pricingBreakdownRows } from '@/lib/pricing-breakdown-labels';
@@ -31,6 +32,7 @@ type Props = {
 
 export default function SubscriptionDrafts({
     company,
+    ownerPanelScope,
     canManage,
     drafts,
     activation_note,
@@ -41,20 +43,14 @@ export default function SubscriptionDrafts({
     return (
         <>
             <Head title={`Drafts · ${company.name}`} />
-            <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <div className="flex flex-col gap-4 lg:flex-row lg:justify-between">
-                    <div className="space-y-2">
-                        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                            Owner Panel · Draft contracts
-                        </p>
-                        <h1 className="text-2xl font-semibold tracking-tight">
-                            Draft contracts
-                        </h1>
-                        <p className="text-sm text-muted-foreground">
-                            {activation_note}
-                        </p>
-                    </div>
-                </div>
+            <CompanyOwnerPageShell
+                company={company}
+                ownerPanelScope={ownerPanelScope}
+                section="Draft contracts"
+            >
+                <p className="text-sm text-muted-foreground">
+                    {activation_note}
+                </p>
                 {flash?.success ? (
                     <p
                         role="status"
@@ -162,7 +158,7 @@ export default function SubscriptionDrafts({
                         })}
                     </ul>
                 )}
-            </div>
+            </CompanyOwnerPageShell>
         </>
     );
 }

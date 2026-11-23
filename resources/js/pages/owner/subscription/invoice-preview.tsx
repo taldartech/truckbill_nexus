@@ -1,4 +1,5 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { CompanyOwnerPageShell } from '@/components/owner/owner-page-header';
 import { Button } from '@/components/ui/button';
 
 type Props = {
@@ -46,18 +47,15 @@ export default function InvoicePreview({
     return (
         <>
             <Head title={`Invoice ${number} · ${company.name}`} />
-            <div className="mx-auto flex max-w-3xl flex-col gap-6 p-4 md:p-8">
-                <div className="space-y-2">
-                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                        Owner Panel · Invoice preview
-                    </p>
-                    <h1 className="text-2xl font-semibold tracking-tight">
-                        {number}
-                    </h1>
-                    <p className="text-sm text-muted-foreground">
-                        {company.name} · Scope: {ownerPanelScope}
-                    </p>
-                </div>
+            <CompanyOwnerPageShell
+                company={company}
+                ownerPanelScope={ownerPanelScope}
+                section="Invoice preview"
+                width="form"
+            >
+                <h2 className="text-lg font-semibold tracking-tight">
+                    {number}
+                </h2>
                 <p
                     role="status"
                     className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm"
@@ -164,7 +162,7 @@ export default function InvoicePreview({
                         </tfoot>
                     </table>
                 </section>
-            </div>
+            </CompanyOwnerPageShell>
         </>
     );
 }

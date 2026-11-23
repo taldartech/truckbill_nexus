@@ -4,6 +4,7 @@ import {
     ResponsiveDataTable,
     type DataTableColumn,
 } from '@/components/data-table';
+import { CompanyOwnerPageShell } from '@/components/owner/owner-page-header';
 import { Button } from '@/components/ui/button';
 import { formatDisplayDateSmart } from '@/lib/dates';
 
@@ -44,6 +45,7 @@ type Props = {
 
 export default function SubscriptionCredits({
     company,
+    ownerPanelScope,
     ledgers,
     entries,
     quotas,
@@ -84,20 +86,14 @@ export default function SubscriptionCredits({
     return (
         <>
             <Head title={`Credits · ${company.name}`} />
-            <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <div className="flex flex-col gap-4 lg:flex-row lg:justify-between">
-                    <div className="space-y-2">
-                        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                            Owner Panel · Credits & quotas
-                        </p>
-                        <h1 className="text-2xl font-semibold tracking-tight">
-                            Credits & quotas
-                        </h1>
-                        <p className="text-sm text-muted-foreground">
-                            {presentation_note}
-                        </p>
-                    </div>
-                </div>
+            <CompanyOwnerPageShell
+                company={company}
+                ownerPanelScope={ownerPanelScope}
+                section="Credits & quotas"
+            >
+                <p className="text-sm text-muted-foreground">
+                    {presentation_note}
+                </p>
                 <Button asChild variant="outline" className="self-start">
                     <Link href={links.overview}>Back to overview</Link>
                 </Button>
@@ -170,7 +166,7 @@ export default function SubscriptionCredits({
                         emptyDescription="Credit ledger movements will appear here."
                     />
                 </section>
-            </div>
+            </CompanyOwnerPageShell>
         </>
     );
 }

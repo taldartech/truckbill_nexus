@@ -4,6 +4,7 @@ import {
     ResponsiveDataTable,
     type DataTableColumn,
 } from '@/components/data-table';
+import { CompanyOwnerPageShell } from '@/components/owner/owner-page-header';
 import { Button } from '@/components/ui/button';
 import { formatDisplayDateSmart } from '@/lib/dates';
 
@@ -76,18 +77,11 @@ export default function SubscriptionPayments({
     return (
         <>
             <Head title={`Payments · ${company.name}`} />
-            <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <div className="space-y-2">
-                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                        Owner Panel · Payment history
-                    </p>
-                    <h1 className="text-2xl font-semibold tracking-tight">
-                        {company.name}
-                    </h1>
-                    <p className="text-sm text-muted-foreground">
-                        Scope: {ownerPanelScope}
-                    </p>
-                </div>
+            <CompanyOwnerPageShell
+                company={company}
+                ownerPanelScope={ownerPanelScope}
+                section="Payment history"
+            >
                 <p className="text-sm text-muted-foreground">{gate_note}</p>
                 <Button asChild variant="outline" className="w-fit">
                     <Link href={links.overview}>Back to subscription</Link>
@@ -100,7 +94,7 @@ export default function SubscriptionPayments({
                     emptyTitle="No payment intents recorded"
                     emptyDescription="Payment attempts for this company will appear here."
                 />
-            </div>
+            </CompanyOwnerPageShell>
         </>
     );
 }

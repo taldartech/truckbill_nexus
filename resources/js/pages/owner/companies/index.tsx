@@ -160,24 +160,22 @@ export default function OwnerCompaniesIndex({
     return (
         <>
             <Head title="Management · Companies" />
-            <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <OwnerPageHeader
-                    title="Companies"
-                    description="Manage every company you own from one list — open settings, users, branches, or billing directly."
-                    actions={
-                        <AppIconAction
-                            icon={Plus}
-                            label="Create company"
-                            href={links.create}
-                            variant="default"
-                            size="default"
-                            className="gap-2 px-3"
-                        >
-                            <span className="text-sm font-medium">Create</span>
-                        </AppIconAction>
-                    }
-                />
-
+            <OwnerPageHeader
+                title="Companies"
+                description="Manage every company you own from one list — open settings, users, branches, or billing directly."
+                actions={
+                    <AppIconAction
+                        icon={Plus}
+                        label="Create company"
+                        href={links.create}
+                        variant="default"
+                        size="default"
+                        className="gap-2 px-3"
+                    >
+                        <span className="text-sm font-medium">Create</span>
+                    </AppIconAction>
+                }
+            >
                 <form
                     onSubmit={applyFilters}
                     className="flex flex-col gap-3 sm:flex-row sm:items-end"
@@ -271,7 +269,7 @@ export default function OwnerCompaniesIndex({
                     Page {companies.meta.current_page} of{' '}
                     {companies.meta.last_page} · {companies.meta.total} total
                 </p>
-            </div>
+            </OwnerPageHeader>
         </>
     );
 }

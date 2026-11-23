@@ -2,6 +2,7 @@ import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import OwnerBranchesController from '@/actions/App/Http/Controllers/Owner/OwnerBranchesController';
 import InputError from '@/components/input-error';
+import { OwnerPageHeader } from '@/components/owner/owner-page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -78,23 +79,11 @@ export default function OwnerBranchesShow({
     return (
         <>
             <Head title={`${branch.name} · Branches`} />
-            <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="space-y-2">
-                        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                            Owner Panel · Branch detail
-                        </p>
-                        <h1 className="text-2xl font-semibold tracking-tight">
-                            {branch.name}
-                        </h1>
-                        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                            <WorkspaceStatusBadge status={branch.status} />
-                            <span>{company.name}</span>
-                            <span>Scope: {ownerPanelScope}</span>
-                        </div>
-                    </div>
-                </div>
-
+            <OwnerPageHeader
+                title={branch.name}
+                description={`${company.name} · Branch detail · Scope: ${ownerPanelScope}`}
+                actions={<WorkspaceStatusBadge status={branch.status} />}
+            >
                 {flash?.success ? (
                     <p
                         role="status"
@@ -324,7 +313,7 @@ export default function OwnerBranchesShow({
                         )}
                     </section>
                 ) : null}
-            </div>
+            </OwnerPageHeader>
         </>
     );
 }

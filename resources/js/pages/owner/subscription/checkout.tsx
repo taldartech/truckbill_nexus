@@ -1,5 +1,6 @@
 import { Form, Head, Link, router, usePage } from '@inertiajs/react';
 import { useEffect, useRef, useState } from 'react';
+import { CompanyOwnerPageShell } from '@/components/owner/owner-page-header';
 import { Button } from '@/components/ui/button';
 
 type Props = {
@@ -215,18 +216,11 @@ export default function SubscriptionCheckout({
     return (
         <>
             <Head title={`Checkout · ${company.name}`} />
-            <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <div className="space-y-2">
-                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                        Owner Panel · Checkout
-                    </p>
-                    <h1 className="text-2xl font-semibold tracking-tight">
-                        {company.name}
-                    </h1>
-                    <p className="text-sm text-muted-foreground">
-                        Scope: {ownerPanelScope}
-                    </p>
-                </div>
+            <CompanyOwnerPageShell
+                company={company}
+                ownerPanelScope={ownerPanelScope}
+                section="Checkout"
+            >
                 <p
                     role="status"
                     className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm font-medium"
@@ -342,7 +336,7 @@ export default function SubscriptionCheckout({
                         RAZORPAY_WEBHOOK_SECRET (Test Mode only).
                     </p>
                 ) : null}
-            </div>
+            </CompanyOwnerPageShell>
         </>
     );
 }

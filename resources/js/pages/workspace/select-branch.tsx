@@ -1,5 +1,6 @@
 import { Form, Head } from '@inertiajs/react';
 import { MapPin } from 'lucide-react';
+import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { enter } from '@/routes/workspace/branches';
@@ -19,20 +20,15 @@ export default function SelectBranch({ company, branches }: SelectBranchProps) {
     return (
         <>
             <Head title="Select branch" />
-            <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-6 p-6">
-                <div className="space-y-1">
-                    <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                        Step 2 of 2 · Branch
-                    </p>
-                    <h1 className="text-2xl font-semibold tracking-tight">
-                        Select a branch
-                    </h1>
-                    <p className="text-sm text-muted-foreground">
-                        Company {company.name}{' '}
-                        <WorkspaceStatusBadge status={company.status} />
-                    </p>
-                </div>
-
+            <PageShell
+                width="form"
+                title="Select a branch"
+                description={`Company ${company.name}`}
+                actions={<WorkspaceStatusBadge status={company.status} />}
+            >
+                <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                    Step 2 of 2 · Branch
+                </p>
                 <ul className="space-y-3" role="list">
                     {branches.map((branch) => (
                         <li key={branch.id}>
@@ -50,7 +46,7 @@ export default function SelectBranch({ company, branches }: SelectBranchProps) {
                                         className="h-auto w-full justify-start gap-3 px-4 py-3 text-left"
                                     >
                                         <MapPin
-                                            className="size-5 shrink-0"
+                                            className="size-5 shrink-0 text-[#2D8CFF]"
                                             aria-hidden
                                         />
                                         <span className="min-w-0 flex-1">
@@ -69,7 +65,7 @@ export default function SelectBranch({ company, branches }: SelectBranchProps) {
                         </li>
                     ))}
                 </ul>
-            </div>
+            </PageShell>
         </>
     );
 }

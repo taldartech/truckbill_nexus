@@ -4,13 +4,14 @@ import {
     CreditCard,
     FileSearch,
     GitBranch,
+    LogIn,
     Settings,
     Users,
 } from 'lucide-react';
-import type { ReactNode } from 'react';
 import { OwnerPageHeader } from '@/components/owner/owner-page-header';
 import ShellEmptyState from '@/components/shell-empty-state';
 import { Button } from '@/components/ui/button';
+import { MetricCard } from '@/components/ui/metric-card';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import type { WorkspaceBranch } from '@/types/workspace';
 
@@ -46,30 +47,53 @@ export default function OwnerDashboard({
     return (
         <>
             <Head title={`Owner Panel · ${company.name}`} />
-            <div className="flex h-full flex-1 flex-col gap-6 overflow-x-auto p-4 md:p-6 lg:p-8">
-                <OwnerPageHeader
-                    title={company.name}
-                    description={`Owner scope: ${ownerPanelScope}`}
-                    breadcrumbs={[
-                        { label: 'Companies', href: '/owner/companies' },
-                        { label: company.name },
-                    ]}
-                    actions={
-                        <>
-                            <WorkspaceStatusBadge status={company.status} />
-                            {links.create_company ? (
-                                <Button asChild>
-                                    <Link
-                                        href={links.create_company}
-                                        aria-label="Create a new company"
-                                    >
-                                        Create company
-                                    </Link>
-                                </Button>
-                            ) : null}
-                        </>
-                    }
-                />
+            <OwnerPageHeader
+                title={company.name}
+                description={`Owner scope: ${ownerPanelScope}`}
+                breadcrumbs={[
+                    { label: 'Companies', href: '/owner/companies' },
+                    { label: company.name },
+                ]}
+                actions={
+                    <>
+                        <WorkspaceStatusBadge status={company.status} />
+                        {links.create_company ? (
+                            <Button asChild>
+                                <Link
+                                    href={links.create_company}
+                                    aria-label="Create a new company"
+                                >
+                                    Create company
+                                </Link>
+                            </Button>
+                        ) : null}
+                    </>
+                }
+            >
+                <section
+                    aria-label="Company overview"
+                    className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+                >
+                    <MetricCard
+                        label="Accessible branches"
+                        value={branches.length}
+                        icon={GitBranch}
+                        tone="green"
+                    />
+                    <MetricCard
+                        label="Subscription"
+                        value={subscription.presentation}
+                        hint={subscription.message}
+                        icon={CreditCard}
+                        tone="blue"
+                    />
+                    <MetricCard
+                        label="Company status"
+                        value={company.status.replaceAll('_', ' ')}
+                        icon={Building2}
+                        tone={company.status === 'active' ? 'green' : 'neutral'}
+                    />
+                </section>
 
                 {isDeactivated ? (
                     <div
@@ -85,79 +109,50 @@ export default function OwnerDashboard({
                     aria-label="Administration shortcuts"
                     className="grid gap-4 md:grid-cols-2 xl:grid-cols-3"
                 >
-                    <PanelCard
+                    <NavTile
                         icon={GitBranch}
                         title="Branches"
                         body={
                             isDeactivated
                                 ? 'Branch entry is blocked while the company is deactivated.'
-                                : `${branches.length} accessible branch${branches.length === 1 ? '' : 'es'}. Create, edit, and deactivate from Branches.`
+                                : 'Create, edit, and deactivate branches.'
                         }
-                        action={
-                            <Button asChild variant="secondary" size="sm">
-                                <Link href={links.branches}>
-                                    Manage branches
-                                </Link>
-                            </Button>
-                        }
+                        href={links.branches}
+                        disabled={isDeactivated}
                     />
-                    <PanelCard
+                    <NavTile
                         icon={Users}
                         title="Users & memberships"
                         body="Invite users, review memberships, assign branch access and Customer roles."
-                        action={
-                            <Button asChild variant="secondary" size="sm">
-                                <Link href={links.users}>Open users</Link>
-                            </Button>
-                        }
+                        href={links.users}
                     />
-                    <PanelCard
+                    <NavTile
                         icon={Settings}
                         title="Company settings"
-                        body="Update approved company profile fields including legal, tax, GST, visibility, and contact details."
-                        action={
-                            <Button asChild variant="secondary" size="sm">
-                                <Link href={links.settings}>Open settings</Link>
-                            </Button>
-                        }
+                        body="Update legal, tax, GST, visibility, and contact details."
+                        href={links.settings}
                     />
-                    <PanelCard
+                    <NavTile
                         icon={FileSearch}
                         title="Company audit"
                         body="Read-only company activity history with search and pagination."
-                        action={
-                            <Button asChild variant="secondary" size="sm">
-                                <Link href={links.audit}>Open audit</Link>
-                            </Button>
-                        }
+                        href={links.audit}
                     />
-                    <PanelCard
+                    <NavTile
                         icon={CreditCard}
                         title="Subscription & billing"
                         body={subscription.message}
-                        action={
-                            <Button asChild variant="secondary" size="sm">
-                                <Link href={links.subscription}>
-                                    Open subscription
-                                </Link>
-                            </Button>
-                        }
-                    />
-                    <PanelCard
-                        icon={Building2}
-                        title="Company snapshot"
-                        body={`Identity and status for ${company.name}.`}
+                        href={links.subscription}
                     />
                 </section>
 
                 {!isDeactivated && links.select_branch ? (
-                    <div>
-                        <Button asChild>
-                            <Link href={links.select_branch}>
-                                Enter Branch Panel
-                            </Link>
-                        </Button>
-                    </div>
+                    <Button asChild variant="info">
+                        <Link href={links.select_branch}>
+                            <LogIn className="size-4" />
+                            Enter Branch Panel
+                        </Link>
+                    </Button>
                 ) : null}
 
                 {branches.length === 0 && !isDeactivated ? (
@@ -171,30 +166,42 @@ export default function OwnerDashboard({
                         }
                     />
                 ) : null}
-            </div>
+            </OwnerPageHeader>
         </>
     );
 }
 
-function PanelCard({
+function NavTile({
     icon: Icon,
     title,
     body,
-    action,
+    href,
+    disabled = false,
 }: {
-    icon: typeof Building2;
+    icon: typeof GitBranch;
     title: string;
     body: string;
-    action?: ReactNode;
+    href: string;
+    disabled?: boolean;
 }) {
     return (
-        <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
+        <div className="flex flex-col rounded-xl border border-border bg-card p-4 shadow-xs">
             <div className="mb-3 flex items-center gap-2">
-                <Icon className="size-4 text-muted-foreground" aria-hidden />
+                <Icon className="size-4 text-[#2FB36F]" aria-hidden />
                 <h2 className="font-medium">{title}</h2>
             </div>
-            <p className="text-sm text-muted-foreground">{body}</p>
-            {action ? <div className="mt-4">{action}</div> : null}
+            <p className="flex-1 text-sm text-muted-foreground">{body}</p>
+            <div className="mt-4">
+                {disabled ? (
+                    <Button variant="outline" size="sm" disabled>
+                        Unavailable
+                    </Button>
+                ) : (
+                    <Button asChild variant="info" size="sm">
+                        <Link href={href}>Open</Link>
+                    </Button>
+                )}
+            </div>
         </div>
     );
 }

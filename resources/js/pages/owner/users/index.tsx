@@ -6,6 +6,7 @@ import ShellEmptyState from '@/components/shell-empty-state';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { CompanyOwnerPageShell } from '@/components/owner/owner-page-header';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 
 type MembershipRow = {
@@ -81,22 +82,11 @@ export default function OwnerUsersIndex({
     return (
         <>
             <Head title={`Users · ${company.name}`} />
-            <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="space-y-2">
-                        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                            Owner Panel · Users & memberships
-                        </p>
-                        <h1 className="text-2xl font-semibold tracking-tight">
-                            {company.name}
-                        </h1>
-                        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                            <WorkspaceStatusBadge status={company.status} />
-                            <span>Scope: {ownerPanelScope}</span>
-                        </div>
-                    </div>
-                </div>
-
+            <CompanyOwnerPageShell
+                company={company}
+                ownerPanelScope={ownerPanelScope}
+                section="Users & memberships"
+            >
                 {flash?.success ? (
                     <p
                         role="status"
@@ -334,7 +324,7 @@ export default function OwnerUsersIndex({
                         <Link href={links.dashboard}>Back to Owner Panel</Link>
                     </Button>
                 </div>
-            </div>
+            </CompanyOwnerPageShell>
         </>
     );
 }

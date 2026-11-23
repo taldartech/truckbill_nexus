@@ -1,4 +1,5 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { OwnerPageHeader } from '@/components/owner/owner-page-header';
 import ShellEmptyState from '@/components/shell-empty-state';
 import { Button } from '@/components/ui/button';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
@@ -138,64 +139,44 @@ export default function SubscriptionOverview({
     return (
         <>
             <Head title={`Subscription — ${company.name}`} />
-            <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <div className="space-y-3">
-                    <nav
-                        aria-label="Breadcrumb"
-                        className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground"
-                    >
-                        <Link
-                            href={links.dashboard}
-                            className="hover:underline"
-                        >
-                            Owner Panel
-                        </Link>
-                        <span aria-hidden>/</span>
-                        <Link
-                            href="/management/subscriptions"
-                            className="hover:underline"
-                        >
-                            Subscriptions
-                        </Link>
-                        <span aria-hidden>/</span>
-                        <span className="text-foreground">{company.name}</span>
-                    </nav>
-                    <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                        <div className="space-y-2">
-                            <h1 className="text-2xl font-semibold tracking-tight">
-                                Subscription — {company.name}
-                            </h1>
-                            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                                <WorkspaceStatusBadge status={company.status} />
-                                <span className="rounded-md border border-border px-2 py-0.5 text-xs">
-                                    {lifecycle.status.replaceAll('_', ' ')}
-                                </span>
-                                {uniqueModules.length > 0 ? (
-                                    <span className="text-xs">
-                                        Modules:{' '}
-                                        {uniqueModules
-                                            .map((module) =>
-                                                module.replaceAll('_', ' '),
-                                            )
-                                            .join(', ')}
-                                    </span>
-                                ) : null}
-                            </div>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                            <Button asChild variant="outline">
-                                <Link href="/management/subscriptions">
-                                    Back to Subscriptions
-                                </Link>
-                            </Button>
-                            <Button asChild variant="outline">
-                                <Link href="/management/companies">
-                                    View Company
-                                </Link>
-                            </Button>
-                        </div>
-                    </div>
-                </div>
+            <OwnerPageHeader
+                title={`Subscription — ${company.name}`}
+                description={`Scope: ${ownerPanelScope}`}
+                breadcrumbs={[
+                    { label: 'Owner Panel', href: links.dashboard },
+                    {
+                        label: 'Subscriptions',
+                        href: '/management/subscriptions',
+                    },
+                    { label: company.name },
+                ]}
+                actions={
+                    <>
+                        <WorkspaceStatusBadge status={company.status} />
+                        <span className="rounded-md border border-border px-2 py-0.5 text-xs">
+                            {lifecycle.status.replaceAll('_', ' ')}
+                        </span>
+                        <Button asChild variant="outline">
+                            <Link href="/management/subscriptions">
+                                Back to Subscriptions
+                            </Link>
+                        </Button>
+                        <Button asChild variant="outline">
+                            <Link href="/management/companies">
+                                View Company
+                            </Link>
+                        </Button>
+                    </>
+                }
+            >
+                {uniqueModules.length > 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                        Modules:{' '}
+                        {uniqueModules
+                            .map((module) => module.replaceAll('_', ' '))
+                            .join(', ')}
+                    </p>
+                ) : null}
                 {flash?.success ? (
                     <p
                         role="status"
@@ -650,7 +631,7 @@ export default function SubscriptionOverview({
                         </ul>
                     )}
                 </section>
-            </div>
+            </OwnerPageHeader>
         </>
     );
 }

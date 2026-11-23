@@ -7,7 +7,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { formatDisplayDateSmart } from '@/lib/dates';
-import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
+import { CompanyOwnerPageShell } from '@/components/owner/owner-page-header';
 
 type AuditEntryRow = {
     id: number;
@@ -104,26 +104,11 @@ export default function OwnerAudit({
     return (
         <>
             <Head title={`Audit · ${company.name}`} />
-            <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6">
-                <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="space-y-2">
-                        <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                            Owner Panel · Company audit
-                        </p>
-                        <h1 className="text-2xl font-semibold tracking-tight">
-                            {company.name}
-                        </h1>
-                        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-                            <WorkspaceStatusBadge status={company.status} />
-                            <span>Scope: {ownerPanelScope}</span>
-                        </div>
-                        <p className="text-sm text-muted-foreground">
-                            Read-only activity history. Audit records cannot be
-                            edited or deleted.
-                        </p>
-                    </div>
-                </div>
-
+            <CompanyOwnerPageShell
+                company={company}
+                ownerPanelScope={ownerPanelScope}
+                section="Company audit"
+            >
                 <form
                     onSubmit={applyFilters}
                     className="flex flex-col gap-3 sm:flex-row sm:items-end"
@@ -186,7 +171,7 @@ export default function OwnerAudit({
                         <Link href={links.dashboard}>Back to Owner Panel</Link>
                     </Button>
                 </div>
-            </div>
+            </CompanyOwnerPageShell>
         </>
     );
 }

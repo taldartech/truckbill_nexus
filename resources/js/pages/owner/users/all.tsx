@@ -111,17 +111,15 @@ export default function OwnerUsersAll({
     return (
         <>
             <Head title="Owner · Users" />
-            <div className="flex h-full flex-1 flex-col gap-6 p-4 md:p-6 lg:p-8">
-                <OwnerPageHeader
-                    title="Users"
-                    description="Memberships across every company you own. Open a row to manage invitations, roles, and branches."
-                    actions={
-                        <Button asChild variant="outline">
-                            <Link href={links.companies}>Companies</Link>
-                        </Button>
-                    }
-                />
-
+            <OwnerPageHeader
+                title="Users"
+                description="Memberships across every company you own. Open a row to manage invitations, roles, and branches."
+                actions={
+                    <Button asChild variant="outline">
+                        <Link href={links.companies}>Companies</Link>
+                    </Button>
+                }
+            >
                 <form
                     onSubmit={applyFilters}
                     className="grid gap-3 rounded-xl border border-border bg-card p-4 md:grid-cols-4"
@@ -197,7 +195,7 @@ export default function OwnerUsersAll({
                     {memberships.meta.last_page} · {memberships.meta.total}{' '}
                     total
                 </p>
-            </div>
+            </OwnerPageHeader>
         </>
     );
 }
