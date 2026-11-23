@@ -1,5 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
-import { CompanySwitcher } from '@/components/company-switcher';
+import { LayoutDashboard, Settings } from 'lucide-react';
+import { AppIconAction } from '@/components/app-icon-action';
 import ShellEmptyState from '@/components/shell-empty-state';
 import { Button } from '@/components/ui/button';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
@@ -12,6 +13,7 @@ type BranchDashboardProps = {
     modules: Array<{ key: string; label: string; href: string }>;
     siblingBranches: WorkspaceBranch[];
     links: {
+        dashboard: string;
         settings: string;
         owner_panel: string | null;
         select_branch: string | null;
@@ -21,7 +23,6 @@ type BranchDashboardProps = {
 export default function BranchDashboard({
     company,
     branch,
-    isOwner,
     modules,
     links,
 }: BranchDashboardProps) {
@@ -43,32 +44,31 @@ export default function BranchDashboard({
                             <WorkspaceStatusBadge status={branch.status} />
                         </div>
                     </div>
-                    <div className="flex w-full max-w-sm flex-col gap-2">
-                        <CompanySwitcher />
-                        {isOwner && links.owner_panel ? (
-                            <Button asChild variant="secondary">
-                                <Link href={links.owner_panel}>
-                                    Return to Owner Panel
-                                </Link>
-                            </Button>
-                        ) : null}
-                    </div>
                 </div>
 
                 <nav
                     aria-label="Branch navigation"
                     className="flex flex-wrap gap-2"
                 >
-                    <Button asChild size="sm" variant="secondary">
-                        <Link
-                            href={`/branch/companies/${company.id}/branches/${branch.id}`}
-                        >
-                            Dashboard
-                        </Link>
-                    </Button>
-                    <Button asChild size="sm" variant="outline">
-                        <Link href={links.settings}>Settings</Link>
-                    </Button>
+                    <AppIconAction
+                        icon={LayoutDashboard}
+                        label="Branch dashboard"
+                        href={links.dashboard}
+                        variant="secondary"
+                        size="default"
+                        className="gap-2 px-3"
+                    >
+                        <span className="text-sm font-medium">Dashboard</span>
+                    </AppIconAction>
+                    <AppIconAction
+                        icon={Settings}
+                        label="Branch settings"
+                        href={links.settings}
+                        size="default"
+                        className="gap-2 px-3"
+                    >
+                        <span className="text-sm font-medium">Settings</span>
+                    </AppIconAction>
                     {links.select_branch ? (
                         <Button asChild size="sm" variant="outline">
                             <Link href={links.select_branch}>

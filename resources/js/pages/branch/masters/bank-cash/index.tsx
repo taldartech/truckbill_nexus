@@ -42,8 +42,7 @@ export default function BankCashIndex({
     const { flash } = usePage<{ flash?: { success?: string | null } }>().props;
     const [q, setQ] = useState(filters.q);
     const [kind, setKind] = useState(filters.kind);
-    const showUrl = (id: string) =>
-        `/branch/companies/${company.id}/branches/${branch.id}/bank-cash/${id}`;
+    const showUrl = (id: string) => `/branch/bank-cash/${id}`;
 
     const columns = useMemo<DataTableColumn<Row>[]>(
         () => [

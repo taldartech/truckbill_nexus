@@ -36,7 +36,7 @@ trait AuthorizesBranchPanel
             $this->assertBranchMutationEntitlement($company);
         }
 
-        WorkspaceSession::put($request, $company->id, $branch->id);
+        WorkspaceSession::sync($request, $company->id, $branch->id);
 
         return $user;
     }

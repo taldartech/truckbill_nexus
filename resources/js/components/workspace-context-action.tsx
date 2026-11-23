@@ -23,13 +23,18 @@ export function WorkspaceContextAction({
 }: Props) {
     return (
         <Form action={contextUrl} method="post" className="inline">
-            <input type="hidden" name="redirect" value={redirect} />
-            <AppIconAction
-                icon={icon}
-                label={label}
-                type="submit"
-                disabled={disabled}
-            />
+            {({ processing }) => (
+                <>
+                    <input type="hidden" name="redirect" value={redirect} />
+                    <AppIconAction
+                        icon={icon}
+                        label={label}
+                        type="submit"
+                        disabled={disabled || processing}
+                        loading={processing}
+                    />
+                </>
+            )}
         </Form>
     );
 }

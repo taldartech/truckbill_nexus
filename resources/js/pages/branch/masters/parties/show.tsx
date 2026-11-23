@@ -169,7 +169,7 @@ export default function PartyShow({
                                 </div>
                                 {role.is_active && permissions.can_edit ? (
                                     <Form
-                                        action={`/branch/companies/${company.id}/branches/${branch.id}/parties/${party.id}/roles/${role.id}/remove`}
+                                        action={`/branch/parties/${party.id}/roles/${role.id}/remove`}
                                         method="post"
                                         className="flex items-end gap-2"
                                     >

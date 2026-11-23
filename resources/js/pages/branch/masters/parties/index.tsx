@@ -49,8 +49,7 @@ export default function PartiesIndex({
     const [q, setQ] = useState(filters.q);
     const [role, setRole] = useState(filters.role);
 
-    const partyShowUrl = (id: string) =>
-        `/branch/companies/${company.id}/branches/${branch.id}/parties/${id}`;
+    const partyShowUrl = (id: string) => `/branch/parties/${id}`;
 
     const applyFilters = (event: React.FormEvent) => {
         event.preventDefault();

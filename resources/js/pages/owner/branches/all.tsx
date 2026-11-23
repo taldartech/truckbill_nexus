@@ -1,10 +1,13 @@
 import { Head, Link, router } from '@inertiajs/react';
+import { Eye, LogIn, Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { AppIconAction } from '@/components/app-icon-action';
 import {
     ResponsiveDataTable,
     type DataTableColumn,
 } from '@/components/data-table';
 import { OwnerPageHeader } from '@/components/owner/owner-page-header';
+import { WorkspaceContextAction } from '@/components/workspace-context-action';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,6 +22,8 @@ type BranchRow = {
     company: { id: string; name: string; status: string } | null;
     urls: {
         show: string | null;
+        company_context: string | null;
+        enter_branch_context: string | null;
         enter_branch: string | null;
         create_for_company: string | null;
     };
@@ -97,6 +102,14 @@ export default function OwnerBranchesAll({
         [],
     );
 
+    const createSource =
+        branches.data.find(
+            (row) =>
+                row.urls.company_context &&
+                row.urls.create_for_company &&
+                (!company || row.company?.id === company),
+        ) ?? null;
+
     return (
         <>
             <Head title="Owner · Branches" />
@@ -109,14 +122,18 @@ export default function OwnerBranchesAll({
                             <Button asChild variant="outline">
                                 <Link href={links.companies}>Companies</Link>
                             </Button>
-                            {companyOptions[0] ? (
-                                <Button asChild>
-                                    <Link
-                                        href={`/management/companies/${company || companyOptions[0].id}/branches/create`}
-                                    >
-                                        Create branch
-                                    </Link>
-                                </Button>
+                            {createSource?.urls.company_context &&
+                            createSource.urls.create_for_company ? (
+                                <WorkspaceContextAction
+                                    contextUrl={
+                                        createSource.urls.company_context
+                                    }
+                                    redirect={
+                                        createSource.urls.create_for_company
+                                    }
+                                    icon={Plus}
+                                    label="Create branch"
+                                />
                             ) : null}
                         </>
                     }
@@ -180,22 +197,23 @@ export default function OwnerBranchesAll({
                     actions={(branch) => (
                         <>
                             {branch.urls.show ? (
-                                <Link
+                                <AppIconAction
+                                    icon={Eye}
+                                    label="View or edit branch"
                                     href={branch.urls.show}
-                                    className="text-xs font-medium text-primary underline"
-                                >
-                                    View / Edit
-                                </Link>
+                                />
                             ) : null}
-                            {branch.urls.enter_branch ? (
-                                <span className="hidden sm:contents">
-                                    <Link
-                                        href={branch.urls.enter_branch}
-                                        className="text-xs font-medium text-primary underline"
-                                    >
-                                        Enter Branch Panel
-                                    </Link>
-                                </span>
+                            {branch.urls.enter_branch_context ? (
+                                <WorkspaceContextAction
+                                    contextUrl={
+                                        branch.urls.enter_branch_context
+                                    }
+                                    redirect={
+                                        branch.urls.enter_branch ?? '/branch'
+                                    }
+                                    icon={LogIn}
+                                    label="Enter Branch Panel"
+                                />
                             ) : null}
                         </>
                     )}

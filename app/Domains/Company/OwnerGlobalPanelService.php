@@ -422,6 +422,9 @@ final class OwnerGlobalPanelService
                 'show' => $company === null
                     ? null
                     : SafeInternalRedirect::route('owner.branches.show', ['branch' => $branch]),
+                'company_context' => $company === null
+                    ? null
+                    : route('workspace.context.company', ['company' => $company]),
                 'enter_branch_context' => ($company !== null && $companyActive && $branch->isActive())
                     ? route('workspace.context.branch', ['company' => $company, 'branch' => $branch])
                     : null,

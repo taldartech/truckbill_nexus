@@ -37,7 +37,7 @@ class BranchSettingsController extends Controller
             abort(403, 'Branch Panel access denied.');
         }
 
-        WorkspaceSession::put($request, $company->id, $branch->id);
+        WorkspaceSession::sync($request, $company->id, $branch->id);
 
         return Inertia::render('branch/settings', [
             'company' => [

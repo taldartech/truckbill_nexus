@@ -29,6 +29,19 @@ final class WorkspaceSession
         self::bumpVersion($request);
     }
 
+    /**
+     * Persist company/branch only when the active context actually changes.
+     * Ordinary GET navigation must not bump context_version.
+     */
+    public static function sync(Request $request, string $companyId, ?string $branchId = null): void
+    {
+        if (self::companyId($request) === $companyId && self::branchId($request) === $branchId) {
+            return;
+        }
+
+        self::put($request, $companyId, $branchId);
+    }
+
     public static function companyId(Request $request): ?string
     {
         $value = $request->session()->get(self::COMPANY_KEY);

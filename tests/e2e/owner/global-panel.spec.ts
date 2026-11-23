@@ -57,10 +57,13 @@ test.describe('Owner global panel', () => {
         await expect(page.getByText('Shared HO').first()).toBeVisible();
 
         await page
-            .getByRole('button', { name: /Enter Branch/i })
+            .getByRole('button', { name: 'Enter Branch Panel' })
             .first()
             .click();
         await expect(page).toHaveURL(/\/branch\/?$/);
+        await expect(page.getByRole('heading', { level: 1 })).not.toHaveText(
+            /Companies|Management/i,
+        );
         await expect(
             page.getByRole('link', { name: /Return to Management/i }),
         ).toBeVisible();

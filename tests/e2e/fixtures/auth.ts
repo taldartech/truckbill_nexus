@@ -5,8 +5,10 @@ export async function loginAs(
     email: string,
     password: string,
 ): Promise<void> {
-    await page.goto('/login');
-    await page.locator('#email').fill(email);
+    await page.goto('/login', { waitUntil: 'networkidle' });
+    const emailField = page.locator('#email');
+    await expect(emailField).toBeVisible({ timeout: 30_000 });
+    await emailField.fill(email);
     await page.locator('#password').fill(password);
     await page.getByRole('button', { name: /log in|sign in/i }).click();
     await expect(page).not.toHaveURL(/\/login$/, { timeout: 15_000 });

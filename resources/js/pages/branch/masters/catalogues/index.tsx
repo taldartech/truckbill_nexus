@@ -192,7 +192,7 @@ export default function CataloguesIndex({
                         canManageOwnerCatalogues
                             ? (item) => (
                                   <Form
-                                      action={`/branch/companies/${company.id}/branches/${branch.id}/catalogues/${item.id}`}
+                                      action={`/branch/catalogues/${item.id}`}
                                       method="delete"
                                       className="inline"
                                   >

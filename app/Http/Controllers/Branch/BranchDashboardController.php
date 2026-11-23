@@ -36,7 +36,9 @@ class BranchDashboardController extends Controller
             abort(403, 'Branch Panel access denied.');
         }
 
-        WorkspaceSession::put($request, $company->id, $branch->id);
+        // Context already established by ResolveBranchWorkspace / context POST.
+        // Sync without bumping version on routine dashboard GET.
+        WorkspaceSession::sync($request, $company->id, $branch->id);
 
         $isOwner = $this->access->isCompanyOwner($user, $company);
         $siblingBranches = $this->navigation->accessibleBranches($user, $company);
@@ -59,12 +61,13 @@ class BranchDashboardController extends Controller
             'modules' => $modules,
             'siblingBranches' => $siblingBranches,
             'links' => [
-                'settings' => route('branch.settings', ['company' => $company, 'branch' => $branch]),
+                'dashboard' => route('branch.dashboard', absolute: false),
+                'settings' => route('branch.settings', absolute: false),
                 'owner_panel' => $isOwner
-                    ? route('owner.home')
+                    ? route('owner.home', absolute: false)
                     : null,
                 'select_branch' => $siblingBranches->count() > 1
-                    ? route('workspace.branches.select', ['company' => $company])
+                    ? route('workspace.branches.select', ['company' => $company], absolute: false)
                     : null,
             ],
         ]);

@@ -102,9 +102,110 @@ test('branch routes resolve from session and reject missing context', function (
 
     enterBranchWorkspace($company, $branch)->assertRedirect(route('branch.dashboard'));
 
-    $this->get(route('branch.dashboard'))->assertOk();
+    $this->get(route('branch.dashboard'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('branch/dashboard')
+            ->where('company.id', $company->id)
+            ->where('branch.id', $branch->id)
+            ->where('links.dashboard', internalRoute('branch.dashboard'))
+            ->where('links.settings', internalRoute('branch.settings')));
     $this->get(route('branch.masters.index'))->assertOk();
     $this->get(route('branch.parties.index'))->assertOk();
+});
+
+test('global branches enter panel posts context then opens selected branch dashboard', function () {
+    $owner = User::factory()->customer()->create([
+        'password' => Hash::make('owner-secret'),
+        'email_verified_at' => now(),
+    ]);
+    $company = app(CompanyWorkspaceService::class)->createCompany($owner, 'Enter Panel Co', 'Alpha');
+    $alpha = $company->branches()->where('name', 'Alpha')->firstOrFail();
+    $beta = $company->branches()->create([
+        'name' => 'Beta',
+        'created_by_user_id' => $owner->id,
+    ]);
+
+    sessionRoutingLogin($owner);
+
+    // Visiting Owner Branches clears branch chrome (owner.*).
+    $this->get(route('owner.branches.all'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('owner/branches/all')
+            ->where('branches.data.0.urls.enter_branch_context', route('workspace.context.branch', [
+                'company' => $company,
+                'branch' => $alpha,
+            ]))
+            ->where('branches.data.0.urls.enter_branch', internalRoute('branch.dashboard')));
+
+    expect(session(WorkspaceSession::BRANCH_KEY))->toBeNull();
+
+    enterBranchWorkspace($company, $alpha, internalRoute('branch.dashboard'))
+        ->assertRedirect(internalRoute('branch.dashboard'));
+
+    expect(session(WorkspaceSession::COMPANY_KEY))->toBe($company->id);
+    expect(session(WorkspaceSession::BRANCH_KEY))->toBe($alpha->id);
+
+    $versionAfterEnter = (int) session(WorkspaceSession::VERSION_KEY, 0);
+
+    $this->get(route('branch.dashboard'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('branch/dashboard')
+            ->where('branch.id', $alpha->id)
+            ->where('branch.name', 'Alpha')
+            ->where('company.name', 'Enter Panel Co'));
+
+    // Routine dashboard GET must not bump context version.
+    expect((int) session(WorkspaceSession::VERSION_KEY, 0))->toBe($versionAfterEnter);
+
+    enterBranchWorkspace($company, $beta, internalRoute('branch.dashboard'))
+        ->assertRedirect(internalRoute('branch.dashboard'));
+
+    $this->get(route('branch.dashboard'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('branch.id', $beta->id)
+            ->where('branch.name', 'Beta'));
+
+    // Valid mutation against current context still succeeds.
+    $this->post(route('branch.parties.store'), [
+        'name' => 'Context Party',
+        'roles' => [
+            ['role' => 'consignor', 'attributes' => []],
+        ],
+        'remark' => 'Created after branch switch',
+    ])->assertSessionHasNoErrors()->assertRedirect();
+
+    $this->assertDatabaseHas('parties', [
+        'name' => 'Context Party',
+        'company_id' => $company->id,
+    ]);
+});
+
+test('deactivated branch cannot be entered via context switch', function () {
+    $owner = User::factory()->customer()->create([
+        'password' => Hash::make('owner-secret'),
+        'email_verified_at' => now(),
+    ]);
+    $company = app(CompanyWorkspaceService::class)->createCompany($owner, 'Deact Branch Co', 'Keep');
+    $keep = $company->branches()->where('name', 'Keep')->firstOrFail();
+    $dead = $company->branches()->create([
+        'name' => 'Dead',
+        'created_by_user_id' => $owner->id,
+        'deactivated_at' => now(),
+    ]);
+
+    sessionRoutingLogin($owner);
+    enterBranchWorkspace($company, $keep)->assertRedirect();
+
+    $this->post(route('workspace.context.branch', [
+        'company' => $company,
+        'branch' => $dead,
+    ]), [
+        'redirect' => internalRoute('branch.dashboard'),
+    ])->assertForbidden();
 });
 
 test('branch context switch denied for foreign company', function () {

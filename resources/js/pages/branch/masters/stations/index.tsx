@@ -35,8 +35,7 @@ export default function StationsIndex({
 }: Props) {
     const { flash } = usePage<{ flash?: { success?: string | null } }>().props;
     const [q, setQ] = useState(filters.q);
-    const showUrl = (id: string) =>
-        `/branch/companies/${company.id}/branches/${branch.id}/stations/${id}`;
+    const showUrl = (id: string) => `/branch/stations/${id}`;
 
     const columns = useMemo<DataTableColumn<Row>[]>(
         () => [

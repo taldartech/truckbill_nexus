@@ -41,8 +41,7 @@ export default function VehiclesIndex({
 }: Props) {
     const { flash } = usePage<{ flash?: { success?: string | null } }>().props;
     const [q, setQ] = useState(filters.q);
-    const showUrl = (id: string) =>
-        `/branch/companies/${company.id}/branches/${branch.id}/vehicles/${id}`;
+    const showUrl = (id: string) => `/branch/vehicles/${id}`;
 
     const columns = useMemo<DataTableColumn<Row>[]>(
         () => [
