@@ -261,6 +261,19 @@ export default function OwnerCompanyCreate({
                                 ) : null}
                             </section>
 
+                            <section className="space-y-2 rounded-lg border border-dashed border-border p-3 text-sm text-muted-foreground">
+                                <h2 className="font-medium text-foreground">
+                                    Logo &amp; signature
+                                </h2>
+                                <p>
+                                    Private logo and digital signature upload is
+                                    approved (PRD §7). Upload controls attach
+                                    after the company exists via Owner Settings
+                                    document-asset controls (PrivateFile tenant
+                                    context).
+                                </p>
+                            </section>
+
                             <section className="space-y-4">
                                 <h2 className="font-medium">
                                     Optional opening bank account

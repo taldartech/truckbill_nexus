@@ -31,6 +31,7 @@ type OwnerDashboardProps = {
         settings: string;
         audit: string;
         select_branch: string | null;
+        create_company: string | null;
     };
 };
 
@@ -59,7 +60,17 @@ export default function OwnerDashboard({
                             <span>Scope: {ownerPanelScope}</span>
                         </div>
                     </div>
-                    <div className="w-full max-w-sm">
+                    <div className="flex w-full max-w-md flex-col gap-3 sm:items-stretch">
+                        {links.create_company ? (
+                            <Button asChild className="w-full sm:w-auto">
+                                <Link
+                                    href={links.create_company}
+                                    aria-label="Create a new company"
+                                >
+                                    Create company
+                                </Link>
+                            </Button>
+                        ) : null}
                         <CompanySwitcher />
                     </div>
                 </div>
@@ -107,7 +118,7 @@ export default function OwnerDashboard({
                     <PanelCard
                         icon={Settings}
                         title="Company settings"
-                        body="View company status and edit the company display name. Additional master fields remain deferred."
+                        body="Update approved company profile fields including legal, tax, GST, visibility, and contact details."
                         action={
                             <Button asChild variant="secondary" size="sm">
                                 <Link href={links.settings}>Open settings</Link>

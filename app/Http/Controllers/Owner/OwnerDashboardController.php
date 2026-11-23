@@ -66,6 +66,9 @@ class OwnerDashboardController extends Controller
                 'select_branch' => $company->isActive()
                     ? route('workspace.branches.select', ['company' => $company])
                     : null,
+                'create_company' => ($user->isCustomer() && $user->isActive())
+                    ? route('owner.companies.create')
+                    : null,
             ],
         ]);
     }

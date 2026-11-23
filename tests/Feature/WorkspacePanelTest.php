@@ -119,7 +119,10 @@ test('customer with no accessible companies sees dedicated no-access screen', fu
 
     $this->get(route('workspace.no-access'))
         ->assertOk()
-        ->assertInertia(fn ($page) => $page->component('workspace/no-access'));
+        ->assertInertia(fn ($page) => $page
+            ->component('workspace/no-access')
+            ->where('canCreateCompany', true)
+            ->where('links.createCompany', route('owner.companies.create')));
 });
 
 test('mixed owner and member access preserves owner landing and member branch path', function () {

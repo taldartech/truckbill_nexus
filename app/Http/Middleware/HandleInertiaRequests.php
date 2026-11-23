@@ -95,10 +95,13 @@ class HandleInertiaRequests extends Middleware
                 : WorkspaceSession::branchId($request);
         }
 
+        // Active Customer-only path (guarded above); Create Company is always eligible here.
         return [
             'companies' => $navigation->accessibleCompanies($user)->values(),
             'active_company_id' => $activeCompanyId,
             'active_branch_id' => $activeBranchId,
+            'can_create_company' => true,
+            'create_company_url' => route('owner.companies.create'),
         ];
     }
 }

@@ -94,7 +94,7 @@ class OwnerSettingsController extends Controller
                 [
                     'key' => 'documents',
                     'title' => 'Documents, logo & signature',
-                    'message' => 'Private logo and signature upload uses approved document infrastructure; upload controls land with the next Stage 1 document-asset slice.',
+                    'message' => 'PRD §7 logo and signature columns and PrivateFileService storage are approved. Owner upload controls remain a follow-on document-asset slice (tenant-scoped store after company context).',
                 ],
             ],
             'links' => [
