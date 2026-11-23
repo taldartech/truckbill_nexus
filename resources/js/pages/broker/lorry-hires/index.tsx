@@ -108,13 +108,23 @@ export default function LorryHiresIndex({
                     <table className="min-w-full text-sm">
                         <thead className="bg-muted/40 text-left">
                             <tr>
-                                <th className="px-4 py-3 font-medium">Hire #</th>
+                                <th className="px-4 py-3 font-medium">
+                                    Hire #
+                                </th>
                                 <th className="px-4 py-3 font-medium">LR</th>
                                 <th className="px-4 py-3 font-medium">Route</th>
-                                <th className="px-4 py-3 font-medium">Vehicle</th>
-                                <th className="px-4 py-3 font-medium">Transporter</th>
-                                <th className="px-4 py-3 font-medium">Status</th>
-                                <th className="px-4 py-3 font-medium">Freight</th>
+                                <th className="px-4 py-3 font-medium">
+                                    Vehicle
+                                </th>
+                                <th className="px-4 py-3 font-medium">
+                                    Transporter
+                                </th>
+                                <th className="px-4 py-3 font-medium">
+                                    Status
+                                </th>
+                                <th className="px-4 py-3 font-medium">
+                                    Freight
+                                </th>
                                 <th className="px-4 py-3 font-medium" />
                             </tr>
                         </thead>

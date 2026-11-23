@@ -33,7 +33,11 @@ type Props = {
     };
 };
 
-export default function LorryHireCreate({ lorryReceipt, goodsRows, urls }: Props) {
+export default function LorryHireCreate({
+    lorryReceipt,
+    goodsRows,
+    urls,
+}: Props) {
     return (
         <>
             <Head title="Create Lorry Hire" />
@@ -109,8 +113,8 @@ export default function LorryHireCreate({ lorryReceipt, goodsRows, urls }: Props
                                                     'Goods line'}
                                             </p>
                                             <p className="text-xs text-muted-foreground">
-                                                Rate type: {row.freight_rate_type}{' '}
-                                                · Rate:{' '}
+                                                Rate type:{' '}
+                                                {row.freight_rate_type} · Rate:{' '}
                                                 {row.freight_amount ??
                                                     row.freight_rate ??
                                                     '—'}
@@ -149,9 +153,7 @@ export default function LorryHireCreate({ lorryReceipt, goodsRows, urls }: Props
                                 disabled={processing}
                                 className="bg-[#2FB36F] text-white hover:bg-[#279960]"
                             >
-                                {processing
-                                    ? 'Creating…'
-                                    : 'Create Lorry Hire'}
+                                {processing ? 'Creating…' : 'Create Lorry Hire'}
                             </Button>
                         </>
                     )}
