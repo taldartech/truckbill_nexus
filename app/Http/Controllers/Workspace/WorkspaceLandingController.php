@@ -35,20 +35,10 @@ class WorkspaceLandingController extends Controller
 
         $owned = $this->navigation->ownedCompanies($user);
 
-        if ($owned->count() === 1) {
-            $company = $owned->first();
-            $this->navigation->rememberOwnedCompany($user, $company);
-
-            return redirect()->route('owner.dashboard', ['company' => $company]);
-        }
-
-        if ($owned->count() > 1) {
-            $mru = $this->navigation->resolveMruOwnedCompany($user);
-            if ($mru !== null) {
-                return redirect()->route('owner.dashboard', ['company' => $mru]);
-            }
-
-            return redirect()->route('workspace.companies.select');
+        // PO-OWNER-GLOBAL-MANAGEMENT: owners enter the global Companies list,
+        // not a forced single-company dashboard or MRU selection.
+        if ($owned->isNotEmpty()) {
+            return redirect()->route('owner.companies.index');
         }
 
         $accessible = $this->navigation->accessibleCompanies($user);

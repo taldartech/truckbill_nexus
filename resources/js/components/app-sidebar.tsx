@@ -41,8 +41,15 @@ export function AppSidebar() {
     const activeCompany = workspace?.companies.find(
         (c) => c.id === activeCompanyId,
     );
-    const isOwnerContext =
-        activeCompany?.is_owner === true && activeBranchId === null;
+    const ownsAnyCompany =
+        workspace?.companies.some((company) => company.is_owner) === true;
+    // PO-OWNER-GLOBAL-MANAGEMENT: global lists stay available without forcing
+    // company selection; company-scoped Users/Settings/Audit need Owner context.
+    const showOwnerGlobalNav = ownsAnyCompany;
+    const showOwnerCompanyNav =
+        activeCompanyId !== null &&
+        activeCompany?.is_owner === true &&
+        activeBranchId === null;
 
     const mainNavItems: NavItem[] = isCustomer
         ? [
@@ -51,21 +58,30 @@ export function AppSidebar() {
                   href: '/workspace',
                   icon: LayoutGrid,
               },
-              ...(isOwnerContext && activeCompanyId
+              ...(showOwnerGlobalNav
                   ? [
                         {
-                            title: 'Owner Dashboard',
-                            href: `/owner/companies/${activeCompanyId}`,
-                            icon: LayoutGrid,
-                        },
-                        {
-                            title: 'Subscription',
-                            href: `/owner/companies/${activeCompanyId}/subscription`,
+                            title: 'Companies',
+                            href: '/owner/companies',
                             icon: LayoutGrid,
                         },
                         {
                             title: 'Branches',
-                            href: `/owner/companies/${activeCompanyId}/branches`,
+                            href: '/owner/branches',
+                            icon: LayoutGrid,
+                        },
+                        {
+                            title: 'Subscriptions',
+                            href: '/owner/subscriptions',
+                            icon: LayoutGrid,
+                        },
+                    ]
+                  : []),
+              ...(showOwnerCompanyNav
+                  ? [
+                        {
+                            title: 'Company dashboard',
+                            href: `/owner/companies/${activeCompanyId}`,
                             icon: LayoutGrid,
                         },
                         {
