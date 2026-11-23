@@ -2,34 +2,31 @@
 
 **Date:** 23 November 2026  
 **PO Phase 5 AUTH:** Approved  
-**Implementation status:** **Not started as product workflows**
+**Implementation status:** **Batch A complete (Trip foundation); Batches B–H remaining**
 
 ## Verdict
 
-Do **not** certify Phase 5 complete. There is no Trip → Invoice → Payment operational journey.
+Do **not** certify Phase 5 complete. OwnFleet Trip foundation (LR → Trip) is implemented; multi-point through payments remain.
 
-## What exists
+## Completed — Batch A
 
-- Phase 5 authorization / compliance documentation
-- `LrWorkflowContext::OwnFleet` on Unified LR foundations
-- Subscription SKU / CRM labels for OwnFleet
-- Sidebar ops path roots reserved (`/trips`, `/trip-invoices`, `/payments`) — **not linked** (no placeholder menus)
+- Migration `2026_11_23_120233_create_phase5_ownfleet_trip_foundations` (trips, pickups, drops, allocations; vehicle `primary_driver_party_id`; vehicles `company_id+id` unique for composite FKs)
+- Domain: `TripService::createFromLorryReceipt` (1 OwnFleet LR = 1 Trip), `TripLrDependencyGuard` bound into `CompositeLrDependencyGuard`
+- Permissions `trip.*` registered (no blanket role grants); demo roles grant Trip codes for local fixtures
+- Routes/UI: `/trips`, `/trips/{trip}`, `/lorry-receipts/{lr}/create-trip` + Create Trip CTA on OwnFleet LR show
+- Pest: `tests/Feature/Phase5/OwnFleetTripFoundationTest.php` (7 passed)
+- Demo seeder: OwnFleet pending LR + linked Pending Trip; drivers + primary driver on vehicles
 
-## What does not exist
+## Remaining (authorized sequence)
 
-- Trip model / migrations / services
-- LR-linked Trip creation (1 OwnFleet LR = 1 Trip)
-- Multi-point pickup/drop allocations
-- Dispatch / completion / expenses / diesel / POD
-- OwnFleet freight invoicing
-- Freight payments (partial / TDS / shortage)
-- Demo seeder Trip/invoice/payment fixtures
-- Playwright / k6 OwnFleet journeys
+- **B** Multi-point pickup/drop/allocation + reconciliation UI
+- **C** Dispatch & completion
+- **D** Expenses, diesel, profitability
+- **E** POD, documents, cancel/delete
+- **F** OwnFleet invoices
+- **G** Payments
+- **H** Full UI polish, dual-DB, Playwright, k6, certification
 
-## Prerequisite completed in this wave
+## Explicitly out of scope here
 
-Unified LR operational slice under `/lorry-receipts` (create/list/show/edit/cancel/print + Pest). OwnFleet Trip work should start from certified OwnFleet-context LRs.
-
-## Next executable batch
-
-Implement OwnFleet Trip lifecycle bound to OwnFleet LRs only after LR slice is accepted; expose Operations nav only when screens are real.
+Phase 6 Broker / Market-Hired. Live Razorpay. GL postings. Homebrew MySQL repair.

@@ -20,6 +20,7 @@ use App\Http\Controllers\Branch\LorryReceiptController;
 use App\Http\Controllers\Branch\MastersHubController;
 use App\Http\Controllers\Branch\PartyController;
 use App\Http\Controllers\Branch\StationController;
+use App\Http\Controllers\Branch\TripController;
 use App\Http\Controllers\Branch\VehicleController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\InvitationAcceptanceController;
@@ -177,6 +178,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/lorry-receipts/{lorryReceipt}', [LorryReceiptController::class, 'destroy'])->name('branch.lorry-receipts.destroy');
         Route::post('/lorry-receipts/{lorryReceipt}/cancel', [LorryReceiptController::class, 'cancel'])->name('branch.lorry-receipts.cancel');
         Route::get('/lorry-receipts/{lorryReceipt}/print', [LorryReceiptController::class, 'print'])->name('branch.lorry-receipts.print');
+        Route::get('/lorry-receipts/{lorryReceipt}/create-trip', [TripController::class, 'createFromLorryReceipt'])->name('branch.trips.create-from-lr');
+        Route::post('/lorry-receipts/{lorryReceipt}/trips', [TripController::class, 'storeFromLorryReceipt'])->name('branch.trips.store-from-lr');
+
+        Route::get('/trips', [TripController::class, 'index'])->name('branch.trips.index');
+        Route::get('/trips/{trip}', [TripController::class, 'show'])->name('branch.trips.show');
 
         Route::get('/masters', MastersHubController::class)->name('branch.masters.index');
 

@@ -4,6 +4,8 @@ namespace App\Providers;
 
 use App\Domains\Auth\Listeners\HandleWebSessionOnLogout;
 use App\Domains\Auth\WebSessionService;
+use App\Domains\Consignment\Dependency\CompositeLrDependencyGuard;
+use App\Domains\OwnFleet\Trip\TripLrDependencyGuard;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Subscription\Payments\Gateway\PaymentGateway;
 use App\Domains\Subscription\Payments\Gateway\PaymentGatewayAuthorization;
@@ -40,6 +42,11 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->singleton(PermissionAuthorizer::class);
         $this->app->singleton(WebSessionService::class);
+        $this->app->singleton(CompositeLrDependencyGuard::class, function (): CompositeLrDependencyGuard {
+            return new CompositeLrDependencyGuard([
+                new TripLrDependencyGuard,
+            ]);
+        });
 
         $this->app->singleton(PaymentGatewayAuthorization::class);
 

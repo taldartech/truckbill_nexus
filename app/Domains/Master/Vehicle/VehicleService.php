@@ -47,6 +47,7 @@ final class VehicleService
                     'engine_number' => $attributes['engine_number'] ?? null,
                     'capacity_mt' => $attributes['capacity_mt'] ?? null,
                     'is_active' => $attributes['is_active'] ?? true,
+                    'primary_driver_party_id' => $attributes['primary_driver_party_id'] ?? null,
                 ]);
 
                 $this->audit->write(
@@ -96,6 +97,7 @@ final class VehicleService
                     'engine_number',
                     'capacity_mt',
                     'is_active',
+                    'primary_driver_party_id',
                 ])->all());
 
                 if ($vehicle->isDirty('registration_number')) {

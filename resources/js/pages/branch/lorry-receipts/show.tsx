@@ -51,19 +51,27 @@ type Props = {
         can_edit: boolean;
         can_cancel: boolean;
         can_delete: boolean;
+        can_create_trip?: boolean;
     };
+    linkedTrip?: {
+        id: string;
+        status: string;
+        show_url: string;
+    } | null;
     urls: {
         index: string;
         edit: string;
         cancel: string;
         destroy: string;
         print: string;
+        create_trip?: string;
     };
 };
 
 export default function LorryReceiptShow({
     lorryReceipt,
     permissions,
+    linkedTrip = null,
     urls,
 }: Props) {
     const { flash, errors } = usePage<{
@@ -100,6 +108,19 @@ export default function LorryReceiptShow({
                     {permissions.can_edit && isPending ? (
                         <Button asChild variant="secondary">
                             <Link href={urls.edit}>Edit</Link>
+                        </Button>
+                    ) : null}
+                    {permissions.can_create_trip && urls.create_trip ? (
+                        <Button
+                            asChild
+                            className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                        >
+                            <Link href={urls.create_trip}>Create Trip</Link>
+                        </Button>
+                    ) : null}
+                    {linkedTrip ? (
+                        <Button asChild variant="secondary">
+                            <Link href={linkedTrip.show_url}>Open Trip</Link>
                         </Button>
                     ) : null}
                     <Button asChild variant="secondary">

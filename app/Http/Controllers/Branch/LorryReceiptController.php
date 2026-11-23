@@ -13,6 +13,7 @@ use App\Domains\Consignment\LorryReceiptService;
 use App\Domains\Consignment\LrWorkflowContextResolver;
 use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Master\Party\Enums\PartyRoleType;
+use App\Domains\OwnFleet\Trip\TripService;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
@@ -46,6 +47,7 @@ class LorryReceiptController extends Controller
         private readonly PermissionAuthorizer $authorizer,
         private readonly LorryReceiptService $lorryReceipts,
         private readonly LrWorkflowContextResolver $contextResolver,
+        private readonly TripService $trips,
     ) {}
 
     public function index(Request $request, Company $company, Branch $branch): Response
@@ -193,15 +195,29 @@ class LorryReceiptController extends Controller
 
         $lorryReceipt->load(['goodsRows', 'ewayBills', 'additionalCharges', 'consignor', 'consignee', 'fromStation', 'toStation']);
 
+        $linkedTrip = $this->trips->tripForLorryReceipt($lorryReceipt);
+        $canCreateTrip = $lorryReceipt->workflow_context === LrWorkflowContext::OwnFleet
+            && $lorryReceipt->status === LrStatus::Pending
+            && $linkedTrip === null
+            && $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_CREATE, $company, $branch);
+
         return Inertia::render('branch/lorry-receipts/show', [
             'lorryReceipt' => $this->detailPayload($lorryReceipt),
-            'permissions' => $this->lrPermissions($actor, $company, $branch),
+            'permissions' => array_merge($this->lrPermissions($actor, $company, $branch), [
+                'can_create_trip' => $canCreateTrip,
+            ]),
+            'linkedTrip' => $linkedTrip === null ? null : [
+                'id' => $linkedTrip->id,
+                'status' => $linkedTrip->status->value,
+                'show_url' => route('branch.trips.show', [$linkedTrip], absolute: false),
+            ],
             'urls' => [
                 'index' => route('branch.lorry-receipts.index', absolute: false),
                 'edit' => route('branch.lorry-receipts.edit', [$lorryReceipt], absolute: false),
                 'cancel' => route('branch.lorry-receipts.cancel', [$lorryReceipt], absolute: false),
                 'destroy' => route('branch.lorry-receipts.destroy', [$lorryReceipt], absolute: false),
                 'print' => route('branch.lorry-receipts.print', [$lorryReceipt], absolute: false),
+                'create_trip' => route('branch.trips.create-from-lr', [$lorryReceipt], absolute: false),
             ],
         ]);
     }

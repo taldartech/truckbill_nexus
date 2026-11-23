@@ -150,6 +150,11 @@ export function AppSidebar() {
             href: '/lorry-receipts',
             icon: Receipt,
         },
+        {
+            title: 'OwnFleet Trips',
+            href: '/trips',
+            icon: Truck,
+        },
     ];
 
     const branchMasters: NavItem[] = [

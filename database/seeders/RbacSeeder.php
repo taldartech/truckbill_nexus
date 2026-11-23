@@ -24,6 +24,7 @@ class RbacSeeder extends Seeder
         DB::transaction(function (): void {
             $this->seedCustomerPlatformPermissions();
             $this->seedCustomerPhase4Permissions();
+            $this->seedCustomerPhase5Permissions();
             $this->seedInternalRoles();
             $this->seedCustomerDefaultRoles();
             $this->seedCustomerDefaultMatrix();
@@ -79,6 +80,33 @@ class RbacSeeder extends Seeder
             [PermissionCodes::LR_CANCEL, 'lr', null, 'Cancel LRs', 'Cancel Unified Lorry Receipts'],
             [PermissionCodes::LR_DELETE, 'lr', null, 'Delete LRs', 'Soft-delete Unified Lorry Receipts (explicit only)'],
             [PermissionCodes::LR_NUMBER_ADJUST, 'lr', 'numbering', 'Adjust LR numbering', 'Adjust LR number sequences (restricted)'],
+        ];
+
+        foreach ($definitions as [$code, $module, $submodule, $name, $description]) {
+            $this->upsertPermission(
+                domain: PermissionDomain::Customer,
+                module: $module,
+                submodule: $submodule,
+                name: $name,
+                code: $code,
+                description: $description,
+            );
+        }
+    }
+
+    /**
+     * Phase 5 OwnFleet Trip codes — registered without blanket role grants.
+     */
+    private function seedCustomerPhase5Permissions(): void
+    {
+        $definitions = [
+            [PermissionCodes::TRIP_VIEW, 'trip', null, 'View Trips', 'View OwnFleet Trips'],
+            [PermissionCodes::TRIP_CREATE, 'trip', null, 'Create Trips', 'Create OwnFleet Trips from OwnFleet LRs'],
+            [PermissionCodes::TRIP_EDIT, 'trip', null, 'Edit Trips', 'Edit OwnFleet Trip details and allocations'],
+            [PermissionCodes::TRIP_DISPATCH, 'trip', null, 'Dispatch Trips', 'Dispatch OwnFleet Trips (Pending → In Progress)'],
+            [PermissionCodes::TRIP_COMPLETE, 'trip', null, 'Complete Trips', 'Complete OwnFleet Trips'],
+            [PermissionCodes::TRIP_CANCEL, 'trip', null, 'Cancel Trips', 'Cancel OwnFleet Trips (Owner/Admin business rule)'],
+            [PermissionCodes::TRIP_DELETE, 'trip', null, 'Delete Trips', 'Soft-delete Pending OwnFleet Trips'],
         ];
 
         foreach ($definitions as [$code, $module, $submodule, $name, $description]) {

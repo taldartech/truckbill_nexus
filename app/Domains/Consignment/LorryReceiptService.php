@@ -48,12 +48,17 @@ final class LorryReceiptService
         private readonly DocumentNumberAllocator $numbers = new DocumentNumberAllocator,
         private readonly FreightCalculator $freight = new FreightCalculator,
         private readonly MasterDataVisibilityResolver $visibility = new MasterDataVisibilityResolver,
-        private readonly CompositeLrDependencyGuard $dependencyGuard = new CompositeLrDependencyGuard([]),
+        private readonly ?CompositeLrDependencyGuard $dependencyGuard = null,
         private readonly AuditedTransaction $auditedTransaction = new AuditedTransaction,
         private readonly AuditWriter $audit = new AuditWriter,
         private readonly CoreModuleEntitlementResolver $entitlements = new CoreModuleEntitlementResolver,
         private readonly SubscriptionEntitlementGate $entitlementGate = new SubscriptionEntitlementGate,
     ) {}
+
+    private function dependencyGuard(): CompositeLrDependencyGuard
+    {
+        return $this->dependencyGuard ?? app(CompositeLrDependencyGuard::class);
+    }
 
     /**
      * @return LengthAwarePaginator<int, LorryReceipt>
@@ -269,7 +274,7 @@ final class LorryReceiptService
             throw new LorryReceiptDomainException('Delivered Lorry Receipts cannot be cancelled.');
         }
 
-        $blockers = $this->dependencyGuard->blockersForCancel($lorryReceipt);
+        $blockers = $this->dependencyGuard()->blockersForCancel($lorryReceipt);
         if ($blockers !== []) {
             throw new LorryReceiptConflictException(
                 'Lorry Receipt cannot be cancelled: '.$blockers[0]->message
@@ -314,7 +319,7 @@ final class LorryReceiptService
             throw new LorryReceiptDomainException('Only pending Lorry Receipts can be soft-deleted.');
         }
 
-        $blockers = $this->dependencyGuard->blockersForSoftDelete($lorryReceipt);
+        $blockers = $this->dependencyGuard()->blockersForSoftDelete($lorryReceipt);
         if ($blockers !== []) {
             throw new LorryReceiptConflictException(
                 'Lorry Receipt cannot be deleted: '.$blockers[0]->message

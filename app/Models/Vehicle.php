@@ -32,6 +32,7 @@ class Vehicle extends Model
         'engine_number',
         'capacity_mt',
         'is_active',
+        'primary_driver_party_id',
     ];
 
     protected function casts(): array
@@ -66,6 +67,14 @@ class Vehicle extends Model
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
+    }
+
+    /**
+     * @return BelongsTo<Party, $this>
+     */
+    public function primaryDriver(): BelongsTo
+    {
+        return $this->belongsTo(Party::class, 'primary_driver_party_id');
     }
 
     /**

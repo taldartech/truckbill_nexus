@@ -62,6 +62,20 @@ final class PermissionCodes
 
     public const LR_NUMBER_ADJUST = 'lr.number.adjust';
 
+    public const TRIP_VIEW = 'trip.view';
+
+    public const TRIP_CREATE = 'trip.create';
+
+    public const TRIP_EDIT = 'trip.edit';
+
+    public const TRIP_DISPATCH = 'trip.dispatch';
+
+    public const TRIP_COMPLETE = 'trip.complete';
+
+    public const TRIP_CANCEL = 'trip.cancel';
+
+    public const TRIP_DELETE = 'trip.delete';
+
     /**
      * @return list<string>
      */
@@ -105,6 +119,24 @@ final class PermissionCodes
             self::LR_CANCEL,
             self::LR_DELETE,
             self::LR_NUMBER_ADJUST,
+        ];
+    }
+
+    /**
+     * Phase 5 OwnFleet Trip catalogue (registered; assigned explicitly — no blanket grants).
+     *
+     * @return list<string>
+     */
+    public static function customerPhase5Catalogue(): array
+    {
+        return [
+            self::TRIP_VIEW,
+            self::TRIP_CREATE,
+            self::TRIP_EDIT,
+            self::TRIP_DISPATCH,
+            self::TRIP_COMPLETE,
+            self::TRIP_CANCEL,
+            self::TRIP_DELETE,
         ];
     }
 }

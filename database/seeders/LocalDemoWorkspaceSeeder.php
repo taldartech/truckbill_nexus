@@ -6,11 +6,13 @@ use App\Domains\Company\CompanyAccessService;
 use App\Domains\Company\CompanyWorkspaceService;
 use App\Domains\Company\Enums\DataVisibility;
 use App\Domains\Consignment\Enums\FreightRateType;
+use App\Domains\Consignment\Enums\LrWorkflowContext;
 use App\Domains\Consignment\LorryReceiptService;
 use App\Domains\Enquiry\EnquiryService;
 use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Party\PartyService;
+use App\Domains\OwnFleet\Trip\TripService;
 use App\Domains\Rbac\Enums\PermissionDomain;
 use App\Domains\Rbac\PermissionCodes;
 use App\Domains\Rbac\RoleAssignmentService;
@@ -34,6 +36,7 @@ use App\Models\RolePermission;
 use App\Models\Station;
 use App\Models\SubscriptionCatalogueVersion;
 use App\Models\SubscriptionPlan;
+use App\Models\Trip;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Support\Tenant\TenantContext;
@@ -379,10 +382,53 @@ class LocalDemoWorkspaceSeeder extends Seeder
             );
         }
 
-        $this->ensureVehicle($company, $head, 'MH12DEMO'.substr((string) crc32($company->id.'1'), 0, 4));
-        $this->ensureVehicle($company, $second, 'MH14DEMO'.substr((string) crc32($company->id.'2'), 0, 4));
+        $primaryDriver = $this->ensurePartyWithRoles(
+            $parties,
+            $owner,
+            $company,
+            null,
+            'demo-party:'.$company->id.':driver-primary',
+            $companyName === self::COMPANY_A_NAME ? 'Alpha Primary Driver' : 'Beta Primary Driver',
+            [
+                [
+                    'role' => PartyRoleType::Driver->value,
+                    'attributes' => [
+                        'driver_type' => 'permanent',
+                        'license_number' => 'MH12P5'.substr((string) abs(crc32($company->id.'p')), 0, 6),
+                        'joining_date' => '2024-06-01',
+                    ],
+                ],
+            ],
+            $companyName === self::COMPANY_A_NAME ? 'Pune' : 'Ahmedabad',
+        );
+        $substituteDriver = $this->ensurePartyWithRoles(
+            $parties,
+            $owner,
+            $company,
+            null,
+            'demo-party:'.$company->id.':driver-sub',
+            $companyName === self::COMPANY_A_NAME ? 'Alpha Substitute Driver' : 'Beta Substitute Driver',
+            [
+                [
+                    'role' => PartyRoleType::Driver->value,
+                    'attributes' => [
+                        'driver_type' => 'market',
+                    ],
+                ],
+            ],
+            $companyName === self::COMPANY_A_NAME ? 'Nashik' : 'Surat',
+        );
+
+        $vehicleHead = $this->ensureVehicle(
+            $company,
+            $head,
+            'MH12DEMO'.substr((string) crc32($company->id.'1'), 0, 4),
+            $primaryDriver->id,
+        );
+        $this->ensureVehicle($company, $second, 'MH14DEMO'.substr((string) crc32($company->id.'2'), 0, 4), $substituteDriver->id);
         $this->ensureBank($company, $head, 'demo-bank:'.$company->id.':1');
-        $this->ensureStation($owner, 'demo-station:'.$company->id.':1', $companyName === self::COMPANY_A_NAME ? 'Bhiwandi Hub' : 'Vatva Hub');
+        $fromStation = $this->ensureStation($owner, 'demo-station:'.$company->id.':1', $companyName === self::COMPANY_A_NAME ? 'Bhiwandi Hub' : 'Vatva Hub');
+        $toStation = $this->ensureStation($owner, 'demo-station:'.$company->id.':2', $companyName === self::COMPANY_A_NAME ? 'Nagpur Depot' : 'Vadodara Yard');
 
         $modules = $companyName === self::COMPANY_A_NAME
             ? ['broker', 'ownfleet', 'partload']
@@ -436,6 +482,20 @@ class LocalDemoWorkspaceSeeder extends Seeder
             );
         }
 
+        $access->activateContext($owner, $company, $head);
+        $this->ensureOwnFleetTripFixtures(
+            $lorryReceipts,
+            app(TripService::class),
+            $company,
+            $head,
+            $owner,
+            $vehicleHead,
+            $fromStation,
+            $toStation,
+            $catalogues,
+            'demo-ownfleet:'.$company->id.':pending',
+        );
+
         TenantContextHolder::inject(new TenantContext(
             companyId: $company->id,
             branchId: null,
@@ -478,6 +538,13 @@ class LocalDemoWorkspaceSeeder extends Seeder
                     PermissionCodes::LR_CREATE,
                     PermissionCodes::LR_EDIT,
                     PermissionCodes::LR_CANCEL,
+                    PermissionCodes::TRIP_VIEW,
+                    PermissionCodes::TRIP_CREATE,
+                    PermissionCodes::TRIP_EDIT,
+                    PermissionCodes::TRIP_DISPATCH,
+                    PermissionCodes::TRIP_COMPLETE,
+                    PermissionCodes::TRIP_CANCEL,
+                    PermissionCodes::TRIP_DELETE,
                 ],
             ],
             self::ROLE_OPERATOR => [
@@ -491,6 +558,11 @@ class LocalDemoWorkspaceSeeder extends Seeder
                     PermissionCodes::ENQUIRY_CREATE,
                     PermissionCodes::LR_VIEW,
                     PermissionCodes::LR_CREATE,
+                    PermissionCodes::TRIP_VIEW,
+                    PermissionCodes::TRIP_CREATE,
+                    PermissionCodes::TRIP_EDIT,
+                    PermissionCodes::TRIP_DISPATCH,
+                    PermissionCodes::TRIP_COMPLETE,
                 ],
             ],
             self::ROLE_VIEWER => [
@@ -501,6 +573,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
                     PermissionCodes::PLATFORM_VIEW_FREIGHT,
                     PermissionCodes::ENQUIRY_VIEW,
                     PermissionCodes::LR_VIEW,
+                    PermissionCodes::TRIP_VIEW,
                 ],
             ],
         ];
@@ -818,15 +891,23 @@ class LocalDemoWorkspaceSeeder extends Seeder
         );
     }
 
-    private function ensureVehicle(Company $company, Branch $branch, string $registration): Vehicle
-    {
+    private function ensureVehicle(
+        Company $company,
+        Branch $branch,
+        string $registration,
+        ?string $primaryDriverPartyId = null,
+    ): Vehicle {
         $existing = Vehicle::query()
             ->where('company_id', $company->id)
             ->where('registration_number', $registration)
             ->first();
 
         if ($existing !== null) {
-            return $existing;
+            if ($primaryDriverPartyId !== null && $existing->primary_driver_party_id !== $primaryDriverPartyId) {
+                $existing->forceFill(['primary_driver_party_id' => $primaryDriverPartyId])->save();
+            }
+
+            return $existing->fresh() ?? $existing;
         }
 
         return Vehicle::query()->create([
@@ -839,6 +920,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
             'model' => '407',
             'manufacture_year' => 2021,
             'is_active' => true,
+            'primary_driver_party_id' => $primaryDriverPartyId,
         ]);
     }
 
@@ -1109,6 +1191,75 @@ class LocalDemoWorkspaceSeeder extends Seeder
             ],
             'Nashik',
         );
+    }
+
+    /**
+     * Batch A OwnFleet fixture: pending OwnFleet LR + linked Pending Trip.
+     *
+     * @param  array{truck: OwnerCatalogueItem, goods: OwnerCatalogueItem, package: OwnerCatalogueItem}  $catalogues
+     */
+    private function ensureOwnFleetTripFixtures(
+        LorryReceiptService $lorryReceipts,
+        TripService $trips,
+        Company $company,
+        Branch $branch,
+        User $actor,
+        Vehicle $vehicle,
+        Station $fromStation,
+        Station $toStation,
+        array $catalogues,
+        string $fixtureKey,
+    ): void {
+        $existingLr = LorryReceipt::query()
+            ->where('company_id', $company->id)
+            ->where('branch_id', $branch->id)
+            ->where('workflow_context', LrWorkflowContext::OwnFleet->value)
+            ->whereNull('deleted_at')
+            ->whereHas('goodsRows', function ($query) use ($fixtureKey): void {
+                $query->where('goods_description', 'like', '%'.$fixtureKey.'%');
+            })
+            ->first();
+
+        if ($existingLr === null) {
+            $existingLr = $lorryReceipts->create($company, $branch, $actor, [
+                'workflow_context' => LrWorkflowContext::OwnFleet->value,
+                'number_mode' => 'auto',
+                'lr_date' => CarbonImmutable::now()->subDay()->toDateString(),
+                'from_station_id' => $fromStation->id,
+                'to_station_id' => $toStation->id,
+                'goods' => [
+                    [
+                        'goods_type_id' => $catalogues['goods']->id,
+                        'package_type_id' => $catalogues['package']->id,
+                        'goods_description' => 'OwnFleet demo cargo '.$fixtureKey,
+                        'package_count' => 8,
+                        'actual_weight' => 1200,
+                        'charged_weight' => 1200,
+                        'freight_rate_type' => FreightRateType::FixedAmount->value,
+                        'freight_rate' => 18000,
+                        'goods_value' => 275000,
+                    ],
+                ],
+            ]);
+        }
+
+        $existingTrip = Trip::query()
+            ->where('company_id', $company->id)
+            ->where('lorry_receipt_id', $existingLr->id)
+            ->whereNull('deleted_at')
+            ->first();
+
+        if ($existingTrip !== null) {
+            return;
+        }
+
+        if ($vehicle->primary_driver_party_id === null) {
+            return;
+        }
+
+        $trips->createFromLorryReceipt($existingLr, $actor, [
+            'vehicle_id' => $vehicle->id,
+        ]);
     }
 
     /**
