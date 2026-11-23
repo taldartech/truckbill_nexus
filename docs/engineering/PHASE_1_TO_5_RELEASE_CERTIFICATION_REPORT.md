@@ -4,7 +4,7 @@
 **Repository:** `taldartech/truckbill_nexus`  
 **Branch:** `main`  
 **Initial remote HEAD:** `26f208275b786866d2409f40e724c7a9e85c3f09`  
-**Final local HEAD:** `56d2d0bec0379c85b52b0ea4289fe39c3c7ad56a` (pre-cert-docs; tip will update)  
+**Final local HEAD:** `a1416bb8229fa0e671db38e463bc6de55f23ef83` (+ follow-up tip commit for this evidence refresh)  
 **Push status:** **No push** (Product Owner only)
 
 ## Verdict
@@ -62,19 +62,19 @@ Highlights delivered this window:
 
 ## L–Q. Verification evidence
 
-| Check                                     | Result                                                                            |
-| ----------------------------------------- | --------------------------------------------------------------------------------- |
-| `composer validate` / platform reqs       | Pass                                                                              |
-| Wayfinder generate                        | Pass                                                                              |
-| `npm run check`                           | Pass (after format)                                                               |
-| `npm run types:check`                     | Pass                                                                              |
-| `npm run build`                           | Pass                                                                              |
-| Pint                                      | Pass                                                                              |
-| PHPStan                                   | **0 errors**                                                                      |
-| PostgreSQL Pest (re-run after seeder fix) | Pending completion of background full suite / prior run 608/611 then seeder fixed |
-| MySQL Pest                                | **Not re-run** (Docker daemon unavailable)                                        |
-| Playwright                                | Smoke/enter-branch: **2 passed, 2 skipped** (system Chrome)                       |
-| k6 smoke                                  | Executed against local `:8000`                                                    |
+| Check                               | Result                                                      |
+| ----------------------------------- | ----------------------------------------------------------- |
+| `composer validate` / platform reqs | Pass                                                        |
+| Wayfinder generate                  | Pass                                                        |
+| `npm run check`                     | Pass (after format)                                         |
+| `npm run types:check`               | Pass                                                        |
+| `npm run build`                     | Pass                                                        |
+| Pint                                | Pass                                                        |
+| PHPStan                             | **0 errors**                                                |
+| PostgreSQL Pest                     | **609 passed**, 2 skipped, 3963 assertions                  |
+| MySQL Pest                          | **Not re-run** (Docker daemon unavailable this window)      |
+| Playwright                          | Smoke/enter-branch: **2 passed, 2 skipped** (system Chrome) |
+| k6 smoke                            | **29/29 checks**, `http_req_failed=0%`, p95≈81ms @ 1 VU     |
 
 ## R. Security
 
