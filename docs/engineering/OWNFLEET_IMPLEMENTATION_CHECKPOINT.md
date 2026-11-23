@@ -3,7 +3,9 @@
 **Date:** 23 November 2026  
 **PO Phase 5 AUTH:** Approved  
 **Implementation status:** **Batches A–G complete (invoices + payments); Batch H remaining**  
-**HEAD tip (local):** see `git rev-parse HEAD` after Batch G commit
+**HEAD tip (local):** `9d2e0a8356ac1bbb3c950d5b0e9332f2a2922829` (Batch G)
+**Batch F commit:** `a31b073b739e8d34e0b24ab935bfbf312bb2014f`
+**Batch G commit:** `9d2e0a8356ac1bbb3c950d5b0e9332f2a2922829`
 
 ## Verdict
 
