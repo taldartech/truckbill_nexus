@@ -1,7 +1,8 @@
 # Enter Branch Panel Redirect Fix
 
 **Date:** 23 November 2026  
-**Baseline:** `18d083430f4df64ebcf9e68648841b80b2d88d58` (Actions #78 SUCCESS)
+**Baseline:** `18d083430f4df64ebcf9e68648841b80b2d88d58`
+**Feature commit:** `00d6ed6c6729729e895727a359bc933ec0804e25` (Actions #78 SUCCESS)
 
 ## Root cause
 
