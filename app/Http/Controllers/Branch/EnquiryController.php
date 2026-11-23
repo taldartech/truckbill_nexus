@@ -33,6 +33,7 @@ use App\Models\Party;
 use App\Models\PartyRole;
 use App\Models\User;
 use App\Models\Vehicle;
+use App\Support\Presentation\FreightAmountPresentation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -55,6 +56,7 @@ class EnquiryController extends Controller
         private readonly EnquiryFollowUpService $followUps,
         private readonly EnquiryQuotationService $quotations,
         private readonly EnquiryConversionService $conversions,
+        private readonly FreightAmountPresentation $freightPresentation = new FreightAmountPresentation,
     ) {}
 
     public function store(Request $request, Company $company, Branch $branch): JsonResponse|RedirectResponse
@@ -80,7 +82,10 @@ class EnquiryController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json([
-                'data' => $this->enquiryPayload($enquiry->load('goodsRows', 'statusHistories')),
+                'data' => $this->enquiryPayload(
+                    $enquiry->load('goodsRows', 'statusHistories'),
+                    $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch),
+                ),
             ], 201);
         }
 
@@ -112,7 +117,10 @@ class EnquiryController extends Controller
         }
 
         return response()->json([
-            'data' => $this->enquiryPayload($updated->load('goodsRows')),
+            'data' => $this->enquiryPayload(
+                $updated->load('goodsRows'),
+                $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch),
+            ),
         ]);
     }
 
@@ -124,6 +132,7 @@ class EnquiryController extends Controller
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertPermission($actor, $company, $branch, PermissionCodes::ENQUIRY_VIEW);
 
+        $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
         $perPage = min(100, max(1, (int) $request->input('per_page', 25)));
         $includeUnassigned = $request->boolean('unassigned')
             && $this->authorizer->allowsCustomer($actor, PermissionCodes::ENQUIRY_ASSIGN, $company, $branch);
@@ -144,7 +153,10 @@ class EnquiryController extends Controller
 
         $page = $query->paginate($perPage);
         $payload = [
-            'data' => collect($page->items())->map(fn (Enquiry $enquiry): array => $this->enquiryPayload($enquiry))->values()->all(),
+            'data' => collect($page->items())
+                ->map(fn (Enquiry $enquiry): array => $this->enquiryPayload($enquiry, $maySeeFreight))
+                ->values()
+                ->all(),
             'meta' => [
                 'current_page' => $page->currentPage(),
                 'last_page' => $page->lastPage(),
@@ -167,6 +179,7 @@ class EnquiryController extends Controller
             ],
             'can_create' => $this->authorizer->allowsCustomer($actor, PermissionCodes::ENQUIRY_CREATE, $company, $branch),
             'can_include_unassigned' => $this->authorizer->allowsCustomer($actor, PermissionCodes::ENQUIRY_ASSIGN, $company, $branch),
+            'can_view_freight' => $maySeeFreight,
             'enquiries' => $payload,
             'urls' => [
                 'index' => route('branch.enquiries.index'),
@@ -242,11 +255,17 @@ class EnquiryController extends Controller
             'assignedUser',
         ]);
 
-        $data = $this->enquiryPayload($enquiry);
+        $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
+        $data = $this->enquiryPayload($enquiry, $maySeeFreight);
         $canAssign = $this->authorizer->allowsCustomer($actor, PermissionCodes::ENQUIRY_ASSIGN, $company, $branch);
         $canEdit = $this->authorizer->allowsCustomer($actor, PermissionCodes::ENQUIRY_EDIT, $company, $branch);
         $canConvert = $this->authorizer->allowsCustomer($actor, PermissionCodes::ENQUIRY_CONVERT, $company, $branch);
-        $conversionPreview = $canConvert ? $this->conversions->preview($company, $branch, $enquiry) : null;
+        $conversionPreview = $canConvert
+            ? $this->redactConversionPreview(
+                $this->conversions->preview($company, $branch, $enquiry),
+                $maySeeFreight,
+            )
+            : null;
 
         if ($request->expectsJson()) {
             return response()->json(['data' => $data]);
@@ -265,6 +284,7 @@ class EnquiryController extends Controller
                 'assign' => $canAssign,
                 'edit' => $canEdit,
                 'convert' => $canConvert,
+                'view_freight' => $maySeeFreight,
             ],
             'urls' => [
                 'index' => route('branch.enquiries.index'),
@@ -301,7 +321,12 @@ class EnquiryController extends Controller
         }
 
         if ($request->expectsJson()) {
-            return response()->json(['data' => $this->enquiryPayload($updated)]);
+            return response()->json([
+                'data' => $this->enquiryPayload(
+                    $updated,
+                    $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch),
+                ),
+            ]);
         }
 
         return back()->with('success', 'Enquiry assignment updated.');
@@ -458,7 +483,12 @@ class EnquiryController extends Controller
         }
 
         if ($request->expectsJson()) {
-            return response()->json(['data' => $this->enquiryPayload($updated)]);
+            return response()->json([
+                'data' => $this->enquiryPayload(
+                    $updated,
+                    $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch),
+                ),
+            ]);
         }
 
         return back()->with('success', 'Preferred quotation selected.');
@@ -499,8 +529,13 @@ class EnquiryController extends Controller
         $this->assertPermission($actor, $company, $branch, PermissionCodes::ENQUIRY_CONVERT);
         $this->assertEnquiryRouteScope($enquiry, $company, $branch, $actor);
 
+        $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
+
         return response()->json([
-            'data' => $this->conversions->preview($company, $branch, $enquiry),
+            'data' => $this->redactConversionPreview(
+                $this->conversions->preview($company, $branch, $enquiry),
+                $maySeeFreight,
+            ),
         ]);
     }
 
@@ -737,9 +772,31 @@ class EnquiryController extends Controller
     }
 
     /**
+     * @param  array<string, mixed>  $preview
      * @return array<string, mixed>
      */
-    private function enquiryPayload(Enquiry $enquiry): array
+    private function redactConversionPreview(array $preview, bool $maySeeFreight): array
+    {
+        if ($maySeeFreight) {
+            return $preview;
+        }
+
+        $preview['freight_per_vehicle'] = array_map(
+            static fn (): mixed => null,
+            is_array($preview['freight_per_vehicle'] ?? null) ? $preview['freight_per_vehicle'] : [],
+        );
+
+        if (isset($preview['reconciliation_totals']) && is_array($preview['reconciliation_totals'])) {
+            $preview['reconciliation_totals']['freight_sum'] = null;
+        }
+
+        return $preview;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function enquiryPayload(Enquiry $enquiry, bool $maySeeFreight): array
     {
         return [
             'id' => $enquiry->id,
@@ -807,7 +864,7 @@ class EnquiryController extends Controller
                     'id' => $row->id,
                     'transporter_party_id' => $row->transporter_party_id,
                     'transporter_name' => $row->relationLoaded('transporter') ? $row->transporter?->name : null,
-                    'quoted_freight' => $row->quoted_freight,
+                    'quoted_freight' => $this->freightPresentation->presentAmount($row->quoted_freight, $maySeeFreight),
                     'selection_status' => $row->selection_status->value,
                     'remarks' => $row->remarks,
                     'select_url' => route('branch.enquiries.quotations.select', [$enquiry, $row]),

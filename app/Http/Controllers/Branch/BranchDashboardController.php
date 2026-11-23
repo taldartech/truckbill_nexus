@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Branch;
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Company\Exceptions\CompanyAccessException;
 use App\Domains\Company\WorkspaceNavigationService;
+use App\Domains\Rbac\PermissionAuthorizer;
+use App\Domains\Rbac\PermissionCodes;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Company;
@@ -19,6 +21,7 @@ class BranchDashboardController extends Controller
     public function __construct(
         private readonly CompanyAccessService $access,
         private readonly WorkspaceNavigationService $navigation,
+        private readonly PermissionAuthorizer $authorizer = new PermissionAuthorizer,
     ) {}
 
     public function __invoke(Request $request, Company $company, Branch $branch): Response
@@ -36,11 +39,17 @@ class BranchDashboardController extends Controller
             abort(403, 'Branch Panel access denied.');
         }
 
+        $isOwner = $this->access->isCompanyOwner($user, $company);
+        $canView = $isOwner
+            || $this->authorizer->allowsCustomer($user, PermissionCodes::PLATFORM_VIEW, $company, $branch);
+
+        if (! $canView) {
+            abort(403, 'Not authorized to view Branch Panel.');
+        }
+
         // Context already established by ResolveBranchWorkspace / context POST.
         // Sync without bumping version on routine dashboard GET.
         WorkspaceSession::sync($request, $company->id, $branch->id);
-
-        $isOwner = $this->access->isCompanyOwner($user, $company);
         $siblingBranches = $this->navigation->accessibleBranches($user, $company);
 
         // PO-P2-DESIGN-MODULES: hide unavailable modules — no Broker/OwnFleet/Partload product screens in Phase 2.
