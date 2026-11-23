@@ -35,19 +35,6 @@ type Props = {
     urls: { index: string };
 };
 
-function statusLabel(status: string): string {
-    switch (status) {
-        case 'active':
-            return 'Active';
-        case 'pending':
-            return 'Pending';
-        case 'cancelled':
-            return 'Cancelled';
-        default:
-            return status;
-    }
-}
-
 export default function LorryHiresIndex({
     filters,
     statusOptions,

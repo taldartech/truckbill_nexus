@@ -170,6 +170,26 @@ export function AppSidebar() {
             href: '/payments',
             icon: CreditCard,
         },
+        {
+            title: 'Lorry Hires',
+            href: '/broker/lorry-hires',
+            icon: Truck,
+        },
+        {
+            title: 'Voucher Payments',
+            href: '/broker/vouchers',
+            icon: CreditCard,
+        },
+        {
+            title: 'Daily Payments',
+            href: '/broker/daily-payments',
+            icon: CreditCard,
+        },
+        {
+            title: 'Transporter Balances',
+            href: '/broker/transporter-balances',
+            icon: Landmark,
+        },
     ];
 
     const branchMasters: NavItem[] = [
