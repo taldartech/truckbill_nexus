@@ -180,8 +180,16 @@ test('stale mru owned company cannot authorize owner panel after ownership trans
 
     certLogin($previousOwner);
 
+    // PO-OWNER-GLOBAL-MANAGEMENT: owners land on the global Companies list.
     $this->get(route('workspace.landing'))
-        ->assertRedirect(route('owner.dashboard', ['company' => $retained]));
+        ->assertRedirect(route('owner.companies.index'));
+
+    $this->get(route('owner.companies.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('owner/companies/index')
+            ->where('companies.data.0.id', $retained->id)
+            ->has('companies.data', 1));
 
     $this->get(route('owner.dashboard', ['company' => $transferred]))->assertForbidden();
     $this->post(route('workspace.companies.enter', ['company' => $transferred]))->assertForbidden();

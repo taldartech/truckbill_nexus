@@ -9,7 +9,7 @@ export async function loginAs(
     await page.locator('#email').fill(email);
     await page.locator('#password').fill(password);
     await page.getByRole('button', { name: /log in|sign in/i }).click();
-    await expect(page).not.toHaveURL(/\/login$/);
+    await expect(page).not.toHaveURL(/\/login$/, { timeout: 15_000 });
 }
 
 export function demoCredentials(): { email: string; password: string } {

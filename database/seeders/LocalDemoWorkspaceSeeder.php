@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Company\CompanyWorkspaceService;
+use App\Domains\Company\Enums\DataVisibility;
 use App\Domains\Enquiry\EnquiryService;
 use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Master\Party\Enums\PartyRoleType;
@@ -211,6 +212,14 @@ class LocalDemoWorkspaceSeeder extends Seeder
 
         if ($company === null) {
             $company = $workspace->createCompany($owner, $companyName, $headOfficeName);
+        }
+
+        // PO-MASTER-COMPANY-VISIBILITY demo: Alpha = Shared, Beta = Branch-wise Restricted.
+        $visibility = str_contains(strtolower($companyName), 'beta')
+            ? DataVisibility::BranchWiseRestricted
+            : DataVisibility::SharedData;
+        if ($company->data_visibility !== $visibility) {
+            $company->forceFill(['data_visibility' => $visibility])->save();
         }
 
         $head = $company->branches()->where('name', $headOfficeName)->whereNull('deactivated_at')->first()

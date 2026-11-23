@@ -112,7 +112,6 @@ test('party create edit detail soft-delete workflow through inertia', function (
     uiActingAsCustomer($owner);
 
     $this->post(route('branch.parties.store', [$company, $branch]), [
-        'scope' => 'branch',
         'name' => 'UI Party',
         'contact_number' => '9000011111',
         'state' => 'MH',
@@ -161,14 +160,12 @@ test('viewer cannot create parties and cross-company party urls are isolated', f
     uiActingAsCustomer($viewer, 'viewer-secret');
     $this->get(route('branch.parties.create', [$company, $branch]))->assertForbidden();
     $this->post(route('branch.parties.store', [$company, $branch]), [
-        'scope' => 'branch',
         'name' => 'Denied',
         'roles' => [['role' => 'customer', 'attributes' => []]],
     ])->assertForbidden();
 
     uiActingAsCustomer($owner);
     $this->post(route('branch.parties.store', [$company, $branch]), [
-        'scope' => 'branch',
         'name' => 'Owned Party',
         'roles' => [['role' => 'customer', 'attributes' => []]],
         'remark' => 'Create',
@@ -185,7 +182,6 @@ test('vehicle and bank cash inertia crud masks account numbers', function () {
     uiActingAsCustomer($owner);
 
     $this->post(route('branch.vehicles.store', [$company, $branch]), [
-        'scope' => 'shared',
         'registration_number' => 'MH12AB1234',
         'make' => 'Tata',
         'model' => '407',
@@ -198,7 +194,6 @@ test('vehicle and bank cash inertia crud masks account numbers', function () {
         ->assertInertia(fn ($page) => $page->component('branch/masters/vehicles/show')->where('vehicle.registration_number', 'MH12AB1234'));
 
     $this->post(route('branch.bank-cash.store', [$company, $branch]), [
-        'scope' => 'branch',
         'account_kind' => 'bank',
         'name' => 'Ops Bank',
         'bank_name' => 'HDFC',

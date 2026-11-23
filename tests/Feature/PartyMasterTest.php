@@ -124,7 +124,6 @@ test('party endpoints enforce permissions and hide cross-company records', funct
 
     actingAsCustomer($member);
     $this->postJson(route('branch.parties.store', [$company, $branch]), [
-        'scope' => 'branch',
         'name' => 'Branch Party',
         'contact_number' => '9999999999',
         'state' => 'Gujarat',
@@ -136,7 +135,6 @@ test('party endpoints enforce permissions and hide cross-company records', funct
 
     actingAsCustomer($viewer);
     $this->postJson(route('branch.parties.store', [$company, $branch]), [
-        'scope' => 'branch',
         'name' => 'Denied',
         'roles' => [['role' => 'customer', 'attributes' => []]],
     ])->assertForbidden();
