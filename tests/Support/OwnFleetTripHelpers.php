@@ -93,6 +93,8 @@ if (! function_exists('tripWorkspace')) {
             PermissionCodes::TRIP_EDIT,
             PermissionCodes::TRIP_DISPATCH,
             PermissionCodes::TRIP_COMPLETE,
+            PermissionCodes::TRIP_CANCEL,
+            PermissionCodes::TRIP_DELETE,
         ] as $code) {
             tripGrant('customer.admin', $code);
         }

@@ -83,8 +83,8 @@ type Props = {
         can_edit: boolean;
         can_dispatch: boolean;
         can_complete: boolean;
-        can_cancel: boolean;
-        can_delete: boolean;
+        can_cancel?: boolean;
+        can_delete?: boolean;
     };
     urls: {
         index: string;
@@ -97,6 +97,10 @@ type Props = {
         complete: string;
         add_expense: string;
         remove_expense: string;
+        cancel?: string;
+        destroy?: string;
+        documents?: string;
+        lr_documents?: string;
     };
     expenses: Array<{
         id: string;
@@ -180,6 +184,18 @@ export default function TripShow({
                     <Button asChild variant="secondary">
                         <Link href={urls.lr_show}>Open LR</Link>
                     </Button>
+                    {urls.documents ? (
+                        <Button asChild variant="secondary">
+                            <Link href={urls.documents}>Trip documents</Link>
+                        </Button>
+                    ) : null}
+                    {urls.lr_documents ? (
+                        <Button asChild variant="secondary">
+                            <Link href={urls.lr_documents}>
+                                LR / POD documents
+                            </Link>
+                        </Button>
+                    ) : null}
                 </div>
 
                 <section className="rounded-lg border border-border p-4">
@@ -321,6 +337,58 @@ export default function TripShow({
                                         Complete trip
                                     </Button>
                                 </>
+                            )}
+                        </Form>
+                    ) : null}
+
+                    {permissions.can_cancel &&
+                    (trip.status === 'pending' ||
+                        trip.status === 'in_progress') &&
+                    urls.cancel ? (
+                        <Form
+                            action={urls.cancel}
+                            method="post"
+                            className="mt-4 grid max-w-xl gap-2 rounded-md border border-destructive/30 bg-destructive/5 p-3"
+                        >
+                            {({ processing }) => (
+                                <>
+                                    <Label htmlFor="cancellation_remark">
+                                        Cancel trip (reason required)
+                                    </Label>
+                                    <Input
+                                        id="cancellation_remark"
+                                        name="cancellation_remark"
+                                        required
+                                        maxLength={2000}
+                                    />
+                                    <Button
+                                        type="submit"
+                                        variant="destructive"
+                                        disabled={processing}
+                                    >
+                                        Cancel trip
+                                    </Button>
+                                </>
+                            )}
+                        </Form>
+                    ) : null}
+
+                    {permissions.can_delete &&
+                    trip.status === 'pending' &&
+                    urls.destroy ? (
+                        <Form
+                            action={urls.destroy}
+                            method="delete"
+                            className="mt-4"
+                        >
+                            {({ processing }) => (
+                                <Button
+                                    type="submit"
+                                    variant="destructive"
+                                    disabled={processing}
+                                >
+                                    Soft-delete pending trip
+                                </Button>
                             )}
                         </Form>
                     ) : null}

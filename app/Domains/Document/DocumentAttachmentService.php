@@ -348,7 +348,9 @@ final class DocumentAttachmentService
                 ->where('id', $parentId)
                 ->whereNull('deleted_at')
                 ->exists(),
-            // Generic company-scoped placeholder for future modules (LR/trip/invoice).
+            'lorry_receipt' => DB::table('lorry_receipts')->where('company_id', $company->id)->where('id', $parentId)->whereNull('deleted_at')->exists(),
+            'trip' => DB::table('trips')->where('company_id', $company->id)->where('id', $parentId)->whereNull('deleted_at')->exists(),
+            // Generic company-scoped placeholder for future modules (invoice).
             'company_record' => $parentId === $company->id,
             default => throw new DocumentDomainException('Unsupported document parent type.'),
         };

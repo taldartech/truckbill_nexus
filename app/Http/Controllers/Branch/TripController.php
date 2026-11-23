@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Branch;
 
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Consignment\Enums\LrWorkflowContext;
+use App\Domains\Document\DocumentAttachmentService;
 use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\OwnFleet\Enums\TripStatus;
@@ -16,6 +17,7 @@ use App\Domains\OwnFleet\Trip\TripService;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
+use App\Http\Controllers\Branch\Concerns\PresentsDocumentDrawer;
 use App\Http\Controllers\Controller;
 use App\Models\BankCashAccount;
 use App\Models\Branch;
@@ -43,6 +45,7 @@ use Inertia\Response;
 class TripController extends Controller
 {
     use AuthorizesBranchPanel;
+    use PresentsDocumentDrawer;
 
     public function __construct(
         private readonly CompanyAccessService $access,
@@ -50,6 +53,7 @@ class TripController extends Controller
         private readonly TripService $trips,
         private readonly TripMovementService $movements,
         private readonly TripExpenseService $expenses,
+        private readonly DocumentAttachmentService $documents,
     ) {}
 
     public function index(Request $request, Company $company, Branch $branch): Response
@@ -243,8 +247,75 @@ class TripController extends Controller
                 'complete' => route('branch.trips.complete', [$trip], absolute: false),
                 'add_expense' => route('branch.trips.expenses.store', [$trip], absolute: false),
                 'remove_expense' => route('branch.trips.expenses.destroy', [$trip, 'EXPENSE_ID'], absolute: false),
+                'cancel' => route('branch.trips.cancel', [$trip], absolute: false),
+                'destroy' => route('branch.trips.destroy', [$trip], absolute: false),
+                'documents' => route('branch.documents.index', [
+                    'parentType' => 'trip',
+                    'parentId' => $trip->id,
+                ], absolute: false),
+                'lr_documents' => route('branch.documents.index', [
+                    'parentType' => 'lorry_receipt',
+                    'parentId' => $trip->lorry_receipt_id,
+                ], absolute: false),
             ],
+            'documentDrawer' => $this->documentDrawerPayload(
+                $actor,
+                $company,
+                $branch,
+                'trip',
+                $trip->id,
+                $this->documents,
+                [
+                    'can_create' => $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_EDIT, $company, $branch),
+                    'can_edit' => $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_EDIT, $company, $branch),
+                    'can_delete' => $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_EDIT, $company, $branch),
+                ],
+            ),
         ]);
+    }
+
+    public function cancel(Request $request, Trip $trip, Company $company, Branch $branch): RedirectResponse
+    {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertPermission($actor, $company, $branch, PermissionCodes::TRIP_CANCEL);
+        $this->assertTrip($trip, $company, $branch);
+
+        $validated = $request->validate([
+            'cancellation_remark' => ['required', 'string', 'max:2000'],
+        ]);
+
+        try {
+            $this->trips->cancel($trip, $actor, $validated['cancellation_remark']);
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (TripAuthorizationException $e) {
+            abort(403, $e->getMessage());
+        } catch (TripConflictException|TripDomainException $e) {
+            throw ValidationException::withMessages(['cancellation_remark' => $e->getMessage()]);
+        }
+
+        return redirect()
+            ->route('branch.trips.show', [$trip])
+            ->with('success', 'Trip cancelled.');
+    }
+
+    public function destroy(Request $request, Trip $trip, Company $company, Branch $branch): RedirectResponse
+    {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertPermission($actor, $company, $branch, PermissionCodes::TRIP_DELETE);
+        $this->assertTrip($trip, $company, $branch);
+
+        try {
+            $this->trips->softDelete($trip, $actor);
+        } catch (TripAuthorizationException $e) {
+            abort(403, $e->getMessage());
+        } catch (TripConflictException|TripDomainException $e) {
+            throw ValidationException::withMessages(['delete' => $e->getMessage()]);
+        }
+
+        return redirect()
+            ->route('branch.trips.index')
+            ->with('success', 'Trip deleted.');
     }
 
     public function storeExpense(Request $request, Trip $trip, Company $company, Branch $branch): RedirectResponse

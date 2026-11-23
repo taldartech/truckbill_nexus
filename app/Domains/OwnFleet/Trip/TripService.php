@@ -424,6 +424,89 @@ final class TripService
         return $normalized;
     }
 
+    /**
+     * Cancel Pending/In Progress Trips (Owner/Admin business rule enforced via trip.cancel permission).
+     */
+    public function cancel(Trip $trip, User $actor, string $remark): Trip
+    {
+        $company = Company::query()->findOrFail($trip->company_id);
+        $branch = Branch::query()->findOrFail($trip->branch_id);
+        $this->assertOwnFleetEntitled($company);
+
+        if (! $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_CANCEL, $company, $branch)) {
+            throw new TripAuthorizationException('Not authorized to cancel OwnFleet Trips.');
+        }
+
+        $remark = trim($remark);
+        if ($remark === '') {
+            throw ValidationException::withMessages(['cancellation_remark' => 'Cancellation reason is required.']);
+        }
+
+        return $this->auditedTransaction->run(function () use ($trip, $company, $branch, $remark): Trip {
+            return $this->withTenant($company, $branch, function () use ($trip, $remark): Trip {
+                $locked = Trip::query()->whereKey($trip->id)->whereNull('deleted_at')->lockForUpdate()->firstOrFail();
+
+                if (! $locked->status->allowsCancel()) {
+                    throw new TripConflictException('Only Pending or In Progress Trips can be cancelled.');
+                }
+
+                $before = $locked->toArray();
+                $locked->forceFill([
+                    'status' => TripStatus::Cancelled,
+                    'cancelled_at' => CarbonImmutable::now('UTC'),
+                    'cancellation_remark' => $remark,
+                ])->save();
+
+                $this->audit->write(
+                    AuditAction::Updated,
+                    Trip::class,
+                    $locked->id,
+                    remark: 'Cancel OwnFleet Trip',
+                    before: $before,
+                    after: $locked->fresh()?->toArray(),
+                );
+
+                return $locked->fresh() ?? $locked;
+            });
+        });
+    }
+
+    /**
+     * Soft-delete Pending Trips only. Expenses/history remain attached to the soft-deleted trip id.
+     */
+    public function softDelete(Trip $trip, User $actor): void
+    {
+        $company = Company::query()->findOrFail($trip->company_id);
+        $branch = Branch::query()->findOrFail($trip->branch_id);
+        $this->assertOwnFleetEntitled($company);
+
+        if (! $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_DELETE, $company, $branch)) {
+            throw new TripAuthorizationException('Not authorized to delete OwnFleet Trips.');
+        }
+
+        $this->auditedTransaction->run(function () use ($trip, $company, $branch): void {
+            $this->withTenant($company, $branch, function () use ($trip): void {
+                $locked = Trip::query()->whereKey($trip->id)->whereNull('deleted_at')->lockForUpdate()->firstOrFail();
+
+                if (! $locked->status->allowsSoftDelete()) {
+                    throw new TripConflictException('Only Pending Trips can be soft-deleted.');
+                }
+
+                $before = $locked->toArray();
+                $locked->delete();
+
+                $this->audit->write(
+                    AuditAction::Deleted,
+                    Trip::class,
+                    $locked->id,
+                    remark: 'Soft-delete OwnFleet Trip',
+                    before: $before,
+                    after: null,
+                );
+            });
+        });
+    }
+
     private function assertCanCreate(User $actor, Company $company, Branch $branch): void
     {
         if (! $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_CREATE, $company, $branch)) {
