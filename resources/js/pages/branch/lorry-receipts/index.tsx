@@ -1,18 +1,11 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { ChevronDown } from 'lucide-react';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
     ResponsiveDataTable,
     type DataTableColumn,
 } from '@/components/data-table';
 import { MasterPageHeader } from '@/components/masters/master-page-header';
 import { Button } from '@/components/ui/button';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -31,30 +24,16 @@ type LrRow = {
 
 type Option = { value: string; label: string };
 
-type CreateOption = {
-    value: string;
-    label: string;
-    create_url: string;
-};
-
 type CreateAction =
     | {
           mode: 'direct';
           label: string;
           url: string;
-          open_menu: boolean;
-      }
-    | {
-          mode: 'menu';
-          label: string;
-          options: CreateOption[];
-          open_menu: boolean;
       }
     | {
           mode: 'blocked';
           label: string;
           reason: string;
-          open_menu: boolean;
       };
 
 type Props = {
@@ -63,6 +42,7 @@ type Props = {
     statusOptions: Option[];
     contextOptions: Option[];
     createAction: CreateAction | null;
+    partloadCreateUrl: string | null;
     lorryReceipts: {
         data: LrRow[];
         meta: { current_page: number; last_page: number; total: number };
@@ -70,17 +50,30 @@ type Props = {
     urls: { index: string; create: string };
 };
 
+function formatLrDate(value: string | null): string {
+    if (!value) {
+        return '—';
+    }
+
+    const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+    if (!match) {
+        return value;
+    }
+
+    return `${match[3]}-${match[2]}-${match[1]}`;
+}
+
+function statusLabel(status: string): string {
+    return status.replaceAll('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function contextLabel(context: string): string {
+    return context
+        .replaceAll('_', ' ')
+        .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 function CreateLrAction({ action }: { action: CreateAction }) {
-    const [open, setOpen] = useState(
-        action.mode === 'menu' && action.open_menu,
-    );
-
-    useEffect(() => {
-        if (action.mode === 'menu' && action.open_menu) {
-            setOpen(true);
-        }
-    }, [action]);
-
     if (action.mode === 'blocked') {
         return (
             <p className="max-w-xs text-right text-xs text-muted-foreground">
@@ -89,42 +82,12 @@ function CreateLrAction({ action }: { action: CreateAction }) {
         );
     }
 
-    if (action.mode === 'direct') {
-        return (
-            <Button asChild variant="primary">
-                <Link href={action.url} data-testid="create-lr-direct">
-                    {action.label}
-                </Link>
-            </Button>
-        );
-    }
-
     return (
-        <DropdownMenu open={open} onOpenChange={setOpen}>
-            <DropdownMenuTrigger asChild>
-                <Button
-                    type="button"
-                    variant="primary"
-                    data-testid="create-lr-menu"
-                    aria-haspopup="menu"
-                >
-                    {action.label}
-                    <ChevronDown className="size-4 opacity-80" aria-hidden />
-                </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-44">
-                {action.options.map((option) => (
-                    <DropdownMenuItem key={option.value} asChild>
-                        <Link
-                            href={option.create_url}
-                            data-testid={`create-lr-${option.value}`}
-                        >
-                            {option.label} LR
-                        </Link>
-                    </DropdownMenuItem>
-                ))}
-            </DropdownMenuContent>
-        </DropdownMenu>
+        <Button asChild variant="primary">
+            <Link href={action.url} data-testid="create-lr-direct">
+                {action.label}
+            </Link>
+        </Button>
     );
 }
 
@@ -134,16 +97,72 @@ export default function LorryReceiptsIndex({
     statusOptions,
     contextOptions,
     createAction,
+    partloadCreateUrl,
     lorryReceipts,
     urls,
 }: Props) {
-    const { flash } = usePage<{
-        flash?: { success?: string | null; info?: string | null };
-    }>().props;
+    const { flash } = usePage().props as {
+        flash?: { success?: string; info?: string };
+    };
     const [q, setQ] = useState(filters.q);
     const [status, setStatus] = useState(filters.status);
     const [workflowContext, setWorkflowContext] = useState(
         filters.workflow_context,
+    );
+
+    const columns = useMemo<DataTableColumn<LrRow>[]>(
+        () => [
+            {
+                id: 'lr_number',
+                header: 'LR No',
+                priority: 'p0',
+                cell: (row) => (
+                    <Link
+                        href={`/lorry-receipts/${row.id}`}
+                        className="font-medium text-primary underline-offset-4 hover:underline"
+                    >
+                        {row.lr_number}
+                    </Link>
+                ),
+            },
+            {
+                id: 'lr_date',
+                header: 'LR Date',
+                priority: 'p0',
+                cell: (row) => formatLrDate(row.lr_date),
+            },
+            {
+                id: 'status',
+                header: 'Status',
+                priority: 'p1',
+                cell: (row) => (
+                    <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-xs font-medium capitalize">
+                        {statusLabel(row.status)}
+                    </span>
+                ),
+            },
+            {
+                id: 'workflow_context',
+                header: 'Module',
+                priority: 'p2',
+                cell: (row) => contextLabel(row.workflow_context),
+            },
+            {
+                id: 'route',
+                header: 'Route',
+                priority: 'p2',
+                cell: (row) =>
+                    [row.from_text, row.to_text].filter(Boolean).join(' → ') ||
+                    '—',
+            },
+            {
+                id: 'freight_total',
+                header: 'Freight',
+                priority: 'p1',
+                cell: (row) => row.freight_total,
+            },
+        ],
+        [],
     );
 
     const applyFilters = (event: React.FormEvent) => {
@@ -155,98 +174,29 @@ export default function LorryReceiptsIndex({
                 status: status || undefined,
                 workflow_context: workflowContext || undefined,
             },
-            { preserveState: true, replace: true },
+            { preserveState: true },
         );
     };
-
-    const columns = useMemo<DataTableColumn<LrRow>[]>(
-        () => [
-            {
-                id: 'lr_number',
-                header: 'LR No',
-                priority: 0,
-                cell: (row) => (
-                    <Link
-                        href={`/lorry-receipts/${row.id}`}
-                        className="font-medium hover:underline"
-                    >
-                        {row.lr_number}
-                    </Link>
-                ),
-            },
-            {
-                id: 'lr_date',
-                header: 'Date',
-                priority: 1,
-                cell: (row) => row.lr_date || '—',
-            },
-            {
-                id: 'context',
-                header: 'Module',
-                priority: 2,
-                cell: (row) => row.workflow_context.replaceAll('_', ' '),
-            },
-            {
-                id: 'status',
-                header: 'Status',
-                priority: 1,
-                cell: (row) => row.status,
-            },
-            {
-                id: 'route',
-                header: 'Route',
-                priority: 2,
-                className: 'text-muted-foreground',
-                cell: (row) =>
-                    [row.from_text, row.to_text].filter(Boolean).join(' → ') ||
-                    '—',
-            },
-            {
-                id: 'parties',
-                header: 'Parties',
-                priority: 3,
-                className: 'text-muted-foreground',
-                cell: (row) =>
-                    [row.consignor_name, row.consignee_name]
-                        .filter(Boolean)
-                        .join(' / ') || '—',
-            },
-            {
-                id: 'freight',
-                header: 'Freight',
-                priority: 2,
-                cell: (row) => row.freight_total,
-            },
-        ],
-        [],
-    );
 
     return (
         <>
             <Head title="Lorry Receipts" />
             <div className="flex h-full flex-1 flex-col gap-4 p-4 md:p-6">
                 <MasterPageHeader title="Lorry Receipts" />
+
                 {flash?.success ? (
-                    <p
-                        role="status"
-                        className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm"
-                    >
-                        {flash.success}
-                    </p>
+                    <p className="text-sm text-emerald-700">{flash.success}</p>
                 ) : null}
                 {flash?.info ? (
-                    <p
-                        role="status"
-                        className="rounded-lg border border-info/30 bg-info/5 px-3 py-2 text-sm text-foreground"
-                        data-testid="lr-create-menu-hint"
-                    >
+                    <p className="text-sm text-muted-foreground">
                         {flash.info}
                     </p>
                 ) : null}
+
                 <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                     <form
                         onSubmit={applyFilters}
-                        className="flex w-full flex-col gap-3 lg:max-w-4xl lg:flex-row"
+                        className="flex w-full flex-col gap-3 md:flex-row md:items-end"
                     >
                         <div className="flex-1 space-y-2">
                             <Label htmlFor="lr-q">Search</Label>
@@ -301,9 +251,21 @@ export default function LorryReceiptsIndex({
                             Filter
                         </Button>
                     </form>
-                    {permissions.can_create && createAction ? (
-                        <CreateLrAction action={createAction} />
-                    ) : null}
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                        {permissions.can_create && partloadCreateUrl ? (
+                            <Button asChild variant="outline">
+                                <Link
+                                    href={partloadCreateUrl}
+                                    data-testid="create-partload-bilty"
+                                >
+                                    Create Partload Bilty
+                                </Link>
+                            </Button>
+                        ) : null}
+                        {permissions.can_create && createAction ? (
+                            <CreateLrAction action={createAction} />
+                        ) : null}
+                    </div>
                 </div>
 
                 <ResponsiveDataTable

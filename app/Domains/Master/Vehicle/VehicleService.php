@@ -2,10 +2,16 @@
 
 namespace App\Domains\Master\Vehicle;
 
+use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Master\Exceptions\MasterDomainException;
+use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Support\MasterAccess;
+use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
 use App\Models\Branch;
 use App\Models\Company;
+use App\Models\OwnerCatalogueItem;
+use App\Models\Party;
+use App\Models\PartyRole;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Support\Audit\AuditAction;
@@ -31,9 +37,10 @@ final class VehicleService
         $this->access->assertCanMutate($actor, $company, $branch);
         $this->assertBranchBelongs($company, $branch);
         $this->assertRegistrationUnique($company, (string) $attributes['registration_number']);
+        $normalized = $this->normalizeOwnershipAttributes($company, $branch, $attributes);
 
-        return $this->auditedTransaction->run(function () use ($actor, $company, $branch, $attributes, $remark): Vehicle {
-            return $this->access->withTenant($actor, $company, $branch, function () use ($company, $branch, $attributes, $remark): Vehicle {
+        return $this->auditedTransaction->run(function () use ($actor, $company, $branch, $attributes, $normalized, $remark): Vehicle {
+            return $this->access->withTenant($actor, $company, $branch, function () use ($company, $branch, $attributes, $normalized, $remark): Vehicle {
                 $vehicle = Vehicle::query()->create([
                     'id' => (string) Str::uuid(),
                     'company_id' => $company->id,
@@ -47,7 +54,11 @@ final class VehicleService
                     'engine_number' => $attributes['engine_number'] ?? null,
                     'capacity_mt' => $attributes['capacity_mt'] ?? null,
                     'is_active' => $attributes['is_active'] ?? true,
-                    'primary_driver_party_id' => $attributes['primary_driver_party_id'] ?? null,
+                    'ownership' => $normalized['ownership'],
+                    'truck_type_id' => $normalized['truck_type_id'],
+                    'tyre_layout_id' => $normalized['tyre_layout_id'],
+                    'owner_party_id' => $normalized['owner_party_id'],
+                    'primary_driver_party_id' => $normalized['primary_driver_party_id'],
                 ]);
 
                 $this->audit->write(
@@ -84,8 +95,19 @@ final class VehicleService
             );
         }
 
-        return $this->auditedTransaction->run(function () use ($actor, $company, $branch, $vehicle, $attributes, $remark): Vehicle {
-            return $this->access->withTenant($actor, $company, $branch, function () use ($vehicle, $attributes, $remark): Vehicle {
+        $merged = array_merge([
+            'ownership' => $vehicle->ownership?->value,
+            'truck_type_id' => $vehicle->truck_type_id,
+            'tyre_layout_id' => $vehicle->tyre_layout_id,
+            'owner_party_id' => $vehicle->owner_party_id,
+            'primary_driver_party_id' => $vehicle->primary_driver_party_id,
+        ], $attributes);
+
+        $contextBranch = $branch ?? Branch::query()->where('company_id', $company->id)->orderBy('created_at')->first();
+        $normalized = $this->normalizeOwnershipAttributes($company, $contextBranch, $merged, requireOwnership: array_key_exists('ownership', $attributes) || $vehicle->ownership !== null);
+
+        return $this->auditedTransaction->run(function () use ($actor, $company, $branch, $vehicle, $attributes, $normalized, $remark): Vehicle {
+            return $this->access->withTenant($actor, $company, $branch, function () use ($vehicle, $attributes, $normalized, $remark): Vehicle {
                 $before = $vehicle->toArray();
                 $vehicle->fill(collect($attributes)->only([
                     'registration_number',
@@ -97,8 +119,13 @@ final class VehicleService
                     'engine_number',
                     'capacity_mt',
                     'is_active',
-                    'primary_driver_party_id',
                 ])->all());
+
+                $vehicle->ownership = $normalized['ownership'];
+                $vehicle->truck_type_id = $normalized['truck_type_id'];
+                $vehicle->tyre_layout_id = $normalized['tyre_layout_id'];
+                $vehicle->owner_party_id = $normalized['owner_party_id'];
+                $vehicle->primary_driver_party_id = $normalized['primary_driver_party_id'];
 
                 if ($vehicle->isDirty('registration_number')) {
                     $vehicle->registration_number = strtoupper(trim((string) $vehicle->registration_number));
@@ -156,12 +183,14 @@ final class VehicleService
         ?string $query = null,
         ?string $vehicleType = null,
         ?bool $isActive = null,
+        ?string $ownership = null,
         int $perPage = 15,
     ): LengthAwarePaginator {
         $this->access->assertCanView($actor, $company, $branch);
 
         $builder = Vehicle::query()
             ->visibleInBranch($company->id, $branch->id)
+            ->with(['truckType', 'tyreLayout', 'ownerParty', 'primaryDriver'])
             ->orderBy('registration_number');
 
         if ($query !== null && trim($query) !== '') {
@@ -182,7 +211,186 @@ final class VehicleService
             $builder->where('is_active', $isActive);
         }
 
+        if ($ownership !== null && $ownership !== '') {
+            $enum = VehicleOwnership::tryFrom($ownership);
+            if ($enum === null) {
+                throw ValidationException::withMessages(['ownership' => 'Invalid ownership filter.']);
+            }
+            $builder->where('ownership', $enum->value);
+        }
+
         return $builder->paginate($perPage);
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     * @return array{
+     *     ownership: ?VehicleOwnership,
+     *     truck_type_id: ?string,
+     *     tyre_layout_id: ?string,
+     *     owner_party_id: ?string,
+     *     primary_driver_party_id: ?string
+     * }
+     */
+    private function normalizeOwnershipAttributes(
+        Company $company,
+        ?Branch $branch,
+        array $attributes,
+        bool $requireOwnership = true,
+    ): array {
+        $rawOwnership = $attributes['ownership'] ?? null;
+        $ownership = null;
+
+        if ($rawOwnership !== null && $rawOwnership !== '') {
+            $ownership = VehicleOwnership::tryFrom((string) $rawOwnership);
+            if ($ownership === null) {
+                throw ValidationException::withMessages([
+                    'ownership' => 'Ownership must be Own or Market.',
+                ]);
+            }
+        } elseif ($requireOwnership) {
+            throw ValidationException::withMessages([
+                'ownership' => 'Ownership (Own or Market) is required.',
+            ]);
+        }
+
+        $truckTypeId = $this->optionalUuid($attributes['truck_type_id'] ?? null);
+        $tyreLayoutId = $this->optionalUuid($attributes['tyre_layout_id'] ?? null);
+        $ownerPartyId = $this->optionalUuid($attributes['owner_party_id'] ?? null);
+        $primaryDriverId = $this->optionalUuid($attributes['primary_driver_party_id'] ?? null);
+
+        if ($ownership === VehicleOwnership::Own) {
+            if ($truckTypeId === null) {
+                throw ValidationException::withMessages([
+                    'truck_type_id' => 'Truck Type is required for Own vehicles.',
+                ]);
+            }
+            if ($tyreLayoutId === null) {
+                throw ValidationException::withMessages([
+                    'tyre_layout_id' => 'Tyre Layout is required for Own vehicles.',
+                ]);
+            }
+            $this->assertCatalogue($company, $truckTypeId, OwnerCatalogueType::TruckType, 'truck_type_id');
+            $this->assertCatalogue($company, $tyreLayoutId, OwnerCatalogueType::TyreLayout, 'tyre_layout_id');
+            $ownerPartyId = null;
+        } elseif ($ownership === VehicleOwnership::Market) {
+            if ($ownerPartyId === null) {
+                throw ValidationException::withMessages([
+                    'owner_party_id' => 'Vehicle Owner (Transporter) is required for Market vehicles.',
+                ]);
+            }
+            $this->assertTransporterParty($company, $branch, $ownerPartyId);
+            $truckTypeId = null;
+            $tyreLayoutId = null;
+        } else {
+            // Unclassified historical-style create: clear ownership-dependent FKs.
+            $truckTypeId = null;
+            $tyreLayoutId = null;
+            $ownerPartyId = null;
+        }
+
+        if ($primaryDriverId !== null) {
+            $this->assertDriverParty($company, $branch, $primaryDriverId);
+        }
+
+        return [
+            'ownership' => $ownership,
+            'truck_type_id' => $truckTypeId,
+            'tyre_layout_id' => $tyreLayoutId,
+            'owner_party_id' => $ownerPartyId,
+            'primary_driver_party_id' => $primaryDriverId,
+        ];
+    }
+
+    private function assertCatalogue(
+        Company $company,
+        string $itemId,
+        OwnerCatalogueType $type,
+        string $field,
+    ): void {
+        $exists = OwnerCatalogueItem::query()
+            ->whereKey($itemId)
+            ->where('owner_user_id', $company->owner_user_id)
+            ->where('catalogue_type', $type->value)
+            ->where('is_active', true)
+            ->whereNull('deleted_at')
+            ->exists();
+
+        if (! $exists) {
+            throw ValidationException::withMessages([
+                $field => 'Selected catalogue item is invalid.',
+            ]);
+        }
+    }
+
+    private function assertTransporterParty(Company $company, ?Branch $branch, string $partyId): void
+    {
+        $party = Party::query()
+            ->where('company_id', $company->id)
+            ->whereKey($partyId)
+            ->whereNull('deleted_at')
+            ->first();
+
+        if ($party === null) {
+            throw ValidationException::withMessages([
+                'owner_party_id' => 'Vehicle Owner party was not found.',
+            ]);
+        }
+
+        if ($branch !== null && $party->branch_id !== null && $party->branch_id !== $branch->id) {
+            throw ValidationException::withMessages([
+                'owner_party_id' => 'Vehicle Owner is not visible in this branch.',
+            ]);
+        }
+
+        $hasRole = PartyRole::query()
+            ->where('company_id', $company->id)
+            ->where('party_id', $party->id)
+            ->where('role', PartyRoleType::Transporter->value)
+            ->whereNull('deleted_at')
+            ->whereNull('deactivated_at')
+            ->exists();
+
+        if (! $hasRole) {
+            throw ValidationException::withMessages([
+                'owner_party_id' => 'Vehicle Owner must have an active Transporter role.',
+            ]);
+        }
+    }
+
+    private function assertDriverParty(Company $company, ?Branch $branch, string $partyId): void
+    {
+        $party = Party::query()
+            ->where('company_id', $company->id)
+            ->whereKey($partyId)
+            ->whereNull('deleted_at')
+            ->first();
+
+        if ($party === null) {
+            throw ValidationException::withMessages([
+                'primary_driver_party_id' => 'Primary driver party was not found.',
+            ]);
+        }
+
+        if ($branch !== null && $party->branch_id !== null && $party->branch_id !== $branch->id) {
+            throw ValidationException::withMessages([
+                'primary_driver_party_id' => 'Primary driver is not visible in this branch.',
+            ]);
+        }
+
+        $hasRole = PartyRole::query()
+            ->where('company_id', $company->id)
+            ->where('party_id', $party->id)
+            ->where('role', PartyRoleType::Driver->value)
+            ->whereNull('deleted_at')
+            ->whereNull('deactivated_at')
+            ->exists();
+
+        if (! $hasRole) {
+            throw ValidationException::withMessages([
+                'primary_driver_party_id' => 'Selected party must have an active Driver role.',
+            ]);
+        }
     }
 
     private function assertRegistrationUnique(Company $company, string $registration, ?string $ignoreId = null): void
@@ -210,6 +418,15 @@ final class VehicleService
         if ($branch !== null && $branch->company_id !== $company->id) {
             throw new MasterDomainException('Branch does not belong to company.');
         }
+    }
+
+    private function optionalUuid(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        return (string) $value;
     }
 
     private function escapeLike(string $value): string

@@ -12,6 +12,7 @@ use App\Domains\Consignment\LorryReceiptService;
 use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Party\PartyService;
+use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
 use App\Domains\Numbering\DocumentNumberAllocator;
 use App\Domains\Numbering\Enums\DocumentNumberScopeType;
 use App\Domains\Numbering\Enums\DocumentNumberType;
@@ -27,6 +28,7 @@ use App\Models\Permission;
 use App\Models\Role;
 use App\Models\RolePermission;
 use App\Models\User;
+use App\Models\Vehicle;
 use App\Support\Tenant\TenantContext;
 use App\Support\Tenant\TenantContextHolder;
 use Database\Seeders\RbacSeeder;
@@ -173,6 +175,39 @@ function lrWorkspace(bool $withPermissions = true): array
         roles: [['role' => PartyRoleType::Consignee->value]],
         remark: 'Create consignee',
     );
+    $transporter = $parties->create(
+        actor: $owner,
+        company: $company,
+        branch: null,
+        attributes: [
+            'name' => 'Market Transporter',
+            'contact_number' => '9800020003',
+            'pan' => 'ABCDE1234F',
+            'state' => 'MH',
+            'city' => 'Thane',
+            'is_gst_applicable' => false,
+        ],
+        roles: [[
+            'role' => PartyRoleType::Transporter->value,
+            'attributes' => [
+                'pan' => 'ABCDE1234F',
+                'pan_status' => 'active',
+                'declaration' => true,
+                'declaration_type' => 'owner',
+                'goods_vehicles_count' => 2,
+            ],
+        ]],
+        remark: 'Create transporter',
+    );
+
+    $marketVehicle = Vehicle::query()->create([
+        'company_id' => $company->id,
+        'branch_id' => null,
+        'registration_number' => 'MH12LRMKT01',
+        'is_active' => true,
+        'ownership' => VehicleOwnership::Market->value,
+        'owner_party_id' => $transporter->id,
+    ]);
 
     $otherOwner = User::factory()->customer()->create();
     $otherCompany = $workspace->createCompany($otherOwner, 'Other LR Co');
@@ -186,6 +221,8 @@ function lrWorkspace(bool $withPermissions = true): array
         'viewer' => $viewer,
         'consignor' => $consignor,
         'consignee' => $consignee,
+        'transporter' => $transporter,
+        'vehicle' => $marketVehicle,
         'goodsType' => $goodsType,
         'packageType' => $packageType,
         'otherCompany' => $otherCompany,
@@ -206,6 +243,7 @@ function lrPayload(array $ctx, array $overrides = []): array
 {
     return array_merge([
         'workflow_context' => 'broker',
+        'vehicle_id' => $ctx['vehicle']->id,
         'number_mode' => 'auto',
         'lr_date' => now()->toDateString(),
         'from_text' => 'Mumbai',
@@ -389,25 +427,23 @@ test('http authorization denial and happy path index create store', function () 
     lrLoginAs($ctx['member'], 'member-secret');
     enterBranchWorkspace($ctx['company'], $ctx['branch'])->assertRedirect();
 
-    // First-company trial entitles all core modules → list with inline Create menu.
+    // First-company trial entitles all core modules → shared truck form (no chooser).
     $this->get(route('branch.lorry-receipts.create'))
-        ->assertRedirect(route('branch.lorry-receipts.index'));
-
-    $this->get(route('branch.lorry-receipts.create', ['context' => 'broker']))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('branch/lorry-receipts/create')
-            ->where('workflowContext', 'broker'));
+            ->where('formMode', 'truck'));
 
     $this->get(route('branch.lorry-receipts.index'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('branch/lorry-receipts/index')
-            ->where('createAction.mode', 'menu')
-            ->has('createAction.options', 3));
+            ->where('createAction.mode', 'direct')
+            ->missing('createAction.options'));
 
     $response = $this->post(route('branch.lorry-receipts.store'), lrPayload($ctx, [
-        'context' => 'broker',
+        'form_mode' => 'truck',
+        'vehicle_id' => $ctx['vehicle']->id,
     ]));
     $response->assertRedirect();
 

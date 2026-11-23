@@ -9,6 +9,7 @@ use App\Domains\Consignment\LrWorkflowContextResolver;
 use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Party\PartyService;
+use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
 use App\Domains\Rbac\Enums\PermissionDomain;
 use App\Domains\Rbac\PermissionCodes;
 use App\Domains\Rbac\RoleAssignmentService;
@@ -31,6 +32,7 @@ use App\Models\Station;
 use App\Models\SubscriptionCatalogueVersion;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
+use App\Models\Vehicle;
 use App\Support\Tenant\TenantContext;
 use App\Support\Tenant\TenantContextHolder;
 use Carbon\CarbonImmutable;
@@ -178,6 +180,61 @@ function lrContextWorkspace(): array
         'is_active' => true,
     ]);
 
+    $truckType = OwnerCatalogueItem::factory()->create([
+        'owner_user_id' => $owner->id,
+        'catalogue_type' => OwnerCatalogueType::TruckType->value,
+        'name' => '12 Tyre',
+        'code' => 'T12',
+        'is_active' => true,
+    ]);
+    $tyreLayout = OwnerCatalogueItem::factory()->create([
+        'owner_user_id' => $owner->id,
+        'catalogue_type' => OwnerCatalogueType::TyreLayout->value,
+        'name' => '6x2',
+        'code' => 'L62',
+        'is_active' => true,
+    ]);
+    $transporter = $parties->create(
+        actor: $owner,
+        company: $company,
+        branch: null,
+        attributes: [
+            'name' => 'Context Transporter',
+            'contact_number' => '9800010003',
+            'pan' => 'CTXTR1234A',
+            'state' => 'MH',
+            'city' => 'Thane',
+            'is_gst_applicable' => false,
+        ],
+        roles: [[
+            'role' => PartyRoleType::Transporter->value,
+            'attributes' => [
+                'pan' => 'CTXTR1234A',
+                'pan_status' => 'active',
+                'declaration' => true,
+                'declaration_type' => 'owner',
+                'goods_vehicles_count' => 2,
+            ],
+        ]],
+        remark: 'Create transporter',
+    );
+
+    $ownVehicle = Vehicle::query()->create([
+        'company_id' => $company->id,
+        'registration_number' => 'MH12CTXOWN1',
+        'is_active' => true,
+        'ownership' => VehicleOwnership::Own->value,
+        'truck_type_id' => $truckType->id,
+        'tyre_layout_id' => $tyreLayout->id,
+    ]);
+    $marketVehicle = Vehicle::query()->create([
+        'company_id' => $company->id,
+        'registration_number' => 'MH12CTXMKT1',
+        'is_active' => true,
+        'ownership' => VehicleOwnership::Market->value,
+        'owner_party_id' => $transporter->id,
+    ]);
+
     return [
         'owner' => $owner,
         'company' => $company,
@@ -189,6 +246,9 @@ function lrContextWorkspace(): array
         'packageType' => $packageType,
         'fromStation' => $fromStation,
         'toStation' => $toStation,
+        'ownVehicle' => $ownVehicle,
+        'marketVehicle' => $marketVehicle,
+        'vehicle' => $marketVehicle,
     ];
 }
 
@@ -247,8 +307,16 @@ function lrContextActivateTenant(Company $company, Branch $branch): void
  */
 function lrContextPayload(array $ctx, array $overrides = []): array
 {
+    $context = (string) ($overrides['workflow_context'] ?? 'broker');
+    $vehicleId = match ($context) {
+        'own_fleet' => $ctx['ownVehicle']->id,
+        'partload' => null,
+        default => $ctx['marketVehicle']->id,
+    };
+
     return array_merge([
         'workflow_context' => 'broker',
+        'vehicle_id' => $vehicleId,
         'number_mode' => 'auto',
         'lr_date' => now()->toDateString(),
         'from_text' => 'Mumbai',
@@ -288,7 +356,7 @@ function lrContextLoginAs(User $user, string $password): void
     }
 }
 
-test('broker-only active subscription resolves broker', function () {
+test('broker-only active subscription opens shared truck LR form', function () {
     $ws = lrContextWorkspace();
     lrActivatePaidModules($ws['owner'], $ws['company'], [SubscriptionModule::Broker->value]);
 
@@ -296,7 +364,8 @@ test('broker-only active subscription resolves broker', function () {
     $resolution = $resolver->resolveForCreate($ws['company'], $ws['member'], $ws['branch'], null);
 
     expect($resolution['status'])->toBe('ready')
-        ->and($resolution['context'])->toBe(LrWorkflowContext::Broker)
+        ->and($resolution['form_mode'])->toBe('truck')
+        ->and($resolution['context'])->toBeNull()
         ->and(app(CoreModuleEntitlementResolver::class)->entitledModules($ws['company']))
         ->toEqual([SubscriptionModule::Broker]);
 
@@ -307,16 +376,17 @@ test('broker-only active subscription resolves broker', function () {
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('branch/lorry-receipts/create')
-            ->where('workflowContext', 'broker'));
+            ->where('formMode', 'truck')
+            ->where('workflowContext', null));
 
     $this->get(route('branch.lorry-receipts.index'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('createAction.mode', 'direct')
-            ->where('createAction.url', route('branch.lorry-receipts.create', ['context' => 'broker'], absolute: false)));
+            ->where('createAction.url', route('branch.lorry-receipts.create', absolute: false)));
 });
 
-test('ownfleet-only active subscription resolves own_fleet', function () {
+test('ownfleet-only active subscription opens shared truck LR form', function () {
     $ws = lrContextWorkspace();
     lrActivatePaidModules($ws['owner'], $ws['company'], [SubscriptionModule::OwnFleet->value]);
 
@@ -324,10 +394,11 @@ test('ownfleet-only active subscription resolves own_fleet', function () {
     $resolution = $resolver->resolveForCreate($ws['company'], $ws['member'], $ws['branch'], null);
 
     expect($resolution['status'])->toBe('ready')
-        ->and($resolution['context'])->toBe(LrWorkflowContext::OwnFleet);
+        ->and($resolution['form_mode'])->toBe('truck')
+        ->and($resolution['context'])->toBeNull();
 });
 
-test('partload-only active subscription resolves partload', function () {
+test('partload-only active subscription resolves partload form', function () {
     $ws = lrContextWorkspace();
     lrActivatePaidModules($ws['owner'], $ws['company'], [SubscriptionModule::Partload->value]);
 
@@ -335,10 +406,11 @@ test('partload-only active subscription resolves partload', function () {
     $resolution = $resolver->resolveForCreate($ws['company'], $ws['member'], $ws['branch'], null);
 
     expect($resolution['status'])->toBe('ready')
+        ->and($resolution['form_mode'])->toBe('partload')
         ->and($resolution['context'])->toBe(LrWorkflowContext::Partload);
 });
 
-test('multi-module without origin returns choose status and redirects to inline create menu', function () {
+test('multi-module without origin opens shared truck form with no chooser menu', function () {
     $ws = lrContextWorkspace();
     lrActivatePaidModules($ws['owner'], $ws['company'], [
         SubscriptionModule::Broker->value,
@@ -348,27 +420,28 @@ test('multi-module without origin returns choose status and redirects to inline 
     $resolver = app(LrWorkflowContextResolver::class);
     $resolution = $resolver->resolveForCreate($ws['company'], $ws['member'], $ws['branch'], null);
 
-    expect($resolution['status'])->toBe('choose')
-        ->and($resolution['options'])->toHaveCount(2)
-        ->and(collect($resolution['options'])->pluck('value')->all())
-        ->toEqual(['broker', 'own_fleet']);
+    expect($resolution['status'])->toBe('ready')
+        ->and($resolution['form_mode'])->toBe('truck')
+        ->and($resolution['context'])->toBeNull();
 
     lrContextLoginAs($ws['member'], 'member-secret');
     enterBranchWorkspace($ws['company'], $ws['branch'])->assertRedirect();
 
     $this->get(route('branch.lorry-receipts.create'))
-        ->assertRedirect(route('branch.lorry-receipts.index'));
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('branch/lorry-receipts/create')
+            ->where('formMode', 'truck'));
 
     $this->get(route('branch.lorry-receipts.index'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('branch/lorry-receipts/index')
-            ->where('createAction.mode', 'menu')
-            ->has('createAction.options', 2)
-            ->where('createAction.open_menu', true));
+            ->where('createAction.mode', 'direct')
+            ->missing('createAction.options'));
 });
 
-test('multi-module with origin own_fleet resolves own_fleet', function () {
+test('multi-module with origin own_fleet still opens shared truck form', function () {
     $ws = lrContextWorkspace();
     lrActivatePaidModules($ws['owner'], $ws['company'], [
         SubscriptionModule::Broker->value,
@@ -385,7 +458,8 @@ test('multi-module with origin own_fleet resolves own_fleet', function () {
     );
 
     expect($resolution['status'])->toBe('ready')
-        ->and($resolution['context'])->toBe(LrWorkflowContext::OwnFleet);
+        ->and($resolution['form_mode'])->toBe('truck')
+        ->and($resolution['context'])->toBeNull();
 
     lrContextLoginAs($ws['member'], 'member-secret');
     enterBranchWorkspace($ws['company'], $ws['branch'])->assertRedirect();
@@ -394,8 +468,8 @@ test('multi-module with origin own_fleet resolves own_fleet', function () {
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('branch/lorry-receipts/create')
-            ->where('workflowContext', 'own_fleet')
-            ->where('contextLabel', 'OwnFleet'));
+            ->where('formMode', 'truck')
+            ->where('workflowContext', null));
 });
 
 test('unentitled context POST is rejected', function () {
@@ -406,12 +480,14 @@ test('unentitled context POST is rejected', function () {
     enterBranchWorkspace($ws['company'], $ws['branch'])->assertRedirect();
 
     $this->post(route('branch.lorry-receipts.store'), lrContextPayload($ws, [
+        'form_mode' => 'truck',
         'workflow_context' => 'own_fleet',
+        'vehicle_id' => $ws['ownVehicle']->id,
         'from_station_id' => $ws['fromStation']->id,
         'to_station_id' => $ws['toStation']->id,
         'from_text' => null,
         'to_text' => null,
-    ]))->assertSessionHasErrors('workflow_context');
+    ]))->assertSessionHasErrors('vehicle_id');
 });
 
 test('edit cannot change workflow context', function () {

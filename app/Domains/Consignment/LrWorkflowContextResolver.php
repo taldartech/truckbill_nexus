@@ -9,19 +9,24 @@ use App\Models\Company;
 use App\Models\User;
 
 /**
- * Resolves Unified LR workflow context from subscription entitlements and
- * originating action (query origin/context). Never trusts client invention of
- * an unentitled context.
+ * Resolves Unified LR create entry points from subscription entitlements.
+ *
+ * Broker/OwnFleet share one truck-based form; classification comes from Vehicle ownership.
+ * Partload uses a dedicated bilty form without vehicle selection.
+ * Never prompts the user to choose Broker/OwnFleet/Partload as an intermediate action.
  */
 final class LrWorkflowContextResolver
 {
+    public const FORM_TRUCK = 'truck';
+
+    public const FORM_PARTLOAD = 'partload';
+
     public function __construct(
         private readonly CoreModuleEntitlementResolver $entitlements = new CoreModuleEntitlementResolver,
     ) {}
 
     /**
      * Intersection of entitled modules as LR workflow contexts.
-     * Caller is responsible for LR create permission checks.
      *
      * @return list<LrWorkflowContext>
      */
@@ -37,13 +42,22 @@ final class LrWorkflowContextResolver
         return $contexts;
     }
 
+    public function hasTruckWorkflow(Company $company): bool
+    {
+        return $this->entitlements->isEntitled($company, LrWorkflowContext::Broker)
+            || $this->entitlements->isEntitled($company, LrWorkflowContext::OwnFleet);
+    }
+
+    public function hasPartloadWorkflow(Company $company): bool
+    {
+        return $this->entitlements->isEntitled($company, LrWorkflowContext::Partload);
+    }
+
     /**
      * @return array{
      *     status: 'ready',
-     *     context: LrWorkflowContext
-     * }|array{
-     *     status: 'choose',
-     *     options: list<array{value: string, label: string, create_url: string}>
+     *     form_mode: 'truck'|'partload',
+     *     context: ?LrWorkflowContext
      * }|array{
      *     status: 'blocked',
      *     reason: string
@@ -55,52 +69,63 @@ final class LrWorkflowContextResolver
         Branch $branch,
         ?string $requestedOrigin = null,
     ): array {
-        $available = $this->availableContexts($company, $user, $branch);
-
-        if ($available === []) {
-            return [
-                'status' => 'blocked',
-                'reason' => 'No subscribed core module entitles Lorry Receipt creation. Activate Broker, OwnFleet, or Partload from the Owner Panel.',
-            ];
-        }
+        unset($user, $branch);
 
         $origin = $this->parseOrigin($requestedOrigin);
+        $hasTruck = $this->hasTruckWorkflow($company);
+        $hasPartload = $this->hasPartloadWorkflow($company);
 
-        if ($origin !== null) {
-            foreach ($available as $context) {
-                if ($context === $origin) {
-                    return [
-                        'status' => 'ready',
-                        'context' => $context,
-                    ];
-                }
+        if ($origin === LrWorkflowContext::Partload) {
+            if (! $hasPartload) {
+                return [
+                    'status' => 'blocked',
+                    'reason' => 'Partload is not entitled for this company.',
+                ];
             }
 
             return [
-                'status' => 'blocked',
-                'reason' => 'The requested workflow context is not entitled for this company.',
+                'status' => 'ready',
+                'form_mode' => self::FORM_PARTLOAD,
+                'context' => LrWorkflowContext::Partload,
             ];
         }
 
-        if (count($available) === 1) {
+        // Explicit Broker/OwnFleet origins are no longer used for create entry.
+        // Users open the shared truck form; ownership classifies on submit.
+        if ($origin === LrWorkflowContext::Broker || $origin === LrWorkflowContext::OwnFleet) {
+            if (! $hasTruck) {
+                return [
+                    'status' => 'blocked',
+                    'reason' => 'Broker/OwnFleet Lorry Receipt creation is not entitled for this company.',
+                ];
+            }
+
             return [
                 'status' => 'ready',
-                'context' => $available[0],
+                'form_mode' => self::FORM_TRUCK,
+                'context' => null,
+            ];
+        }
+
+        if ($hasTruck) {
+            return [
+                'status' => 'ready',
+                'form_mode' => self::FORM_TRUCK,
+                'context' => null,
+            ];
+        }
+
+        if ($hasPartload) {
+            return [
+                'status' => 'ready',
+                'form_mode' => self::FORM_PARTLOAD,
+                'context' => LrWorkflowContext::Partload,
             ];
         }
 
         return [
-            'status' => 'choose',
-            'options' => array_map(
-                fn (LrWorkflowContext $context): array => [
-                    'value' => $context->value,
-                    'label' => $this->labelFor($context),
-                    'create_url' => route('branch.lorry-receipts.create', [
-                        'context' => $context->value,
-                    ], absolute: false),
-                ],
-                $available,
-            ),
+            'status' => 'blocked',
+            'reason' => 'No subscribed core module entitles Lorry Receipt creation. Activate Broker, OwnFleet, or Partload from the Owner Panel.',
         ];
     }
 
@@ -127,6 +152,11 @@ final class LrWorkflowContextResolver
         // Accept SubscriptionModule spelling for OwnFleet as a convenience.
         if ($trimmed === 'ownfleet') {
             $trimmed = LrWorkflowContext::OwnFleet->value;
+        }
+
+        // Dedicated Partload bilty entry may use context=partload or form=partload.
+        if ($trimmed === 'bilty' || $trimmed === self::FORM_PARTLOAD) {
+            return LrWorkflowContext::Partload;
         }
 
         return LrWorkflowContext::tryFrom($trimmed);

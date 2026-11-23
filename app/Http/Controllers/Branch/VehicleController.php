@@ -5,7 +5,10 @@ namespace App\Http\Controllers\Branch;
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Company\MasterDataVisibilityResolver;
 use App\Domains\Document\DocumentAttachmentService;
+use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Master\Exceptions\MasterDomainException;
+use App\Domains\Master\Party\Enums\PartyRoleType;
+use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
 use App\Domains\Master\Vehicle\VehicleService;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
@@ -13,10 +16,14 @@ use App\Http\Controllers\Branch\Concerns\PresentsDocumentDrawer;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Company;
+use App\Models\OwnerCatalogueItem;
+use App\Models\Party;
+use App\Models\PartyRole;
 use App\Models\User;
 use App\Models\Vehicle;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -91,6 +98,7 @@ class VehicleController extends Controller
             'permissions' => $permissions,
             'mode' => 'create',
             'vehicle' => null,
+            'formOptions' => $this->formOptions($company, $branch),
             'dataVisibility' => $this->dataVisibilityPresentation($company),
             'links' => array_merge($this->branchMasterNavLinks(), [
                 'index' => route('branch.vehicles.index', absolute: false),
@@ -113,6 +121,11 @@ class VehicleController extends Controller
             'engine_number' => ['nullable', 'string', 'max:100'],
             'capacity_mt' => ['nullable', 'numeric', 'min:0'],
             'is_active' => ['sometimes', 'boolean'],
+            'ownership' => ['required', Rule::enum(VehicleOwnership::class)],
+            'truck_type_id' => ['nullable', 'uuid'],
+            'tyre_layout_id' => ['nullable', 'uuid'],
+            'owner_party_id' => ['nullable', 'uuid'],
+            'primary_driver_party_id' => ['nullable', 'uuid'],
             'remark' => ['nullable', 'string', 'max:1000'],
         ]);
 
@@ -193,6 +206,7 @@ class VehicleController extends Controller
             'permissions' => $permissions,
             'mode' => 'edit',
             'vehicle' => $this->vehiclePayload($vehicle),
+            'formOptions' => $this->formOptions($company, $branch),
             'links' => array_merge($this->branchMasterNavLinks(), [
                 'index' => route('branch.vehicles.index', absolute: false),
                 'show' => route('branch.vehicles.show', [$vehicle], absolute: false),
@@ -219,6 +233,11 @@ class VehicleController extends Controller
             'engine_number' => ['nullable', 'string', 'max:100'],
             'capacity_mt' => ['nullable', 'numeric', 'min:0'],
             'is_active' => ['sometimes', 'boolean'],
+            'ownership' => ['required', Rule::enum(VehicleOwnership::class)],
+            'truck_type_id' => ['nullable', 'uuid'],
+            'tyre_layout_id' => ['nullable', 'uuid'],
+            'owner_party_id' => ['nullable', 'uuid'],
+            'primary_driver_party_id' => ['nullable', 'uuid'],
             'remark' => ['required', 'string', 'max:1000'],
         ]);
 
@@ -261,6 +280,8 @@ class VehicleController extends Controller
      */
     private function vehiclePayload(Vehicle $vehicle): array
     {
+        $vehicle->loadMissing(['truckType', 'tyreLayout', 'ownerParty', 'primaryDriver']);
+
         return [
             'id' => $vehicle->id,
             'registration_number' => $vehicle->registration_number,
@@ -272,8 +293,96 @@ class VehicleController extends Controller
             'engine_number' => $vehicle->engine_number,
             'capacity_mt' => $vehicle->capacity_mt,
             'is_active' => (bool) $vehicle->is_active,
+            'ownership' => $vehicle->ownership?->value,
+            'truck_type_id' => $vehicle->truck_type_id,
+            'tyre_layout_id' => $vehicle->tyre_layout_id,
+            'owner_party_id' => $vehicle->owner_party_id,
+            'primary_driver_party_id' => $vehicle->primary_driver_party_id,
+            'truck_type_name' => $vehicle->truckType?->name,
+            'tyre_layout_name' => $vehicle->tyreLayout?->name,
+            'owner_party_name' => $vehicle->ownerParty?->name,
+            'primary_driver_name' => $vehicle->primaryDriver?->name,
             'scope' => $vehicle->branch_id === null ? 'shared' : 'branch',
             'branch_id' => $vehicle->branch_id,
+        ];
+    }
+
+    /**
+     * @return array{
+     *     ownershipOptions: list<array{value: string, label: string}>,
+     *     truckTypes: list<array{id: string, name: string}>,
+     *     tyreLayouts: list<array{id: string, name: string}>,
+     *     transporters: list<array{id: string, name: string}>,
+     *     drivers: list<array{id: string, name: string}>
+     * }
+     */
+    private function formOptions(Company $company, Branch $branch): array
+    {
+        $truckTypes = OwnerCatalogueItem::query()
+            ->where('owner_user_id', $company->owner_user_id)
+            ->where('catalogue_type', OwnerCatalogueType::TruckType->value)
+            ->where('is_active', true)
+            ->whereNull('deleted_at')
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $tyreLayouts = OwnerCatalogueItem::query()
+            ->where('owner_user_id', $company->owner_user_id)
+            ->where('catalogue_type', OwnerCatalogueType::TyreLayout->value)
+            ->where('is_active', true)
+            ->whereNull('deleted_at')
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $transporterIds = PartyRole::query()
+            ->where('company_id', $company->id)
+            ->where('role', PartyRoleType::Transporter->value)
+            ->whereNull('deleted_at')
+            ->whereNull('deactivated_at')
+            ->pluck('party_id');
+
+        $driverIds = PartyRole::query()
+            ->where('company_id', $company->id)
+            ->where('role', PartyRoleType::Driver->value)
+            ->whereNull('deleted_at')
+            ->whereNull('deactivated_at')
+            ->pluck('party_id');
+
+        $transporters = Party::query()
+            ->visibleInBranch($company->id, $branch->id)
+            ->whereIn('id', $transporterIds)
+            ->whereNull('deleted_at')
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $drivers = Party::query()
+            ->visibleInBranch($company->id, $branch->id)
+            ->whereIn('id', $driverIds)
+            ->whereNull('deleted_at')
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        return [
+            'ownershipOptions' => collect(VehicleOwnership::cases())->map(fn (VehicleOwnership $case): array => [
+                'value' => $case->value,
+                'label' => $case->label(),
+            ])->values()->all(),
+            'truckTypes' => $truckTypes->map(fn (OwnerCatalogueItem $item): array => [
+                'id' => $item->id,
+                'name' => $item->name,
+            ])->values()->all(),
+            'tyreLayouts' => $tyreLayouts->map(fn (OwnerCatalogueItem $item): array => [
+                'id' => $item->id,
+                'name' => $item->name,
+            ])->values()->all(),
+            'transporters' => $transporters->map(fn (Party $party): array => [
+                'id' => $party->id,
+                'name' => $party->name,
+            ])->values()->all(),
+            'drivers' => $drivers->map(fn (Party $party): array => [
+                'id' => $party->id,
+                'name' => $party->name,
+            ])->values()->all(),
         ];
     }
 

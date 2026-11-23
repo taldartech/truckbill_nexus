@@ -722,74 +722,68 @@ export default function TripShow({
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {movements.allocations.map(
-                                        (allocation) => {
-                                            const pickup =
-                                                movements.pickups.find(
-                                                    (row) =>
-                                                        row.id ===
-                                                        allocation.trip_pickup_id,
-                                                );
-                                            const drop = movements.drops.find(
-                                                (row) =>
-                                                    row.id ===
-                                                    allocation.trip_drop_id,
+                                    {movements.allocations.map((allocation) => {
+                                        const pickup = movements.pickups.find(
+                                            (row) =>
+                                                row.id ===
+                                                allocation.trip_pickup_id,
+                                        );
+                                        const drop = movements.drops.find(
+                                            (row) =>
+                                                row.id ===
+                                                allocation.trip_drop_id,
+                                        );
+                                        const removeUrl =
+                                            urls.remove_allocation.replace(
+                                                'ALLOCATION_ID',
+                                                allocation.id,
                                             );
-                                            const removeUrl =
-                                                urls.remove_allocation.replace(
-                                                    'ALLOCATION_ID',
-                                                    allocation.id,
-                                                );
-                                            return (
-                                                <tr
-                                                    key={allocation.id}
-                                                    className="border-t border-border"
-                                                >
-                                                    <td className="px-3 py-2">
-                                                        {pickup?.station_name ??
-                                                            '—'}
+                                        return (
+                                            <tr
+                                                key={allocation.id}
+                                                className="border-t border-border"
+                                            >
+                                                <td className="px-3 py-2">
+                                                    {pickup?.station_name ??
+                                                        '—'}
+                                                </td>
+                                                <td className="px-3 py-2">
+                                                    {drop?.station_name ?? '—'}
+                                                </td>
+                                                <td className="px-3 py-2">
+                                                    {
+                                                        allocation.allocation_weight
+                                                    }
+                                                </td>
+                                                <td className="px-3 py-2">
+                                                    ₹{allocation.freight}
+                                                </td>
+                                                {mutable ? (
+                                                    <td className="px-3 py-2 text-right">
+                                                        <Form
+                                                            action={removeUrl}
+                                                            method="delete"
+                                                        >
+                                                            {({
+                                                                processing,
+                                                            }) => (
+                                                                <Button
+                                                                    type="submit"
+                                                                    variant="destructive"
+                                                                    size="sm"
+                                                                    disabled={
+                                                                        processing
+                                                                    }
+                                                                >
+                                                                    Remove
+                                                                </Button>
+                                                            )}
+                                                        </Form>
                                                     </td>
-                                                    <td className="px-3 py-2">
-                                                        {drop?.station_name ??
-                                                            '—'}
-                                                    </td>
-                                                    <td className="px-3 py-2">
-                                                        {
-                                                            allocation.allocation_weight
-                                                        }
-                                                    </td>
-                                                    <td className="px-3 py-2">
-                                                        ₹{allocation.freight}
-                                                    </td>
-                                                    {mutable ? (
-                                                        <td className="px-3 py-2 text-right">
-                                                            <Form
-                                                                action={
-                                                                    removeUrl
-                                                                }
-                                                                method="delete"
-                                                            >
-                                                                {({
-                                                                    processing,
-                                                                }) => (
-                                                                    <Button
-                                                                        type="submit"
-                                                                        variant="destructive"
-                                                                        size="sm"
-                                                                        disabled={
-                                                                            processing
-                                                                        }
-                                                                    >
-                                                                        Remove
-                                                                    </Button>
-                                                                )}
-                                                            </Form>
-                                                        </td>
-                                                    ) : null}
-                                                </tr>
-                                            );
-                                        },
-                                    )}
+                                                ) : null}
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>

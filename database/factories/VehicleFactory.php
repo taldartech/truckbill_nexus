@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
 use App\Models\Company;
 use App\Models\Vehicle;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -27,6 +28,21 @@ class VehicleFactory extends Factory
             'model' => '407',
             'manufacture_year' => 2020,
             'is_active' => true,
+            'ownership' => null,
         ];
+    }
+
+    public function own(): static
+    {
+        return $this->state(fn (): array => [
+            'ownership' => VehicleOwnership::Own->value,
+        ]);
+    }
+
+    public function market(): static
+    {
+        return $this->state(fn (): array => [
+            'ownership' => VehicleOwnership::Market->value,
+        ]);
     }
 }

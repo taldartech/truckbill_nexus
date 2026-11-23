@@ -10,9 +10,11 @@ use App\Domains\Consignment\Exceptions\LorryReceiptAuthorizationException;
 use App\Domains\Consignment\Exceptions\LorryReceiptConflictException;
 use App\Domains\Consignment\Exceptions\LorryReceiptDomainException;
 use App\Domains\Consignment\LorryReceiptService;
+use App\Domains\Consignment\LrVehicleClassificationService;
 use App\Domains\Consignment\LrWorkflowContextResolver;
 use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Master\Party\Enums\PartyRoleType;
+use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
 use App\Domains\OwnFleet\Trip\TripService;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
@@ -28,6 +30,7 @@ use App\Models\OwnerCatalogueItem;
 use App\Models\Party;
 use App\Models\Station;
 use App\Models\User;
+use App\Models\Vehicle;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -47,6 +50,7 @@ class LorryReceiptController extends Controller
         private readonly PermissionAuthorizer $authorizer,
         private readonly LorryReceiptService $lorryReceipts,
         private readonly LrWorkflowContextResolver $contextResolver,
+        private readonly LrVehicleClassificationService $vehicleClassification,
         private readonly TripService $trips,
     ) {}
 
@@ -79,7 +83,10 @@ class LorryReceiptController extends Controller
             ])->values()->all(),
             'contextOptions' => $this->contextOptions(),
             'createAction' => $permissions['can_create']
-                ? $this->createActionPayload($company, $actor, $branch, (bool) $request->session()->pull('lr_create_menu', false))
+                ? $this->createActionPayload($company, $actor, $branch)
+                : null,
+            'partloadCreateUrl' => $permissions['can_create'] && $this->contextResolver->hasPartloadWorkflow($company)
+                ? route('branch.lorry-receipts.create', ['context' => 'partload'], absolute: false)
                 : null,
             'lorryReceipts' => [
                 'data' => collect($page->items())->map(fn (LorryReceipt $lr): array => $this->listPayload($lr))->values()->all(),
@@ -105,15 +112,6 @@ class LorryReceiptController extends Controller
         $origin = $this->requestOrigin($request);
         $resolution = $this->contextResolver->resolveForCreate($company, $actor, $branch, $origin);
 
-        if ($resolution['status'] === 'choose') {
-            // Multi-module with no origin: return to the list and use the inline Create menu.
-            // Never invent a default context and never render a full chooser page.
-            return redirect()
-                ->route('branch.lorry-receipts.index')
-                ->with('lr_create_menu', true)
-                ->with('info', 'Select Broker LR, OwnFleet LR, or Partload LR from Create LR.');
-        }
-
         if ($resolution['status'] === 'blocked') {
             return Inertia::render('branch/lorry-receipts/blocked', [
                 'reason' => $resolution['reason'],
@@ -123,14 +121,18 @@ class LorryReceiptController extends Controller
             ]);
         }
 
+        $formMode = $resolution['form_mode'];
         $context = $resolution['context'];
 
         return Inertia::render('branch/lorry-receipts/create', [
             'mode' => 'create',
-            'workflowContext' => $context->value,
-            'contextLabel' => $this->contextResolver->labelFor($context),
+            'formMode' => $formMode,
+            'workflowContext' => $context?->value,
+            'contextLabel' => $formMode === LrWorkflowContextResolver::FORM_PARTLOAD
+                ? 'Partload'
+                : 'Lorry Receipt',
             'lorryReceipt' => null,
-            'formOptions' => $this->formOptions($company),
+            'formOptions' => $this->formOptions($company, $branch, $actor, $formMode),
             'permissions' => $this->lrPermissions($actor, $company, $branch),
             'urls' => [
                 'index' => route('branch.lorry-receipts.index', absolute: false),
@@ -144,31 +146,66 @@ class LorryReceiptController extends Controller
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertPermission($actor, $company, $branch, PermissionCodes::LR_CREATE);
 
-        $origin = $this->requestOrigin($request)
-            ?? (is_string($request->input('workflow_context')) ? (string) $request->input('workflow_context') : null);
+        $formMode = strtolower(trim((string) $request->input('form_mode', '')));
+        $origin = $this->requestOrigin($request);
+        if ($formMode === LrWorkflowContextResolver::FORM_PARTLOAD) {
+            $origin = LrWorkflowContext::Partload->value;
+        } elseif ($formMode === LrWorkflowContextResolver::FORM_TRUCK) {
+            $origin = null;
+        }
+
         $resolution = $this->contextResolver->resolveForCreate($company, $actor, $branch, $origin);
 
         if ($resolution['status'] !== 'ready') {
             throw ValidationException::withMessages([
-                'workflow_context' => $resolution['status'] === 'blocked'
-                    ? $resolution['reason']
-                    : 'Select a workflow context before creating a Lorry Receipt.',
+                'form_mode' => $resolution['reason'] ?? 'Lorry Receipt creation is not available.',
             ]);
         }
 
-        $resolvedContext = $resolution['context'];
         $payload = $this->validatedPayload($request);
 
-        if (
-            array_key_exists('workflow_context', $payload)
-            && (string) $payload['workflow_context'] !== $resolvedContext->value
-        ) {
-            throw ValidationException::withMessages([
-                'workflow_context' => 'Workflow context does not match the entitled originating action.',
-            ]);
-        }
+        if ($resolution['form_mode'] === LrWorkflowContextResolver::FORM_PARTLOAD) {
+            if (! empty($payload['vehicle_id'])) {
+                throw ValidationException::withMessages([
+                    'vehicle_id' => 'Vehicle is not used for Partload LRs.',
+                ]);
+            }
 
-        $payload['workflow_context'] = $resolvedContext->value;
+            if (
+                array_key_exists('workflow_context', $payload)
+                && (string) $payload['workflow_context'] !== LrWorkflowContext::Partload->value
+            ) {
+                throw ValidationException::withMessages([
+                    'workflow_context' => 'Forged workflow context was rejected.',
+                ]);
+            }
+
+            $payload['workflow_context'] = LrWorkflowContext::Partload->value;
+            $payload['vehicle_id'] = null;
+        } else {
+            $vehicleId = (string) ($payload['vehicle_id'] ?? '');
+            if ($vehicleId === '') {
+                throw ValidationException::withMessages([
+                    'vehicle_id' => 'Vehicle is required.',
+                ]);
+            }
+
+            $classified = $this->vehicleClassification->resolveFromVehicleId($company, $branch, $vehicleId);
+            $resolvedContext = $classified['context'];
+
+            if (
+                array_key_exists('workflow_context', $payload)
+                && filled($payload['workflow_context'])
+                && (string) $payload['workflow_context'] !== $resolvedContext->value
+            ) {
+                throw ValidationException::withMessages([
+                    'workflow_context' => 'Forged workflow context was rejected. Classification follows vehicle ownership.',
+                ]);
+            }
+
+            $payload['workflow_context'] = $resolvedContext->value;
+            $payload['vehicle_id'] = $classified['vehicle']->id;
+        }
 
         try {
             $lr = $this->lorryReceipts->create($company, $branch, $actor, $payload);
@@ -235,12 +272,17 @@ class LorryReceiptController extends Controller
         $lorryReceipt->load(['goodsRows', 'ewayBills', 'additionalCharges']);
         $context = $lorryReceipt->workflow_context;
 
+        $formMode = $context === LrWorkflowContext::Partload
+            ? LrWorkflowContextResolver::FORM_PARTLOAD
+            : LrWorkflowContextResolver::FORM_TRUCK;
+
         return Inertia::render('branch/lorry-receipts/edit', [
             'mode' => 'edit',
+            'formMode' => $formMode,
             'workflowContext' => $context->value,
             'contextLabel' => $this->contextResolver->labelFor($context),
             'lorryReceipt' => $this->detailPayload($lorryReceipt),
-            'formOptions' => $this->formOptions($company),
+            'formOptions' => $this->formOptions($company, $branch, $actor, $formMode),
             'permissions' => $this->lrPermissions($actor, $company, $branch),
             'urls' => [
                 'index' => route('branch.lorry-receipts.index', absolute: false),
@@ -388,7 +430,10 @@ class LorryReceiptController extends Controller
     private function validatedPayload(Request $request, bool $forUpdate = false): array
     {
         $rules = [
+            'form_mode' => ['nullable', Rule::in([LrWorkflowContextResolver::FORM_TRUCK, LrWorkflowContextResolver::FORM_PARTLOAD])],
             'workflow_context' => ['nullable', Rule::enum(LrWorkflowContext::class)],
+            'vehicle_id' => ['nullable', 'uuid'],
+            'billing_customer_party_id' => ['nullable', 'uuid'],
             'lr_date' => ['nullable', 'date'],
             'from_text' => ['nullable', 'string', 'max:255'],
             'to_text' => ['nullable', 'string', 'max:255'],
@@ -429,7 +474,7 @@ class LorryReceiptController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function formOptions(Company $company): array
+    private function formOptions(Company $company, Branch $branch, User $actor, string $formMode): array
     {
         $consignors = Party::query()
             ->where('company_id', $company->id)
@@ -448,6 +493,18 @@ class LorryReceiptController extends Controller
             ->whereNull('deleted_at')
             ->whereHas('roles', function ($query): void {
                 $query->where('role', PartyRoleType::Consignee->value)
+                    ->whereNull('deleted_at')
+                    ->whereNull('deactivated_at');
+            })
+            ->orderBy('name')
+            ->limit(300)
+            ->get(['id', 'name']);
+
+        $billingCustomers = Party::query()
+            ->where('company_id', $company->id)
+            ->whereNull('deleted_at')
+            ->whereHas('roles', function ($query): void {
+                $query->where('role', PartyRoleType::Customer->value)
                     ->whereNull('deleted_at')
                     ->whereNull('deactivated_at');
             })
@@ -481,6 +538,40 @@ class LorryReceiptController extends Controller
             ->limit(200)
             ->get(['id', 'name']);
 
+        $vehicles = [];
+        if ($formMode === LrWorkflowContextResolver::FORM_TRUCK) {
+            $ownershipFilter = [];
+            foreach ($this->contextResolver->availableContexts($company, $actor, $branch) as $context) {
+                if ($context === LrWorkflowContext::OwnFleet) {
+                    $ownershipFilter[] = VehicleOwnership::Own->value;
+                }
+                if ($context === LrWorkflowContext::Broker) {
+                    $ownershipFilter[] = VehicleOwnership::Market->value;
+                }
+            }
+
+            $vehicleQuery = Vehicle::query()
+                ->visibleInBranch($company->id, $branch->id)
+                ->where('is_active', true)
+                ->whereNull('deleted_at')
+                ->whereNotNull('ownership')
+                ->orderBy('registration_number')
+                ->limit(300);
+
+            if ($ownershipFilter !== []) {
+                $vehicleQuery->whereIn('ownership', $ownershipFilter);
+            }
+
+            $vehicles = $vehicleQuery->get(['id', 'registration_number', 'ownership', 'make', 'model'])
+                ->map(fn (Vehicle $vehicle): array => [
+                    'id' => $vehicle->id,
+                    'registration_number' => $vehicle->registration_number,
+                    'ownership' => $vehicle->ownership?->value,
+                    'ownership_label' => $vehicle->ownership?->label(),
+                    'label' => trim($vehicle->registration_number.' · '.($vehicle->ownership?->label() ?? 'Unclassified')),
+                ])->values()->all();
+        }
+
         return [
             'rateTypeOptions' => collect(FreightRateType::cases())->map(fn (FreightRateType $type): array => [
                 'value' => $type->value,
@@ -491,6 +582,10 @@ class LorryReceiptController extends Controller
                 'name' => $party->name,
             ])->values()->all(),
             'consignees' => $consignees->map(fn (Party $party): array => [
+                'id' => $party->id,
+                'name' => $party->name,
+            ])->values()->all(),
+            'billingCustomers' => $billingCustomers->map(fn (Party $party): array => [
                 'id' => $party->id,
                 'name' => $party->name,
             ])->values()->all(),
@@ -507,26 +602,24 @@ class LorryReceiptController extends Controller
                 'id' => $item->id,
                 'name' => $item->name,
             ])->values()->all(),
+            'vehicles' => $vehicles,
         ];
     }
 
     /**
-     * Compact Create LR control for the list page (direct link or entitled inline menu).
+     * Direct Create LR control — never a Broker/OwnFleet/Partload chooser menu.
      *
      * @return array{
-     *     mode: 'direct'|'menu'|'blocked',
+     *     mode: 'direct'|'blocked',
      *     label: string,
      *     url?: string,
-     *     options?: list<array{value: string, label: string, create_url: string}>,
-     *     reason?: string,
-     *     open_menu: bool
+     *     reason?: string
      * }
      */
     private function createActionPayload(
         Company $company,
         User $actor,
         Branch $branch,
-        bool $openMenu = false,
     ): array {
         $resolution = $this->contextResolver->resolveForCreate($company, $actor, $branch, null);
 
@@ -535,28 +628,18 @@ class LorryReceiptController extends Controller
                 'mode' => 'blocked',
                 'label' => 'Create LR',
                 'reason' => $resolution['reason'],
-                'open_menu' => false,
             ];
         }
 
-        if ($resolution['status'] === 'ready') {
-            $context = $resolution['context'];
-
-            return [
-                'mode' => 'direct',
-                'label' => 'Create LR',
-                'url' => route('branch.lorry-receipts.create', [
-                    'context' => $context->value,
-                ], absolute: false),
-                'open_menu' => false,
-            ];
+        $params = [];
+        if ($resolution['form_mode'] === LrWorkflowContextResolver::FORM_PARTLOAD) {
+            $params['context'] = 'partload';
         }
 
         return [
-            'mode' => 'menu',
+            'mode' => 'direct',
             'label' => 'Create LR',
-            'options' => $resolution['options'],
-            'open_menu' => $openMenu,
+            'url' => route('branch.lorry-receipts.create', $params, absolute: false),
         ];
     }
 
@@ -615,6 +698,8 @@ class LorryReceiptController extends Controller
             'to_station_name' => $lr->toStation?->name,
             'consignor_party_id' => $lr->consignor_party_id,
             'consignee_party_id' => $lr->consignee_party_id,
+            'vehicle_id' => $lr->vehicle_id,
+            'billing_customer_party_id' => $lr->billing_customer_party_id,
             'consignor_name' => $lr->consignor?->name,
             'consignee_name' => $lr->consignee?->name,
             'goods_value' => $lr->goods_value,

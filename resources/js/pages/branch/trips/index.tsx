@@ -89,10 +89,7 @@ export default function TripsIndex({
                         >
                             <option value="">All</option>
                             {statusOptions.map((option) => (
-                                <option
-                                    key={option.value}
-                                    value={option.value}
-                                >
+                                <option key={option.value} value={option.value}>
                                     {option.label}
                                 </option>
                             ))}
@@ -178,8 +175,8 @@ export default function TripsIndex({
 
                 {trips.meta.last_page > 1 ? (
                     <p className="text-sm text-muted-foreground">
-                        Page {trips.meta.current_page} of{' '}
-                        {trips.meta.last_page} ({trips.meta.total} trips)
+                        Page {trips.meta.current_page} of {trips.meta.last_page}{' '}
+                        ({trips.meta.total} trips)
                     </p>
                 ) : null}
             </div>

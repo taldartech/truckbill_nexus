@@ -8,6 +8,13 @@ import { Label } from '@/components/ui/label';
 
 type Option = { value: string; label: string };
 type NamedOption = { id: string; name: string; code?: string };
+type VehicleOption = {
+    id: string;
+    registration_number: string;
+    ownership: string | null;
+    ownership_label?: string | null;
+    label: string;
+};
 
 type GoodsRow = {
     goods_type_id: string;
@@ -68,16 +75,19 @@ type LorryReceiptDetail = {
 
 type Props = {
     mode: 'create' | 'edit';
-    workflowContext: string;
+    formMode?: 'truck' | 'partload';
+    workflowContext: string | null;
     contextLabel: string;
     lorryReceipt: LorryReceiptDetail | null;
     formOptions: {
         rateTypeOptions: Option[];
         consignors: NamedOption[];
         consignees: NamedOption[];
+        billingCustomers?: NamedOption[];
         stations: NamedOption[];
         goodsTypes: NamedOption[];
         packageTypes: NamedOption[];
+        vehicles?: VehicleOption[];
     };
     urls: {
         index: string;
@@ -104,13 +114,24 @@ const emptyGoods = (): GoodsRow => ({
 
 export default function LrForm({
     mode,
+    formMode: formModeProp,
     workflowContext,
     contextLabel,
     lorryReceipt,
     formOptions,
     urls,
 }: Props) {
+    const formMode =
+        formModeProp ?? (workflowContext === 'partload' ? 'partload' : 'truck');
     const [numberMode, setNumberMode] = useState<'auto' | 'manual'>('auto');
+    const [vehicleId, setVehicleId] = useState(
+        (lorryReceipt as { vehicle_id?: string | null } | null)?.vehicle_id ??
+            '',
+    );
+    const [billingCustomerId, setBillingCustomerId] = useState(
+        (lorryReceipt as { billing_customer_party_id?: string | null } | null)
+            ?.billing_customer_party_id ?? '',
+    );
     const [goods, setGoods] = useState<GoodsRow[]>(() =>
         lorryReceipt?.goods?.length
             ? lorryReceipt.goods.map((row) => ({
@@ -144,19 +165,36 @@ export default function LrForm({
             : [],
     );
 
+    const selectedVehicle = (formOptions.vehicles ?? []).find(
+        (vehicle) => vehicle.id === vehicleId,
+    );
+    const resolvedContext =
+        formMode === 'partload'
+            ? 'partload'
+            : mode === 'edit'
+              ? (workflowContext ?? 'broker')
+              : selectedVehicle?.ownership === 'own'
+                ? 'own_fleet'
+                : selectedVehicle?.ownership === 'market'
+                  ? 'broker'
+                  : null;
+
     const action = mode === 'create' ? urls.store! : urls.update!;
     const method = mode === 'create' ? 'post' : 'patch';
     const title =
         mode === 'create'
-            ? `Create ${contextLabel} Lorry Receipt`
+            ? formMode === 'partload'
+                ? 'Create Partload Bilty'
+                : 'Create Lorry Receipt'
             : `Edit LR ${lorryReceipt?.lr_number}`;
 
     const needsStations =
-        workflowContext === 'own_fleet' || workflowContext === 'partload';
+        resolvedContext === 'own_fleet' || resolvedContext === 'partload';
     const needsParties =
-        workflowContext === 'broker' || workflowContext === 'partload';
-    const needsTextLocations = workflowContext === 'broker';
-    const partiesOptional = workflowContext === 'own_fleet';
+        resolvedContext === 'broker' || resolvedContext === 'partload';
+    const needsTextLocations = resolvedContext === 'broker';
+    const partiesOptional = resolvedContext === 'own_fleet';
+    const showVehicle = formMode === 'truck';
 
     return (
         <>
@@ -181,24 +219,111 @@ export default function LrForm({
                         <>
                             <input
                                 type="hidden"
-                                name="workflow_context"
-                                value={workflowContext}
+                                name="form_mode"
+                                value={formMode}
                             />
+                            {resolvedContext ? (
+                                <input
+                                    type="hidden"
+                                    name="workflow_context"
+                                    value={resolvedContext}
+                                />
+                            ) : null}
 
                             <section className="space-y-4 rounded-xl border border-border bg-card p-4 md:p-5">
                                 <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-                                    Header
+                                    LR Details
                                 </h2>
                                 <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                    {showVehicle ? (
+                                        <div className="space-y-2 md:col-span-2">
+                                            <Label htmlFor="vehicle_id">
+                                                Truck / Vehicle
+                                            </Label>
+                                            <select
+                                                id="vehicle_id"
+                                                name="vehicle_id"
+                                                className={fieldClass}
+                                                value={vehicleId}
+                                                onChange={(e) =>
+                                                    setVehicleId(e.target.value)
+                                                }
+                                                required={mode === 'create'}
+                                                disabled={mode === 'edit'}
+                                            >
+                                                <option value="">
+                                                    Select vehicle…
+                                                </option>
+                                                {(
+                                                    formOptions.vehicles ?? []
+                                                ).map((vehicle) => (
+                                                    <option
+                                                        key={vehicle.id}
+                                                        value={vehicle.id}
+                                                    >
+                                                        {vehicle.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <p className="text-xs text-muted-foreground">
+                                                {resolvedContext === 'own_fleet'
+                                                    ? 'Own vehicle → OwnFleet LR (stations required).'
+                                                    : resolvedContext ===
+                                                        'broker'
+                                                      ? 'Market vehicle → Broker LR (free-text route).'
+                                                      : 'Ownership on the selected vehicle classifies Broker or OwnFleet automatically.'}
+                                            </p>
+                                            <InputError
+                                                message={errors.vehicle_id}
+                                            />
+                                            <InputError
+                                                message={
+                                                    errors.workflow_context
+                                                }
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            <Label>Workflow</Label>
+                                            <Input
+                                                value={contextLabel}
+                                                disabled
+                                                readOnly
+                                            />
+                                        </div>
+                                    )}
                                     <div className="space-y-2">
-                                        <Label>Workflow context</Label>
-                                        <Input
-                                            value={contextLabel}
-                                            disabled
-                                            readOnly
-                                        />
+                                        <Label htmlFor="billing_customer_party_id">
+                                            Billing Customer
+                                        </Label>
+                                        <select
+                                            id="billing_customer_party_id"
+                                            name="billing_customer_party_id"
+                                            className={fieldClass}
+                                            value={billingCustomerId}
+                                            onChange={(e) =>
+                                                setBillingCustomerId(
+                                                    e.target.value,
+                                                )
+                                            }
+                                        >
+                                            <option value="">Optional…</option>
+                                            {(
+                                                formOptions.billingCustomers ??
+                                                []
+                                            ).map((party) => (
+                                                <option
+                                                    key={party.id}
+                                                    value={party.id}
+                                                >
+                                                    {party.name}
+                                                </option>
+                                            ))}
+                                        </select>
                                         <InputError
-                                            message={errors.workflow_context}
+                                            message={
+                                                errors.billing_customer_party_id
+                                            }
                                         />
                                     </div>
                                     {mode === 'create' ? (

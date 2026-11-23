@@ -12,6 +12,7 @@ use App\Domains\Consignment\Exceptions\LorryReceiptConflictException;
 use App\Domains\Consignment\Exceptions\LorryReceiptDomainException;
 use App\Domains\Consignment\Freight\FreightCalculator;
 use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
+use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Numbering\DocumentNumberAllocator;
 use App\Domains\Numbering\Enums\DocumentNumberScopeType;
 use App\Domains\Numbering\Enums\DocumentNumberType;
@@ -27,8 +28,10 @@ use App\Models\LrEwayBill;
 use App\Models\LrGoodsRow;
 use App\Models\OwnerCatalogueItem;
 use App\Models\Party;
+use App\Models\PartyRole;
 use App\Models\Station;
 use App\Models\User;
+use App\Models\Vehicle;
 use App\Support\Audit\AuditAction;
 use App\Support\Audit\AuditedTransaction;
 use App\Support\Audit\AuditWriter;
@@ -142,6 +145,8 @@ final class LorryReceiptService
                     'to_station_id' => $normalized['to_station_id'],
                     'consignor_party_id' => $normalized['consignor_party_id'],
                     'consignee_party_id' => $normalized['consignee_party_id'],
+                    'vehicle_id' => $normalized['vehicle_id'],
+                    'billing_customer_party_id' => $normalized['billing_customer_party_id'],
                     'status' => LrStatus::Pending,
                     'goods_value' => $normalized['goods_value'],
                     'freight_total' => $normalized['freight_total'],
@@ -226,6 +231,8 @@ final class LorryReceiptService
                     'to_station_id' => $normalized['to_station_id'],
                     'consignor_party_id' => $normalized['consignor_party_id'],
                     'consignee_party_id' => $normalized['consignee_party_id'],
+                    // vehicle_id / workflow_context remain immutable after create
+                    'billing_customer_party_id' => $normalized['billing_customer_party_id'],
                     'goods_value' => $normalized['goods_value'],
                     'freight_total' => $normalized['freight_total'],
                     'additional_charges_total' => $normalized['additional_charges_total'],
@@ -378,6 +385,8 @@ final class LorryReceiptService
         $toStationId = $this->optionalUuid($payload['to_station_id'] ?? null);
         $consignorId = $this->optionalUuid($payload['consignor_party_id'] ?? null);
         $consigneeId = $this->optionalUuid($payload['consignee_party_id'] ?? null);
+        $vehicleId = $this->optionalUuid($payload['vehicle_id'] ?? null);
+        $billingCustomerId = $this->optionalUuid($payload['billing_customer_party_id'] ?? null);
 
         [
             $fromText,
@@ -395,6 +404,9 @@ final class LorryReceiptService
             $consignorId,
             $consigneeId,
         );
+
+        $this->assertVehicleForContext($company, $context, $vehicleId, $forUpdate);
+        $this->assertBillingCustomer($company, $billingCustomerId);
 
         $this->assertWorkflowContextFields(
             $company,
@@ -465,6 +477,8 @@ final class LorryReceiptService
             'to_station_id' => $toStationId,
             'consignor_party_id' => $consignorId,
             'consignee_party_id' => $consigneeId,
+            'vehicle_id' => $vehicleId,
+            'billing_customer_party_id' => $billingCustomerId,
             'goods' => $goods,
             'eway_bills' => $ewayBills,
             'additional_charges' => $charges,
@@ -472,6 +486,79 @@ final class LorryReceiptService
             'additional_charges_total' => number_format((float) $chargesTotal, 2, '.', ''),
             'goods_value' => $resolvedGoodsValue,
         ];
+    }
+
+    private function assertVehicleForContext(
+        Company $company,
+        LrWorkflowContext $context,
+        ?string $vehicleId,
+        bool $forUpdate,
+    ): void {
+        if ($context === LrWorkflowContext::Partload) {
+            if ($vehicleId !== null && ! $forUpdate) {
+                throw ValidationException::withMessages([
+                    'vehicle_id' => 'Vehicle is not used for Partload LRs.',
+                ]);
+            }
+
+            return;
+        }
+
+        // Broker / OwnFleet require a vehicle on create. Updates keep the persisted vehicle.
+        if ($forUpdate) {
+            return;
+        }
+
+        if ($vehicleId === null) {
+            throw ValidationException::withMessages([
+                'vehicle_id' => 'Vehicle is required for Broker and OwnFleet LRs.',
+            ]);
+        }
+
+        $exists = Vehicle::query()
+            ->where('company_id', $company->id)
+            ->whereKey($vehicleId)
+            ->whereNull('deleted_at')
+            ->exists();
+
+        if (! $exists) {
+            throw ValidationException::withMessages([
+                'vehicle_id' => 'Selected vehicle is invalid for this company.',
+            ]);
+        }
+    }
+
+    private function assertBillingCustomer(Company $company, ?string $partyId): void
+    {
+        if ($partyId === null) {
+            return;
+        }
+
+        $party = Party::query()
+            ->where('company_id', $company->id)
+            ->whereKey($partyId)
+            ->whereNull('deleted_at')
+            ->first();
+
+        if ($party === null) {
+            throw ValidationException::withMessages([
+                'billing_customer_party_id' => 'Billing Customer is invalid for this company.',
+            ]);
+        }
+
+        $hasRole = PartyRole::query()
+            ->where('company_id', $company->id)
+            ->where('party_id', $party->id)
+            ->where('role', PartyRoleType::Customer->value)
+            ->whereNull('deleted_at')
+            ->whereNull('deactivated_at')
+            ->exists();
+
+        if (! $hasRole) {
+            throw ValidationException::withMessages([
+                'billing_customer_party_id' => 'Billing Customer must have an active Customer role.',
+            ]);
+        }
     }
 
     /**

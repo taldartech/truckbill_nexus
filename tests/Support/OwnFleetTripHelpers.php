@@ -8,6 +8,7 @@ use App\Domains\Consignment\LorryReceiptService;
 use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Party\PartyService;
+use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
 use App\Domains\OwnFleet\Trip\TripService;
 use App\Domains\Rbac\Enums\PermissionDomain;
 use App\Domains\Rbac\PermissionCodes;
@@ -208,11 +209,29 @@ if (! function_exists('tripWorkspace')) {
             'is_active' => true,
         ]);
 
+        $truckType = OwnerCatalogueItem::factory()->create([
+            'owner_user_id' => $owner->id,
+            'catalogue_type' => OwnerCatalogueType::TruckType->value,
+            'name' => '12 Tyre',
+            'code' => 'T12',
+            'is_active' => true,
+        ]);
+        $tyreLayout = OwnerCatalogueItem::factory()->create([
+            'owner_user_id' => $owner->id,
+            'catalogue_type' => OwnerCatalogueType::TyreLayout->value,
+            'name' => '6x2',
+            'code' => 'L62',
+            'is_active' => true,
+        ]);
+
         $vehicle = Vehicle::query()->create([
             'company_id' => $company->id,
             'branch_id' => null,
             'registration_number' => 'MH12TRIP0001',
             'is_active' => true,
+            'ownership' => VehicleOwnership::Own->value,
+            'truck_type_id' => $truckType->id,
+            'tyre_layout_id' => $tyreLayout->id,
             'primary_driver_party_id' => $primaryDriver->id,
         ]);
 
@@ -288,6 +307,7 @@ if (! function_exists('tripCreateOwnFleetLr')) {
     {
         return app(LorryReceiptService::class)->create($ctx['company'], $ctx['branch'], $ctx['member'], [
             'workflow_context' => LrWorkflowContext::OwnFleet->value,
+            'vehicle_id' => $ctx['vehicle']->id,
             'number_mode' => 'auto',
             'lr_date' => now()->toDateString(),
             'from_station_id' => $ctx['fromStation']->id,

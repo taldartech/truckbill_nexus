@@ -6,6 +6,7 @@ use App\Domains\Consignment\Enums\LrWorkflowContext;
 use App\Domains\Consignment\LorryReceiptService;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Party\PartyService;
+use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
 use App\Domains\OwnFleet\Enums\TripStatus;
 use App\Domains\OwnFleet\Trip\Exceptions\TripAuthorizationException;
 use App\Domains\OwnFleet\Trip\Exceptions\TripConflictException;
@@ -18,6 +19,7 @@ use App\Models\Permission;
 use App\Models\Role;
 use App\Models\RolePermission;
 use App\Models\Trip;
+use App\Models\Vehicle;
 use App\Support\Tenant\TenantContextHolder;
 use Database\Seeders\RbacSeeder;
 use Database\Seeders\SubscriptionCatalogueSeeder;
@@ -125,8 +127,41 @@ test('broker lr cannot create ownfleet trip', function () {
         remark: 'Create consignee',
     );
 
+    $transporter = $parties->create(
+        actor: $ctx['owner'],
+        company: $ctx['company'],
+        branch: null,
+        attributes: [
+            'name' => 'Broker Transporter',
+            'contact_number' => '9800030013',
+            'pan' => 'BRKTR1234A',
+            'state' => 'MH',
+            'city' => 'Thane',
+            'is_gst_applicable' => false,
+        ],
+        roles: [[
+            'role' => PartyRoleType::Transporter->value,
+            'attributes' => [
+                'pan' => 'BRKTR1234A',
+                'pan_status' => 'active',
+                'declaration' => true,
+                'declaration_type' => 'owner',
+                'goods_vehicles_count' => 2,
+            ],
+        ]],
+        remark: 'Create transporter',
+    );
+    $marketVehicle = Vehicle::query()->create([
+        'company_id' => $ctx['company']->id,
+        'registration_number' => 'MH12BRKMKT1',
+        'is_active' => true,
+        'ownership' => VehicleOwnership::Market->value,
+        'owner_party_id' => $transporter->id,
+    ]);
+
     $lr = app(LorryReceiptService::class)->create($ctx['company'], $ctx['branch'], $ctx['member'], [
         'workflow_context' => LrWorkflowContext::Broker->value,
+        'vehicle_id' => $marketVehicle->id,
         'number_mode' => 'auto',
         'lr_date' => now()->toDateString(),
         'from_text' => 'Mumbai',

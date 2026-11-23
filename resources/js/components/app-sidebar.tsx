@@ -151,6 +151,11 @@ export function AppSidebar() {
             icon: Receipt,
         },
         {
+            title: 'Partload Bilty',
+            href: '/lorry-receipts/create?context=partload',
+            icon: Receipt,
+        },
+        {
             title: 'OwnFleet Trips',
             href: '/trips',
             icon: Truck,

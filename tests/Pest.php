@@ -15,7 +15,11 @@ use Tests\TestCase;
 
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
-    ->in('Feature');
+    ->in('Feature')
+    ->beforeEach(function (): void {
+        // MySQL CI job does not run Vite build; Inertia HTML responses must not require the manifest.
+        $this->withoutVite();
+    });
 
 /*
 |--------------------------------------------------------------------------

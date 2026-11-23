@@ -12,6 +12,7 @@ use App\Domains\Enquiry\EnquiryService;
 use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Party\PartyService;
+use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
 use App\Domains\OwnFleet\Trip\TripMovementService;
 use App\Domains\OwnFleet\Trip\TripService;
 use App\Domains\Rbac\Enums\PermissionDomain;
@@ -320,7 +321,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
             $companyName === self::COMPANY_A_NAME ? 'Mumbai' : 'Ahmedabad',
         );
 
-        $this->ensurePartyWithRoles(
+        $transporterParty = $this->ensurePartyWithRoles(
             $parties,
             $owner,
             $company,
@@ -424,9 +425,19 @@ class LocalDemoWorkspaceSeeder extends Seeder
             $company,
             $head,
             'MH12DEMO'.substr((string) crc32($company->id.'1'), 0, 4),
-            $primaryDriver->id,
+            ownership: VehicleOwnership::Own,
+            primaryDriverPartyId: $primaryDriver->id,
+            truckTypeId: $catalogues['truck']->id,
+            tyreLayoutId: $catalogues['tyre']->id,
         );
-        $this->ensureVehicle($company, $second, 'MH14DEMO'.substr((string) crc32($company->id.'2'), 0, 4), $substituteDriver->id);
+        $this->ensureVehicle(
+            $company,
+            $second,
+            'MH14DEMO'.substr((string) crc32($company->id.'2'), 0, 4),
+            ownership: VehicleOwnership::Market,
+            primaryDriverPartyId: $substituteDriver->id,
+            ownerPartyId: $transporterParty->id,
+        );
         $this->ensureBank($company, $head, 'demo-bank:'.$company->id.':1');
         $fromStation = $this->ensureStation($owner, 'demo-station:'.$company->id.':1', $companyName === self::COMPANY_A_NAME ? 'Bhiwandi Hub' : 'Vatva Hub');
         $toStation = $this->ensureStation($owner, 'demo-station:'.$company->id.':2', $companyName === self::COMPANY_A_NAME ? 'Nagpur Depot' : 'Vadodara Yard');
@@ -773,7 +784,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
     }
 
     /**
-     * @return array{truck: OwnerCatalogueItem, goods: OwnerCatalogueItem, package: OwnerCatalogueItem}
+     * @return array{truck: OwnerCatalogueItem, tyre: OwnerCatalogueItem, goods: OwnerCatalogueItem, package: OwnerCatalogueItem}
      */
     private function ensureCatalogues(User $owner): array
     {
@@ -782,9 +793,9 @@ class LocalDemoWorkspaceSeeder extends Seeder
         $package = $this->ensureCatalogue($owner, OwnerCatalogueType::PackageType, 'BAG', 'Bag');
         $this->ensureCatalogue($owner, OwnerCatalogueType::DocumentType, 'PAN', 'PAN Card');
         $this->ensureCatalogue($owner, OwnerCatalogueType::ExpenseCategory, 'FUEL', 'Fuel');
-        $this->ensureCatalogue($owner, OwnerCatalogueType::TyreLayout, '6W', '6-Wheel Layout');
+        $tyre = $this->ensureCatalogue($owner, OwnerCatalogueType::TyreLayout, '6W', '6-Wheel Layout');
 
-        return ['truck' => $truck, 'goods' => $goods, 'package' => $package];
+        return ['truck' => $truck, 'tyre' => $tyre, 'goods' => $goods, 'package' => $package];
     }
 
     private function ensureCatalogue(
@@ -896,17 +907,28 @@ class LocalDemoWorkspaceSeeder extends Seeder
         Company $company,
         Branch $branch,
         string $registration,
+        VehicleOwnership $ownership,
         ?string $primaryDriverPartyId = null,
+        ?string $truckTypeId = null,
+        ?string $tyreLayoutId = null,
+        ?string $ownerPartyId = null,
     ): Vehicle {
         $existing = Vehicle::query()
             ->where('company_id', $company->id)
             ->where('registration_number', $registration)
             ->first();
 
+        $attributes = [
+            'ownership' => $ownership->value,
+            'truck_type_id' => $ownership === VehicleOwnership::Own ? $truckTypeId : null,
+            'tyre_layout_id' => $ownership === VehicleOwnership::Own ? $tyreLayoutId : null,
+            'owner_party_id' => $ownership === VehicleOwnership::Market ? $ownerPartyId : null,
+            'primary_driver_party_id' => $primaryDriverPartyId,
+            'is_active' => true,
+        ];
+
         if ($existing !== null) {
-            if ($primaryDriverPartyId !== null && $existing->primary_driver_party_id !== $primaryDriverPartyId) {
-                $existing->forceFill(['primary_driver_party_id' => $primaryDriverPartyId])->save();
-            }
+            $existing->forceFill($attributes)->save();
 
             return $existing->fresh() ?? $existing;
         }
@@ -920,8 +942,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
             'make' => 'Tata',
             'model' => '407',
             'manufacture_year' => 2021,
-            'is_active' => true,
-            'primary_driver_party_id' => $primaryDriverPartyId,
+            ...$attributes,
         ]);
     }
 
@@ -1224,6 +1245,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
         if ($existingLr === null) {
             $existingLr = $lorryReceipts->create($company, $branch, $actor, [
                 'workflow_context' => LrWorkflowContext::OwnFleet->value,
+                'vehicle_id' => $vehicle->id,
                 'number_mode' => 'auto',
                 'lr_date' => CarbonImmutable::now()->subDay()->toDateString(),
                 'from_station_id' => $fromStation->id,

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
 use Database\Factories\VehicleFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -10,6 +11,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
+/**
+ * @property VehicleOwnership|null $ownership
+ */
 class Vehicle extends Model
 {
     /** @use HasFactory<VehicleFactory> */
@@ -32,6 +36,10 @@ class Vehicle extends Model
         'engine_number',
         'capacity_mt',
         'is_active',
+        'ownership',
+        'truck_type_id',
+        'tyre_layout_id',
+        'owner_party_id',
         'primary_driver_party_id',
     ];
 
@@ -41,6 +49,7 @@ class Vehicle extends Model
             'is_active' => 'boolean',
             'manufacture_year' => 'integer',
             'capacity_mt' => 'decimal:3',
+            'ownership' => VehicleOwnership::class,
         ];
     }
 
@@ -75,6 +84,32 @@ class Vehicle extends Model
     public function primaryDriver(): BelongsTo
     {
         return $this->belongsTo(Party::class, 'primary_driver_party_id');
+    }
+
+    /**
+     * Market vehicle owner (Transporter party role).
+     *
+     * @return BelongsTo<Party, $this>
+     */
+    public function ownerParty(): BelongsTo
+    {
+        return $this->belongsTo(Party::class, 'owner_party_id');
+    }
+
+    /**
+     * @return BelongsTo<OwnerCatalogueItem, $this>
+     */
+    public function truckType(): BelongsTo
+    {
+        return $this->belongsTo(OwnerCatalogueItem::class, 'truck_type_id');
+    }
+
+    /**
+     * @return BelongsTo<OwnerCatalogueItem, $this>
+     */
+    public function tyreLayout(): BelongsTo
+    {
+        return $this->belongsTo(OwnerCatalogueItem::class, 'tyre_layout_id');
     }
 
     /**
