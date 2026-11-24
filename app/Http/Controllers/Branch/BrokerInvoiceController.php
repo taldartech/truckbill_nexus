@@ -43,40 +43,15 @@ class BrokerInvoiceController extends Controller
         private readonly CoreModuleEntitlementResolver $moduleEntitlements = new CoreModuleEntitlementResolver,
     ) {}
 
-    public function index(Request $request, Company $company, Branch $branch): Response
+    public function index(Request $request, Company $company, Branch $branch): RedirectResponse
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertPermission($actor, $company, $branch, PermissionCodes::BROKER_INVOICE_VIEW);
 
-        $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
-
-        $page = $this->invoices->search(
-            company: $company,
-            branch: $branch,
-            paymentStatus: $request->string('payment_status')->toString() ?: null,
-            perPage: min(100, max(1, (int) $request->input('per_page', 15))),
-        );
-
-        return Inertia::render('broker/invoices/index', [
-            'filters' => [
-                'payment_status' => $request->string('payment_status')->toString(),
-            ],
-            'permissions' => $this->invoicePermissions($actor, $company, $branch, $maySeeFreight),
-            'paymentStatusOptions' => $this->paymentStatusOptions(),
-            'invoices' => [
-                'data' => collect($page->items())->map(fn (BrokerInvoice $row): array => $this->listPayload($row, $maySeeFreight))->values()->all(),
-                'meta' => [
-                    'current_page' => $page->currentPage(),
-                    'last_page' => $page->lastPage(),
-                    'total' => $page->total(),
-                    'per_page' => $page->perPage(),
-                ],
-            ],
-            'urls' => [
-                'index' => route('branch.broker.invoices.index', absolute: false),
-                'create' => route('branch.broker.invoices.create', absolute: false),
-            ],
-        ]);
+        return redirect()->route('branch.invoices.index', array_merge(
+            $request->query(),
+            ['source' => 'broker'],
+        ));
     }
 
     public function create(Request $request, Company $company, Branch $branch): Response

@@ -15,10 +15,13 @@ type PaymentRow = {
     payment_date: string | null;
     invoice_number: string | null;
     invoice_id: string;
+    source: string;
+    source_label: string;
     amount_received: string;
     tds_amount: string;
     settlement_amount: string;
     payment_mode: string | null;
+    invoice_show_url: string | null;
 };
 
 type Props = {
@@ -54,6 +57,12 @@ export default function PaymentsIndex({ payments }: Props) {
                 cell: (row) => row.invoice_number ?? '—',
             },
             {
+                id: 'source',
+                header: 'Source',
+                priority: 2,
+                cell: (row) => row.source_label,
+            },
+            {
                 id: 'received',
                 header: 'Received',
                 priority: 2,
@@ -83,10 +92,10 @@ export default function PaymentsIndex({ payments }: Props) {
 
     return (
         <>
-            <Head title="OwnFleet Payments" />
+            <Head title="Customer Invoice Receipts" />
             <PageShell
-                title="OwnFleet Invoice Payments"
-                description="Settlement history with TDS and payment mode."
+                title="Customer Invoice Receipts"
+                description="Receipts against customer invoices (Own Fleet and Broker). Transporter voucher payments remain under Broker → Voucher Payments."
             >
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                     <MetricCard
@@ -111,12 +120,15 @@ export default function PaymentsIndex({ payments }: Props) {
                     rows={payments}
                     rowKey={(row) => row.id}
                     emptyTitle="No payments recorded"
-                    emptyDescription="Record a payment from an OwnFleet invoice."
+                    emptyDescription="Record a payment from a customer invoice."
                     actions={(row) => (
                         <AppIconAction
                             icon={Eye}
                             label="View invoice"
-                            href={`/trip-invoices/${row.invoice_id}`}
+                            href={
+                                row.invoice_show_url ??
+                                `/trip-invoices/${row.invoice_id}`
+                            }
                             variant="info"
                         />
                     )}

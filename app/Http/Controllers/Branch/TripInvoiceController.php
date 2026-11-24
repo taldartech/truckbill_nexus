@@ -18,6 +18,7 @@ use App\Domains\Subscription\Enums\SubscriptionModule;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
+use App\Models\BrokerInvoicePayment;
 use App\Models\Company;
 use App\Models\PaymentMode;
 use App\Models\TripInvoice;
@@ -44,39 +45,15 @@ class TripInvoiceController extends Controller
         private readonly CoreModuleEntitlementResolver $moduleEntitlements = new CoreModuleEntitlementResolver,
     ) {}
 
-    public function index(Request $request, Company $company, Branch $branch): Response
+    public function index(Request $request, Company $company, Branch $branch): RedirectResponse
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertPermission($actor, $company, $branch, PermissionCodes::INVOICE_VIEW);
 
-        $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
-
-        $page = $this->invoices->search(
-            company: $company,
-            branch: $branch,
-            paymentStatus: $request->string('payment_status')->toString() ?: null,
-            perPage: min(100, max(1, (int) $request->input('per_page', 15))),
-        );
-
-        return Inertia::render('branch/trip-invoices/index', [
-            'filters' => [
-                'payment_status' => $request->string('payment_status')->toString(),
-            ],
-            'permissions' => array_merge(
-                $this->invoicePermissions($actor, $company, $branch),
-                ['can_view_freight' => $maySeeFreight],
-            ),
-            'invoices' => [
-                'data' => collect($page->items())->map(fn (TripInvoice $invoice): array => $this->presentInvoiceRow($invoice, $maySeeFreight)),
-                'meta' => [
-                    'current_page' => $page->currentPage(),
-                    'last_page' => $page->lastPage(),
-                    'total' => $page->total(),
-                    'per_page' => $page->perPage(),
-                ],
-            ],
-            'sampleBanner' => 'SAMPLE / NON-PRODUCTION — Not a legally operative tax invoice.',
-        ]);
+        return redirect()->route('branch.invoices.index', array_merge(
+            $request->query(),
+            ['source' => 'own_fleet'],
+        ));
     }
 
     public function create(Request $request, Company $company, Branch $branch): Response
@@ -86,7 +63,10 @@ class TripInvoiceController extends Controller
 
         $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
 
+        $preselectedLrId = $request->string('lorry_receipt_id')->toString() ?: null;
+
         return Inertia::render('branch/trip-invoices/create', [
+            'preselectedLrId' => $preselectedLrId,
             'eligibleReceipts' => $this->invoices->listInvoiceEligibleLorryReceipts($company, $branch)
                 ->map(fn ($lr) => [
                     'id' => $lr->id,
@@ -332,26 +312,72 @@ class TripInvoiceController extends Controller
 
         $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
 
-        $rows = TripInvoicePayment::query()
-            ->where('company_id', $company->id)
-            ->whereHas('invoice', fn ($q) => $q->where('branch_id', $branch->id))
-            ->with(['invoice', 'paymentMode'])
-            ->orderByDesc('payment_date')
-            ->limit(200)
-            ->get()
-            ->map(fn (TripInvoicePayment $payment): array => [
-                'id' => $payment->id,
-                'payment_date' => $payment->payment_date->format('d-m-Y'),
-                'invoice_number' => $payment->invoice?->invoice_number,
-                'invoice_id' => $payment->trip_invoice_id,
-                'amount_received' => $this->freightPresentation->presentAmount($payment->amount_received, $maySeeFreight),
-                'tds_amount' => $this->freightPresentation->presentAmount($payment->tds_amount, $maySeeFreight),
-                'settlement_amount' => $this->freightPresentation->presentAmount($payment->settlement_amount, $maySeeFreight),
-                'payment_mode' => $payment->paymentMode?->name,
-            ]);
+        $rows = collect();
+
+        if ($this->authorizer->allowsCustomer($actor, PermissionCodes::PAYMENT_VIEW, $company, $branch)) {
+            $tripRows = TripInvoicePayment::query()
+                ->where('company_id', $company->id)
+                ->whereHas('invoice', fn ($q) => $q->where('branch_id', $branch->id))
+                ->with(['invoice', 'paymentMode'])
+                ->orderByDesc('payment_date')
+                ->limit(200)
+                ->get()
+                ->map(fn (TripInvoicePayment $payment): array => [
+                    'id' => 'trip:'.$payment->id,
+                    'payment_date' => $payment->payment_date->format('d-m-Y'),
+                    'invoice_number' => $payment->invoice?->invoice_number,
+                    'invoice_id' => $payment->trip_invoice_id,
+                    'source' => 'own_fleet',
+                    'source_label' => 'Own Fleet',
+                    'amount_received' => $this->freightPresentation->presentAmount($payment->amount_received, $maySeeFreight),
+                    'tds_amount' => $this->freightPresentation->presentAmount($payment->tds_amount, $maySeeFreight),
+                    'settlement_amount' => $this->freightPresentation->presentAmount($payment->settlement_amount, $maySeeFreight),
+                    'payment_mode' => $payment->paymentMode?->name,
+                    'invoice_show_url' => $payment->invoice
+                        ? route('branch.trip-invoices.show', [$payment->invoice], absolute: false)
+                        : null,
+                ]);
+
+            $rows = $rows->merge($tripRows);
+        }
+
+        if ($this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_INVOICE_VIEW, $company, $branch)) {
+            $brokerRows = BrokerInvoicePayment::query()
+                ->where('company_id', $company->id)
+                ->whereHas('brokerInvoice', fn ($q) => $q->where('branch_id', $branch->id))
+                ->with(['brokerInvoice'])
+                ->orderByDesc('payment_date')
+                ->limit(200)
+                ->get()
+                ->map(fn (BrokerInvoicePayment $payment): array => [
+                    'id' => 'broker:'.$payment->id,
+                    'payment_date' => $payment->payment_date?->format('d-m-Y'),
+                    'invoice_number' => $payment->brokerInvoice?->invoice_number,
+                    'invoice_id' => $payment->broker_invoice_id,
+                    'source' => 'broker',
+                    'source_label' => 'Broker',
+                    'amount_received' => $this->freightPresentation->presentAmount($payment->amount_received, $maySeeFreight),
+                    'tds_amount' => $this->freightPresentation->presentAmount($payment->tds_amount, $maySeeFreight),
+                    'settlement_amount' => $this->freightPresentation->presentAmount(
+                        (string) ((float) $payment->amount_received - (float) $payment->tds_amount - (float) $payment->deduction_amount),
+                        $maySeeFreight,
+                    ),
+                    'payment_mode' => $payment->payment_mode,
+                    'invoice_show_url' => $payment->brokerInvoice
+                        ? route('branch.broker.invoices.show', [$payment->brokerInvoice], absolute: false)
+                        : null,
+                ]);
+
+            $rows = $rows->merge($brokerRows);
+        }
+
+        $sorted = $rows
+            ->sortByDesc('payment_date')
+            ->values()
+            ->all();
 
         return Inertia::render('branch/payments/index', [
-            'payments' => $rows,
+            'payments' => $sorted,
             'permissions' => array_merge(
                 $this->paymentPermissions($actor, $company, $branch),
                 ['can_view_freight' => $maySeeFreight],

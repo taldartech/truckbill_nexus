@@ -11,6 +11,7 @@ type Eligible = {
 };
 
 type Props = {
+    preselectedLrId?: string | null;
     eligibleReceipts: Eligible[];
     chargeTypeOptions: Array<{ value: string; label: string }>;
     particularsOptions: Array<{ value: string; label: string }>;
@@ -18,19 +19,21 @@ type Props = {
 };
 
 export default function TripInvoiceCreate({
+    preselectedLrId,
     eligibleReceipts,
     chargeTypeOptions,
     particularsOptions,
     sampleBanner,
 }: Props) {
+    const [lorryReceiptId, setLorryReceiptId] = useState(preselectedLrId ?? '');
     const [charges, setCharges] = useState<
         Array<{ charge_type: string; description: string; amount: string }>
     >([]);
 
     return (
         <>
-            <Head title="Create OwnFleet Invoice" />
-            <PageShell title={'Individual OwnFleet Invoice'}>
+            <Head title="Create Customer Invoice (Own Fleet)" />
+            <PageShell title="Individual customer invoice">
                 <p className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
                     {sampleBanner}
                 </p>
@@ -42,11 +45,15 @@ export default function TripInvoiceCreate({
                     {({ processing }) => (
                         <>
                             <label className="flex flex-col gap-1 text-sm">
-                                Completed OwnFleet LR
+                                Completed Own Fleet LR
                                 <select
                                     name="lorry_receipt_id"
                                     required
                                     className="rounded-md border px-2 py-1"
+                                    value={lorryReceiptId}
+                                    onChange={(e) =>
+                                        setLorryReceiptId(e.target.value)
+                                    }
                                 >
                                     <option value="">Select…</option>
                                     {eligibleReceipts.map((lr) => (
