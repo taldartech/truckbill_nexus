@@ -26,8 +26,8 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->uuid('company_id')->unique();
             $table->foreignId('owner_user_id');
-            $table->timestamp('starts_at');
-            $table->timestamp('ends_at');
+            $table->timestamp('starts_at')->useCurrent();
+            $table->timestamp('ends_at')->useCurrent();
             $table->string('timezone')->default('UTC');
             $table->timestamp('activated_notified_at')->nullable();
             $table->json('reminder_sent_for_days')->nullable();

@@ -168,10 +168,11 @@ final class SoftDeleteUniqueIndex
             $expression = 'CONCAT_WS(0x1F, '.implode(', ', $parts).')';
 
             if (! Schema::hasColumn($table, $generatedColumnName)) {
+                $virtualClause = self::isMariaDb() ? 'VIRTUAL' : 'VIRTUAL NULL';
                 DB::statement(
                     'ALTER TABLE '.self::quoteMysql($table)
                     .' ADD COLUMN '.self::quoteMysql($generatedColumnName)
-                    ." VARCHAR(512) GENERATED ALWAYS AS ({$expression}) VIRTUAL NULL"
+                    ." VARCHAR(512) GENERATED ALWAYS AS ({$expression}) {$virtualClause}"
                 );
             }
 
@@ -262,7 +263,8 @@ final class SoftDeleteUniqueIndex
                 ->exists();
 
             if ($exists) {
-                DB::statement('ALTER TABLE '.self::quoteMysql($table).' DROP CHECK '.self::quoteMysql($constraintName));
+                $verb = self::isMariaDb() ? 'DROP CONSTRAINT ' : 'DROP CHECK ';
+                DB::statement('ALTER TABLE '.self::quoteMysql($table).' '.$verb.self::quoteMysql($constraintName));
             }
 
             return;
@@ -331,6 +333,14 @@ final class SoftDeleteUniqueIndex
         return in_array(self::driver(), ['mysql', 'mariadb'], true);
     }
 
+    public static function isMariaDb(): bool
+    {
+        $connection = Schema::getConnection();
+
+        return self::driver() === 'mariadb'
+            || (method_exists($connection, 'isMaria') && $connection->isMaria());
+    }
+
     /**
      * @param  list<string>  $columns
      */
@@ -355,10 +365,11 @@ final class SoftDeleteUniqueIndex
 
         // MySQL: type AS (expr) VIRTUAL — NULL/NOT NULL must follow VIRTUAL, not precede GENERATED.
         if (! Schema::hasColumn($table, $generatedColumn)) {
+            $virtualClause = self::isMariaDb() ? 'VIRTUAL' : 'VIRTUAL NULL';
             DB::statement(
                 'ALTER TABLE '.self::quoteMysql($table)
                 .' ADD COLUMN '.self::quoteMysql($generatedColumn)
-                ." VARCHAR(512) GENERATED ALWAYS AS ({$expression}) VIRTUAL NULL"
+                ." VARCHAR(512) GENERATED ALWAYS AS ({$expression}) {$virtualClause}"
             );
         }
 
