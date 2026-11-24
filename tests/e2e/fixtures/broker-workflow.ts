@@ -284,6 +284,7 @@ export async function assignMemoAndDeliverLr(
     });
 
     await eligibleRow.getByRole('button', { name: 'Deliver' }).click();
+    await confirmFormDialog(page);
 
     const recentItem = page
         .locator('li')
@@ -327,6 +328,7 @@ export async function uploadPodIfAvailable(
         .locator('form')
         .getByRole('button', { name: 'Upload POD', exact: true })
         .click();
+    await confirmFormDialog(page);
     await expect(
         recentBlock.getByRole('button', { name: /Documents/i }),
     ).toBeVisible({

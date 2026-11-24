@@ -67,6 +67,10 @@ test.describe('Broker complete workflow', () => {
         await expect(
             page.getByRole('heading', { name: 'Invoices' }),
         ).toBeVisible({ timeout: 15_000 });
-        await expect(page.getByText(invoiceNumber).first()).toBeVisible();
+        await expect(
+            page
+                .getByRole('table', { name: 'Customer invoices' })
+                .getByText(invoiceNumber, { exact: true }),
+        ).toBeVisible();
     });
 });
