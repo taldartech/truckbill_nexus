@@ -1,7 +1,7 @@
 # Phase 1–6 Final Engineering Certification
 
 **Date:** 24 November 2026  
-**Local tip:** `3aa5bfe5970721d3fff5632e6a1c62b23c456784` (+ seeder fix commit if present)  
+**Local tip:** `894446502ceff5cee582737d691f7f58cb2365bd`  
 **Remote `origin/main`:** `efe341d39ea47499cdb16506c0cfaf3a2848d4ab`  
 **Legacy Broker:** `stable` @ `6a90e955bd7a05497f60a6d0bd72891c880e6d14`  
 **Legacy OwnFleet:** `development` @ `9423293edd8b4e313198728f687f657d4a64c27f`
