@@ -12,8 +12,11 @@ import { Label } from '@/components/ui/label';
 
 type GoodsLine = {
     id: string;
+    goods_type_name?: string | null;
     goods_description: string | null;
+    goods_label?: string | null;
     rate_type: string;
+    rate_type_label?: string | null;
     rate: string | null;
     freight_amount: string | null;
     loading_weight: string | null;
@@ -277,10 +280,17 @@ export default function LorryHireShow({
                                             className="border-t border-border"
                                         >
                                             <td className="px-4 py-3">
-                                                {line.goods_description ?? '—'}
+                                                {line.goods_label ??
+                                                    line.goods_description ??
+                                                    line.goods_type_name ??
+                                                    '—'}
                                             </td>
                                             <td className="px-4 py-3">
-                                                {line.rate_type}
+                                                {line.rate_type_label ??
+                                                    line.rate_type.replaceAll(
+                                                        '_',
+                                                        ' ',
+                                                    )}
                                             </td>
                                             <td className="px-4 py-3">
                                                 {line.loading_weight ?? '—'}

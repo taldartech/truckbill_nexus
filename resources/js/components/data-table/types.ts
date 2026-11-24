@@ -6,12 +6,25 @@ import type { ReactNode } from 'react';
  */
 export type ColumnPriority = 0 | 1 | 2 | 3;
 
+export type DataTableColumnAlign = 'left' | 'center' | 'right';
+
 export type DataTableColumn<T> = {
     id: string;
     header: ReactNode;
     /** Cell renderer for a row. */
     cell: (row: T) => ReactNode;
+    /** Responsive visibility only — does not control column width. */
     priority: ColumnPriority;
+    /** Fixed width (e.g. `'7.5rem'`, `'12%'`). */
+    width?: string;
+    minWidth?: string;
+    maxWidth?: string;
+    align?: DataTableColumnAlign;
+    /**
+     * When true, cell text may wrap (`break-words`). When false/omitted, short-id
+     * columns truncate; other columns do not blanket-truncate.
+     */
+    wrap?: boolean;
     /** Optional class for th/td (alignment, mono, etc.). */
     className?: string;
     /** When true, column stays visible in the expandable detail panel even if shown in the table. */

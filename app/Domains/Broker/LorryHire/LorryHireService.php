@@ -96,7 +96,7 @@ final class LorryHireService
                 'lorryReceipt.goodsRows',
                 'vehicle',
                 'transporter',
-                'goodsLines.lrGoodsRow',
+                'goodsLines.lrGoodsRow.goodsType',
                 'tdsSnapshot',
                 'vouchers',
                 'adjustments',

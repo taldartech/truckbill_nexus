@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Support\Tenant\TenantContextHolder;
 use Database\Seeders\RbacSeeder;
 use Database\Seeders\SubscriptionCatalogueSeeder;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Support\Facades\Cache;
 
 require_once __DIR__.'/../../Support/OwnFleetTripHelpers.php';
@@ -51,7 +52,9 @@ test('ownfleet admin with trip.create can open trips when OwnFleet is subscribed
     ))->toBeTrue();
 
     subHttpAs($ctx['member'], $ctx);
-    test()->get(route('branch.trips.index'))->assertOk();
+    // Standalone Trips index redirects to the Bilty Register (primary OwnFleet entry).
+    test()->get(route('branch.trips.index'))
+        ->assertRedirect(route('branch.lorry-receipts.index'));
 });
 
 test('broker-only workspace denies OwnFleet trip index even with trip.view grant', function () {
@@ -80,9 +83,10 @@ test('viewer with trip.view cannot dispatch even when OwnFleet is active', funct
     subHttpAs($ctx['viewer'], $ctx);
     $before = $trip->fresh()->status;
 
-    $response = test()->post(route('branch.trips.dispatch', $trip), [
-        'starting_odometer' => 100,
-    ]);
+    $response = test()->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('branch.trips.dispatch', $trip), [
+            'starting_odometer' => 100,
+        ]);
 
     expect(in_array($response->status(), [403, 302], true))->toBeTrue()
         ->and($trip->fresh()->status)->toBe($before)

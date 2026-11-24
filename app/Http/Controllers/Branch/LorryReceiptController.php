@@ -249,7 +249,7 @@ class LorryReceiptController extends Controller
         $this->assertPermission($actor, $company, $branch, PermissionCodes::LR_VIEW);
         $this->assertLr($lorryReceipt, $company, $branch);
 
-        $lorryReceipt->load(['goodsRows', 'ewayBills', 'additionalCharges', 'consignor', 'consignee', 'fromStation', 'toStation', 'vehicle']);
+        $lorryReceipt->load(['goodsRows.goodsType', 'ewayBills', 'additionalCharges', 'consignor', 'consignee', 'fromStation', 'toStation', 'vehicle']);
 
         $linkedTrip = $this->trips->tripForLorryReceipt($lorryReceipt);
         $canCreateTrip = $lorryReceipt->workflow_context === LrWorkflowContext::OwnFleet
@@ -322,7 +322,7 @@ class LorryReceiptController extends Controller
             abort(422, 'Only pending Lorry Receipts can be edited.');
         }
 
-        $lorryReceipt->load(['goodsRows', 'ewayBills', 'additionalCharges']);
+        $lorryReceipt->load(['goodsRows.goodsType', 'ewayBills', 'additionalCharges']);
         $context = $lorryReceipt->workflow_context;
 
         $formMode = $context === LrWorkflowContext::Partload
@@ -421,7 +421,7 @@ class LorryReceiptController extends Controller
         $this->assertPermission($actor, $company, $branch, PermissionCodes::LR_VIEW);
         $this->assertLr($lorryReceipt, $company, $branch);
 
-        $lorryReceipt->load(['goodsRows', 'ewayBills', 'additionalCharges', 'consignor', 'consignee', 'fromStation', 'toStation']);
+        $lorryReceipt->load(['goodsRows.goodsType', 'ewayBills', 'additionalCharges', 'consignor', 'consignee', 'fromStation', 'toStation']);
 
         $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
 
@@ -758,6 +758,8 @@ class LorryReceiptController extends Controller
             'consignee_name' => $lr->consignee?->name,
             'primary_operation' => $this->primaryOperationAction($lr, $actor, $company, $branch),
             'show_url' => route('branch.lorry-receipts.show', [$lr], absolute: false),
+            'edit_url' => route('branch.lorry-receipts.edit', [$lr], absolute: false),
+            'print_url' => route('branch.lorry-receipts.print', [$lr], absolute: false),
         ];
     }
 
@@ -862,12 +864,19 @@ class LorryReceiptController extends Controller
             'cancelled_at' => $lr->cancelled_at?->toIso8601String(),
             'cancellation_remark' => $lr->cancellation_remark,
             'goods' => $lr->goodsRows->map(function (LrGoodsRow $row) use ($maySeeFreight): array {
+                $description = $row->goods_description;
+                $typeName = $row->goodsType?->name;
+
                 return [
                     'id' => $row->id,
                     'position' => $row->position,
                     'goods_type_id' => $row->goods_type_id,
                     'package_type_id' => $row->package_type_id,
-                    'goods_description' => $row->goods_description,
+                    'goods_type_name' => $typeName,
+                    'goods_description' => $description,
+                    'goods_label' => filled($description)
+                        ? (string) $description
+                        : ($typeName ?? 'Goods'),
                     'package_count' => $row->package_count,
                     'actual_weight' => $row->actual_weight,
                     'charged_weight' => $row->charged_weight,

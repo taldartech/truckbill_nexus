@@ -38,6 +38,10 @@ Enquiry; Unified Consignment/LR (**Bilty**); Broker/Market-Hired; OwnFleet Trip;
 **Excluded:** Partload Expense Management (DEC-005). OwnFleet expense management remains in scope.  
 **Bilty ops UX (PO-LGC-011…016, 24 Nov 2026):** Bilty Register is the primary OwnFleet/Broker workspace; standalone Trips nav removed; optional Bilty No.; Loading/Unloading Station labels; Per MT default; Wt./Unit assist.
 
+**Bilty / Hire UI remediation (24 Nov 2026):** Shared `ResponsiveDataTable` sizing no longer ties width to visibility priority; Bilty Register compact toolbar + icon actions; two-row goods with optional description; Hire create exposes independent transporter rate/loading weight, TDS/net/margin preview. Docs: `SHARED_DATA_TABLE_LAYOUT_REMEDIATION.md`, `BILTY_UI_REFINEMENT_SPEC.md`, `LORRY_HIRE_CREATION_UI_SPEC.md`, gap + financial + visual certification under `docs/engineering/`.
+
+**Bilty / Hire UI remediation (24 Nov 2026):** Shared `ResponsiveDataTable` sizing no longer ties width to visibility priority; Bilty Register compact toolbar + icon actions; two-row goods with optional description; Hire create exposes independent transporter rate/loading weight, TDS/net/margin preview. Docs: `SHARED_DATA_TABLE_LAYOUT_REMEDIATION.md`, `BILTY_UI_REFINEMENT_SPEC.md`, `LORRY_HIRE_CREATION_UI_SPEC.md`, gap + financial + visual certification under `docs/engineering/`.
+
 ## Masters
 
 Party roles Customer, Consignor, Consignee, Transporter, Driver, General Vendor, Pump Vendor. Truck Owner merged into Transporter. Party/Vehicle/Bank scope follows Data Visibility. Station Master shared across Owner's companies. Goods Type, Truck Type, Tyre Layout, Document Type, Expense Category and Package Type Owner-specific. Payment modes centrally seeded.

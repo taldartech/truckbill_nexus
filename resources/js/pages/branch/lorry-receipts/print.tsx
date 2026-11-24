@@ -17,7 +17,9 @@ type LorryReceipt = {
     additional_charges_total: string;
     goods: Array<{
         id: string;
+        goods_type_name?: string | null;
         goods_description: string | null;
+        goods_label?: string | null;
         package_count: string | null;
         actual_weight: string | null;
         charged_weight: string | null;
@@ -130,7 +132,10 @@ export default function LorryReceiptPrint({
                                     className="border-b border-border/60"
                                 >
                                     <td className="py-2">
-                                        {row.goods_description || '—'}
+                                        {row.goods_label ||
+                                            row.goods_description ||
+                                            row.goods_type_name ||
+                                            '—'}
                                     </td>
                                     <td className="py-2">
                                         {row.package_count || '—'}

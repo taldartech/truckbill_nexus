@@ -56,4 +56,16 @@ class LrGoodsRow extends Model
     {
         return $this->belongsTo(LorryReceipt::class);
     }
+
+    /** @return BelongsTo<OwnerCatalogueItem, $this> */
+    public function goodsType(): BelongsTo
+    {
+        return $this->belongsTo(OwnerCatalogueItem::class, 'goods_type_id');
+    }
+
+    /** @return BelongsTo<OwnerCatalogueItem, $this> */
+    public function packageType(): BelongsTo
+    {
+        return $this->belongsTo(OwnerCatalogueItem::class, 'package_type_id');
+    }
 }

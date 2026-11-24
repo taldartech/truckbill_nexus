@@ -1,17 +1,28 @@
 import { Form, Head, Link } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import InputError from '@/components/input-error';
+import { FormSection } from '@/components/form-section';
 import { PageShell } from '@/components/page-shell';
+import { formatDisplayDate } from '@/lib/dates';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
+type RateOption = { value: string; label: string };
+
 type GoodsRow = {
     id: string;
+    goods_type_name: string | null;
     goods_description: string | null;
-    freight_rate_type: string;
-    freight_rate: string | null;
-    freight_amount: string | null;
-    loading_weight: string | null;
+    package_count: string | null;
+    actual_weight: string | null;
+    charged_weight: string | null;
+    customer_rate_type: string;
+    customer_rate_type_label: string;
+    customer_freight_rate: string | null;
+    customer_freight_amount: string | null;
+    suggested_loading_weight: string | null;
 };
 
 type Props = {
@@ -19,146 +30,770 @@ type Props = {
         id: string;
         lr_number: string | null;
         lr_date: string | null;
-        from_station_name: string | null;
-        to_station_name: string | null;
+        billing_customer_name: string | null;
         consignor_name: string | null;
         consignee_name: string | null;
         vehicle_registration: string | null;
+        loading_station: string | null;
+        unloading_station: string | null;
+        customer_freight_total: string | null;
     };
+    payee: {
+        id: string;
+        name: string;
+        role_label: string;
+        pan_status_label: string | null;
+    } | null;
+    tdsPreview: {
+        applicable_percent: string;
+        explanation: string;
+    } | null;
     goodsRows: GoodsRow[];
-    urls: {
-        store: string;
-        lr_show: string;
-        index: string;
-    };
+    rateTypeOptions: RateOption[];
+    permissions: { can_view_freight: boolean };
+    urls: { store: string; lr_show: string; index: string };
 };
+
+type LineDraft = {
+    loading_weight: string;
+    rate_type: string;
+    rate: string;
+    is_fixed_amount: boolean;
+};
+
+function parseNumeric(value: string | null | undefined): number | null {
+    const trimmed = (value ?? '').trim();
+    if (trimmed === '') {
+        return null;
+    }
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
+function formatMoney(value: number | null): string {
+    if (value === null) {
+        return '—';
+    }
+    return value.toFixed(2);
+}
+
+function formatWeight(value: string | null): string {
+    if (value === null || value.trim() === '') {
+        return '—';
+    }
+    return value;
+}
+
+function goodsRowLabel(row: GoodsRow): string {
+    if (row.goods_type_name) {
+        return row.goods_description
+            ? `${row.goods_type_name} — ${row.goods_description}`
+            : row.goods_type_name;
+    }
+    return row.goods_description ?? 'Goods';
+}
+
+function computeTransporterFreightPreview(
+    draft: LineDraft,
+    row: GoodsRow,
+): number | null {
+    if (draft.is_fixed_amount || draft.rate_type === 'fixed_amount') {
+        return parseNumeric(draft.rate);
+    }
+
+    const rate = parseNumeric(draft.rate);
+    if (rate === null) {
+        return null;
+    }
+
+    const loading = parseNumeric(draft.loading_weight);
+    const packages = parseNumeric(row.package_count);
+
+    switch (draft.rate_type) {
+        case 'fixed_amount':
+            return rate;
+        case 'per_package_unit':
+            if (packages === null) {
+                return null;
+            }
+            return rate * packages;
+        case 'per_kg':
+        case 'per_actual_weight':
+            if (loading === null) {
+                return null;
+            }
+            return rate * loading;
+        case 'per_mt':
+            if (loading === null) {
+                return null;
+            }
+            return rate * (loading / 1000);
+        case 'per_charged_weight':
+            if (loading === null) {
+                return null;
+            }
+            return rate * loading;
+        default:
+            return null;
+    }
+}
+
+function sumPreviews(values: Array<number | null>): number {
+    let total = 0;
+    for (const value of values) {
+        if (value !== null) {
+            total += value;
+        }
+    }
+    return total;
+}
+
+function fieldError(
+    errors: Record<string, string | undefined>,
+    key: string,
+): string | undefined {
+    return errors[key];
+}
+
+function SummaryRow({
+    label,
+    value,
+    emphasis,
+}: {
+    label: string;
+    value: string;
+    emphasis?: boolean;
+}) {
+    return (
+        <div className="flex items-center justify-between gap-3 text-sm">
+            <span className="text-muted-foreground">{label}</span>
+            <span
+                className={
+                    emphasis
+                        ? 'font-semibold text-foreground tabular-nums'
+                        : 'text-foreground tabular-nums'
+                }
+            >
+                {value}
+            </span>
+        </div>
+    );
+}
+
+function ReadOnlyMetric({ label, value }: { label: string; value: string }) {
+    return (
+        <div className="space-y-0.5">
+            <p className="text-xs text-muted-foreground">{label}</p>
+            <p className="text-sm text-foreground tabular-nums">{value}</p>
+        </div>
+    );
+}
 
 export default function LorryHireCreate({
     lorryReceipt,
+    payee,
+    tdsPreview,
     goodsRows,
+    rateTypeOptions,
+    permissions,
     urls,
 }: Props) {
+    const [lineDrafts, setLineDrafts] = useState<LineDraft[]>(() =>
+        goodsRows.map((row) => ({
+            loading_weight: row.suggested_loading_weight ?? '',
+            rate_type: 'per_mt',
+            rate: '',
+            is_fixed_amount: false,
+        })),
+    );
+
+    const linePreviews = useMemo(
+        () =>
+            goodsRows.map((row, index) =>
+                computeTransporterFreightPreview(lineDrafts[index], row),
+            ),
+        [goodsRows, lineDrafts],
+    );
+
+    const transporterFreightTotal = useMemo(
+        () => sumPreviews(linePreviews),
+        [linePreviews],
+    );
+
+    const customerFreightTotal = useMemo(() => {
+        if (lorryReceipt.customer_freight_total) {
+            const parsed = parseNumeric(lorryReceipt.customer_freight_total);
+            if (parsed !== null) {
+                return parsed;
+            }
+        }
+        if (!permissions.can_view_freight) {
+            return null;
+        }
+        return sumPreviews(
+            goodsRows.map((row) => parseNumeric(row.customer_freight_amount)),
+        );
+    }, [
+        goodsRows,
+        lorryReceipt.customer_freight_total,
+        permissions.can_view_freight,
+    ]);
+
+    const tdsPercentNumeric = parseNumeric(
+        tdsPreview?.applicable_percent ?? null,
+    );
+    const tdsAmount =
+        tdsPercentNumeric !== null
+            ? (transporterFreightTotal * tdsPercentNumeric) / 100
+            : null;
+    const netPayable =
+        tdsAmount !== null
+            ? transporterFreightTotal - tdsAmount
+            : transporterFreightTotal;
+    const freightMargin =
+        customerFreightTotal !== null
+            ? customerFreightTotal - transporterFreightTotal
+            : null;
+
+    const updateLine = (index: number, patch: Partial<LineDraft>) => {
+        setLineDrafts((current) =>
+            current.map((line, i) => {
+                if (i !== index) {
+                    return line;
+                }
+                const next = { ...line, ...patch };
+                if (patch.rate_type === 'fixed_amount') {
+                    next.is_fixed_amount = true;
+                }
+                if (
+                    patch.rate_type !== undefined &&
+                    patch.rate_type !== 'fixed_amount'
+                ) {
+                    next.is_fixed_amount = false;
+                }
+                return next;
+            }),
+        );
+    };
+
+    const routeLabel = [
+        lorryReceipt.loading_station,
+        lorryReceipt.unloading_station,
+    ]
+        .filter(Boolean)
+        .join(' → ');
+
     return (
         <>
-            <Head title="Create Lorry Hire" />
-            <PageShell title="Create Lorry Hire">
-                <Link
-                    href={urls.lr_show}
-                    className="mb-4 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-                >
-                    <ArrowLeft className="h-4 w-4" />
-                    Back to LR {lorryReceipt.lr_number}
-                </Link>
-
-                <div className="rounded-lg border border-border bg-card p-4">
-                    <p className="text-sm text-muted-foreground">
-                        Broker LR · {lorryReceipt.lr_number} ·{' '}
-                        {lorryReceipt.lr_date}
-                    </p>
-                    <p className="mt-1 text-sm">
-                        {lorryReceipt.from_station_name} →{' '}
-                        {lorryReceipt.to_station_name} · Market vehicle{' '}
-                        {lorryReceipt.vehicle_registration ?? '—'}
-                    </p>
-                </div>
-
+            <Head
+                title={
+                    lorryReceipt.lr_number
+                        ? `Create Lorry Hire · ${lorryReceipt.lr_number}`
+                        : 'Create Lorry Hire'
+                }
+            />
+            <PageShell
+                width="form"
+                title="Create Lorry Hire"
+                description={
+                    lorryReceipt.lr_number
+                        ? `From bilty ${lorryReceipt.lr_number}`
+                        : 'From linked bilty'
+                }
+                actions={
+                    <Button asChild variant="outline" size="sm">
+                        <Link href={urls.lr_show} className="inline-flex gap-2">
+                            <ArrowLeft className="h-4 w-4" />
+                            Back to bilty
+                        </Link>
+                    </Button>
+                }
+            >
                 <Form
                     action={urls.store}
                     method="post"
-                    className="mt-6 space-y-6"
+                    className="grid w-full gap-4"
                 >
-                    {({ processing }) => (
+                    {({ processing, errors }) => (
                         <>
-                            <div className="space-y-4">
-                                <h2 className="text-sm font-semibold">
-                                    Freight lines
-                                </h2>
-                                {goodsRows.map((row, index) => (
-                                    <div
-                                        key={row.id}
-                                        className="grid gap-3 rounded-md border border-border p-4 md:grid-cols-2"
-                                    >
-                                        <input
-                                            type="hidden"
-                                            name={`goods_lines[${index}][lr_goods_row_id]`}
-                                            value={row.id}
-                                        />
-                                        <input
-                                            type="hidden"
-                                            name={`goods_lines[${index}][rate_type]`}
-                                            value={row.freight_rate_type}
-                                        />
-                                        <input
-                                            type="hidden"
-                                            name={`goods_lines[${index}][rate]`}
-                                            value={
-                                                row.freight_rate ??
-                                                row.freight_amount ??
-                                                ''
-                                            }
-                                        />
-                                        <input
-                                            type="hidden"
-                                            name={`goods_lines[${index}][is_fixed_amount]`}
-                                            value={
-                                                row.freight_rate_type ===
-                                                'fixed_amount'
-                                                    ? '1'
-                                                    : '0'
-                                            }
-                                        />
-                                        <div>
-                                            <p className="text-sm font-medium">
-                                                {row.goods_description ??
-                                                    'Goods line'}
-                                            </p>
-                                            <p className="text-xs text-muted-foreground">
-                                                Rate type:{' '}
-                                                {row.freight_rate_type} · Rate:{' '}
-                                                {row.freight_amount ??
-                                                    row.freight_rate ??
-                                                    '—'}
-                                            </p>
-                                        </div>
-                                        <div className="space-y-1">
-                                            <Label
-                                                htmlFor={`loading_weight_${index}`}
-                                            >
-                                                Loading weight
-                                            </Label>
-                                            <Input
-                                                id={`loading_weight_${index}`}
-                                                name={`goods_lines[${index}][loading_weight]`}
-                                                defaultValue={
-                                                    row.loading_weight ?? ''
-                                                }
-                                                type="number"
-                                                step="0.001"
-                                                min="0"
-                                            />
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="remarks">Remarks</Label>
-                                <Input
-                                    id="remarks"
-                                    name="remarks"
-                                    placeholder="Optional remarks"
-                                />
-                            </div>
-                            <Button
-                                type="submit"
-                                disabled={processing}
-                                className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                            <FormSection
+                                title="Linked bilty"
+                                description="Broker lorry receipt summary"
+                                columns={2}
                             >
-                                {processing ? 'Creating…' : 'Create Lorry Hire'}
-                            </Button>
+                                <p className="font-medium text-foreground md:col-span-2">
+                                    {lorryReceipt.lr_number ?? '—'}
+                                    {lorryReceipt.lr_date
+                                        ? ` · ${formatDisplayDate(lorryReceipt.lr_date)}`
+                                        : null}
+                                </p>
+                                <ReadOnlyMetric
+                                    label="Billing customer"
+                                    value={
+                                        lorryReceipt.billing_customer_name ??
+                                        '—'
+                                    }
+                                />
+                                <ReadOnlyMetric
+                                    label="Market vehicle"
+                                    value={
+                                        lorryReceipt.vehicle_registration ?? '—'
+                                    }
+                                />
+                                <ReadOnlyMetric
+                                    label="Consignor"
+                                    value={lorryReceipt.consignor_name ?? '—'}
+                                />
+                                <ReadOnlyMetric
+                                    label="Consignee"
+                                    value={lorryReceipt.consignee_name ?? '—'}
+                                />
+                                <p className="text-sm text-muted-foreground md:col-span-2">
+                                    {routeLabel || 'Route not set'}
+                                </p>
+                                {permissions.can_view_freight ? (
+                                    <ReadOnlyMetric
+                                        label="Customer freight total"
+                                        value={
+                                            customerFreightTotal !== null
+                                                ? `₹${formatMoney(customerFreightTotal)}`
+                                                : '—'
+                                        }
+                                    />
+                                ) : null}
+                            </FormSection>
+
+                            <FormSection
+                                title="Payee / transporter"
+                                description="Resolved from market vehicle on this bilty"
+                                columns={2}
+                            >
+                                {payee ? (
+                                    <>
+                                        <ReadOnlyMetric
+                                            label="Name"
+                                            value={payee.name}
+                                        />
+                                        <ReadOnlyMetric
+                                            label="Role"
+                                            value={payee.role_label}
+                                        />
+                                        {payee.pan_status_label ? (
+                                            <ReadOnlyMetric
+                                                label="PAN status"
+                                                value={payee.pan_status_label}
+                                            />
+                                        ) : null}
+                                    </>
+                                ) : (
+                                    <p className="text-sm text-amber-800 md:col-span-2">
+                                        No transporter could be resolved for
+                                        this bilty. You may not be able to
+                                        submit until the vehicle is linked to a
+                                        transporter.
+                                    </p>
+                                )}
+                            </FormSection>
+
+                            <FormSection
+                                title="Hire charges"
+                                description="Enter transporter rates per goods line. Customer freight is shown for reference only."
+                                columns={1}
+                            >
+                                <div className="space-y-3">
+                                    {goodsRows.map((row, index) => {
+                                        const draft = lineDrafts[index];
+                                        const isFixedRateType =
+                                            draft.rate_type === 'fixed_amount';
+                                        const preview = linePreviews[index];
+
+                                        return (
+                                            <div
+                                                key={row.id}
+                                                className="rounded-lg border border-border bg-muted/20 p-3"
+                                            >
+                                                <input
+                                                    type="hidden"
+                                                    name={`goods_lines[${index}][lr_goods_row_id]`}
+                                                    value={row.id}
+                                                />
+                                                {isFixedRateType ? (
+                                                    <input
+                                                        type="hidden"
+                                                        name={`goods_lines[${index}][is_fixed_amount]`}
+                                                        value="1"
+                                                    />
+                                                ) : null}
+
+                                                <div className="flex flex-wrap items-start justify-between gap-2">
+                                                    <p className="text-sm font-medium text-foreground">
+                                                        {goodsRowLabel(row)}
+                                                    </p>
+                                                    <span className="text-xs text-muted-foreground">
+                                                        Line {index + 1}
+                                                    </span>
+                                                </div>
+
+                                                <div className="mt-3 grid gap-3 md:grid-cols-3">
+                                                    <ReadOnlyMetric
+                                                        label="Packages"
+                                                        value={formatWeight(
+                                                            row.package_count,
+                                                        )}
+                                                    />
+                                                    <ReadOnlyMetric
+                                                        label="Actual weight (kg)"
+                                                        value={formatWeight(
+                                                            row.actual_weight,
+                                                        )}
+                                                    />
+                                                    <ReadOnlyMetric
+                                                        label="Charged weight (kg)"
+                                                        value={formatWeight(
+                                                            row.charged_weight,
+                                                        )}
+                                                    />
+                                                    <ReadOnlyMetric
+                                                        label="Customer rate type"
+                                                        value={
+                                                            row.customer_rate_type_label
+                                                        }
+                                                    />
+                                                    {permissions.can_view_freight ? (
+                                                        <>
+                                                            <ReadOnlyMetric
+                                                                label="Customer rate"
+                                                                value={
+                                                                    row.customer_freight_rate ??
+                                                                    '—'
+                                                                }
+                                                            />
+                                                            <ReadOnlyMetric
+                                                                label="Customer amount"
+                                                                value={
+                                                                    row.customer_freight_amount
+                                                                        ? `₹${row.customer_freight_amount}`
+                                                                        : '—'
+                                                                }
+                                                            />
+                                                        </>
+                                                    ) : null}
+                                                </div>
+
+                                                <div className="mt-3 grid gap-3 border-t border-border pt-3 md:grid-cols-2 xl:grid-cols-4">
+                                                    <div className="space-y-1">
+                                                        <Label
+                                                            htmlFor={`loading_weight_${index}`}
+                                                            className="text-xs"
+                                                        >
+                                                            Loading weight (kg)
+                                                        </Label>
+                                                        <Input
+                                                            id={`loading_weight_${index}`}
+                                                            name={`goods_lines[${index}][loading_weight]`}
+                                                            type="number"
+                                                            min="0"
+                                                            step="0.001"
+                                                            className="h-9"
+                                                            value={
+                                                                draft.loading_weight
+                                                            }
+                                                            onChange={(event) =>
+                                                                updateLine(
+                                                                    index,
+                                                                    {
+                                                                        loading_weight:
+                                                                            event
+                                                                                .target
+                                                                                .value,
+                                                                    },
+                                                                )
+                                                            }
+                                                        />
+                                                        <InputError
+                                                            message={fieldError(
+                                                                errors,
+                                                                `goods_lines.${index}.loading_weight`,
+                                                            )}
+                                                        />
+                                                    </div>
+
+                                                    <div className="space-y-1">
+                                                        <Label
+                                                            htmlFor={`rate_type_${index}`}
+                                                            className="text-xs"
+                                                        >
+                                                            Rate type
+                                                        </Label>
+                                                        <select
+                                                            id={`rate_type_${index}`}
+                                                            name={`goods_lines[${index}][rate_type]`}
+                                                            className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                                            value={
+                                                                draft.rate_type
+                                                            }
+                                                            onChange={(event) =>
+                                                                updateLine(
+                                                                    index,
+                                                                    {
+                                                                        rate_type:
+                                                                            event
+                                                                                .target
+                                                                                .value,
+                                                                    },
+                                                                )
+                                                            }
+                                                        >
+                                                            {rateTypeOptions.map(
+                                                                (option) => (
+                                                                    <option
+                                                                        key={
+                                                                            option.value
+                                                                        }
+                                                                        value={
+                                                                            option.value
+                                                                        }
+                                                                    >
+                                                                        {
+                                                                            option.label
+                                                                        }
+                                                                    </option>
+                                                                ),
+                                                            )}
+                                                        </select>
+                                                        <InputError
+                                                            message={
+                                                                fieldError(
+                                                                    errors,
+                                                                    `goods_lines.${index}.rate_type`,
+                                                                ) ??
+                                                                fieldError(
+                                                                    errors,
+                                                                    `goods_lines.${index}.freight_rate_type`,
+                                                                )
+                                                            }
+                                                        />
+                                                    </div>
+
+                                                    <div className="space-y-1">
+                                                        <Label
+                                                            htmlFor={`rate_${index}`}
+                                                            className="text-xs"
+                                                        >
+                                                            Transporter rate
+                                                        </Label>
+                                                        <Input
+                                                            id={`rate_${index}`}
+                                                            name={`goods_lines[${index}][rate]`}
+                                                            type="number"
+                                                            min="0"
+                                                            step="0.0001"
+                                                            className="h-9"
+                                                            value={draft.rate}
+                                                            onChange={(event) =>
+                                                                updateLine(
+                                                                    index,
+                                                                    {
+                                                                        rate: event
+                                                                            .target
+                                                                            .value,
+                                                                    },
+                                                                )
+                                                            }
+                                                            placeholder="Enter rate"
+                                                            required
+                                                        />
+                                                        <InputError
+                                                            message={
+                                                                fieldError(
+                                                                    errors,
+                                                                    `goods_lines.${index}.rate`,
+                                                                ) ??
+                                                                fieldError(
+                                                                    errors,
+                                                                    `goods_lines.${index}.freight_rate`,
+                                                                )
+                                                            }
+                                                        />
+                                                    </div>
+
+                                                    <div className="space-y-1">
+                                                        <Label className="text-xs">
+                                                            Line freight preview
+                                                        </Label>
+                                                        <p className="flex h-9 items-center text-sm text-muted-foreground tabular-nums">
+                                                            {preview === null
+                                                                ? '—'
+                                                                : `₹${formatMoney(preview)}`}
+                                                        </p>
+                                                    </div>
+
+                                                    {!isFixedRateType ? (
+                                                        <label
+                                                            htmlFor={`is_fixed_amount_${index}`}
+                                                            className="flex cursor-pointer items-center gap-2 md:col-span-2 xl:col-span-4"
+                                                        >
+                                                            <input
+                                                                id={`is_fixed_amount_${index}`}
+                                                                type="checkbox"
+                                                                name={`goods_lines[${index}][is_fixed_amount]`}
+                                                                value="1"
+                                                                checked={
+                                                                    draft.is_fixed_amount
+                                                                }
+                                                                onChange={(
+                                                                    event,
+                                                                ) =>
+                                                                    updateLine(
+                                                                        index,
+                                                                        {
+                                                                            is_fixed_amount:
+                                                                                event
+                                                                                    .target
+                                                                                    .checked,
+                                                                        },
+                                                                    )
+                                                                }
+                                                                className="size-4 rounded border border-input"
+                                                            />
+                                                            <span className="text-sm">
+                                                                Treat as fixed
+                                                                freight amount
+                                                            </span>
+                                                        </label>
+                                                    ) : null}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                <InputError message={errors.goods_lines} />
+                            </FormSection>
+
+                            <FormSection title="Financial summary" columns={1}>
+                                <FinancialSummaryPanel
+                                    canViewFreight={
+                                        permissions.can_view_freight
+                                    }
+                                    customerFreightTotal={customerFreightTotal}
+                                    transporterFreightTotal={
+                                        transporterFreightTotal
+                                    }
+                                    tdsPercentLabel={
+                                        tdsPreview?.applicable_percent ?? null
+                                    }
+                                    tdsAmount={tdsAmount}
+                                    netPayable={netPayable}
+                                    freightMargin={freightMargin}
+                                    tdsExplanation={
+                                        tdsPreview?.explanation ?? null
+                                    }
+                                />
+                            </FormSection>
+
+                            <FormSection title="Remarks" columns={1}>
+                                <div className="space-y-1">
+                                    <Label htmlFor="remarks">Remarks</Label>
+                                    <Input
+                                        id="remarks"
+                                        name="remarks"
+                                        placeholder="Optional remarks for this hire"
+                                    />
+                                    <InputError message={errors.remarks} />
+                                </div>
+                            </FormSection>
+
+                            <div className="flex flex-wrap items-center gap-3">
+                                <Button
+                                    type="submit"
+                                    disabled={processing}
+                                    className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                                >
+                                    {processing
+                                        ? 'Creating…'
+                                        : 'Create Lorry Hire'}
+                                </Button>
+                                <Button
+                                    asChild
+                                    type="button"
+                                    variant="outline"
+                                    disabled={processing}
+                                >
+                                    <Link href={urls.lr_show}>Cancel</Link>
+                                </Button>
+                            </div>
                         </>
                     )}
                 </Form>
             </PageShell>
         </>
+    );
+}
+
+function FinancialSummaryPanel({
+    canViewFreight,
+    customerFreightTotal,
+    transporterFreightTotal,
+    tdsPercentLabel,
+    tdsAmount,
+    netPayable,
+    freightMargin,
+    tdsExplanation,
+}: {
+    canViewFreight: boolean;
+    customerFreightTotal: number | null;
+    transporterFreightTotal: number;
+    tdsPercentLabel: string | null;
+    tdsAmount: number | null;
+    netPayable: number;
+    freightMargin: number | null;
+    tdsExplanation: string | null;
+}) {
+    return (
+        <div className="space-y-2 rounded-md border border-border bg-muted/10 p-3">
+            {canViewFreight ? (
+                <SummaryRow
+                    label="Total customer freight"
+                    value={
+                        customerFreightTotal !== null
+                            ? `₹${formatMoney(customerFreightTotal)}`
+                            : '—'
+                    }
+                />
+            ) : null}
+            <SummaryRow
+                label="Total transporter freight"
+                value={`₹${formatMoney(transporterFreightTotal)}`}
+                emphasis
+            />
+            <SummaryRow
+                label="TDS %"
+                value={
+                    tdsPercentLabel !== null && tdsPercentLabel !== ''
+                        ? `${tdsPercentLabel}%`
+                        : '—'
+                }
+            />
+            <SummaryRow
+                label="TDS amount"
+                value={tdsAmount !== null ? `₹${formatMoney(tdsAmount)}` : '—'}
+            />
+            <SummaryRow
+                label="Net payable"
+                value={`₹${formatMoney(netPayable)}`}
+                emphasis
+            />
+            {canViewFreight && freightMargin !== null ? (
+                <SummaryRow
+                    label="Gross freight margin"
+                    value={`₹${formatMoney(freightMargin)}`}
+                />
+            ) : null}
+            {tdsExplanation ? (
+                <p className="border-t border-border pt-2 text-xs text-muted-foreground">
+                    {tdsExplanation}
+                </p>
+            ) : null}
+        </div>
     );
 }

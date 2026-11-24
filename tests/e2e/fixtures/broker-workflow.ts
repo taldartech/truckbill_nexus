@@ -87,13 +87,26 @@ export async function createBrokerLrViaUi(
 
     await selectOptionAt(page, 'select[name="goods[0][goods_type_id]"]', 0);
     await selectOptionAt(page, 'select[name="goods[0][package_type_id]"]', 0);
-    await page
-        .locator('input[name="goods[0][goods_description]"]')
-        .fill(goodsDescription);
+    const descriptionInput = page.locator(
+        'input[name="goods[0][goods_description]"]',
+    );
+    if (goodsDescription.trim() !== '') {
+        await descriptionInput.fill(goodsDescription);
+    } else {
+        await descriptionInput.fill('');
+    }
     await page.locator('input[name="goods[0][package_count]"]').fill('1');
-    await page.locator('input[name="goods[0][actual_weight]"]').fill('1000');
-    await page.locator('input[name="goods[0][charged_weight]"]').fill('1000');
-    await page.locator('input[name="goods[0][freight_rate]"]').fill('18000');
+    await page.locator('input[name="goods[0][actual_weight]"]').fill('8000');
+    await page.locator('input[name="goods[0][charged_weight]"]').fill('8000');
+    await page
+        .locator('select[name="goods[0][freight_rate_type]"]')
+        .selectOption('per_mt')
+        .catch(async () => {
+            await page
+                .locator('select[name="goods[0][freight_rate_type]"]')
+                .selectOption({ label: /Per MT/i });
+        });
+    await page.locator('input[name="goods[0][freight_rate]"]').fill('9000');
 
     await page.getByRole('button', { name: 'Save Bilty' }).click();
     await expect(page).toHaveURL(/\/lorry-receipts\/[0-9a-f-]+$/, {
@@ -115,6 +128,11 @@ export type LorryHireContext = {
 
 export async function createLorryHireFromLr(
     page: Page,
+    options?: {
+        transporterRate?: string;
+        loadingWeightKg?: string;
+        rateType?: string;
+    },
 ): Promise<LorryHireContext> {
     await page.getByRole('tab', { name: 'Actions' }).click();
     await page.getByRole('link', { name: 'Manage Lorry Hire' }).click();
@@ -122,6 +140,18 @@ export async function createLorryHireFromLr(
     await expect(
         page.getByRole('heading', { name: 'Create Lorry Hire' }),
     ).toBeVisible();
+
+    const rateType = options?.rateType ?? 'per_mt';
+    const rateInput = page.locator('#rate_0');
+    await expect(rateInput).toBeVisible();
+    await page.locator('#rate_type_0').selectOption(rateType);
+    await rateInput.fill(options?.transporterRate ?? '7500');
+
+    if (options?.loadingWeightKg !== undefined) {
+        await page.locator('#loading_weight_0').fill(options.loadingWeightKg);
+    }
+
+    await expect(page.getByText('Financial summary')).toBeVisible();
 
     await page.getByRole('button', { name: 'Create Lorry Hire' }).click();
     await expect(page).toHaveURL(/\/broker\/lorry-hires\/[0-9a-f-]+$/, {

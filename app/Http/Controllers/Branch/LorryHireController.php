@@ -12,21 +12,28 @@ use App\Domains\Broker\LorryHire\LorryHireCalculationService;
 use App\Domains\Broker\LorryHire\LorryHireCancellationService;
 use App\Domains\Broker\LorryHire\LorryHireService;
 use App\Domains\Company\CompanyAccessService;
+use App\Domains\Consignment\Enums\FreightRateType;
 use App\Domains\Consignment\Enums\LrWorkflowContext;
+use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
 use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
 use App\Domains\Subscription\Enums\SubscriptionModule;
+use App\Domains\Tax\Exceptions\TaxDomainException;
+use App\Domains\Tax\TransporterTdsCalculationService;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\LorryHire;
 use App\Models\LorryReceipt;
+use App\Models\Party;
+use App\Models\PartyRole;
 use App\Models\User;
 use App\Support\Presentation\FreightAmountPresentation;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -47,6 +54,7 @@ class LorryHireController extends Controller
         private readonly BrokerAdjustmentService $adjustments,
         private readonly FreightAmountPresentation $freightPresentation,
         private readonly CoreModuleEntitlementResolver $moduleEntitlements = new CoreModuleEntitlementResolver,
+        private readonly TransporterTdsCalculationService $tds = new TransporterTdsCalculationService,
     ) {}
 
     public function index(Request $request, Company $company, Branch $branch): Response
@@ -113,29 +121,56 @@ class LorryHireController extends Controller
                 ->with('info', 'This Broker LR already has a Lorry Hire.');
         }
 
-        $lorryReceipt->load(['fromStation', 'toStation', 'consignor', 'consignee', 'vehicle', 'goodsRows']);
+        $lorryReceipt->load([
+            'fromStation',
+            'toStation',
+            'consignor',
+            'consignee',
+            'billingCustomer',
+            'vehicle.ownerParty',
+            'goodsRows.goodsType',
+        ]);
 
         $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
+        $payee = $this->payeePreview($lorryReceipt);
+        $tdsPreview = $this->tdsPreviewForPayee($payee);
 
         return Inertia::render('broker/lorry-hires/create', [
             'lorryReceipt' => [
                 'id' => $lorryReceipt->id,
                 'lr_number' => $lorryReceipt->lr_number,
                 'lr_date' => $lorryReceipt->lr_date?->format('d-m-Y'),
-                'from_station_name' => $lorryReceipt->fromStation?->name,
-                'to_station_name' => $lorryReceipt->toStation?->name,
+                'billing_customer_name' => $lorryReceipt->billingCustomer?->name,
                 'consignor_name' => $lorryReceipt->consignor?->name,
                 'consignee_name' => $lorryReceipt->consignee?->name,
                 'vehicle_registration' => $lorryReceipt->vehicle?->registration_number,
+                'loading_station' => $this->loadingStationLabel($lorryReceipt),
+                'unloading_station' => $this->unloadingStationLabel($lorryReceipt),
+                'customer_freight_total' => $this->freightPresentation->presentAmount(
+                    $lorryReceipt->freight_total,
+                    $maySeeFreight,
+                ),
             ],
-            'goodsRows' => $lorryReceipt->goodsRows->map(fn ($row): array => [
-                'id' => $row->id,
-                'goods_description' => $row->goods_description,
-                'freight_rate_type' => $row->freight_rate_type->value,
-                'freight_rate' => $this->freightPresentation->presentAmount($row->freight_rate, $maySeeFreight),
-                'freight_amount' => $this->freightPresentation->presentAmount($row->freight_amount, $maySeeFreight),
-                'loading_weight' => $row->charged_weight ?? $row->actual_weight,
-            ])->values()->all(),
+            'payee' => $payee,
+            'tdsPreview' => $tdsPreview,
+            'goodsRows' => $lorryReceipt->goodsRows->map(function ($row) use ($maySeeFreight): array {
+                $type = $row->freight_rate_type;
+
+                return [
+                    'id' => $row->id,
+                    'goods_type_name' => $row->goodsType?->name,
+                    'goods_description' => $row->goods_description,
+                    'package_count' => $row->package_count,
+                    'actual_weight' => $row->actual_weight,
+                    'charged_weight' => $row->charged_weight,
+                    'customer_rate_type' => $type->value,
+                    'customer_rate_type_label' => $this->freightRateTypeLabel($type),
+                    'customer_freight_rate' => $this->freightPresentation->presentAmount($row->freight_rate, $maySeeFreight),
+                    'customer_freight_amount' => $this->freightPresentation->presentAmount($row->freight_amount, $maySeeFreight),
+                    'suggested_loading_weight' => $row->charged_weight ?? $row->actual_weight,
+                ];
+            })->values()->all(),
+            'rateTypeOptions' => $this->freightRateTypeOptions(),
             'permissions' => $this->lorryHirePermissions($actor, $company, $branch, $maySeeFreight),
             'urls' => [
                 'store' => route('branch.broker.lorry-hires.store-from-lr', [$lorryReceipt], absolute: false),
@@ -160,9 +195,12 @@ class LorryHireController extends Controller
             'remarks' => ['nullable', 'string', 'max:2000'],
             'goods_lines' => ['required', 'array', 'min:1'],
             'goods_lines.*.lr_goods_row_id' => ['required', 'uuid'],
-            'goods_lines.*.rate_type' => ['nullable', 'string'],
+            'goods_lines.*.rate_type' => ['nullable', 'string', Rule::enum(FreightRateType::class)],
             'goods_lines.*.rate' => ['required', 'numeric', 'min:0'],
+            'goods_lines.*.loading_weight' => ['nullable', 'numeric', 'min:0'],
             'goods_lines.*.is_fixed_amount' => ['sometimes', 'boolean'],
+            'tds_override_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'tds_override_remark' => ['nullable', 'string', 'max:2000'],
         ]);
 
         try {
@@ -409,8 +447,10 @@ class LorryHireController extends Controller
             'status' => $hire->status->value,
             'hire_date' => $hire->hire_date?->format('d-m-Y'),
             'lr_number' => $lr?->lr_number,
-            'from_station_name' => $lr?->fromStation?->name,
-            'to_station_name' => $lr?->toStation?->name,
+            'from_station_name' => $lr !== null ? $this->loadingStationLabel($lr) : null,
+            'to_station_name' => $lr !== null ? $this->unloadingStationLabel($lr) : null,
+            'loading_station' => $lr !== null ? $this->loadingStationLabel($lr) : null,
+            'unloading_station' => $lr !== null ? $this->unloadingStationLabel($lr) : null,
             'vehicle_registration' => $hire->vehicle?->registration_number,
             'transporter_name' => $hire->transporter?->name,
             'declaration_type' => $hire->declaration_type,
@@ -423,17 +463,31 @@ class LorryHireController extends Controller
             'tds_amount' => $this->freightPresentation->presentAmount($summary['tds_amount'], $maySeeFreight),
             'net_payable' => $this->freightPresentation->presentAmount($summary['net_payable'], $maySeeFreight),
             'outstanding_amount' => $this->freightPresentation->presentAmount($summary['outstanding_amount'], $maySeeFreight),
-            'goods_lines' => $hire->goodsLines->map(fn ($line): array => [
-                'id' => $line->id,
-                'goods_description' => $line->lrGoodsRow?->goods_description !== null
-                    ? (string) $line->lrGoodsRow->goods_description
-                    : null,
-                'rate_type' => $line->rate_type->value,
-                'rate' => $this->freightPresentation->presentAmount($line->rate, $maySeeFreight),
-                'freight_amount' => $this->freightPresentation->presentAmount($line->freight_amount, $maySeeFreight),
-                'loading_weight' => $line->loading_weight,
-                'is_fixed_amount' => $line->is_fixed_amount,
-            ])->values()->all(),
+            'customer_freight_total' => $this->freightPresentation->presentAmount($lr?->freight_total, $maySeeFreight),
+            'gross_freight_margin' => $this->grossFreightMargin(
+                $maySeeFreight && $lr !== null ? (string) $lr->freight_total : null,
+                $maySeeFreight ? (string) $summary['freight_total'] : null,
+            ),
+            'goods_lines' => $hire->goodsLines->map(function ($line) use ($maySeeFreight): array {
+                $row = $line->lrGoodsRow;
+                $description = $row?->goods_description;
+                $typeName = $row?->goodsType?->name;
+
+                return [
+                    'id' => $line->id,
+                    'goods_type_name' => $typeName,
+                    'goods_description' => filled($description) ? (string) $description : null,
+                    'goods_label' => filled($description)
+                        ? (string) $description
+                        : ($typeName ?? 'Goods'),
+                    'rate_type' => $line->rate_type->value,
+                    'rate_type_label' => $this->freightRateTypeLabel($line->rate_type),
+                    'rate' => $this->freightPresentation->presentAmount($line->rate, $maySeeFreight),
+                    'freight_amount' => $this->freightPresentation->presentAmount($line->freight_amount, $maySeeFreight),
+                    'loading_weight' => $line->loading_weight,
+                    'is_fixed_amount' => $line->is_fixed_amount,
+                ];
+            })->values()->all(),
             'tds_snapshot' => $hire->tdsSnapshot ? [
                 'applicable_rate' => number_format((float) $hire->tdsSnapshot->applicable_rate, 3, '.', ''),
                 'rule_code' => $hire->tdsSnapshot->rule_code,
@@ -483,14 +537,156 @@ class LorryHireController extends Controller
             'lr_number' => $hire->lorryReceipt?->lr_number,
             'vehicle_registration' => $hire->vehicle?->registration_number,
             'transporter_name' => $hire->transporter?->name,
-            'from_station_name' => $hire->lorryReceipt?->fromStation?->name,
-            'to_station_name' => $hire->lorryReceipt?->toStation?->name,
+            'from_station_name' => $hire->lorryReceipt !== null
+                ? $this->loadingStationLabel($hire->lorryReceipt)
+                : null,
+            'to_station_name' => $hire->lorryReceipt !== null
+                ? $this->unloadingStationLabel($hire->lorryReceipt)
+                : null,
             'freight_total' => $this->freightPresentation->presentAmount($hire->freight_total, $maySeeFreight),
             'outstanding_amount' => $this->freightPresentation->presentAmount($hire->outstanding_amount, $maySeeFreight),
             'created_at' => $hire->created_at?->format('d-m-Y'),
             'urls' => [
                 'show' => route('branch.broker.lorry-hires.show', [$hire], absolute: false),
             ],
+        ];
+    }
+
+    private function loadingStationLabel(LorryReceipt $lorryReceipt): ?string
+    {
+        if ($lorryReceipt->fromStation !== null) {
+            return $lorryReceipt->fromStation->name;
+        }
+
+        return $lorryReceipt->from_text;
+    }
+
+    private function unloadingStationLabel(LorryReceipt $lorryReceipt): ?string
+    {
+        if ($lorryReceipt->toStation !== null) {
+            return $lorryReceipt->toStation->name;
+        }
+
+        return $lorryReceipt->to_text;
+    }
+
+    private function grossFreightMargin(?string $customerFreight, ?string $transporterFreight): ?string
+    {
+        if ($customerFreight === null || $customerFreight === '' || ! is_numeric($customerFreight)) {
+            return null;
+        }
+        if ($transporterFreight === null || $transporterFreight === '' || ! is_numeric($transporterFreight)) {
+            return null;
+        }
+
+        return number_format((float) bcsub($customerFreight, $transporterFreight, 2), 2, '.', '');
+    }
+
+    private function freightRateTypeLabel(FreightRateType $type): string
+    {
+        return match ($type) {
+            FreightRateType::FixedAmount => 'Fixed Amount',
+            FreightRateType::PerPackageUnit => 'Per Unit',
+            FreightRateType::PerKg => 'Per KG',
+            FreightRateType::PerMt => 'Per MT',
+            FreightRateType::PerActualWeight => 'Per Actual Weight',
+            FreightRateType::PerChargedWeight => 'Per Charged Weight',
+        };
+    }
+
+    /**
+     * @return list<array{value: string, label: string}>
+     */
+    private function freightRateTypeOptions(): array
+    {
+        $options = [];
+        foreach (FreightRateType::cases() as $type) {
+            $options[] = [
+                'value' => $type->value,
+                'label' => $this->freightRateTypeLabel($type),
+            ];
+        }
+
+        return $options;
+    }
+
+    /**
+     * @return array{id: string, name: string, role_label: string, pan_status_label: string|null}|null
+     */
+    private function payeePreview(LorryReceipt $lorryReceipt): ?array
+    {
+        $partyId = $lorryReceipt->vehicle?->owner_party_id;
+        if ($partyId === null || $partyId === '') {
+            return null;
+        }
+
+        $party = Party::query()
+            ->where('company_id', $lorryReceipt->company_id)
+            ->whereKey($partyId)
+            ->whereNull('deleted_at')
+            ->first();
+
+        if ($party === null) {
+            return null;
+        }
+
+        $role = PartyRole::query()
+            ->where('company_id', $lorryReceipt->company_id)
+            ->where('party_id', $party->id)
+            ->where('role', PartyRoleType::Transporter->value)
+            ->whereNull('deleted_at')
+            ->whereNull('deactivated_at')
+            ->first();
+
+        $attrs = is_array($role?->role_attributes) ? $role->role_attributes : [];
+        $pan = trim((string) ($party->pan ?? ''));
+
+        return [
+            'id' => $party->id,
+            'name' => $party->name,
+            'role_label' => 'Transporter',
+            'pan_status_label' => $pan !== '' ? 'PAN available' : 'PAN missing',
+        ];
+    }
+
+    /**
+     * @param  array{id: string, name: string, role_label: string, pan_status_label: string|null}|null  $payee
+     * @return array{applicable_percent: string, explanation: string}|null
+     */
+    private function tdsPreviewForPayee(?array $payee): ?array
+    {
+        if ($payee === null) {
+            return null;
+        }
+
+        $party = Party::query()->find($payee['id']);
+        if ($party === null) {
+            return null;
+        }
+
+        $role = PartyRole::query()
+            ->where('company_id', $party->company_id)
+            ->where('party_id', $party->id)
+            ->where('role', PartyRoleType::Transporter->value)
+            ->whereNull('deleted_at')
+            ->whereNull('deactivated_at')
+            ->first();
+
+        $roleAttrs = is_array($role?->role_attributes) ? $role->role_attributes : [];
+        $context = $this->tds->buildContextFromTransporter(
+            ['pan' => $party->pan],
+            $roleAttrs,
+        );
+
+        try {
+            $result = $this->tds->calculate($context);
+        } catch (TaxDomainException) {
+            return null;
+        }
+
+        return [
+            'applicable_percent' => number_format((float) $result->applicableRate, 3, '.', ''),
+            'explanation' => (string) $result->explanation,
         ];
     }
 }

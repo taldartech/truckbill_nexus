@@ -1,8 +1,15 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Eye, Filter } from 'lucide-react';
+import {
+    Eye,
+    Pencil,
+    Plus,
+    Printer,
+    RotateCcw,
+    Truck,
+    Wallet,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { AppIconAction } from '@/components/app-icon-action';
-import { FormSection } from '@/components/form-section';
 import {
     ResponsiveDataTable,
     type DataTableColumn,
@@ -37,6 +44,8 @@ type LrRow = {
     freight_total: string;
     primary_operation?: PrimaryOperation | null;
     show_url: string;
+    edit_url?: string;
+    print_url?: string;
     consignor_name: string | null;
     consignee_name: string | null;
 };
@@ -57,7 +66,11 @@ type CreateAction =
 
 type Props = {
     filters: { q: string; status: string; workflow_context: string };
-    permissions: { can_create: boolean; can_view_freight?: boolean };
+    permissions: {
+        can_create: boolean;
+        can_edit?: boolean;
+        can_view_freight?: boolean;
+    };
     statusOptions: Option[];
     contextOptions: Option[];
     createAction: CreateAction | null;
@@ -69,8 +82,38 @@ type Props = {
     urls: { index: string; create: string };
 };
 
+const selectClass =
+    'h-9 w-full rounded-md border border-input bg-background px-3 text-sm';
+
 function statusLabel(status: string): string {
     return status.replaceAll('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function routeLabel(row: LrRow): string {
+    const from = row.loading_station ?? row.from_text ?? '—';
+    const to = row.unloading_station ?? row.to_text ?? '—';
+
+    return `${from} → ${to}`;
+}
+
+function lrEditUrl(row: LrRow): string {
+    return row.edit_url ?? `${row.show_url}/edit`;
+}
+
+function lrPrintUrl(row: LrRow): string | undefined {
+    return row.print_url ?? `${row.show_url}/print`;
+}
+
+function operationIcon(kind: string) {
+    if (kind === 'manage_expenses' || kind === 'init_trip') {
+        return Wallet;
+    }
+
+    if (kind === 'manage_lorry_hire' || kind === 'create_lorry_hire') {
+        return Truck;
+    }
+
+    return Truck;
 }
 
 function CreateBiltyAction({ action }: { action: CreateAction }) {
@@ -86,8 +129,9 @@ function CreateBiltyAction({ action }: { action: CreateAction }) {
         action.label === 'Create LR' ? 'Create Bilty' : action.label;
 
     return (
-        <Button asChild variant="primary">
+        <Button asChild variant="primary" className="gap-2">
             <Link href={action.url} data-testid="create-lr-direct">
+                <Plus className="size-4" aria-hidden />
                 {buttonLabel}
             </Link>
         </Button>
@@ -113,6 +157,7 @@ export default function LorryReceiptsIndex({
         filters.workflow_context,
     );
     const mayViewFreight = permissions.can_view_freight !== false;
+    const mayEdit = permissions.can_edit !== false;
 
     const columns = useMemo<DataTableColumn<LrRow>[]>(() => {
         const base: DataTableColumn<LrRow>[] = [
@@ -120,13 +165,17 @@ export default function LorryReceiptsIndex({
                 id: 'lr_number',
                 header: 'Bilty No',
                 priority: 0,
+                width: '7rem',
+                minWidth: '7rem',
                 className: 'whitespace-nowrap font-medium',
                 cell: (row) => row.lr_number,
             },
             {
                 id: 'lr_date',
-                header: 'Bilty Date',
+                header: 'Date',
                 priority: 0,
+                width: '7.5rem',
+                minWidth: '7.5rem',
                 className: 'whitespace-nowrap',
                 cell: (row) => formatDisplayDate(row.lr_date),
             },
@@ -134,6 +183,8 @@ export default function LorryReceiptsIndex({
                 id: 'vehicle_registration',
                 header: 'Truck No',
                 priority: 1,
+                width: '9rem',
+                minWidth: '9rem',
                 className: 'whitespace-nowrap',
                 cell: (row) => row.vehicle_registration ?? '—',
             },
@@ -141,6 +192,8 @@ export default function LorryReceiptsIndex({
                 id: 'vehicle_ownership',
                 header: 'Vehicle Type',
                 priority: 2,
+                width: '5rem',
+                minWidth: '5rem',
                 className: 'whitespace-nowrap',
                 cell: (row) =>
                     row.vehicle_ownership_label ? (
@@ -159,29 +212,29 @@ export default function LorryReceiptsIndex({
             },
             {
                 id: 'billing_customer',
-                header: 'Billing Customer',
+                header: 'Customer',
                 priority: 2,
-                className: 'max-w-[10rem] truncate',
+                width: '12rem',
+                minWidth: '12rem',
+                wrap: true,
                 cell: (row) => row.billing_customer_name ?? '—',
             },
             {
-                id: 'loading_station',
-                header: 'Loading Station',
+                id: 'route',
+                header: 'Route',
                 priority: 2,
-                className: 'max-w-[10rem] truncate',
-                cell: (row) => row.loading_station ?? '—',
-            },
-            {
-                id: 'unloading_station',
-                header: 'Unloading Station',
-                priority: 2,
-                className: 'max-w-[10rem] truncate',
-                cell: (row) => row.unloading_station ?? '—',
+                width: '14rem',
+                minWidth: '14rem',
+                wrap: true,
+                cell: (row) => routeLabel(row),
             },
             {
                 id: 'charged_weight_total',
                 header: 'Weight',
                 priority: 2,
+                width: '6rem',
+                minWidth: '6rem',
+                align: 'right',
                 className: 'whitespace-nowrap tabular-nums',
                 cell: (row) => row.charged_weight_total,
             },
@@ -189,6 +242,8 @@ export default function LorryReceiptsIndex({
                 id: 'status',
                 header: 'Status',
                 priority: 1,
+                width: '7rem',
+                minWidth: '7rem',
                 cell: (row) => (
                     <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-xs font-medium capitalize">
                         {statusLabel(row.status)}
@@ -202,6 +257,9 @@ export default function LorryReceiptsIndex({
                 id: 'freight_total',
                 header: 'Freight',
                 priority: 1,
+                width: '7rem',
+                minWidth: '7rem',
+                align: 'right',
                 className: 'whitespace-nowrap tabular-nums',
                 cell: (row) => row.freight_total,
             });
@@ -223,10 +281,35 @@ export default function LorryReceiptsIndex({
         );
     };
 
+    const resetFilters = () => {
+        setQ('');
+        setStatus('');
+        setWorkflowContext('');
+        router.get(urls.index, {}, { preserveState: true });
+    };
+
+    const headerActions = (
+        <>
+            {permissions.can_create && partloadCreateUrl ? (
+                <Button asChild variant="outline">
+                    <Link
+                        href={partloadCreateUrl}
+                        data-testid="create-partload-bilty"
+                    >
+                        Create Partload Bilty
+                    </Link>
+                </Button>
+            ) : null}
+            {permissions.can_create && createAction ? (
+                <CreateBiltyAction action={createAction} />
+            ) : null}
+        </>
+    );
+
     return (
         <>
             <Head title="Bilty Register" />
-            <PageShell title="Bilty Register">
+            <PageShell title="Bilty Register" actions={headerActions}>
                 {flash?.success ? (
                     <p className="text-sm text-emerald-700">{flash.success}</p>
                 ) : null}
@@ -236,86 +319,81 @@ export default function LorryReceiptsIndex({
                     </p>
                 ) : null}
 
-                <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
-                    <FormSection title="Filters" columns={3}>
-                        <form onSubmit={applyFilters} className="contents">
-                            <div className="space-y-2">
-                                <Label htmlFor="lr-q">Search</Label>
-                                <Input
-                                    id="lr-q"
-                                    value={q}
-                                    onChange={(e) => setQ(e.target.value)}
-                                    placeholder="Bilty No, loading, unloading…"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="lr-status">Status</Label>
-                                <select
-                                    id="lr-status"
-                                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                    value={status}
-                                    onChange={(e) => setStatus(e.target.value)}
-                                >
-                                    <option value="">All</option>
-                                    {statusOptions.map((option) => (
-                                        <option
-                                            key={option.value}
-                                            value={option.value}
-                                        >
-                                            {option.label}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="lr-context">Workflow</Label>
-                                <select
-                                    id="lr-context"
-                                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                    value={workflowContext}
-                                    onChange={(e) =>
-                                        setWorkflowContext(e.target.value)
-                                    }
-                                >
-                                    <option value="">All</option>
-                                    {contextOptions.map((option) => (
-                                        <option
-                                            key={option.value}
-                                            value={option.value}
-                                        >
-                                            {option.label}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className="flex items-end md:col-span-3">
-                                <Button
-                                    type="submit"
-                                    variant="secondary"
-                                    className="gap-2"
-                                >
-                                    <Filter className="size-4" aria-hidden />
-                                    Filter
-                                </Button>
-                            </div>
-                        </form>
-                    </FormSection>
-                    <div className="flex flex-wrap items-center justify-end gap-2">
-                        {permissions.can_create && partloadCreateUrl ? (
-                            <Button asChild variant="outline">
-                                <Link
-                                    href={partloadCreateUrl}
-                                    data-testid="create-partload-bilty"
-                                >
-                                    Create Partload Bilty
-                                </Link>
-                            </Button>
-                        ) : null}
-                        {permissions.can_create && createAction ? (
-                            <CreateBiltyAction action={createAction} />
-                        ) : null}
+                <form
+                    onSubmit={applyFilters}
+                    className="flex flex-col gap-3 rounded-xl border border-border bg-card p-3 shadow-xs md:flex-row md:flex-wrap md:items-end"
+                >
+                    <div className="min-w-[12rem] flex-1 space-y-1">
+                        <Label htmlFor="lr-q" className="text-xs">
+                            Search
+                        </Label>
+                        <Input
+                            id="lr-q"
+                            value={q}
+                            onChange={(e) => setQ(e.target.value)}
+                            placeholder="Bilty No, route, customer…"
+                            className="h-9"
+                        />
                     </div>
-                </div>
+                    <div className="w-full min-w-[9rem] space-y-1 md:w-40">
+                        <Label htmlFor="lr-status" className="text-xs">
+                            Status
+                        </Label>
+                        <select
+                            id="lr-status"
+                            className={selectClass}
+                            value={status}
+                            onChange={(e) => setStatus(e.target.value)}
+                        >
+                            <option value="">All</option>
+                            {statusOptions.map((option) => (
+                                <option key={option.value} value={option.value}>
+                                    {option.label}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    {contextOptions.length > 0 ? (
+                        <div className="w-full min-w-[9rem] space-y-1 md:w-44">
+                            <Label htmlFor="lr-context" className="text-xs">
+                                Operational type
+                            </Label>
+                            <select
+                                id="lr-context"
+                                className={selectClass}
+                                value={workflowContext}
+                                onChange={(e) =>
+                                    setWorkflowContext(e.target.value)
+                                }
+                            >
+                                <option value="">All</option>
+                                {contextOptions.map((option) => (
+                                    <option
+                                        key={option.value}
+                                        value={option.value}
+                                    >
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    ) : null}
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Button type="submit" variant="secondary" size="sm">
+                            Apply
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="gap-1.5"
+                            onClick={resetFilters}
+                        >
+                            <RotateCcw className="size-3.5" aria-hidden />
+                            Reset
+                        </Button>
+                    </div>
+                </form>
 
                 <ResponsiveDataTable
                     caption="Bilty Register"
@@ -324,31 +402,51 @@ export default function LorryReceiptsIndex({
                     rowKey={(row) => row.id}
                     emptyTitle="No bilties found"
                     emptyDescription="Create a bilty or adjust filters."
-                    actions={(row) => (
-                        <div className="flex flex-wrap items-center justify-end gap-1">
-                            <AppIconAction
-                                icon={Eye}
-                                label={`Open Bilty ${row.lr_number}`}
-                                href={row.show_url}
-                                variant="info"
-                            />
-                            {row.primary_operation ? (
-                                <Button
-                                    asChild
+                    actions={(row) => {
+                        const printUrl = lrPrintUrl(row);
+                        const op = row.primary_operation;
+                        const OpIcon = op ? operationIcon(op.kind) : Wallet;
+                        const showEdit = mayEdit && row.status === 'pending';
+
+                        return (
+                            <div className="flex items-center justify-end gap-1">
+                                <AppIconAction
+                                    icon={Eye}
+                                    label={`View Bilty ${row.lr_number}`}
+                                    href={row.show_url}
+                                    variant="info"
                                     size="sm"
-                                    variant="secondary"
-                                    className="h-8 text-xs"
-                                >
-                                    <Link
-                                        href={row.primary_operation.url}
-                                        data-testid={`bilty-op-${row.id}`}
-                                    >
-                                        {row.primary_operation.label}
-                                    </Link>
-                                </Button>
-                            ) : null}
-                        </div>
-                    )}
+                                />
+                                {showEdit ? (
+                                    <AppIconAction
+                                        icon={Pencil}
+                                        label={`Edit Bilty ${row.lr_number}`}
+                                        href={lrEditUrl(row)}
+                                        variant="outline"
+                                        size="sm"
+                                    />
+                                ) : null}
+                                {op ? (
+                                    <AppIconAction
+                                        icon={OpIcon}
+                                        label={op.label}
+                                        href={op.url}
+                                        variant="primary"
+                                        size="sm"
+                                    />
+                                ) : null}
+                                {printUrl ? (
+                                    <AppIconAction
+                                        icon={Printer}
+                                        label={`Print Bilty ${row.lr_number}`}
+                                        href={printUrl}
+                                        variant="outline"
+                                        size="sm"
+                                    />
+                                ) : null}
+                            </div>
+                        );
+                    }}
                 />
 
                 {lorryReceipts.data.length > 0 ? (

@@ -1,5 +1,5 @@
 import { Form, Head, Link } from '@inertiajs/react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Trash2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { AppIconAction } from '@/components/app-icon-action';
@@ -598,179 +598,240 @@ export default function LrForm({
                                         }
                                     />
                                 </div>
-                                {needsTextLocations ? (
-                                    <>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="from_text">
-                                                Loading Station
-                                            </Label>
-                                            <Input
-                                                id="from_text"
-                                                name="from_text"
-                                                list="stations-list"
-                                                defaultValue={
-                                                    lorryReceipt?.from_text ??
-                                                    ''
-                                                }
-                                            />
-                                            <InputError
-                                                message={errors.from_text}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="to_text">
-                                                Unloading Station
-                                            </Label>
-                                            <Input
-                                                id="to_text"
-                                                name="to_text"
-                                                list="stations-list"
-                                                defaultValue={
-                                                    lorryReceipt?.to_text ?? ''
-                                                }
-                                            />
-                                            <InputError
-                                                message={errors.to_text}
-                                            />
-                                        </div>
-                                    </>
-                                ) : null}
-                                {needsStations ? (
-                                    <>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="from_station_id">
-                                                Loading Station
-                                                {needsStations ? ' *' : ''}
-                                            </Label>
-                                            <select
-                                                id="from_station_id"
-                                                name="from_station_id"
-                                                className={fieldClass}
-                                                defaultValue={
-                                                    lorryReceipt?.from_station_id ??
-                                                    ''
-                                                }
-                                                required
-                                            >
-                                                <option value="">Select</option>
-                                                {formOptions.stations.map(
-                                                    (station) => (
-                                                        <option
-                                                            key={station.id}
-                                                            value={station.id}
-                                                        >
-                                                            {station.name}
-                                                        </option>
-                                                    ),
-                                                )}
-                                            </select>
-                                            <InputError
-                                                message={errors.from_station_id}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="to_station_id">
-                                                Unloading Station *
-                                            </Label>
-                                            <select
-                                                id="to_station_id"
-                                                name="to_station_id"
-                                                className={fieldClass}
-                                                defaultValue={
-                                                    lorryReceipt?.to_station_id ??
-                                                    ''
-                                                }
-                                                required
-                                            >
-                                                <option value="">Select</option>
-                                                {formOptions.stations.map(
-                                                    (station) => (
-                                                        <option
-                                                            key={station.id}
-                                                            value={station.id}
-                                                        >
-                                                            {station.name}
-                                                        </option>
-                                                    ),
-                                                )}
-                                            </select>
-                                            <InputError
-                                                message={errors.to_station_id}
-                                            />
-                                        </div>
-                                    </>
-                                ) : null}
-                                {needsParties || partiesOptional ? (
-                                    <>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="consignor_party_id">
-                                                Consignor
-                                                {needsParties ? ' *' : ''}
-                                            </Label>
-                                            <select
-                                                id="consignor_party_id"
-                                                name="consignor_party_id"
-                                                className={fieldClass}
-                                                defaultValue={
-                                                    lorryReceipt?.consignor_party_id ??
-                                                    ''
-                                                }
-                                                required={needsParties}
-                                            >
-                                                <option value="">Select</option>
-                                                {formOptions.consignors.map(
-                                                    (party) => (
-                                                        <option
-                                                            key={party.id}
-                                                            value={party.id}
-                                                        >
-                                                            {party.name}
-                                                        </option>
-                                                    ),
-                                                )}
-                                            </select>
-                                            <InputError
-                                                message={
-                                                    errors.consignor_party_id
-                                                }
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="consignee_party_id">
-                                                Consignee
-                                                {needsParties ? ' *' : ''}
-                                            </Label>
-                                            <select
-                                                id="consignee_party_id"
-                                                name="consignee_party_id"
-                                                className={fieldClass}
-                                                defaultValue={
-                                                    lorryReceipt?.consignee_party_id ??
-                                                    ''
-                                                }
-                                                required={needsParties}
-                                            >
-                                                <option value="">Select</option>
-                                                {formOptions.consignees.map(
-                                                    (party) => (
-                                                        <option
-                                                            key={party.id}
-                                                            value={party.id}
-                                                        >
-                                                            {party.name}
-                                                        </option>
-                                                    ),
-                                                )}
-                                            </select>
-                                            <InputError
-                                                message={
-                                                    errors.consignee_party_id
-                                                }
-                                            />
-                                        </div>
-                                    </>
-                                ) : null}
                             </FormSection>
+
+                            {needsTextLocations ||
+                            needsStations ||
+                            needsParties ||
+                            partiesOptional ? (
+                                <FormSection
+                                    title="Parties & Route"
+                                    columns={1}
+                                >
+                                    <div className="grid gap-4 md:grid-cols-2">
+                                        <div className="space-y-3 rounded-lg border border-border/70 p-3">
+                                            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                                                Loading
+                                            </p>
+                                            {needsParties || partiesOptional ? (
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="consignor_party_id">
+                                                        Consignor
+                                                        {needsParties
+                                                            ? ' *'
+                                                            : ''}
+                                                    </Label>
+                                                    <select
+                                                        id="consignor_party_id"
+                                                        name="consignor_party_id"
+                                                        className={fieldClass}
+                                                        defaultValue={
+                                                            lorryReceipt?.consignor_party_id ??
+                                                            ''
+                                                        }
+                                                        required={needsParties}
+                                                    >
+                                                        <option value="">
+                                                            Select
+                                                        </option>
+                                                        {formOptions.consignors.map(
+                                                            (party) => (
+                                                                <option
+                                                                    key={
+                                                                        party.id
+                                                                    }
+                                                                    value={
+                                                                        party.id
+                                                                    }
+                                                                >
+                                                                    {party.name}
+                                                                </option>
+                                                            ),
+                                                        )}
+                                                    </select>
+                                                    <InputError
+                                                        message={
+                                                            errors.consignor_party_id
+                                                        }
+                                                    />
+                                                </div>
+                                            ) : null}
+                                            {needsTextLocations ? (
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="from_text">
+                                                        Loading Station
+                                                    </Label>
+                                                    <Input
+                                                        id="from_text"
+                                                        name="from_text"
+                                                        list="stations-list"
+                                                        defaultValue={
+                                                            lorryReceipt?.from_text ??
+                                                            ''
+                                                        }
+                                                    />
+                                                    <InputError
+                                                        message={
+                                                            errors.from_text
+                                                        }
+                                                    />
+                                                </div>
+                                            ) : null}
+                                            {needsStations ? (
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="from_station_id">
+                                                        Loading Station *
+                                                    </Label>
+                                                    <select
+                                                        id="from_station_id"
+                                                        name="from_station_id"
+                                                        className={fieldClass}
+                                                        defaultValue={
+                                                            lorryReceipt?.from_station_id ??
+                                                            ''
+                                                        }
+                                                        required
+                                                    >
+                                                        <option value="">
+                                                            Select
+                                                        </option>
+                                                        {formOptions.stations.map(
+                                                            (station) => (
+                                                                <option
+                                                                    key={
+                                                                        station.id
+                                                                    }
+                                                                    value={
+                                                                        station.id
+                                                                    }
+                                                                >
+                                                                    {
+                                                                        station.name
+                                                                    }
+                                                                </option>
+                                                            ),
+                                                        )}
+                                                    </select>
+                                                    <InputError
+                                                        message={
+                                                            errors.from_station_id
+                                                        }
+                                                    />
+                                                </div>
+                                            ) : null}
+                                        </div>
+                                        <div className="space-y-3 rounded-lg border border-border/70 p-3">
+                                            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                                                Unloading
+                                            </p>
+                                            {needsParties || partiesOptional ? (
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="consignee_party_id">
+                                                        Consignee
+                                                        {needsParties
+                                                            ? ' *'
+                                                            : ''}
+                                                    </Label>
+                                                    <select
+                                                        id="consignee_party_id"
+                                                        name="consignee_party_id"
+                                                        className={fieldClass}
+                                                        defaultValue={
+                                                            lorryReceipt?.consignee_party_id ??
+                                                            ''
+                                                        }
+                                                        required={needsParties}
+                                                    >
+                                                        <option value="">
+                                                            Select
+                                                        </option>
+                                                        {formOptions.consignees.map(
+                                                            (party) => (
+                                                                <option
+                                                                    key={
+                                                                        party.id
+                                                                    }
+                                                                    value={
+                                                                        party.id
+                                                                    }
+                                                                >
+                                                                    {party.name}
+                                                                </option>
+                                                            ),
+                                                        )}
+                                                    </select>
+                                                    <InputError
+                                                        message={
+                                                            errors.consignee_party_id
+                                                        }
+                                                    />
+                                                </div>
+                                            ) : null}
+                                            {needsTextLocations ? (
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="to_text">
+                                                        Unloading Station
+                                                    </Label>
+                                                    <Input
+                                                        id="to_text"
+                                                        name="to_text"
+                                                        list="stations-list"
+                                                        defaultValue={
+                                                            lorryReceipt?.to_text ??
+                                                            ''
+                                                        }
+                                                    />
+                                                    <InputError
+                                                        message={errors.to_text}
+                                                    />
+                                                </div>
+                                            ) : null}
+                                            {needsStations ? (
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="to_station_id">
+                                                        Unloading Station *
+                                                    </Label>
+                                                    <select
+                                                        id="to_station_id"
+                                                        name="to_station_id"
+                                                        className={fieldClass}
+                                                        defaultValue={
+                                                            lorryReceipt?.to_station_id ??
+                                                            ''
+                                                        }
+                                                        required
+                                                    >
+                                                        <option value="">
+                                                            Select
+                                                        </option>
+                                                        {formOptions.stations.map(
+                                                            (station) => (
+                                                                <option
+                                                                    key={
+                                                                        station.id
+                                                                    }
+                                                                    value={
+                                                                        station.id
+                                                                    }
+                                                                >
+                                                                    {
+                                                                        station.name
+                                                                    }
+                                                                </option>
+                                                            ),
+                                                        )}
+                                                    </select>
+                                                    <InputError
+                                                        message={
+                                                            errors.to_station_id
+                                                        }
+                                                    />
+                                                </div>
+                                            ) : null}
+                                        </div>
+                                    </div>
+                                </FormSection>
+                            ) : null}
 
                             <FormPanelWithAction
                                 title="Goods"
@@ -792,434 +853,17 @@ export default function LrForm({
                             >
                                 <InputError message={errors.goods} />
 
-                                <div className="hidden md:block">
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full min-w-[1100px] text-left text-sm">
-                                            <thead className="text-muted-foreground">
-                                                <tr className="border-b border-border">
-                                                    <th className="min-w-[9rem] px-2 py-2 font-medium">
-                                                        Description
-                                                    </th>
-                                                    <th className="min-w-[7rem] px-2 py-2 font-medium">
-                                                        Goods Type
-                                                    </th>
-                                                    <th className="min-w-[7rem] px-2 py-2 font-medium">
-                                                        Package Type
-                                                    </th>
-                                                    <th className="min-w-[5.5rem] px-2 py-2 font-medium">
-                                                        No. of Units
-                                                    </th>
-                                                    <th className="min-w-[5.5rem] px-2 py-2 font-medium">
-                                                        Wt./Unit
-                                                    </th>
-                                                    <th className="min-w-[5.5rem] px-2 py-2 font-medium">
-                                                        Actual Wt
-                                                    </th>
-                                                    <th className="min-w-[5.5rem] px-2 py-2 font-medium">
-                                                        Charged Wt
-                                                    </th>
-                                                    {mayViewFreight ? (
-                                                        <>
-                                                            <th className="min-w-[6.5rem] px-2 py-2 font-medium">
-                                                                Rate Type
-                                                            </th>
-                                                            <th className="min-w-[5rem] px-2 py-2 font-medium">
-                                                                Rate
-                                                            </th>
-                                                            <th className="min-w-[6rem] px-2 py-2 font-medium">
-                                                                Freight Amount
-                                                            </th>
-                                                        </>
-                                                    ) : null}
-                                                    <th className="min-w-[5.5rem] px-2 py-2 font-medium">
-                                                        Goods Value
-                                                    </th>
-                                                    <th className="min-w-[4.5rem] px-2 py-2 font-medium">
-                                                        Remove
-                                                    </th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {goods.map((row, index) => (
-                                                    <tr
-                                                        key={index}
-                                                        className="border-b border-border/70 align-top"
-                                                    >
-                                                        <td className="px-2 py-2">
-                                                            <Input
-                                                                name={`goods[${index}][goods_description]`}
-                                                                className="h-9"
-                                                                value={
-                                                                    row.goods_description
-                                                                }
-                                                                onChange={(e) =>
-                                                                    applyGoodsField(
-                                                                        index,
-                                                                        {
-                                                                            goods_description:
-                                                                                e
-                                                                                    .target
-                                                                                    .value,
-                                                                        },
-                                                                        'other',
-                                                                    )
-                                                                }
-                                                            />
-                                                        </td>
-                                                        <td className="px-2 py-2">
-                                                            <select
-                                                                name={`goods[${index}][goods_type_id]`}
-                                                                className={
-                                                                    fieldClass
-                                                                }
-                                                                value={
-                                                                    row.goods_type_id
-                                                                }
-                                                                onChange={(e) =>
-                                                                    applyGoodsField(
-                                                                        index,
-                                                                        {
-                                                                            goods_type_id:
-                                                                                e
-                                                                                    .target
-                                                                                    .value,
-                                                                        },
-                                                                        'other',
-                                                                    )
-                                                                }
-                                                            >
-                                                                <option value="">
-                                                                    Select
-                                                                </option>
-                                                                {formOptions.goodsTypes.map(
-                                                                    (item) => (
-                                                                        <option
-                                                                            key={
-                                                                                item.id
-                                                                            }
-                                                                            value={
-                                                                                item.id
-                                                                            }
-                                                                        >
-                                                                            {
-                                                                                item.name
-                                                                            }
-                                                                        </option>
-                                                                    ),
-                                                                )}
-                                                            </select>
-                                                        </td>
-                                                        <td className="px-2 py-2">
-                                                            <select
-                                                                name={`goods[${index}][package_type_id]`}
-                                                                className={
-                                                                    fieldClass
-                                                                }
-                                                                value={
-                                                                    row.package_type_id
-                                                                }
-                                                                onChange={(e) =>
-                                                                    applyGoodsField(
-                                                                        index,
-                                                                        {
-                                                                            package_type_id:
-                                                                                e
-                                                                                    .target
-                                                                                    .value,
-                                                                        },
-                                                                        'other',
-                                                                    )
-                                                                }
-                                                            >
-                                                                <option value="">
-                                                                    Select
-                                                                </option>
-                                                                {formOptions.packageTypes.map(
-                                                                    (item) => (
-                                                                        <option
-                                                                            key={
-                                                                                item.id
-                                                                            }
-                                                                            value={
-                                                                                item.id
-                                                                            }
-                                                                        >
-                                                                            {
-                                                                                item.name
-                                                                            }
-                                                                        </option>
-                                                                    ),
-                                                                )}
-                                                            </select>
-                                                        </td>
-                                                        <td className="px-2 py-2">
-                                                            <Input
-                                                                name={`goods[${index}][package_count]`}
-                                                                type="number"
-                                                                min="0"
-                                                                step="0.001"
-                                                                className="h-9"
-                                                                value={
-                                                                    row.package_count
-                                                                }
-                                                                onChange={(e) =>
-                                                                    applyGoodsField(
-                                                                        index,
-                                                                        {
-                                                                            package_count:
-                                                                                e
-                                                                                    .target
-                                                                                    .value,
-                                                                        },
-                                                                        'package_count',
-                                                                    )
-                                                                }
-                                                            />
-                                                        </td>
-                                                        <td className="px-2 py-2">
-                                                            <Input
-                                                                type="number"
-                                                                min="0"
-                                                                step="0.001"
-                                                                className="h-9"
-                                                                value={
-                                                                    row.weight_per_unit
-                                                                }
-                                                                onChange={(e) =>
-                                                                    applyGoodsField(
-                                                                        index,
-                                                                        {
-                                                                            weight_per_unit:
-                                                                                e
-                                                                                    .target
-                                                                                    .value,
-                                                                        },
-                                                                        'weight_per_unit',
-                                                                    )
-                                                                }
-                                                                aria-label={`Weight per unit row ${index + 1}`}
-                                                            />
-                                                        </td>
-                                                        <td className="px-2 py-2">
-                                                            <Input
-                                                                name={`goods[${index}][actual_weight]`}
-                                                                type="number"
-                                                                min="0"
-                                                                step="0.001"
-                                                                className="h-9"
-                                                                value={
-                                                                    row.actual_weight
-                                                                }
-                                                                onChange={(e) =>
-                                                                    applyGoodsField(
-                                                                        index,
-                                                                        {
-                                                                            actual_weight:
-                                                                                e
-                                                                                    .target
-                                                                                    .value,
-                                                                        },
-                                                                        'actual_weight',
-                                                                    )
-                                                                }
-                                                            />
-                                                        </td>
-                                                        <td className="px-2 py-2">
-                                                            <Input
-                                                                name={`goods[${index}][charged_weight]`}
-                                                                type="number"
-                                                                min="0"
-                                                                step="0.001"
-                                                                className="h-9"
-                                                                value={
-                                                                    row.charged_weight
-                                                                }
-                                                                onChange={(e) =>
-                                                                    applyGoodsField(
-                                                                        index,
-                                                                        {
-                                                                            charged_weight:
-                                                                                e
-                                                                                    .target
-                                                                                    .value,
-                                                                        },
-                                                                        'other',
-                                                                    )
-                                                                }
-                                                            />
-                                                        </td>
-                                                        {mayViewFreight ? (
-                                                            <>
-                                                                <td className="px-2 py-2">
-                                                                    <select
-                                                                        name={`goods[${index}][freight_rate_type]`}
-                                                                        className={
-                                                                            fieldClass
-                                                                        }
-                                                                        value={
-                                                                            row.freight_rate_type
-                                                                        }
-                                                                        onChange={(
-                                                                            e,
-                                                                        ) =>
-                                                                            applyGoodsField(
-                                                                                index,
-                                                                                {
-                                                                                    freight_rate_type:
-                                                                                        e
-                                                                                            .target
-                                                                                            .value,
-                                                                                },
-                                                                                'other',
-                                                                            )
-                                                                        }
-                                                                        required
-                                                                    >
-                                                                        {formOptions.rateTypeOptions.map(
-                                                                            (
-                                                                                option,
-                                                                            ) => (
-                                                                                <option
-                                                                                    key={
-                                                                                        option.value
-                                                                                    }
-                                                                                    value={
-                                                                                        option.value
-                                                                                    }
-                                                                                >
-                                                                                    {
-                                                                                        option.label
-                                                                                    }
-                                                                                </option>
-                                                                            ),
-                                                                        )}
-                                                                    </select>
-                                                                </td>
-                                                                <td className="px-2 py-2">
-                                                                    <Input
-                                                                        name={`goods[${index}][freight_rate]`}
-                                                                        type="number"
-                                                                        min="0"
-                                                                        step="0.0001"
-                                                                        className="h-9"
-                                                                        value={
-                                                                            row.freight_rate
-                                                                        }
-                                                                        onChange={(
-                                                                            e,
-                                                                        ) =>
-                                                                            applyGoodsField(
-                                                                                index,
-                                                                                {
-                                                                                    freight_rate:
-                                                                                        e
-                                                                                            .target
-                                                                                            .value,
-                                                                                },
-                                                                                'other',
-                                                                            )
-                                                                        }
-                                                                        required
-                                                                    />
-                                                                </td>
-                                                                <td className="px-2 py-2">
-                                                                    <span className="flex h-9 items-center text-muted-foreground tabular-nums">
-                                                                        {formatPreviewAmount(
-                                                                            computeFreightPreview(
-                                                                                row,
-                                                                            ),
-                                                                        )}
-                                                                    </span>
-                                                                </td>
-                                                            </>
-                                                        ) : null}
-                                                        <td className="px-2 py-2">
-                                                            <Input
-                                                                name={`goods[${index}][goods_value]`}
-                                                                type="number"
-                                                                min="0"
-                                                                step="0.01"
-                                                                className="h-9"
-                                                                value={
-                                                                    row.goods_value
-                                                                }
-                                                                onChange={(e) =>
-                                                                    applyGoodsField(
-                                                                        index,
-                                                                        {
-                                                                            goods_value:
-                                                                                e
-                                                                                    .target
-                                                                                    .value,
-                                                                        },
-                                                                        'other',
-                                                                    )
-                                                                }
-                                                            />
-                                                        </td>
-                                                        <td className="px-2 py-2">
-                                                            {goods.length >
-                                                            1 ? (
-                                                                <Button
-                                                                    type="button"
-                                                                    variant="ghost"
-                                                                    size="sm"
-                                                                    onClick={() =>
-                                                                        setGoods(
-                                                                            (
-                                                                                current,
-                                                                            ) =>
-                                                                                current.filter(
-                                                                                    (
-                                                                                        _,
-                                                                                        i,
-                                                                                    ) =>
-                                                                                        i !==
-                                                                                        index,
-                                                                                ),
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    Remove
-                                                                </Button>
-                                                            ) : null}
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-3 md:hidden">
+                                <div className="space-y-3">
                                     {goods.map((row, index) => (
                                         <div
                                             key={index}
                                             className="space-y-3 rounded-lg border border-border/70 p-3"
                                         >
-                                            <div className="space-y-2">
-                                                <Label>Description</Label>
-                                                <Input
-                                                    name={`goods[${index}][goods_description]`}
-                                                    value={
-                                                        row.goods_description
-                                                    }
-                                                    onChange={(e) =>
-                                                        applyGoodsField(
-                                                            index,
-                                                            {
-                                                                goods_description:
-                                                                    e.target
-                                                                        .value,
-                                                            },
-                                                            'other',
-                                                        )
-                                                    }
-                                                />
-                                            </div>
-                                            <div className="grid gap-3 sm:grid-cols-2">
-                                                <div className="space-y-2">
-                                                    <Label>Goods Type</Label>
+                                            <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+                                                <div className="space-y-1">
+                                                    <Label className="text-xs">
+                                                        Goods Type
+                                                    </Label>
                                                     <select
                                                         name={`goods[${index}][goods_type_id]`}
                                                         className={fieldClass}
@@ -1257,8 +901,10 @@ export default function LrForm({
                                                         )}
                                                     </select>
                                                 </div>
-                                                <div className="space-y-2">
-                                                    <Label>Package Type</Label>
+                                                <div className="space-y-1">
+                                                    <Label className="text-xs">
+                                                        Package Type
+                                                    </Label>
                                                     <select
                                                         name={`goods[${index}][package_type_id]`}
                                                         className={fieldClass}
@@ -1296,15 +942,16 @@ export default function LrForm({
                                                         )}
                                                     </select>
                                                 </div>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-3">
-                                                <div className="space-y-2">
-                                                    <Label>No. of Units</Label>
+                                                <div className="space-y-1">
+                                                    <Label className="text-xs">
+                                                        No. of Units
+                                                    </Label>
                                                     <Input
                                                         name={`goods[${index}][package_count]`}
                                                         type="number"
                                                         min="0"
                                                         step="0.001"
+                                                        className="h-9"
                                                         value={
                                                             row.package_count
                                                         }
@@ -1321,12 +968,15 @@ export default function LrForm({
                                                         }
                                                     />
                                                 </div>
-                                                <div className="space-y-2">
-                                                    <Label>Wt./Unit</Label>
+                                                <div className="space-y-1">
+                                                    <Label className="text-xs">
+                                                        Wt./Unit (kg)
+                                                    </Label>
                                                     <Input
                                                         type="number"
                                                         min="0"
                                                         step="0.001"
+                                                        className="h-9"
                                                         value={
                                                             row.weight_per_unit
                                                         }
@@ -1341,15 +991,19 @@ export default function LrForm({
                                                                 'weight_per_unit',
                                                             )
                                                         }
+                                                        aria-label={`Weight per unit row ${index + 1}`}
                                                     />
                                                 </div>
-                                                <div className="space-y-2">
-                                                    <Label>Actual Wt</Label>
+                                                <div className="space-y-1">
+                                                    <Label className="text-xs">
+                                                        Actual Weight (kg)
+                                                    </Label>
                                                     <Input
                                                         name={`goods[${index}][actual_weight]`}
                                                         type="number"
                                                         min="0"
                                                         step="0.001"
+                                                        className="h-9"
                                                         value={
                                                             row.actual_weight
                                                         }
@@ -1366,13 +1020,16 @@ export default function LrForm({
                                                         }
                                                     />
                                                 </div>
-                                                <div className="space-y-2">
-                                                    <Label>Charged Wt</Label>
+                                                <div className="space-y-1">
+                                                    <Label className="text-xs">
+                                                        Charged Weight (kg)
+                                                    </Label>
                                                     <Input
                                                         name={`goods[${index}][charged_weight]`}
                                                         type="number"
                                                         min="0"
                                                         step="0.001"
+                                                        className="h-9"
                                                         value={
                                                             row.charged_weight
                                                         }
@@ -1390,127 +1047,178 @@ export default function LrForm({
                                                     />
                                                 </div>
                                             </div>
-                                            {mayViewFreight ? (
-                                                <div className="grid gap-3 sm:grid-cols-3">
-                                                    <div className="space-y-2 sm:col-span-1">
-                                                        <Label>Rate Type</Label>
-                                                        <select
-                                                            name={`goods[${index}][freight_rate_type]`}
-                                                            className={
-                                                                fieldClass
-                                                            }
-                                                            value={
-                                                                row.freight_rate_type
-                                                            }
-                                                            onChange={(e) =>
-                                                                applyGoodsField(
-                                                                    index,
-                                                                    {
-                                                                        freight_rate_type:
-                                                                            e
-                                                                                .target
-                                                                                .value,
-                                                                    },
-                                                                    'other',
-                                                                )
-                                                            }
-                                                            required
-                                                        >
-                                                            {formOptions.rateTypeOptions.map(
-                                                                (option) => (
-                                                                    <option
-                                                                        key={
-                                                                            option.value
-                                                                        }
-                                                                        value={
-                                                                            option.value
-                                                                        }
-                                                                    >
+                                            <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+                                                {mayViewFreight ? (
+                                                    <>
+                                                        <div className="space-y-1">
+                                                            <Label className="text-xs">
+                                                                Rate Type
+                                                            </Label>
+                                                            <select
+                                                                name={`goods[${index}][freight_rate_type]`}
+                                                                className={
+                                                                    fieldClass
+                                                                }
+                                                                value={
+                                                                    row.freight_rate_type
+                                                                }
+                                                                onChange={(e) =>
+                                                                    applyGoodsField(
+                                                                        index,
                                                                         {
-                                                                            option.label
-                                                                        }
-                                                                    </option>
-                                                                ),
-                                                            )}
-                                                        </select>
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Label>Rate</Label>
-                                                        <Input
-                                                            name={`goods[${index}][freight_rate]`}
-                                                            type="number"
-                                                            min="0"
-                                                            step="0.0001"
-                                                            value={
-                                                                row.freight_rate
-                                                            }
-                                                            onChange={(e) =>
-                                                                applyGoodsField(
-                                                                    index,
-                                                                    {
-                                                                        freight_rate:
-                                                                            e
-                                                                                .target
-                                                                                .value,
-                                                                    },
-                                                                    'other',
+                                                                            freight_rate_type:
+                                                                                e
+                                                                                    .target
+                                                                                    .value,
+                                                                        },
+                                                                        'other',
+                                                                    )
+                                                                }
+                                                                required
+                                                            >
+                                                                {formOptions.rateTypeOptions.map(
+                                                                    (
+                                                                        option,
+                                                                    ) => (
+                                                                        <option
+                                                                            key={
+                                                                                option.value
+                                                                            }
+                                                                            value={
+                                                                                option.value
+                                                                            }
+                                                                        >
+                                                                            {
+                                                                                option.label
+                                                                            }
+                                                                        </option>
+                                                                    ),
+                                                                )}
+                                                            </select>
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <Label className="text-xs">
+                                                                Rate
+                                                            </Label>
+                                                            <Input
+                                                                name={`goods[${index}][freight_rate]`}
+                                                                type="number"
+                                                                min="0"
+                                                                step="0.0001"
+                                                                className="h-9"
+                                                                value={
+                                                                    row.freight_rate
+                                                                }
+                                                                onChange={(e) =>
+                                                                    applyGoodsField(
+                                                                        index,
+                                                                        {
+                                                                            freight_rate:
+                                                                                e
+                                                                                    .target
+                                                                                    .value,
+                                                                        },
+                                                                        'other',
+                                                                    )
+                                                                }
+                                                                required
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <Label className="text-xs">
+                                                                Freight Amount
+                                                            </Label>
+                                                            <span className="flex h-9 items-center text-muted-foreground tabular-nums">
+                                                                {formatPreviewAmount(
+                                                                    computeFreightPreview(
+                                                                        row,
+                                                                    ),
+                                                                )}
+                                                            </span>
+                                                        </div>
+                                                    </>
+                                                ) : null}
+                                                <div className="space-y-1">
+                                                    <Label className="text-xs">
+                                                        Goods Value
+                                                    </Label>
+                                                    <Input
+                                                        name={`goods[${index}][goods_value]`}
+                                                        type="number"
+                                                        min="0"
+                                                        step="0.01"
+                                                        className="h-9"
+                                                        value={row.goods_value}
+                                                        onChange={(e) =>
+                                                            applyGoodsField(
+                                                                index,
+                                                                {
+                                                                    goods_value:
+                                                                        e.target
+                                                                            .value,
+                                                                },
+                                                                'other',
+                                                            )
+                                                        }
+                                                    />
+                                                </div>
+                                                <div className="space-y-1 md:col-span-2 xl:col-span-1">
+                                                    <Label className="text-xs">
+                                                        Goods Description
+                                                        <span className="font-normal text-muted-foreground">
+                                                            {' '}
+                                                            (optional)
+                                                        </span>
+                                                    </Label>
+                                                    <Input
+                                                        name={`goods[${index}][goods_description]`}
+                                                        className="h-9"
+                                                        value={
+                                                            row.goods_description
+                                                        }
+                                                        onChange={(e) =>
+                                                            applyGoodsField(
+                                                                index,
+                                                                {
+                                                                    goods_description:
+                                                                        e.target
+                                                                            .value,
+                                                                },
+                                                                'other',
+                                                            )
+                                                        }
+                                                    />
+                                                </div>
+                                                <div className="flex items-end justify-end">
+                                                    {goods.length > 1 ? (
+                                                        <Button
+                                                            type="button"
+                                                            variant="destructive"
+                                                            size="sm"
+                                                            className="gap-1.5"
+                                                            onClick={() =>
+                                                                setGoods(
+                                                                    (current) =>
+                                                                        current.filter(
+                                                                            (
+                                                                                _,
+                                                                                i,
+                                                                            ) =>
+                                                                                i !==
+                                                                                index,
+                                                                        ),
                                                                 )
                                                             }
-                                                            required
-                                                        />
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        <Label>
-                                                            Freight Amount
-                                                        </Label>
-                                                        <p className="flex h-9 items-center text-sm text-muted-foreground tabular-nums">
-                                                            {formatPreviewAmount(
-                                                                computeFreightPreview(
-                                                                    row,
-                                                                ),
-                                                            )}
-                                                        </p>
-                                                    </div>
+                                                        >
+                                                            <Trash2
+                                                                className="size-3.5"
+                                                                aria-hidden
+                                                            />
+                                                            Remove
+                                                        </Button>
+                                                    ) : null}
                                                 </div>
-                                            ) : null}
-                                            <div className="space-y-2">
-                                                <Label>Goods Value</Label>
-                                                <Input
-                                                    name={`goods[${index}][goods_value]`}
-                                                    type="number"
-                                                    min="0"
-                                                    step="0.01"
-                                                    value={row.goods_value}
-                                                    onChange={(e) =>
-                                                        applyGoodsField(
-                                                            index,
-                                                            {
-                                                                goods_value:
-                                                                    e.target
-                                                                        .value,
-                                                            },
-                                                            'other',
-                                                        )
-                                                    }
-                                                />
                                             </div>
-                                            {goods.length > 1 ? (
-                                                <Button
-                                                    type="button"
-                                                    variant="ghost"
-                                                    size="sm"
-                                                    onClick={() =>
-                                                        setGoods((current) =>
-                                                            current.filter(
-                                                                (_, i) =>
-                                                                    i !== index,
-                                                            ),
-                                                        )
-                                                    }
-                                                >
-                                                    Remove
-                                                </Button>
-                                            ) : null}
                                         </div>
                                     ))}
                                 </div>
@@ -1674,8 +1382,9 @@ export default function LrForm({
                                                         <td className="px-2 py-2">
                                                             <Button
                                                                 type="button"
-                                                                variant="ghost"
+                                                                variant="destructive"
                                                                 size="sm"
+                                                                className="gap-1.5"
                                                                 onClick={() =>
                                                                     setEwbs(
                                                                         (
@@ -1692,6 +1401,10 @@ export default function LrForm({
                                                                     )
                                                                 }
                                                             >
+                                                                <Trash2
+                                                                    className="size-3.5"
+                                                                    aria-hidden
+                                                                />
                                                                 Remove
                                                             </Button>
                                                         </td>
@@ -1821,8 +1534,9 @@ export default function LrForm({
                                                         <td className="px-2 py-2">
                                                             <Button
                                                                 type="button"
-                                                                variant="ghost"
+                                                                variant="destructive"
                                                                 size="sm"
+                                                                className="gap-1.5"
                                                                 onClick={() =>
                                                                     setCharges(
                                                                         (
@@ -1839,6 +1553,10 @@ export default function LrForm({
                                                                     )
                                                                 }
                                                             >
+                                                                <Trash2
+                                                                    className="size-3.5"
+                                                                    aria-hidden
+                                                                />
                                                                 Remove
                                                             </Button>
                                                         </td>

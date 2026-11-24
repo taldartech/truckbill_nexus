@@ -7,5 +7,6 @@ export type {
     ColumnPriority,
     DataTableAction,
     DataTableColumn,
+    DataTableColumnAlign,
     DataTableProps,
 } from './types';

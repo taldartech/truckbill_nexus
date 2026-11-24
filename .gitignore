@@ -9,6 +9,7 @@
 /storage/pail
 /storage/playwright-report
 /storage/playwright-results
+/storage/visual-certification
 /test-results
 /playwright-report
 /blob-report
