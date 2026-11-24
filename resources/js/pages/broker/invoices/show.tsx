@@ -2,6 +2,7 @@ import { Form, Head, Link } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 import { DetailTabPanel, DetailTabs } from '@/components/detail-tabs';
+import InputError from '@/components/input-error';
 import { PageShell } from '@/components/page-shell';
 import { MetricCard } from '@/components/ui/metric-card';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
@@ -288,11 +289,16 @@ function PaymentsPanel({
                     method="post"
                     className="grid max-w-xl gap-3 rounded-lg border border-border p-4"
                 >
-                    {({ processing }) => (
+                    {({ processing, errors }) => (
                         <>
-                            <h3 className="text-sm font-semibold">
-                                Record payment
-                            </h3>
+                            <div className="flex items-center justify-between">
+                                <h3 className="text-sm font-semibold">
+                                    Record payment
+                                </h3>
+                                <span className="text-xs text-muted-foreground font-medium">
+                                    Remaining Balance: ₹{invoice.balance_due ?? '0.00'}
+                                </span>
+                            </div>
                             <Label className="flex flex-col gap-1 text-sm">
                                 Amount received
                                 <input
@@ -300,9 +306,12 @@ function PaymentsPanel({
                                     type="number"
                                     step="0.01"
                                     min="0"
+                                    max={invoice.balance_due ?? undefined}
+                                    defaultValue={invoice.balance_due ?? ''}
                                     required
                                     className="rounded-md border border-border px-2 py-1.5"
                                 />
+                                <InputError message={errors.amount_received} />
                             </Label>
                             <Label className="flex flex-col gap-1 text-sm">
                                 Customer TDS
@@ -314,6 +323,7 @@ function PaymentsPanel({
                                     defaultValue="0"
                                     className="rounded-md border border-border px-2 py-1.5"
                                 />
+                                <InputError message={errors.tds_amount} />
                             </Label>
                             <Label className="flex flex-col gap-1 text-sm">
                                 Deduction
@@ -325,6 +335,7 @@ function PaymentsPanel({
                                     defaultValue="0"
                                     className="rounded-md border border-border px-2 py-1.5"
                                 />
+                                <InputError message={errors.deduction_amount} />
                             </Label>
                             <Label className="flex flex-col gap-1 text-sm">
                                 Payment mode
