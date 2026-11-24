@@ -20,6 +20,12 @@ import {
 import { getCsrfToken } from '@/lib/csrf';
 import { useMemo, useState } from 'react';
 
+export type VehicleQuickCreateCatalogues = {
+    truckTypes: Array<{ id: string; name: string }>;
+    tyreLayouts: Array<{ id: string; name: string }>;
+    drivers: Array<{ id: string; name: string }>;
+};
+
 type Props = {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -27,20 +33,32 @@ type Props = {
     onCreated: (vehicle: VehicleSelectOption) => void;
     partiesOptionsUrl?: string;
     partiesStoreUrl?: string;
+    catalogues?: VehicleQuickCreateCatalogues;
+    defaultOwnership?: 'market' | 'own';
+    allowOwn?: boolean;
+    allowMarket?: boolean;
 };
 
 type Draft = {
     registration_number: string;
+    ownership: 'market' | 'own';
     vehicle_type: string;
     capacity_mt: string;
     owner_party_id: string;
+    truck_type_id: string;
+    tyre_layout_id: string;
+    primary_driver_party_id: string;
 };
 
 const EMPTY: Draft = {
     registration_number: '',
+    ownership: 'market',
     vehicle_type: '',
     capacity_mt: '',
     owner_party_id: '',
+    truck_type_id: '',
+    tyre_layout_id: '',
+    primary_driver_party_id: '',
 };
 
 function firstError(
@@ -55,7 +73,7 @@ function firstError(
 }
 
 /**
- * Inline Vehicle master create for operational selectors (legacy quick-add truck).
+ * Inline Vehicle master create for operational selectors (Market + Own).
  */
 export function QuickCreateVehicleSheet({
     open,
@@ -64,36 +82,85 @@ export function QuickCreateVehicleSheet({
     onCreated,
     partiesOptionsUrl,
     partiesStoreUrl,
+    catalogues,
+    defaultOwnership = 'market',
+    allowOwn = true,
+    allowMarket = true,
 }: Props) {
-    const [draft, setDraft] = useState<Draft>(EMPTY);
+    const initialOwnership =
+        defaultOwnership === 'own' && allowOwn
+            ? 'own'
+            : allowMarket
+              ? 'market'
+              : 'own';
+
+    const [draft, setDraft] = useState<Draft>({
+        ...EMPTY,
+        ownership: initialOwnership,
+    });
     const [ownerParty, setOwnerParty] = useState<PartyOption | null>(null);
     const [errors, setErrors] = useState<Record<string, string[] | string>>({});
     const [formError, setFormError] = useState<string | null>(null);
     const [processing, setProcessing] = useState(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
 
-    const reviewFields = useMemo<FieldReview[]>(
-        () => [
+    const truckTypes = catalogues?.truckTypes ?? [];
+    const tyreLayouts = catalogues?.tyreLayouts ?? [];
+    const drivers = catalogues?.drivers ?? [];
+    const isOwn = draft.ownership === 'own';
+    const isMarket = draft.ownership === 'market';
+
+    const reviewFields = useMemo<FieldReview[]>(() => {
+        const fields: FieldReview[] = [
             {
                 label: 'Registration number',
                 value: draft.registration_number,
             },
             {
                 label: 'Ownership',
-                value: 'Market',
+                value: isOwn ? 'Own' : 'Market',
             },
-            {
+        ];
+        if (isMarket) {
+            fields.push({
                 label: 'Truck owner',
                 value: ownerParty?.name ?? (draft.owner_party_id || '—'),
-            },
-            { label: 'Vehicle type', value: draft.vehicle_type || '—' },
-            { label: 'Capacity (MT)', value: draft.capacity_mt || '—' },
-        ],
-        [draft, ownerParty],
-    );
+            });
+        }
+        if (isOwn) {
+            fields.push({
+                label: 'Truck type',
+                value:
+                    truckTypes.find((item) => item.id === draft.truck_type_id)
+                        ?.name ?? '—',
+            });
+            fields.push({
+                label: 'Tyre layout',
+                value:
+                    tyreLayouts.find((item) => item.id === draft.tyre_layout_id)
+                        ?.name ?? '—',
+            });
+            fields.push({
+                label: 'Primary driver',
+                value:
+                    drivers.find(
+                        (item) => item.id === draft.primary_driver_party_id,
+                    )?.name ?? '—',
+            });
+        }
+        fields.push({
+            label: 'Vehicle type',
+            value: draft.vehicle_type || '—',
+        });
+        fields.push({
+            label: 'Capacity (MT)',
+            value: draft.capacity_mt || '—',
+        });
+        return fields;
+    }, [draft, drivers, isMarket, isOwn, ownerParty, truckTypes, tyreLayouts]);
 
     const reset = () => {
-        setDraft(EMPTY);
+        setDraft({ ...EMPTY, ownership: initialOwnership });
         setOwnerParty(null);
         setErrors({});
         setFormError(null);
@@ -116,9 +183,18 @@ export function QuickCreateVehicleSheet({
         event.preventDefault();
         setFormError(null);
         setErrors({});
-        if (draft.owner_party_id === '') {
+        if (isMarket && draft.owner_party_id === '') {
             setFormError(
                 'Truck Owner (Transporter) is required for Market vehicles.',
+            );
+            return;
+        }
+        if (
+            isOwn &&
+            (draft.truck_type_id === '' || draft.tyre_layout_id === '')
+        ) {
+            setFormError(
+                'Truck Type and Tyre Layout are required for Own vehicles.',
             );
             return;
         }
@@ -130,15 +206,33 @@ export function QuickCreateVehicleSheet({
         setFormError(null);
         setErrors({});
 
-        const payload = {
-            registration_number: draft.registration_number.trim().toUpperCase(),
-            ownership: 'market',
-            vehicle_type: draft.vehicle_type.trim() || null,
-            capacity_mt: draft.capacity_mt.trim() || null,
-            owner_party_id: draft.owner_party_id,
-            is_active: true,
-            remark: 'Quick create vehicle',
-        };
+        const payload =
+            draft.ownership === 'market'
+                ? {
+                      registration_number: draft.registration_number
+                          .trim()
+                          .toUpperCase(),
+                      ownership: 'market',
+                      vehicle_type: draft.vehicle_type.trim() || null,
+                      capacity_mt: draft.capacity_mt.trim() || null,
+                      owner_party_id: draft.owner_party_id,
+                      is_active: true,
+                      remark: 'Quick create market vehicle',
+                  }
+                : {
+                      registration_number: draft.registration_number
+                          .trim()
+                          .toUpperCase(),
+                      ownership: 'own',
+                      vehicle_type: draft.vehicle_type.trim() || null,
+                      capacity_mt: draft.capacity_mt.trim() || null,
+                      truck_type_id: draft.truck_type_id,
+                      tyre_layout_id: draft.tyre_layout_id,
+                      primary_driver_party_id:
+                          draft.primary_driver_party_id || null,
+                      is_active: true,
+                      remark: 'Quick create own vehicle',
+                  };
 
         try {
             const response = await fetch(storeUrl, {
@@ -245,23 +339,167 @@ export function QuickCreateVehicleSheet({
                                     )}
                                 />
                             </div>
-                            <div className="space-y-1.5">
+                            <div className="space-y-1.5 sm:col-span-2">
                                 <Label htmlFor="quick-vehicle-ownership">
-                                    Ownership
+                                    Ownership *
                                 </Label>
-                                <input
-                                    type="hidden"
-                                    name="ownership"
-                                    value="market"
-                                />
-                                <div className="flex h-9 items-center rounded-md border border-input bg-muted/20 px-3 text-sm font-medium">
-                                    Market
-                                </div>
-                                <p className="text-xs text-muted-foreground">
-                                    Own-fleet vehicles require Truck Type and
-                                    Tyre Layout — use the full Vehicle form.
-                                </p>
+                                <select
+                                    id="quick-vehicle-ownership"
+                                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                    value={draft.ownership}
+                                    onChange={(event) => {
+                                        const next = event.target.value as
+                                            | 'market'
+                                            | 'own';
+                                        update('ownership', next);
+                                        setOwnerParty(null);
+                                        update('owner_party_id', '');
+                                        update('truck_type_id', '');
+                                        update('tyre_layout_id', '');
+                                        update('primary_driver_party_id', '');
+                                    }}
+                                >
+                                    {allowMarket ? (
+                                        <option value="market">Market</option>
+                                    ) : null}
+                                    {allowOwn ? (
+                                        <option value="own">Own</option>
+                                    ) : null}
+                                </select>
                             </div>
+
+                            {isMarket ? (
+                                <div className="space-y-1.5 sm:col-span-2">
+                                    <SearchablePartySelect
+                                        id="quick-vehicle-owner"
+                                        name="quick_vehicle_owner"
+                                        label="Truck Owner"
+                                        options={ownerParty ? [ownerParty] : []}
+                                        searchUrl={partiesOptionsUrl}
+                                        role="transporter"
+                                        createStoreUrl={partiesStoreUrl}
+                                        createLabel="Add"
+                                        createRole="transporter"
+                                        required
+                                        value={draft.owner_party_id}
+                                        onValueChange={(value) =>
+                                            update('owner_party_id', value)
+                                        }
+                                        onPartyChange={setOwnerParty}
+                                        emptyMessage="Search eligible transporter owners…"
+                                        error={firstError(
+                                            errors,
+                                            'owner_party_id',
+                                        )}
+                                    />
+                                </div>
+                            ) : null}
+
+                            {isOwn ? (
+                                <>
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="quick-truck-type">
+                                            Truck type *
+                                        </Label>
+                                        <select
+                                            id="quick-truck-type"
+                                            className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                            value={draft.truck_type_id}
+                                            onChange={(event) =>
+                                                update(
+                                                    'truck_type_id',
+                                                    event.target.value,
+                                                )
+                                            }
+                                            required
+                                        >
+                                            <option value="">Select</option>
+                                            {truckTypes.map((item) => (
+                                                <option
+                                                    key={item.id}
+                                                    value={item.id}
+                                                >
+                                                    {item.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <InputError
+                                            message={firstError(
+                                                errors,
+                                                'truck_type_id',
+                                            )}
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="quick-tyre-layout">
+                                            Tyre layout *
+                                        </Label>
+                                        <select
+                                            id="quick-tyre-layout"
+                                            className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                            value={draft.tyre_layout_id}
+                                            onChange={(event) =>
+                                                update(
+                                                    'tyre_layout_id',
+                                                    event.target.value,
+                                                )
+                                            }
+                                            required
+                                        >
+                                            <option value="">Select</option>
+                                            {tyreLayouts.map((item) => (
+                                                <option
+                                                    key={item.id}
+                                                    value={item.id}
+                                                >
+                                                    {item.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <InputError
+                                            message={firstError(
+                                                errors,
+                                                'tyre_layout_id',
+                                            )}
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5 sm:col-span-2">
+                                        <Label htmlFor="quick-primary-driver">
+                                            Primary driver
+                                        </Label>
+                                        <select
+                                            id="quick-primary-driver"
+                                            className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                            value={
+                                                draft.primary_driver_party_id
+                                            }
+                                            onChange={(event) =>
+                                                update(
+                                                    'primary_driver_party_id',
+                                                    event.target.value,
+                                                )
+                                            }
+                                        >
+                                            <option value="">None</option>
+                                            {drivers.map((item) => (
+                                                <option
+                                                    key={item.id}
+                                                    value={item.id}
+                                                >
+                                                    {item.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <InputError
+                                            message={firstError(
+                                                errors,
+                                                'primary_driver_party_id',
+                                            )}
+                                        />
+                                    </div>
+                                </>
+                            ) : null}
+
                             <div className="space-y-1.5">
                                 <Label htmlFor="quick-vehicle-type">
                                     Vehicle type
@@ -275,27 +513,6 @@ export function QuickCreateVehicleSheet({
                                             event.target.value,
                                         )
                                     }
-                                />
-                            </div>
-                            <div className="space-y-1.5 sm:col-span-2">
-                                <SearchablePartySelect
-                                    id="quick-vehicle-owner"
-                                    name="quick_vehicle_owner"
-                                    label="Truck Owner"
-                                    options={ownerParty ? [ownerParty] : []}
-                                    searchUrl={partiesOptionsUrl}
-                                    role="transporter"
-                                    createStoreUrl={partiesStoreUrl}
-                                    createLabel="Add"
-                                    createRole="transporter"
-                                    required
-                                    value={draft.owner_party_id}
-                                    onValueChange={(value) =>
-                                        update('owner_party_id', value)
-                                    }
-                                    onPartyChange={setOwnerParty}
-                                    emptyMessage="Search eligible transporter owners…"
-                                    error={firstError(errors, 'owner_party_id')}
                                 />
                             </div>
                             <div className="space-y-1.5">

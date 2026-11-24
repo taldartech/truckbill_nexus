@@ -104,3 +104,7 @@ OwnFleet LR uses same `lr-form.tsx` as Broker/Partload station modes:
 | Expense import | `TripExpenseImportController::store` | Missing — Deferred P11                     |
 
 _No legacy files modified._
+
+## Combined Batch 2/3 note (24 Nov 2026)
+
+Own vehicle panel, Own quick-create, Save & Manage Expenses, Trip Manage Expenses CTA shipped partially. Full OwnFleet visual certification and multi-point journey remain open. See UNIFIED_BATCH_2_3_* docs.

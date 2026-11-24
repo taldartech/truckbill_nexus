@@ -1,4 +1,7 @@
-import { QuickCreateVehicleSheet } from '@/components/masters/quick-create-vehicle-sheet';
+import {
+    QuickCreateVehicleSheet,
+    type VehicleQuickCreateCatalogues,
+} from '@/components/masters/quick-create-vehicle-sheet';
 import {
     SearchableCombobox,
     type ComboboxOption,
@@ -36,6 +39,10 @@ type Props = {
     /** Party options endpoint for Market truck-owner quick create. */
     partiesOptionsUrl?: string;
     partiesStoreUrl?: string;
+    vehicleCatalogues?: VehicleQuickCreateCatalogues;
+    defaultOwnership?: 'market' | 'own';
+    allowOwnQuickCreate?: boolean;
+    allowMarketQuickCreate?: boolean;
     error?: string;
     className?: string;
     disabled?: boolean;
@@ -82,6 +89,10 @@ export function SearchableVehicleSelect({
     createStoreUrl,
     partiesOptionsUrl,
     partiesStoreUrl,
+    vehicleCatalogues,
+    defaultOwnership = 'market',
+    allowOwnQuickCreate = true,
+    allowMarketQuickCreate = true,
     error,
     className,
     disabled = false,
@@ -192,6 +203,10 @@ export function SearchableVehicleSelect({
                     storeUrl={createStoreUrl}
                     partiesOptionsUrl={partiesOptionsUrl}
                     partiesStoreUrl={partiesStoreUrl}
+                    catalogues={vehicleCatalogues}
+                    defaultOwnership={defaultOwnership}
+                    allowOwn={allowOwnQuickCreate}
+                    allowMarket={allowMarketQuickCreate}
                     onCreated={(vehicle) => {
                         setExtraOptions((current) => {
                             if (

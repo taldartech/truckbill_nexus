@@ -123,6 +123,11 @@ type Props = {
         goodsTypes: NamedOption[];
         packageTypes: NamedOption[];
         vehicles?: VehicleOption[];
+        vehicleQuickCreate?: {
+            truckTypes: NamedOption[];
+            tyreLayouts: NamedOption[];
+            drivers: NamedOption[];
+        };
     };
     urls: {
         index: string;
@@ -140,6 +145,7 @@ type Props = {
     permissions?: {
         can_view_freight?: boolean;
         can_create_lorry_hire?: boolean;
+        can_create_trip?: boolean;
     };
 };
 
@@ -406,10 +412,12 @@ export default function LrForm({
 }: Props) {
     const mayViewFreight = permissions?.can_view_freight !== false;
     const canCreateLorryHire = permissions?.can_create_lorry_hire === true;
+    const canCreateTrip = permissions?.can_create_trip === true;
     const formMode =
         formModeProp ?? (workflowContext === 'partload' ? 'partload' : 'truck');
     const submitAllowed = useRef(false);
     const redirectToHire = useRef(false);
+    const redirectToTrip = useRef(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [reviewFields, setReviewFields] = useState<FieldReview[]>([]);
     const [reviewChanges, setReviewChanges] = useState<ChangeReview[]>([]);
@@ -550,6 +558,8 @@ export default function LrForm({
         if (!isMarketVehicle) {
             setIntendedPayeeType('');
             setIntendedPayeePartyId('');
+            setAgencyPayeeParty(null);
+            setTdsPreviewLabel('—');
         }
     }, [isMarketVehicle]);
 
@@ -1062,8 +1072,9 @@ export default function LrForm({
         submitAllowed.current = false;
     };
 
-    const submitAfterConfirm = (continueToHire: boolean) => {
-        redirectToHire.current = continueToHire;
+    const submitAfterConfirm = (continuation: 'none' | 'hire' | 'trip') => {
+        redirectToHire.current = continuation === 'hire';
+        redirectToTrip.current = continuation === 'trip';
         submitAllowed.current = true;
         setConfirmOpen(false);
         window.setTimeout(() => {
@@ -1074,18 +1085,28 @@ export default function LrForm({
                 '#redirect_to_hire',
             ) as HTMLInputElement | null;
             if (hireInput) {
-                hireInput.value = continueToHire ? '1' : '0';
+                hireInput.value = continuation === 'hire' ? '1' : '0';
+            }
+            const tripInput = form?.querySelector(
+                '#redirect_to_trip',
+            ) as HTMLInputElement | null;
+            if (tripInput) {
+                tripInput.value = continuation === 'trip' ? '1' : '0';
             }
             form?.requestSubmit();
         }, 0);
     };
 
     const handleConfirm = () => {
-        submitAfterConfirm(false);
+        submitAfterConfirm('none');
     };
 
     const handleConfirmAndCreateHire = () => {
-        submitAfterConfirm(true);
+        submitAfterConfirm('hire');
+    };
+
+    const handleConfirmAndCreateTrip = () => {
+        submitAfterConfirm('trip');
     };
 
     const handleSaveClick = (
@@ -1175,6 +1196,12 @@ export default function LrForm({
                                 name="redirect_to_hire"
                                 value={redirectToHire.current ? '1' : '0'}
                             />
+                            <input
+                                type="hidden"
+                                id="redirect_to_trip"
+                                name="redirect_to_trip"
+                                value={redirectToTrip.current ? '1' : '0'}
+                            />
                             {resolvedContext ? (
                                 <input
                                     type="hidden"
@@ -1186,7 +1213,11 @@ export default function LrForm({
                             <LrfSection
                                 step={1}
                                 title="Receipt Details"
-                                description="Who is shipping, which truck, and who gets paid."
+                                description={
+                                    isOwnVehicle
+                                        ? 'Who is shipping, which own truck, and who drives.'
+                                        : 'Who is shipping, which truck, and who gets paid.'
+                                }
                                 tone="receipt"
                             >
                                 <div className="grid gap-3 md:grid-cols-2">
@@ -1321,6 +1352,9 @@ export default function LrForm({
                                                         partiesStoreUrl={
                                                             urls.parties_store
                                                         }
+                                                        vehicleCatalogues={
+                                                            formOptions.vehicleQuickCreate
+                                                        }
                                                         emptyMessage="No eligible vehicles in this branch."
                                                         error={
                                                             errors.vehicle_id
@@ -1368,11 +1402,31 @@ export default function LrForm({
                                             </div>
 
                                             {isOwnVehicle ? (
-                                                <p className="text-xs text-muted-foreground">
-                                                    Own fleet vehicle — internal
-                                                    ownership; Pay To selection
-                                                    is not required.
-                                                </p>
+                                                <div className="grid gap-3 sm:grid-cols-2">
+                                                    <div className="space-y-1.5">
+                                                        <Label>
+                                                            Primary Driver
+                                                        </Label>
+                                                        <div className="flex min-h-9 items-center rounded-md border border-input bg-muted/20 px-3 text-sm font-medium">
+                                                            {selectedVehicle?.primary_driver_name ??
+                                                                '—'}
+                                                        </div>
+                                                        <p className="text-xs text-muted-foreground">
+                                                            Substitute driver is
+                                                            chosen when
+                                                            continuing to Trip /
+                                                            Manage Expenses.
+                                                        </p>
+                                                    </div>
+                                                    <div className="space-y-1.5">
+                                                        <Label>Ownership</Label>
+                                                        <div className="flex min-h-9 items-center rounded-md border border-input bg-muted/20 px-3 text-sm">
+                                                            Own fleet — no
+                                                            market Pay To /
+                                                            Agency.
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             ) : null}
 
                                             {showPayeeRow ? (
@@ -2693,14 +2747,22 @@ export default function LrForm({
                         resolvedContext === 'broker' &&
                         canCreateLorryHire
                             ? handleConfirmAndCreateHire
-                            : undefined
+                            : mode === 'create' &&
+                                resolvedContext === 'own_fleet' &&
+                                canCreateTrip
+                              ? handleConfirmAndCreateTrip
+                              : undefined
                     }
                     secondaryConfirmLabel={
                         mode === 'create' &&
                         resolvedContext === 'broker' &&
                         canCreateLorryHire
                             ? 'Save & Create Lorry Hire'
-                            : undefined
+                            : mode === 'create' &&
+                                resolvedContext === 'own_fleet' &&
+                                canCreateTrip
+                              ? 'Save & Manage Expenses'
+                              : undefined
                     }
                 />
 

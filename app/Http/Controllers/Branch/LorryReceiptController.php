@@ -260,6 +260,21 @@ class LorryReceiptController extends Controller
                 ->with('success', 'Bilty created. Continue with Lorry Hire.');
         }
 
+        $redirectToTrip = $request->boolean('redirect_to_trip')
+            && $lr->workflow_context === LrWorkflowContext::OwnFleet
+            && $this->authorizer->allowsCustomer(
+                $actor,
+                PermissionCodes::TRIP_CREATE,
+                $company,
+                $branch,
+            );
+
+        if ($redirectToTrip) {
+            return redirect()
+                ->route('branch.trips.create-from-lr', [$lr])
+                ->with('success', 'Bilty created. Continue with Trip / Manage Expenses.');
+        }
+
         return redirect()
             ->route('branch.lorry-receipts.show', [$lr])
             ->with('success', 'Lorry Receipt created.');
@@ -514,6 +529,12 @@ class LorryReceiptController extends Controller
                 $company,
                 $branch,
             ),
+            'can_create_trip' => $this->authorizer->allowsCustomer(
+                $actor,
+                PermissionCodes::TRIP_CREATE,
+                $company,
+                $branch,
+            ),
         ];
     }
 
@@ -652,6 +673,59 @@ class LorryReceiptController extends Controller
                 'name' => $item->name,
             ])->values()->all(),
             'vehicles' => $vehicles,
+            'vehicleQuickCreate' => $this->vehicleQuickCreateOptions($company, $branch),
+        ];
+    }
+
+    /**
+     * Catalogue / driver options for inline Own Vehicle quick create on Bilty.
+     *
+     * @return array{
+     *     truckTypes: list<array{id: string, name: string}>,
+     *     tyreLayouts: list<array{id: string, name: string}>,
+     *     drivers: list<array{id: string, name: string}>
+     * }
+     */
+    private function vehicleQuickCreateOptions(Company $company, Branch $branch): array
+    {
+        $truckTypes = OwnerCatalogueItem::query()
+            ->where('owner_user_id', $company->owner_user_id)
+            ->where('catalogue_type', OwnerCatalogueType::TruckType->value)
+            ->where('is_active', true)
+            ->whereNull('deleted_at')
+            ->orderBy('name')
+            ->limit(200)
+            ->get(['id', 'name']);
+
+        $tyreLayouts = OwnerCatalogueItem::query()
+            ->where('owner_user_id', $company->owner_user_id)
+            ->where('catalogue_type', OwnerCatalogueType::TyreLayout->value)
+            ->where('is_active', true)
+            ->whereNull('deleted_at')
+            ->orderBy('name')
+            ->limit(200)
+            ->get(['id', 'name']);
+
+        $drivers = app(PartyOptionQuery::class)->forRoles(
+            $company,
+            $branch,
+            PartyRoleType::Driver,
+            100,
+        );
+
+        return [
+            'truckTypes' => $truckTypes->map(fn (OwnerCatalogueItem $item): array => [
+                'id' => $item->id,
+                'name' => $item->name,
+            ])->values()->all(),
+            'tyreLayouts' => $tyreLayouts->map(fn (OwnerCatalogueItem $item): array => [
+                'id' => $item->id,
+                'name' => $item->name,
+            ])->values()->all(),
+            'drivers' => collect($drivers)->map(fn (array $driver): array => [
+                'id' => (string) $driver['id'],
+                'name' => (string) $driver['name'],
+            ])->values()->all(),
         ];
     }
 

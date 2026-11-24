@@ -138,3 +138,7 @@ Product Owner directed that **`legacy/truckbill_broker` is the primary reference
 **Still outside PO-LGC-017 scope (unchanged gates):** voucher edit/destroy (PO-LGC-003), full hire PATCH (PO-LGC-007), custom invoice (PO-LGC-001), Phase 11 report reproduction, ADR-010 accounting, live Razorpay prod.
 
 _No legacy files modified. Does not authorize Phase 7._
+
+## Combined Batch 2/3 note (24 Nov 2026)
+
+Ownership-driven unified Bilty UI authorized. Remaining Broker visual density and OwnFleet expense/multi-point certification tracked in `docs/engineering/UNIFIED_BATCH_2_3_GAP_REGISTER.md`. Verdict C — not closed.

@@ -289,38 +289,51 @@ export default function LorryHireShow({
         <>
             <Head title={`Lorry Hire ${lorryHire.hire_number}`} />
             <PageShell
+                chrome="compact"
                 title={`Lorry Hire ${lorryHire.hire_number}`}
+                description={[
+                    lorryHire.lr_number
+                        ? `Linked bilty ${lorryHire.lr_number}`
+                        : null,
+                    lorryHire.transporter_name,
+                    lorryHire.vehicle_registration,
+                ]
+                    .filter(Boolean)
+                    .join(' · ')}
                 actions={
-                    <Link
-                        href={urls.index}
-                        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-                    >
-                        <ArrowLeft className="h-4 w-4" />
-                        All Lorry Hires
-                    </Link>
-                }
-            >
-                <div className="flex flex-wrap items-center gap-3">
-                    <WorkspaceStatusBadge status={lorryHire.status} />
-                    <AppIconAction
-                        icon={FileText}
-                        label={`Open LR ${lorryHire.lr_number}`}
-                        href={urls.lr_show}
-                        variant="info"
-                        size="sm"
-                    />
-                    {urls.voucher_create ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                        <WorkspaceStatusBadge status={lorryHire.status} />
                         <AppIconAction
-                            icon={Wallet}
-                            label="Record voucher"
-                            href={urls.voucher_create}
-                            variant="default"
+                            icon={FileText}
+                            label={
+                                lorryHire.lr_number
+                                    ? `Open bilty ${lorryHire.lr_number}`
+                                    : 'Open bilty'
+                            }
+                            href={urls.lr_show}
+                            variant="info"
                             size="sm"
                         />
-                    ) : null}
-                </div>
-
-                <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                        {urls.voucher_create ? (
+                            <AppIconAction
+                                icon={Wallet}
+                                label="Record voucher"
+                                href={urls.voucher_create}
+                                variant="default"
+                                size="sm"
+                            />
+                        ) : null}
+                        <Link
+                            href={urls.index}
+                            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+                        >
+                            <ArrowLeft className="h-4 w-4" />
+                            All Lorry Hires
+                        </Link>
+                    </div>
+                }
+            >
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <MetricCard
                         label="Transporter freight"
                         value={lorryHire.freight_total ?? '—'}

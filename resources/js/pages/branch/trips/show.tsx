@@ -227,15 +227,38 @@ export default function TripShow({
         <>
             <Head title={`Trip · ${trip.lr_number ?? trip.id}`} />
             <PageShell
-                title={`Trip · LR ${trip.lr_number ?? '—'}`}
-                description="Pickups, drops, allocations, dispatch, and settlement."
+                chrome="compact"
+                title={`Manage Trip · ${trip.lr_number ?? 'Bilty'}`}
+                description={[
+                    trip.vehicle?.registration_number,
+                    trip.driver?.name
+                        ? `Driver ${trip.driver.name}`
+                        : trip.primary_driver?.name
+                          ? `Driver ${trip.primary_driver.name}`
+                          : null,
+                    trip.from_station_name && trip.to_station_name
+                        ? `${trip.from_station_name} → ${trip.to_station_name}`
+                        : null,
+                ]
+                    .filter(Boolean)
+                    .join(' · ')}
                 actions={
-                    <AppIconAction
-                        icon={ArrowLeft}
-                        label="Back to Bilty"
-                        href={urls.lr_show}
-                        variant="outline"
-                    />
+                    <div className="flex flex-wrap items-center gap-2">
+                        <Button
+                            type="button"
+                            size="sm"
+                            className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                            onClick={() => setTab('expenses')}
+                        >
+                            Manage Expenses
+                        </Button>
+                        <AppIconAction
+                            icon={ArrowLeft}
+                            label="Back to Bilty"
+                            href={urls.lr_show}
+                            variant="outline"
+                        />
+                    </div>
                 }
             >
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -287,10 +310,10 @@ export default function TripShow({
                         },
                         {
                             id: 'expenses',
-                            label: 'Expenses',
+                            label: 'Manage Expenses',
                             count: expenses.length,
                         },
-                        { id: 'financials', label: 'Financials' },
+                        { id: 'financials', label: 'Profitability' },
                         { id: 'documents', label: 'Documents' },
                         { id: 'activity', label: 'Activity' },
                     ]}

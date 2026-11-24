@@ -285,3 +285,7 @@ Nexus-only requirements: `NEXUS_EXCLUSIVE_REQUIREMENTS_AUDIT.md`.
 ---
 
 _Merged matrix for Phase 6 residual planning and Phase 11 report backlog. Does not supersede PO acceptance records._
+
+## Combined Batch 2/3 update (24 Nov 2026)
+
+Unified ownership-driven UI in progress. Functional domain largely retained; visual/certification gaps remain (verdict C). Screen coverage: `UNIFIED_BATCH_2_3_SCREEN_COVERAGE.md`.

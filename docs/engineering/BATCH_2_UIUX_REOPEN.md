@@ -24,16 +24,18 @@ Functional equivalence is **not** accepted as UI/UX parity.
 
 ## Progress (verified this session)
 
-| Theme                     | Status  | Evidence                                                                                                                                               |
-| ------------------------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| SearchableCombobox        | Done    | `resources/js/components/searchable-combobox.tsx`; party/vehicle wrappers                                                                              |
-| Compact Bilty header      | Done    | `PageShell` `chrome="compact"`; title “Add New Good Receipt (Bilty)”                                                                                   |
-| Receipt Details two-panel | Done    | Document \| Vehicle & Payee cards                                                                                                                      |
-| Pay To Owner \| Agency    | Done    | Intended payee on LR; hire payee preview prefers intended; TDS via `/parties/tds-for-payee`                                                            |
-| Parties & Route FROM/TO   | Done    | Appears after market vehicle selection                                                                                                                 |
-| Quick-create drawer       | Done    | Party + Market vehicle sheets; JSON store responses; wired on Bilty / Hire / Linked / Enquiry                                                          |
-| Remaining Broker screens  | Partial | Combobox + quick-create wired on Hire, Linked Bilty, Enquiry; register/details/voucher/etc. still need layout pass                                     |
-| Screenshot certification  | Partial | Nexus captures under `storage/visual-certification/batch2-uiux/`; legacy app not launched this session — use Blade `create.blade.php` + PO screenshots |
+| Theme                     | Status  | Evidence                                                                                                                                                 |
+| ------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| SearchableCombobox        | Done    | `resources/js/components/searchable-combobox.tsx`; party/vehicle wrappers                                                                                |
+| Compact Bilty header      | Done    | `PageShell` `chrome="compact"`; title “Add New Good Receipt (Bilty)”                                                                                     |
+| Receipt Details two-panel | Done    | Document \| Vehicle & Payee cards                                                                                                                        |
+| Pay To Owner \| Agency    | Done    | Intended payee on LR; hire payee preview prefers intended; TDS via `/parties/tds-for-payee`                                                              |
+| Parties & Route FROM/TO   | Done    | Appears after market vehicle selection                                                                                                                   |
+| Quick-create drawer       | Done    | Party + Market vehicle sheets; JSON store responses; wired on Bilty / Hire / Linked / Enquiry                                                            |
+| Remaining Broker screens  | Partial | Hire create numbered sections + compact; Hire show compact cockpit; Voucher searchable hire/account; Linked Bilty two-panel; denser layout passes remain |
+| OwnFleet Save & Expenses  | Partial | Own driver panel; Save & Manage Expenses (`redirect_to_trip`); Trip show Manage Expenses CTA; expense visual parity still open                           |
+| Own Vehicle quick-create  | Done    | Inline sheet: ownership own, truck type, tyre layout, primary driver                                                                                     |
+| Screenshot certification  | Partial | Nexus captures under `storage/visual-certification/batch2-uiux/`; legacy live launch not completed this session — Blade + PO screenshots                 |
 
 ### Nexus screenshots (1440×900 / 1920×1080)
 

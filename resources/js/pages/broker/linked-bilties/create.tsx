@@ -127,7 +127,9 @@ export default function LinkedBiltiesCreate({
         <>
             <Head title="Create Linked Bilty Group" />
             <PageShell
+                chrome="compact"
                 title="Create Linked Bilty Group"
+                description="Group market-vehicle bilties that share one payee and payment journey."
                 actions={
                     <Link
                         href={urls.index}
@@ -139,38 +141,71 @@ export default function LinkedBiltiesCreate({
             >
                 <form
                     id="linked-bilty-create-form"
-                    className="space-y-8"
+                    className="space-y-4"
                     onSubmit={submit}
                 >
-                    <section className="grid gap-4 rounded-lg border border-border p-4 md:grid-cols-2">
-                        <h2 className="text-sm font-semibold text-[#2FB36F] md:col-span-2">
-                            Shared header
-                        </h2>
-                        <div className="space-y-1">
-                            <Label htmlFor="group_date">Group date</Label>
-                            <Input
-                                id="group_date"
-                                name="group_date"
-                                type="date"
-                                value={form.data.group_date}
-                                onChange={(event) =>
-                                    form.setData(
-                                        'group_date',
-                                        event.target.value,
-                                    )
-                                }
-                            />
-                            {form.errors.group_date && (
-                                <p className="text-xs text-destructive">
-                                    {form.errors.group_date}
-                                </p>
-                            )}
+                    <section className="grid gap-4 md:grid-cols-2">
+                        <div className="space-y-3 rounded-lg border border-border bg-card p-4">
+                            <h2 className="text-sm font-semibold text-[#2FB36F]">
+                                1. Document
+                            </h2>
+                            <div className="space-y-1">
+                                <Label htmlFor="group_date">Group date</Label>
+                                <Input
+                                    id="group_date"
+                                    name="group_date"
+                                    type="date"
+                                    value={form.data.group_date}
+                                    onChange={(event) =>
+                                        form.setData(
+                                            'group_date',
+                                            event.target.value,
+                                        )
+                                    }
+                                />
+                                {form.errors.group_date && (
+                                    <p className="text-xs text-destructive">
+                                        {form.errors.group_date}
+                                    </p>
+                                )}
+                            </div>
+                            <div className="space-y-1">
+                                <Label htmlFor="reference">Reference</Label>
+                                <Input
+                                    id="reference"
+                                    name="reference"
+                                    value={form.data.reference}
+                                    onChange={(event) =>
+                                        form.setData(
+                                            'reference',
+                                            event.target.value,
+                                        )
+                                    }
+                                />
+                            </div>
+                            <div className="space-y-1">
+                                <Label htmlFor="remarks">Remarks</Label>
+                                <Input
+                                    id="remarks"
+                                    name="remarks"
+                                    value={form.data.remarks}
+                                    onChange={(event) =>
+                                        form.setData(
+                                            'remarks',
+                                            event.target.value,
+                                        )
+                                    }
+                                />
+                            </div>
                         </div>
-                        <div className="space-y-1">
+                        <div className="space-y-3 rounded-lg border border-border bg-card p-4">
+                            <h2 className="text-sm font-semibold text-[#2FB36F]">
+                                2. Vehicle &amp; Payee
+                            </h2>
                             <SearchableVehicleSelect
                                 id="vehicle_id"
                                 name="vehicle_id"
-                                label="Vehicle"
+                                label="Market vehicle"
                                 options={vehicles}
                                 searchUrl={urls.vehicles_options}
                                 ownership="market"
@@ -197,8 +232,6 @@ export default function LinkedBiltiesCreate({
                                 emptyMessage="No market vehicles in this branch."
                                 error={form.errors.vehicle_id}
                             />
-                        </div>
-                        <div className="space-y-1">
                             <SearchablePartySelect
                                 id="payee_party_id"
                                 name="payee_party_id"
@@ -216,52 +249,27 @@ export default function LinkedBiltiesCreate({
                                 }
                                 emptyMessage="No eligible payees in this branch."
                             />
-                        </div>
-                        <div className="space-y-1">
-                            <Label htmlFor="driver_name">Driver name</Label>
-                            <Input
-                                id="driver_name"
-                                name="driver_name"
-                                value={form.data.driver_name}
-                                onChange={(event) =>
-                                    form.setData(
-                                        'driver_name',
-                                        event.target.value,
-                                    )
-                                }
-                            />
-                        </div>
-                        <div className="space-y-1">
-                            <Label htmlFor="reference">Reference</Label>
-                            <Input
-                                id="reference"
-                                name="reference"
-                                value={form.data.reference}
-                                onChange={(event) =>
-                                    form.setData(
-                                        'reference',
-                                        event.target.value,
-                                    )
-                                }
-                            />
-                        </div>
-                        <div className="space-y-1 md:col-span-2">
-                            <Label htmlFor="remarks">Remarks</Label>
-                            <Input
-                                id="remarks"
-                                name="remarks"
-                                value={form.data.remarks}
-                                onChange={(event) =>
-                                    form.setData('remarks', event.target.value)
-                                }
-                            />
+                            <div className="space-y-1">
+                                <Label htmlFor="driver_name">Driver name</Label>
+                                <Input
+                                    id="driver_name"
+                                    name="driver_name"
+                                    value={form.data.driver_name}
+                                    onChange={(event) =>
+                                        form.setData(
+                                            'driver_name',
+                                            event.target.value,
+                                        )
+                                    }
+                                />
+                            </div>
                         </div>
                     </section>
 
                     <section className="space-y-3 rounded-lg border border-border p-4">
                         <div className="flex items-center justify-between gap-2">
                             <h2 className="text-sm font-semibold text-[#2FB36F]">
-                                Member bilties (minimum 2)
+                                3. Member bilties (minimum 2)
                             </h2>
                             <span className="text-xs text-muted-foreground">
                                 {selected.length} selected
@@ -277,7 +285,7 @@ export default function LinkedBiltiesCreate({
                                 <thead className="border-b text-left text-muted-foreground">
                                     <tr>
                                         <th className="w-10 px-2 py-2" />
-                                        <th className="px-2 py-2">LR No</th>
+                                        <th className="px-2 py-2">Bilty No</th>
                                         <th className="px-2 py-2">Date</th>
                                         <th className="px-2 py-2">Vehicle</th>
                                         <th className="px-2 py-2">

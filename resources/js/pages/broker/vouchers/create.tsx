@@ -1,8 +1,12 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
 import type { FieldReview } from '@/components/form-confirmation/types';
 import { PageShell } from '@/components/page-shell';
+import {
+    SearchableCombobox,
+    type ComboboxOption,
+} from '@/components/searchable-combobox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -75,6 +79,34 @@ export default function VoucherCreate({
 
     const selectedHire = eligibleLorryHires.find(
         (row) => row.id === form.data.lorry_hire_id,
+    );
+
+    const hireOptions: ComboboxOption[] = useMemo(
+        () =>
+            eligibleLorryHires.map((hire) => ({
+                id: hire.id,
+                label: hire.hire_number,
+                description: [
+                    hire.lr_number ? `Bilty ${hire.lr_number}` : null,
+                    hire.transporter_name,
+                    hire.vehicle_registration,
+                    hire.allocatable_amount
+                        ? `Available ₹${hire.allocatable_amount}`
+                        : null,
+                ]
+                    .filter(Boolean)
+                    .join(' · '),
+            })),
+        [eligibleLorryHires],
+    );
+
+    const accountOptions: ComboboxOption[] = useMemo(
+        () =>
+            bankCashAccounts.map((account) => ({
+                id: account.id,
+                label: account.name,
+            })),
+        [bankCashAccounts],
     );
 
     const proposedAmount = parseAmount(form.data.amount);
@@ -168,6 +200,7 @@ export default function VoucherCreate({
             <Head title="Create Transporter Voucher" />
             <PageShell
                 title="Create Transporter Voucher"
+                chrome="compact"
                 actions={
                     <Link
                         href={urls.index}
@@ -223,32 +256,21 @@ export default function VoucherCreate({
                         </div>
                     ) : null}
 
-                    <div className="space-y-1">
-                        <Label htmlFor="lorry_hire_id">Lorry Hire</Label>
-                        <select
-                            id="lorry_hire_id"
-                            value={form.data.lorry_hire_id}
-                            onChange={(event) =>
-                                form.setData(
-                                    'lorry_hire_id',
-                                    event.target.value,
-                                )
-                            }
-                            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                            required
-                        >
-                            <option value="">Select Lorry Hire…</option>
-                            {eligibleLorryHires.map((hire) => (
-                                <option key={hire.id} value={hire.id}>
-                                    {hire.hire_number}
-                                    {hire.lr_number
-                                        ? ` (LR ${hire.lr_number})`
-                                        : ''}{' '}
-                                    — allocatable {hire.allocatable_amount}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
+                    <SearchableCombobox
+                        id="lorry_hire_id"
+                        name="lorry_hire_id"
+                        label="Lorry Hire"
+                        options={hireOptions}
+                        value={form.data.lorry_hire_id}
+                        onValueChange={(next) =>
+                            form.setData('lorry_hire_id', next)
+                        }
+                        required
+                        clearable={!selectedLorryHireId}
+                        placeholder="Search hire, bilty or transporter…"
+                        emptyMessage="No allocatable lorry hires in this branch."
+                        error={form.errors.lorry_hire_id}
+                    />
 
                     <div className="space-y-1">
                         <Label htmlFor="amount">Amount</Label>
@@ -320,30 +342,20 @@ export default function VoucherCreate({
                     </div>
 
                     {form.data.payment_mode === 'bank' && (
-                        <div className="space-y-1">
-                            <Label htmlFor="bank_cash_account_id">
-                                Bank/Cash account
-                            </Label>
-                            <select
-                                id="bank_cash_account_id"
-                                value={form.data.bank_cash_account_id}
-                                onChange={(event) =>
-                                    form.setData(
-                                        'bank_cash_account_id',
-                                        event.target.value,
-                                    )
-                                }
-                                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                required
-                            >
-                                <option value="">Select account…</option>
-                                {bankCashAccounts.map((account) => (
-                                    <option key={account.id} value={account.id}>
-                                        {account.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
+                        <SearchableCombobox
+                            id="bank_cash_account_id"
+                            name="bank_cash_account_id"
+                            label="Bank/Cash account"
+                            options={accountOptions}
+                            value={form.data.bank_cash_account_id}
+                            onValueChange={(next) =>
+                                form.setData('bank_cash_account_id', next)
+                            }
+                            required
+                            placeholder="Search account…"
+                            emptyMessage="No bank/cash accounts in this branch."
+                            error={form.errors.bank_cash_account_id}
+                        />
                     )}
 
                     {form.data.payment_mode === 'paid_to_pump' && (

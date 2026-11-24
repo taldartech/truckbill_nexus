@@ -316,7 +316,11 @@ export default function LorryReceiptsIndex({
     return (
         <>
             <Head title="Bilty Register" />
-            <PageShell title="Bilty Register" actions={headerActions}>
+            <PageShell
+                title="Bilty Register"
+                chrome="compact"
+                actions={headerActions}
+            >
                 {flash?.success ? (
                     <p className="text-sm text-emerald-700">{flash.success}</p>
                 ) : null}

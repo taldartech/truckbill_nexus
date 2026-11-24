@@ -15,6 +15,7 @@ use App\Domains\Rbac\PermissionCodes;
 use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
 use App\Domains\Subscription\Enums\SubscriptionModule;
 use App\Models\CustomerWebSession;
+use App\Models\LorryReceipt;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\RolePermission;
@@ -23,6 +24,7 @@ use App\Models\Vehicle;
 use App\Support\Tenant\TenantContextHolder;
 use Database\Seeders\RbacSeeder;
 use Database\Seeders\SubscriptionCatalogueSeeder;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Validation\ValidationException;
 
@@ -33,6 +35,7 @@ beforeEach(function () {
     Cache::flush();
     (new RbacSeeder)->run();
     (new SubscriptionCatalogueSeeder)->run();
+    $this->withoutMiddleware(PreventRequestForgery::class);
 });
 
 afterEach(function () {
@@ -324,4 +327,46 @@ test('http create trip form locks vehicle to the lr truck', function () {
             ->where('lorryReceipt.vehicle_id', $ctx['vehicle']->id)
             ->has('vehicles', 1)
             ->where('vehicles.0.id', $ctx['vehicle']->id));
+});
+
+test('own fleet bilty store can redirect to create trip', function () {
+    $ctx = tripWorkspace();
+    tripActivate($ctx['company'], $ctx['branch']);
+
+    $this->flushSession();
+    CustomerWebSession::query()->where('user_id', $ctx['member']->id)->delete();
+    $this->actingAs($ctx['member']);
+    session()->forget(WebSessionService::SESSION_VERSION_KEY);
+    seedBranchSession($ctx['company'], $ctx['branch']);
+
+    $response = $this->post(route('branch.lorry-receipts.store'), [
+        'form_mode' => 'truck',
+        'vehicle_id' => $ctx['vehicle']->id,
+        'number_mode' => 'auto',
+        'lr_date' => now()->toDateString(),
+        'from_station_id' => $ctx['fromStation']->id,
+        'to_station_id' => $ctx['toStation']->id,
+        'goods' => [[
+            'goods_type_id' => $ctx['goodsType']->id,
+            'package_type_id' => $ctx['packageType']->id,
+            'goods_description' => 'Own fleet cargo',
+            'package_count' => 1,
+            'actual_weight' => 1000,
+            'charged_weight' => 1000,
+            'freight_rate_type' => FreightRateType::PerMt->value,
+            'freight_rate' => 1000,
+            'goods_value' => 1000,
+        ]],
+        'redirect_to_trip' => '1',
+    ]);
+
+    $lr = LorryReceipt::query()
+        ->where('company_id', $ctx['company']->id)
+        ->where('branch_id', $ctx['branch']->id)
+        ->latest('created_at')
+        ->first();
+
+    expect($lr)->not->toBeNull()
+        ->and($lr->workflow_context)->toBe(LrWorkflowContext::OwnFleet);
+    $response->assertRedirect(route('branch.trips.create-from-lr', [$lr]));
 });

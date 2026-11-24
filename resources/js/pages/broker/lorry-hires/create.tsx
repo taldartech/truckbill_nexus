@@ -443,6 +443,7 @@ export default function LorryHireCreate({
             />
             <PageShell
                 width="form"
+                chrome="compact"
                 title="Create Lorry Hire"
                 description={
                     lorryReceipt.lr_number
@@ -474,8 +475,8 @@ export default function LorryHireCreate({
                                 value={redirectToVoucher.current ? '1' : '0'}
                             />
                             <FormSection
-                                title="Linked bilty"
-                                description="Broker lorry receipt summary"
+                                title="1. Linked bilty"
+                                description="Customer freight stays independent of transporter hire charges."
                                 columns={2}
                             >
                                 <p className="font-medium text-foreground md:col-span-2">
@@ -521,8 +522,8 @@ export default function LorryHireCreate({
                             </FormSection>
 
                             <FormSection
-                                title="Payee / transporter"
-                                description="Select the transporter who will receive hire payment."
+                                title="2. Confirmed payee"
+                                description="Confirm the transporter who will receive hire payment."
                                 columns={2}
                             >
                                 <div className="space-y-1 md:col-span-2">
@@ -564,7 +565,7 @@ export default function LorryHireCreate({
                             </FormSection>
 
                             <FormSection
-                                title="Hire charges"
+                                title="3. Hire charges"
                                 description="Enter transporter rates per goods line. Customer freight is shown for reference only."
                                 columns={1}
                             >
