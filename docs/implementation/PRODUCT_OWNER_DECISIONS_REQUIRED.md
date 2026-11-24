@@ -22,6 +22,7 @@ Decisions below are **additive** to existing registers (`PHASE_1_TO_5_CONSOLIDAT
 | PO-LGC-008 | Driver advance / payroll (OwnFleet)    | Low      | Phase 10 hold                        |
 | PO-LGC-009 | Production tax PDF activation          | **High** | Legal invoice dispatch               |
 | PO-LGC-010 | AUD-CON-006 entitlement matrix         | Medium   | Restricted-mode UI                   |
+| PO-LGC-017 | Legacy broker operational-flow parity  | Medium   | Batch 2 Broker UX certification      |
 
 ---
 
@@ -146,6 +147,26 @@ Explicit Product Owner authorization in the Bilty UI remediation assignment:
 
 ---
 
+## PO-LGC-017 — Legacy broker operational-flow parity (**Accepted**, 24 November 2026)
+
+**Context:** Batch 2 Broker requires operators to follow the same practical sequences they used in `truckbill_broker` (list → create → review → pay → invoice) while Nexus enforces immutable financial records, unified Party/Vehicle masters, and permission-based auth.
+
+**Decision:** **Accepted** — Legacy broker is the **primary reference for UI interaction and operational flow**. Nexus governing documents and domain services remain **authoritative** for business rules, security, and financial integrity.
+
+**Implications:**
+
+| Area              | Guidance                                                                                                                                          |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Navigation & CTAs | Match legacy Operations-first IA where Branch panel already exposes the workflow (see `docs/design/LEGACY_BROKER_SCREEN_MAPPING.md`).             |
+| Confirmations     | Use `FormConfirmationDialog` with field density comparable to legacy “review before save” habits (bilty expanded confirmation is the template).   |
+| Deep links        | Preserve hire → voucher and LR → hire handoffs (`?lorry_hire_id=`, Record voucher on hire show).                                                  |
+| Non-port          | Do not treat legacy voucher destroy, unrestricted hire PATCH, or custom invoice as implied by this decision (PO-LGC-003, PO-LGC-007, PO-LGC-001). |
+| Documentation     | `docs/design/BROKER_OPERATIONAL_FLOW_STANDARD.md` is the operator spine; gap register B2-DOC-01 tracks certification completion.                  |
+
+**Does not authorize:** Phase 11 full reports, ADR-010 accounting, production PDF, live Razorpay prod, or Batch 3 scope.
+
+---
+
 ## Recommended PO response format
 
 ```text
@@ -159,6 +180,7 @@ PO-LGC-007: A | B
 PO-LGC-008: Phase 10 | Exclude
 PO-LGC-009: (reference existing EX decision)
 PO-LGC-010: (reference AUD-CON-006 process)
+PO-LGC-017: Accepted (24 Nov 2026)
 ```
 
 ---

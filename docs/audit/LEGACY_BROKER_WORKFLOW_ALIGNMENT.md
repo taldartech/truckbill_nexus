@@ -3,7 +3,7 @@
 **Audit date:** 24 November 2026  
 **Legacy repo:** `truckbill_broker` @ **`6a90e955bd7a05497f60a6d0bd72891c880e6d14`** (stable)  
 **Legacy read-only path:** `legacy/truckbill_broker/`  
-**Nexus HEAD:** `6584e543e9995c76d1bc8033fc4023bd7670eafc`  
+**Nexus HEAD (audit baseline):** `4b3b874` (Batch 2 operational-flow parity pass; parent commit pending)  
 **Detail register:** `LEGACY_BROKER_FUNCTIONAL_PARITY.md` (BRK-* rows)
 
 ---
@@ -116,5 +116,25 @@ Legacy hire math uses **float** `weight × trFrRate` (`FreightBookingCalculation
 | Hire store          | `FreightBookingController::store`       | `LorryHireController::storeFromLorryReceipt`                    |
 | Voucher bulk        | `VoucherPaymentController::bulkPayment` | `TransporterVoucherController` + `BulkVoucherService`           |
 | Linked LR at create | `LorryReceiptController::createLinked`  | `LinkedBiltyGroupController` (post-hire)                        |
+
+---
+
+## PO-LGC-017 — Operational-flow parity directive (24 November 2026)
+
+**Status:** **Accepted**
+
+Product Owner directed that **`legacy/truckbill_broker` is the primary reference for UI interaction and operational flow** for Broker Batch 2 and ongoing Phase 6 work. Nexus **security, tenancy, financial immutability, and governing business rules remain authoritative** — legacy is evidence for operator sequencing, not permission to port destructive edits or float-only math.
+
+**Deliverables (documentation, baseline `4b3b874`):**
+
+| Artifact                        | Path                                              |
+| ------------------------------- | ------------------------------------------------- |
+| UX alignment principles         | `docs/design/LEGACY_BROKER_UX_ALIGNMENT.md`       |
+| Screen / route mapping          | `docs/design/LEGACY_BROKER_SCREEN_MAPPING.md`     |
+| Happy-path operational standard | `docs/design/BROKER_OPERATIONAL_FLOW_STANDARD.md` |
+
+**Batch 2 UX evidence called out under this directive (source-verified):** hire payee `role_label` + margin amber warning; voucher `?lorry_hire_id=` preselect and hire context panel; hire show **Record voucher** CTA; bilty `FormConfirmationDialog` with expanded party/station/goods/EWB/charge/MT totals.
+
+**Still outside PO-LGC-017 scope (unchanged gates):** voucher edit/destroy (PO-LGC-003), full hire PATCH (PO-LGC-007), custom invoice (PO-LGC-001), Phase 11 report reproduction, ADR-010 accounting, live Razorpay prod.
 
 _No legacy files modified. Does not authorize Phase 7._

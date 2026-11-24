@@ -9,6 +9,18 @@
 **ID scheme:** `BRK-*` · `OF-*` · `SHR-*` · `ADM-*` · `PLD-*`  
 **Weight standard:** `docs/architecture/OPERATIONAL_WEIGHT_UNIT_STANDARD.md`
 
+### Operational-flow parity (PO-LGC-017 — 24 November 2026)
+
+**PO-LGC-017 (Accepted):** Legacy broker is the primary reference for **operator interaction and operational flow** when implementing or certifying Broker UX. Nexus domain, security, and financial rules remain authoritative.
+
+This matrix still classifies **capabilities** (BRK-* / SHR-* rows). It does **not** assign an overall “% parity” score. Operational-flow alignment is tracked separately in:
+
+- `docs/design/BROKER_OPERATIONAL_FLOW_STANDARD.md`
+- `docs/design/LEGACY_BROKER_SCREEN_MAPPING.md`
+- `docs/engineering/BATCH_2_BROKER_GAP_REGISTER.md` (B2-DOC-01)
+
+Batch 2 UX landings under PO-LGC-017 are **implementation evidence**, not a change to peer BRK classification totals in this file unless a future audit pass reclassifies specific BRK rows.
+
 ---
 
 ## Classification legend
