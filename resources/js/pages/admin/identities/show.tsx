@@ -1,10 +1,10 @@
-import { Form, Head, Link, usePage } from '@inertiajs/react';
-import { ArrowLeft } from 'lucide-react';
+import { Form, Head, usePage } from '@inertiajs/react';
+import { AppIconAction } from '@/components/app-icon-action';
+import { ArrowLeft, Eye } from 'lucide-react';
 import {
     PortalErrorList,
     PortalFlashBanner,
 } from '@/components/admin/portal-feedback';
-import { AppIconAction } from '@/components/app-icon-action';
 import { FormSection } from '@/components/form-section';
 import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
@@ -150,19 +150,24 @@ export default function AdminIdentityShow({
                                     key={company.id}
                                     className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-border bg-muted/20 px-3 py-2"
                                 >
-                                    <Link
-                                        href={company.show_url}
-                                        className="font-medium text-[#2D8CFF] underline-offset-4 hover:underline"
-                                    >
+                                    <span className="font-medium">
                                         {company.name}
-                                    </Link>
-                                    <WorkspaceStatusBadge
-                                        status={
-                                            company.is_active
-                                                ? 'active'
-                                                : 'deactivated'
-                                        }
-                                    />
+                                    </span>
+                                    <div className="flex items-center gap-2">
+                                        <WorkspaceStatusBadge
+                                            status={
+                                                company.is_active
+                                                    ? 'active'
+                                                    : 'deactivated'
+                                            }
+                                        />
+                                        <AppIconAction
+                                            icon={Eye}
+                                            label={`Open ${company.name}`}
+                                            href={company.show_url}
+                                            variant="info"
+                                        />
+                                    </div>
                                 </li>
                             ))}
                         </ul>

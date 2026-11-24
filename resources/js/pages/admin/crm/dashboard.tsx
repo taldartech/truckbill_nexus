@@ -255,12 +255,9 @@ export default function CrmDashboard({ metrics, urls }: Props) {
                                     <h2 className="text-sm font-semibold text-foreground">
                                         Recent leads
                                     </h2>
-                                    <Link
-                                        href={urls.leads}
-                                        className="text-xs font-medium text-[#2D8CFF] underline-offset-4 hover:underline"
-                                    >
-                                        View all
-                                    </Link>
+                                    <Button asChild variant="link" size="sm">
+                                        <Link href={urls.leads}>View all</Link>
+                                    </Button>
                                 </div>
                                 <ActivityTimeline
                                     variant="lead"
