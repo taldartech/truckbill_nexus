@@ -3,7 +3,7 @@
 **Audit date:** 24 November 2026  
 **Legacy repo:** `truckbill_broker` @ **`6a90e955bd7a05497f60a6d0bd72891c880e6d14`** (stable)  
 **Legacy read-only path:** `legacy/truckbill_broker/`  
-**Nexus HEAD:** `e05d1d6f505ac076963ede60b86e4ebe062e2edb`  
+**Nexus HEAD:** `6584e543e9995c76d1bc8033fc4023bd7670eafc`  
 **Detail register:** `LEGACY_BROKER_FUNCTIONAL_PARITY.md` (BRK-* rows)
 
 ---
@@ -79,12 +79,12 @@ Legacy hire math uses **float** `weight × trFrRate` (`FreightBookingCalculation
 | GL / Tally accounting        | **Deferred**               | P1       | ADR-010 Pending — no `accounting/*` in Nexus                                                         |
 | In-app Razorpay subscription | **Intentional Difference** | —        | Owner subscription in unified app                                                                    |
 
-### Batch 1 gaps (Nexus — fixing)
+### Batch 1 gaps (Nexus — closed)
 
-| Gap                 | Legacy behaviour                          | Nexus current                                                                  | Target                                |
-| ------------------- | ----------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------- |
-| Party pickers on LR | Searchable lists / large consignee master | **Done** — `SearchablePartySelect` on Billing Customer / Consignor / Consignee | Commit `03bdae1` + follow-up          |
-| Weight UX           | Single weight field on booking            | **Done** — MT actual/charged + KG Wt./Unit; freight preview corrected          | `OPERATIONAL_WEIGHT_UNIT_STANDARD.md` |
+| Gap                 | Legacy behaviour                          | Nexus current                                                                  | Evidence                                         |
+| ------------------- | ----------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------ |
+| Party pickers on LR | Searchable lists / large consignee master | **Done** — `SearchablePartySelect` on Billing Customer / Consignor / Consignee | `80a1c9e`                                        |
+| Weight UX           | Single weight field on booking            | **Done** — MT actual/charged + KG Wt./Unit; freight preview corrected          | `03bdae1`, `OPERATIONAL_WEIGHT_UNIT_STANDARD.md` |
 
 ---
 
@@ -93,7 +93,7 @@ Legacy hire math uses **float** `weight × trFrRate` (`FreightBookingCalculation
 | ID       | Prior      | **Revised**  | Rationale                                                                    |
 | -------- | ---------- | ------------ | ---------------------------------------------------------------------------- |
 | BRK-LR02 | Equivalent | **Improved** | Batch 1 closed: searchable role-filtered parties + MT weight UX on create    |
-| BRK-LR03 | Equivalent | **Partial**  | Same UX gaps on edit; financial freeze rules differ                          |
+| BRK-LR03 | Equivalent | **Partial**  | Searchable/MT on edit shipped; financial freeze vs legacy edit remains       |
 | BRK-FH02 | Equivalent | **Partial**  | Create-from-LR OK; independent hire field edit vs legacy `update` incomplete |
 | BRK-M09  | Equivalent | **Partial**  | `VehicleController` OK; driver register + bulk upload absent                 |
 
