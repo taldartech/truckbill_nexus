@@ -109,8 +109,8 @@ test('viewer forged trip cancel and individual invoice create leave durable stat
         'manual_number' => 'FORGED-INV',
     ]);
 
-    expect(TripInvoice::query()->count())->toBe($invoiceBefore)
-        ->and(in_array($invoiceResponse->status(), [403, 302, 422, 500], true))->toBeTrue();
+    expect(TripInvoice::query()->count())->toBe($invoiceBefore);
+    $invoiceResponse->assertForbidden();
 });
 
 test('custom role with trip view only cannot forge dispatch', function () {

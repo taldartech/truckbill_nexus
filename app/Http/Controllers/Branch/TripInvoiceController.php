@@ -134,8 +134,10 @@ class TripInvoiceController extends Controller
 
         try {
             $invoice = $this->invoices->createIndividual($company, $branch, $actor, (string) $validated['lorry_receipt_id'], $validated);
-        } catch (TripInvoiceAuthorizationException|TripInvoiceConflictException|TripInvoiceDomainException|ValidationException $e) {
-            throw $e;
+        } catch (TripInvoiceAuthorizationException $e) {
+            abort(403, $e->getMessage());
+        } catch (TripInvoiceConflictException|TripInvoiceDomainException $e) {
+            throw ValidationException::withMessages(['lorry_receipt_id' => $e->getMessage()]);
         }
 
         return redirect()->route('branch.trip-invoices.show', [$invoice]);
@@ -158,7 +160,13 @@ class TripInvoiceController extends Controller
             'charges.*.amount' => ['required_with:charges', 'numeric', 'min:0.01'],
         ]);
 
-        $invoice = $this->invoices->createConsolidated($company, $branch, $actor, $validated['lorry_receipt_ids'], $validated);
+        try {
+            $invoice = $this->invoices->createConsolidated($company, $branch, $actor, $validated['lorry_receipt_ids'], $validated);
+        } catch (TripInvoiceAuthorizationException $e) {
+            abort(403, $e->getMessage());
+        } catch (TripInvoiceConflictException|TripInvoiceDomainException $e) {
+            throw ValidationException::withMessages(['lorry_receipt_ids' => $e->getMessage()]);
+        }
 
         return redirect()->route('branch.trip-invoices.show', [$invoice]);
     }

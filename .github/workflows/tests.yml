@@ -193,6 +193,18 @@ jobs:
           tests/Feature/Phase4/PartyRoleAttributesTest.php
           tests/Feature/LocalDemoWorkspaceSeederTest.php
 
+      - name: Pest (MySQL — Phase 5/6 certification slice)
+        run: >
+          php artisan test --compact
+          tests/Feature/Phase5
+          tests/Feature/Broker
+          tests/Feature/OperationalDocumentHttpTest.php
+          tests/Feature/CustomerInvoice/CaseInsensitiveLikeTest.php
+          tests/Feature/CustomerInvoice/UnifiedInvoiceScalabilityTest.php
+          tests/Feature/Financial/FinancialInvariantsTest.php
+          tests/Feature/Financial/InvoiceFinancialConcurrencyTest.php
+          tests/Feature/Rbac/Phase5Phase6SensitiveMutationHttpTest.php
+
       - name: Verify fresh MySQL seeding
         run: php artisan migrate:fresh --seed --force --no-interaction
 
