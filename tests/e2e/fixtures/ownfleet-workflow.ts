@@ -212,7 +212,9 @@ export async function uploadTripDocumentViaDrawer(
 
     await drawer.locator('#drawer-file').setInputFiles(e2eTinyPng);
     await drawer.locator('#drawer-label').fill(options.label);
-    await drawer.locator('form:has(#drawer-file) button[type="submit"]').click();
+    await drawer
+        .locator('form:has(#drawer-file) button[type="submit"]')
+        .click();
 
     await expect(drawer.getByText(options.label).first()).toBeVisible({
         timeout: 30_000,
@@ -221,9 +223,9 @@ export async function uploadTripDocumentViaDrawer(
     await page.keyboard.press('Escape');
     await expect(drawer).toBeHidden({ timeout: 10_000 });
 
-    const documentsPanel = page
-        .getByRole('tabpanel')
-        .filter({ has: page.getByRole('button', { name: 'Manage trip documents' }) });
+    const documentsPanel = page.getByRole('tabpanel').filter({
+        has: page.getByRole('button', { name: 'Manage trip documents' }),
+    });
     await expect(documentsPanel.getByText(options.label).first()).toBeVisible({
         timeout: 15_000,
     });
