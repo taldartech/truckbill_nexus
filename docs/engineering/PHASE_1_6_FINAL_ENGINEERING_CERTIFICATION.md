@@ -1,7 +1,7 @@
 # Phase 1–6 Final Engineering Certification
 
 **Date:** 24 November 2026  
-**Local tip:** `894446502ceff5cee582737d691f7f58cb2365bd`  
+**Local tip:** `709b7c6a52304d5d72533c3fa24b12c7aefa116a`  
 **Remote `origin/main`:** `efe341d39ea47499cdb16506c0cfaf3a2848d4ab`  
 **Legacy Broker:** `stable` @ `6a90e955bd7a05497f60a6d0bd72891c880e6d14`  
 **Legacy OwnFleet:** `development` @ `9423293edd8b4e313198728f687f657d4a64c27f`
@@ -33,14 +33,14 @@ Phase 7 may be **separately authorized** for Partload engineering without claimi
 
 ## Certification residuals (do not greenwash)
 
-| ID / topic                          | Status                                                                       |
-| ----------------------------------- | ---------------------------------------------------------------------------- |
-| Remote GitHub Actions green on tip  | **Open** until PO push of `56da1b8`+                                         |
-| P56-009 Full MySQL Feature Pest     | Executed disposable MySQL 8.4; seeder conflict fixed after active-trip guard |
-| P56-010 k6 / 5k VU                  | **Not certified** — smoke only                                               |
-| P56-011 Lorry Hire Active           | **Deferred**                                                                 |
-| P56-012 Eleven-persona browser RBAC | **Partial** — Pest HTTP strong                                               |
-| Production tax PDF / live Razorpay  | Existing EX / Pending gates                                                  |
+| ID / topic                          | Status                                                                     |
+| ----------------------------------- | -------------------------------------------------------------------------- |
+| Remote GitHub Actions green on tip  | **Open** until PO push of `56da1b8`+                                       |
+| P56-009 Full MySQL Feature Pest     | Disposable MySQL 8.4 :3307 — **723 passed / 2 skipped / 0 failed** (~318s) |
+| P56-010 k6 / 5k VU                  | **Not certified** — smoke only                                             |
+| P56-011 Lorry Hire Active           | **Deferred**                                                               |
+| P56-012 Eleven-persona browser RBAC | **Partial** — Pest HTTP strong                                             |
+| Production tax PDF / live Razorpay  | Existing EX / Pending gates                                                |
 
 ## Phase 7 readiness distinction
 

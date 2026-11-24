@@ -35,12 +35,12 @@ is never read, only written.  (property.onlyWritten)
 
 ## Local CI-equivalent commands executed this program
 
-| Command                                                          | Result (local)             |
-| ---------------------------------------------------------------- | -------------------------- |
-| `vendor/bin/pint --dirty`                                        | Applied on dirty PHP       |
-| `php artisan test --compact` OwnFleet trip movement + foundation | **13 passed**              |
-| Disposable MySQL Feature Pest (`tests/Feature`, port 3307)       | In progress / see cert doc |
-| Larastan unused-property defect                                  | Fixed in `56da1b8`         |
+| Command                                                          | Result (local)                              |
+| ---------------------------------------------------------------- | ------------------------------------------- |
+| `vendor/bin/pint --dirty`                                        | Applied on dirty PHP                        |
+| `php artisan test --compact` OwnFleet trip movement + foundation | **13 passed**                               |
+| Disposable MySQL Feature Pest (`tests/Feature`, port 3307)       | **723 passed**, 2 skipped, 0 failed (~318s) |
+| Larastan unused-property defect                                  | Fixed in `56da1b8`                          |
 
 ## Honest residual
 
