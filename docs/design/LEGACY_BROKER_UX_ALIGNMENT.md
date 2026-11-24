@@ -3,8 +3,8 @@
 **Date:** 24 November 2026  
 **Decision:** **PO-LGC-017 — Accepted** — `legacy/truckbill_broker` is the primary reference for **operator interaction and operational flow**; Nexus security, tenancy, and financial immutability rules remain authoritative.  
 **Legacy evidence:** `legacy/truckbill_broker` @ `6a90e955bd7a05497f60a6d0bd72891c880e6d14` (read-only under Nexus repo)  
-**Nexus baseline (Batch 2 UX pass):** `4b3b874` (parent commit pending)  
-**Verification:** **Source-verified** unless a row explicitly says browser-verified.
+**Nexus baseline (Batch 2 UX pass):** `701f4df` → OF continuation tip  
+**Verification:** **Source-verified** plus Playwright browser-verified for OF parity journeys.
 
 ---
 
@@ -41,17 +41,17 @@ Legacy company panel is **ops-first** (Bilty → Hire → Vouchers → Invoices 
 
 ## Form interaction patterns (legacy → Nexus)
 
-| Pattern                    | Legacy behaviour (source)            | Nexus target (Batch 2)                                                         | Status (baseline `4b3b874`)                               |
-| -------------------------- | ------------------------------------ | ------------------------------------------------------------------------------ | --------------------------------------------------------- |
-| Save with review           | Inline/modals on heavy forms         | `FormConfirmationDialog` before POST                                           | Shipped on Enquiry, Bilty, Hire, Voucher, Invoice, Linked |
-| Party pickers at scale     | DataTables + server lists            | `SearchablePartySelect` + `GET branch.parties.options`                         | **Implemented** (B2-PS-01/02)                             |
-| Hire create payee clarity  | Transporter vs Owner labels in UI    | `role_label` chip + margin amber when TR freight > customer                    | **Implemented** (B2-FH-UX)                                |
-| Voucher from hire          | Context on hire show / payment flows | `?lorry_hire_id=` preselect + hire context panel                               | **Improved** (B2-VP-01)                                   |
-| Record voucher CTA         | Legacy hire/payment navigation       | Hire show → voucher create with hire id                                        | **Implemented**                                           |
-| Bilty confirmation density | Review before save on LR forms       | Expanded `FieldReview`: parties, stations, goods rows, EWB, charges, MT totals | **Implemented** (B2-CF-02)                                |
-| Save & Create FR           | Dual SweetAlert path → hire create   | Confirmation secondary CTA `Save & Create Lorry Hire` + `redirect_to_hire`     | **Implemented** (B2-OF-01)                                |
-| Linked bilty payment       | Combined payment on linked group     | Linked show pay + confirmation                                                 | Partial confirm polish (B2-CF-03)                         |
-| Memo / delivery / POD      | Memo on `freight_bookings` + reports | Delivery / Memo `/broker/deliveries`                                           | Partial UX parity                                         |
+| Pattern                    | Legacy behaviour (source)            | Nexus target (Batch 2)                                                     | Status (baseline `4b3b874`)                               |
+| -------------------------- | ------------------------------------ | -------------------------------------------------------------------------- | --------------------------------------------------------- |
+| Save with review           | Inline/modals on heavy forms         | `FormConfirmationDialog` before POST                                       | Shipped on Enquiry, Bilty, Hire, Voucher, Invoice, Linked |
+| Party pickers at scale     | DataTables + server lists            | `SearchablePartySelect` + `GET branch.parties.options`                     | **Implemented** (B2-PS-01/02)                             |
+| Hire create payee clarity  | Transporter vs Owner labels in UI    | `role_label` chip + margin amber when TR freight > customer                | **Implemented** (B2-FH-UX)                                |
+| Voucher from hire          | Context on hire show / payment flows | `?lorry_hire_id=` preselect + hire context + show density                  | **Aligned** (B2-VP-01)                                    |
+| Record voucher CTA         | Legacy hire/payment navigation       | Hire show → voucher create with hire id                                    | **Aligned**                                               |
+| Bilty confirmation density | Review before save on LR forms       | Expanded create review + edit previous/new diffs                           | **Aligned** (B2-CF-02/03)                                 |
+| Save & Create FR           | Dual SweetAlert path → hire create   | Confirmation secondary CTA `Save & Create Lorry Hire` + `redirect_to_hire` | **Aligned** (B2-OF-01; browser-verified)                  |
+| Linked bilty payment       | Combined payment on linked group     | Linked show pay + account + allocation lines in confirmation               | **Aligned** (B2-CF-03)                                    |
+| Memo / delivery / POD      | Memo on `freight_bookings` + reports | Delivery / Memo `/broker/deliveries` with confirmations                    | **Aligned** (B2-CF-03)                                    |
 
 ---
 

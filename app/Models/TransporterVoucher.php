@@ -8,6 +8,7 @@ use App\Domains\Broker\Enums\VoucherStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 /**
@@ -15,6 +16,10 @@ use Illuminate\Support\Str;
  * @property VoucherPaymentType $payment_type
  * @property VoucherPaymentMode|null $payment_mode
  * @property string $amount
+ * @property Carbon|null $voucher_date
+ * @property-read BankCashAccount|null $bankCashAccount
+ * @property-read Party|null $transporter
+ * @property-read LorryHire|null $lorryHire
  */
 class TransporterVoucher extends Model
 {
@@ -73,5 +78,11 @@ class TransporterVoucher extends Model
     public function linkedBiltyGroup(): BelongsTo
     {
         return $this->belongsTo(LinkedBiltyGroup::class, 'linked_bilty_group_id');
+    }
+
+    /** @return BelongsTo<BankCashAccount, $this> */
+    public function bankCashAccount(): BelongsTo
+    {
+        return $this->belongsTo(BankCashAccount::class, 'bank_cash_account_id');
     }
 }

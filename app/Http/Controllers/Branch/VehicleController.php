@@ -11,6 +11,7 @@ use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Party\PartyOptionQuery;
 use App\Domains\Master\Support\MasterAccess;
 use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
+use App\Domains\Master\Vehicle\VehicleOptionQuery;
 use App\Domains\Master\Vehicle\VehicleService;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
@@ -21,6 +22,7 @@ use App\Models\Company;
 use App\Models\OwnerCatalogueItem;
 use App\Models\User;
 use App\Models\Vehicle;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -81,6 +83,52 @@ class VehicleController extends Controller
                 'create' => route('branch.vehicles.create', absolute: false),
                 'store' => route('branch.vehicles.store', absolute: false),
             ]),
+        ]);
+    }
+
+    public function options(Request $request, Company $company, Branch $branch): JsonResponse
+    {
+        $this->activateBranchPanel($request, $company, $branch, $this->access);
+
+        $validated = $request->validate([
+            'q' => ['nullable', 'string', 'max:120'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'selected_id' => ['nullable', 'uuid'],
+            'ownership' => ['nullable', 'array', 'max:4'],
+            'ownership.*' => [Rule::enum(VehicleOwnership::class)],
+            'active_only' => ['nullable', 'boolean'],
+        ]);
+
+        $ownershipInputs = $validated['ownership'] ?? null;
+        $ownerships = null;
+        if (is_array($ownershipInputs)) {
+            $ownerships = [];
+            foreach ($ownershipInputs as $ownershipInput) {
+                $ownerships[] = $ownershipInput instanceof VehicleOwnership
+                    ? $ownershipInput
+                    : VehicleOwnership::from((string) $ownershipInput);
+            }
+        }
+
+        $options = app(VehicleOptionQuery::class)->forBranch(
+            company: $company,
+            branch: $branch,
+            limit: (int) ($validated['limit'] ?? 50),
+            query: $validated['q'] ?? null,
+            selectedId: $validated['selected_id'] ?? null,
+            ownerships: $ownerships,
+            activeOnly: array_key_exists('active_only', $validated)
+                ? (bool) $validated['active_only']
+                : true,
+        );
+
+        return response()->json([
+            'data' => $options,
+            'meta' => [
+                'count' => count($options),
+                'limit' => (int) ($validated['limit'] ?? 50),
+                'q' => $validated['q'] ?? '',
+            ],
         ]);
     }
 

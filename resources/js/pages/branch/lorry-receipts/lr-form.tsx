@@ -4,11 +4,19 @@ import type { ReactNode } from 'react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { AppIconAction } from '@/components/app-icon-action';
 import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
-import type { FieldReview } from '@/components/form-confirmation/types';
+import { normalizeComparable } from '@/components/form-confirmation/diff';
+import type {
+    ChangeReview,
+    FieldReview,
+} from '@/components/form-confirmation/types';
 import InputError from '@/components/input-error';
 import { FormSection } from '@/components/form-section';
 import { PageShell } from '@/components/page-shell';
 import { SearchablePartySelect } from '@/components/searchable-party-select';
+import {
+    SearchableVehicleSelect,
+    type VehicleSelectOption,
+} from '@/components/searchable-vehicle-select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,13 +32,7 @@ import {
 
 type Option = { value: string; label: string };
 type NamedOption = { id: string; name: string; code?: string };
-type VehicleOption = {
-    id: string;
-    registration_number: string;
-    ownership: string | null;
-    ownership_label?: string | null;
-    label: string;
-};
+type VehicleOption = VehicleSelectOption;
 
 type GoodsRow = {
     goods_type_id: string;
@@ -113,6 +115,8 @@ type Props = {
         show?: string;
         parties_options?: string;
         parties_create?: string;
+        vehicles_options?: string;
+        vehicles_create?: string;
     };
     permissions?: {
         can_view_freight?: boolean;
@@ -213,6 +217,135 @@ const emptyGoods = (): GoodsRow => ({
     goods_value: '',
 });
 
+function computeLrSummary(goodsRows: GoodsRow[], chargeRows: ChargeRow[]) {
+    const totalActual = sumNumericStrings(
+        goodsRows.map((row) => row.actual_weight),
+    );
+    const totalCharged = sumNumericStrings(
+        goodsRows.map((row) => row.charged_weight),
+    );
+    const totalFreight = goodsRows.reduce((total, row) => {
+        const preview = computeFreightPreview(row);
+        return preview === null ? total : total + preview;
+    }, 0);
+    const totalAdditional = sumNumericStrings(
+        chargeRows.map((row) => row.amount),
+    );
+
+    return {
+        totalActual: formatFixed(totalActual, 3),
+        totalCharged: formatFixed(totalCharged, 3),
+        totalFreight: formatFixed(totalFreight, 2),
+        totalAdditional: formatFixed(totalAdditional, 2),
+        totalAmount: formatFixed(totalFreight + totalAdditional, 2),
+    };
+}
+
+function formatGoodsRowReview(
+    row: GoodsRow,
+    index: number,
+    goodsTypes: NamedOption[],
+    packageTypes: NamedOption[],
+    mayViewFreight: boolean,
+): string {
+    const goodsLabel =
+        goodsTypes.find((option) => option.id === row.goods_type_id)?.name ??
+        `Goods ${index + 1}`;
+    const packageLabel =
+        packageTypes.find((option) => option.id === row.package_type_id)
+            ?.name ?? '—';
+    const freightPreview = computeFreightPreview(row);
+    return [
+        goodsLabel,
+        `Pkg ${packageLabel}`,
+        `Units ${row.package_count || '—'}`,
+        `Wt/Unit ${row.weight_per_unit || '—'} KG`,
+        `Actual ${row.actual_weight || '—'} MT`,
+        `Charged ${row.charged_weight || '—'} MT`,
+        mayViewFreight
+            ? `Rate ${row.freight_rate || '—'} (${row.freight_rate_type || '—'})`
+            : null,
+        mayViewFreight
+            ? `Freight ${freightPreview !== null ? formatFixed(freightPreview, 2) : '—'}`
+            : null,
+        row.goods_value ? `Value ${row.goods_value}` : null,
+        row.goods_description ? `Desc ${row.goods_description}` : null,
+    ]
+        .filter((part): part is string => part !== null)
+        .join(' · ');
+}
+
+function formatEwbReview(ewbRows: EwbRow[]): string {
+    if (ewbRows.length === 0) {
+        return '—';
+    }
+    return ewbRows.map((row) => row.ewb_number.trim() || '—').join(', ');
+}
+
+function formatChargesReview(chargeRows: ChargeRow[]): string {
+    if (chargeRows.length === 0) {
+        return '—';
+    }
+    return chargeRows
+        .map(
+            (row) =>
+                `${row.description.trim() || 'Charge'}: ${row.amount || '—'}`,
+        )
+        .join('; ');
+}
+
+function pushScalarChange(
+    changes: ChangeReview[],
+    label: string,
+    previousRaw: string,
+    nextRaw: string,
+): void {
+    const previous = normalizeComparable(previousRaw);
+    const next = normalizeComparable(nextRaw);
+    if (previous === next) {
+        return;
+    }
+    if (previous === '' && next !== '') {
+        changes.push({
+            label,
+            previous: '—',
+            next,
+            changeType: 'added',
+        });
+        return;
+    }
+    if (previous !== '' && next === '') {
+        changes.push({
+            label,
+            previous,
+            next: '—',
+            changeType: 'removed',
+        });
+        return;
+    }
+    changes.push({
+        label,
+        previous: previous || '—',
+        next: next || '—',
+        changeType: 'modified',
+    });
+}
+
+function resolveLocationDisplay(
+    text: string | null | undefined,
+    stationId: string | null | undefined,
+    stations: NamedOption[],
+): string {
+    const trimmedText = text?.trim() ?? '';
+    if (trimmedText !== '') {
+        return trimmedText;
+    }
+    const stationName = stations.find(
+        (station) => station.id === stationId,
+    )?.name;
+    return stationName ?? '—';
+}
+
 function mapGoodsFromReceipt(goods: LorryReceiptDetail['goods']): GoodsRow[] {
     if (goods.length === 0) {
         return [emptyGoods()];
@@ -276,11 +409,23 @@ export default function LrForm({
     const redirectToHire = useRef(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [reviewFields, setReviewFields] = useState<FieldReview[]>([]);
+    const [reviewChanges, setReviewChanges] = useState<ChangeReview[]>([]);
 
     const [vehicleId, setVehicleId] = useState(
         (lorryReceipt as { vehicle_id?: string | null } | null)?.vehicle_id ??
             '',
     );
+    const [selectedVehicleMeta, setSelectedVehicleMeta] =
+        useState<VehicleSelectOption | null>(() => {
+            const initialId =
+                (lorryReceipt as { vehicle_id?: string | null } | null)
+                    ?.vehicle_id ?? '';
+            return (
+                (formOptions.vehicles ?? []).find(
+                    (vehicle) => vehicle.id === initialId,
+                ) ?? null
+            );
+        });
     const [billingCustomerId, setBillingCustomerId] = useState(
         (lorryReceipt as { billing_customer_party_id?: string | null } | null)
             ?.billing_customer_party_id ?? '',
@@ -310,9 +455,11 @@ export default function LrForm({
 
     const goodsSyncGuard = useRef<Record<number, GoodsFieldSource | null>>({});
 
-    const selectedVehicle = (formOptions.vehicles ?? []).find(
-        (vehicle) => vehicle.id === vehicleId,
-    );
+    const selectedVehicle =
+        selectedVehicleMeta ??
+        (formOptions.vehicles ?? []).find(
+            (vehicle) => vehicle.id === vehicleId,
+        );
     const resolvedContext =
         formMode === 'partload'
             ? 'partload'
@@ -398,31 +545,15 @@ export default function LrForm({
         const totalUnits = sumNumericStrings(
             goods.map((row) => row.package_count),
         );
-        const totalActual = sumNumericStrings(
-            goods.map((row) => row.actual_weight),
-        );
-        const totalCharged = sumNumericStrings(
-            goods.map((row) => row.charged_weight),
-        );
         const totalGoodsValue = sumNumericStrings(
             goods.map((row) => row.goods_value),
         );
-        const totalFreight = goods.reduce((total, row) => {
-            const preview = computeFreightPreview(row);
-            return preview === null ? total : total + preview;
-        }, 0);
-        const totalAdditional = sumNumericStrings(
-            charges.map((row) => row.amount),
-        );
+        const freightTotals = computeLrSummary(goods, charges);
 
         return {
             totalUnits: formatFixed(totalUnits, 3),
-            totalActual: formatFixed(totalActual, 3),
-            totalCharged: formatFixed(totalCharged, 3),
             totalGoodsValue: formatFixed(totalGoodsValue, 2),
-            totalFreight: formatFixed(totalFreight, 2),
-            totalAdditional: formatFixed(totalAdditional, 2),
-            totalAmount: formatFixed(totalFreight + totalAdditional, 2),
+            ...freightTotals,
         };
     }, [charges, goods]);
 
@@ -450,8 +581,11 @@ export default function LrForm({
                 (option) => option.id === billingCustomerId,
             )?.name ?? selectedOptionLabel('billing_customer_party_id');
         const vehicleLabel =
+            selectedVehicleMeta?.label ??
+            selectedVehicleMeta?.registration_number ??
             formOptions.vehicles?.find((option) => option.id === vehicleId)
-                ?.label ?? selectedOptionLabel('vehicle_id');
+                ?.label ??
+            selectedOptionLabel('vehicle_id');
         const consignorName = selectedOptionLabel('consignor_party_id');
         const consigneeName = selectedOptionLabel('consignee_party_id');
         const loadingStation =
@@ -462,6 +596,211 @@ export default function LrForm({
             formText('to_text') !== '—'
                 ? formText('to_text')
                 : selectedOptionLabel('to_station_id');
+
+        if (mode === 'edit' && lorryReceipt) {
+            const changes: ChangeReview[] = [];
+            const originalVehicleId =
+                (lorryReceipt as { vehicle_id?: string | null }).vehicle_id ??
+                '';
+            const originalVehicleLabel =
+                formOptions.vehicles?.find(
+                    (option) => option.id === originalVehicleId,
+                )?.label ??
+                formOptions.vehicles?.find(
+                    (option) => option.id === originalVehicleId,
+                )?.registration_number ??
+                '—';
+            pushScalarChange(
+                changes,
+                'Vehicle',
+                originalVehicleLabel,
+                vehicleLabel,
+            );
+            const originalBillingId =
+                (
+                    lorryReceipt as {
+                        billing_customer_party_id?: string | null;
+                    }
+                ).billing_customer_party_id ?? '';
+            const originalBillingName =
+                formOptions.billingCustomers?.find(
+                    (option) => option.id === originalBillingId,
+                )?.name ?? '—';
+            pushScalarChange(
+                changes,
+                'Billing Customer',
+                originalBillingName,
+                customerName,
+            );
+            pushScalarChange(
+                changes,
+                'Consignor',
+                formOptions.consignors.find(
+                    (option) => option.id === lorryReceipt.consignor_party_id,
+                )?.name ?? '—',
+                consignorName,
+            );
+            pushScalarChange(
+                changes,
+                'Consignee',
+                formOptions.consignees.find(
+                    (option) => option.id === lorryReceipt.consignee_party_id,
+                )?.name ?? '—',
+                consigneeName,
+            );
+            pushScalarChange(
+                changes,
+                'Loading Station',
+                resolveLocationDisplay(
+                    lorryReceipt.from_text,
+                    lorryReceipt.from_station_id,
+                    formOptions.stations,
+                ),
+                loadingStation,
+            );
+            pushScalarChange(
+                changes,
+                'Unloading Station',
+                resolveLocationDisplay(
+                    lorryReceipt.to_text,
+                    lorryReceipt.to_station_id,
+                    formOptions.stations,
+                ),
+                unloadingStation,
+            );
+
+            const originalGoods = mapGoodsFromReceipt(lorryReceipt.goods);
+            const goodsTypeOptions = formOptions.goodsTypes ?? [];
+            const packageTypeOptions = formOptions.packageTypes ?? [];
+            const maxGoodsRows = Math.max(originalGoods.length, goods.length);
+            for (let index = 0; index < maxGoodsRows; index += 1) {
+                const originalRow = originalGoods[index];
+                const proposedRow = goods[index];
+                const label = `Goods ${index + 1}`;
+                if (originalRow && !proposedRow) {
+                    changes.push({
+                        label,
+                        previous: formatGoodsRowReview(
+                            originalRow,
+                            index,
+                            goodsTypeOptions,
+                            packageTypeOptions,
+                            mayViewFreight,
+                        ),
+                        next: '—',
+                        changeType: 'removed',
+                    });
+                    continue;
+                }
+                if (!originalRow && proposedRow) {
+                    changes.push({
+                        label,
+                        previous: '—',
+                        next: formatGoodsRowReview(
+                            proposedRow,
+                            index,
+                            goodsTypeOptions,
+                            packageTypeOptions,
+                            mayViewFreight,
+                        ),
+                        changeType: 'added',
+                    });
+                    continue;
+                }
+                if (originalRow && proposedRow) {
+                    const previous = formatGoodsRowReview(
+                        originalRow,
+                        index,
+                        goodsTypeOptions,
+                        packageTypeOptions,
+                        mayViewFreight,
+                    );
+                    const next = formatGoodsRowReview(
+                        proposedRow,
+                        index,
+                        goodsTypeOptions,
+                        packageTypeOptions,
+                        mayViewFreight,
+                    );
+                    if (previous !== next) {
+                        changes.push({
+                            label,
+                            previous,
+                            next,
+                            changeType: 'modified',
+                        });
+                    }
+                }
+            }
+
+            const originalEwbs: EwbRow[] = lorryReceipt.eway_bills.map(
+                (row) => ({
+                    ewb_number: row.ewb_number,
+                    ewb_date: row.ewb_date ?? '',
+                    valid_until: row.valid_until ?? '',
+                }),
+            );
+            pushScalarChange(
+                changes,
+                'E-Way Bills',
+                formatEwbReview(originalEwbs),
+                formatEwbReview(ewbs),
+            );
+
+            const originalCharges: ChargeRow[] =
+                lorryReceipt.additional_charges.map((row) => ({
+                    description: row.description,
+                    amount: row.amount,
+                }));
+            pushScalarChange(
+                changes,
+                'Additional Charges',
+                formatChargesReview(originalCharges),
+                formatChargesReview(charges),
+            );
+
+            const originalSummary = computeLrSummary(
+                originalGoods,
+                originalCharges,
+            );
+            pushScalarChange(
+                changes,
+                'Actual Wt (MT)',
+                originalSummary.totalActual,
+                summary.totalActual,
+            );
+            pushScalarChange(
+                changes,
+                'Charged Wt (MT)',
+                originalSummary.totalCharged,
+                summary.totalCharged,
+            );
+            if (mayViewFreight) {
+                pushScalarChange(
+                    changes,
+                    'Freight',
+                    originalSummary.totalFreight,
+                    summary.totalFreight,
+                );
+                pushScalarChange(
+                    changes,
+                    'Additional Charges Total',
+                    originalSummary.totalAdditional,
+                    summary.totalAdditional,
+                );
+                pushScalarChange(
+                    changes,
+                    'Total Amount',
+                    originalSummary.totalAmount,
+                    summary.totalAmount,
+                );
+            }
+
+            setReviewChanges(changes);
+            setReviewFields([]);
+            setConfirmOpen(true);
+            return;
+        }
 
         const lrNumber = data.get('lr_number');
         const lrDate = data.get('lr_date');
@@ -484,59 +823,32 @@ export default function LrForm({
             { label: 'Unloading Station', value: unloadingStation },
         ];
 
+        const goodsTypeOptions = formOptions.goodsTypes ?? [];
+        const packageTypeOptions = formOptions.packageTypes ?? [];
         goods.forEach((row, index) => {
-            const goodsLabel =
-                formOptions.goodsTypes?.find(
-                    (option) => option.id === row.goods_type_id,
-                )?.name ?? `Goods ${index + 1}`;
-            const packageLabel =
-                formOptions.packageTypes?.find(
-                    (option) => option.id === row.package_type_id,
-                )?.name ?? '—';
-            const freightPreview = computeFreightPreview(row);
             fields.push({
                 label: `Goods ${index + 1}`,
-                value: [
-                    goodsLabel,
-                    `Pkg ${packageLabel}`,
-                    `Units ${row.package_count || '—'}`,
-                    `Wt/Unit ${row.weight_per_unit || '—'} KG`,
-                    `Actual ${row.actual_weight || '—'} MT`,
-                    `Charged ${row.charged_weight || '—'} MT`,
-                    mayViewFreight
-                        ? `Rate ${row.freight_rate || '—'} (${row.freight_rate_type || '—'})`
-                        : null,
-                    mayViewFreight
-                        ? `Freight ${freightPreview !== null ? formatFixed(freightPreview, 2) : '—'}`
-                        : null,
-                    row.goods_value ? `Value ${row.goods_value}` : null,
-                    row.goods_description
-                        ? `Desc ${row.goods_description}`
-                        : null,
-                ]
-                    .filter((part): part is string => part !== null)
-                    .join(' · '),
+                value: formatGoodsRowReview(
+                    row,
+                    index,
+                    goodsTypeOptions,
+                    packageTypeOptions,
+                    mayViewFreight,
+                ),
             });
         });
 
         if (ewbs.length > 0) {
             fields.push({
                 label: 'E-Way Bills',
-                value: ewbs
-                    .map((row) => row.ewb_number.trim() || '—')
-                    .join(', '),
+                value: formatEwbReview(ewbs),
             });
         }
 
         if (charges.length > 0) {
             fields.push({
                 label: 'Additional Charges',
-                value: charges
-                    .map(
-                        (row) =>
-                            `${row.description.trim() || 'Charge'}: ${row.amount || '—'}`,
-                    )
-                    .join('; '),
+                value: formatChargesReview(charges),
             });
         }
 
@@ -555,6 +867,7 @@ export default function LrForm({
             );
         }
         setReviewFields(fields);
+        setReviewChanges([]);
         setConfirmOpen(true);
     };
 
@@ -708,40 +1021,58 @@ export default function LrForm({
                                 </div>
                                 {showVehicle ? (
                                     <div className="space-y-2">
-                                        <div className="flex items-center gap-2">
-                                            <Label htmlFor="vehicle_id">
-                                                Truck
-                                            </Label>
-                                            {ownershipBadge}
+                                        <div className="flex items-start gap-2">
+                                            <div className="min-w-0 flex-1">
+                                                <SearchableVehicleSelect
+                                                    id="vehicle_id"
+                                                    name="vehicle_id"
+                                                    label="Truck"
+                                                    options={
+                                                        formOptions.vehicles ??
+                                                        []
+                                                    }
+                                                    searchUrl={
+                                                        urls.vehicles_options
+                                                    }
+                                                    value={vehicleId}
+                                                    onValueChange={(
+                                                        next,
+                                                        option,
+                                                    ) => {
+                                                        setVehicleId(next);
+                                                        setSelectedVehicleMeta(
+                                                            option,
+                                                        );
+                                                    }}
+                                                    required={mode === 'create'}
+                                                    disabled={mode === 'edit'}
+                                                    createHref={
+                                                        urls.vehicles_create
+                                                    }
+                                                    createLabel="Create Vehicle"
+                                                    emptyMessage="No eligible vehicles in this branch."
+                                                    error={errors.vehicle_id}
+                                                />
+                                            </div>
+                                            <div className="pt-7">
+                                                {ownershipBadge}
+                                            </div>
                                         </div>
-                                        <select
-                                            id="vehicle_id"
-                                            name="vehicle_id"
-                                            className={fieldClass}
-                                            value={vehicleId}
-                                            onChange={(e) =>
-                                                setVehicleId(e.target.value)
-                                            }
-                                            required={mode === 'create'}
-                                            disabled={mode === 'edit'}
-                                        >
-                                            <option value="">
-                                                Select vehicle…
-                                            </option>
-                                            {(formOptions.vehicles ?? []).map(
-                                                (vehicle) => (
-                                                    <option
-                                                        key={vehicle.id}
-                                                        value={vehicle.id}
-                                                    >
-                                                        {vehicle.label}
-                                                    </option>
-                                                ),
-                                            )}
-                                        </select>
-                                        <InputError
-                                            message={errors.vehicle_id}
-                                        />
+                                        {selectedVehicle?.owner_declaration_missing ? (
+                                            <p
+                                                className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-xs text-amber-950"
+                                                role="status"
+                                            >
+                                                Vehicle owner declaration is
+                                                incomplete. Update the
+                                                transporter declaration before
+                                                creating Lorry Hire / TDS
+                                                calculations.
+                                                {selectedVehicle.owner_name
+                                                    ? ` Owner: ${selectedVehicle.owner_name}.`
+                                                    : ''}
+                                            </p>
+                                        ) : null}
                                         <InputError
                                             message={errors.workflow_context}
                                         />
@@ -1817,6 +2148,7 @@ export default function LrForm({
                     }
                     description="Review vehicle, customer, weights, and freight before submitting."
                     fields={reviewFields}
+                    changes={reviewChanges}
                     onConfirm={handleConfirm}
                     confirmLabel={
                         mode === 'create' ? 'Save Bilty' : 'Confirm save'

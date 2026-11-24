@@ -97,7 +97,16 @@ final class TransporterVoucherService
             ->where('branch_id', $branch->id)
             ->whereKey($voucherId)
             ->whereNull('deleted_at')
-            ->with(['lorryHire.lorryReceipt', 'lorryHire.vehicle', 'lorryHire.transporter'])
+            ->with([
+                'lorryHire.lorryReceipt',
+                'lorryHire.vehicle',
+                'lorryHire.transporter',
+                'lorryHire.vouchers' => fn ($query) => $query->orderByDesc('created_at'),
+                'lorryHire.adjustments',
+                'lorryHire.tdsSnapshot',
+                'bankCashAccount',
+                'transporter',
+            ])
             ->first();
 
         if ($voucher === null) {

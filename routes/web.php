@@ -298,6 +298,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/parties/{party}', [PartyController::class, 'destroy'])->name('branch.parties.destroy');
 
         Route::get('/vehicles', [VehicleController::class, 'index'])->name('branch.vehicles.index');
+        Route::get('/vehicles/options', [VehicleController::class, 'options'])->name('branch.vehicles.options');
         Route::get('/vehicles/create', [VehicleController::class, 'create'])->name('branch.vehicles.create');
         Route::post('/vehicles', [VehicleController::class, 'store'])->name('branch.vehicles.store');
         Route::get('/vehicles/{vehicle}', [VehicleController::class, 'show'])->name('branch.vehicles.show');

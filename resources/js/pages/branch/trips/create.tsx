@@ -5,6 +5,7 @@ import { ArrowLeft } from 'lucide-react';
 import { AppIconAction } from '@/components/app-icon-action';
 import { FormSection } from '@/components/form-section';
 import { PageShell } from '@/components/page-shell';
+import { SearchablePartySelect } from '@/components/searchable-party-select';
 import { formatDisplayDate } from '@/lib/dates';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,6 +42,8 @@ type Props = {
         store: string;
         lr_show: string;
         index: string;
+        parties_options?: string;
+        parties_create?: string;
     };
 };
 
@@ -158,35 +161,21 @@ export default function TripCreate({
                                 </label>
 
                                 {useSubstitute ? (
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="substitute_driver_party_id">
-                                            Substitute driver
-                                        </Label>
-                                        <select
-                                            id="substitute_driver_party_id"
-                                            name="substitute_driver_party_id"
-                                            required
-                                            className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-                                            defaultValue=""
-                                        >
-                                            <option value="" disabled>
-                                                Select driver
-                                            </option>
-                                            {drivers.map((driver) => (
-                                                <option
-                                                    key={driver.id}
-                                                    value={driver.id}
-                                                >
-                                                    {driver.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <InputError
-                                            message={
-                                                errors?.substitute_driver_party_id
-                                            }
-                                        />
-                                    </div>
+                                    <SearchablePartySelect
+                                        id="substitute_driver_party_id"
+                                        name="substitute_driver_party_id"
+                                        label="Substitute driver"
+                                        options={drivers}
+                                        searchUrl={urls.parties_options}
+                                        role="driver"
+                                        createHref={urls.parties_create}
+                                        createLabel="Create Driver"
+                                        required
+                                        emptyMessage="No eligible drivers in this branch."
+                                        error={
+                                            errors?.substitute_driver_party_id
+                                        }
+                                    />
                                 ) : null}
 
                                 <div className="grid gap-2">

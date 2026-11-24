@@ -46,6 +46,11 @@ type Props = {
         loading_station: string | null;
         unloading_station: string | null;
         customer_freight_total: string | null;
+        eway_bills?: Array<{
+            ewb_number: string;
+            ewb_date: string | null;
+            valid_until: string | null;
+        }>;
     };
     payee: {
         id: string;
@@ -235,6 +240,7 @@ export default function LorryHireCreate({
     urls,
 }: Props) {
     const submitAllowed = useRef(false);
+    const redirectToVoucher = useRef(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [reviewFields, setReviewFields] = useState<FieldReview[]>([]);
     const [transporterPartyId, setTransporterPartyId] = useState(() =>
@@ -380,15 +386,46 @@ export default function LorryHireCreate({
         submitAllowed.current = false;
     };
 
-    const handleConfirm = () => {
+    const submitAfterConfirm = (continueToVoucher: boolean) => {
+        redirectToVoucher.current = continueToVoucher;
         submitAllowed.current = true;
         setConfirmOpen(false);
         window.setTimeout(() => {
             const form = document.getElementById(
                 'lorry-hire-create-form',
             ) as HTMLFormElement | null;
+            const voucherInput = form?.querySelector(
+                '#redirect_to_voucher',
+            ) as HTMLInputElement | null;
+            if (voucherInput) {
+                voucherInput.value = continueToVoucher ? '1' : '0';
+            }
             form?.requestSubmit();
         }, 0);
+    };
+
+    const handleConfirm = () => {
+        submitAfterConfirm(false);
+    };
+
+    const handleCreateClick = (
+        event: React.MouseEvent<HTMLButtonElement>,
+    ): void => {
+        if (submitAllowed.current) {
+            return;
+        }
+        event.preventDefault();
+        const form = document.getElementById(
+            'lorry-hire-create-form',
+        ) as HTMLFormElement | null;
+        if (form !== null && !form.reportValidity()) {
+            return;
+        }
+        openConfirmation();
+    };
+
+    const handleConfirmAndRecordVoucher = () => {
+        submitAfterConfirm(true);
     };
 
     const payeeRequired = payeeRequiredProp ?? transporterOptions.length > 0;
@@ -428,6 +465,12 @@ export default function LorryHireCreate({
                 >
                     {({ processing, errors }) => (
                         <>
+                            <input
+                                type="hidden"
+                                id="redirect_to_voucher"
+                                name="redirect_to_voucher"
+                                value={redirectToVoucher.current ? '1' : '0'}
+                            />
                             <FormSection
                                 title="Linked bilty"
                                 description="Broker lorry receipt summary"
@@ -816,6 +859,46 @@ export default function LorryHireCreate({
                                 />
                             </FormSection>
 
+                            <FormSection
+                                title="E-Way Bills (from Bilty)"
+                                description="Managed on the linked Bilty. Open the GST portal for verification when needed."
+                                columns={1}
+                            >
+                                {(lorryReceipt.eway_bills ?? []).length ===
+                                0 ? (
+                                    <p className="text-sm text-muted-foreground">
+                                        No E-Way Bills on this Bilty.
+                                    </p>
+                                ) : (
+                                    <ul className="space-y-2 text-sm">
+                                        {(lorryReceipt.eway_bills ?? []).map(
+                                            (row) => (
+                                                <li
+                                                    key={row.ewb_number}
+                                                    className="rounded-md border border-border px-3 py-2"
+                                                >
+                                                    {row.ewb_number}
+                                                    {row.ewb_date
+                                                        ? ` · ${row.ewb_date}`
+                                                        : ''}
+                                                    {row.valid_until
+                                                        ? ` · valid until ${row.valid_until}`
+                                                        : ''}
+                                                </li>
+                                            ),
+                                        )}
+                                    </ul>
+                                )}
+                                <a
+                                    href="https://ewaybillgst.gov.in/"
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="text-xs font-medium text-primary underline-offset-4 hover:underline"
+                                >
+                                    Open E-Way Bill GST portal
+                                </a>
+                            </FormSection>
+
                             <FormSection title="Remarks" columns={1}>
                                 <div className="space-y-1">
                                     <Label htmlFor="remarks">Remarks</Label>
@@ -833,6 +916,7 @@ export default function LorryHireCreate({
                                     type="submit"
                                     disabled={processing}
                                     className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                                    onClick={handleCreateClick}
                                 >
                                     {processing
                                         ? 'Creating…'
@@ -859,6 +943,9 @@ export default function LorryHireCreate({
                     description="Review vehicle, payee, rates, TDS, and net payable before submitting."
                     fields={reviewFields}
                     onConfirm={handleConfirm}
+                    confirmLabel="Create Lorry Hire"
+                    onSecondaryConfirm={handleConfirmAndRecordVoucher}
+                    secondaryConfirmLabel="Create & Record Voucher"
                 />
             </PageShell>
         </>

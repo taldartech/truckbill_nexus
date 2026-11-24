@@ -549,6 +549,12 @@ function EligibleRowView({
                                                     completeForm.data
                                                         .delivery_date || '—',
                                             },
+                                            {
+                                                label: 'Remarks',
+                                                value:
+                                                    completeForm.data.remarks.trim() ||
+                                                    '—',
+                                            },
                                         ]);
                                         setDeliverConfirmOpen(true);
                                         return;

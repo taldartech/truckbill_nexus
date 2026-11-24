@@ -150,48 +150,13 @@ export function AppSidebar() {
 
     const branchOperations: NavItem[] = [
         {
-            title: 'Enquiries',
-            href: '/enquiries',
-            icon: Ticket,
-        },
-        {
             title: 'Bilty Register',
             href: '/lorry-receipts',
             icon: Receipt,
         },
         {
-            title: 'Partload Bilty',
-            href: '/lorry-receipts/create?context=partload',
-            icon: Receipt,
-        },
-        {
-            title: 'Invoices',
-            href: '/invoices',
-            icon: Receipt,
-        },
-        {
-            title: 'Customer Invoice Receipts',
-            href: '/payments',
-            icon: CreditCard,
-        },
-        {
-            title: 'Broker Registers',
-            href: '/broker/registers',
-            icon: ClipboardList,
-        },
-        {
             title: 'Lorry Hires',
             href: '/broker/lorry-hires',
-            icon: Truck,
-        },
-        {
-            title: 'Delivery / Memo',
-            href: '/broker/deliveries',
-            icon: Truck,
-        },
-        {
-            title: 'Linked Bilties',
-            href: '/broker/linked-bilties',
             icon: Truck,
         },
         {
@@ -205,9 +170,44 @@ export function AppSidebar() {
             icon: CreditCard,
         },
         {
+            title: 'Invoices',
+            href: '/invoices',
+            icon: Receipt,
+        },
+        {
+            title: 'Customer Invoice Receipts',
+            href: '/payments',
+            icon: CreditCard,
+        },
+        {
+            title: 'Delivery / Memo / POD',
+            href: '/broker/deliveries',
+            icon: Truck,
+        },
+        {
+            title: 'Linked Bilties',
+            href: '/broker/linked-bilties',
+            icon: Truck,
+        },
+        {
             title: 'Transporter Balances',
             href: '/broker/transporter-balances',
             icon: Landmark,
+        },
+        {
+            title: 'Enquiries',
+            href: '/enquiries',
+            icon: Ticket,
+        },
+        {
+            title: 'Partload Bilty',
+            href: '/lorry-receipts/create?context=partload',
+            icon: Receipt,
+        },
+        {
+            title: 'Broker Registers',
+            href: '/broker/registers',
+            icon: ClipboardList,
         },
     ];
 

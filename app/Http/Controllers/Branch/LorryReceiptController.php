@@ -18,6 +18,7 @@ use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Party\PartyOptionQuery;
 use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
+use App\Domains\Master\Vehicle\VehicleOptionQuery;
 use App\Domains\OwnFleet\Trip\TripService;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
@@ -35,7 +36,6 @@ use App\Models\LrGoodsRow;
 use App\Models\OwnerCatalogueItem;
 use App\Models\Station;
 use App\Models\User;
-use App\Models\Vehicle;
 use App\Support\Presentation\FreightAmountPresentation;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -158,6 +158,8 @@ class LorryReceiptController extends Controller
                 'store' => route('branch.lorry-receipts.store', absolute: false),
                 'parties_options' => route('branch.parties.options', absolute: false),
                 'parties_create' => route('branch.parties.create', absolute: false),
+                'vehicles_options' => route('branch.vehicles.options', absolute: false),
+                'vehicles_create' => route('branch.vehicles.create', absolute: false),
             ],
         ]);
     }
@@ -362,6 +364,8 @@ class LorryReceiptController extends Controller
                 'update' => route('branch.lorry-receipts.update', [$lorryReceipt], absolute: false),
                 'parties_options' => route('branch.parties.options', absolute: false),
                 'parties_create' => route('branch.parties.create', absolute: false),
+                'vehicles_options' => route('branch.vehicles.options', absolute: false),
+                'vehicles_create' => route('branch.vehicles.create', absolute: false),
             ],
         ]);
     }
@@ -596,33 +600,19 @@ class LorryReceiptController extends Controller
             $ownershipFilter = [];
             foreach ($this->contextResolver->availableContexts($company, $actor, $branch) as $context) {
                 if ($context === LrWorkflowContext::OwnFleet) {
-                    $ownershipFilter[] = VehicleOwnership::Own->value;
+                    $ownershipFilter[] = VehicleOwnership::Own;
                 }
                 if ($context === LrWorkflowContext::Broker) {
-                    $ownershipFilter[] = VehicleOwnership::Market->value;
+                    $ownershipFilter[] = VehicleOwnership::Market;
                 }
             }
 
-            $vehicleQuery = Vehicle::query()
-                ->visibleInBranch($company->id, $branch->id)
-                ->where('is_active', true)
-                ->whereNull('deleted_at')
-                ->whereNotNull('ownership')
-                ->orderBy('registration_number')
-                ->limit(300);
-
-            if ($ownershipFilter !== []) {
-                $vehicleQuery->whereIn('ownership', $ownershipFilter);
-            }
-
-            $vehicles = $vehicleQuery->get(['id', 'registration_number', 'ownership', 'make', 'model'])
-                ->map(fn (Vehicle $vehicle): array => [
-                    'id' => $vehicle->id,
-                    'registration_number' => $vehicle->registration_number,
-                    'ownership' => $vehicle->ownership?->value,
-                    'ownership_label' => $vehicle->ownership?->label(),
-                    'label' => trim($vehicle->registration_number.' · '.($vehicle->ownership?->label() ?? 'Unclassified')),
-                ])->values()->all();
+            $vehicles = app(VehicleOptionQuery::class)->forBranch(
+                company: $company,
+                branch: $branch,
+                limit: 200,
+                ownerships: $ownershipFilter !== [] ? $ownershipFilter : null,
+            );
         }
 
         return [

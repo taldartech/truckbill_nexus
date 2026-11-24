@@ -19,7 +19,7 @@ function todayIsoDate(): string {
  */
 async function confirmFormDialog(page: Page): Promise<void> {
     const confirm = page.getByRole('button', {
-        name: /Confirm (create|save|delete)/i,
+        name: /Confirm (create|save|delete)|Save Bilty/i,
     });
     const visible = await confirm
         .waitFor({ state: 'visible', timeout: 5_000 })
@@ -28,6 +28,18 @@ async function confirmFormDialog(page: Page): Promise<void> {
     if (!visible) {
         return;
     }
+    await confirm.click();
+}
+
+/**
+ * Confirm via secondary CTA (e.g. Save & Create Lorry Hire).
+ */
+async function confirmFormDialogSecondary(
+    page: Page,
+    buttonName: RegExp | string,
+): Promise<void> {
+    const confirm = page.getByRole('button', { name: buttonName });
+    await expect(confirm).toBeVisible({ timeout: 5_000 });
     await confirm.click();
 }
 
@@ -141,6 +153,97 @@ export async function createBrokerLrViaUi(
     return { goodsDescription, lrNumber, lrPath, vehicleId };
 }
 
+/**
+ * Creates Broker LR and continues into Lorry Hire create via confirmation secondary CTA.
+ */
+export async function createBrokerLrAndContinueToHire(
+    page: Page,
+    goodsDescription: string,
+): Promise<BrokerLrContext> {
+    await page.goto('/lorry-receipts');
+    await page.getByTestId('create-lr-direct').click();
+    await expect(page).toHaveURL(/\/lorry-receipts\/create/);
+
+    const vehicleId = await selectMarketVehicle(page);
+    await page.locator('#from_text').fill('E2E Hire-from-save origin');
+    await page.locator('#to_text').fill('E2E Hire-from-save destination');
+    await selectOptionAt(page, '#billing_customer_party_id', 0);
+    await selectOptionAt(page, '#consignor_party_id', 0);
+    await selectOptionAt(page, '#consignee_party_id', 0);
+    await page.locator('#lr_date').fill(todayIsoDate());
+    await selectOptionAt(page, 'select[name="goods[0][goods_type_id]"]', 0);
+    await selectOptionAt(page, 'select[name="goods[0][package_type_id]"]', 0);
+    await page
+        .locator('input[name="goods[0][goods_description]"]')
+        .fill(goodsDescription);
+    await page.locator('input[name="goods[0][package_count]"]').fill('1');
+    await page.getByLabel('Actual weight MT row 1').fill('8');
+    await page.getByLabel('Charged weight MT row 1').fill('8');
+    await page
+        .locator('select[name="goods[0][freight_rate_type]"]')
+        .selectOption('per_mt');
+    await page.locator('input[name="goods[0][freight_rate]"]').fill('9000');
+
+    await page.getByRole('button', { name: 'Save Bilty' }).click();
+    await expect(
+        page.getByRole('button', { name: 'Save & Create Lorry Hire' }),
+    ).toBeVisible({ timeout: 5_000 });
+    await confirmFormDialogSecondary(page, 'Save & Create Lorry Hire');
+    await expect(page).toHaveURL(/\/create-lorry-hire/, {
+        timeout: 30_000,
+    });
+    await expect(
+        page.getByRole('heading', { name: 'Create Lorry Hire' }),
+    ).toBeVisible();
+
+    const lrNumberMatch = (await page.content()).match(
+        /LR\s+([A-Z0-9\-/]+)|Bilty\s+([A-Z0-9\-/]+)/i,
+    );
+    const lrNumber = lrNumberMatch?.[1] ?? lrNumberMatch?.[2] ?? null;
+
+    return {
+        goodsDescription,
+        lrNumber,
+        lrPath: '',
+        vehicleId,
+    };
+}
+
+/**
+ * Opens pending Bilty edit, changes a station text, asserts previous/new confirmation.
+ */
+export async function editBrokerLrWithChangeReview(
+    page: Page,
+    lrPath: string,
+): Promise<void> {
+    await page.goto(`${lrPath}/edit`);
+    await expect(
+        page.getByRole('heading', { name: /Edit Bilty/i }),
+    ).toBeVisible({ timeout: 15_000 });
+
+    const fromField = page.locator('#from_text');
+    await expect(fromField).toBeVisible();
+    const previous = (await fromField.inputValue()).trim() || '—';
+    const next = `${previous} · edited`;
+    await fromField.fill(next);
+
+    await page.getByRole('button', { name: 'Save Bilty' }).click();
+    await expect(
+        page.getByRole('heading', { name: 'Save Bilty changes?' }),
+    ).toBeVisible({ timeout: 5_000 });
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByText('Previous')).toBeVisible();
+    await expect(
+        dialog.getByRole('cell', { name: 'Loading Station', exact: true }),
+    ).toBeVisible();
+    await expect(dialog.getByText(previous).first()).toBeVisible();
+    await expect(dialog.getByText(next).first()).toBeVisible();
+    await dialog.getByRole('button', { name: 'Confirm save' }).click();
+    await expect(page).toHaveURL(/\/lorry-receipts\/[0-9a-f-]+$/, {
+        timeout: 30_000,
+    });
+}
+
 export type LorryHireContext = {
     hireNumber: string;
     hirePath: string;
@@ -181,7 +284,18 @@ export async function createLorryHireFromLr(
     await expect(page.getByText('Financial summary')).toBeVisible();
 
     await page.getByRole('button', { name: 'Create Lorry Hire' }).click();
-    await confirmFormDialog(page);
+    const hireDialog = page.getByRole('dialog');
+    const hireDialogVisible = await hireDialog
+        .waitFor({ state: 'visible', timeout: 5_000 })
+        .then(() => true)
+        .catch(() => false);
+    if (hireDialogVisible) {
+        await hireDialog
+            .getByRole('button', { name: 'Create Lorry Hire' })
+            .click();
+    } else {
+        await confirmFormDialog(page);
+    }
     await expect(page).toHaveURL(/\/broker\/lorry-hires\/[0-9a-f-]+$/, {
         timeout: 30_000,
     });

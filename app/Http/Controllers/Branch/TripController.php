@@ -132,6 +132,8 @@ class TripController extends Controller
                 'store' => route('branch.trips.store-from-lr', [$lorryReceipt], absolute: false),
                 'lr_show' => route('branch.lorry-receipts.show', [$lorryReceipt], absolute: false),
                 'index' => route('branch.trips.index', absolute: false),
+                'parties_options' => route('branch.parties.options', absolute: false),
+                'parties_create' => route('branch.parties.create', absolute: false),
             ],
         ]);
     }

@@ -1,7 +1,7 @@
 # Batch 2 — Broker Gap Register
 
-**Status:** In progress  
-**Baseline HEAD:** `4b3b874` (operational-flow parity doc pass; parent commit pending)  
+**Status:** Closed for authorized Batch 2 operational-flow scope  
+**Baseline HEAD (start of this continuation):** `701f4df`  
 **Date:** 24 November 2026
 
 ## Authority
@@ -31,28 +31,29 @@
 | PO-LGC-006 | Hire settlement statement PDF                  |
 | PO-LGC-007 | Full Lorry Hire PATCH / unrestricted hire edit |
 
-## Confirmed gaps — implementation status
+## Confirmed gaps — final status
 
-| Gap ID    | Severity | Area                                     | Status          | Notes                                                                                                                                                   |
-| --------- | -------- | ---------------------------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| B2-PS-01  | P0       | Scalable Party search                    | **Implemented** | `PartyOptionQuery` search + `selected_id`; `GET branch.parties.options`; remote `SearchablePartySelect`                                                 |
-| B2-PS-02  | P0       | Wire selectors                           | **Implemented** | Enquiry, Bilty, Hire payee, Broker Invoice, Linked Bilty                                                                                                |
-| B2-CF-01  | P1       | Enquiry confirmation                     | **Implemented** | `FormConfirmationDialog` on create                                                                                                                      |
-| B2-CF-02  | P1       | Bilty confirmation                       | **Implemented** | Expanded `FieldReview`: parties, stations, goods rows, EWB, charges, MT totals; customer name from remote select option text                            |
-| B2-CF-03  | P1       | Other Broker mutations                   | **Improved**    | Memo lists Bilty numbers; Delivery complete + POD upload confirmations; voucher show density still open                                                 |
-| B2-LB-01  | P0       | Linked create field binding              | **Implemented** | `group_date` / driver / reference / remarks bound to `useForm`                                                                                          |
-| B2-LB-02  | P0       | Linked pay bank account                  | **Implemented** | `bankCashAccounts` wired when `payment_mode=bank`                                                                                                       |
-| B2-PS-03  | P2       | Trip / Vehicle / Enquiry quote selectors | **Partial**     | Enquiry quotation transporter remote search done; Trip/Vehicle remote search still open                                                                 |
-| B2-EN-01  | P2       | Enquiry edit surface                     | **Implemented** | Show overview edit form with searchable customer + change confirmation; Inertia redirect on update                                                      |
-| B2-FH-01  | P1       | Hire lifecycle edit                      | **PO-LGC-007**  | Adjustments + cancel only                                                                                                                               |
-| B2-FH-UX  | P2       | Hire margin / Owner-Agency chip          | **Implemented** | `role_label` chip; amber when transporter freight > customer freight on hire create                                                                     |
-| B2-VP-01  | P1       | Voucher UX summary completeness          | **Improved**    | `?lorry_hire_id=` preselect; hire context panel (freight/TDS/net/outstanding); hire show Record voucher CTA; voucher **show** density still open        |
-| B2-DOC-01 | P2       | Documentation pack                       | **In progress** | PO-LGC-017 pack: `LEGACY_BROKER_UX_ALIGNMENT`, `LEGACY_BROKER_SCREEN_MAPPING`, `BROKER_OPERATIONAL_FLOW_STANDARD`; regression certification outstanding |
-| B2-OF-01  | P1       | Bilty Save & Create Lorry Hire           | **Implemented** | Confirmation secondary CTA + `redirect_to_hire` → `create-from-lr` (legacy `redirect_to_fr`)                                                            |
-| B2-OF-02  | P2       | Bilty quick-add masters from form        | Open            | Legacy modals for customer/truck/goods; Nexus uses party create links + separate masters                                                                |
-| B2-OF-03  | P2       | Truck-owner declaration missing banner   | Open            | Legacy bilty create banner when owner declaration incomplete                                                                                            |
-| B2-OF-04  | P2       | Hire multi E-way + GST portal link       | Open            | Legacy hire create multi EWB UX denser than Nexus                                                                                                       |
-| B2-OF-05  | P3       | Ops-first sidebar label polish           | Open            | Legacy Operations grouping; Nexus Branch sidebar has Enquiries + registers earlier (intentional Enquiry)                                                |
+| Gap ID    | Severity | Area                                     | Final status | Notes                                                                                                                                |
+| --------- | -------- | ---------------------------------------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
+| B2-PS-01  | P0       | Scalable Party search                    | **Aligned**  | `PartyOptionQuery` search + `selected_id`; `GET branch.parties.options`; remote `SearchablePartySelect`                              |
+| B2-PS-02  | P0       | Wire selectors                           | **Aligned**  | Enquiry, Bilty, Hire payee, Broker Invoice, Linked Bilty                                                                             |
+| B2-CF-01  | P1       | Enquiry confirmation                     | **Aligned**  | `FormConfirmationDialog` on create                                                                                                   |
+| B2-CF-02  | P1       | Bilty confirmation                       | **Aligned**  | Expanded `FieldReview`: parties, stations, goods rows, EWB, charges, MT totals; remote party names                                   |
+| B2-CF-03  | P1       | Other Broker mutations                   | **Aligned**  | Memo/Delivery/POD; hire Create & Record Voucher; bilty edit previous/new diffs; Linked pay allocations + account; hire adjustments   |
+| B2-LB-01  | P0       | Linked create field binding              | **Aligned**  | `group_date` / driver / reference / remarks bound to `useForm`                                                                       |
+| B2-LB-02  | P0       | Linked pay bank account                  | **Aligned**  | `bankCashAccounts` wired when `payment_mode=bank`                                                                                    |
+| B2-PS-03  | P2       | Trip / Vehicle / Enquiry quote selectors | **Aligned**  | Vehicle options API + `SearchableVehicleSelect` on Bilty/Linked; Trip substitute driver remote; Enquiry quotation transporter remote |
+| B2-EN-01  | P2       | Enquiry edit surface                     | **Aligned**  | Show overview edit form with searchable customer + change confirmation                                                               |
+| B2-FH-01  | P1       | Hire lifecycle edit                      | **Deferred** | Adjustments + cancel only — **PO-LGC-007**                                                                                           |
+| B2-FH-UX  | P2       | Hire margin / Owner-Agency chip          | **Aligned**  | `role_label` chip; amber when transporter freight > customer freight                                                                 |
+| B2-VP-01  | P1       | Voucher UX summary completeness          | **Aligned**  | Create hire context + show density: freight/TDS/net/paid/outstanding, adjustments, voucher history, account                          |
+| B2-DOC-01 | P2       | Documentation pack                       | **Aligned**  | Final acceptance + E2E/gap/OF parity updated after regression                                                                        |
+| B2-OF-01  | P1       | Bilty Save & Create Lorry Hire           | **Aligned**  | Confirmation secondary CTA + `redirect_to_hire` → `create-from-lr` (browser-verified)                                                |
+| B2-OF-02  | P2       | Bilty quick-add masters from form        | **Partial**  | Create Party/Vehicle deep-links on selectors (no modal overlay; intentional — preserve form via browser back; no extra screens)      |
+| B2-OF-03  | P2       | Truck-owner declaration missing banner   | **Aligned**  | Amber banner when selected market vehicle owner transporter declaration is incomplete                                                |
+| B2-OF-04  | P2       | Hire multi E-way + GST portal link       | **Aligned**  | Hire create shows LR E-Way Bills + GST portal link (EWB remains on Bilty; intentional)                                               |
+| B2-OF-05  | P3       | Ops-first sidebar label polish           | **Aligned**  | Branch Operations reordered: Bilty → Hire → Vouchers → Invoices → Delivery → Linked → Balances → Enquiry                             |
+| B2-OF-06  | P1       | Hire Create & Record Voucher             | **Aligned**  | Confirmation secondary CTA + `redirect_to_voucher` → voucher create with hire id                                                     |
 
 ## Closed by Batch 1 (do not re-open)
 
@@ -60,23 +61,23 @@
 - MT operational weight UX (KG storage)
 - PartyOptionQuery consolidation for role eligibility
 
-## Browser evidence (partial)
+## Browser evidence
 
-- Enquiry selector, Bilty/Hire UI, complete Broker spine, Linked Bilty payment — Playwright passed locally (see `BATCH_2_BROKER_E2E_CERTIFICATION.md`).
+| Suite                                                                                     | Result                                                          |
+| ----------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
+| Enquiry selector + Bilty/Hire UI + complete Broker spine + Linked payment                 | Passed                                                          |
+| Operational-flow parity (Save & Create Hire, edit previous/new, Record voucher preselect) | Passed (3/3)                                                    |
+| Visual viewports (bilty-lorry-hire)                                                       | Captured under `storage/visual-certification/bilty-lorry-hire/` |
 
-## Probe follow-up (agents)
+## Remaining Product Owner decisions
 
-- [Broker gap probe](4b157eb2-e72b-4571-a018-f8831c8b75ed) / legacy exploration — P0 Linked form contracts fixed above; remaining P2 hire/voucher UX and quick-create still open.
-- [Hire adjustment confirmation](b6e41c77-7d10-4abe-9f78-23eec60e387a) — already landed in `lorry-hires/show.tsx`.
-
-## Legacy exploration follow-up
-
-Source-verified legacy HEAD `6a90e955…`. High-value gaps from the 15-item UX delta are tracked as B2-OF-* above. Already closed by prior Batch 2 UX: Owner/Agency chip + amber (B2-FH-UX), voucher hire context (B2-VP-01), expanded bilty confirm (B2-CF-02), Delivery/POD confirm (B2-CF-03).
+| ID                       | Topic                         | Blocks Batch 2 operational acceptance? |
+| ------------------------ | ----------------------------- | -------------------------------------- |
+| PO-LGC-001…007           | Deferred product policies     | **No** — explicit out of Batch 2 scope |
+| PO-P4-DESIGN-FORMAL      | Broader product UI design     | Outside this OF pack                   |
+| PO-P4-CNV-CARDINALITY    | Conversion LR cardinality     | Outside this OF pack                   |
+| B2-OF-02 modal quick-add | Optional overlay vs deep-link | **No** — Partial justified             |
 
 ## Next execution
 
-1. Voucher show density (remaining B2-VP-01 show leg)
-2. Trip / Vehicle remote selectors (remaining B2-PS-03)
-3. B2-OF-02…05 polish (quick-add, declaration banner, hire EWB density, nav labels)
-4. Full PG + MySQL regression + visual/persona Playwright matrix
-5. Close B2-DOC-01 — `BATCH_2_BROKER_*` acceptance docs after regression
+Batch 2 authorized operational-flow work is complete. Do **not** begin Batch 3 / Phase 7 without separate PO authorization.

@@ -1,55 +1,68 @@
-# Batch 2 — Broker Final Acceptance (interim)
+# Batch 2 — Broker Final Acceptance
 
-**Status:** IN PROGRESS — not ready for Product Owner acceptance  
+**Status:** READY FOR PRODUCT OWNER ACCEPTANCE (authorized operational-flow scope)  
 **Date:** 24 November 2026  
-**Baseline:** `d359256ea860a5a6526b98d718eeee699d552342`  
-**Local tip:** see `git log -1` after receipt confirmation commit
+**Initial HEAD:** `701f4df`  
+**Final local HEAD:** see `git log -1` after certification commits (recorded in commit messages / Memory)
 
-## Verdict (interim)
+## Verdict
 
-**C. BATCH 2 BROKER PARTIALLY COMPLETE — APPROVED FUNCTIONAL GAPS REMAIN**
+**B. BATCH 2 AUTHORIZED OPERATIONAL ALIGNMENT COMPLETE — FULL LEGACY REPLACEMENT NOT CLAIMED**
+
+Existing Broker operators can follow the familiar operational spine (Bilty → Hire → Voucher → Delivery/POD → Invoice/Receipt → Linked/Balances) without unnecessary register searches for the authorized continuation actions. Nexus security, financial immutability, unified masters, and MT weights are preserved.
+
+This is **not** a claim of full `truckbill_broker` feature replacement (reports, custom invoices, voucher edit/destroy, unrestricted hire PATCH remain deferred / PO-LGC).
 
 ## A. Repository baseline
 
-| Item                            | Value                                                                  |
-| ------------------------------- | ---------------------------------------------------------------------- |
-| Initial Nexus HEAD              | `d359256ea860a5a6526b98d718eeee699d552342`                             |
-| Remote HEAD (verified at start) | `d359256…`                                                             |
-| Final local HEAD (interim)      | pending tip after receipt confirmation                                 |
-| GitHub Actions baseline         | https://github.com/taldartech/truckbill_nexus/actions/runs/45401597608 |
-| Legacy tracking                 | `git ls-files legacy/` empty; trees ignored                            |
+| Item               | Value                                                                         |
+| ------------------ | ----------------------------------------------------------------------------- |
+| Initial Nexus HEAD | `701f4df` (`feat(broker): Save & Create Lorry Hire after Bilty confirmation`) |
+| Final local HEAD   | Post-certification tip (this pack)                                            |
+| Legacy tracking    | `git ls-files legacy/` empty; trees ignored                                   |
+| Push / deploy      | **None** (absolute no-push)                                                   |
 
-## B. Workflow status (interim)
+## B. Workflow status (final)
 
-| Area                                            | Status                                                                             |
-| ----------------------------------------------- | ---------------------------------------------------------------------------------- |
-| Masters / Party selectors                       | **Partial** → scalable search shipped on key forms                                 |
-| Enquiry / Quotation / Conversion                | Partial (selector + confirmation; full quotation matrix not re-certified this run) |
-| Bilty                                           | Partial → MT + searchable + confirmation; financial freeze retained                |
-| Lorry Hire / TDS / Adjustments                  | Partial → create/adjust/cancel OK; full PATCH = PO-LGC-007                         |
-| Vouchers / Bulk / Linked / Book Balance / Daily | Partial → voucher + linked + book balance selector improved                        |
-| Memo / Delivery / POD                           | Partial → memo confirmation; POD browser upload covered in complete journey        |
-| Customer Invoice / Receipt                      | Partial → invoice + receipt confirmations + searchable filters                     |
-| Printing / Pagination / Confirmations           | Partial                                                                            |
-| Security / No-Freight / Concurrency             | Not re-certified end-to-end this run (preserve prior remediations)                 |
+| Area                                            | Status                                                         |
+| ----------------------------------------------- | -------------------------------------------------------------- |
+| Masters / Party + Vehicle remote selectors      | **Aligned** (B2-PS-01…03)                                      |
+| Enquiry / Quotation transporter search          | **Aligned** within Batch 2 scope                               |
+| Bilty create/edit + Save & Create Hire          | **Aligned** (B2-OF-01; edit previous/new)                      |
+| Lorry Hire / TDS / Adjustments / Record voucher | **Aligned** within PO-LGC-007 boundary                         |
+| Vouchers / Linked / Book Balance / Daily        | **Aligned** (B2-VP-01 show density; Linked allocation confirm) |
+| Memo / Delivery / POD                           | **Aligned** (confirmations + remarks)                          |
+| Customer Invoice / Receipt                      | **Aligned** (prior Batch 2 + complete Playwright spine)        |
+| Confirmations                                   | **Aligned** (B2-CF-01…03)                                      |
+| Sidebar ops-first sequence                      | **Aligned** (B2-OF-05)                                         |
+| Quick-add master modal overlay                  | **Partial** (deep-links only — B2-OF-02)                       |
+| PO-LGC-001…007 capabilities                     | **Deferred** (explicit)                                        |
 
-## C. Local commits
+## C. Local commits (this continuation)
 
-1. `6802dc9` — scalable Party search + core confirmations
-2. `62695e5` — memo/linked confirmations + Playwright fixtures
-3. `b86b721` — Book Balance remote transporter selector
-4. `8f37c5a` — Memory / gap register refresh
-5. `6553caf` — unified invoice index customer search
-6. `f216703` / `59e397b` — interim acceptance documentation
-7. (next) customer receipt confirmation on Broker invoice show
+Recorded at certification time — include Vehicle remote selectors, voucher show density, OF CTAs/polish, confirmation coverage, Playwright OF parity, and this documentation pack.
 
-## D. Evidence to date
+## D. Verification evidence
 
-- Pest (PostgreSQL): Party options suite + Broker filter **128 passed**
-- Pest (MySQL 8.4 Docker `:3307`): `PartyOptionsEndpointTest` **6/6 passed**
-- Playwright: enquiry selector, bilty/hire UI, complete Broker spine, linked bilty payment — **passed**
-- PHPStan / `npm run check` — passed on committed tip
+| Gate                                      | Result                                                                         |
+| ----------------------------------------- | ------------------------------------------------------------------------------ |
+| Pest PostgreSQL (full)                    | **768 passed**, 0 failed, 2 skipped (770 tests)                                |
+| Pest MySQL 8.4 Docker `:3307` (full)      | **768 passed**, 0 failed (770 tests)                                           |
+| Playwright Broker suite + OF parity       | **Passed** (enquiry, bilty/hire UI, complete spine, linked pay, OF parity 3/3) |
+| Visual viewports                          | bilty-lorry-hire captures at 7 viewports under `storage/visual-certification/` |
+| `npm run check` / `types:check` / `build` | Passed                                                                         |
+| Pint / Larastan / Wayfinder generate      | Passed                                                                         |
 
-## E. Batch 3 readiness
+Note: Pest must run without a shell-sourced `APP_ENV=local` leak (PHPUnit `force=true` alone is insufficient for CSRF unit-test skip when `APP_ENV=local` is exported).
 
-**No** — do not begin Batch 3 OwnFleet alignment until Batch 2 acceptance criteria are met or Product Owner truncates scope.
+## E. Remaining Product Owner decisions
+
+| ID                         | Topic                                                                     |
+| -------------------------- | ------------------------------------------------------------------------- |
+| PO-LGC-001…007             | Deferred policies (custom invoice, voucher edit/delete, hire PATCH, etc.) |
+| B2-OF-02                   | Whether modal quick-add is required vs deep-link Partial                  |
+| Phase 11 reports / ADR-010 | Outside Batch 2                                                           |
+
+## F. Batch 3 readiness
+
+**No** — do not begin Batch 3 OwnFleet alignment or Phase 7 without separate Product Owner authorization.

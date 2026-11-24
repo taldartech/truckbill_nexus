@@ -4,6 +4,10 @@ import { FormConfirmationDialog } from '@/components/form-confirmation/form-conf
 import type { FieldReview } from '@/components/form-confirmation/types';
 import { PageShell } from '@/components/page-shell';
 import { SearchablePartySelect } from '@/components/searchable-party-select';
+import {
+    SearchableVehicleSelect,
+    type VehicleSelectOption,
+} from '@/components/searchable-vehicle-select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -20,7 +24,7 @@ type EligibleReceipt = {
 
 type Props = {
     filters: { vehicle_id: string | null };
-    vehicles: Array<{ id: string; registration_number: string }>;
+    vehicles: VehicleSelectOption[];
     payees: Array<{ id: string; name: string }>;
     eligibleReceipts: EligibleReceipt[];
     permissions: { can_create: boolean };
@@ -29,6 +33,8 @@ type Props = {
         store: string;
         filter: string;
         parties_options?: string;
+        vehicles_options?: string;
+        vehicles_create?: string;
     };
 };
 
@@ -159,15 +165,18 @@ export default function LinkedBiltiesCreate({
                             )}
                         </div>
                         <div className="space-y-1">
-                            <Label htmlFor="vehicle_id">Vehicle</Label>
-                            <select
+                            <SearchableVehicleSelect
                                 id="vehicle_id"
                                 name="vehicle_id"
+                                label="Vehicle"
+                                options={vehicles}
+                                searchUrl={urls.vehicles_options}
+                                ownership="market"
                                 required
                                 value={vehicleId}
-                                onChange={(event) => {
-                                    const next = event.target.value;
+                                onValueChange={(next) => {
                                     setVehicleId(next);
+                                    form.setData('vehicle_id', next);
                                     setSelected([]);
                                     router.get(
                                         urls.filter,
@@ -178,20 +187,11 @@ export default function LinkedBiltiesCreate({
                                         },
                                     );
                                 }}
-                                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                            >
-                                <option value="">Select vehicle</option>
-                                {vehicles.map((vehicle) => (
-                                    <option key={vehicle.id} value={vehicle.id}>
-                                        {vehicle.registration_number}
-                                    </option>
-                                ))}
-                            </select>
-                            {form.errors.vehicle_id && (
-                                <p className="text-xs text-destructive">
-                                    {form.errors.vehicle_id}
-                                </p>
-                            )}
+                                createHref={urls.vehicles_create}
+                                createLabel="Create Vehicle"
+                                emptyMessage="No market vehicles in this branch."
+                                error={form.errors.vehicle_id}
+                            />
                         </div>
                         <div className="space-y-1">
                             <SearchablePartySelect

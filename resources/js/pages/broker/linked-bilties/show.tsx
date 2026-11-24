@@ -234,7 +234,28 @@ export default function LinkedBiltyShow({
                                         typeof amountValue === 'string'
                                             ? amountValue
                                             : '—';
-                                    setPayReviewFields([
+                                    const accountId = data.get(
+                                        'bank_cash_account_id',
+                                    );
+                                    const accountLabel =
+                                        typeof accountId === 'string' &&
+                                        accountId !== ''
+                                            ? (bankCashAccounts.find(
+                                                  (account) =>
+                                                      account.id === accountId,
+                                              )?.name ?? accountId)
+                                            : '—';
+                                    const paymentTypeValue =
+                                        data.get('payment_type');
+                                    const paymentTypeLabel =
+                                        typeof paymentTypeValue === 'string'
+                                            ? (paymentTypeOptions.find(
+                                                  (option) =>
+                                                      option.value ===
+                                                      paymentTypeValue,
+                                              )?.label ?? paymentTypeValue)
+                                            : '—';
+                                    const fields: FieldReview[] = [
                                         {
                                             label: 'Group',
                                             value: group.group_number,
@@ -248,6 +269,10 @@ export default function LinkedBiltyShow({
                                             value: amount,
                                         },
                                         {
+                                            label: 'Payment type',
+                                            value: paymentTypeLabel,
+                                        },
+                                        {
                                             label: 'Payment mode',
                                             value:
                                                 paymentModeOptions.find(
@@ -257,12 +282,37 @@ export default function LinkedBiltyShow({
                                                 )?.label ?? paymentMode,
                                         },
                                         {
-                                            label: 'Preview lines',
-                                            value: preview
-                                                ? String(preview.lines.length)
-                                                : 'Not previewed',
+                                            label: 'Receiving / paying account',
+                                            value:
+                                                paymentMode === 'bank'
+                                                    ? accountLabel
+                                                    : 'Cash',
                                         },
-                                    ]);
+                                        {
+                                            label: 'Total eligible',
+                                            value:
+                                                preview?.total_eligible ??
+                                                'Preview first',
+                                        },
+                                    ];
+                                    if (preview && preview.lines.length > 0) {
+                                        for (const line of preview.lines) {
+                                            const lr =
+                                                line.lr_number ??
+                                                line.hire_number ??
+                                                line.member_id;
+                                            fields.push({
+                                                label: `Allocation · ${lr}`,
+                                                value: `Eligible ${line.eligible_outstanding ?? '—'} → Allocated ${line.allocated_amount ?? '—'}`,
+                                            });
+                                        }
+                                    } else {
+                                        fields.push({
+                                            label: 'Allocations',
+                                            value: 'Not previewed — run Preview allocation first',
+                                        });
+                                    }
+                                    setPayReviewFields(fields);
                                     setPayConfirmOpen(true);
                                     return;
                                 }

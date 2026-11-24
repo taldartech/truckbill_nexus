@@ -11,6 +11,8 @@ use App\Domains\Broker\LinkedBilty\LinkedBiltyGroupService;
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Party\PartyOptionQuery;
+use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
+use App\Domains\Master\Vehicle\VehicleOptionQuery;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
 use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
@@ -24,7 +26,6 @@ use App\Models\LinkedBiltyGroup;
 use App\Models\LorryReceipt;
 use App\Models\TransporterVoucher;
 use App\Models\User;
-use App\Models\Vehicle;
 use App\Support\Presentation\FreightAmountPresentation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -88,13 +89,13 @@ class LinkedBiltyGroupController extends Controller
 
         $eligible = $this->groups->listEligibleLorryReceipts($company, $branch, $vehicleId);
 
-        $vehicles = Vehicle::query()
-            ->where('company_id', $company->id)
-            ->whereNull('deleted_at')
-            ->where('is_active', true)
-            ->orderBy('registration_number')
-            ->limit(200)
-            ->get(['id', 'registration_number']);
+        $vehicles = app(VehicleOptionQuery::class)->forBranch(
+            company: $company,
+            branch: $branch,
+            limit: 200,
+            selectedId: $vehicleId,
+            ownerships: [VehicleOwnership::Market],
+        );
 
         $payees = app(PartyOptionQuery::class)->forRoles(
             $company,
@@ -105,10 +106,7 @@ class LinkedBiltyGroupController extends Controller
 
         return Inertia::render('broker/linked-bilties/create', [
             'filters' => ['vehicle_id' => $vehicleId],
-            'vehicles' => $vehicles->map(fn (Vehicle $row): array => [
-                'id' => $row->id,
-                'registration_number' => $row->registration_number,
-            ])->values()->all(),
+            'vehicles' => $vehicles,
             'payees' => $payees,
             'eligibleReceipts' => $eligible->map(fn (LorryReceipt $lr): array => $this->eligibleReceiptPayload($lr, $maySeeFreight))->values()->all(),
             'permissions' => $this->groupPermissions($actor, $company, $branch, $maySeeFreight),
@@ -117,6 +115,8 @@ class LinkedBiltyGroupController extends Controller
                 'store' => route('branch.broker.linked-bilties.store', absolute: false),
                 'filter' => route('branch.broker.linked-bilties.create', absolute: false),
                 'parties_options' => route('branch.parties.options', absolute: false),
+                'vehicles_options' => route('branch.vehicles.options', absolute: false),
+                'vehicles_create' => route('branch.vehicles.create', absolute: false),
             ],
         ]);
     }

@@ -3,8 +3,8 @@
 **Date:** 24 November 2026  
 **Authority:** **PO-LGC-017 (Accepted)** — reproduce legacy `truckbill_broker` operator journeys where compatible with Nexus rules.  
 **Legacy reference:** `6a90e955bd7a05497f60a6d0bd72891c880e6d14`  
-**Nexus implementation baseline:** `4b3b874`  
-**Verification:** Source-verified from legacy routes/controllers and Nexus `routes/web.php` + pages unless noted.
+**Nexus implementation baseline:** `701f4df` → Batch 2 OF continuation tip  
+**Verification:** Source-verified from legacy routes/controllers and Nexus `routes/web.php` + pages; Playwright browser-verified for Save & Create Hire, edit confirmation, Record voucher, complete spine.
 
 ---
 
@@ -72,7 +72,7 @@ Legacy has no sidebar Enquiry; Nexus treats enquiry as optional front door to bi
 | Step                  | Legacy controller flow         | Nexus flow                                      | Confirmation                                                            |
 | --------------------- | ------------------------------ | ----------------------------------------------- | ----------------------------------------------------------------------- |
 | Create                | `LorryReceiptController@store` | `LorryReceiptService::create` via `lr-form.tsx` | Expanded review: parties, stations, goods rows, EWB, charges, MT totals |
-| Edit                  | Open update while allowed      | Update with financial freeze boundaries         | Partial vs legacy                                                       |
+| Edit                  | Open update while allowed      | Update with financial freeze boundaries         | Previous/new `ChangeReview` (browser-verified)                          |
 | Bulk customer payment | `lorry_receipts/bulk-payment`  | Not mapped 1:1 in Batch 2 UX doc                | Track in BRK-LR* register                                               |
 
 **Weight standard:** Enter operational weights in **MT** with KG Wt./Unit assist — not legacy single-field assumptions (`OPERATIONAL_WEIGHT_UNIT_STANDARD.md`).
@@ -113,7 +113,7 @@ Legacy has no sidebar Enquiry; Nexus treats enquiry as optional front door to bi
 | Delivery complete | LR/hire status transitions in legacy views                        | `deliveries/{lr}/complete`                                |
 | POD               | Attachments in legacy LR/hire flows                               | `deliveries/{delivery}/pod`                               |
 
-Confirmation polish on deliver/POD remains **Partial** (B2-CF-03).
+Memo / Delivery / POD confirmations are **Aligned** (B2-CF-03); Linked payment confirmation includes account + per-line allocations.
 
 ---
 
@@ -161,12 +161,16 @@ Operators should not expect legacy report menus in Branch panel until Phase 11 a
 
 ## Batch 2 UX continuation checklist
 
-| Item                                | Register ID | Status at `4b3b874`                |
-| ----------------------------------- | ----------- | ---------------------------------- |
-| Hire margin / payee chip            | B2-FH-UX    | Implemented                        |
-| Voucher hire preselect + context    | B2-VP-01    | Improved (show density may remain) |
-| Bilty expanded confirmation         | B2-CF-02    | Implemented                        |
-| Operational-flow documentation pack | B2-DOC-01   | In progress (this pack)            |
+| Item                                  | Register ID | Final status                      |
+| ------------------------------------- | ----------- | --------------------------------- |
+| Hire margin / payee chip              | B2-FH-UX    | Aligned                           |
+| Voucher hire preselect + show density | B2-VP-01    | Aligned                           |
+| Bilty expanded + edit confirmation    | B2-CF-02/03 | Aligned                           |
+| Vehicle / Trip remote selectors       | B2-PS-03    | Aligned                           |
+| Save & Create Hire / Record voucher   | B2-OF-01/06 | Aligned (browser-verified)        |
+| Ops-first sidebar                     | B2-OF-05    | Aligned                           |
+| Quick-add master modal                | B2-OF-02    | Partial (deep-links; intentional) |
+| Operational-flow documentation pack   | B2-DOC-01   | Aligned                           |
 
 ---
 

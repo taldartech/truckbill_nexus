@@ -8,6 +8,7 @@ use App\Domains\Broker\Enums\VoucherStatus;
 use App\Domains\Broker\Exceptions\BrokerAuthorizationException;
 use App\Domains\Broker\Exceptions\BrokerConflictException;
 use App\Domains\Broker\Exceptions\BrokerDomainException;
+use App\Domains\Broker\LorryHire\LorryHireCalculationService;
 use App\Domains\Broker\Voucher\BulkVoucherService;
 use App\Domains\Broker\Voucher\TransporterVoucherService;
 use App\Domains\Company\CompanyAccessService;
@@ -41,6 +42,7 @@ class TransporterVoucherController extends Controller
         private readonly PermissionAuthorizer $authorizer,
         private readonly TransporterVoucherService $vouchers,
         private readonly BulkVoucherService $bulkVouchers,
+        private readonly LorryHireCalculationService $hireCalculations,
         private readonly FreightAmountPresentation $freightPresentation,
         private readonly CoreModuleEntitlementResolver $moduleEntitlements = new CoreModuleEntitlementResolver,
     ) {}
@@ -121,6 +123,7 @@ class TransporterVoucherController extends Controller
             'selectedLorryHireId' => $selectedHireId,
             'eligibleLorryHires' => $hires->map(function (LorryHire $hire) use ($maySeeFreight): array {
                 $allocatable = $this->vouchers->allocatableAmount($hire);
+                $summary = $this->hireCalculations->summarize($hire);
 
                 return [
                     'id' => $hire->id,
@@ -128,11 +131,11 @@ class TransporterVoucherController extends Controller
                     'lr_number' => $hire->lorryReceipt?->lr_number,
                     'transporter_name' => $hire->transporter?->name,
                     'vehicle_registration' => $hire->vehicle?->registration_number,
-                    'outstanding_amount' => $this->freightPresentation->presentAmount($hire->outstanding_amount, $maySeeFreight),
+                    'outstanding_amount' => $this->freightPresentation->presentAmount($summary['outstanding_amount'], $maySeeFreight),
                     'allocatable_amount' => $this->freightPresentation->presentAmount($allocatable, $maySeeFreight),
-                    'net_payable' => $this->freightPresentation->presentAmount($hire->net_payable, $maySeeFreight),
-                    'freight_total' => $this->freightPresentation->presentAmount($hire->freight_total, $maySeeFreight),
-                    'tds_amount' => $this->freightPresentation->presentAmount($hire->tds_amount, $maySeeFreight),
+                    'net_payable' => $this->freightPresentation->presentAmount($summary['net_payable'], $maySeeFreight),
+                    'freight_total' => $this->freightPresentation->presentAmount($summary['freight_total'], $maySeeFreight),
+                    'tds_amount' => $this->freightPresentation->presentAmount($summary['tds_amount'], $maySeeFreight),
                 ];
             })->values()->all(),
             'paymentTypeOptions' => $this->paymentTypeOptions(),
@@ -427,6 +430,11 @@ class TransporterVoucherController extends Controller
     private function detailPayload(TransporterVoucher $voucher, bool $maySeeFreight): array
     {
         $hire = $voucher->lorryHire;
+        $summary = $hire !== null ? $this->hireCalculations->summarize($hire) : null;
+        $payeeName = $voucher->transporter?->name;
+        if ($payeeName === null && $hire !== null) {
+            $payeeName = $hire->transporter?->name;
+        }
 
         return [
             'id' => $voucher->id,
@@ -435,18 +443,45 @@ class TransporterVoucherController extends Controller
             'payment_mode' => $voucher->payment_mode?->value,
             'payment_type' => $voucher->payment_type->value,
             'amount' => $this->freightPresentation->presentAmount($voucher->amount, $maySeeFreight),
+            'voucher_date' => $voucher->voucher_date?->format('d-m-Y'),
+            'bank_cash_account_name' => $voucher->bankCashAccount?->name,
             'cash_reference' => $voucher->cash_reference,
             'pump_reference' => $voucher->pump_reference,
             'remark' => $voucher->remark,
+            'payee_name' => $payeeName,
             'created_at' => $voucher->created_at?->format('d-m-Y H:i'),
-            'lorry_hire' => $hire ? [
+            'lorry_hire' => $hire !== null && $summary !== null ? [
                 'id' => $hire->id,
                 'hire_number' => $hire->hire_number,
                 'lr_number' => $hire->lorryReceipt?->lr_number,
                 'transporter_name' => $hire->transporter?->name,
                 'vehicle_registration' => $hire->vehicle?->registration_number,
-                'outstanding_amount' => $this->freightPresentation->presentAmount($hire->outstanding_amount, $maySeeFreight),
+                'freight_total' => $this->freightPresentation->presentAmount($summary['freight_total'], $maySeeFreight),
+                'tds_amount' => $this->freightPresentation->presentAmount($summary['tds_amount'], $maySeeFreight),
+                'tds_percent' => $hire->tds_percent
+                    ?? ($hire->tdsSnapshot !== null
+                        ? number_format((float) $hire->tdsSnapshot->applicable_rate, 3, '.', '')
+                        : null),
+                'net_payable' => $this->freightPresentation->presentAmount($summary['net_payable'], $maySeeFreight),
+                'outstanding_amount' => $this->freightPresentation->presentAmount($summary['outstanding_amount'], $maySeeFreight),
                 'paid_amount' => $this->freightPresentation->presentAmount($hire->paid_amount, $maySeeFreight),
+                'adjustments' => $hire->relationLoaded('adjustments')
+                    ? $hire->adjustments->map(fn ($row): array => [
+                        'type' => $row->type->value,
+                        'amount' => $this->freightPresentation->presentAmount($row->amount, $maySeeFreight),
+                        'reason' => $row->reason,
+                    ])->values()->all()
+                    : [],
+                'voucher_history' => $hire->relationLoaded('vouchers')
+                    ? $hire->vouchers->map(fn (TransporterVoucher $row): array => [
+                        'id' => $row->id,
+                        'voucher_number' => $row->voucher_number,
+                        'payment_type' => $row->payment_type->value,
+                        'amount' => $this->freightPresentation->presentAmount($row->amount, $maySeeFreight),
+                        'status' => $row->status->value,
+                        'is_current' => $row->id === $voucher->id,
+                    ])->values()->all()
+                    : [],
             ] : null,
         ];
     }

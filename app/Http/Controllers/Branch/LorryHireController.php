@@ -130,6 +130,7 @@ class LorryHireController extends Controller
             'billingCustomer',
             'vehicle.ownerParty',
             'goodsRows.goodsType',
+            'ewayBills',
         ]);
 
         $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
@@ -161,6 +162,11 @@ class LorryHireController extends Controller
                     $lorryReceipt->freight_total,
                     $maySeeFreight,
                 ),
+                'eway_bills' => $lorryReceipt->ewayBills->map(fn ($row): array => [
+                    'ewb_number' => $row->ewb_number,
+                    'ewb_date' => $row->ewb_date?->format('d-m-Y'),
+                    'valid_until' => $row->valid_until?->format('d-m-Y'),
+                ])->values()->all(),
             ],
             'payee' => $suggestedPayeeId !== null ? $payee : null,
             'suggestedPayeeId' => $suggestedPayeeId,
@@ -217,6 +223,7 @@ class LorryHireController extends Controller
             'goods_lines.*.is_fixed_amount' => ['sometimes', 'boolean'],
             'tds_override_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'tds_override_remark' => ['nullable', 'string', 'max:2000'],
+            'redirect_to_voucher' => ['sometimes', 'boolean'],
         ]);
 
         try {
@@ -229,6 +236,20 @@ class LorryHireController extends Controller
             throw ValidationException::withMessages(['goods_lines' => $e->getMessage()]);
         } catch (BrokerDomainException $e) {
             throw ValidationException::withMessages(['goods_lines' => $e->getMessage()]);
+        }
+
+        $redirectToVoucher = $request->boolean('redirect_to_voucher')
+            && $this->authorizer->allowsCustomer(
+                $actor,
+                PermissionCodes::BROKER_VOUCHER_CREATE,
+                $company,
+                $branch,
+            );
+
+        if ($redirectToVoucher) {
+            return redirect()
+                ->route('branch.broker.vouchers.create', ['lorry_hire_id' => $hire->id])
+                ->with('success', 'Lorry Hire created. Continue with voucher payment.');
         }
 
         return redirect()
