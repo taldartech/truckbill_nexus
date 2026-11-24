@@ -13,6 +13,24 @@ function todayIsoDate(): string {
     return new Date().toISOString().slice(0, 10);
 }
 
+/**
+ * Shared FormConfirmationDialog — click Confirm create/save when present.
+ * If navigation already completed (dialog skipped), return without failing.
+ */
+async function confirmFormDialog(page: Page): Promise<void> {
+    const confirm = page.getByRole('button', {
+        name: /Confirm (create|save|delete)/i,
+    });
+    const visible = await confirm
+        .waitFor({ state: 'visible', timeout: 5_000 })
+        .then(() => true)
+        .catch(() => false);
+    if (!visible) {
+        return;
+    }
+    await confirm.click();
+}
+
 async function selectOptionAt(
     page: Page,
     selector: string,
@@ -110,6 +128,7 @@ export async function createBrokerLrViaUi(
     await page.locator('input[name="goods[0][freight_rate]"]').fill('9000');
 
     await page.getByRole('button', { name: 'Save Bilty' }).click();
+    await confirmFormDialog(page);
     await expect(page).toHaveURL(/\/lorry-receipts\/[0-9a-f-]+$/, {
         timeout: 30_000,
     });
@@ -162,6 +181,7 @@ export async function createLorryHireFromLr(
     await expect(page.getByText('Financial summary')).toBeVisible();
 
     await page.getByRole('button', { name: 'Create Lorry Hire' }).click();
+    await confirmFormDialog(page);
     await expect(page).toHaveURL(/\/broker\/lorry-hires\/[0-9a-f-]+$/, {
         timeout: 30_000,
     });
@@ -200,6 +220,7 @@ export async function createAdjustInAdvanceVoucher(
     await page.locator('#remark').fill('E2E adjust in advance voucher');
 
     await page.getByRole('button', { name: 'Save voucher' }).click();
+    await confirmFormDialog(page);
     await expect(page).toHaveURL(/\/broker\/vouchers\/[0-9a-f-]+$/, {
         timeout: 30_000,
     });
@@ -250,6 +271,7 @@ export async function assignMemoAndDeliverLr(
     await page.locator('#memo_number').fill(memoNumber);
     await page.locator('#pod_number').fill(`POD-${memoNumber}`);
     await page.getByRole('button', { name: 'Assign memo to selected' }).click();
+    await confirmFormDialog(page);
 
     const eligibleRow = page
         .locator('table tbody tr')
@@ -321,6 +343,7 @@ export async function addBrokerLorryHireAdjustment(
     await page.locator('#adj_amount').fill(amount);
     await page.locator('#adj_reason').fill('E2E detention adjustment');
     await page.getByRole('button', { name: 'Save adjustment' }).click();
+    await confirmFormDialog(page);
     await expect(
         page.getByRole('cell', { name: 'detention', exact: true }),
     ).toBeVisible({ timeout: 15_000 });
@@ -339,9 +362,7 @@ export async function createBrokerCustomerInvoice(
     await expect(lrLabel).toBeVisible({ timeout: 20_000 });
     await lrLabel.locator('input[type="checkbox"]').check();
 
-    const customerSelect = page.locator(
-        'select[name="billing_customer_party_id"]',
-    );
+    const customerSelect = page.locator('#billing_customer_party_id');
     const firstCustomer = customerSelect
         .locator('option[value]:not([value=""])')
         .first();
@@ -351,16 +372,9 @@ export async function createBrokerCustomerInvoice(
     }
     await customerSelect.selectOption(customerId);
 
-    const filterSelect = page
-        .locator('select')
-        .filter({ has: page.locator('option', { hasText: 'All customers' }) })
-        .first();
-    if ((await filterSelect.count()) > 0) {
-        await filterSelect.selectOption(customerId);
-    }
-
     await page.locator('input[name="invoice_date"]').fill(todayIsoDate());
     await page.getByRole('button', { name: 'Issue invoice' }).click();
+    await confirmFormDialog(page);
     await expect(page).toHaveURL(/\/broker\/invoices\/[0-9a-f-]+$/, {
         timeout: 30_000,
     });
@@ -424,6 +438,7 @@ export async function createLinkedBiltyGroup(
     await page
         .getByRole('button', { name: 'Create linked bilty group' })
         .click();
+    await confirmFormDialog(page);
     await expect(page).toHaveURL(/\/broker\/linked-bilties\/[0-9a-f-]+$/, {
         timeout: 30_000,
     });

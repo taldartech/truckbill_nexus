@@ -39,7 +39,7 @@
 | B2-PS-02  | P0       | Wire selectors                                                 | **Implemented** | Enquiry, Bilty, Hire payee, Broker Invoice, Linked Bilty                                                |
 | B2-CF-01  | P1       | Enquiry confirmation                                           | **Implemented** | `FormConfirmationDialog` on create                                                                      |
 | B2-CF-02  | P1       | Bilty confirmation                                             | **Implemented** | `FormConfirmationDialog` on create/edit                                                                 |
-| B2-CF-03  | P1       | Other Broker mutations                                         | **Partial**     | Voucher + Invoice + Hire adjustment/cancel confirmations done; Memo/Delivery/Linked payment remain      |
+| B2-CF-03  | P1       | Other Broker mutations                                         | **Partial**     | Voucher/Invoice/Hire adjustment/cancel/Memo/Linked create confirmations done; POD/receipt remain        |
 | B2-PS-03  | P2       | Invoice index filter / Trip / Vehicle / Book Balance selectors | Open            | Prefer remote search where large masters expected                                                       |
 | B2-EN-01  | P2       | Enquiry edit surface                                           | Partial         | Show/update exist; no dedicated edit form with searchable customer                                      |
 | B2-FH-01  | P1       | Hire lifecycle edit                                            | **PO-LGC-007**  | Adjustments + cancel only                                                                               |
@@ -52,10 +52,13 @@
 - MT operational weight UX (KG storage)
 - PartyOptionQuery consolidation for role eligibility
 
+## Browser evidence (partial)
+
+- Enquiry selector, Bilty/Hire UI, complete Broker spine, Linked Bilty payment — Playwright passed locally (see `BATCH_2_BROKER_E2E_CERTIFICATION.md`).
+
 ## Next execution
 
-1. Complete remaining confirmation surfaces (B2-CF-03)
-2. Remaining selector wiring (B2-PS-03)
-3. Voucher / Memo / Delivery / Invoice browser journeys
-4. Full PG + MySQL regression + Playwright
-5. Certification docs + local commits
+1. Remaining selector wiring (B2-PS-03)
+2. POD / customer receipt confirmation surfaces
+3. Full PG + MySQL regression + visual/persona Playwright matrix
+4. Final certification pack (`BATCH_2_BROKER_*` acceptance docs)

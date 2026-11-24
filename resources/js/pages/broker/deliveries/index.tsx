@@ -1,5 +1,7 @@
 import { Head, useForm } from '@inertiajs/react';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
+import type { FieldReview } from '@/components/form-confirmation/types';
 import {
     DocumentDrawer,
     type DocumentDrawerProps,
@@ -50,6 +52,9 @@ export default function DeliveriesIndex({
 }: Props) {
     const [selected, setSelected] = useState<string[]>([]);
     const [docsFor, setDocsFor] = useState<RecentRow | null>(null);
+    const memoSubmitAllowed = useRef(false);
+    const [memoConfirmOpen, setMemoConfirmOpen] = useState(false);
+    const [memoReviewFields, setMemoReviewFields] = useState<FieldReview[]>([]);
     const memoForm = useForm({
         lorry_receipt_ids: [] as string[],
         memo_number: '',
@@ -86,6 +91,30 @@ export default function DeliveriesIndex({
 
     const submitMemo = (event: React.FormEvent) => {
         event.preventDefault();
+        if (!memoSubmitAllowed.current) {
+            const customerName =
+                eligible.data.find((row) => selected.includes(row.id))
+                    ?.billing_customer_name ?? '—';
+            setMemoReviewFields([
+                { label: 'Billing customer', value: customerName },
+                { label: 'Bilties selected', value: String(selected.length) },
+                {
+                    label: 'Memo number',
+                    value: memoForm.data.memo_number || '—',
+                },
+                {
+                    label: 'POD number',
+                    value: memoForm.data.pod_number || '—',
+                },
+                {
+                    label: 'Remarks',
+                    value: memoForm.data.remarks || '—',
+                },
+            ]);
+            setMemoConfirmOpen(true);
+            return;
+        }
+        memoSubmitAllowed.current = false;
         memoForm.setData('lorry_receipt_ids', selected);
         memoForm.post(urls.memo, {
             preserveScroll: true,
@@ -120,6 +149,7 @@ export default function DeliveriesIndex({
             >
                 {permissions.can_manage ? (
                     <form
+                        id="broker-memo-assign-form"
                         onSubmit={submitMemo}
                         className="rounded-lg border border-border bg-card p-4"
                     >
@@ -357,6 +387,25 @@ export default function DeliveriesIndex({
                     {...docsFor.documentDrawer}
                 />
             ) : null}
+
+            <FormConfirmationDialog
+                open={memoConfirmOpen}
+                onOpenChange={setMemoConfirmOpen}
+                mode="create"
+                title="Assign this memo?"
+                description="Review customer, selected Bilties, and memo details before submitting."
+                fields={memoReviewFields}
+                onConfirm={() => {
+                    memoSubmitAllowed.current = true;
+                    setMemoConfirmOpen(false);
+                    window.setTimeout(() => {
+                        const formElement = document.getElementById(
+                            'broker-memo-assign-form',
+                        ) as HTMLFormElement | null;
+                        formElement?.requestSubmit();
+                    }, 0);
+                }}
+            />
         </>
     );
 }

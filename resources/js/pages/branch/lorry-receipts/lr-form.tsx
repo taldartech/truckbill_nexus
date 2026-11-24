@@ -482,6 +482,24 @@ export default function LrForm({
         }, 0);
     };
 
+    const handleSaveClick = (
+        event: React.MouseEvent<HTMLButtonElement>,
+    ): void => {
+        if (submitAllowed.current) {
+            return;
+        }
+        event.preventDefault();
+        const form = document.getElementById(
+            'lorry-receipt-form',
+        ) as HTMLFormElement | null;
+        if (form !== null && !form.reportValidity()) {
+            return;
+        }
+        if (form !== null) {
+            openConfirmation(form);
+        }
+    };
+
     return (
         <>
             <Head title={title} />
@@ -1662,6 +1680,7 @@ export default function LrForm({
                                     type="submit"
                                     variant="primary"
                                     disabled={processing}
+                                    onClick={handleSaveClick}
                                 >
                                     Save Bilty
                                 </Button>

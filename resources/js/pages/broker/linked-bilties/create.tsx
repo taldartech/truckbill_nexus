@@ -1,5 +1,7 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
-import { FormEvent, useMemo, useState } from 'react';
+import { FormEvent, useMemo, useRef, useState } from 'react';
+import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
+import type { FieldReview } from '@/components/form-confirmation/types';
 import { PageShell } from '@/components/page-shell';
 import { SearchablePartySelect } from '@/components/searchable-party-select';
 import { Button } from '@/components/ui/button';
@@ -39,6 +41,9 @@ export default function LinkedBiltiesCreate({
 }: Props) {
     const [vehicleId, setVehicleId] = useState(filters.vehicle_id ?? '');
     const [selected, setSelected] = useState<string[]>([]);
+    const submitAllowed = useRef(false);
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [reviewFields, setReviewFields] = useState<FieldReview[]>([]);
     const form = useForm({
         group_date: '',
         vehicle_id: vehicleId,
@@ -69,6 +74,30 @@ export default function LinkedBiltiesCreate({
 
     const submit = (event: FormEvent) => {
         event.preventDefault();
+        if (!submitAllowed.current) {
+            const vehicleLabel =
+                vehicles.find((row) => row.id === vehicleId)
+                    ?.registration_number ?? '—';
+            const payeeLabel =
+                payees.find((row) => row.id === form.data.payee_party_id)
+                    ?.name ?? '—';
+            setReviewFields([
+                { label: 'Vehicle', value: vehicleLabel },
+                { label: 'Payee', value: payeeLabel },
+                { label: 'Bilties selected', value: String(selected.length) },
+                {
+                    label: 'Driver',
+                    value: form.data.driver_name || '—',
+                },
+                {
+                    label: 'Reference',
+                    value: form.data.reference || '—',
+                },
+            ]);
+            setConfirmOpen(true);
+            return;
+        }
+        submitAllowed.current = false;
         form.transform((data) => ({
             ...data,
             vehicle_id: vehicleId,
@@ -92,7 +121,11 @@ export default function LinkedBiltiesCreate({
                     </Link>
                 }
             >
-                <form className="space-y-8" onSubmit={submit}>
+                <form
+                    id="linked-bilty-create-form"
+                    className="space-y-8"
+                    onSubmit={submit}
+                >
                     <section className="grid gap-4 rounded-lg border border-border p-4 md:grid-cols-2">
                         <h2 className="text-sm font-semibold text-[#2FB36F] md:col-span-2">
                             Shared header
@@ -265,6 +298,25 @@ export default function LinkedBiltiesCreate({
                         Create linked bilty group
                     </Button>
                 </form>
+
+                <FormConfirmationDialog
+                    open={confirmOpen}
+                    onOpenChange={setConfirmOpen}
+                    mode="create"
+                    title="Create this Linked Bilty group?"
+                    description="Review vehicle, payee, and selected Bilties before submitting."
+                    fields={reviewFields}
+                    onConfirm={() => {
+                        submitAllowed.current = true;
+                        setConfirmOpen(false);
+                        window.setTimeout(() => {
+                            const formElement = document.getElementById(
+                                'linked-bilty-create-form',
+                            ) as HTMLFormElement | null;
+                            formElement?.requestSubmit();
+                        }, 0);
+                    }}
+                />
             </PageShell>
         </>
     );
