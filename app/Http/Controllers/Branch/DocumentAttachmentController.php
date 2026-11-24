@@ -8,7 +8,6 @@ use App\Domains\Document\DocumentParentAccess;
 use App\Domains\Document\DocumentParentTypes;
 use App\Domains\Document\Exceptions\DocumentDomainException;
 use App\Domains\Master\Exceptions\MasterDomainException;
-use App\Domains\Rbac\PermissionAuthorizer;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Branch\Concerns\PresentsDocumentDrawer;
 use App\Http\Controllers\Controller;
@@ -32,7 +31,6 @@ class DocumentAttachmentController extends Controller
 
     public function __construct(
         private readonly CompanyAccessService $access,
-        private readonly PermissionAuthorizer $authorizer,
         private readonly DocumentAttachmentService $documents,
         private readonly DocumentParentAccess $parentAccess = new DocumentParentAccess,
     ) {}
