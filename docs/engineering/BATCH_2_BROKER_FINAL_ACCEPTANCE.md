@@ -18,7 +18,7 @@ This is **not** a claim of full `truckbill_broker` feature replacement (reports,
 | Item               | Value                                                                         |
 | ------------------ | ----------------------------------------------------------------------------- |
 | Initial Nexus HEAD | `701f4df` (`feat(broker): Save & Create Lorry Hire after Bilty confirmation`) |
-| Final local HEAD   | Post-certification tip (this pack)                                            |
+| Final local HEAD   | `252ac0130d912b74d800e34ad286c66b931e1f10` (+ docs tip `fae54bc`)             |
 | Legacy tracking    | `git ls-files legacy/` empty; trees ignored                                   |
 | Push / deploy      | **None** (absolute no-push)                                                   |
 
