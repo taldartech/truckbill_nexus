@@ -6,6 +6,7 @@ import { AppIconAction } from '@/components/app-icon-action';
 import InputError from '@/components/input-error';
 import { FormSection } from '@/components/form-section';
 import { PageShell } from '@/components/page-shell';
+import { SearchablePartySelect } from '@/components/searchable-party-select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -543,37 +544,16 @@ export default function LrForm({
                                         />
                                     </div>
                                 ) : null}
-                                <div className="space-y-2">
-                                    <Label htmlFor="billing_customer_party_id">
-                                        Billing Customer
-                                    </Label>
-                                    <select
-                                        id="billing_customer_party_id"
-                                        name="billing_customer_party_id"
-                                        className={fieldClass}
-                                        value={billingCustomerId}
-                                        onChange={(e) =>
-                                            setBillingCustomerId(e.target.value)
-                                        }
-                                    >
-                                        <option value="">Optional…</option>
-                                        {(
-                                            formOptions.billingCustomers ?? []
-                                        ).map((party) => (
-                                            <option
-                                                key={party.id}
-                                                value={party.id}
-                                            >
-                                                {party.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    <InputError
-                                        message={
-                                            errors.billing_customer_party_id
-                                        }
-                                    />
-                                </div>
+                                <SearchablePartySelect
+                                    id="billing_customer_party_id"
+                                    name="billing_customer_party_id"
+                                    label="Billing Customer"
+                                    options={formOptions.billingCustomers ?? []}
+                                    value={billingCustomerId}
+                                    onValueChange={setBillingCustomerId}
+                                    emptyMessage="No eligible Customers in this branch."
+                                    error={errors.billing_customer_party_id}
+                                />
                             </FormSection>
 
                             {needsTextLocations ||
@@ -590,47 +570,27 @@ export default function LrForm({
                                                 Loading
                                             </p>
                                             {needsParties || partiesOptional ? (
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="consignor_party_id">
-                                                        Consignor
-                                                        {needsParties
-                                                            ? ' *'
-                                                            : ''}
-                                                    </Label>
-                                                    <select
-                                                        id="consignor_party_id"
-                                                        name="consignor_party_id"
-                                                        className={fieldClass}
-                                                        defaultValue={
-                                                            lorryReceipt?.consignor_party_id ??
-                                                            ''
-                                                        }
-                                                        required={needsParties}
-                                                    >
-                                                        <option value="">
-                                                            Select
-                                                        </option>
-                                                        {formOptions.consignors.map(
-                                                            (party) => (
-                                                                <option
-                                                                    key={
-                                                                        party.id
-                                                                    }
-                                                                    value={
-                                                                        party.id
-                                                                    }
-                                                                >
-                                                                    {party.name}
-                                                                </option>
-                                                            ),
-                                                        )}
-                                                    </select>
-                                                    <InputError
-                                                        message={
-                                                            errors.consignor_party_id
-                                                        }
-                                                    />
-                                                </div>
+                                                <SearchablePartySelect
+                                                    id="consignor_party_id"
+                                                    name="consignor_party_id"
+                                                    label={
+                                                        needsParties
+                                                            ? 'Consignor'
+                                                            : 'Consignor'
+                                                    }
+                                                    options={
+                                                        formOptions.consignors
+                                                    }
+                                                    required={needsParties}
+                                                    defaultValue={
+                                                        lorryReceipt?.consignor_party_id ??
+                                                        ''
+                                                    }
+                                                    emptyMessage="No eligible Consignors in this branch."
+                                                    error={
+                                                        errors.consignor_party_id
+                                                    }
+                                                />
                                             ) : null}
                                             {needsTextLocations ? (
                                                 <div className="space-y-2">
@@ -701,47 +661,23 @@ export default function LrForm({
                                                 Unloading
                                             </p>
                                             {needsParties || partiesOptional ? (
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="consignee_party_id">
-                                                        Consignee
-                                                        {needsParties
-                                                            ? ' *'
-                                                            : ''}
-                                                    </Label>
-                                                    <select
-                                                        id="consignee_party_id"
-                                                        name="consignee_party_id"
-                                                        className={fieldClass}
-                                                        defaultValue={
-                                                            lorryReceipt?.consignee_party_id ??
-                                                            ''
-                                                        }
-                                                        required={needsParties}
-                                                    >
-                                                        <option value="">
-                                                            Select
-                                                        </option>
-                                                        {formOptions.consignees.map(
-                                                            (party) => (
-                                                                <option
-                                                                    key={
-                                                                        party.id
-                                                                    }
-                                                                    value={
-                                                                        party.id
-                                                                    }
-                                                                >
-                                                                    {party.name}
-                                                                </option>
-                                                            ),
-                                                        )}
-                                                    </select>
-                                                    <InputError
-                                                        message={
-                                                            errors.consignee_party_id
-                                                        }
-                                                    />
-                                                </div>
+                                                <SearchablePartySelect
+                                                    id="consignee_party_id"
+                                                    name="consignee_party_id"
+                                                    label="Consignee"
+                                                    options={
+                                                        formOptions.consignees
+                                                    }
+                                                    required={needsParties}
+                                                    defaultValue={
+                                                        lorryReceipt?.consignee_party_id ??
+                                                        ''
+                                                    }
+                                                    emptyMessage="No eligible Consignees in this branch."
+                                                    error={
+                                                        errors.consignee_party_id
+                                                    }
+                                                />
                                             ) : null}
                                             {needsTextLocations ? (
                                                 <div className="space-y-2">

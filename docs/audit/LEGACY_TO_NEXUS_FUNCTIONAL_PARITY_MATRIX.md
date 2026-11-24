@@ -44,21 +44,21 @@ Peer Broker audit marked **R19**, **R20** as Missing Current Scope (Phase 11 rep
 
 Workflow alignment inspection (`legacy/*` under Nexus repo) downgraded rows where domain logic exists but **operator workflow** (party pickers, weight UX, hire edit depth, Partload catalogues) is not yet comparable.
 
-| ID       | Was        | **Now**     | Evidence                                                               |
-| -------- | ---------- | ----------- | ---------------------------------------------------------------------- |
-| SHR-04   | Equivalent | **Partial** | Partload `PackageType`, `Group`, `Agent` masters absent in Nexus       |
-| SHR-11   | Improved   | **Partial** | Legacy admin onboarding/offline subscription desk not in Nexus CRM     |
-| BRK-LR02 | Equivalent | **Partial** | `lr-form.tsx` native party `<select>`; Batch 1 `SearchablePartySelect` |
-| BRK-LR03 | Equivalent | **Partial** | Same + financial freeze vs legacy edit                                 |
-| BRK-FH02 | Equivalent | **Partial** | No `FreightBookingController::update` parity                           |
-| BRK-M09  | Equivalent | **Partial** | Vehicle CRUD OK; driver register bulk absent                           |
-| OF-B02   | Equivalent | **Partial** | Legacy `TripFormRedesigned.vue` multi-leg UX deeper                    |
-| OF-B18   | Equivalent | **Partial** | Legacy `weight_ton` leg calc vs Nexus allocations                      |
-| OF-E05   | Equivalent | **Partial** | Trip invoice path — Not Verified E2E                                   |
+| ID       | Was        | **Now**      | Evidence                                                               |
+| -------- | ---------- | ------------ | ---------------------------------------------------------------------- |
+| SHR-04   | Equivalent | **Partial**  | Partload `PackageType`, `Group`, `Agent` masters absent in Nexus       |
+| SHR-11   | Improved   | **Partial**  | Legacy admin onboarding/offline subscription desk not in Nexus CRM     |
+| BRK-LR02 | Equivalent | **Improved** | Batch 1: role-filtered searchable parties + MT weight UX on create     |
+| BRK-LR03 | Equivalent | **Partial**  | MT/searchable on edit shipped; financial freeze vs legacy edit remains |
+| BRK-FH02 | Equivalent | **Partial**  | No `FreightBookingController::update` parity                           |
+| BRK-M09  | Equivalent | **Partial**  | Vehicle CRUD OK; driver register bulk absent                           |
+| OF-B02   | Equivalent | **Partial**  | Legacy `TripFormRedesigned.vue` multi-leg UX deeper                    |
+| OF-B18   | Equivalent | **Partial**  | Legacy `weight_ton` leg calc vs Nexus allocations                      |
+| OF-E05   | Equivalent | **Partial**  | Trip invoice path — Not Verified E2E                                   |
 
 **Broker Equivalent count (peer §1–9):** 33 → **29** after LR02/LR03/FH02/M09 reclass (peer doc counts unchanged; merged matrix uses revised workflow truth).
 
-**Batch 1 (in flight):** party selector + weight MT/KG on unified LR — see `OPERATIONAL_WEIGHT_UNIT_STANDARD.md`.
+**Batch 1 (committed `03bdae1` + follow-ups):** party selector eligibility + MT weight UX — see `OPERATIONAL_WEIGHT_UNIT_STANDARD.md`, `PARTY_SELECTOR_ELIGIBILITY_CERTIFICATION.md`.
 
 ---
 
