@@ -2,6 +2,7 @@ import { Head, router } from '@inertiajs/react';
 import { Eye } from 'lucide-react';
 import { AppIconAction } from '@/components/app-icon-action';
 import { PageShell } from '@/components/page-shell';
+import { TablePagination } from '@/components/table-pagination';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -172,6 +173,12 @@ export default function LorryHiresIndex({
                         </tbody>
                     </table>
                 </div>
+
+                <TablePagination
+                    baseUrl={urls.index}
+                    meta={lorryHires.meta}
+                    query={{ status: filters.status || undefined }}
+                />
             </PageShell>
         </>
     );

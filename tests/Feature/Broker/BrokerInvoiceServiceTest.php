@@ -68,6 +68,7 @@ test('multi-lr invoice combines memo and non-memo sections for same customer', f
     $lrB = brokerCreateBrokerLr($ctx);
     brokerSetBillingCustomer($lrB, $ctx, $customer);
     $hireB = app(LorryHireService::class)->createFromLorryReceipt($lrB, $ctx['member'], [
+        'transporter_party_id' => $lrB->vehicle?->owner_party_id,
         'goods_lines' => brokerGoodsPayloadFromLr($lrB),
     ]);
     $lrIds[] = brokerDeliverLr($hireB->lorryReceipt, $ctx)->id;

@@ -6,10 +6,12 @@ use App\Domains\Company\CompanyAccessService;
 use App\Domains\Company\CompanyProfileValidator;
 use App\Domains\Company\MasterDataVisibilityResolver;
 use App\Domains\Document\DocumentAttachmentService;
+use App\Domains\Master\Exceptions\MasterDomainException;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Party\Exceptions\PartyDomainException;
 use App\Domains\Master\Party\PartyRoleAttributeValidator;
 use App\Domains\Master\Party\PartyService;
+use App\Domains\Master\Support\MasterAccess;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Tax\Exceptions\TaxDomainException;
 use App\Domains\Tax\TransporterTdsCalculationService;
@@ -273,7 +275,7 @@ class PartyController extends Controller
     public function show(Request $request, Party $party, Company $company, Branch $branch): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertParty($company, $party);
+        $this->assertParty($company, $branch, $party);
         $permissions = $this->masterPermissions($actor, $company, $branch, $this->access, $this->authorizer);
 
         try {
@@ -321,7 +323,7 @@ class PartyController extends Controller
     public function edit(Request $request, Party $party, Company $company, Branch $branch): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertParty($company, $party);
+        $this->assertParty($company, $branch, $party);
         $permissions = $this->masterPermissions($actor, $company, $branch, $this->access, $this->authorizer);
 
         if (! $permissions['can_edit']) {
@@ -351,7 +353,7 @@ class PartyController extends Controller
     public function update(Request $request, Party $party, Company $company, Branch $branch): RedirectResponse|JsonResponse
     {
         $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertParty($company, $party);
+        $this->assertParty($company, $branch, $party);
 
         /** @var User $actor */
         $actor = $request->user();
@@ -404,7 +406,7 @@ class PartyController extends Controller
     public function assignRole(Request $request, Party $party, Company $company, Branch $branch): RedirectResponse|JsonResponse
     {
         $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertParty($company, $party);
+        $this->assertParty($company, $branch, $party);
 
         /** @var User $actor */
         $actor = $request->user();
@@ -437,7 +439,7 @@ class PartyController extends Controller
     public function removeRole(Request $request, Party $party, PartyRole $partyRole, Company $company, Branch $branch): RedirectResponse|JsonResponse
     {
         $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertParty($company, $party);
+        $this->assertParty($company, $branch, $party);
 
         if ($partyRole->party_id !== $party->id || $partyRole->company_id !== $company->id) {
             abort(404);
@@ -468,7 +470,7 @@ class PartyController extends Controller
     public function destroy(Request $request, Party $party, Company $company, Branch $branch): RedirectResponse|JsonResponse
     {
         $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertParty($company, $party);
+        $this->assertParty($company, $branch, $party);
 
         /** @var User $actor */
         $actor = $request->user();
@@ -540,9 +542,16 @@ class PartyController extends Controller
         ];
     }
 
-    private function assertParty(Company $company, Party $party): void
+    private function assertParty(Company $company, Branch $branch, Party $party): void
     {
         if ($party->company_id !== $company->id) {
+            abort(404);
+        }
+
+        try {
+            app(MasterAccess::class)
+                ->assertRecordVisibleInBranch($company, $branch, Party::class, $party->id);
+        } catch (MasterDomainException) {
             abort(404);
         }
     }

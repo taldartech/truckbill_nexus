@@ -178,6 +178,7 @@ test('bulk vouchers reject mixed transporter and vehicle', function () {
     ]);
 
     $hireB = app(LorryHireService::class)->createFromLorryReceipt($lrB, $ctx['member'], [
+        'transporter_party_id' => $lrB->vehicle?->owner_party_id,
         'goods_lines' => brokerGoodsPayloadFromLr($lrB),
         'transporter_party_id' => $otherMarket['transporter']->id,
     ]);
@@ -204,6 +205,7 @@ test('bulk vouchers create separate voucher per hire for same transporter and ve
     tripActivate($ctx['company'], $ctx['branch']);
     $lrA = brokerCreateBrokerLr($ctx);
     $hireA = app(LorryHireService::class)->createFromLorryReceipt($lrA, $ctx['member'], [
+        'transporter_party_id' => $lrA->vehicle?->owner_party_id,
         'goods_lines' => brokerGoodsPayloadFromLr($lrA),
     ]);
 
@@ -229,6 +231,7 @@ test('bulk vouchers create separate voucher per hire for same transporter and ve
     ]);
 
     $hireB = app(LorryHireService::class)->createFromLorryReceipt($lrB, $ctx['member'], [
+        'transporter_party_id' => $lrB->vehicle?->owner_party_id,
         'goods_lines' => brokerGoodsPayloadFromLr($lrB),
     ]);
 

@@ -8,6 +8,7 @@ use App\Domains\Document\DocumentAttachmentService;
 use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Master\Exceptions\MasterDomainException;
 use App\Domains\Master\Party\Enums\PartyRoleType;
+use App\Domains\Master\Support\MasterAccess;
 use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
 use App\Domains\Master\Vehicle\VehicleService;
 use App\Domains\Rbac\PermissionAuthorizer;
@@ -72,6 +73,7 @@ class VehicleController extends Controller
                     'current_page' => $page->currentPage(),
                     'last_page' => $page->lastPage(),
                     'total' => $page->total(),
+                    'per_page' => $page->perPage(),
                 ],
             ],
             'dataVisibility' => $this->dataVisibilityPresentation($company),
@@ -139,6 +141,7 @@ class VehicleController extends Controller
                 $scopeBranch,
                 $validated,
                 $validated['remark'] ?? 'Create vehicle',
+                $branch,
             );
         } catch (MasterDomainException $e) {
             abort(403, $e->getMessage());
@@ -152,7 +155,7 @@ class VehicleController extends Controller
     public function show(Request $request, Vehicle $vehicle, Company $company, Branch $branch): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertVehicle($company, $vehicle);
+        $this->assertVehicle($company, $branch, $vehicle);
         $permissions = $this->masterPermissions($actor, $company, $branch, $this->access, $this->authorizer);
 
         try {
@@ -193,7 +196,7 @@ class VehicleController extends Controller
     public function edit(Request $request, Vehicle $vehicle, Company $company, Branch $branch): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertVehicle($company, $vehicle);
+        $this->assertVehicle($company, $branch, $vehicle);
         $permissions = $this->masterPermissions($actor, $company, $branch, $this->access, $this->authorizer);
 
         if (! $permissions['can_edit']) {
@@ -218,7 +221,7 @@ class VehicleController extends Controller
     public function update(Request $request, Vehicle $vehicle, Company $company, Branch $branch): RedirectResponse
     {
         $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertVehicle($company, $vehicle);
+        $this->assertVehicle($company, $branch, $vehicle);
 
         /** @var User $actor */
         $actor = $request->user();
@@ -242,7 +245,7 @@ class VehicleController extends Controller
         ]);
 
         try {
-            $this->vehicles->update($actor, $vehicle, $validated, $validated['remark']);
+            $this->vehicles->update($actor, $vehicle, $validated, $validated['remark'], $branch);
         } catch (MasterDomainException $e) {
             abort(403, $e->getMessage());
         }
@@ -255,7 +258,7 @@ class VehicleController extends Controller
     public function destroy(Request $request, Vehicle $vehicle, Company $company, Branch $branch): RedirectResponse
     {
         $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertVehicle($company, $vehicle);
+        $this->assertVehicle($company, $branch, $vehicle);
 
         /** @var User $actor */
         $actor = $request->user();
@@ -386,9 +389,16 @@ class VehicleController extends Controller
         ];
     }
 
-    private function assertVehicle(Company $company, Vehicle $vehicle): void
+    private function assertVehicle(Company $company, Branch $branch, Vehicle $vehicle): void
     {
         if ($vehicle->company_id !== $company->id) {
+            abort(404);
+        }
+
+        try {
+            app(MasterAccess::class)
+                ->assertRecordVisibleInBranch($company, $branch, Vehicle::class, $vehicle->id);
+        } catch (MasterDomainException) {
             abort(404);
         }
     }

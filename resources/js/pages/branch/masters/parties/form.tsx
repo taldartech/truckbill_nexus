@@ -1,5 +1,14 @@
 import { Form, Head, Link, useHttp } from '@inertiajs/react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import {
+    diffScalarFields,
+    type ScalarFieldDef,
+} from '@/components/form-confirmation/diff';
+import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
+import type {
+    ChangeReview,
+    FieldReview,
+} from '@/components/form-confirmation/types';
 import { FormSection } from '@/components/form-section';
 import InputError from '@/components/input-error';
 import { PageShell } from '@/components/page-shell';
@@ -45,6 +54,57 @@ type Props = {
         tdsPreview?: string;
     };
 };
+
+type PartyDraft = {
+    name: string;
+    contact_person: string;
+    contact_number: string;
+    email: string;
+    state: string;
+    city: string;
+    address: string;
+    gstin: string;
+    pan: string;
+    is_gst_applicable: string;
+    roles: string;
+    remark: string;
+};
+
+const PARTY_FIELD_DEFS: ScalarFieldDef<PartyDraft>[] = [
+    { key: 'name', label: 'Name' },
+    { key: 'contact_person', label: 'Contact person' },
+    { key: 'contact_number', label: 'Contact number' },
+    { key: 'email', label: 'Email' },
+    { key: 'state', label: 'State' },
+    { key: 'city', label: 'City' },
+    { key: 'address', label: 'Address' },
+    { key: 'gstin', label: 'GSTIN' },
+    { key: 'pan', label: 'PAN' },
+    { key: 'is_gst_applicable', label: 'GST applicable' },
+    { key: 'roles', label: 'Roles' },
+    { key: 'remark', label: 'Remark' },
+];
+
+function readFormControlValue(form: HTMLFormElement, id: string): string {
+    const element = form.querySelector(`#${id}`) as
+        | HTMLInputElement
+        | HTMLSelectElement
+        | null;
+    return element?.value?.trim() ?? '';
+}
+
+function roleLabels(
+    roleCodes: string[],
+    roleOptions: { value: string; label: string }[],
+): string {
+    return roleCodes
+        .map(
+            (code) =>
+                roleOptions.find((option) => option.value === code)?.label ??
+                code,
+        )
+        .join(', ');
+}
 
 const CUSTOMER_FAMILY = new Set(['customer', 'consignor', 'consignee']);
 const VENDOR_ROLES = new Set(['general_vendor', 'pump_vendor']);
@@ -564,6 +624,11 @@ function TransporterTdsPanel({
 }
 
 export default function PartyForm({ mode, party, roleOptions, links }: Props) {
+    const submitAllowed = useRef(false);
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [reviewFields, setReviewFields] = useState<FieldReview[]>([]);
+    const [reviewChanges, setReviewChanges] = useState<ChangeReview[]>([]);
+
     const [selectedRoles, setSelectedRoles] = useState<string[]>(() => {
         if (mode === 'edit' && party?.roles?.length) {
             return party.roles
@@ -613,6 +678,91 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
     const method = mode === 'create' ? 'post' : 'patch';
     const tdsPreviewUrl = links.tdsPreview ?? TDS_PREVIEW_URL;
 
+    const buildDraft = (
+        form: HTMLFormElement,
+        panValue: string,
+    ): PartyDraft => ({
+        name: readFormControlValue(form, 'name'),
+        contact_person: readFormControlValue(form, 'contact_person'),
+        contact_number: readFormControlValue(form, 'contact_number'),
+        email: readFormControlValue(form, 'email'),
+        state: readFormControlValue(form, 'state'),
+        city: readFormControlValue(form, 'city'),
+        address: readFormControlValue(form, 'address'),
+        gstin: readFormControlValue(form, 'gstin'),
+        pan: panValue.trim(),
+        is_gst_applicable:
+            readFormControlValue(form, 'is_gst_applicable') === '1'
+                ? 'Yes'
+                : 'No',
+        roles: roleLabels(selectedRoles, roleOptions),
+        remark: readFormControlValue(form, 'remark'),
+    });
+
+    const buildOriginal = (): PartyDraft => {
+        const activeRoles =
+            party?.roles
+                ?.filter((role) => role.is_active !== false)
+                .map((role) => role.role) ?? [];
+
+        return {
+            name: party?.name ?? '',
+            contact_person: party?.contact_person ?? '',
+            contact_number: party?.contact_number ?? '',
+            email: party?.email ?? '',
+            state: party?.state ?? '',
+            city: party?.city ?? '',
+            address: party?.address ?? '',
+            gstin: party?.gstin ?? '',
+            pan: party?.pan ?? '',
+            is_gst_applicable:
+                party?.is_gst_applicable === false ? 'No' : 'Yes',
+            roles: roleLabels(activeRoles, roleOptions),
+            remark: '',
+        };
+    };
+
+    const openConfirmation = (form: HTMLFormElement) => {
+        const draft = buildDraft(form, pan);
+        if (mode === 'create') {
+            setReviewFields(
+                PARTY_FIELD_DEFS.filter((field) => draft[field.key] !== '').map(
+                    (field) => ({
+                        label: field.label,
+                        value: draft[field.key],
+                    }),
+                ),
+            );
+            setReviewChanges([]);
+        } else {
+            setReviewFields([]);
+            setReviewChanges(
+                diffScalarFields(buildOriginal(), draft, PARTY_FIELD_DEFS),
+            );
+        }
+        setConfirmOpen(true);
+    };
+
+    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+        if (!submitAllowed.current) {
+            event.preventDefault();
+            openConfirmation(event.currentTarget);
+            return;
+        }
+        submitAllowed.current = false;
+    };
+
+    const handleConfirm = () => {
+        submitAllowed.current = true;
+        setConfirmOpen(false);
+        window.setTimeout(() => {
+            const form = document.getElementById(
+                'party-master-form',
+            ) as HTMLFormElement | null;
+            form?.requestSubmit();
+        }, 0);
+    };
+
     return (
         <>
             <Head
@@ -628,9 +778,11 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
                 description="Sectioned party master — roles unlock transporter TDS and driver panels."
             >
                 <Form
+                    id="party-master-form"
                     action={action}
                     method={method}
                     className="grid w-full gap-5"
+                    onSubmit={handleSubmit}
                 >
                     {({ errors, processing }) => (
                         <>
@@ -1233,6 +1385,26 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
                         </>
                     )}
                 </Form>
+
+                <FormConfirmationDialog
+                    open={confirmOpen}
+                    onOpenChange={setConfirmOpen}
+                    mode={mode === 'create' ? 'create' : 'edit'}
+                    title={
+                        mode === 'create'
+                            ? 'Create this party?'
+                            : 'Save party changes?'
+                    }
+                    description={
+                        mode === 'create'
+                            ? 'Review the values below before creating the party.'
+                            : 'Review field changes before saving.'
+                    }
+                    fields={reviewFields}
+                    changes={reviewChanges}
+                    processing={false}
+                    onConfirm={handleConfirm}
+                />
             </PageShell>
         </>
     );

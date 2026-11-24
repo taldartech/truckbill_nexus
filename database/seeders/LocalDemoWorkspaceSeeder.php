@@ -352,11 +352,15 @@ class LocalDemoWorkspaceSeeder extends Seeder
             $companyName === self::COMPANY_A_NAME ? 'Mumbai' : 'Ahmedabad',
         );
 
+        // Shared Data companies store masters with null branch_id so every
+        // authorized branch can use them; Branch-wise Restricted keeps head scope.
+        $masterScopeBranch = $visibility === DataVisibility::SharedData ? null : $head;
+
         $transporterParty = $this->ensurePartyWithRoles(
             $parties,
             $owner,
             $company,
-            $head,
+            $masterScopeBranch,
             'demo-party:'.$company->id.':transporter-1',
             $companyName === self::COMPANY_A_NAME ? 'Konkan Transporters' : 'Saurashtra Carriers',
             [
@@ -475,11 +479,12 @@ class LocalDemoWorkspaceSeeder extends Seeder
         );
         $marketVehicle = $this->ensureVehicle(
             $company,
-            $second,
+            $masterScopeBranch ?? $second,
             'MH14DEMO'.substr((string) crc32($company->id.'2'), 0, 4),
             ownership: VehicleOwnership::Market,
             primaryDriverPartyId: $substituteDriver->id,
             ownerPartyId: $transporterParty->id,
+            sharedScope: $visibility === DataVisibility::SharedData,
         );
         $this->ensureBank($company, $head, 'demo-bank:'.$company->id.':1');
         $fromStation = $this->ensureStation($owner, 'demo-station:'.$company->id.':1', $companyName === self::COMPANY_A_NAME ? 'Bhiwandi Hub' : 'Vatva Hub');
@@ -1069,7 +1074,12 @@ class LocalDemoWorkspaceSeeder extends Seeder
             ->first();
 
         if ($existing !== null) {
-            return $existing;
+            // Align historical demo fixtures with current company visibility scope.
+            if ($existing->branch_id !== ($branch?->id)) {
+                $existing->forceFill(['branch_id' => $branch?->id])->save();
+            }
+
+            return $existing->fresh() ?? $existing;
         }
 
         $pan = null;
@@ -1109,6 +1119,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
         ?string $truckTypeId = null,
         ?string $tyreLayoutId = null,
         ?string $ownerPartyId = null,
+        bool $sharedScope = false,
     ): Vehicle {
         $existing = Vehicle::query()
             ->where('company_id', $company->id)
@@ -1122,6 +1133,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
             'owner_party_id' => $ownership === VehicleOwnership::Market ? $ownerPartyId : null,
             'primary_driver_party_id' => $primaryDriverPartyId,
             'is_active' => true,
+            'branch_id' => $sharedScope ? null : $branch->id,
         ];
 
         if ($existing !== null) {
@@ -1133,7 +1145,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
         return Vehicle::query()->create([
             'id' => (string) Str::uuid(),
             'company_id' => $company->id,
-            'branch_id' => $branch->id,
+            'branch_id' => $sharedScope ? null : $branch->id,
             'registration_number' => $registration,
             'vehicle_type' => 'truck',
             'make' => 'Tata',
@@ -2062,6 +2074,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
 
         if ($pendingLr->lorryHire()->whereNull('deleted_at')->doesntExist()) {
             $lorryHires->createFromLorryReceipt($pendingLr, $owner, [
+                'transporter_party_id' => $pendingLr->vehicle?->owner_party_id,
                 'goods_lines' => $this->brokerGoodsLinesFromLorryReceipt($pendingLr),
             ]);
         }
@@ -2105,6 +2118,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
         $activeHire = $activeLr->lorryHire()->whereNull('deleted_at')->first();
         if ($activeHire === null) {
             $activeHire = $lorryHires->createFromLorryReceipt($activeLr, $owner, [
+                'transporter_party_id' => $activeLr->vehicle?->owner_party_id,
                 'goods_lines' => $this->brokerGoodsLinesFromLorryReceipt($activeLr),
             ]);
         }
@@ -2240,9 +2254,11 @@ class LocalDemoWorkspaceSeeder extends Seeder
             ]);
 
             $linkedHireA = $lorryHires->createFromLorryReceipt($linkedOne, $owner, [
+                'transporter_party_id' => $linkedOne->vehicle?->owner_party_id,
                 'goods_lines' => $this->brokerGoodsLinesFromLorryReceipt($linkedOne),
             ]);
             $lorryHires->createFromLorryReceipt($linkedTwo, $owner, [
+                'transporter_party_id' => $linkedTwo->vehicle?->owner_party_id,
                 'goods_lines' => $this->brokerGoodsLinesFromLorryReceipt($linkedTwo),
             ]);
 

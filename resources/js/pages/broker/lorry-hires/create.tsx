@@ -1,6 +1,8 @@
 import { Form, Head, Link } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
+import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
+import type { FieldReview } from '@/components/form-confirmation/types';
 import InputError from '@/components/input-error';
 import { FormSection } from '@/components/form-section';
 import { PageShell } from '@/components/page-shell';
@@ -44,6 +46,9 @@ type Props = {
         role_label: string;
         pan_status_label: string | null;
     } | null;
+    transporterOptions: Array<{ id: string; name: string }>;
+    suggestedPayeeId?: string | null;
+    payeeRequired?: boolean;
     tdsPreview: {
         applicable_percent: string;
         explanation: string;
@@ -189,15 +194,46 @@ function ReadOnlyMetric({ label, value }: { label: string; value: string }) {
     );
 }
 
+function initialTransporterPartyId(
+    payee: Props['payee'],
+    transporterOptions: Array<{ id: string; name: string }>,
+    suggestedPayeeId?: string | null,
+): string {
+    if (
+        suggestedPayeeId &&
+        transporterOptions.some((option) => option.id === suggestedPayeeId)
+    ) {
+        return suggestedPayeeId;
+    }
+    if (payee && transporterOptions.some((option) => option.id === payee.id)) {
+        return payee.id;
+    }
+    if (transporterOptions.length === 1) {
+        return transporterOptions[0].id;
+    }
+
+    return '';
+}
+
 export default function LorryHireCreate({
     lorryReceipt,
     payee,
+    transporterOptions,
+    suggestedPayeeId = null,
+    payeeRequired: payeeRequiredProp,
     tdsPreview,
     goodsRows,
     rateTypeOptions,
     permissions,
     urls,
 }: Props) {
+    const submitAllowed = useRef(false);
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [reviewFields, setReviewFields] = useState<FieldReview[]>([]);
+    const [transporterPartyId, setTransporterPartyId] = useState(() =>
+        initialTransporterPartyId(payee, transporterOptions, suggestedPayeeId),
+    );
+
     const [lineDrafts, setLineDrafts] = useState<LineDraft[]>(() =>
         goodsRows.map((row) => ({
             loading_weight: row.suggested_loading_weight ?? '',
@@ -283,6 +319,73 @@ export default function LorryHireCreate({
         .filter(Boolean)
         .join(' → ');
 
+    const selectedPayeeName =
+        transporterOptions.find((option) => option.id === transporterPartyId)
+            ?.name ??
+        payee?.name ??
+        '—';
+
+    const openConfirmation = () => {
+        const fields: FieldReview[] = [
+            {
+                label: 'Vehicle',
+                value: lorryReceipt.vehicle_registration ?? '—',
+            },
+            {
+                label: 'Payee / Transporter',
+                value: selectedPayeeName,
+            },
+            {
+                label: 'Goods lines',
+                value: String(goodsRows.length),
+            },
+            {
+                label: 'Total transporter freight',
+                value: `₹${formatMoney(transporterFreightTotal)}`,
+            },
+            {
+                label: 'TDS %',
+                value:
+                    tdsPreview?.applicable_percent !== undefined &&
+                    tdsPreview.applicable_percent !== ''
+                        ? `${tdsPreview.applicable_percent}%`
+                        : '—',
+            },
+            {
+                label: 'TDS amount',
+                value: tdsAmount !== null ? `₹${formatMoney(tdsAmount)}` : '—',
+            },
+            {
+                label: 'Net payable',
+                value: `₹${formatMoney(netPayable)}`,
+            },
+        ];
+        setReviewFields(fields);
+        setConfirmOpen(true);
+    };
+
+    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+        if (!submitAllowed.current) {
+            event.preventDefault();
+            openConfirmation();
+            return;
+        }
+        submitAllowed.current = false;
+    };
+
+    const handleConfirm = () => {
+        submitAllowed.current = true;
+        setConfirmOpen(false);
+        window.setTimeout(() => {
+            const form = document.getElementById(
+                'lorry-hire-create-form',
+            ) as HTMLFormElement | null;
+            form?.requestSubmit();
+        }, 0);
+    };
+
+    const payeeRequired = payeeRequiredProp ?? transporterOptions.length > 0;
+
     return (
         <>
             <Head
@@ -310,9 +413,11 @@ export default function LorryHireCreate({
                 }
             >
                 <Form
+                    id="lorry-hire-create-form"
                     action={urls.store}
                     method="post"
                     className="grid w-full gap-4"
+                    onSubmit={handleSubmit}
                 >
                     {({ processing, errors }) => (
                         <>
@@ -365,32 +470,53 @@ export default function LorryHireCreate({
 
                             <FormSection
                                 title="Payee / transporter"
-                                description="Resolved from market vehicle on this bilty"
+                                description="Select the transporter who will receive hire payment."
                                 columns={2}
                             >
-                                {payee ? (
-                                    <>
-                                        <ReadOnlyMetric
-                                            label="Name"
-                                            value={payee.name}
-                                        />
-                                        <ReadOnlyMetric
-                                            label="Role"
-                                            value={payee.role_label}
-                                        />
-                                        {payee.pan_status_label ? (
-                                            <ReadOnlyMetric
-                                                label="PAN status"
-                                                value={payee.pan_status_label}
-                                            />
+                                {transporterOptions.length > 0 ? (
+                                    <div className="space-y-1 md:col-span-2">
+                                        <Label htmlFor="transporter_party_id">
+                                            Payee / Transporter
+                                            {payeeRequired ? ' *' : ''}
+                                        </Label>
+                                        <select
+                                            id="transporter_party_id"
+                                            name="transporter_party_id"
+                                            required={payeeRequired}
+                                            className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                            value={transporterPartyId}
+                                            onChange={(event) =>
+                                                setTransporterPartyId(
+                                                    event.target.value,
+                                                )
+                                            }
+                                        >
+                                            <option value="">
+                                                Select transporter
+                                            </option>
+                                            {transporterOptions.map(
+                                                (option) => (
+                                                    <option
+                                                        key={option.id}
+                                                        value={option.id}
+                                                    >
+                                                        {option.name}
+                                                    </option>
+                                                ),
+                                            )}
+                                        </select>
+                                        {payee?.pan_status_label ? (
+                                            <p className="text-xs text-muted-foreground">
+                                                Suggested payee PAN status:{' '}
+                                                {payee.pan_status_label}
+                                            </p>
                                         ) : null}
-                                    </>
+                                    </div>
                                 ) : (
                                     <p className="text-sm text-amber-800 md:col-span-2">
-                                        No transporter could be resolved for
-                                        this bilty. You may not be able to
-                                        submit until the vehicle is linked to a
-                                        transporter.
+                                        No active transporters are available.
+                                        Add a transporter party before creating
+                                        a Lorry Hire.
                                     </p>
                                 )}
                             </FormSection>
@@ -725,6 +851,16 @@ export default function LorryHireCreate({
                         </>
                     )}
                 </Form>
+
+                <FormConfirmationDialog
+                    open={confirmOpen}
+                    onOpenChange={setConfirmOpen}
+                    mode="create"
+                    title="Create this Lorry Hire?"
+                    description="Review vehicle, payee, rates, TDS, and net payable before submitting."
+                    fields={reviewFields}
+                    onConfirm={handleConfirm}
+                />
             </PageShell>
         </>
     );

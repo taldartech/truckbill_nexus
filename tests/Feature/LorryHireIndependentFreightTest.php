@@ -46,6 +46,7 @@ test('transporter freight rate and loading weight are independent of customer bi
 
     $row = $lr->goodsRows->first();
     $hire = app(LorryHireService::class)->createFromLorryReceipt($lr, $ctx['member'], [
+        'transporter_party_id' => $lr->vehicle?->owner_party_id,
         'goods_lines' => [[
             'lr_goods_row_id' => $row->id,
             'rate_type' => FreightRateType::PerMt->value,
@@ -88,19 +89,22 @@ test('create form presents broker free-text route labels', function () {
             ->where('lorryReceipt.unloading_station', 'Pune')
             ->has('goodsRows.0.id')
             ->has('rateTypeOptions')
-            ->has('payee.name'));
+            ->has('transporterOptions')
+            ->where('payeeRequired', true));
 });
 
 test('store endpoint validates loading_weight and persists independent transporter rate', function () {
     $ctx = brokerWorkspace();
     tripActivate($ctx['company'], $ctx['branch']);
     $lr = brokerCreateBrokerLr($ctx);
+    $lr->loadMissing('vehicle');
     $rowId = $lr->goodsRows->first()->id;
 
     rbacHttpAs($ctx['member'], $ctx);
 
     $this->withoutMiddleware(PreventRequestForgery::class)
         ->post(route('branch.broker.lorry-hires.store-from-lr', [$lr]), [
+            'transporter_party_id' => $lr->vehicle?->owner_party_id,
             'goods_lines' => [[
                 'lr_goods_row_id' => $rowId,
                 'rate_type' => FreightRateType::PerMt->value,

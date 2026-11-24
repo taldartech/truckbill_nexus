@@ -8,6 +8,7 @@ import {
 } from '@/components/data-table';
 import { FormSection } from '@/components/form-section';
 import { PageShell } from '@/components/page-shell';
+import { TablePagination } from '@/components/table-pagination';
 import { Button } from '@/components/ui/button';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 
@@ -33,6 +34,7 @@ type Props = {
             current_page: number;
             last_page: number;
             total: number;
+            per_page?: number;
             includes_unassigned: boolean;
         };
     };
@@ -151,13 +153,18 @@ export default function BranchEnquiriesIndex({
                     )}
                 />
 
-                <p className="text-xs text-muted-foreground">
-                    Page {enquiries.meta.current_page} of{' '}
-                    {enquiries.meta.last_page} · {enquiries.meta.total} total
-                    {enquiries.meta.includes_unassigned
-                        ? ' · includes unassigned queue'
-                        : ''}
-                </p>
+                <TablePagination
+                    baseUrl={urls.index}
+                    meta={enquiries.meta}
+                    query={{
+                        unassigned: filters.unassigned ? '1' : undefined,
+                    }}
+                />
+                {enquiries.meta.includes_unassigned ? (
+                    <p className="text-xs text-muted-foreground">
+                        Includes unassigned queue
+                    </p>
+                ) : null}
             </PageShell>
         </>
     );

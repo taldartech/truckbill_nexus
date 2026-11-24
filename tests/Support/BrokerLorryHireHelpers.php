@@ -184,6 +184,22 @@ if (! function_exists('brokerGrantVoucherPermissions')) {
     }
 }
 
+if (! function_exists('brokerHirePayloadFromLr')) {
+    /**
+     * @param  array<string, mixed>  $extra
+     * @return array<string, mixed>
+     */
+    function brokerHirePayloadFromLr(LorryReceipt $lr, array $extra = []): array
+    {
+        $lr->loadMissing('vehicle');
+
+        return array_merge([
+            'transporter_party_id' => $lr->vehicle?->owner_party_id,
+            'goods_lines' => brokerGoodsPayloadFromLr($lr),
+        ], $extra);
+    }
+}
+
 if (! function_exists('brokerCreateLorryHire')) {
     /**
      * @param  array<string, mixed>  $ctx
@@ -193,9 +209,11 @@ if (! function_exists('brokerCreateLorryHire')) {
         brokerGrantLorryHirePermissions();
         $lr = brokerCreateBrokerLr($ctx);
 
-        return app(LorryHireService::class)->createFromLorryReceipt($lr, $ctx['member'], [
-            'goods_lines' => brokerGoodsPayloadFromLr($lr),
-        ]);
+        return app(LorryHireService::class)->createFromLorryReceipt(
+            $lr,
+            $ctx['member'],
+            brokerHirePayloadFromLr($lr),
+        );
     }
 }
 

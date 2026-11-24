@@ -132,8 +132,18 @@ class LorryHireController extends Controller
         ]);
 
         $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
-        $payee = $this->payeePreview($lorryReceipt);
-        $tdsPreview = $this->tdsPreviewForPayee($payee);
+        $transporterOptions = $this->transporterOptions($company, $branch);
+        $payee = $this->payeePreview($lorryReceipt, $company, $branch);
+        $suggestedPayeeId = null;
+        if ($payee !== null) {
+            foreach ($transporterOptions as $option) {
+                if ($option['id'] === $payee['id']) {
+                    $suggestedPayeeId = $payee['id'];
+                    break;
+                }
+            }
+        }
+        $tdsPreview = $suggestedPayeeId !== null ? $this->tdsPreviewForPayee($payee) : null;
 
         return Inertia::render('broker/lorry-hires/create', [
             'lorryReceipt' => [
@@ -151,7 +161,10 @@ class LorryHireController extends Controller
                     $maySeeFreight,
                 ),
             ],
-            'payee' => $payee,
+            'payee' => $suggestedPayeeId !== null ? $payee : null,
+            'suggestedPayeeId' => $suggestedPayeeId,
+            'transporterOptions' => $transporterOptions,
+            'payeeRequired' => true,
             'tdsPreview' => $tdsPreview,
             'goodsRows' => $lorryReceipt->goodsRows->map(function ($row) use ($maySeeFreight): array {
                 $type = $row->freight_rate_type;
@@ -193,6 +206,7 @@ class LorryHireController extends Controller
         $validated = $request->validate([
             'hire_date' => ['nullable', 'date'],
             'remarks' => ['nullable', 'string', 'max:2000'],
+            'transporter_party_id' => ['required', 'uuid'],
             'goods_lines' => ['required', 'array', 'min:1'],
             'goods_lines.*.lr_goods_row_id' => ['required', 'uuid'],
             'goods_lines.*.rate_type' => ['nullable', 'string', Rule::enum(FreightRateType::class)],
@@ -613,7 +627,7 @@ class LorryHireController extends Controller
     /**
      * @return array{id: string, name: string, role_label: string, pan_status_label: string|null}|null
      */
-    private function payeePreview(LorryReceipt $lorryReceipt): ?array
+    private function payeePreview(LorryReceipt $lorryReceipt, Company $company, Branch $branch): ?array
     {
         $partyId = $lorryReceipt->vehicle?->owner_party_id;
         if ($partyId === null || $partyId === '') {
@@ -621,7 +635,7 @@ class LorryHireController extends Controller
         }
 
         $party = Party::query()
-            ->where('company_id', $lorryReceipt->company_id)
+            ->visibleInBranch($company->id, $branch->id)
             ->whereKey($partyId)
             ->whereNull('deleted_at')
             ->first();
@@ -688,5 +702,32 @@ class LorryHireController extends Controller
             'applicable_percent' => number_format((float) $result->applicableRate, 3, '.', ''),
             'explanation' => (string) $result->explanation,
         ];
+    }
+
+    /**
+     * @return list<array{id: string, name: string}>
+     */
+    /**
+     * @return list<array{id: string, name: string}>
+     */
+    private function transporterOptions(Company $company, Branch $branch): array
+    {
+        $partyIds = PartyRole::query()
+            ->where('company_id', $company->id)
+            ->where('role', PartyRoleType::Transporter->value)
+            ->whereNull('deactivated_at')
+            ->whereNull('deleted_at')
+            ->pluck('party_id');
+
+        return Party::query()
+            ->visibleInBranch($company->id, $branch->id)
+            ->whereIn('id', $partyIds)
+            ->whereNull('deleted_at')
+            ->orderBy('name')
+            ->limit(200)
+            ->get(['id', 'name'])
+            ->map(fn (Party $party): array => ['id' => $party->id, 'name' => $party->name])
+            ->values()
+            ->all();
     }
 }

@@ -6,9 +6,12 @@ use App\Domains\Company\CompanyAccessService;
 use App\Domains\Master\Exceptions\MasterDomainException;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
+use App\Models\BankCashAccount;
 use App\Models\Branch;
 use App\Models\Company;
+use App\Models\Party;
 use App\Models\User;
+use App\Models\Vehicle;
 use App\Support\Tenant\TenantContext;
 use App\Support\Tenant\TenantContextHolder;
 
@@ -157,6 +160,32 @@ final class MasterAccess
 
         if (! $this->access->canAccessBranch($actor, $company, $branch)) {
             throw new MasterDomainException('Branch access denied.');
+        }
+    }
+
+    /**
+     * Index filters are not authorization — every direct record access must
+     * prove the master is visible in the active Branch (Shared null or matching).
+     *
+     * @param  class-string<Party|Vehicle|BankCashAccount>  $modelClass
+     */
+    public function assertRecordVisibleInBranch(
+        Company $company,
+        Branch $branch,
+        string $modelClass,
+        string $recordId,
+    ): void {
+        if ($branch->company_id !== $company->id) {
+            throw new MasterDomainException('Branch does not belong to company.');
+        }
+
+        $visible = $modelClass::query()
+            ->visibleInBranch($company->id, $branch->id)
+            ->whereKey($recordId)
+            ->exists();
+
+        if (! $visible) {
+            throw new MasterDomainException('Record is not visible in this branch.');
         }
     }
 

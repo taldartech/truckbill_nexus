@@ -61,6 +61,7 @@ test('broker lr with market vehicle creates pending lorry hire with freight and 
     $service = app(LorryHireService::class);
 
     $hire = $service->createFromLorryReceipt($lr, $ctx['member'], [
+        'transporter_party_id' => $lr->vehicle?->owner_party_id,
         'goods_lines' => brokerGoodsPayloadFromLr($lr),
     ]);
 
@@ -99,6 +100,7 @@ test('variable rate freight uses loading weight times rate', function () {
     ]]);
 
     $hire = app(LorryHireService::class)->createFromLorryReceipt($lr, $ctx['member'], [
+        'transporter_party_id' => $lr->vehicle?->owner_party_id,
         'goods_lines' => $payload,
     ]);
 
@@ -112,6 +114,7 @@ test('ownfleet lr cannot create lorry hire', function () {
     $lr = tripCreateOwnFleetLr($ctx);
 
     expect(fn () => app(LorryHireService::class)->createFromLorryReceipt($lr, $ctx['member'], [
+        'transporter_party_id' => $lr->vehicle?->owner_party_id,
         'goods_lines' => brokerGoodsPayloadFromLr($lr),
     ]))->toThrow(ValidationException::class);
 });
@@ -125,6 +128,7 @@ test('own fleet vehicle lr cannot create lorry hire when workflow is broker but 
     $lr->save();
 
     expect(fn () => app(LorryHireService::class)->createFromLorryReceipt($lr->fresh(), $ctx['member'], [
+        'transporter_party_id' => $lr->vehicle?->owner_party_id,
         'goods_lines' => brokerGoodsPayloadFromLr($lr),
     ]))->toThrow(ValidationException::class);
 });
@@ -134,7 +138,7 @@ test('duplicate active lorry hire for same lr is rejected', function () {
     tripActivate($ctx['company'], $ctx['branch']);
     $lr = brokerCreateBrokerLr($ctx);
     $service = app(LorryHireService::class);
-    $goods = ['goods_lines' => brokerGoodsPayloadFromLr($lr)];
+    $goods = brokerHirePayloadFromLr($lr);
 
     $service->createFromLorryReceipt($lr, $ctx['member'], $goods);
 
@@ -146,12 +150,12 @@ test('concurrent duplicate lorry hire insert is blocked', function () {
     $ctx = brokerWorkspace();
     tripActivate($ctx['company'], $ctx['branch']);
     $lr = brokerCreateBrokerLr($ctx);
-    $goods = brokerGoodsPayloadFromLr($lr);
+    $goods = brokerHirePayloadFromLr($lr);
 
     DB::transaction(function () use ($ctx, $lr, $goods): void {
-        app(LorryHireService::class)->createFromLorryReceipt($lr, $ctx['member'], ['goods_lines' => $goods]);
+        app(LorryHireService::class)->createFromLorryReceipt($lr, $ctx['member'], $goods);
 
-        expect(fn () => app(LorryHireService::class)->createFromLorryReceipt($lr, $ctx['member'], ['goods_lines' => $goods]))
+        expect(fn () => app(LorryHireService::class)->createFromLorryReceipt($lr, $ctx['member'], $goods))
             ->toThrow(BrokerConflictException::class);
     });
 
@@ -184,6 +188,7 @@ test('missing broker entitlement denies lorry hire creation', function () {
     expect(app(CoreModuleEntitlementResolver::class)->isEntitled($ctx['company'], SubscriptionModule::Broker))->toBeFalse();
 
     expect(fn () => app(LorryHireService::class)->createFromLorryReceipt($lr, $ctx['member'], [
+        'transporter_party_id' => $lr->vehicle?->owner_party_id,
         'goods_lines' => brokerGoodsPayloadFromLr($lr),
     ]))->toThrow(BrokerDomainException::class);
 });
@@ -194,6 +199,7 @@ test('viewer without create permission cannot create lorry hire', function () {
     $lr = brokerCreateBrokerLr($ctx);
 
     expect(fn () => app(LorryHireService::class)->createFromLorryReceipt($lr, $ctx['viewer'], [
+        'transporter_party_id' => $lr->vehicle?->owner_party_id,
         'goods_lines' => brokerGoodsPayloadFromLr($lr),
     ]))->toThrow(BrokerAuthorizationException::class);
 });

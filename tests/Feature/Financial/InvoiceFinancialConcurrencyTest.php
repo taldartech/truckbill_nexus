@@ -203,9 +203,11 @@ test('linked bilty group payment allocation stays consistent when vouchers are s
     ]]);
 
     $hireA = app(LorryHireService::class)->createFromLorryReceipt($lrOne, $ctx['member'], [
+        'transporter_party_id' => $lrOne->vehicle?->owner_party_id,
         'goods_lines' => brokerGoodsPayloadFromLr($lrOne),
     ]);
     $hireB = app(LorryHireService::class)->createFromLorryReceipt($lrTwo, $ctx['member'], [
+        'transporter_party_id' => $lrTwo->vehicle?->owner_party_id,
         'goods_lines' => brokerGoodsPayloadFromLr($lrTwo),
     ]);
 

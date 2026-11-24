@@ -119,9 +119,11 @@ test('proportional group payment creates separate vouchers with rounding', funct
     ]]);
 
     $hireOne = app(LorryHireService::class)->createFromLorryReceipt($lrOne, $ctx['member'], [
+        'transporter_party_id' => $lrOne->vehicle?->owner_party_id,
         'goods_lines' => brokerGoodsPayloadFromLr($lrOne),
     ]);
     $hireTwo = app(LorryHireService::class)->createFromLorryReceipt($lrTwo, $ctx['member'], [
+        'transporter_party_id' => $lrTwo->vehicle?->owner_party_id,
         'goods_lines' => brokerGoodsPayloadFromLr($lrTwo),
     ]);
 
@@ -194,6 +196,7 @@ test('group payment rejects over-allocation', function () {
         'freight_rate' => 2000,
     ]]);
     $hireTwo = app(LorryHireService::class)->createFromLorryReceipt($lrTwo, $ctx['member'], [
+        'transporter_party_id' => $lrTwo->vehicle?->owner_party_id,
         'goods_lines' => brokerGoodsPayloadFromLr($lrTwo),
     ]);
 
@@ -233,9 +236,11 @@ test('idempotent group payment returns cached vouchers', function () {
     $lrOne = brokerCreateBrokerLrOnVehicle($ctx, $vehicle);
     $lrTwo = brokerCreateBrokerLrOnVehicle($ctx, $vehicle);
     $hireOne = app(LorryHireService::class)->createFromLorryReceipt($lrOne, $ctx['member'], [
+        'transporter_party_id' => $lrOne->vehicle?->owner_party_id,
         'goods_lines' => brokerGoodsPayloadFromLr($lrOne),
     ]);
     $hireTwo = app(LorryHireService::class)->createFromLorryReceipt($lrTwo, $ctx['member'], [
+        'transporter_party_id' => $lrTwo->vehicle?->owner_party_id,
         'goods_lines' => brokerGoodsPayloadFromLr($lrTwo),
     ]);
 

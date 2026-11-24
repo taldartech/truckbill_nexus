@@ -7,6 +7,7 @@ use App\Domains\Company\MasterDataVisibilityResolver;
 use App\Domains\Document\DocumentAttachmentService;
 use App\Domains\Master\BankCash\BankCashAccountService;
 use App\Domains\Master\Exceptions\MasterDomainException;
+use App\Domains\Master\Support\MasterAccess;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Branch\Concerns\PresentsDocumentDrawer;
@@ -137,7 +138,7 @@ class BankCashAccountController extends Controller
     public function show(Request $request, BankCashAccount $bankCashAccount, Company $company, Branch $branch): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertAccount($company, $bankCashAccount);
+        $this->assertAccount($company, $branch, $bankCashAccount);
         $permissions = $this->masterPermissions($actor, $company, $branch, $this->access, $this->authorizer);
 
         try {
@@ -178,7 +179,7 @@ class BankCashAccountController extends Controller
     public function edit(Request $request, BankCashAccount $bankCashAccount, Company $company, Branch $branch): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertAccount($company, $bankCashAccount);
+        $this->assertAccount($company, $branch, $bankCashAccount);
         $permissions = $this->masterPermissions($actor, $company, $branch, $this->access, $this->authorizer);
 
         if (! $permissions['can_edit']) {
@@ -203,7 +204,7 @@ class BankCashAccountController extends Controller
     public function update(Request $request, BankCashAccount $bankCashAccount, Company $company, Branch $branch): RedirectResponse
     {
         $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertAccount($company, $bankCashAccount);
+        $this->assertAccount($company, $branch, $bankCashAccount);
 
         /** @var User $actor */
         $actor = $request->user();
@@ -237,7 +238,7 @@ class BankCashAccountController extends Controller
     public function destroy(Request $request, BankCashAccount $bankCashAccount, Company $company, Branch $branch): RedirectResponse
     {
         $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertAccount($company, $bankCashAccount);
+        $this->assertAccount($company, $branch, $bankCashAccount);
 
         /** @var User $actor */
         $actor = $request->user();
@@ -257,9 +258,16 @@ class BankCashAccountController extends Controller
             ->with('success', 'Account deleted.');
     }
 
-    private function assertAccount(Company $company, BankCashAccount $account): void
+    private function assertAccount(Company $company, Branch $branch, BankCashAccount $account): void
     {
         if ($account->company_id !== $company->id) {
+            abort(404);
+        }
+
+        try {
+            app(MasterAccess::class)
+                ->assertRecordVisibleInBranch($company, $branch, BankCashAccount::class, $account->id);
+        } catch (MasterDomainException) {
             abort(404);
         }
     }

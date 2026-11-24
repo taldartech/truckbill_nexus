@@ -17,6 +17,7 @@ import {
 import { PageShell } from '@/components/page-shell';
 import { formatDisplayDate } from '@/lib/dates';
 import { Badge } from '@/components/ui/badge';
+import { TablePagination } from '@/components/table-pagination';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -77,7 +78,12 @@ type Props = {
     partloadCreateUrl: string | null;
     lorryReceipts: {
         data: LrRow[];
-        meta: { current_page: number; last_page: number; total: number };
+        meta: {
+            current_page: number;
+            last_page: number;
+            total: number;
+            per_page?: number;
+        };
     };
     urls: { index: string; create: string };
 };
@@ -449,13 +455,15 @@ export default function LorryReceiptsIndex({
                     }}
                 />
 
-                {lorryReceipts.data.length > 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                        Page {lorryReceipts.meta.current_page} of{' '}
-                        {lorryReceipts.meta.last_page} ·{' '}
-                        {lorryReceipts.meta.total} total
-                    </p>
-                ) : null}
+                <TablePagination
+                    baseUrl={urls.index}
+                    meta={lorryReceipts.meta}
+                    query={{
+                        q: filters.q || undefined,
+                        status: filters.status || undefined,
+                        workflow_context: filters.workflow_context || undefined,
+                    }}
+                />
             </PageShell>
         </>
     );

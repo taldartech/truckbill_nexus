@@ -8,6 +8,7 @@ import {
 } from '@/components/data-table';
 import { FormSection } from '@/components/form-section';
 import { PageShell } from '@/components/page-shell';
+import { TablePagination } from '@/components/table-pagination';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,7 +30,12 @@ type Props = {
     filters: { q: string; active: string };
     vehicles: {
         data: Row[];
-        meta: { current_page: number; last_page: number; total: number };
+        meta: {
+            current_page: number;
+            last_page: number;
+            total: number;
+            per_page?: number;
+        };
     };
     links: { hub: string; dashboard: string; index: string; create: string };
 };
@@ -159,6 +165,15 @@ export default function VehiclesIndex({
                             variant="info"
                         />
                     )}
+                />
+
+                <TablePagination
+                    baseUrl={links.index}
+                    meta={vehicles.meta}
+                    query={{
+                        q: filters.q || undefined,
+                        active: filters.active || undefined,
+                    }}
                 />
             </PageShell>
         </>

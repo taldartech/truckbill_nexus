@@ -41,6 +41,7 @@ test('memo bulk assign for same billing customer succeeds', function () {
     $lrB = brokerCreateBrokerLr($ctx);
     brokerSetBillingCustomer($lrB, $ctx, $customer);
     $hireB = app(LorryHireService::class)->createFromLorryReceipt($lrB, $ctx['member'], [
+        'transporter_party_id' => $lrB->vehicle?->owner_party_id,
         'goods_lines' => brokerGoodsPayloadFromLr($lrB),
     ]);
 
@@ -125,6 +126,7 @@ test('unloading lowers variable freight without changing tds', function () {
     ]]);
 
     $hire = app(LorryHireService::class)->createFromLorryReceipt($lr, $ctx['member'], [
+        'transporter_party_id' => $lr->vehicle?->owner_party_id,
         'goods_lines' => brokerGoodsPayloadFromLr($lr),
     ]);
 
@@ -189,6 +191,7 @@ test('multiple unloading adjustments are preserved', function () {
     ]]);
 
     $hire = app(LorryHireService::class)->createFromLorryReceipt($lr, $ctx['member'], [
+        'transporter_party_id' => $lr->vehicle?->owner_party_id,
         'goods_lines' => brokerGoodsPayloadFromLr($lr),
     ]);
 

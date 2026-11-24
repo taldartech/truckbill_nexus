@@ -8,6 +8,7 @@ import {
 } from '@/components/data-table';
 import { FormSection } from '@/components/form-section';
 import { PageShell } from '@/components/page-shell';
+import { TablePagination } from '@/components/table-pagination';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,7 +34,12 @@ type Props = {
     roleOptions: { value: string; label: string }[];
     parties: {
         data: PartyRow[];
-        meta: { current_page: number; last_page: number; total: number };
+        meta: {
+            current_page: number;
+            last_page: number;
+            total: number;
+            per_page?: number;
+        };
     };
     links: { hub: string; dashboard: string; index: string; create: string };
 };
@@ -188,12 +194,14 @@ export default function PartiesIndex({
                     )}
                 />
 
-                {parties.data.length > 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                        Page {parties.meta.current_page} of{' '}
-                        {parties.meta.last_page} · {parties.meta.total} total
-                    </p>
-                ) : null}
+                <TablePagination
+                    baseUrl={links.index}
+                    meta={parties.meta}
+                    query={{
+                        q: filters.q || undefined,
+                        role: filters.role || undefined,
+                    }}
+                />
             </PageShell>
         </>
     );

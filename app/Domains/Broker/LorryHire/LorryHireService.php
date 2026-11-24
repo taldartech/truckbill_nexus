@@ -531,28 +531,22 @@ final class LorryHireService
         Vehicle $vehicle,
         ?string $transporterPartyId,
     ): Party {
-        $partyId = $transporterPartyId ?? $vehicle->owner_party_id;
-        if ($partyId === null || $partyId === '') {
+        // Payee must be explicitly confirmed — never silently substitute Vehicle Owner.
+        if ($transporterPartyId === null || $transporterPartyId === '') {
             throw ValidationException::withMessages([
-                'transporter_party_id' => 'Transporter is required for Market vehicle Lorry Hire.',
+                'transporter_party_id' => 'Select a Payee / Transporter before creating the Lorry Hire.',
             ]);
         }
 
         $party = Party::query()
-            ->where('company_id', $company->id)
-            ->whereKey($partyId)
+            ->visibleInBranch($company->id, $branch->id)
+            ->whereKey($transporterPartyId)
             ->whereNull('deleted_at')
             ->first();
 
         if ($party === null) {
             throw ValidationException::withMessages([
-                'transporter_party_id' => 'Transporter party was not found.',
-            ]);
-        }
-
-        if ($party->branch_id !== null && $party->branch_id !== $branch->id) {
-            throw ValidationException::withMessages([
-                'transporter_party_id' => 'Transporter is not visible in this branch.',
+                'transporter_party_id' => 'The registered vehicle owner is not available for transactions in this branch. Please contact an authorized administrator to review the vehicle details.',
             ]);
         }
 

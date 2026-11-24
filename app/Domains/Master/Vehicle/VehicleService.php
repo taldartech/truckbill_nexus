@@ -33,12 +33,19 @@ final class VehicleService
     /**
      * @param  array<string, mixed>  $attributes
      */
-    public function create(User $actor, Company $company, ?Branch $branch, array $attributes, string $remark = 'Create vehicle'): Vehicle
-    {
+    public function create(
+        User $actor,
+        Company $company,
+        ?Branch $branch,
+        array $attributes,
+        string $remark = 'Create vehicle',
+        ?Branch $visibilityBranch = null,
+    ): Vehicle {
         $this->access->assertCanMutate($actor, $company, $branch);
         $this->assertBranchBelongs($company, $branch);
         $this->assertRegistrationUnique($company, (string) $attributes['registration_number']);
-        $normalized = $this->normalizeOwnershipAttributes($company, $branch, $attributes);
+        $panelBranch = $visibilityBranch ?? $branch;
+        $normalized = $this->normalizeOwnershipAttributes($company, $panelBranch, $attributes);
 
         return $this->auditedTransaction->run(function () use ($actor, $company, $branch, $attributes, $normalized, $remark): Vehicle {
             return $this->access->withTenant($actor, $company, $branch, function () use ($company, $branch, $attributes, $normalized, $remark): Vehicle {
@@ -79,8 +86,13 @@ final class VehicleService
     /**
      * @param  array<string, mixed>  $attributes
      */
-    public function update(User $actor, Vehicle $vehicle, array $attributes, string $remark): Vehicle
-    {
+    public function update(
+        User $actor,
+        Vehicle $vehicle,
+        array $attributes,
+        string $remark,
+        ?Branch $visibilityBranch = null,
+    ): Vehicle {
         $company = $vehicle->company()->firstOrFail();
         $branch = $vehicle->branch_id !== null
             ? Branch::query()->where('company_id', $company->id)->whereKey($vehicle->branch_id)->first()
@@ -104,8 +116,10 @@ final class VehicleService
             'primary_driver_party_id' => $vehicle->primary_driver_party_id,
         ], $attributes);
 
-        $contextBranch = $branch ?? Branch::query()->where('company_id', $company->id)->orderBy('created_at')->first();
-        $normalized = $this->normalizeOwnershipAttributes($company, $contextBranch, $merged, requireOwnership: array_key_exists('ownership', $attributes) || $vehicle->ownership !== null);
+        $panelBranch = $visibilityBranch
+            ?? $branch
+            ?? Branch::query()->where('company_id', $company->id)->orderBy('created_at')->first();
+        $normalized = $this->normalizeOwnershipAttributes($company, $panelBranch, $merged, requireOwnership: array_key_exists('ownership', $attributes) || $vehicle->ownership !== null);
 
         return $this->auditedTransaction->run(function () use ($actor, $company, $branch, $vehicle, $attributes, $normalized, $remark): Vehicle {
             return $this->access->withTenant($actor, $company, $branch, function () use ($vehicle, $attributes, $normalized, $remark): Vehicle {
@@ -337,11 +351,13 @@ final class VehicleService
             ]);
         }
 
-        if ($branch !== null && $party->branch_id !== null && $party->branch_id !== $branch->id) {
-            throw ValidationException::withMessages([
-                'owner_party_id' => 'Vehicle Owner is not visible in this branch.',
-            ]);
-        }
+        $this->assertRelatedPartyVisible(
+            $company,
+            $branch,
+            $party,
+            'owner_party_id',
+            'The registered vehicle owner is not available for transactions in this branch. Please contact an authorized administrator to review the vehicle details.',
+        );
 
         $hasRole = PartyRole::query()
             ->where('company_id', $company->id)
@@ -372,11 +388,13 @@ final class VehicleService
             ]);
         }
 
-        if ($branch !== null && $party->branch_id !== null && $party->branch_id !== $branch->id) {
-            throw ValidationException::withMessages([
-                'primary_driver_party_id' => 'Primary driver is not visible in this branch.',
-            ]);
-        }
+        $this->assertRelatedPartyVisible(
+            $company,
+            $branch,
+            $party,
+            'primary_driver_party_id',
+            'Primary driver is not available in this branch.',
+        );
 
         $hasRole = PartyRole::query()
             ->where('company_id', $company->id)
@@ -390,6 +408,34 @@ final class VehicleService
             throw ValidationException::withMessages([
                 'primary_driver_party_id' => 'Selected party must have an active Driver role.',
             ]);
+        }
+    }
+
+    private function assertRelatedPartyVisible(
+        Company $company,
+        ?Branch $visibilityBranch,
+        Party $party,
+        string $field,
+        string $message,
+    ): void {
+        if ($visibilityBranch !== null) {
+            $visible = Party::query()
+                ->visibleInBranch($company->id, $visibilityBranch->id)
+                ->whereKey($party->id)
+                ->whereNull('deleted_at')
+                ->exists();
+
+            if (! $visible) {
+                throw ValidationException::withMessages([$field => $message]);
+            }
+
+            return;
+        }
+
+        // Shared/company-wide vehicle creates without a panel branch may only
+        // reference company-wide parties (branch_id null).
+        if ($party->branch_id !== null) {
+            throw ValidationException::withMessages([$field => $message]);
         }
     }
 
