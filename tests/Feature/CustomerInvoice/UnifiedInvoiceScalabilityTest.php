@@ -16,8 +16,8 @@ beforeEach(function () {
     tripGrant('customer.admin', PermissionCodes::BROKER_INVOICE_VIEW);
 });
 
-test('unified facade requires postgresql for six hundred plus six hundred scalability', function () {
-    expect(DB::connection()->getDriverName())->toBe('pgsql');
+test('unified facade scalability runs on supported sql drivers', function () {
+    expect(DB::connection()->getDriverName())->toBeIn(['pgsql', 'mysql']);
 });
 
 test('own fleet search paginates beyond five hundred seeded rows', function () {

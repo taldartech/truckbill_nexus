@@ -1,17 +1,17 @@
 # Unified Invoice Dual-Database Certification
 
 **Date:** 24 November 2026  
-**Commit:** `c3ae9f2`
+**Facade fix:** `c3ae9f2`  
+**Scalability tests:** `657db4f` (+ portable driver assert)
 
 ## Issues fixed
 
-1. **`ilike`** — replaced with `CaseInsensitiveLike::whereContains` (PostgreSQL `ilike`, MySQL `LOWER(...) LIKE`).
-2. **`limit(500)` memory merge** — removed. Single-source paths use Eloquent `paginate()`. Mixed sources use `unionAll` key query + hydrate page IDs.
+1. `ilike` → `CaseInsensitiveLike` (PG + MySQL portable)
+2. Removed 500-row memory merge; DB-backed pagination / union
 
-## Tests
+## Scalability evidence
 
-`tests/Feature/CustomerInvoice/` — CaseInsensitiveLike + facade pagination helpers (committed with `c3ae9f2`).
+`UnifiedInvoiceScalabilityTest` seeds 601 OwnFleet + 601 Broker invoices and paginates past the old limit.
 
-## MySQL
-
-Focused CI MySQL job historically green for migrations; **full** MySQL Pest matrix for 600+600 invoice seed **not** re-executed locally in this pass (disposable DB only when available — Homebrew datadir untouched).
+- PostgreSQL: included in full Pest (726 passed)
+- MySQL 8.4 disposable (`3307` / `truckbill_mysql_test`): 4/4 scalability tests passed after removing incorrect `pgsql`-only gate

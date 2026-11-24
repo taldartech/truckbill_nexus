@@ -33,6 +33,12 @@ From `routes/web.php`:
 - GST exemption limits (`GstExemptionLimitTest`)
 - Agent / station agent patterns (`CompanyStationAgentTest`)
 
+## Phase 5/6 readiness (24 November 2026)
+
+Phase 5 OwnFleet and Phase 6 Broker are **functionally complete** with local engineering verification, but acceptance remains **FUNCTIONALLY COMPLETE — CERTIFICATION GAPS REMAIN** (remote Actions green pending PO push; 11-persona browser matrix partial; k6 smoke-only).
+
+**Do not start Phase 7 coding until PO-P7-AUTH and the Product Owner accepts or closes those residuals.**
+
 ## Nexus gaps before Phase 7 coding
 
 1. PO-P7-AUTH (not issued).

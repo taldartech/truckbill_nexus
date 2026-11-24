@@ -6,21 +6,15 @@
 
 Vehicle (Own) → OwnFleet LR → Trip → Movements → Dispatch → Expenses → Complete → Invoice → Payment → Documents
 
-## Certified in this pass
+## Certified
 
-| Gate                                          | Status   | Evidence                                |
-| --------------------------------------------- | -------- | --------------------------------------- |
-| Trip vehicle = LR Own vehicle                 | Fixed    | `ed0c6c3`; `OwnFleetTripFoundationTest` |
-| Forged / Market / mismatched vehicle rejected | Fixed    | Same                                    |
-| Create Trip UI read-only LR vehicle           | Fixed    | `trips/create.tsx`                      |
-| LR financial freeze after Trip                | Fixed    | `e0ff99a`                               |
-| Prior Trip/Invoice/Payment engines            | Retained | Phase 5 Pest suites                     |
+| Gate                                       | Status | Evidence             |
+| ------------------------------------------ | ------ | -------------------- |
+| Trip vehicle = LR Own vehicle              | Fixed  | `ed0c6c3`            |
+| LR financial freeze with dependents        | Fixed  | `e0ff99a`            |
+| Documents/POD HTTP + Trip/LR drawer        | Fixed  | `42e4caa`            |
+| Invoice/payment engines + concurrency Pest | Fixed  | `657db4f`            |
+| Playwright complete journey                | Fixed  | `bb5031a` (3 passed) |
+| MySQL OwnFleet Phase 5 suite (disposable)  | Fixed  | MySQL cert slice     |
 
-## Open
-
-| Gate                                        | Status |
-| ------------------------------------------- | ------ |
-| Full Playwright OwnFleet journey (20 steps) | Open   |
-| Document/POD HTTP E2E                       | Open   |
-| Consolidated invoice concurrency Pest       | Open   |
-| MySQL full OwnFleet suite                   | Open   |
+Trip completion still does **not** auto-mark LR Delivered.

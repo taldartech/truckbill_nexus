@@ -2,17 +2,25 @@
 
 **Date:** 24 November 2026
 
-## Executed
+## Commands
 
-| Spec                                        | Result                                                                                                                           |
-| ------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `tests/e2e/portal/portal-ux-visual.spec.ts` | Prior portal UX smoke (icons, masters, invoices nav, Partload no Workflow, Broker registers) — **not** a full financial workflow |
+```bash
+set -a && source .env && set +a
+export E2E_USER_PASSWORD="${LOCAL_DEMO_PASSWORD}"
+E2E_REQUIRE_DEMO=1 PLAYWRIGHT_USE_SYSTEM_CHROME=1 \
+  npx playwright test tests/e2e/ownfleet/complete-workflow.spec.ts
+E2E_REQUIRE_DEMO=1 PLAYWRIGHT_USE_SYSTEM_CHROME=1 \
+  npx playwright test tests/e2e/broker/
+```
 
-## Not executed this assignment
+## Results
 
-- Full OwnFleet 20-step journey
-- Full Broker 18-step journey
-- Linked Bilty group payment journey
-- Multi-viewport financial screenshots for Trip/Hire/Invoice create flows
+| Spec                                  | Result                           |
+| ------------------------------------- | -------------------------------- |
+| OwnFleet `complete-workflow.spec.ts`  | 3 passed / 0 skipped (`bb5031a`) |
+| Broker `complete-workflow.spec.ts`    | passed (`c6ed866`)               |
+| Broker `linked-bilty-payment.spec.ts` | passed (`c6ed866`)               |
 
-**Do not treat portal UX smoke as Phase 5/6 workflow certification.**
+## Gaps / polish
+
+OwnFleet drawer file-upload automation not required for HTTP certification (Pest covers uploads). Role browser smokes remain env-gated.

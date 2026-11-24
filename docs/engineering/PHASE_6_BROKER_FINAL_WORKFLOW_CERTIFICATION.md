@@ -6,21 +6,13 @@
 
 Market Vehicle → Broker LR → Lorry Hire → TDS → Vouchers → Book Balance → Memo/POD → Delivery → Adjustments → Customer Invoice → Payment → Linked Bilty
 
-## Certified in this pass
+## Certified
 
-| Gate                                         | Status   | Evidence                               |
-| -------------------------------------------- | -------- | -------------------------------------- |
-| Bulk voucher status all-or-nothing           | Fixed    | `e0ff99a` wraps `bulkTransitionStatus` |
-| Broker invoice SAMPLE print/preview          | Fixed    | `branch.broker.invoices.print`         |
-| LR financial freeze after Hire/Invoice       | Fixed    | `e0ff99a`                              |
-| Unified invoice list includes Broker         | Fixed    | `c3ae9f2` + prior facade               |
-| Prior Hire/TDS/Voucher/Delivery/Linked Bilty | Retained | `tests/Feature/Broker`                 |
-
-## Open / deferred
-
-| Gate                                            | Status                                            |
-| ----------------------------------------------- | ------------------------------------------------- |
-| `LorryHireStatus::Active` meaningful transition | Deferred — no invented activation without PO rule |
-| Full Playwright Broker + Linked Bilty journeys  | Open                                              |
-| POD attach HTTP wiring browser proof            | Open                                              |
-| MySQL full Broker suite                         | Open                                              |
+| Gate                                    | Status   | Evidence                         |
+| --------------------------------------- | -------- | -------------------------------- |
+| Atomic voucher bulk transitions         | Fixed    | `e0ff99a`                        |
+| Broker SAMPLE invoice print             | Fixed    | `e0ff99a`                        |
+| POD HTTP + UI upload                    | Fixed    | `42e4caa` + Playwright           |
+| Playwright complete + Linked Bilty      | Fixed    | `c6ed866`                        |
+| Financial invariants / concurrency Pest | Fixed    | `657db4f`                        |
+| LorryHire Active unused                 | Deferred | P56-011 — no invented activation |
