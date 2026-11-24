@@ -12,8 +12,8 @@
 | UX-004 | Shared | `ResponsiveDataTable` | Expand control when no hidden content at viewport | Critical | Fixed  | CSS expand visibility by max priority                         |
 | UX-005 | Branch | Supporting Catalogues | Six masters in one type dropdown                  | High     | Fixed  | `51b5fc5`                                                     |
 | UX-006 | Branch | Partload bilty form   | Read-only Workflow field                          | High     | Fixed  | `51b5fc5`                                                     |
-| UX-007 | Branch | Nav                   | Separate OwnFleet / Broker invoice sections       | High     | Fixed  | Batch D commit TBD                                            |
-| UX-008 | Branch | `/payments`           | OwnFleet-only payment surface naming              | Medium   | Fixed  | Batch D commit TBD                                            |
+| UX-007 | Branch | Nav                   | Separate OwnFleet / Broker invoice sections       | High     | Fixed  | `aea9599`                                                     |
+| UX-008 | Branch | `/payments`           | OwnFleet-only payment surface naming              | Medium   | Fixed  | `aea9599`                                                     |
 | UX-009 | All    | Tables / lists        | Text-only actions on remaining screens            | High     | Open   | Batches E–H                                                   |
 | UX-010 | All    | Layout                | Excessive empty space / sparse forms              | Medium   | Open   | Batches E–H                                                   |
 | UX-011 | All    | Copy                  | Technical workflow/module language in UI          | Medium   | Fixed  | `51b5fc5` (partial — Batches E–H for remaining screens)       |
