@@ -27,7 +27,17 @@ E2E_REQUIRE_DEMO=1 PLAYWRIGHT_USE_SYSTEM_CHROME=1 PLAYWRIGHT_SKIP_WEBSERVER=1 \
 
 ## Fixture updates
 
-`tests/e2e/fixtures/broker-workflow.ts` confirms FormConfirmationDialog after Bilty, Hire, Voucher, Memo, Adjustment, Invoice, and Linked Bilty submits.
+`tests/e2e/fixtures/broker-workflow.ts` confirms FormConfirmationDialog after Bilty, Hire, Voucher, Memo, Adjustment, Invoice, Linked Bilty, **Delivery**, and **POD upload** submits (`57930fd`).
+
+## UX continuation re-run (24 Nov 2026, after `ab9e20d`)
+
+| Suite                               | Result       |
+| ----------------------------------- | ------------ |
+| `bilty-lorry-hire-ui.spec.ts`       | Passed (2/2) |
+| `complete-workflow.spec.ts`         | Passed (1/1) |
+| `enquiry-customer-selector.spec.ts` | Passed (1/1) |
+
+Visual captures: `storage/visual-certification/bilty-lorry-hire/` (14 viewport PNGs on pass).
 
 ## Still outstanding for full Batch 2 H
 
