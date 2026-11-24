@@ -738,7 +738,10 @@ export default function TripShow({
                                                                 size="sm"
                                                                 variant="destructive"
                                                                 onClick={() => {
+                                                                    const removePickupUrl =
+                                                                        urls.remove_pickup;
                                                                     if (
+                                                                        !removePickupUrl ||
                                                                         !window.confirm(
                                                                             'Remove this pickup and its allocations?',
                                                                         )
@@ -746,7 +749,7 @@ export default function TripShow({
                                                                         return;
                                                                     }
                                                                     router.delete(
-                                                                        urls.remove_pickup.replace(
+                                                                        removePickupUrl.replace(
                                                                             'PICKUP_ID',
                                                                             pickup.id,
                                                                         ),
@@ -898,7 +901,10 @@ export default function TripShow({
                                                                 size="sm"
                                                                 variant="destructive"
                                                                 onClick={() => {
+                                                                    const removeDropUrl =
+                                                                        urls.remove_drop;
                                                                     if (
+                                                                        !removeDropUrl ||
                                                                         !window.confirm(
                                                                             'Remove this drop and its allocations?',
                                                                         )
@@ -906,7 +912,7 @@ export default function TripShow({
                                                                         return;
                                                                     }
                                                                     router.delete(
-                                                                        urls.remove_drop.replace(
+                                                                        removeDropUrl.replace(
                                                                             'DROP_ID',
                                                                             drop.id,
                                                                         ),
