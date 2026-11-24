@@ -118,4 +118,4 @@ Dated workstream records with verified local commit SHAs. Living product Memory 
 | 2026-11-24 | Portal UX E–H | `bd3b724` | Owner: icon actions, compact filters, subscription invoice row tools (`fix(ui): Owner Portal action icons and denser layouts`). |
 | 2026-11-24 | Portal UX E–H | `df4b263` | Internal: CRM dashboard + identity company icons (`fix(ui): Internal Portal CRM and admin list actions`). |
 | 2026-11-24 | Portal UX E–H | `ef7f8fa` | Branch/OwnFleet: LR service labels, masters/trips icon actions (`fix(ui): Branch and OwnFleet operational screen density`). |
-| 2026-11-24 | Portal UX E–H | _(pending H SHA)_ | Broker list/detail icon polish + screen matrix / table-actions cert (`fix(ui): Broker operational UI polish`). |
+| 2026-11-24 | Portal UX E–H | `0e53351` | Broker list/detail icon polish + screen matrix / table-actions cert (`fix(ui): Broker operational UI polish`). |
