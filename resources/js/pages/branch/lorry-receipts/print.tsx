@@ -79,13 +79,17 @@ export default function LorryReceiptPrint({
 
                 <section className="grid gap-3 text-sm md:grid-cols-2">
                     <p>
-                        <span className="text-muted-foreground">From:</span>{' '}
+                        <span className="text-muted-foreground">
+                            Loading Station:
+                        </span>{' '}
                         {lorryReceipt.from_station_name ||
                             lorryReceipt.from_text ||
                             '—'}
                     </p>
                     <p>
-                        <span className="text-muted-foreground">To:</span>{' '}
+                        <span className="text-muted-foreground">
+                            Unloading Station:
+                        </span>{' '}
                         {lorryReceipt.to_station_name ||
                             lorryReceipt.to_text ||
                             '—'}

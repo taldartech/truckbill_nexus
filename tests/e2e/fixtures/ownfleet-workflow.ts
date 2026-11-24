@@ -64,10 +64,11 @@ export async function createOwnFleetLrViaUi(
 ): Promise<OwnFleetLrContext> {
     await page.goto('/lorry-receipts');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-        'Lorry Receipts',
+        'Bilty Register',
     );
     await page.getByTestId('create-lr-direct').click();
     await expect(page).toHaveURL(/\/lorry-receipts\/create/);
+    await expect(page.locator('#number_mode')).toHaveCount(0);
 
     await selectFirstOwnVehicle(page);
     await selectOptionAt(page, '#billing_customer_party_id', 0);
@@ -85,14 +86,14 @@ export async function createOwnFleetLrViaUi(
     await page.locator('input[name="goods[0][charged_weight]"]').fill('1000');
     await page.locator('input[name="goods[0][freight_rate]"]').fill('15000');
 
-    await page.getByRole('button', { name: 'Create LR' }).click();
+    await page.getByRole('button', { name: 'Save Bilty' }).click();
     await expect(page).toHaveURL(/\/lorry-receipts\/[0-9a-f-]+$/, {
         timeout: 30_000,
     });
 
     const lrPath = new URL(page.url()).pathname;
     const heading = await page.getByRole('heading', { level: 1 }).innerText();
-    const lrMatch = heading.match(/^LR\s+(.+)$/i);
+    const lrMatch = heading.match(/^(?:LR|Bilty)\s+(.+)$/i);
     const lrNumber = lrMatch?.[1]?.trim() ?? null;
 
     return { goodsDescription, lrNumber, lrPath };
@@ -100,7 +101,7 @@ export async function createOwnFleetLrViaUi(
 
 export async function openLrCreateTrip(page: Page): Promise<void> {
     await page.getByRole('tab', { name: 'Actions' }).click();
-    await page.getByRole('link', { name: 'Create Trip' }).click();
+    await page.getByRole('link', { name: 'Manage Expenses' }).click();
     await expect(page).toHaveURL(/\/create-trip/);
     await expect(
         page.getByRole('heading', { name: 'Create OwnFleet Trip' }),

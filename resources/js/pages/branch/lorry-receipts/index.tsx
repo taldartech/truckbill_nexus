@@ -3,16 +3,22 @@ import { Eye, Filter } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { AppIconAction } from '@/components/app-icon-action';
 import { FormSection } from '@/components/form-section';
-import { workflowContextLabel } from '@/lib/workflow-context-label';
 import {
     ResponsiveDataTable,
     type DataTableColumn,
 } from '@/components/data-table';
 import { PageShell } from '@/components/page-shell';
 import { formatDisplayDate } from '@/lib/dates';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+
+type PrimaryOperation = {
+    label: string;
+    url: string;
+    kind: string;
+};
 
 type LrRow = {
     id: string;
@@ -22,7 +28,15 @@ type LrRow = {
     status: string;
     from_text: string | null;
     to_text: string | null;
+    loading_station: string | null;
+    unloading_station: string | null;
+    vehicle_registration: string | null;
+    vehicle_ownership_label: string | null;
+    billing_customer_name: string | null;
+    charged_weight_total: string;
     freight_total: string;
+    primary_operation?: PrimaryOperation | null;
+    show_url: string;
     consignor_name: string | null;
     consignee_name: string | null;
 };
@@ -43,7 +57,7 @@ type CreateAction =
 
 type Props = {
     filters: { q: string; status: string; workflow_context: string };
-    permissions: { can_create: boolean };
+    permissions: { can_create: boolean; can_view_freight?: boolean };
     statusOptions: Option[];
     contextOptions: Option[];
     createAction: CreateAction | null;
@@ -59,7 +73,7 @@ function statusLabel(status: string): string {
     return status.replaceAll('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function CreateLrAction({ action }: { action: CreateAction }) {
+function CreateBiltyAction({ action }: { action: CreateAction }) {
     if (action.mode === 'blocked') {
         return (
             <p className="max-w-xs text-right text-xs text-muted-foreground">
@@ -68,10 +82,13 @@ function CreateLrAction({ action }: { action: CreateAction }) {
         );
     }
 
+    const buttonLabel =
+        action.label === 'Create LR' ? 'Create Bilty' : action.label;
+
     return (
         <Button asChild variant="primary">
             <Link href={action.url} data-testid="create-lr-direct">
-                {action.label}
+                {buttonLabel}
             </Link>
         </Button>
     );
@@ -95,22 +112,78 @@ export default function LorryReceiptsIndex({
     const [workflowContext, setWorkflowContext] = useState(
         filters.workflow_context,
     );
+    const mayViewFreight = permissions.can_view_freight !== false;
 
-    const columns = useMemo<DataTableColumn<LrRow>[]>(
-        () => [
+    const columns = useMemo<DataTableColumn<LrRow>[]>(() => {
+        const base: DataTableColumn<LrRow>[] = [
             {
                 id: 'lr_number',
-                header: 'LR No',
+                header: 'Bilty No',
                 priority: 0,
-                cell: (row) => (
-                    <span className="font-medium">{row.lr_number}</span>
-                ),
+                className: 'whitespace-nowrap font-medium',
+                cell: (row) => row.lr_number,
             },
             {
                 id: 'lr_date',
-                header: 'LR Date',
+                header: 'Bilty Date',
                 priority: 0,
+                className: 'whitespace-nowrap',
                 cell: (row) => formatDisplayDate(row.lr_date),
+            },
+            {
+                id: 'vehicle_registration',
+                header: 'Truck No',
+                priority: 1,
+                className: 'whitespace-nowrap',
+                cell: (row) => row.vehicle_registration ?? '—',
+            },
+            {
+                id: 'vehicle_ownership',
+                header: 'Vehicle Type',
+                priority: 2,
+                className: 'whitespace-nowrap',
+                cell: (row) =>
+                    row.vehicle_ownership_label ? (
+                        <Badge
+                            variant={
+                                row.vehicle_ownership_label === 'Own'
+                                    ? 'secondary'
+                                    : 'outline'
+                            }
+                        >
+                            {row.vehicle_ownership_label}
+                        </Badge>
+                    ) : (
+                        '—'
+                    ),
+            },
+            {
+                id: 'billing_customer',
+                header: 'Billing Customer',
+                priority: 2,
+                className: 'max-w-[10rem] truncate',
+                cell: (row) => row.billing_customer_name ?? '—',
+            },
+            {
+                id: 'loading_station',
+                header: 'Loading Station',
+                priority: 2,
+                className: 'max-w-[10rem] truncate',
+                cell: (row) => row.loading_station ?? '—',
+            },
+            {
+                id: 'unloading_station',
+                header: 'Unloading Station',
+                priority: 2,
+                className: 'max-w-[10rem] truncate',
+                cell: (row) => row.unloading_station ?? '—',
+            },
+            {
+                id: 'charged_weight_total',
+                header: 'Weight',
+                priority: 2,
+                className: 'whitespace-nowrap tabular-nums',
+                cell: (row) => row.charged_weight_total,
             },
             {
                 id: 'status',
@@ -122,29 +195,20 @@ export default function LorryReceiptsIndex({
                     </span>
                 ),
             },
-            {
-                id: 'workflow_context',
-                header: 'Service',
-                priority: 2,
-                cell: (row) => workflowContextLabel(row.workflow_context),
-            },
-            {
-                id: 'route',
-                header: 'Route',
-                priority: 2,
-                cell: (row) =>
-                    [row.from_text, row.to_text].filter(Boolean).join(' → ') ||
-                    '—',
-            },
-            {
+        ];
+
+        if (mayViewFreight) {
+            base.push({
                 id: 'freight_total',
                 header: 'Freight',
                 priority: 1,
+                className: 'whitespace-nowrap tabular-nums',
                 cell: (row) => row.freight_total,
-            },
-        ],
-        [],
-    );
+            });
+        }
+
+        return base;
+    }, [mayViewFreight]);
 
     const applyFilters = (event: React.FormEvent) => {
         event.preventDefault();
@@ -161,8 +225,8 @@ export default function LorryReceiptsIndex({
 
     return (
         <>
-            <Head title="Lorry Receipts" />
-            <PageShell title={'Lorry Receipts'}>
+            <Head title="Bilty Register" />
+            <PageShell title="Bilty Register">
                 {flash?.success ? (
                     <p className="text-sm text-emerald-700">{flash.success}</p>
                 ) : null}
@@ -181,7 +245,7 @@ export default function LorryReceiptsIndex({
                                     id="lr-q"
                                     value={q}
                                     onChange={(e) => setQ(e.target.value)}
-                                    placeholder="LR number, from, to…"
+                                    placeholder="Bilty No, loading, unloading…"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -204,7 +268,7 @@ export default function LorryReceiptsIndex({
                                 </select>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="lr-context">Service</Label>
+                                <Label htmlFor="lr-context">Workflow</Label>
                                 <select
                                     id="lr-context"
                                     className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
@@ -248,25 +312,42 @@ export default function LorryReceiptsIndex({
                             </Button>
                         ) : null}
                         {permissions.can_create && createAction ? (
-                            <CreateLrAction action={createAction} />
+                            <CreateBiltyAction action={createAction} />
                         ) : null}
                     </div>
                 </div>
 
                 <ResponsiveDataTable
-                    caption="Lorry Receipts"
+                    caption="Bilty Register"
                     columns={columns}
                     rows={lorryReceipts.data}
                     rowKey={(row) => row.id}
-                    emptyTitle="No Lorry Receipts found"
-                    emptyDescription="Create an LR or adjust filters."
+                    emptyTitle="No bilties found"
+                    emptyDescription="Create a bilty or adjust filters."
                     actions={(row) => (
-                        <AppIconAction
-                            icon={Eye}
-                            label={`Open LR ${row.lr_number}`}
-                            href={`/lorry-receipts/${row.id}`}
-                            variant="info"
-                        />
+                        <div className="flex flex-wrap items-center justify-end gap-1">
+                            <AppIconAction
+                                icon={Eye}
+                                label={`Open Bilty ${row.lr_number}`}
+                                href={row.show_url}
+                                variant="info"
+                            />
+                            {row.primary_operation ? (
+                                <Button
+                                    asChild
+                                    size="sm"
+                                    variant="secondary"
+                                    className="h-8 text-xs"
+                                >
+                                    <Link
+                                        href={row.primary_operation.url}
+                                        data-testid={`bilty-op-${row.id}`}
+                                    >
+                                        {row.primary_operation.label}
+                                    </Link>
+                                </Button>
+                            ) : null}
+                        </div>
                     )}
                 />
 

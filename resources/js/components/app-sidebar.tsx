@@ -154,7 +154,7 @@ export function AppSidebar() {
             icon: Ticket,
         },
         {
-            title: 'Unified LR',
+            title: 'Bilty Register',
             href: '/lorry-receipts',
             icon: Receipt,
         },
@@ -162,11 +162,6 @@ export function AppSidebar() {
             title: 'Partload Bilty',
             href: '/lorry-receipts/create?context=partload',
             icon: Receipt,
-        },
-        {
-            title: 'OwnFleet Trips',
-            href: '/trips',
-            icon: Truck,
         },
         {
             title: 'Invoices',

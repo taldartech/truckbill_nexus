@@ -69,10 +69,11 @@ export async function createBrokerLrViaUi(
 ): Promise<BrokerLrContext> {
     await page.goto('/lorry-receipts');
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-        'Lorry Receipts',
+        'Bilty Register',
     );
     await page.getByTestId('create-lr-direct').click();
     await expect(page).toHaveURL(/\/lorry-receipts\/create/);
+    await expect(page.locator('#number_mode')).toHaveCount(0);
 
     const vehicleId = await selectMarketVehicle(page, options?.vehicleId);
     await expect(page.locator('#from_text')).toBeVisible();
@@ -94,14 +95,14 @@ export async function createBrokerLrViaUi(
     await page.locator('input[name="goods[0][charged_weight]"]').fill('1000');
     await page.locator('input[name="goods[0][freight_rate]"]').fill('18000');
 
-    await page.getByRole('button', { name: 'Create LR' }).click();
+    await page.getByRole('button', { name: 'Save Bilty' }).click();
     await expect(page).toHaveURL(/\/lorry-receipts\/[0-9a-f-]+$/, {
         timeout: 30_000,
     });
 
     const lrPath = new URL(page.url()).pathname;
     const heading = await page.getByRole('heading', { level: 1 }).innerText();
-    const lrMatch = heading.match(/^LR\s+(.+)$/i);
+    const lrMatch = heading.match(/^(?:LR|Bilty)\s+(.+)$/i);
     const lrNumber = lrMatch?.[1]?.trim() ?? null;
 
     return { goodsDescription, lrNumber, lrPath, vehicleId };
@@ -116,7 +117,7 @@ export async function createLorryHireFromLr(
     page: Page,
 ): Promise<LorryHireContext> {
     await page.getByRole('tab', { name: 'Actions' }).click();
-    await page.getByRole('link', { name: 'Create Lorry Hire' }).click();
+    await page.getByRole('link', { name: 'Manage Lorry Hire' }).click();
     await expect(page).toHaveURL(/\/create-lorry-hire/);
     await expect(
         page.getByRole('heading', { name: 'Create Lorry Hire' }),

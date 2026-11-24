@@ -37,7 +37,7 @@ export function FormSection({
             )}
             {...props}
         >
-            <header className="border-b border-border bg-gradient-to-r from-[#2FB36F]/10 via-[#2D8CFF]/5 to-transparent px-4 py-3">
+            <header className="border-b border-border bg-gradient-to-r from-[#2FB36F]/10 via-[#2D8CFF]/5 to-transparent px-3 py-2.5 md:px-4">
                 <h2 className="text-sm font-semibold tracking-tight text-foreground">
                     {title}
                 </h2>
@@ -47,9 +47,9 @@ export function FormSection({
                     </p>
                 ) : null}
             </header>
-            <div className={cn('p-4', gridClass)}>{children}</div>
+            <div className={cn('p-3 md:p-3.5', gridClass)}>{children}</div>
             {footer ? (
-                <div className="border-t border-border bg-muted/30 px-4 py-3">
+                <div className="border-t border-border bg-muted/30 px-3 py-2.5 md:px-4">
                     {footer}
                 </div>
             ) : null}

@@ -36,7 +36,7 @@ test.describe('LR context resolution and Party Master', () => {
 
         await page.goto('/lorry-receipts');
         await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-            'Lorry Receipts',
+            'Bilty Register',
         );
         // Never a full-page chooser.
         await expect(

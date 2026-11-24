@@ -231,8 +231,8 @@ export default function TripShow({
                 actions={
                     <AppIconAction
                         icon={ArrowLeft}
-                        label="Back to trips"
-                        href={urls.index}
+                        label="Back to Bilty"
+                        href={urls.lr_show}
                         variant="outline"
                     />
                 }

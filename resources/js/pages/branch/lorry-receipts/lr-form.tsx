@@ -1,10 +1,12 @@
 import { Form, Head, Link } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
-import { useState } from 'react';
+import type { ReactNode } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { AppIconAction } from '@/components/app-icon-action';
 import InputError from '@/components/input-error';
 import { FormSection } from '@/components/form-section';
 import { PageShell } from '@/components/page-shell';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,6 +26,7 @@ type GoodsRow = {
     package_type_id: string;
     goods_description: string;
     package_count: string;
+    weight_per_unit: string;
     actual_weight: string;
     charged_weight: string;
     freight_rate_type: string;
@@ -98,22 +101,169 @@ type Props = {
         update?: string;
         show?: string;
     };
+    permissions?: {
+        can_view_freight?: boolean;
+    };
 };
 
+type GoodsFieldSource =
+    | 'weight_per_unit'
+    | 'actual_weight'
+    | 'package_count'
+    | 'other';
+
 const fieldClass =
-    'flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm';
+    'flex h-9 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm';
+const dateFieldClass = `${fieldClass} min-w-[9.5rem]`;
+
+const sectionShellClass =
+    'overflow-hidden rounded-xl border border-border bg-card shadow-xs';
+const sectionHeaderClass =
+    'flex items-center justify-between gap-3 border-b border-border bg-gradient-to-r from-[#2FB36F]/10 via-[#2D8CFF]/5 to-transparent px-4 py-3';
+const sectionBodyClass = 'p-4';
+
+function todayIsoLocal(): string {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
+function parseNumeric(value: string): number | null {
+    const trimmed = value.trim();
+    if (trimmed === '') {
+        return null;
+    }
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
+function formatFixed(value: number, digits: number): string {
+    return value.toFixed(digits);
+}
+
+function deriveWeightPerUnit(
+    actualWeight: string,
+    packageCount: string,
+): string {
+    const actual = parseNumeric(actualWeight);
+    const units = parseNumeric(packageCount);
+    if (actual === null || units === null || units === 0) {
+        return '';
+    }
+    return formatFixed(actual / units, 3);
+}
+
+function computeFreightPreview(row: GoodsRow): number | null {
+    const rate = parseNumeric(row.freight_rate);
+    if (rate === null) {
+        return null;
+    }
+
+    const units = parseNumeric(row.package_count);
+    const actual = parseNumeric(row.actual_weight);
+    const charged = parseNumeric(row.charged_weight);
+
+    switch (row.freight_rate_type) {
+        case 'fixed_amount':
+            return rate;
+        case 'per_package_unit':
+            if (units === null) {
+                return null;
+            }
+            return rate * units;
+        case 'per_kg':
+        case 'per_actual_weight':
+            if (actual === null) {
+                return null;
+            }
+            return rate * actual;
+        case 'per_mt':
+            if (actual === null) {
+                return null;
+            }
+            return rate * (actual / 1000);
+        case 'per_charged_weight':
+            if (charged === null) {
+                return null;
+            }
+            return rate * charged;
+        default:
+            return null;
+    }
+}
+
+function formatPreviewAmount(value: number | null): string {
+    if (value === null) {
+        return '—';
+    }
+    return formatFixed(value, 2);
+}
+
+function sumNumericStrings(values: string[]): number {
+    return values.reduce((total, raw) => {
+        const n = parseNumeric(raw);
+        return n === null ? total : total + n;
+    }, 0);
+}
 
 const emptyGoods = (): GoodsRow => ({
     goods_type_id: '',
     package_type_id: '',
     goods_description: '',
     package_count: '1',
+    weight_per_unit: '',
     actual_weight: '',
     charged_weight: '',
-    freight_rate_type: 'fixed_amount',
+    freight_rate_type: 'per_mt',
     freight_rate: '0',
     goods_value: '',
 });
+
+function mapGoodsFromReceipt(goods: LorryReceiptDetail['goods']): GoodsRow[] {
+    if (goods.length === 0) {
+        return [emptyGoods()];
+    }
+    return goods.map((row) => {
+        const packageCount = row.package_count ?? '';
+        const actualWeight = row.actual_weight ?? '';
+        return {
+            goods_type_id: row.goods_type_id ?? '',
+            package_type_id: row.package_type_id ?? '',
+            goods_description: row.goods_description ?? '',
+            package_count: packageCount,
+            weight_per_unit: deriveWeightPerUnit(actualWeight, packageCount),
+            actual_weight: actualWeight,
+            charged_weight: row.charged_weight ?? '',
+            freight_rate_type: row.freight_rate_type,
+            freight_rate: row.freight_rate ?? '0',
+            goods_value: row.goods_value ?? '',
+        };
+    });
+}
+
+function FormPanelWithAction({
+    title,
+    action,
+    children,
+}: {
+    title: string;
+    action?: ReactNode;
+    children: ReactNode;
+}) {
+    return (
+        <section className={sectionShellClass}>
+            <header className={sectionHeaderClass}>
+                <h2 className="text-sm font-semibold tracking-tight text-foreground">
+                    {title}
+                </h2>
+                {action}
+            </header>
+            <div className={sectionBodyClass}>{children}</div>
+        </section>
+    );
+}
 
 export default function LrForm({
     mode,
@@ -123,10 +273,12 @@ export default function LrForm({
     lorryReceipt,
     formOptions,
     urls,
+    permissions,
 }: Props) {
+    const mayViewFreight = permissions?.can_view_freight !== false;
     const formMode =
         formModeProp ?? (workflowContext === 'partload' ? 'partload' : 'truck');
-    const [numberMode, setNumberMode] = useState<'auto' | 'manual'>('auto');
+
     const [vehicleId, setVehicleId] = useState(
         (lorryReceipt as { vehicle_id?: string | null } | null)?.vehicle_id ??
             '',
@@ -137,17 +289,7 @@ export default function LrForm({
     );
     const [goods, setGoods] = useState<GoodsRow[]>(() =>
         lorryReceipt?.goods?.length
-            ? lorryReceipt.goods.map((row) => ({
-                  goods_type_id: row.goods_type_id ?? '',
-                  package_type_id: row.package_type_id ?? '',
-                  goods_description: row.goods_description ?? '',
-                  package_count: row.package_count ?? '',
-                  actual_weight: row.actual_weight ?? '',
-                  charged_weight: row.charged_weight ?? '',
-                  freight_rate_type: row.freight_rate_type,
-                  freight_rate: row.freight_rate ?? '0',
-                  goods_value: row.goods_value ?? '',
-              }))
+            ? mapGoodsFromReceipt(lorryReceipt.goods)
             : [emptyGoods()],
     );
     const [ewbs, setEwbs] = useState<EwbRow[]>(() =>
@@ -168,6 +310,8 @@ export default function LrForm({
             : [],
     );
 
+    const goodsSyncGuard = useRef<Record<number, GoodsFieldSource | null>>({});
+
     const selectedVehicle = (formOptions.vehicles ?? []).find(
         (vehicle) => vehicle.id === vehicleId,
     );
@@ -182,15 +326,6 @@ export default function LrForm({
                   ? 'broker'
                   : null;
 
-    const action = mode === 'create' ? urls.store! : urls.update!;
-    const method = mode === 'create' ? 'post' : 'patch';
-    const title =
-        mode === 'create'
-            ? formMode === 'partload'
-                ? 'Create Partload Bilty'
-                : 'Create Lorry Receipt'
-            : `Edit LR ${lorryReceipt?.lr_number}`;
-
     const needsStations =
         resolvedContext === 'own_fleet' || resolvedContext === 'partload';
     const needsParties =
@@ -199,11 +334,116 @@ export default function LrForm({
     const partiesOptional = resolvedContext === 'own_fleet';
     const showVehicle = formMode === 'truck';
 
+    const action = mode === 'create' ? urls.store! : urls.update!;
+    const method = mode === 'create' ? 'post' : 'patch';
+    const title =
+        mode === 'create'
+            ? 'Create Bilty'
+            : `Edit Bilty ${lorryReceipt?.lr_number ?? ''}`;
+
+    const ownershipBadge = useMemo(() => {
+        if (!selectedVehicle?.ownership) {
+            return null;
+        }
+        if (selectedVehicle.ownership === 'own') {
+            return (
+                <Badge variant="secondary" className="shrink-0">
+                    Own
+                </Badge>
+            );
+        }
+        if (selectedVehicle.ownership === 'market') {
+            return (
+                <Badge variant="outline" className="shrink-0">
+                    Market
+                </Badge>
+            );
+        }
+        return null;
+    }, [selectedVehicle?.ownership]);
+
+    const applyGoodsField = useCallback(
+        (index: number, patch: Partial<GoodsRow>, source: GoodsFieldSource) => {
+            goodsSyncGuard.current[index] = source;
+            setGoods((current) =>
+                current.map((row, rowIndex) => {
+                    if (rowIndex !== index) {
+                        return row;
+                    }
+
+                    const next: GoodsRow = { ...row, ...patch };
+
+                    if (source === 'weight_per_unit') {
+                        const units = parseNumeric(next.package_count);
+                        const wpu = parseNumeric(next.weight_per_unit);
+                        if (units !== null && wpu !== null) {
+                            next.actual_weight = formatFixed(units * wpu, 3);
+                        }
+                    } else if (source === 'actual_weight') {
+                        const units = parseNumeric(next.package_count);
+                        const actual = parseNumeric(next.actual_weight);
+                        if (units !== null && units !== 0 && actual !== null) {
+                            next.weight_per_unit = formatFixed(
+                                actual / units,
+                                3,
+                            );
+                        }
+                    } else if (source === 'package_count') {
+                        const units = parseNumeric(next.package_count);
+                        const actual = parseNumeric(next.actual_weight);
+                        if (units !== null && units !== 0 && actual !== null) {
+                            next.weight_per_unit = formatFixed(
+                                actual / units,
+                                3,
+                            );
+                        }
+                    }
+
+                    return next;
+                }),
+            );
+            goodsSyncGuard.current[index] = null;
+        },
+        [],
+    );
+
+    const summary = useMemo(() => {
+        const totalUnits = sumNumericStrings(
+            goods.map((row) => row.package_count),
+        );
+        const totalActual = sumNumericStrings(
+            goods.map((row) => row.actual_weight),
+        );
+        const totalCharged = sumNumericStrings(
+            goods.map((row) => row.charged_weight),
+        );
+        const totalGoodsValue = sumNumericStrings(
+            goods.map((row) => row.goods_value),
+        );
+        const totalFreight = goods.reduce((total, row) => {
+            const preview = computeFreightPreview(row);
+            return preview === null ? total : total + preview;
+        }, 0);
+        const totalAdditional = sumNumericStrings(
+            charges.map((row) => row.amount),
+        );
+
+        return {
+            totalUnits: formatFixed(totalUnits, 3),
+            totalActual: formatFixed(totalActual, 3),
+            totalCharged: formatFixed(totalCharged, 3),
+            totalGoodsValue: formatFixed(totalGoodsValue, 2),
+            totalFreight: formatFixed(totalFreight, 2),
+            totalAdditional: formatFixed(totalAdditional, 2),
+            totalAmount: formatFixed(totalFreight + totalAdditional, 2),
+        };
+    }, [charges, goods]);
+
     return (
         <>
             <Head title={title} />
             <PageShell
-                width="form"
+                width="full"
                 title={title}
                 description={contextLabel}
                 actions={
@@ -215,10 +455,16 @@ export default function LrForm({
                     />
                 }
             >
+                <datalist id="stations-list">
+                    {formOptions.stations.map((station) => (
+                        <option key={station.id} value={station.name} />
+                    ))}
+                </datalist>
+
                 <Form
                     action={action}
                     method={method}
-                    className="w-full space-y-5"
+                    className="w-full space-y-3"
                 >
                     {({ errors, processing }) => (
                         <>
@@ -235,12 +481,59 @@ export default function LrForm({
                                 />
                             ) : null}
 
-                            <FormSection title="LR details" columns={3}>
-                                {showVehicle ? (
-                                    <div className="space-y-2 md:col-span-2">
-                                        <Label htmlFor="vehicle_id">
-                                            Truck / Vehicle
+                            <FormSection title="Section A" columns={3}>
+                                {mode === 'create' ? (
+                                    <div className="space-y-2">
+                                        <Label htmlFor="lr_number">
+                                            Bilty No.
                                         </Label>
+                                        <Input
+                                            id="lr_number"
+                                            name="lr_number"
+                                            placeholder="Auto-generated if left blank"
+                                        />
+                                        <InputError
+                                            message={errors.lr_number}
+                                        />
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        <Label htmlFor="lr_number_display">
+                                            Bilty No.
+                                        </Label>
+                                        <Input
+                                            id="lr_number_display"
+                                            value={
+                                                lorryReceipt?.lr_number ?? ''
+                                            }
+                                            disabled
+                                            readOnly
+                                        />
+                                    </div>
+                                )}
+                                <div className="space-y-2">
+                                    <Label htmlFor="lr_date">Date</Label>
+                                    <Input
+                                        id="lr_date"
+                                        name="lr_date"
+                                        type="date"
+                                        className={dateFieldClass}
+                                        defaultValue={
+                                            mode === 'create'
+                                                ? todayIsoLocal()
+                                                : (lorryReceipt?.lr_date ?? '')
+                                        }
+                                    />
+                                    <InputError message={errors.lr_date} />
+                                </div>
+                                {showVehicle ? (
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2">
+                                            <Label htmlFor="vehicle_id">
+                                                Truck
+                                            </Label>
+                                            {ownershipBadge}
+                                        </div>
                                         <select
                                             id="vehicle_id"
                                             name="vehicle_id"
@@ -266,13 +559,6 @@ export default function LrForm({
                                                 ),
                                             )}
                                         </select>
-                                        <p className="text-xs text-muted-foreground">
-                                            {resolvedContext === 'own_fleet'
-                                                ? 'Company-owned vehicle — station route required.'
-                                                : resolvedContext === 'broker'
-                                                  ? 'Market-hired vehicle — free-text route fields apply.'
-                                                  : 'Vehicle ownership determines whether stations or free-text route fields apply.'}
-                                        </p>
                                         <InputError
                                             message={errors.vehicle_id}
                                         />
@@ -312,81 +598,16 @@ export default function LrForm({
                                         }
                                     />
                                 </div>
-                                {mode === 'create' ? (
-                                    <>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="number_mode">
-                                                Number mode
-                                            </Label>
-                                            <select
-                                                id="number_mode"
-                                                name="number_mode"
-                                                className={fieldClass}
-                                                value={numberMode}
-                                                onChange={(e) =>
-                                                    setNumberMode(
-                                                        e.target.value as
-                                                            | 'auto'
-                                                            | 'manual',
-                                                    )
-                                                }
-                                            >
-                                                <option value="auto">
-                                                    Auto
-                                                </option>
-                                                <option value="manual">
-                                                    Manual
-                                                </option>
-                                            </select>
-                                        </div>
-                                        {numberMode === 'manual' ? (
-                                            <div className="space-y-2">
-                                                <Label htmlFor="lr_number">
-                                                    LR number
-                                                </Label>
-                                                <Input
-                                                    id="lr_number"
-                                                    name="lr_number"
-                                                    required
-                                                />
-                                                <InputError
-                                                    message={errors.lr_number}
-                                                />
-                                            </div>
-                                        ) : null}
-                                    </>
-                                ) : (
-                                    <div className="space-y-2">
-                                        <Label>LR number</Label>
-                                        <Input
-                                            value={
-                                                lorryReceipt?.lr_number ?? ''
-                                            }
-                                            disabled
-                                            readOnly
-                                        />
-                                    </div>
-                                )}
-                                <div className="space-y-2">
-                                    <Label htmlFor="lr_date">LR date</Label>
-                                    <Input
-                                        id="lr_date"
-                                        name="lr_date"
-                                        type="date"
-                                        defaultValue={
-                                            lorryReceipt?.lr_date ?? ''
-                                        }
-                                    />
-                                </div>
                                 {needsTextLocations ? (
                                     <>
                                         <div className="space-y-2">
                                             <Label htmlFor="from_text">
-                                                From text
+                                                Loading Station
                                             </Label>
                                             <Input
                                                 id="from_text"
                                                 name="from_text"
+                                                list="stations-list"
                                                 defaultValue={
                                                     lorryReceipt?.from_text ??
                                                     ''
@@ -398,11 +619,12 @@ export default function LrForm({
                                         </div>
                                         <div className="space-y-2">
                                             <Label htmlFor="to_text">
-                                                To text
+                                                Unloading Station
                                             </Label>
                                             <Input
                                                 id="to_text"
                                                 name="to_text"
+                                                list="stations-list"
                                                 defaultValue={
                                                     lorryReceipt?.to_text ?? ''
                                                 }
@@ -417,7 +639,8 @@ export default function LrForm({
                                     <>
                                         <div className="space-y-2">
                                             <Label htmlFor="from_station_id">
-                                                From station *
+                                                Loading Station
+                                                {needsStations ? ' *' : ''}
                                             </Label>
                                             <select
                                                 id="from_station_id"
@@ -447,7 +670,7 @@ export default function LrForm({
                                         </div>
                                         <div className="space-y-2">
                                             <Label htmlFor="to_station_id">
-                                                To station *
+                                                Unloading Station *
                                             </Label>
                                             <select
                                                 id="to_station_id"
@@ -547,25 +770,11 @@ export default function LrForm({
                                         </div>
                                     </>
                                 ) : null}
-                                <div className="space-y-2">
-                                    <Label htmlFor="goods_value">
-                                        Goods value (optional override)
-                                    </Label>
-                                    <Input
-                                        id="goods_value"
-                                        name="goods_value"
-                                        type="number"
-                                        step="0.01"
-                                        min="0"
-                                        defaultValue={
-                                            lorryReceipt?.goods_value ?? ''
-                                        }
-                                    />
-                                </div>
                             </FormSection>
 
-                            <FormSection title="Goods" columns={3}>
-                                <div className="flex items-center justify-end gap-3 md:col-span-3">
+                            <FormPanelWithAction
+                                title="Goods"
+                                action={
                                     <Button
                                         type="button"
                                         variant="secondary"
@@ -579,15 +788,416 @@ export default function LrForm({
                                     >
                                         Add row
                                     </Button>
-                                </div>
+                                }
+                            >
                                 <InputError message={errors.goods} />
-                                <div className="space-y-4">
+
+                                <div className="hidden md:block">
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full min-w-[1100px] text-left text-sm">
+                                            <thead className="text-muted-foreground">
+                                                <tr className="border-b border-border">
+                                                    <th className="min-w-[9rem] px-2 py-2 font-medium">
+                                                        Description
+                                                    </th>
+                                                    <th className="min-w-[7rem] px-2 py-2 font-medium">
+                                                        Goods Type
+                                                    </th>
+                                                    <th className="min-w-[7rem] px-2 py-2 font-medium">
+                                                        Package Type
+                                                    </th>
+                                                    <th className="min-w-[5.5rem] px-2 py-2 font-medium">
+                                                        No. of Units
+                                                    </th>
+                                                    <th className="min-w-[5.5rem] px-2 py-2 font-medium">
+                                                        Wt./Unit
+                                                    </th>
+                                                    <th className="min-w-[5.5rem] px-2 py-2 font-medium">
+                                                        Actual Wt
+                                                    </th>
+                                                    <th className="min-w-[5.5rem] px-2 py-2 font-medium">
+                                                        Charged Wt
+                                                    </th>
+                                                    {mayViewFreight ? (
+                                                        <>
+                                                            <th className="min-w-[6.5rem] px-2 py-2 font-medium">
+                                                                Rate Type
+                                                            </th>
+                                                            <th className="min-w-[5rem] px-2 py-2 font-medium">
+                                                                Rate
+                                                            </th>
+                                                            <th className="min-w-[6rem] px-2 py-2 font-medium">
+                                                                Freight Amount
+                                                            </th>
+                                                        </>
+                                                    ) : null}
+                                                    <th className="min-w-[5.5rem] px-2 py-2 font-medium">
+                                                        Goods Value
+                                                    </th>
+                                                    <th className="min-w-[4.5rem] px-2 py-2 font-medium">
+                                                        Remove
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {goods.map((row, index) => (
+                                                    <tr
+                                                        key={index}
+                                                        className="border-b border-border/70 align-top"
+                                                    >
+                                                        <td className="px-2 py-2">
+                                                            <Input
+                                                                name={`goods[${index}][goods_description]`}
+                                                                className="h-9"
+                                                                value={
+                                                                    row.goods_description
+                                                                }
+                                                                onChange={(e) =>
+                                                                    applyGoodsField(
+                                                                        index,
+                                                                        {
+                                                                            goods_description:
+                                                                                e
+                                                                                    .target
+                                                                                    .value,
+                                                                        },
+                                                                        'other',
+                                                                    )
+                                                                }
+                                                            />
+                                                        </td>
+                                                        <td className="px-2 py-2">
+                                                            <select
+                                                                name={`goods[${index}][goods_type_id]`}
+                                                                className={
+                                                                    fieldClass
+                                                                }
+                                                                value={
+                                                                    row.goods_type_id
+                                                                }
+                                                                onChange={(e) =>
+                                                                    applyGoodsField(
+                                                                        index,
+                                                                        {
+                                                                            goods_type_id:
+                                                                                e
+                                                                                    .target
+                                                                                    .value,
+                                                                        },
+                                                                        'other',
+                                                                    )
+                                                                }
+                                                            >
+                                                                <option value="">
+                                                                    Select
+                                                                </option>
+                                                                {formOptions.goodsTypes.map(
+                                                                    (item) => (
+                                                                        <option
+                                                                            key={
+                                                                                item.id
+                                                                            }
+                                                                            value={
+                                                                                item.id
+                                                                            }
+                                                                        >
+                                                                            {
+                                                                                item.name
+                                                                            }
+                                                                        </option>
+                                                                    ),
+                                                                )}
+                                                            </select>
+                                                        </td>
+                                                        <td className="px-2 py-2">
+                                                            <select
+                                                                name={`goods[${index}][package_type_id]`}
+                                                                className={
+                                                                    fieldClass
+                                                                }
+                                                                value={
+                                                                    row.package_type_id
+                                                                }
+                                                                onChange={(e) =>
+                                                                    applyGoodsField(
+                                                                        index,
+                                                                        {
+                                                                            package_type_id:
+                                                                                e
+                                                                                    .target
+                                                                                    .value,
+                                                                        },
+                                                                        'other',
+                                                                    )
+                                                                }
+                                                            >
+                                                                <option value="">
+                                                                    Select
+                                                                </option>
+                                                                {formOptions.packageTypes.map(
+                                                                    (item) => (
+                                                                        <option
+                                                                            key={
+                                                                                item.id
+                                                                            }
+                                                                            value={
+                                                                                item.id
+                                                                            }
+                                                                        >
+                                                                            {
+                                                                                item.name
+                                                                            }
+                                                                        </option>
+                                                                    ),
+                                                                )}
+                                                            </select>
+                                                        </td>
+                                                        <td className="px-2 py-2">
+                                                            <Input
+                                                                name={`goods[${index}][package_count]`}
+                                                                type="number"
+                                                                min="0"
+                                                                step="0.001"
+                                                                className="h-9"
+                                                                value={
+                                                                    row.package_count
+                                                                }
+                                                                onChange={(e) =>
+                                                                    applyGoodsField(
+                                                                        index,
+                                                                        {
+                                                                            package_count:
+                                                                                e
+                                                                                    .target
+                                                                                    .value,
+                                                                        },
+                                                                        'package_count',
+                                                                    )
+                                                                }
+                                                            />
+                                                        </td>
+                                                        <td className="px-2 py-2">
+                                                            <Input
+                                                                type="number"
+                                                                min="0"
+                                                                step="0.001"
+                                                                className="h-9"
+                                                                value={
+                                                                    row.weight_per_unit
+                                                                }
+                                                                onChange={(e) =>
+                                                                    applyGoodsField(
+                                                                        index,
+                                                                        {
+                                                                            weight_per_unit:
+                                                                                e
+                                                                                    .target
+                                                                                    .value,
+                                                                        },
+                                                                        'weight_per_unit',
+                                                                    )
+                                                                }
+                                                                aria-label={`Weight per unit row ${index + 1}`}
+                                                            />
+                                                        </td>
+                                                        <td className="px-2 py-2">
+                                                            <Input
+                                                                name={`goods[${index}][actual_weight]`}
+                                                                type="number"
+                                                                min="0"
+                                                                step="0.001"
+                                                                className="h-9"
+                                                                value={
+                                                                    row.actual_weight
+                                                                }
+                                                                onChange={(e) =>
+                                                                    applyGoodsField(
+                                                                        index,
+                                                                        {
+                                                                            actual_weight:
+                                                                                e
+                                                                                    .target
+                                                                                    .value,
+                                                                        },
+                                                                        'actual_weight',
+                                                                    )
+                                                                }
+                                                            />
+                                                        </td>
+                                                        <td className="px-2 py-2">
+                                                            <Input
+                                                                name={`goods[${index}][charged_weight]`}
+                                                                type="number"
+                                                                min="0"
+                                                                step="0.001"
+                                                                className="h-9"
+                                                                value={
+                                                                    row.charged_weight
+                                                                }
+                                                                onChange={(e) =>
+                                                                    applyGoodsField(
+                                                                        index,
+                                                                        {
+                                                                            charged_weight:
+                                                                                e
+                                                                                    .target
+                                                                                    .value,
+                                                                        },
+                                                                        'other',
+                                                                    )
+                                                                }
+                                                            />
+                                                        </td>
+                                                        {mayViewFreight ? (
+                                                            <>
+                                                                <td className="px-2 py-2">
+                                                                    <select
+                                                                        name={`goods[${index}][freight_rate_type]`}
+                                                                        className={
+                                                                            fieldClass
+                                                                        }
+                                                                        value={
+                                                                            row.freight_rate_type
+                                                                        }
+                                                                        onChange={(
+                                                                            e,
+                                                                        ) =>
+                                                                            applyGoodsField(
+                                                                                index,
+                                                                                {
+                                                                                    freight_rate_type:
+                                                                                        e
+                                                                                            .target
+                                                                                            .value,
+                                                                                },
+                                                                                'other',
+                                                                            )
+                                                                        }
+                                                                        required
+                                                                    >
+                                                                        {formOptions.rateTypeOptions.map(
+                                                                            (
+                                                                                option,
+                                                                            ) => (
+                                                                                <option
+                                                                                    key={
+                                                                                        option.value
+                                                                                    }
+                                                                                    value={
+                                                                                        option.value
+                                                                                    }
+                                                                                >
+                                                                                    {
+                                                                                        option.label
+                                                                                    }
+                                                                                </option>
+                                                                            ),
+                                                                        )}
+                                                                    </select>
+                                                                </td>
+                                                                <td className="px-2 py-2">
+                                                                    <Input
+                                                                        name={`goods[${index}][freight_rate]`}
+                                                                        type="number"
+                                                                        min="0"
+                                                                        step="0.0001"
+                                                                        className="h-9"
+                                                                        value={
+                                                                            row.freight_rate
+                                                                        }
+                                                                        onChange={(
+                                                                            e,
+                                                                        ) =>
+                                                                            applyGoodsField(
+                                                                                index,
+                                                                                {
+                                                                                    freight_rate:
+                                                                                        e
+                                                                                            .target
+                                                                                            .value,
+                                                                                },
+                                                                                'other',
+                                                                            )
+                                                                        }
+                                                                        required
+                                                                    />
+                                                                </td>
+                                                                <td className="px-2 py-2">
+                                                                    <span className="flex h-9 items-center text-muted-foreground tabular-nums">
+                                                                        {formatPreviewAmount(
+                                                                            computeFreightPreview(
+                                                                                row,
+                                                                            ),
+                                                                        )}
+                                                                    </span>
+                                                                </td>
+                                                            </>
+                                                        ) : null}
+                                                        <td className="px-2 py-2">
+                                                            <Input
+                                                                name={`goods[${index}][goods_value]`}
+                                                                type="number"
+                                                                min="0"
+                                                                step="0.01"
+                                                                className="h-9"
+                                                                value={
+                                                                    row.goods_value
+                                                                }
+                                                                onChange={(e) =>
+                                                                    applyGoodsField(
+                                                                        index,
+                                                                        {
+                                                                            goods_value:
+                                                                                e
+                                                                                    .target
+                                                                                    .value,
+                                                                        },
+                                                                        'other',
+                                                                    )
+                                                                }
+                                                            />
+                                                        </td>
+                                                        <td className="px-2 py-2">
+                                                            {goods.length >
+                                                            1 ? (
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() =>
+                                                                        setGoods(
+                                                                            (
+                                                                                current,
+                                                                            ) =>
+                                                                                current.filter(
+                                                                                    (
+                                                                                        _,
+                                                                                        i,
+                                                                                    ) =>
+                                                                                        i !==
+                                                                                        index,
+                                                                                ),
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    Remove
+                                                                </Button>
+                                                            ) : null}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-3 md:hidden">
                                     {goods.map((row, index) => (
                                         <div
                                             key={index}
-                                            className="grid gap-3 rounded-lg border border-border/70 p-3 md:grid-cols-2 lg:grid-cols-4"
+                                            className="space-y-3 rounded-lg border border-border/70 p-3"
                                         >
-                                            <div className="space-y-2 lg:col-span-2">
+                                            <div className="space-y-2">
                                                 <Label>Description</Label>
                                                 <Input
                                                     name={`goods[${index}][goods_description]`}
@@ -595,248 +1205,276 @@ export default function LrForm({
                                                         row.goods_description
                                                     }
                                                     onChange={(e) =>
-                                                        setGoods((current) =>
-                                                            current.map(
-                                                                (item, i) =>
-                                                                    i === index
-                                                                        ? {
-                                                                              ...item,
-                                                                              goods_description:
-                                                                                  e
-                                                                                      .target
-                                                                                      .value,
-                                                                          }
-                                                                        : item,
-                                                            ),
+                                                        applyGoodsField(
+                                                            index,
+                                                            {
+                                                                goods_description:
+                                                                    e.target
+                                                                        .value,
+                                                            },
+                                                            'other',
                                                         )
                                                     }
                                                 />
                                             </div>
-                                            <div className="space-y-2">
-                                                <Label>Goods type</Label>
-                                                <select
-                                                    name={`goods[${index}][goods_type_id]`}
-                                                    className={fieldClass}
-                                                    value={row.goods_type_id}
-                                                    onChange={(e) =>
-                                                        setGoods((current) =>
-                                                            current.map(
-                                                                (item, i) =>
-                                                                    i === index
-                                                                        ? {
-                                                                              ...item,
-                                                                              goods_type_id:
-                                                                                  e
-                                                                                      .target
-                                                                                      .value,
-                                                                          }
-                                                                        : item,
+                                            <div className="grid gap-3 sm:grid-cols-2">
+                                                <div className="space-y-2">
+                                                    <Label>Goods Type</Label>
+                                                    <select
+                                                        name={`goods[${index}][goods_type_id]`}
+                                                        className={fieldClass}
+                                                        value={
+                                                            row.goods_type_id
+                                                        }
+                                                        onChange={(e) =>
+                                                            applyGoodsField(
+                                                                index,
+                                                                {
+                                                                    goods_type_id:
+                                                                        e.target
+                                                                            .value,
+                                                                },
+                                                                'other',
+                                                            )
+                                                        }
+                                                    >
+                                                        <option value="">
+                                                            Select
+                                                        </option>
+                                                        {formOptions.goodsTypes.map(
+                                                            (item) => (
+                                                                <option
+                                                                    key={
+                                                                        item.id
+                                                                    }
+                                                                    value={
+                                                                        item.id
+                                                                    }
+                                                                >
+                                                                    {item.name}
+                                                                </option>
                                                             ),
-                                                        )
-                                                    }
-                                                >
-                                                    <option value="">
-                                                        Select
-                                                    </option>
-                                                    {formOptions.goodsTypes.map(
-                                                        (item) => (
-                                                            <option
-                                                                key={item.id}
-                                                                value={item.id}
-                                                            >
-                                                                {item.name}
-                                                            </option>
-                                                        ),
-                                                    )}
-                                                </select>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label>Package type</Label>
-                                                <select
-                                                    name={`goods[${index}][package_type_id]`}
-                                                    className={fieldClass}
-                                                    value={row.package_type_id}
-                                                    onChange={(e) =>
-                                                        setGoods((current) =>
-                                                            current.map(
-                                                                (item, i) =>
-                                                                    i === index
-                                                                        ? {
-                                                                              ...item,
-                                                                              package_type_id:
-                                                                                  e
-                                                                                      .target
-                                                                                      .value,
-                                                                          }
-                                                                        : item,
+                                                        )}
+                                                    </select>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Package Type</Label>
+                                                    <select
+                                                        name={`goods[${index}][package_type_id]`}
+                                                        className={fieldClass}
+                                                        value={
+                                                            row.package_type_id
+                                                        }
+                                                        onChange={(e) =>
+                                                            applyGoodsField(
+                                                                index,
+                                                                {
+                                                                    package_type_id:
+                                                                        e.target
+                                                                            .value,
+                                                                },
+                                                                'other',
+                                                            )
+                                                        }
+                                                    >
+                                                        <option value="">
+                                                            Select
+                                                        </option>
+                                                        {formOptions.packageTypes.map(
+                                                            (item) => (
+                                                                <option
+                                                                    key={
+                                                                        item.id
+                                                                    }
+                                                                    value={
+                                                                        item.id
+                                                                    }
+                                                                >
+                                                                    {item.name}
+                                                                </option>
                                                             ),
-                                                        )
-                                                    }
-                                                >
-                                                    <option value="">
-                                                        Select
-                                                    </option>
-                                                    {formOptions.packageTypes.map(
-                                                        (item) => (
-                                                            <option
-                                                                key={item.id}
-                                                                value={item.id}
-                                                            >
-                                                                {item.name}
-                                                            </option>
-                                                        ),
-                                                    )}
-                                                </select>
+                                                        )}
+                                                    </select>
+                                                </div>
                                             </div>
-                                            <div className="space-y-2">
-                                                <Label>Packages</Label>
-                                                <Input
-                                                    name={`goods[${index}][package_count]`}
-                                                    type="number"
-                                                    min="0"
-                                                    step="0.001"
-                                                    value={row.package_count}
-                                                    onChange={(e) =>
-                                                        setGoods((current) =>
-                                                            current.map(
-                                                                (item, i) =>
-                                                                    i === index
-                                                                        ? {
-                                                                              ...item,
-                                                                              package_count:
-                                                                                  e
-                                                                                      .target
-                                                                                      .value,
-                                                                          }
-                                                                        : item,
-                                                            ),
-                                                        )
-                                                    }
-                                                />
+                                            <div className="grid grid-cols-2 gap-3">
+                                                <div className="space-y-2">
+                                                    <Label>No. of Units</Label>
+                                                    <Input
+                                                        name={`goods[${index}][package_count]`}
+                                                        type="number"
+                                                        min="0"
+                                                        step="0.001"
+                                                        value={
+                                                            row.package_count
+                                                        }
+                                                        onChange={(e) =>
+                                                            applyGoodsField(
+                                                                index,
+                                                                {
+                                                                    package_count:
+                                                                        e.target
+                                                                            .value,
+                                                                },
+                                                                'package_count',
+                                                            )
+                                                        }
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Wt./Unit</Label>
+                                                    <Input
+                                                        type="number"
+                                                        min="0"
+                                                        step="0.001"
+                                                        value={
+                                                            row.weight_per_unit
+                                                        }
+                                                        onChange={(e) =>
+                                                            applyGoodsField(
+                                                                index,
+                                                                {
+                                                                    weight_per_unit:
+                                                                        e.target
+                                                                            .value,
+                                                                },
+                                                                'weight_per_unit',
+                                                            )
+                                                        }
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Actual Wt</Label>
+                                                    <Input
+                                                        name={`goods[${index}][actual_weight]`}
+                                                        type="number"
+                                                        min="0"
+                                                        step="0.001"
+                                                        value={
+                                                            row.actual_weight
+                                                        }
+                                                        onChange={(e) =>
+                                                            applyGoodsField(
+                                                                index,
+                                                                {
+                                                                    actual_weight:
+                                                                        e.target
+                                                                            .value,
+                                                                },
+                                                                'actual_weight',
+                                                            )
+                                                        }
+                                                    />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label>Charged Wt</Label>
+                                                    <Input
+                                                        name={`goods[${index}][charged_weight]`}
+                                                        type="number"
+                                                        min="0"
+                                                        step="0.001"
+                                                        value={
+                                                            row.charged_weight
+                                                        }
+                                                        onChange={(e) =>
+                                                            applyGoodsField(
+                                                                index,
+                                                                {
+                                                                    charged_weight:
+                                                                        e.target
+                                                                            .value,
+                                                                },
+                                                                'other',
+                                                            )
+                                                        }
+                                                    />
+                                                </div>
                                             </div>
+                                            {mayViewFreight ? (
+                                                <div className="grid gap-3 sm:grid-cols-3">
+                                                    <div className="space-y-2 sm:col-span-1">
+                                                        <Label>Rate Type</Label>
+                                                        <select
+                                                            name={`goods[${index}][freight_rate_type]`}
+                                                            className={
+                                                                fieldClass
+                                                            }
+                                                            value={
+                                                                row.freight_rate_type
+                                                            }
+                                                            onChange={(e) =>
+                                                                applyGoodsField(
+                                                                    index,
+                                                                    {
+                                                                        freight_rate_type:
+                                                                            e
+                                                                                .target
+                                                                                .value,
+                                                                    },
+                                                                    'other',
+                                                                )
+                                                            }
+                                                            required
+                                                        >
+                                                            {formOptions.rateTypeOptions.map(
+                                                                (option) => (
+                                                                    <option
+                                                                        key={
+                                                                            option.value
+                                                                        }
+                                                                        value={
+                                                                            option.value
+                                                                        }
+                                                                    >
+                                                                        {
+                                                                            option.label
+                                                                        }
+                                                                    </option>
+                                                                ),
+                                                            )}
+                                                        </select>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label>Rate</Label>
+                                                        <Input
+                                                            name={`goods[${index}][freight_rate]`}
+                                                            type="number"
+                                                            min="0"
+                                                            step="0.0001"
+                                                            value={
+                                                                row.freight_rate
+                                                            }
+                                                            onChange={(e) =>
+                                                                applyGoodsField(
+                                                                    index,
+                                                                    {
+                                                                        freight_rate:
+                                                                            e
+                                                                                .target
+                                                                                .value,
+                                                                    },
+                                                                    'other',
+                                                                )
+                                                            }
+                                                            required
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label>
+                                                            Freight Amount
+                                                        </Label>
+                                                        <p className="flex h-9 items-center text-sm text-muted-foreground tabular-nums">
+                                                            {formatPreviewAmount(
+                                                                computeFreightPreview(
+                                                                    row,
+                                                                ),
+                                                            )}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            ) : null}
                                             <div className="space-y-2">
-                                                <Label>Actual weight</Label>
-                                                <Input
-                                                    name={`goods[${index}][actual_weight]`}
-                                                    type="number"
-                                                    min="0"
-                                                    step="0.001"
-                                                    value={row.actual_weight}
-                                                    onChange={(e) =>
-                                                        setGoods((current) =>
-                                                            current.map(
-                                                                (item, i) =>
-                                                                    i === index
-                                                                        ? {
-                                                                              ...item,
-                                                                              actual_weight:
-                                                                                  e
-                                                                                      .target
-                                                                                      .value,
-                                                                          }
-                                                                        : item,
-                                                            ),
-                                                        )
-                                                    }
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label>Charged weight</Label>
-                                                <Input
-                                                    name={`goods[${index}][charged_weight]`}
-                                                    type="number"
-                                                    min="0"
-                                                    step="0.001"
-                                                    value={row.charged_weight}
-                                                    onChange={(e) =>
-                                                        setGoods((current) =>
-                                                            current.map(
-                                                                (item, i) =>
-                                                                    i === index
-                                                                        ? {
-                                                                              ...item,
-                                                                              charged_weight:
-                                                                                  e
-                                                                                      .target
-                                                                                      .value,
-                                                                          }
-                                                                        : item,
-                                                            ),
-                                                        )
-                                                    }
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label>Rate type</Label>
-                                                <select
-                                                    name={`goods[${index}][freight_rate_type]`}
-                                                    className={fieldClass}
-                                                    value={
-                                                        row.freight_rate_type
-                                                    }
-                                                    onChange={(e) =>
-                                                        setGoods((current) =>
-                                                            current.map(
-                                                                (item, i) =>
-                                                                    i === index
-                                                                        ? {
-                                                                              ...item,
-                                                                              freight_rate_type:
-                                                                                  e
-                                                                                      .target
-                                                                                      .value,
-                                                                          }
-                                                                        : item,
-                                                            ),
-                                                        )
-                                                    }
-                                                    required
-                                                >
-                                                    {formOptions.rateTypeOptions.map(
-                                                        (option) => (
-                                                            <option
-                                                                key={
-                                                                    option.value
-                                                                }
-                                                                value={
-                                                                    option.value
-                                                                }
-                                                            >
-                                                                {option.label}
-                                                            </option>
-                                                        ),
-                                                    )}
-                                                </select>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label>Rate</Label>
-                                                <Input
-                                                    name={`goods[${index}][freight_rate]`}
-                                                    type="number"
-                                                    min="0"
-                                                    step="0.0001"
-                                                    value={row.freight_rate}
-                                                    onChange={(e) =>
-                                                        setGoods((current) =>
-                                                            current.map(
-                                                                (item, i) =>
-                                                                    i === index
-                                                                        ? {
-                                                                              ...item,
-                                                                              freight_rate:
-                                                                                  e
-                                                                                      .target
-                                                                                      .value,
-                                                                          }
-                                                                        : item,
-                                                            ),
-                                                        )
-                                                    }
-                                                    required
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label>Goods value</Label>
+                                                <Label>Goods Value</Label>
                                                 <Input
                                                     name={`goods[${index}][goods_value]`}
                                                     type="number"
@@ -844,54 +1482,43 @@ export default function LrForm({
                                                     step="0.01"
                                                     value={row.goods_value}
                                                     onChange={(e) =>
-                                                        setGoods((current) =>
-                                                            current.map(
-                                                                (item, i) =>
-                                                                    i === index
-                                                                        ? {
-                                                                              ...item,
-                                                                              goods_value:
-                                                                                  e
-                                                                                      .target
-                                                                                      .value,
-                                                                          }
-                                                                        : item,
-                                                            ),
+                                                        applyGoodsField(
+                                                            index,
+                                                            {
+                                                                goods_value:
+                                                                    e.target
+                                                                        .value,
+                                                            },
+                                                            'other',
                                                         )
                                                     }
                                                 />
                                             </div>
                                             {goods.length > 1 ? (
-                                                <div className="flex items-end">
-                                                    <Button
-                                                        type="button"
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={() =>
-                                                            setGoods(
-                                                                (current) =>
-                                                                    current.filter(
-                                                                        (
-                                                                            _,
-                                                                            i,
-                                                                        ) =>
-                                                                            i !==
-                                                                            index,
-                                                                    ),
-                                                            )
-                                                        }
-                                                    >
-                                                        Remove
-                                                    </Button>
-                                                </div>
+                                                <Button
+                                                    type="button"
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    onClick={() =>
+                                                        setGoods((current) =>
+                                                            current.filter(
+                                                                (_, i) =>
+                                                                    i !== index,
+                                                            ),
+                                                        )
+                                                    }
+                                                >
+                                                    Remove
+                                                </Button>
                                             ) : null}
                                         </div>
                                     ))}
                                 </div>
-                            </FormSection>
+                            </FormPanelWithAction>
 
-                            <FormSection title="E-way bills" columns={3}>
-                                <div className="flex items-center justify-end gap-3 md:col-span-3">
+                            <FormPanelWithAction
+                                title="E-way bills"
+                                action={
                                     <Button
                                         type="button"
                                         variant="secondary"
@@ -909,129 +1536,176 @@ export default function LrForm({
                                     >
                                         Add EWB
                                     </Button>
-                                </div>
+                                }
+                            >
                                 {ewbs.length === 0 ? (
                                     <p className="text-sm text-muted-foreground">
-                                        No e-way bills.
+                                        No e-way bills added yet.
                                     </p>
                                 ) : (
-                                    <div className="space-y-3">
-                                        {ewbs.map((row, index) => (
-                                            <div
-                                                key={index}
-                                                className="grid gap-3 md:grid-cols-4"
-                                            >
-                                                <div className="space-y-2">
-                                                    <Label>Number</Label>
-                                                    <Input
-                                                        name={`eway_bills[${index}][ewb_number]`}
-                                                        value={row.ewb_number}
-                                                        onChange={(e) =>
-                                                            setEwbs((current) =>
-                                                                current.map(
-                                                                    (
-                                                                        item,
-                                                                        i,
-                                                                    ) =>
-                                                                        i ===
-                                                                        index
-                                                                            ? {
-                                                                                  ...item,
-                                                                                  ewb_number:
-                                                                                      e
-                                                                                          .target
-                                                                                          .value,
-                                                                              }
-                                                                            : item,
-                                                                ),
-                                                            )
-                                                        }
-                                                        required
-                                                    />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label>Date</Label>
-                                                    <Input
-                                                        name={`eway_bills[${index}][ewb_date]`}
-                                                        type="date"
-                                                        value={row.ewb_date}
-                                                        onChange={(e) =>
-                                                            setEwbs((current) =>
-                                                                current.map(
-                                                                    (
-                                                                        item,
-                                                                        i,
-                                                                    ) =>
-                                                                        i ===
-                                                                        index
-                                                                            ? {
-                                                                                  ...item,
-                                                                                  ewb_date:
-                                                                                      e
-                                                                                          .target
-                                                                                          .value,
-                                                                              }
-                                                                            : item,
-                                                                ),
-                                                            )
-                                                        }
-                                                    />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label>Valid until</Label>
-                                                    <Input
-                                                        name={`eway_bills[${index}][valid_until]`}
-                                                        type="date"
-                                                        value={row.valid_until}
-                                                        onChange={(e) =>
-                                                            setEwbs((current) =>
-                                                                current.map(
-                                                                    (
-                                                                        item,
-                                                                        i,
-                                                                    ) =>
-                                                                        i ===
-                                                                        index
-                                                                            ? {
-                                                                                  ...item,
-                                                                                  valid_until:
-                                                                                      e
-                                                                                          .target
-                                                                                          .value,
-                                                                              }
-                                                                            : item,
-                                                                ),
-                                                            )
-                                                        }
-                                                        required
-                                                    />
-                                                </div>
-                                                <div className="flex items-end">
-                                                    <Button
-                                                        type="button"
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={() =>
-                                                            setEwbs((current) =>
-                                                                current.filter(
-                                                                    (_, i) =>
-                                                                        i !==
-                                                                        index,
-                                                                ),
-                                                            )
-                                                        }
-                                                    >
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full min-w-[520px] text-left text-sm">
+                                            <thead className="text-muted-foreground">
+                                                <tr className="border-b border-border">
+                                                    <th className="px-2 py-2 font-medium">
+                                                        Number
+                                                    </th>
+                                                    <th className="px-2 py-2 font-medium">
+                                                        Date
+                                                    </th>
+                                                    <th className="px-2 py-2 font-medium">
+                                                        Valid until
+                                                    </th>
+                                                    <th className="px-2 py-2 font-medium">
                                                         Remove
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        ))}
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {ewbs.map((row, index) => (
+                                                    <tr
+                                                        key={index}
+                                                        className="border-b border-border/70"
+                                                    >
+                                                        <td className="px-2 py-2">
+                                                            <Input
+                                                                name={`eway_bills[${index}][ewb_number]`}
+                                                                className="h-9"
+                                                                value={
+                                                                    row.ewb_number
+                                                                }
+                                                                onChange={(e) =>
+                                                                    setEwbs(
+                                                                        (
+                                                                            current,
+                                                                        ) =>
+                                                                            current.map(
+                                                                                (
+                                                                                    item,
+                                                                                    i,
+                                                                                ) =>
+                                                                                    i ===
+                                                                                    index
+                                                                                        ? {
+                                                                                              ...item,
+                                                                                              ewb_number:
+                                                                                                  e
+                                                                                                      .target
+                                                                                                      .value,
+                                                                                          }
+                                                                                        : item,
+                                                                            ),
+                                                                    )
+                                                                }
+                                                                required
+                                                            />
+                                                        </td>
+                                                        <td className="px-2 py-2">
+                                                            <Input
+                                                                name={`eway_bills[${index}][ewb_date]`}
+                                                                type="date"
+                                                                className={
+                                                                    dateFieldClass
+                                                                }
+                                                                value={
+                                                                    row.ewb_date
+                                                                }
+                                                                onChange={(e) =>
+                                                                    setEwbs(
+                                                                        (
+                                                                            current,
+                                                                        ) =>
+                                                                            current.map(
+                                                                                (
+                                                                                    item,
+                                                                                    i,
+                                                                                ) =>
+                                                                                    i ===
+                                                                                    index
+                                                                                        ? {
+                                                                                              ...item,
+                                                                                              ewb_date:
+                                                                                                  e
+                                                                                                      .target
+                                                                                                      .value,
+                                                                                          }
+                                                                                        : item,
+                                                                            ),
+                                                                    )
+                                                                }
+                                                            />
+                                                        </td>
+                                                        <td className="px-2 py-2">
+                                                            <Input
+                                                                name={`eway_bills[${index}][valid_until]`}
+                                                                type="date"
+                                                                className={
+                                                                    dateFieldClass
+                                                                }
+                                                                value={
+                                                                    row.valid_until
+                                                                }
+                                                                onChange={(e) =>
+                                                                    setEwbs(
+                                                                        (
+                                                                            current,
+                                                                        ) =>
+                                                                            current.map(
+                                                                                (
+                                                                                    item,
+                                                                                    i,
+                                                                                ) =>
+                                                                                    i ===
+                                                                                    index
+                                                                                        ? {
+                                                                                              ...item,
+                                                                                              valid_until:
+                                                                                                  e
+                                                                                                      .target
+                                                                                                      .value,
+                                                                                          }
+                                                                                        : item,
+                                                                            ),
+                                                                    )
+                                                                }
+                                                                required
+                                                            />
+                                                        </td>
+                                                        <td className="px-2 py-2">
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() =>
+                                                                    setEwbs(
+                                                                        (
+                                                                            current,
+                                                                        ) =>
+                                                                            current.filter(
+                                                                                (
+                                                                                    _,
+                                                                                    i,
+                                                                                ) =>
+                                                                                    i !==
+                                                                                    index,
+                                                                            ),
+                                                                    )
+                                                                }
+                                                            >
+                                                                Remove
+                                                            </Button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
                                     </div>
                                 )}
-                            </FormSection>
+                            </FormPanelWithAction>
 
-                            <FormSection title="Additional charges" columns={2}>
-                                <div className="flex items-center justify-end gap-3 md:col-span-2">
+                            <FormPanelWithAction
+                                title="Additional charges"
+                                action={
                                     <Button
                                         type="button"
                                         variant="secondary"
@@ -1048,105 +1722,203 @@ export default function LrForm({
                                     >
                                         Add charge
                                     </Button>
-                                </div>
+                                }
+                            >
                                 {charges.length === 0 ? (
                                     <p className="text-sm text-muted-foreground">
-                                        No additional charges.
+                                        No additional charges added yet.
                                     </p>
                                 ) : (
-                                    <div className="space-y-3">
-                                        {charges.map((row, index) => (
-                                            <div
-                                                key={index}
-                                                className="grid gap-3 md:grid-cols-3"
-                                            >
-                                                <div className="space-y-2 md:col-span-1">
-                                                    <Label>Description</Label>
-                                                    <Input
-                                                        name={`additional_charges[${index}][description]`}
-                                                        value={row.description}
-                                                        onChange={(e) =>
-                                                            setCharges(
-                                                                (current) =>
-                                                                    current.map(
-                                                                        (
-                                                                            item,
-                                                                            i,
-                                                                        ) =>
-                                                                            i ===
-                                                                            index
-                                                                                ? {
-                                                                                      ...item,
-                                                                                      description:
-                                                                                          e
-                                                                                              .target
-                                                                                              .value,
-                                                                                  }
-                                                                                : item,
-                                                                    ),
-                                                            )
-                                                        }
-                                                        required
-                                                    />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label>Amount</Label>
-                                                    <Input
-                                                        name={`additional_charges[${index}][amount]`}
-                                                        type="number"
-                                                        min="0.01"
-                                                        step="0.01"
-                                                        value={row.amount}
-                                                        onChange={(e) =>
-                                                            setCharges(
-                                                                (current) =>
-                                                                    current.map(
-                                                                        (
-                                                                            item,
-                                                                            i,
-                                                                        ) =>
-                                                                            i ===
-                                                                            index
-                                                                                ? {
-                                                                                      ...item,
-                                                                                      amount: e
-                                                                                          .target
-                                                                                          .value,
-                                                                                  }
-                                                                                : item,
-                                                                    ),
-                                                            )
-                                                        }
-                                                        required
-                                                    />
-                                                </div>
-                                                <div className="flex items-end">
-                                                    <Button
-                                                        type="button"
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={() =>
-                                                            setCharges(
-                                                                (current) =>
-                                                                    current.filter(
-                                                                        (
-                                                                            _,
-                                                                            i,
-                                                                        ) =>
-                                                                            i !==
-                                                                            index,
-                                                                    ),
-                                                            )
-                                                        }
-                                                    >
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full min-w-[420px] text-left text-sm">
+                                            <thead className="text-muted-foreground">
+                                                <tr className="border-b border-border">
+                                                    <th className="px-2 py-2 font-medium">
+                                                        Description
+                                                    </th>
+                                                    <th className="px-2 py-2 font-medium">
+                                                        Amount
+                                                    </th>
+                                                    <th className="px-2 py-2 font-medium">
                                                         Remove
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        ))}
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {charges.map((row, index) => (
+                                                    <tr
+                                                        key={index}
+                                                        className="border-b border-border/70"
+                                                    >
+                                                        <td className="px-2 py-2">
+                                                            <Input
+                                                                name={`additional_charges[${index}][description]`}
+                                                                className="h-9"
+                                                                value={
+                                                                    row.description
+                                                                }
+                                                                onChange={(e) =>
+                                                                    setCharges(
+                                                                        (
+                                                                            current,
+                                                                        ) =>
+                                                                            current.map(
+                                                                                (
+                                                                                    item,
+                                                                                    i,
+                                                                                ) =>
+                                                                                    i ===
+                                                                                    index
+                                                                                        ? {
+                                                                                              ...item,
+                                                                                              description:
+                                                                                                  e
+                                                                                                      .target
+                                                                                                      .value,
+                                                                                          }
+                                                                                        : item,
+                                                                            ),
+                                                                    )
+                                                                }
+                                                                required
+                                                            />
+                                                        </td>
+                                                        <td className="px-2 py-2">
+                                                            <Input
+                                                                name={`additional_charges[${index}][amount]`}
+                                                                type="number"
+                                                                min="0.01"
+                                                                step="0.01"
+                                                                className="h-9"
+                                                                value={
+                                                                    row.amount
+                                                                }
+                                                                onChange={(e) =>
+                                                                    setCharges(
+                                                                        (
+                                                                            current,
+                                                                        ) =>
+                                                                            current.map(
+                                                                                (
+                                                                                    item,
+                                                                                    i,
+                                                                                ) =>
+                                                                                    i ===
+                                                                                    index
+                                                                                        ? {
+                                                                                              ...item,
+                                                                                              amount: e
+                                                                                                  .target
+                                                                                                  .value,
+                                                                                          }
+                                                                                        : item,
+                                                                            ),
+                                                                    )
+                                                                }
+                                                                required
+                                                            />
+                                                        </td>
+                                                        <td className="px-2 py-2">
+                                                            <Button
+                                                                type="button"
+                                                                variant="ghost"
+                                                                size="sm"
+                                                                onClick={() =>
+                                                                    setCharges(
+                                                                        (
+                                                                            current,
+                                                                        ) =>
+                                                                            current.filter(
+                                                                                (
+                                                                                    _,
+                                                                                    i,
+                                                                                ) =>
+                                                                                    i !==
+                                                                                    index,
+                                                                            ),
+                                                                    )
+                                                                }
+                                                            >
+                                                                Remove
+                                                            </Button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
                                     </div>
                                 )}
-                            </FormSection>
+                            </FormPanelWithAction>
+
+                            <section
+                                className={`${sectionShellClass} px-4 py-3`}
+                            >
+                                <h2 className="mb-3 text-sm font-semibold tracking-tight">
+                                    Summary
+                                </h2>
+                                <dl className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                                    <div className="flex justify-between gap-3 sm:block">
+                                        <dt className="text-muted-foreground">
+                                            Total Units
+                                        </dt>
+                                        <dd className="font-medium tabular-nums">
+                                            {summary.totalUnits}
+                                        </dd>
+                                    </div>
+                                    <div className="flex justify-between gap-3 sm:block">
+                                        <dt className="text-muted-foreground">
+                                            Actual Wt
+                                        </dt>
+                                        <dd className="font-medium tabular-nums">
+                                            {summary.totalActual}
+                                        </dd>
+                                    </div>
+                                    <div className="flex justify-between gap-3 sm:block">
+                                        <dt className="text-muted-foreground">
+                                            Charged Wt
+                                        </dt>
+                                        <dd className="font-medium tabular-nums">
+                                            {summary.totalCharged}
+                                        </dd>
+                                    </div>
+                                    {mayViewFreight ? (
+                                        <>
+                                            <div className="flex justify-between gap-3 sm:block">
+                                                <dt className="text-muted-foreground">
+                                                    Freight
+                                                </dt>
+                                                <dd className="font-medium tabular-nums">
+                                                    {summary.totalFreight}
+                                                </dd>
+                                            </div>
+                                            <div className="flex justify-between gap-3 sm:block">
+                                                <dt className="text-muted-foreground">
+                                                    Additional Charges
+                                                </dt>
+                                                <dd className="font-medium tabular-nums">
+                                                    {summary.totalAdditional}
+                                                </dd>
+                                            </div>
+                                            <div className="flex justify-between gap-3 sm:block">
+                                                <dt className="text-muted-foreground">
+                                                    Total Amount
+                                                </dt>
+                                                <dd className="font-medium tabular-nums">
+                                                    {summary.totalAmount}
+                                                </dd>
+                                            </div>
+                                        </>
+                                    ) : null}
+                                    <div className="flex justify-between gap-3 sm:block">
+                                        <dt className="text-muted-foreground">
+                                            Goods Value
+                                        </dt>
+                                        <dd className="font-medium tabular-nums">
+                                            {summary.totalGoodsValue}
+                                        </dd>
+                                    </div>
+                                </dl>
+                            </section>
 
                             <div className="flex items-center justify-end gap-3">
                                 <Button variant="outline" asChild>
@@ -1159,9 +1931,7 @@ export default function LrForm({
                                     variant="primary"
                                     disabled={processing}
                                 >
-                                    {mode === 'create'
-                                        ? 'Create LR'
-                                        : 'Save changes'}
+                                    Save Bilty
                                 </Button>
                             </div>
                         </>

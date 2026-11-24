@@ -108,9 +108,9 @@ export default function LorryReceiptShow({
 
     return (
         <>
-            <Head title={`LR ${lorryReceipt.lr_number}`} />
+            <Head title={`Bilty ${lorryReceipt.lr_number}`} />
             <PageShell
-                title={`LR ${lorryReceipt.lr_number}`}
+                title={`Bilty ${lorryReceipt.lr_number}`}
                 description={workflowContextLabel(
                     lorryReceipt.workflow_context,
                 )}
@@ -207,7 +207,7 @@ export default function LorryReceiptShow({
                                     className="bg-[#2FB36F] text-white hover:bg-[#279960]"
                                 >
                                     <Link href={urls.create_trip}>
-                                        Create Trip
+                                        Manage Expenses
                                     </Link>
                                 </Button>
                             ) : null}
@@ -218,14 +218,14 @@ export default function LorryReceiptShow({
                                     className="bg-[#2FB36F] text-white hover:bg-[#279960]"
                                 >
                                     <Link href={urls.create_lorry_hire}>
-                                        Create Lorry Hire
+                                        Manage Lorry Hire
                                     </Link>
                                 </Button>
                             ) : null}
                             {linkedLorryHire ? (
                                 <Button asChild variant="secondary">
                                     <Link href={linkedLorryHire.show_url}>
-                                        Open Lorry Hire{' '}
+                                        Manage Lorry Hire{' '}
                                         {linkedLorryHire.hire_number}
                                     </Link>
                                 </Button>
@@ -233,7 +233,7 @@ export default function LorryReceiptShow({
                             {linkedTrip ? (
                                 <Button asChild variant="secondary">
                                     <Link href={linkedTrip.show_url}>
-                                        Open Trip
+                                        Manage Expenses
                                     </Link>
                                 </Button>
                             ) : null}
@@ -314,7 +314,7 @@ export default function LorryReceiptShow({
                                     )}
                                 />
                                 <Detail
-                                    label="From"
+                                    label="Loading Station"
                                     value={
                                         lorryReceipt.from_station_name ||
                                         lorryReceipt.from_text ||
@@ -322,7 +322,7 @@ export default function LorryReceiptShow({
                                     }
                                 />
                                 <Detail
-                                    label="To"
+                                    label="Unloading Station"
                                     value={
                                         lorryReceipt.to_station_name ||
                                         lorryReceipt.to_text ||
