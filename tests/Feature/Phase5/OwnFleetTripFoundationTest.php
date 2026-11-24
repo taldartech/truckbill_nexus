@@ -248,10 +248,7 @@ test('http create trip from ownfleet lr persists and lists', function () {
 
     $claim();
     $this->get(route('branch.trips.index'))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->component('branch/trips/index')
-            ->has('trips.data', 1));
+        ->assertRedirect(route('branch.lorry-receipts.index'));
 
     $claim();
     $this->get(route('branch.lorry-receipts.show', [$lr]))

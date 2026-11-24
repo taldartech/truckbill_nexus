@@ -7,7 +7,6 @@ use App\Domains\Consignment\Enums\LrWorkflowContext;
 use App\Domains\Document\DocumentAttachmentService;
 use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Master\Party\Enums\PartyRoleType;
-use App\Domains\OwnFleet\Enums\TripStatus;
 use App\Domains\OwnFleet\Trip\Exceptions\TripAuthorizationException;
 use App\Domains\OwnFleet\Trip\Exceptions\TripConflictException;
 use App\Domains\OwnFleet\Trip\Exceptions\TripDomainException;
@@ -62,46 +61,19 @@ class TripController extends Controller
         private readonly CoreModuleEntitlementResolver $moduleEntitlements = new CoreModuleEntitlementResolver,
     ) {}
 
-    public function index(Request $request, Company $company, Branch $branch): Response
+    /**
+     * Standalone Trips listing is removed from operational navigation.
+     * Historical /trips URLs redirect to the Bilty Register (primary OwnFleet entry).
+     */
+    public function index(Request $request, Company $company, Branch $branch): RedirectResponse
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertOwnFleetModule($company);
         $this->assertPermission($actor, $company, $branch, PermissionCodes::TRIP_VIEW);
 
-        $page = $this->trips->search(
-            company: $company,
-            branch: $branch,
-            status: $request->string('status')->toString() ?: null,
-            perPage: min(100, max(1, (int) $request->input('per_page', 15))),
-        );
-
-        return Inertia::render('branch/trips/index', [
-            'filters' => [
-                'status' => $request->string('status')->toString(),
-            ],
-            'permissions' => $this->tripPermissions($actor, $company, $branch, $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch)),
-            'statusOptions' => collect(TripStatus::cases())->map(fn (TripStatus $status): array => [
-                'value' => $status->value,
-                'label' => match ($status) {
-                    TripStatus::Pending => 'Pending',
-                    TripStatus::InProgress => 'In Progress',
-                    TripStatus::Completed => 'Completed',
-                    TripStatus::Cancelled => 'Cancelled',
-                },
-            ])->values()->all(),
-            'trips' => [
-                'data' => collect($page->items())->map(fn (Trip $trip): array => $this->listPayload($trip))->values()->all(),
-                'meta' => [
-                    'current_page' => $page->currentPage(),
-                    'last_page' => $page->lastPage(),
-                    'total' => $page->total(),
-                    'per_page' => $page->perPage(),
-                ],
-            ],
-            'urls' => [
-                'index' => route('branch.trips.index', absolute: false),
-            ],
-        ]);
+        return redirect()
+            ->route('branch.lorry-receipts.index')
+            ->with('info', 'OwnFleet trip operations are managed from the Bilty Register.');
     }
 
     public function createFromLorryReceipt(
@@ -708,29 +680,6 @@ class TripController extends Controller
             ])
             ->values()
             ->all();
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
-    private function listPayload(Trip $trip): array
-    {
-        $lr = $trip->lorryReceipt;
-
-        return [
-            'id' => $trip->id,
-            'status' => $trip->status->value,
-            'lr_number' => $lr?->lr_number,
-            'lorry_receipt_id' => $trip->lorry_receipt_id,
-            'vehicle_registration' => $trip->vehicle?->registration_number,
-            'driver_name' => $trip->driver?->name,
-            'from_station_name' => $lr?->fromStation?->name,
-            'to_station_name' => $lr?->toStation?->name,
-            'created_at' => $trip->created_at?->timezone('Asia/Kolkata')->format('d-m-Y H:i'),
-            'urls' => [
-                'show' => route('branch.trips.show', [$trip], absolute: false),
-            ],
-        ];
     }
 
     /**

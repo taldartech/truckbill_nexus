@@ -101,7 +101,9 @@ class LorryReceiptController extends Controller
                 ? route('branch.lorry-receipts.create', ['context' => 'partload'], absolute: false)
                 : null,
             'lorryReceipts' => [
-                'data' => collect($page->items())->map(fn (LorryReceipt $lr): array => $this->listPayload($lr, $maySeeFreight))->values()->all(),
+                'data' => collect($page->items())->map(
+                    fn (LorryReceipt $lr): array => $this->listPayload($lr, $maySeeFreight, $actor, $company, $branch),
+                )->values()->all(),
                 'meta' => [
                     'current_page' => $page->currentPage(),
                     'last_page' => $page->lastPage(),
@@ -518,8 +520,9 @@ class LorryReceiptController extends Controller
         ];
 
         if (! $forUpdate) {
-            $rules['number_mode'] = ['required', Rule::in(['auto', 'manual'])];
-            $rules['lr_number'] = ['nullable', 'string', 'max:64', 'required_if:number_mode,manual'];
+            // Optional for internal callers; public UI omits number_mode — service infers from lr_number.
+            $rules['number_mode'] = ['nullable', Rule::in(['auto', 'manual'])];
+            $rules['lr_number'] = ['nullable', 'string', 'max:64'];
             $rules['context'] = ['nullable', 'string', 'max:32'];
             $rules['origin'] = ['nullable', 'string', 'max:32'];
         }
@@ -718,8 +721,20 @@ class LorryReceiptController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function listPayload(LorryReceipt $lr, bool $maySeeFreight): array
+    private function listPayload(LorryReceipt $lr, bool $maySeeFreight, User $actor, Company $company, Branch $branch): array
     {
+        $ownership = $lr->vehicle?->ownership;
+        $loadingStation = $lr->fromStation !== null ? $lr->fromStation->name : $lr->from_text;
+        $unloadingStation = $lr->toStation !== null ? $lr->toStation->name : $lr->to_text;
+        $chargedWeight = '0.000';
+        foreach ($lr->goodsRows as $row) {
+            $weight = trim((string) ($row->charged_weight ?? '0'));
+            if ($weight === '' || ! is_numeric($weight)) {
+                continue;
+            }
+            $chargedWeight = bcadd($chargedWeight, $weight, 3);
+        }
+
         return [
             'id' => $lr->id,
             'lr_number' => $lr->lr_number,
@@ -728,11 +743,93 @@ class LorryReceiptController extends Controller
             'status' => $lr->status->value,
             'from_text' => $lr->from_text,
             'to_text' => $lr->to_text,
+            'loading_station' => $loadingStation,
+            'unloading_station' => $unloadingStation,
+            'vehicle_registration' => $lr->vehicle?->registration_number,
+            'vehicle_ownership' => $ownership?->value,
+            'vehicle_ownership_label' => $ownership === VehicleOwnership::Own
+                ? 'Own'
+                : ($ownership === VehicleOwnership::Market ? 'Market' : null),
+            'billing_customer_name' => $lr->billingCustomer?->name,
+            'charged_weight_total' => $chargedWeight,
             'freight_total' => $this->freightPresentation->presentAmount($lr->freight_total, $maySeeFreight),
             'additional_charges_total' => $this->freightPresentation->presentAmount($lr->additional_charges_total, $maySeeFreight),
             'consignor_name' => $lr->consignor?->name,
             'consignee_name' => $lr->consignee?->name,
+            'primary_operation' => $this->primaryOperationAction($lr, $actor, $company, $branch),
+            'show_url' => route('branch.lorry-receipts.show', [$lr], absolute: false),
         ];
+    }
+
+    /**
+     * @return array{label: string, url: string, kind: string}|null
+     */
+    private function primaryOperationAction(LorryReceipt $lr, User $actor, Company $company, Branch $branch): ?array
+    {
+        if ($lr->status === LrStatus::Cancelled) {
+            return null;
+        }
+
+        if ($lr->workflow_context === LrWorkflowContext::OwnFleet) {
+            $trip = $lr->trip;
+            if ($trip !== null) {
+                if (! $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_VIEW, $company, $branch)) {
+                    return null;
+                }
+
+                return [
+                    'kind' => 'manage_expenses',
+                    'label' => 'Manage Expenses',
+                    'url' => route('branch.trips.show', [$trip], absolute: false).'#expenses',
+                ];
+            }
+
+            if (
+                $lr->status === LrStatus::Pending
+                && $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_CREATE, $company, $branch)
+            ) {
+                return [
+                    'kind' => 'init_trip',
+                    'label' => 'Manage Expenses',
+                    'url' => route('branch.trips.create-from-lr', [$lr], absolute: false),
+                ];
+            }
+
+            return null;
+        }
+
+        if ($lr->workflow_context === LrWorkflowContext::Broker) {
+            if (! $this->moduleEntitlements->isEntitled($company, SubscriptionModule::Broker)) {
+                return null;
+            }
+
+            $hire = $lr->lorryHire;
+            if ($hire !== null) {
+                if (! $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_LORRY_HIRE_VIEW, $company, $branch)) {
+                    return null;
+                }
+
+                return [
+                    'kind' => 'manage_lorry_hire',
+                    'label' => 'Manage Lorry Hire',
+                    'url' => route('branch.broker.lorry-hires.show', [$hire], absolute: false),
+                ];
+            }
+
+            if (
+                $lr->status === LrStatus::Pending
+                && $lr->vehicle?->ownership === VehicleOwnership::Market
+                && $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_LORRY_HIRE_CREATE, $company, $branch)
+            ) {
+                return [
+                    'kind' => 'create_lorry_hire',
+                    'label' => 'Manage Lorry Hire',
+                    'url' => route('branch.broker.lorry-hires.create-from-lr', [$lr], absolute: false),
+                ];
+            }
+        }
+
+        return null;
     }
 
     /**

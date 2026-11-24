@@ -21,6 +21,7 @@ final class CaseInsensitiveLike
         'code',
         'contact_number',
         'email',
+        'from_text',
         'gstin',
         'invoice_number',
         'lr_number',
@@ -29,6 +30,7 @@ final class CaseInsensitiveLike
         'name',
         'pan',
         'registration_number',
+        'to_text',
     ];
 
     public static function escape(string $term): string
@@ -81,7 +83,27 @@ final class CaseInsensitiveLike
                     continue;
                 }
 
-                $sql = 'LOWER(`'.$column.'`) LIKE ?';
+                // Column is allow-listed; emit a literal SQL fragment for Larastan.
+                $sql = match ($column) {
+                    'account_holder_name' => 'LOWER(`account_holder_name`) LIKE ?',
+                    'bank_name' => 'LOWER(`bank_name`) LIKE ?',
+                    'chassis_number' => 'LOWER(`chassis_number`) LIKE ?',
+                    'city' => 'LOWER(`city`) LIKE ?',
+                    'code' => 'LOWER(`code`) LIKE ?',
+                    'contact_number' => 'LOWER(`contact_number`) LIKE ?',
+                    'email' => 'LOWER(`email`) LIKE ?',
+                    'from_text' => 'LOWER(`from_text`) LIKE ?',
+                    'gstin' => 'LOWER(`gstin`) LIKE ?',
+                    'invoice_number' => 'LOWER(`invoice_number`) LIKE ?',
+                    'lr_number' => 'LOWER(`lr_number`) LIKE ?',
+                    'make' => 'LOWER(`make`) LIKE ?',
+                    'model' => 'LOWER(`model`) LIKE ?',
+                    'name' => 'LOWER(`name`) LIKE ?',
+                    'pan' => 'LOWER(`pan`) LIKE ?',
+                    'registration_number' => 'LOWER(`registration_number`) LIKE ?',
+                    'to_text' => 'LOWER(`to_text`) LIKE ?',
+                    default => throw new InvalidArgumentException("Unsupported LIKE column [{$column}]."),
+                };
                 if ($index === 0) {
                     $inner->whereRaw($sql, [$pattern]);
                 } else {

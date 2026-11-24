@@ -332,6 +332,72 @@ test('manual numbering uniqueness collision is rejected', function () {
     ))->toThrow(LorryReceiptConflictException::class);
 });
 
+test('blank bilty number allocates automatically without client number_mode', function () {
+    $ctx = lrWorkspace();
+    lrActivate($ctx['company'], $ctx['branch']);
+
+    $payload = lrPayload($ctx);
+    unset($payload['number_mode']);
+    $payload['lr_number'] = '   ';
+
+    $lr = app(LorryReceiptService::class)->create(
+        $ctx['company'],
+        $ctx['branch'],
+        $ctx['member'],
+        $payload,
+    );
+
+    expect($lr->lr_number)->not->toBe('')
+        ->and(trim((string) $lr->lr_number))->not->toBe('');
+});
+
+test('entered bilty number is retained without client number_mode', function () {
+    $ctx = lrWorkspace();
+    lrActivate($ctx['company'], $ctx['branch']);
+
+    $payload = lrPayload($ctx);
+    unset($payload['number_mode']);
+    $payload['lr_number'] = 'BILTY-PO-1001';
+
+    $lr = app(LorryReceiptService::class)->create(
+        $ctx['company'],
+        $ctx['branch'],
+        $ctx['member'],
+        $payload,
+    );
+
+    expect($lr->lr_number)->toBe('BILTY-PO-1001');
+});
+
+test('http create accepts empty lr_number without number_mode field', function () {
+    $ctx = lrWorkspace();
+
+    lrLoginAs($ctx['member'], 'member-secret');
+    enterBranchWorkspace($ctx['company'], $ctx['branch'])->assertRedirect();
+
+    $payload = lrPayload($ctx, [
+        'form_mode' => 'truck',
+        'vehicle_id' => $ctx['vehicle']->id,
+        'lr_number' => '',
+        'eway_bills' => [
+            [
+                'ewb_number' => 'EWB-BLANK-NUM-'.uniqid(),
+                'ewb_date' => now()->toDateString(),
+                'valid_until' => now()->addDays(5)->toDateString(),
+            ],
+        ],
+    ]);
+    unset($payload['number_mode']);
+
+    $before = LorryReceipt::query()->where('company_id', $ctx['company']->id)->whereNull('deleted_at')->count();
+
+    $this->post(route('branch.lorry-receipts.store'), $payload)
+        ->assertRedirect();
+
+    expect(LorryReceipt::query()->where('company_id', $ctx['company']->id)->whereNull('deleted_at')->count())
+        ->toBe($before + 1);
+});
+
 test('tenant isolation blocks cross-company party usage', function () {
     $ctx = lrWorkspace();
     lrActivate($ctx['company'], $ctx['branch']);

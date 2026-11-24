@@ -37,6 +37,7 @@ use App\Models\Vehicle;
 use App\Support\Audit\AuditAction;
 use App\Support\Audit\AuditedTransaction;
 use App\Support\Audit\AuditWriter;
+use App\Support\Database\CaseInsensitiveLike;
 use App\Support\Tenant\TenantContext;
 use App\Support\Tenant\TenantContextHolder;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -83,17 +84,25 @@ final class LorryReceiptService
             ->where('company_id', $company->id)
             ->where('branch_id', $branch->id)
             ->whereNull('deleted_at')
-            ->with(['goodsRows', 'ewayBills', 'additionalCharges', 'consignor', 'consignee'])
+            ->with([
+                'goodsRows',
+                'ewayBills',
+                'additionalCharges',
+                'consignor',
+                'consignee',
+                'billingCustomer',
+                'fromStation',
+                'toStation',
+                'vehicle',
+                'trip',
+                'lorryHire',
+            ])
             ->orderByDesc('lr_date')
             ->orderByDesc('created_at');
 
         $q = trim((string) $query);
         if ($q !== '') {
-            $builder->where(function ($inner) use ($q): void {
-                $inner->where('lr_number', 'ilike', '%'.$q.'%')
-                    ->orWhere('from_text', 'ilike', '%'.$q.'%')
-                    ->orWhere('to_text', 'ilike', '%'.$q.'%');
-            });
+            CaseInsensitiveLike::whereAnyContains($builder, ['lr_number', 'from_text', 'to_text'], $q);
         }
 
         if ($status !== null && $status !== '') {
@@ -459,20 +468,18 @@ final class LorryReceiptService
             $resolvedGoodsValue = $goodsValueSum;
         }
 
-        $numberMode = strtolower(trim((string) ($payload['number_mode'] ?? 'auto')));
-        if (! in_array($numberMode, ['auto', 'manual'], true)) {
-            throw ValidationException::withMessages(['number_mode' => 'Number mode must be auto or manual.']);
-        }
+        // Server infers allocation mode from the optional Bilty number field.
+        // Do not trust a client-supplied number_mode for public create forms.
+        $manualNumber = null;
+        $numberMode = 'auto';
 
         if ($forUpdate) {
             $numberMode = 'auto';
-        }
-
-        $manualNumber = null;
-        if ($numberMode === 'manual') {
-            $manualNumber = trim((string) ($payload['lr_number'] ?? ''));
-            if ($manualNumber === '') {
-                throw ValidationException::withMessages(['lr_number' => 'Manual LR number is required.']);
+        } else {
+            $candidate = trim((string) ($payload['lr_number'] ?? $payload['manual_number'] ?? ''));
+            if ($candidate !== '') {
+                $numberMode = 'manual';
+                $manualNumber = $candidate;
             }
         }
 
