@@ -173,7 +173,27 @@ class BrokerInvoiceController extends Controller
                 'index' => route('branch.broker.invoices.index', absolute: false),
                 'cancel' => route('branch.broker.invoices.cancel', [$brokerInvoice], absolute: false),
                 'payment' => route('branch.broker.invoices.payments.store', [$brokerInvoice], absolute: false),
+                'print' => route('branch.broker.invoices.print', [$brokerInvoice], absolute: false),
             ],
+        ]);
+    }
+
+    public function print(Request $request, BrokerInvoice $brokerInvoice, Company $company, Branch $branch): Response
+    {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertInvoiceTenant($brokerInvoice, $company, $branch);
+        $this->assertPermission($actor, $company, $branch, PermissionCodes::BROKER_INVOICE_PRINT);
+
+        $brokerInvoice->load(['lines.lorryReceipt', 'payments', 'billingCustomer']);
+        $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
+
+        return Inertia::render('broker/invoices/print', [
+            'invoice' => $this->detailPayload($brokerInvoice, $maySeeFreight),
+            'company' => [
+                'name' => $company->name,
+                'gstin' => $company->gstin,
+            ],
+            'sampleBanner' => 'SAMPLE / NON-PRODUCTION — Not a legally operative tax invoice.',
         ]);
     }
 
@@ -300,6 +320,7 @@ class BrokerInvoiceController extends Controller
             'can_record_payment' => $invoice !== null
                 && $invoice->status->value !== 'cancelled'
                 && ($isOwner || $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_INVOICE_CREATE, $company, $branch)),
+            'can_print' => $isOwner || $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_INVOICE_PRINT, $company, $branch),
             'can_view_freight' => $maySeeFreight,
         ];
     }

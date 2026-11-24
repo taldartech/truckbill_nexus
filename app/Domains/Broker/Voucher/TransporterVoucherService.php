@@ -396,13 +396,15 @@ final class TransporterVoucherService
         array $voucherIds,
         VoucherStatus $targetStatus,
     ): array {
-        $updated = [];
-        foreach ($voucherIds as $voucherId) {
-            $voucher = $this->findForBranch($company, $branch, $voucherId);
-            $updated[] = $this->transitionStatus($voucher, $actor, $targetStatus);
-        }
+        return $this->auditedTransaction->run(function () use ($company, $branch, $actor, $voucherIds, $targetStatus): array {
+            $updated = [];
+            foreach ($voucherIds as $voucherId) {
+                $voucher = $this->findForBranch($company, $branch, $voucherId);
+                $updated[] = $this->transitionStatus($voucher, $actor, $targetStatus);
+            }
 
-        return $updated;
+            return $updated;
+        });
     }
 
     private function assertCanCreate(User $actor, Company $company, Branch $branch): void

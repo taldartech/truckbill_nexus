@@ -234,6 +234,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/broker/invoices/preview', [BrokerInvoiceController::class, 'preview'])->name('branch.broker.invoices.preview');
         Route::post('/broker/invoices', [BrokerInvoiceController::class, 'store'])->name('branch.broker.invoices.store');
         Route::get('/broker/invoices/{brokerInvoice}', [BrokerInvoiceController::class, 'show'])->name('branch.broker.invoices.show');
+        Route::get('/broker/invoices/{brokerInvoice}/print', [BrokerInvoiceController::class, 'print'])->name('branch.broker.invoices.print');
         Route::post('/broker/invoices/{brokerInvoice}/cancel', [BrokerInvoiceController::class, 'cancel'])->name('branch.broker.invoices.cancel');
         Route::post('/broker/invoices/{brokerInvoice}/payments', [BrokerInvoiceController::class, 'storePayment'])->name('branch.broker.invoices.payments.store');
 

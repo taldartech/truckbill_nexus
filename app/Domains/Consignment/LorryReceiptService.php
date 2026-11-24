@@ -58,6 +58,7 @@ final class LorryReceiptService
         private readonly AuditWriter $audit = new AuditWriter,
         private readonly CoreModuleEntitlementResolver $entitlements = new CoreModuleEntitlementResolver,
         private readonly SubscriptionEntitlementGate $entitlementGate = new SubscriptionEntitlementGate,
+        private readonly LrFinancialImmutabilityService $financialImmutability = new LrFinancialImmutabilityService,
     ) {}
 
     private function dependencyGuard(): CompositeLrDependencyGuard
@@ -215,6 +216,7 @@ final class LorryReceiptService
 
         $payload['workflow_context'] = $lockedContext->value;
         $normalized = $this->normalizePayload($company, $payload, forUpdate: true, lockedContext: $lockedContext);
+        $this->financialImmutability->assertFinancialMutationAllowed($lorryReceipt, $normalized);
 
         return $this->auditedTransaction->run(function () use ($company, $branch, $lorryReceipt, $normalized): LorryReceipt {
             return $this->withTenant($company, $branch, function () use ($lorryReceipt, $normalized): LorryReceipt {

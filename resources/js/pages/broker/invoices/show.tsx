@@ -47,6 +47,7 @@ type Props = {
     permissions: {
         can_cancel: boolean;
         can_record_payment: boolean;
+        can_print?: boolean;
         can_view_freight: boolean;
     };
     bankCashAccounts: Array<{ id: string; label: string }>;
@@ -54,6 +55,7 @@ type Props = {
         index: string;
         cancel: string;
         payment: string;
+        print?: string;
     };
 };
 
@@ -72,13 +74,20 @@ export default function BrokerInvoiceShow({
             <PageShell
                 title={`Invoice ${invoice.invoice_number}`}
                 actions={
-                    <Link
-                        href={urls.index}
-                        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-                    >
-                        <ArrowLeft className="h-4 w-4" />
-                        All invoices
-                    </Link>
+                    <div className="flex flex-wrap items-center gap-2">
+                        {permissions.can_print && urls.print ? (
+                            <Button asChild variant="info" size="sm">
+                                <Link href={urls.print}>Print / Preview</Link>
+                            </Button>
+                        ) : null}
+                        <Link
+                            href={urls.index}
+                            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
+                        >
+                            <ArrowLeft className="h-4 w-4" />
+                            All invoices
+                        </Link>
+                    </div>
                 }
             >
                 <div className="flex flex-wrap items-center gap-2">

@@ -100,7 +100,7 @@ final class TripService
         $this->assertOwnFleetEntitled($company);
         $this->assertLorryReceiptEligible($lorryReceipt);
 
-        $submittedVehicleId = (string) ($payload['vehicle_id'] ?? '');
+        $submittedVehicleId = (string) $payload['vehicle_id'];
         $vehicle = $this->resolveOwnVehicleFromLorryReceipt(
             $lorryReceipt,
             $company,

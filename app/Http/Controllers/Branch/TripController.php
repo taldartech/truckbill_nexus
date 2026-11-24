@@ -36,7 +36,6 @@ use App\Models\TripDropPickupAllocation;
 use App\Models\TripExpense;
 use App\Models\TripPickup;
 use App\Models\User;
-use App\Models\Vehicle;
 use App\Support\Presentation\FreightAmountPresentation;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -630,28 +629,6 @@ class TripController extends Controller
             'can_delete' => $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_DELETE, $company, $branch),
             'can_view_freight' => $maySeeFreight,
         ];
-    }
-
-    /**
-     * @return array<int, array{id: string, registration_number: string, primary_driver_party_id: string|null, primary_driver_name: string|null}>
-     */
-    private function vehicleOptions(Company $company, Branch $branch): array
-    {
-        return Vehicle::query()
-            ->visibleInBranch($company->id, $branch->id)
-            ->where('is_active', true)
-            ->whereNull('deleted_at')
-            ->with('primaryDriver')
-            ->orderBy('registration_number')
-            ->get()
-            ->map(fn (Vehicle $vehicle): array => [
-                'id' => $vehicle->id,
-                'registration_number' => $vehicle->registration_number,
-                'primary_driver_party_id' => $vehicle->primary_driver_party_id,
-                'primary_driver_name' => $vehicle->primaryDriver?->name,
-            ])
-            ->values()
-            ->all();
     }
 
     /**
