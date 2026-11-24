@@ -6,11 +6,11 @@
 
 ## A. Initial / Final HEAD
 
-| Ref                                           | SHA                                                            |
-| --------------------------------------------- | -------------------------------------------------------------- |
-| Verified remote baseline (Actions #88 parent) | `fef49e6c656581d995c2f33d0a696cccecd6f24e`                     |
-| Tip before Batch I–J working tree             | `afad55134a58d64a144a9e9ef3fb450203ce836a` (ahead of origin)   |
-| Final tip after Batch I–J commit              | _(recorded in IMPLEMENTATION_LOG / Memory after local commit)_ |
+| Ref                                           | SHA                                                                          |
+| --------------------------------------------- | ---------------------------------------------------------------------------- |
+| Verified remote baseline (Actions #88 parent) | `fef49e6c656581d995c2f33d0a696cccecd6f24e`                                   |
+| Tip before Batch I–J working tree             | `afad55134a58d64a144a9e9ef3fb450203ce836a` (ahead of origin)                 |
+| Final tip after Batch I–J commit              | `16563f777b981c19d5fd7173e00ff48b5c4089b9` (+ docs SHA follow-up if present) |
 
 **No push performed.** Remote Actions #88 remains red until Product Owner pushes remediation commits.
 
@@ -204,7 +204,7 @@ Directory: `docs/engineering/portal-ux-screenshots/`
 | C     | `51b5fc5`                       | Separate masters + Partload Workflow removal                                    |
 | D     | `aea9599`                       | Unified customer invoices                                                       |
 | E–H   | `bd3b724`…`0e53351` + `afad551` | Portal polish + docs SHAs                                                       |
-| I–J   | _(this commit)_                 | Remaining Open screens, Playwright evidence, PHPStan dead-code, acceptance docs |
+| I–J   | `16563f7`                       | Remaining Open screens, Playwright evidence, PHPStan dead-code, acceptance docs |
 
 ### Verdict
 
