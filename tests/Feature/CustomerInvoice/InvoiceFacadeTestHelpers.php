@@ -1,5 +1,7 @@
 <?php
 
+use App\Domains\Broker\Enums\BrokerInvoiceStatus;
+use App\Domains\Broker\Invoice\Enums\BrokerInvoicePaymentStatus;
 use App\Domains\Company\CompanyWorkspaceService;
 use App\Domains\OwnFleet\Invoice\Enums\TripInvoiceParticularsMode;
 use App\Domains\OwnFleet\Invoice\Enums\TripInvoicePaymentStatus;
@@ -7,6 +9,7 @@ use App\Domains\OwnFleet\Invoice\Enums\TripInvoiceStatus;
 use App\Domains\OwnFleet\Invoice\Enums\TripInvoiceType;
 use App\Domains\Rbac\Enums\PermissionDomain;
 use App\Domains\Rbac\RoleAssignmentService;
+use App\Models\BrokerInvoice;
 use App\Models\Role;
 use App\Models\TripInvoice;
 use App\Models\User;
@@ -106,6 +109,44 @@ function seedLeanOwnFleetTripInvoices(
 
     foreach (array_chunk($payload, 100) as $chunk) {
         TripInvoice::query()->insert($chunk);
+    }
+}
+
+function seedLeanBrokerInvoices(
+    string $companyId,
+    string $branchId,
+    string $customerPartyId,
+    int $createdByUserId,
+    int $count,
+    string $numberPrefix = 'BR-INV-',
+): void {
+    $baseDate = now();
+    $payload = [];
+
+    foreach (range(1, $count) as $index) {
+        $payload[] = [
+            'id' => (string) Str::uuid(),
+            'company_id' => $companyId,
+            'branch_id' => $branchId,
+            'invoice_number' => $numberPrefix.str_pad((string) $index, 5, '0', STR_PAD_LEFT),
+            'billing_customer_party_id' => $customerPartyId,
+            'status' => BrokerInvoiceStatus::Issued->value,
+            'payment_status' => BrokerInvoicePaymentStatus::Unpaid->value,
+            'invoice_date' => $baseDate->copy()->subDays($count - $index)->toDateString(),
+            'taxable_total' => '800.00',
+            'gst_amount' => '0.00',
+            'invoice_total' => '800.00',
+            'amount_received' => '0.00',
+            'customer_tds_amount' => '0.00',
+            'balance_due' => '800.00',
+            'created_by_user_id' => $createdByUserId,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ];
+    }
+
+    foreach (array_chunk($payload, 100) as $chunk) {
+        BrokerInvoice::query()->insert($chunk);
     }
 }
 
