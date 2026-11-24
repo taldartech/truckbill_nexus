@@ -120,3 +120,7 @@ Dated workstream records with verified local commit SHAs. Living product Memory 
 | 2026-11-24 | Portal UX E–H | `ef7f8fa` | Branch/OwnFleet: LR service labels, masters/trips icon actions (`fix(ui): Branch and OwnFleet operational screen density`). |
 | 2026-11-24 | Portal UX E–H | `0e53351` | Broker list/detail icon polish + screen matrix / table-actions cert (`fix(ui): Broker operational UI polish`). |
 | 2026-11-24 | Portal UX I–J | `16563f777b981c19d5fd7173e00ff48b5c4089b9` | Remaining Open screens; Playwright Alpha branch + screenshots; PHPStan unused invoice helpers; `PORTAL_FINAL_ACCEPTANCE_REPORT.md`. |
+| 2026-11-24 | P5/6 stabilize A | `88bfb55` | GA #89: branch dashboard AUD-013 landing/fixtures; TechnicalUiShellTest top-level route prefixes. |
+| 2026-11-24 | P5/6 stabilize C | `ed0c6c3` | OwnFleet Trip vehicle locked to LR Own vehicle; create UI read-only. |
+| 2026-11-24 | P5/6 stabilize M | `c3ae9f2` | Unified invoice CaseInsensitiveLike + DB-backed pagination. |
+| 2026-11-24 | P5/6 stabilize D/I/K | `e0ff99a` | LR financial immutability; atomic voucher bulk; Broker invoice SAMPLE print. |

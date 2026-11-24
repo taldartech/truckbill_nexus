@@ -39,6 +39,7 @@ From `routes/web.php`:
 2. Partload cardinality and LR linkage decisions (do not assume Broker rules).
 3. PO-P4-DESIGN-FORMAL still Pending — Partload UI needs explicit design approval.
 4. Accounting posting architecture (ADR-010 Pending).
+5. **Phase 5/6 certification gaps** (24 Nov 2026): full Playwright OwnFleet/Broker/Linked Bilty journeys, disposable MySQL full Pest, and k6 concurrency remain open — see `docs/engineering/PHASE_5_6_FINAL_GAP_REGISTER.md`. Do **not** start Phase 7 operational coding until PO accepts the Phase 5/6 stabilization verdict or explicitly authorizes Phase 7 with those exceptions.
 
 ## Suggested Phase 7 batch sketch (non-binding)
 
@@ -48,4 +49,4 @@ From `routes/web.php`:
 - Batch D: Partload invoices / settlements (per governing Rules)
 - Batch E: Registers + demo fixtures + certification
 
-**Handoff path:** Complete Phase 6 PO acceptance → authorize Phase 7 → refresh parity matrix against legacy SHAs under `_legacy_refs/truckbill_partload`.
+**Handoff path:** PO acceptance of Phase 5/6 stabilization (or documented exceptions) → authorize Phase 7 → refresh parity matrix against legacy SHAs under `_legacy_refs/truckbill_partload`.
