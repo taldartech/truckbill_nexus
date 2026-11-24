@@ -23,4 +23,7 @@ export type FormConfirmationProps = {
     processing?: boolean;
     onConfirm: () => void;
     confirmLabel?: string;
+    /** Optional second primary path (e.g. Save & Create Lorry Hire). */
+    onSecondaryConfirm?: () => void;
+    secondaryConfirmLabel?: string;
 };

@@ -31,6 +31,8 @@ export function FormConfirmationDialog({
     processing = false,
     onConfirm,
     confirmLabel,
+    onSecondaryConfirm,
+    secondaryConfirmLabel,
 }: FormConfirmationProps) {
     const resolvedConfirmLabel =
         confirmLabel ??
@@ -39,6 +41,10 @@ export function FormConfirmationDialog({
             : mode === 'create'
               ? 'Confirm create'
               : 'Confirm save');
+    const showSecondary =
+        typeof onSecondaryConfirm === 'function' &&
+        typeof secondaryConfirmLabel === 'string' &&
+        secondaryConfirmLabel.trim() !== '';
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -128,7 +134,7 @@ export function FormConfirmationDialog({
                     </div>
                 )}
 
-                <DialogFooter className="gap-2 sm:gap-0">
+                <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-end">
                     <Button
                         type="button"
                         variant="outline"
@@ -137,6 +143,16 @@ export function FormConfirmationDialog({
                     >
                         {mode === 'edit' ? 'Back to edit' : 'Cancel'}
                     </Button>
+                    {showSecondary ? (
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            disabled={processing}
+                            onClick={onSecondaryConfirm}
+                        >
+                            {processing ? 'Working…' : secondaryConfirmLabel}
+                        </Button>
+                    ) : null}
                     <Button
                         type="button"
                         variant={

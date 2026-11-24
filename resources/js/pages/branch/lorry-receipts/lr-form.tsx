@@ -116,6 +116,7 @@ type Props = {
     };
     permissions?: {
         can_view_freight?: boolean;
+        can_create_lorry_hire?: boolean;
     };
 };
 
@@ -268,9 +269,11 @@ export default function LrForm({
     permissions,
 }: Props) {
     const mayViewFreight = permissions?.can_view_freight !== false;
+    const canCreateLorryHire = permissions?.can_create_lorry_hire === true;
     const formMode =
         formModeProp ?? (workflowContext === 'partload' ? 'partload' : 'truck');
     const submitAllowed = useRef(false);
+    const redirectToHire = useRef(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [reviewFields, setReviewFields] = useState<FieldReview[]>([]);
 
@@ -564,15 +567,30 @@ export default function LrForm({
         submitAllowed.current = false;
     };
 
-    const handleConfirm = () => {
+    const submitAfterConfirm = (continueToHire: boolean) => {
+        redirectToHire.current = continueToHire;
         submitAllowed.current = true;
         setConfirmOpen(false);
         window.setTimeout(() => {
             const form = document.getElementById(
                 'lorry-receipt-form',
             ) as HTMLFormElement | null;
+            const hireInput = form?.querySelector(
+                '#redirect_to_hire',
+            ) as HTMLInputElement | null;
+            if (hireInput) {
+                hireInput.value = continueToHire ? '1' : '0';
+            }
             form?.requestSubmit();
         }, 0);
+    };
+
+    const handleConfirm = () => {
+        submitAfterConfirm(false);
+    };
+
+    const handleConfirmAndCreateHire = () => {
+        submitAfterConfirm(true);
     };
 
     const handleSaveClick = (
@@ -628,6 +646,12 @@ export default function LrForm({
                                 type="hidden"
                                 name="form_mode"
                                 value={formMode}
+                            />
+                            <input
+                                type="hidden"
+                                id="redirect_to_hire"
+                                name="redirect_to_hire"
+                                value={redirectToHire.current ? '1' : '0'}
                             />
                             {resolvedContext ? (
                                 <input
@@ -1794,6 +1818,23 @@ export default function LrForm({
                     description="Review vehicle, customer, weights, and freight before submitting."
                     fields={reviewFields}
                     onConfirm={handleConfirm}
+                    confirmLabel={
+                        mode === 'create' ? 'Save Bilty' : 'Confirm save'
+                    }
+                    onSecondaryConfirm={
+                        mode === 'create' &&
+                        resolvedContext === 'broker' &&
+                        canCreateLorryHire
+                            ? handleConfirmAndCreateHire
+                            : undefined
+                    }
+                    secondaryConfirmLabel={
+                        mode === 'create' &&
+                        resolvedContext === 'broker' &&
+                        canCreateLorryHire
+                            ? 'Save & Create Lorry Hire'
+                            : undefined
+                    }
                 />
             </PageShell>
         </>

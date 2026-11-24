@@ -49,6 +49,7 @@ Legacy company panel is **ops-first** (Bilty → Hire → Vouchers → Invoices 
 | Voucher from hire          | Context on hire show / payment flows | `?lorry_hire_id=` preselect + hire context panel                               | **Improved** (B2-VP-01)                                   |
 | Record voucher CTA         | Legacy hire/payment navigation       | Hire show → voucher create with hire id                                        | **Implemented**                                           |
 | Bilty confirmation density | Review before save on LR forms       | Expanded `FieldReview`: parties, stations, goods rows, EWB, charges, MT totals | **Implemented** (B2-CF-02)                                |
+| Save & Create FR           | Dual SweetAlert path → hire create   | Confirmation secondary CTA `Save & Create Lorry Hire` + `redirect_to_hire`     | **Implemented** (B2-OF-01)                                |
 | Linked bilty payment       | Combined payment on linked group     | Linked show pay + confirmation                                                 | Partial confirm polish (B2-CF-03)                         |
 | Memo / delivery / POD      | Memo on `freight_bookings` + reports | Delivery / Memo `/broker/deliveries`                                           | Partial UX parity                                         |
 

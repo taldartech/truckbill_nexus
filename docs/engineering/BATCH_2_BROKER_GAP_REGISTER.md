@@ -48,6 +48,11 @@
 | B2-FH-UX  | P2       | Hire margin / Owner-Agency chip          | **Implemented** | `role_label` chip; amber when transporter freight > customer freight on hire create                                                                     |
 | B2-VP-01  | P1       | Voucher UX summary completeness          | **Improved**    | `?lorry_hire_id=` preselect; hire context panel (freight/TDS/net/outstanding); hire show Record voucher CTA; voucher **show** density still open        |
 | B2-DOC-01 | P2       | Documentation pack                       | **In progress** | PO-LGC-017 pack: `LEGACY_BROKER_UX_ALIGNMENT`, `LEGACY_BROKER_SCREEN_MAPPING`, `BROKER_OPERATIONAL_FLOW_STANDARD`; regression certification outstanding |
+| B2-OF-01  | P1       | Bilty Save & Create Lorry Hire           | **Implemented** | Confirmation secondary CTA + `redirect_to_hire` → `create-from-lr` (legacy `redirect_to_fr`)                                                            |
+| B2-OF-02  | P2       | Bilty quick-add masters from form        | Open            | Legacy modals for customer/truck/goods; Nexus uses party create links + separate masters                                                                |
+| B2-OF-03  | P2       | Truck-owner declaration missing banner   | Open            | Legacy bilty create banner when owner declaration incomplete                                                                                            |
+| B2-OF-04  | P2       | Hire multi E-way + GST portal link       | Open            | Legacy hire create multi EWB UX denser than Nexus                                                                                                       |
+| B2-OF-05  | P3       | Ops-first sidebar label polish           | Open            | Legacy Operations grouping; Nexus Branch sidebar has Enquiries + registers earlier (intentional Enquiry)                                                |
 
 ## Closed by Batch 1 (do not re-open)
 
@@ -64,9 +69,14 @@
 - [Broker gap probe](4b157eb2-e72b-4571-a018-f8831c8b75ed) / legacy exploration — P0 Linked form contracts fixed above; remaining P2 hire/voucher UX and quick-create still open.
 - [Hire adjustment confirmation](b6e41c77-7d10-4abe-9f78-23eec60e387a) — already landed in `lorry-hires/show.tsx`.
 
+## Legacy exploration follow-up
+
+Source-verified legacy HEAD `6a90e955…`. High-value gaps from the 15-item UX delta are tracked as B2-OF-* above. Already closed by prior Batch 2 UX: Owner/Agency chip + amber (B2-FH-UX), voucher hire context (B2-VP-01), expanded bilty confirm (B2-CF-02), Delivery/POD confirm (B2-CF-03).
+
 ## Next execution
 
 1. Voucher show density (remaining B2-VP-01 show leg)
 2. Trip / Vehicle remote selectors (remaining B2-PS-03)
-3. Full PG + MySQL regression + visual/persona Playwright matrix
-4. Close B2-DOC-01 — `BATCH_2_BROKER_*` acceptance docs after regression
+3. B2-OF-02…05 polish (quick-add, declaration banner, hire EWB density, nav labels)
+4. Full PG + MySQL regression + visual/persona Playwright matrix
+5. Close B2-DOC-01 — `BATCH_2_BROKER_*` acceptance docs after regression

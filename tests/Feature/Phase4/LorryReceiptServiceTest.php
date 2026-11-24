@@ -32,6 +32,7 @@ use App\Models\Vehicle;
 use App\Support\Tenant\TenantContext;
 use App\Support\Tenant\TenantContextHolder;
 use Database\Seeders\RbacSeeder;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -40,6 +41,7 @@ beforeEach(function () {
     TenantContextHolder::clear();
     Cache::flush();
     (new RbacSeeder)->run();
+    $this->withoutMiddleware(PreventRequestForgery::class);
 });
 
 afterEach(function () {
@@ -522,6 +524,29 @@ test('http authorization denial and happy path index create store', function () 
         ->and($lr->freight_total)->toBe('1500.00');
 
     $response->assertRedirect(route('branch.lorry-receipts.show', [$lr]));
+});
+
+test('broker bilty store can redirect to create lorry hire', function () {
+    $ctx = lrWorkspace();
+    lrGrantRolePermission('customer.admin', PermissionCodes::BROKER_LORRY_HIRE_CREATE);
+
+    lrLoginAs($ctx['member'], 'member-secret');
+    enterBranchWorkspace($ctx['company'], $ctx['branch'])->assertRedirect();
+
+    $response = $this->post(route('branch.lorry-receipts.store'), lrPayload($ctx, [
+        'form_mode' => 'truck',
+        'vehicle_id' => $ctx['vehicle']->id,
+        'redirect_to_hire' => '1',
+    ]));
+
+    $lr = LorryReceipt::query()
+        ->where('company_id', $ctx['company']->id)
+        ->where('branch_id', $ctx['branch']->id)
+        ->latest('created_at')
+        ->first();
+
+    expect($lr)->not->toBeNull();
+    $response->assertRedirect(route('branch.broker.lorry-hires.create-from-lr', [$lr]));
 });
 
 test('tenant mismatch raises authorization exception', function () {

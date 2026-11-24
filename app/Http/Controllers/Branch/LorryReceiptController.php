@@ -240,6 +240,21 @@ class LorryReceiptController extends Controller
             throw ValidationException::withMessages(['workflow_context' => $e->getMessage()]);
         }
 
+        $redirectToHire = $request->boolean('redirect_to_hire')
+            && $lr->workflow_context === LrWorkflowContext::Broker
+            && $this->authorizer->allowsCustomer(
+                $actor,
+                PermissionCodes::BROKER_LORRY_HIRE_CREATE,
+                $company,
+                $branch,
+            );
+
+        if ($redirectToHire) {
+            return redirect()
+                ->route('branch.broker.lorry-hires.create-from-lr', [$lr])
+                ->with('success', 'Bilty created. Continue with Lorry Hire.');
+        }
+
         return redirect()
             ->route('branch.lorry-receipts.show', [$lr])
             ->with('success', 'Lorry Receipt created.');
@@ -483,6 +498,12 @@ class LorryReceiptController extends Controller
             'can_cancel' => $this->authorizer->allowsCustomer($actor, PermissionCodes::LR_CANCEL, $company, $branch),
             'can_delete' => $this->authorizer->allowsCustomer($actor, PermissionCodes::LR_DELETE, $company, $branch),
             'can_view_freight' => $maySeeFreight,
+            'can_create_lorry_hire' => $this->authorizer->allowsCustomer(
+                $actor,
+                PermissionCodes::BROKER_LORRY_HIRE_CREATE,
+                $company,
+                $branch,
+            ),
         ];
     }
 
