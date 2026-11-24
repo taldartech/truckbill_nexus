@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Branch\Concerns;
 
 use App\Domains\Document\DocumentAttachmentService;
+use App\Domains\Document\DocumentParentTypes;
 use App\Domains\Document\Exceptions\DocumentDomainException;
 use App\Domains\Master\Exceptions\MasterDomainException;
 use App\Http\Controllers\Branch\DocumentAttachmentController;
@@ -26,7 +27,7 @@ trait PresentsDocumentDrawer
         DocumentAttachmentService $documents,
         array $permissions,
     ): ?array {
-        if (! in_array($parentType, ['party', 'vehicle', 'bank_cash_account', 'station', 'lorry_receipt', 'trip', 'broker_delivery'], true)) {
+        if (! in_array($parentType, DocumentParentTypes::drawerParents(), true)) {
             return null;
         }
 

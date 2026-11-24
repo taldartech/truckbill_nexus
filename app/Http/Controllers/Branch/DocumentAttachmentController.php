@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Branch;
 
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Document\DocumentAttachmentService;
+use App\Domains\Document\DocumentParentAccess;
+use App\Domains\Document\DocumentParentTypes;
 use App\Domains\Document\Exceptions\DocumentDomainException;
 use App\Domains\Master\Exceptions\MasterDomainException;
 use App\Domains\Rbac\PermissionAuthorizer;
@@ -32,14 +34,14 @@ class DocumentAttachmentController extends Controller
         private readonly CompanyAccessService $access,
         private readonly PermissionAuthorizer $authorizer,
         private readonly DocumentAttachmentService $documents,
+        private readonly DocumentParentAccess $parentAccess = new DocumentParentAccess,
     ) {}
 
     public function index(Request $request, string $parentType, string $parentId, Company $company, Branch $branch): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $permissions = $this->masterPermissions($actor, $company, $branch, $this->access, $this->authorizer);
-
         $this->assertParentType($parentType);
+        $permissions = $this->parentAccess->permissionFlags($actor, $company, $branch, $parentType);
 
         try {
             $attachments = $this->documents->listForParent(
@@ -176,7 +178,7 @@ class DocumentAttachmentController extends Controller
 
     private function assertParentType(string $parentType): void
     {
-        if (! in_array($parentType, ['party', 'vehicle', 'bank_cash_account', 'station', 'lorry_receipt', 'trip', 'company_record', 'broker_delivery'], true)) {
+        if (! DocumentParentTypes::isSupported($parentType)) {
             abort(404);
         }
     }

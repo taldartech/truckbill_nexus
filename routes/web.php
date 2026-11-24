@@ -1,5 +1,6 @@
 <?php
 
+use App\Domains\Document\DocumentParentTypes;
 use App\Http\Controllers\Admin\CompanyLifecycleController;
 use App\Http\Controllers\Admin\Crm\CrmDashboardController;
 use App\Http\Controllers\Admin\Crm\LeadController as CrmLeadController;
@@ -215,6 +216,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/broker/deliveries', [BrokerDeliveryController::class, 'index'])->name('branch.broker.deliveries.index');
         Route::post('/broker/deliveries/memo', [BrokerDeliveryController::class, 'assignMemo'])->name('branch.broker.deliveries.memo');
         Route::post('/broker/deliveries/{lorryReceipt}/complete', [BrokerDeliveryController::class, 'complete'])->name('branch.broker.deliveries.complete');
+        Route::post('/broker/deliveries/{brokerDelivery}/pod', [BrokerDeliveryController::class, 'attachPod'])->name('branch.broker.deliveries.pod');
 
         Route::get('/broker/vouchers', [TransporterVoucherController::class, 'index'])->name('branch.broker.vouchers.index');
         Route::get('/broker/vouchers/create', [TransporterVoucherController::class, 'create'])->name('branch.broker.vouchers.create');
@@ -339,10 +341,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/documents/attachments/{attachment}', [DocumentAttachmentController::class, 'destroy'])
             ->name('branch.documents.destroy');
         Route::get('/documents/{parentType}/{parentId}', [DocumentAttachmentController::class, 'index'])
-            ->where('parentType', 'party|vehicle|bank_cash_account|station|company_record')
+            ->where('parentType', DocumentParentTypes::routeConstraint())
             ->name('branch.documents.index');
         Route::post('/documents/{parentType}/{parentId}', [DocumentAttachmentController::class, 'store'])
-            ->where('parentType', 'party|vehicle|bank_cash_account|station|company_record')
+            ->where('parentType', DocumentParentTypes::routeConstraint())
             ->name('branch.documents.store');
     });
 

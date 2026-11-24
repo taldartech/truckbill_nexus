@@ -3,6 +3,10 @@ import { useState } from 'react';
 import { ArrowLeft, Pencil } from 'lucide-react';
 import { AppIconAction } from '@/components/app-icon-action';
 import { DetailTabPanel, DetailTabs } from '@/components/detail-tabs';
+import {
+    DocumentDrawer,
+    type DocumentDrawerProps,
+} from '@/components/masters/document-drawer';
 import { FormSection } from '@/components/form-section';
 import { MetricCard } from '@/components/ui/metric-card';
 import { PageShell } from '@/components/page-shell';
@@ -80,7 +84,9 @@ type Props = {
         print: string;
         create_trip?: string;
         create_lorry_hire?: string;
+        documents?: string;
     };
+    documentDrawer?: Omit<DocumentDrawerProps, 'open' | 'onOpenChange'> | null;
 };
 
 export default function LorryReceiptShow({
@@ -89,6 +95,7 @@ export default function LorryReceiptShow({
     linkedTrip = null,
     linkedLorryHire = null,
     urls,
+    documentDrawer = null,
 }: Props) {
     const { flash, errors } = usePage<{
         flash?: { success?: string | null };
@@ -96,6 +103,7 @@ export default function LorryReceiptShow({
     }>().props;
     const [confirmDelete, setConfirmDelete] = useState(false);
     const [tab, setTab] = useState('overview');
+    const [docsOpen, setDocsOpen] = useState(false);
     const isPending = lorryReceipt.status === 'pending';
 
     return (
@@ -175,6 +183,11 @@ export default function LorryReceiptShow({
                             count:
                                 lorryReceipt.eway_bills.length +
                                 lorryReceipt.additional_charges.length,
+                        },
+                        {
+                            id: 'files',
+                            label: 'Files / POD',
+                            count: documentDrawer?.attachments.length ?? 0,
                         },
                         { id: 'activity', label: 'Actions' },
                     ]}
@@ -506,8 +519,83 @@ export default function LorryReceiptShow({
                             </p>
                         ) : null}
                     </DetailTabPanel>
+
+                    <DetailTabPanel id="files" activeId={tab}>
+                        <div className="space-y-3">
+                            <p className="text-sm text-muted-foreground">
+                                Supporting documents and optional POD for this
+                                Lorry Receipt.
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                                {documentDrawer ? (
+                                    <Button
+                                        type="button"
+                                        variant="secondary"
+                                        onClick={() => setDocsOpen(true)}
+                                    >
+                                        Manage documents
+                                    </Button>
+                                ) : urls.documents ? (
+                                    <Button asChild variant="secondary">
+                                        <Link href={urls.documents}>
+                                            Open document manager
+                                        </Link>
+                                    </Button>
+                                ) : null}
+                            </div>
+                            {documentDrawer ? (
+                                <ul className="divide-y divide-border rounded-lg border border-border text-sm">
+                                    {documentDrawer.attachments.length ===
+                                    0 ? (
+                                        <li className="px-3 py-2 text-muted-foreground">
+                                            No files attached yet.
+                                        </li>
+                                    ) : (
+                                        documentDrawer.attachments.map(
+                                            (attachment) => (
+                                                <li
+                                                    key={attachment.id}
+                                                    className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"
+                                                >
+                                                    <span>
+                                                        {attachment.label ||
+                                                            attachment.file
+                                                                ?.original_name ||
+                                                            attachment.document_type ||
+                                                            'Attachment'}
+                                                    </span>
+                                                    {attachment.download_url ? (
+                                                        <a
+                                                            className="text-sm text-[#2A6FDB] underline"
+                                                            href={
+                                                                attachment.download_url
+                                                            }
+                                                        >
+                                                            Download
+                                                        </a>
+                                                    ) : (
+                                                        <span className="text-xs text-muted-foreground">
+                                                            Unavailable
+                                                        </span>
+                                                    )}
+                                                </li>
+                                            ),
+                                        )
+                                    )}
+                                </ul>
+                            ) : null}
+                        </div>
+                    </DetailTabPanel>
                 </DetailTabs>
             </PageShell>
+            {documentDrawer ? (
+                <DocumentDrawer
+                    open={docsOpen}
+                    onOpenChange={setDocsOpen}
+                    title="LR documents / POD"
+                    {...documentDrawer}
+                />
+            ) : null}
         </>
     );
 }

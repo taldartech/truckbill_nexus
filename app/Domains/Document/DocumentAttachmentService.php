@@ -2,9 +2,11 @@
 
 namespace App\Domains\Document;
 
+use App\Domains\Broker\Enums\BrokerDeliveryStatus;
 use App\Domains\Document\Exceptions\DocumentDomainException;
 use App\Domains\Master\Support\MasterAccess;
 use App\Models\Branch;
+use App\Models\BrokerDelivery;
 use App\Models\Company;
 use App\Models\DocumentAttachment;
 use App\Models\User;
@@ -23,12 +25,14 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 /**
  * Shared document attachment lifecycle (P3-WS-3) atop PrivateFileService.
  *
- * Reusable by future LR/trips/invoices without implementing those modules now.
+ * Parent-type authorization is enforced via DocumentParentAccess so operational
+ * parents (LR / Trip / Broker Delivery) do not inherit Party Master mutate rights.
  */
 final class DocumentAttachmentService
 {
     public function __construct(
         private readonly MasterAccess $access = new MasterAccess,
+        private readonly DocumentParentAccess $parentAccess = new DocumentParentAccess,
         private readonly PrivateFileService $files = new PrivateFileService,
         private readonly AuditedTransaction $auditedTransaction = new AuditedTransaction,
         private readonly AuditWriter $audit = new AuditWriter,
@@ -48,8 +52,9 @@ final class DocumentAttachmentService
         ?string $label = null,
         string $remark = 'Attach document',
     ): DocumentAttachment {
-        $this->access->assertCanMutate($actor, $company, $branch);
-        $this->assertParentAuthorized($company, $parentType, $parentId);
+        $this->parentAccess->assertCanMutate($actor, $company, $branch, $parentType);
+        $this->assertParentAuthorized($company, $branch, $parentType, $parentId);
+        $this->assertBrokerDeliveryMutable($company, $branch, $parentType, $parentId);
         $this->assertFileUsable($file, $company);
 
         return $this->auditedTransaction->run(function () use ($actor, $company, $branch, $parentType, $parentId, $file, $documentType, $label, $remark): DocumentAttachment {
@@ -97,8 +102,9 @@ final class DocumentAttachmentService
         ?string $label = null,
         string $remark = 'Upload and attach document',
     ): DocumentAttachment {
-        $this->access->assertCanMutate($actor, $company, $branch);
-        $this->assertParentAuthorized($company, $parentType, $parentId);
+        $this->parentAccess->assertCanMutate($actor, $company, $branch, $parentType);
+        $this->assertParentAuthorized($company, $branch, $parentType, $parentId);
+        $this->assertBrokerDeliveryMutable($company, $branch, $parentType, $parentId);
 
         return $this->access->withTenant($actor, $company, $branch, function () use ($actor, $company, $branch, $parentType, $parentId, $upload, $documentType, $label, $remark): DocumentAttachment {
             $file = $this->files->store($upload);
@@ -136,8 +142,9 @@ final class DocumentAttachmentService
             ? Branch::query()->where('company_id', $company->id)->whereKey($attachment->branch_id)->first()
             : null;
 
-        $this->access->assertCanEdit($actor, $company, $branch);
-        $this->assertParentAuthorized($company, $attachment->parent_type, $attachment->parent_id);
+        $this->parentAccess->assertCanEdit($actor, $company, $branch, $attachment->parent_type);
+        $this->assertParentAuthorized($company, $branch, $attachment->parent_type, $attachment->parent_id);
+        $this->assertBrokerDeliveryMutable($company, $branch, $attachment->parent_type, $attachment->parent_id);
 
         return $this->access->withTenant($actor, $company, $branch, function () use ($company, $branch, $attachment, $upload, $remark): DocumentAttachment {
             // Store replacement first; only then mark supersession. Prior file stays for
@@ -189,7 +196,11 @@ final class DocumentAttachmentService
             ? Branch::query()->where('company_id', $company->id)->whereKey($attachment->branch_id)->first()
             : $this->access->resolveActorBranch($actor, $company);
 
-        $this->access->assertCanView($actor, $company, $branch);
+        if ($branch === null) {
+            throw new DocumentDomainException('Branch context is required to download documents.');
+        }
+
+        $this->parentAccess->assertCanView($actor, $company, $branch, $attachment->parent_type);
 
         $file = $attachment->storedFile()->firstOrFail();
         if ($file->company_id !== $company->id) {
@@ -211,7 +222,7 @@ final class DocumentAttachmentService
             ? Branch::query()->where('company_id', $company->id)->whereKey($attachment->branch_id)->first()
             : null;
 
-        $this->access->assertCanDelete($actor, $company, $branch);
+        $this->parentAccess->assertCanDelete($actor, $company, $branch, $attachment->parent_type);
 
         $this->auditedTransaction->run(function () use ($actor, $company, $branch, $attachment, $remark, $retainStorageCount): void {
             $this->access->withTenant($actor, $company, $branch, function () use ($attachment, $remark, $retainStorageCount): void {
@@ -240,8 +251,8 @@ final class DocumentAttachmentService
      */
     public function listForParent(User $actor, Company $company, Branch $branch, string $parentType, string $parentId, bool $currentOnly = true): Collection
     {
-        $this->access->assertCanView($actor, $company, $branch);
-        $this->assertParentAuthorized($company, $parentType, $parentId);
+        $this->parentAccess->assertCanView($actor, $company, $branch, $parentType);
+        $this->assertParentAuthorized($company, $branch, $parentType, $parentId);
 
         $builder = DocumentAttachment::query()
             ->where('company_id', $company->id)
@@ -334,30 +345,76 @@ final class DocumentAttachmentService
     }
 
     /**
-     * Parent authorization foundation: parent must resolve within company scope.
-     * Concrete parent types register lightweight existence checks here.
+     * Parent must resolve within company (and branch, when operational) scope.
      */
-    private function assertParentAuthorized(Company $company, string $parentType, string $parentId): void
+    private function assertParentAuthorized(Company $company, ?Branch $branch, string $parentType, string $parentId): void
     {
+        if (! DocumentParentTypes::isSupported($parentType)) {
+            throw new DocumentDomainException('Unsupported document parent type.');
+        }
+
         $exists = match ($parentType) {
-            'party' => DB::table('parties')->where('company_id', $company->id)->where('id', $parentId)->whereNull('deleted_at')->exists(),
-            'vehicle' => DB::table('vehicles')->where('company_id', $company->id)->where('id', $parentId)->whereNull('deleted_at')->exists(),
-            'bank_cash_account' => DB::table('bank_cash_accounts')->where('company_id', $company->id)->where('id', $parentId)->whereNull('deleted_at')->exists(),
-            'station' => DB::table('stations')
+            DocumentParentTypes::PARTY => DB::table('parties')->where('company_id', $company->id)->where('id', $parentId)->whereNull('deleted_at')->exists(),
+            DocumentParentTypes::VEHICLE => DB::table('vehicles')->where('company_id', $company->id)->where('id', $parentId)->whereNull('deleted_at')->exists(),
+            DocumentParentTypes::BANK_CASH_ACCOUNT => DB::table('bank_cash_accounts')->where('company_id', $company->id)->where('id', $parentId)->whereNull('deleted_at')->exists(),
+            DocumentParentTypes::STATION => DB::table('stations')
                 ->where('owner_user_id', $company->owner_user_id)
                 ->where('id', $parentId)
                 ->whereNull('deleted_at')
                 ->exists(),
-            'lorry_receipt' => DB::table('lorry_receipts')->where('company_id', $company->id)->where('id', $parentId)->whereNull('deleted_at')->exists(),
-            'trip' => DB::table('trips')->where('company_id', $company->id)->where('id', $parentId)->whereNull('deleted_at')->exists(),
-            'broker_delivery' => DB::table('broker_deliveries')->where('company_id', $company->id)->where('id', $parentId)->whereNull('deleted_at')->exists(),
-            // Generic company-scoped placeholder for future modules (invoice).
-            'company_record' => $parentId === $company->id,
-            default => throw new DocumentDomainException('Unsupported document parent type.'),
+            DocumentParentTypes::LORRY_RECEIPT => $this->operationalParentExists('lorry_receipts', $company, $branch, $parentId),
+            DocumentParentTypes::TRIP => $this->operationalParentExists('trips', $company, $branch, $parentId),
+            DocumentParentTypes::BROKER_DELIVERY => $this->operationalParentExists('broker_deliveries', $company, $branch, $parentId),
+            DocumentParentTypes::COMPANY_RECORD => $parentId === $company->id,
+            default => false,
         };
 
         if (! $exists) {
             throw new DocumentDomainException('Parent record not found in company scope.');
+        }
+    }
+
+    private function operationalParentExists(string $table, Company $company, ?Branch $branch, string $parentId): bool
+    {
+        $query = DB::table($table)
+            ->where('company_id', $company->id)
+            ->where('id', $parentId)
+            ->whereNull('deleted_at');
+
+        if ($branch !== null) {
+            $query->where('branch_id', $branch->id);
+        }
+
+        return $query->exists();
+    }
+
+    /**
+     * POD / supporting files attach only while Memo Assigned or Delivered.
+     */
+    private function assertBrokerDeliveryMutable(Company $company, ?Branch $branch, string $parentType, string $parentId): void
+    {
+        if ($parentType !== DocumentParentTypes::BROKER_DELIVERY) {
+            return;
+        }
+
+        $query = BrokerDelivery::query()
+            ->where('company_id', $company->id)
+            ->whereKey($parentId);
+
+        if ($branch !== null) {
+            $query->where('branch_id', $branch->id);
+        }
+
+        $delivery = $query->first();
+        if ($delivery === null) {
+            throw new DocumentDomainException('Parent record not found in company scope.');
+        }
+
+        if (
+            $delivery->status !== BrokerDeliveryStatus::Delivered
+            && $delivery->status !== BrokerDeliveryStatus::MemoAssigned
+        ) {
+            throw new DocumentDomainException('POD can only attach to memo-assigned or delivered records.');
         }
     }
 }

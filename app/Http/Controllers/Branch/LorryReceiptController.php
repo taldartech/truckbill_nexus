@@ -13,6 +13,7 @@ use App\Domains\Consignment\Exceptions\LorryReceiptDomainException;
 use App\Domains\Consignment\LorryReceiptService;
 use App\Domains\Consignment\LrVehicleClassificationService;
 use App\Domains\Consignment\LrWorkflowContextResolver;
+use App\Domains\Document\DocumentAttachmentService;
 use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
@@ -22,6 +23,7 @@ use App\Domains\Rbac\PermissionCodes;
 use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
 use App\Domains\Subscription\Enums\SubscriptionModule;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
+use App\Http\Controllers\Branch\Concerns\PresentsDocumentDrawer;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Company;
@@ -48,6 +50,7 @@ use Inertia\Response;
 class LorryReceiptController extends Controller
 {
     use AuthorizesBranchPanel;
+    use PresentsDocumentDrawer;
 
     public function __construct(
         private readonly CompanyAccessService $access,
@@ -58,6 +61,7 @@ class LorryReceiptController extends Controller
         private readonly TripService $trips,
         private readonly LorryHireService $lorryHires,
         private readonly FreightAmountPresentation $freightPresentation,
+        private readonly DocumentAttachmentService $documents,
         private readonly CoreModuleEntitlementResolver $moduleEntitlements = new CoreModuleEntitlementResolver,
     ) {}
 
@@ -285,7 +289,24 @@ class LorryReceiptController extends Controller
                 'print' => route('branch.lorry-receipts.print', [$lorryReceipt], absolute: false),
                 'create_trip' => route('branch.trips.create-from-lr', [$lorryReceipt], absolute: false),
                 'create_lorry_hire' => route('branch.broker.lorry-hires.create-from-lr', [$lorryReceipt], absolute: false),
+                'documents' => route('branch.documents.index', [
+                    'parentType' => 'lorry_receipt',
+                    'parentId' => $lorryReceipt->id,
+                ], absolute: false),
             ],
+            'documentDrawer' => $this->documentDrawerPayload(
+                $actor,
+                $company,
+                $branch,
+                'lorry_receipt',
+                $lorryReceipt->id,
+                $this->documents,
+                [
+                    'can_create' => $this->authorizer->allowsCustomer($actor, PermissionCodes::LR_EDIT, $company, $branch),
+                    'can_edit' => $this->authorizer->allowsCustomer($actor, PermissionCodes::LR_EDIT, $company, $branch),
+                    'can_delete' => $this->authorizer->allowsCustomer($actor, PermissionCodes::LR_EDIT, $company, $branch),
+                ],
+            ),
         ]);
     }
 

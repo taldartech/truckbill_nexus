@@ -3,6 +3,10 @@ import { ArrowLeft } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { AppIconAction } from '@/components/app-icon-action';
 import { DetailTabPanel, DetailTabs } from '@/components/detail-tabs';
+import {
+    DocumentDrawer,
+    type DocumentDrawerProps,
+} from '@/components/masters/document-drawer';
 import { PageShell } from '@/components/page-shell';
 import {
     WorkflowProgress,
@@ -113,6 +117,7 @@ type Props = {
         documents?: string;
         lr_documents?: string;
     };
+    documentDrawer?: Omit<DocumentDrawerProps, 'open' | 'onOpenChange'> | null;
     expenses: Array<{
         id: string;
         expense_date: string | null;
@@ -155,6 +160,7 @@ export default function TripShow({
     formOptions,
     permissions,
     urls,
+    documentDrawer = null,
     expenses,
     profit,
 }: Props) {
@@ -166,6 +172,7 @@ export default function TripShow({
         permissions.can_edit &&
         (trip.status === 'pending' || trip.status === 'in_progress');
     const [tab, setTab] = useState('overview');
+    const [docsOpen, setDocsOpen] = useState(false);
 
     const workflowSteps = useMemo<WorkflowStep[]>(() => {
         const status = trip.status;
@@ -288,23 +295,84 @@ export default function TripShow({
                     onChange={setTab}
                 >
                     <DetailTabPanel id="documents" activeId={tab}>
-                        <div className="flex flex-wrap gap-2">
-                            <Button asChild variant="secondary">
-                                <Link href={urls.lr_show}>Open LR</Link>
-                            </Button>
-                            {urls.documents ? (
+                        <div className="space-y-3">
+                            <p className="text-sm text-muted-foreground">
+                                Upload supporting trip files and optional POD
+                                from this screen. POD is not required to
+                                complete the trip.
+                            </p>
+                            <div className="flex flex-wrap gap-2">
                                 <Button asChild variant="secondary">
-                                    <Link href={urls.documents}>
-                                        Trip documents
-                                    </Link>
+                                    <Link href={urls.lr_show}>Open LR</Link>
                                 </Button>
-                            ) : null}
-                            {urls.lr_documents ? (
-                                <Button asChild variant="secondary">
-                                    <Link href={urls.lr_documents}>
-                                        LR / POD documents
-                                    </Link>
-                                </Button>
+                                {documentDrawer ? (
+                                    <Button
+                                        type="button"
+                                        variant="secondary"
+                                        onClick={() => setDocsOpen(true)}
+                                    >
+                                        Manage trip documents
+                                    </Button>
+                                ) : urls.documents ? (
+                                    <Button asChild variant="secondary">
+                                        <Link href={urls.documents}>
+                                            Trip documents
+                                        </Link>
+                                    </Button>
+                                ) : null}
+                                {urls.lr_documents ? (
+                                    <Button asChild variant="secondary">
+                                        <Link href={urls.lr_documents}>
+                                            LR / POD documents
+                                        </Link>
+                                    </Button>
+                                ) : null}
+                            </div>
+                            {documentDrawer ? (
+                                <ul className="divide-y divide-border rounded-lg border border-border text-sm">
+                                    {documentDrawer.attachments.length ===
+                                    0 ? (
+                                        <li className="px-3 py-2 text-muted-foreground">
+                                            No trip documents yet.
+                                        </li>
+                                    ) : (
+                                        documentDrawer.attachments.map(
+                                            (attachment) => (
+                                                <li
+                                                    key={attachment.id}
+                                                    className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"
+                                                >
+                                                    <span>
+                                                        {attachment.label ||
+                                                            attachment.file
+                                                                ?.original_name ||
+                                                            attachment.document_type ||
+                                                            'Attachment'}
+                                                        {attachment.is_current
+                                                            ? ''
+                                                            : ' (history)'}
+                                                    </span>
+                                                    {attachment.download_url ? (
+                                                        <a
+                                                            className="text-sm text-[#2A6FDB] underline"
+                                                            href={
+                                                                attachment.download_url
+                                                            }
+                                                        >
+                                                            Download
+                                                        </a>
+                                                    ) : (
+                                                        <span className="text-xs text-muted-foreground">
+                                                            {attachment.file
+                                                                ?.scan_status ??
+                                                                'Unavailable'}
+                                                        </span>
+                                                    )}
+                                                </li>
+                                            ),
+                                        )
+                                    )}
+                                </ul>
                             ) : null}
                         </div>
                     </DetailTabPanel>
@@ -1283,6 +1351,14 @@ export default function TripShow({
                     </DetailTabPanel>
                 </DetailTabs>
             </PageShell>
+            {documentDrawer ? (
+                <DocumentDrawer
+                    open={docsOpen}
+                    onOpenChange={setDocsOpen}
+                    title="Trip documents"
+                    {...documentDrawer}
+                />
+            ) : null}
         </>
     );
 }

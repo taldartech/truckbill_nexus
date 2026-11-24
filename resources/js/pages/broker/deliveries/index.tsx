@@ -1,5 +1,9 @@
 import { Head, useForm } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
+import {
+    DocumentDrawer,
+    type DocumentDrawerProps,
+} from '@/components/masters/document-drawer';
 import { PageShell } from '@/components/page-shell';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { Button } from '@/components/ui/button';
@@ -24,6 +28,8 @@ type RecentRow = {
     memo_number: string | null;
     pod_number: string | null;
     delivery_date: string | null;
+    urls: { pod: string; documents: string };
+    documentDrawer: Omit<DocumentDrawerProps, 'open' | 'onOpenChange'> | null;
 };
 
 type Props = {
@@ -43,11 +49,16 @@ export default function DeliveriesIndex({
     urls,
 }: Props) {
     const [selected, setSelected] = useState<string[]>([]);
+    const [docsFor, setDocsFor] = useState<RecentRow | null>(null);
     const memoForm = useForm({
         lorry_receipt_ids: [] as string[],
         memo_number: '',
         pod_number: '',
         remarks: '',
+    });
+    const podForm = useForm<{ file: File | null; label: string }>({
+        file: null,
+        label: '',
     });
 
     const selectedCustomer = useMemo(() => {
@@ -85,12 +96,27 @@ export default function DeliveriesIndex({
         });
     };
 
+    const submitPod = (event: React.FormEvent, row: RecentRow) => {
+        event.preventDefault();
+        if (!podForm.data.file) {
+            return;
+        }
+        podForm.post(row.urls.pod, {
+            forceFormData: true,
+            preserveScroll: true,
+            onSuccess: () => {
+                podForm.reset();
+                setDocsFor(null);
+            },
+        });
+    };
+
     return (
         <>
             <Head title="Broker Delivery & Memo" />
             <PageShell
                 title="Delivery, Memo & POD"
-                description="Assign one memo to multiple Broker LRs for the same billing customer, then record delivery."
+                description="Assign one memo to multiple Broker LRs for the same billing customer, then record delivery and upload POD files."
             >
                 {permissions.can_manage ? (
                     <form
@@ -204,29 +230,114 @@ export default function DeliveriesIndex({
                 </div>
 
                 {recentDeliveries.length > 0 ? (
-                    <div className="mt-8">
+                    <div className="mt-8 space-y-3">
                         <h2 className="text-sm font-semibold">
-                            Recent activity
+                            Recent activity & POD files
                         </h2>
-                        <ul className="mt-2 space-y-2 text-sm">
+                        <ul className="space-y-3 text-sm">
                             {recentDeliveries.map((row) => (
                                 <li
                                     key={row.id}
-                                    className="flex flex-wrap items-center gap-2 rounded-md border border-border px-3 py-2"
+                                    className="rounded-md border border-border px-3 py-3"
                                 >
-                                    <span className="font-medium">
-                                        {row.lr_number ?? '—'}
-                                    </span>
-                                    <WorkspaceStatusBadge status={row.status} />
-                                    {row.memo_number ? (
-                                        <span className="text-muted-foreground">
-                                            Memo {row.memo_number}
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className="font-medium">
+                                            {row.lr_number ?? '—'}
                                         </span>
-                                    ) : null}
-                                    {row.delivery_date ? (
-                                        <span className="text-muted-foreground">
-                                            Delivered {row.delivery_date}
-                                        </span>
+                                        <WorkspaceStatusBadge
+                                            status={row.status}
+                                        />
+                                        {row.memo_number ? (
+                                            <span className="text-muted-foreground">
+                                                Memo {row.memo_number}
+                                            </span>
+                                        ) : null}
+                                        {row.pod_number ? (
+                                            <span className="text-muted-foreground">
+                                                POD # {row.pod_number}
+                                            </span>
+                                        ) : null}
+                                        {row.delivery_date ? (
+                                            <span className="text-muted-foreground">
+                                                Delivered {row.delivery_date}
+                                            </span>
+                                        ) : null}
+                                        {row.documentDrawer ? (
+                                            <Button
+                                                type="button"
+                                                size="sm"
+                                                variant="secondary"
+                                                onClick={() => setDocsFor(row)}
+                                            >
+                                                Documents (
+                                                {
+                                                    row.documentDrawer
+                                                        .attachments.length
+                                                }
+                                                )
+                                            </Button>
+                                        ) : null}
+                                    </div>
+                                    {permissions.can_manage &&
+                                    (row.status === 'memo_assigned' ||
+                                        row.status === 'delivered') ? (
+                                        <form
+                                            className="mt-3 flex flex-wrap items-end gap-2"
+                                            onSubmit={(event) =>
+                                                submitPod(event, row)
+                                            }
+                                        >
+                                            <div>
+                                                <Label
+                                                    htmlFor={`pod-file-${row.id}`}
+                                                >
+                                                    Upload POD file
+                                                </Label>
+                                                <Input
+                                                    id={`pod-file-${row.id}`}
+                                                    type="file"
+                                                    accept=".pdf,.jpg,.jpeg,.png,.webp"
+                                                    onChange={(e) =>
+                                                        podForm.setData(
+                                                            'file',
+                                                            e.target
+                                                                .files?.[0] ??
+                                                                null,
+                                                        )
+                                                    }
+                                                    required
+                                                />
+                                            </div>
+                                            <div>
+                                                <Label
+                                                    htmlFor={`pod-label-${row.id}`}
+                                                >
+                                                    Label
+                                                </Label>
+                                                <Input
+                                                    id={`pod-label-${row.id}`}
+                                                    value={podForm.data.label}
+                                                    onChange={(e) =>
+                                                        podForm.setData(
+                                                            'label',
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    placeholder="Optional"
+                                                />
+                                            </div>
+                                            <Button
+                                                type="submit"
+                                                size="sm"
+                                                className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                                                disabled={
+                                                    podForm.processing ||
+                                                    !podForm.data.file
+                                                }
+                                            >
+                                                Upload POD
+                                            </Button>
+                                        </form>
                                     ) : null}
                                 </li>
                             ))}
@@ -234,6 +345,18 @@ export default function DeliveriesIndex({
                     </div>
                 ) : null}
             </PageShell>
+            {docsFor?.documentDrawer ? (
+                <DocumentDrawer
+                    open={docsFor !== null}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setDocsFor(null);
+                        }
+                    }}
+                    title={`POD / delivery documents · ${docsFor.lr_number ?? docsFor.id}`}
+                    {...docsFor.documentDrawer}
+                />
+            ) : null}
         </>
     );
 }
@@ -251,7 +374,10 @@ function EligibleRowView({
     disabled: boolean;
     onToggle: () => void;
 }) {
-    const completeForm = useForm({ delivery_date: '', remarks: '' });
+    const completeForm = useForm({
+        delivery_date: new Date().toISOString().slice(0, 10),
+        remarks: '',
+    });
 
     return (
         <tr className="border-t border-border">
@@ -262,12 +388,14 @@ function EligibleRowView({
                         checked={checked}
                         disabled={disabled}
                         onChange={onToggle}
-                        aria-label={`Select LR ${row.lr_number}`}
+                        aria-label={`Select ${row.lr_number}`}
                     />
                 </td>
             ) : null}
             <td className="px-4 py-3 font-medium">{row.lr_number}</td>
-            <td className="px-4 py-3">{row.billing_customer_name ?? '—'}</td>
+            <td className="px-4 py-3">
+                {row.billing_customer_name ?? '—'}
+            </td>
             <td className="px-4 py-3">{row.memo_number ?? '—'}</td>
             <td className="px-4 py-3">
                 {row.delivery_status ? (
@@ -278,37 +406,41 @@ function EligibleRowView({
             </td>
             {canManage ? (
                 <td className="px-4 py-3">
-                    <form
-                        className="flex flex-wrap items-end gap-2"
-                        onSubmit={(event) => {
-                            event.preventDefault();
-                            completeForm.post(row.urls.complete, {
-                                preserveScroll: true,
-                            });
-                        }}
-                    >
-                        <Input
-                            type="date"
-                            className="w-36"
-                            value={completeForm.data.delivery_date}
-                            onChange={(e) =>
-                                completeForm.setData(
-                                    'delivery_date',
-                                    e.target.value,
-                                )
-                            }
-                            required
-                            aria-label={`Delivery date for ${row.lr_number}`}
-                        />
-                        <Button
-                            type="submit"
-                            size="sm"
-                            variant="outline"
-                            disabled={completeForm.processing}
+                    {row.memo_number ? (
+                        <form
+                            className="flex flex-wrap items-center gap-2"
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                completeForm.post(row.urls.complete, {
+                                    preserveScroll: true,
+                                });
+                            }}
                         >
-                            Record delivery
-                        </Button>
-                    </form>
+                            <Input
+                                type="date"
+                                value={completeForm.data.delivery_date}
+                                onChange={(e) =>
+                                    completeForm.setData(
+                                        'delivery_date',
+                                        e.target.value,
+                                    )
+                                }
+                                required
+                                className="w-auto"
+                            />
+                            <Button
+                                type="submit"
+                                size="sm"
+                                disabled={completeForm.processing}
+                            >
+                                Deliver
+                            </Button>
+                        </form>
+                    ) : (
+                        <span className="text-xs text-muted-foreground">
+                            Assign memo first
+                        </span>
+                    )}
                 </td>
             ) : null}
         </tr>

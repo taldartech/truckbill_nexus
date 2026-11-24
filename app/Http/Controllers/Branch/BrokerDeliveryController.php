@@ -7,17 +7,22 @@ use App\Domains\Broker\Exceptions\BrokerAuthorizationException;
 use App\Domains\Broker\Exceptions\BrokerConflictException;
 use App\Domains\Broker\Exceptions\BrokerDomainException;
 use App\Domains\Company\CompanyAccessService;
+use App\Domains\Document\DocumentAttachmentService;
+use App\Domains\Document\Exceptions\DocumentDomainException;
+use App\Domains\Master\Exceptions\MasterDomainException;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
 use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
 use App\Domains\Subscription\Enums\SubscriptionModule;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
+use App\Http\Controllers\Branch\Concerns\PresentsDocumentDrawer;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\BrokerDelivery;
 use App\Models\Company;
 use App\Models\LorryReceipt;
 use App\Models\User;
+use App\Support\Files\Exceptions\FileNotAvailableException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -27,11 +32,13 @@ use Inertia\Response;
 class BrokerDeliveryController extends Controller
 {
     use AuthorizesBranchPanel;
+    use PresentsDocumentDrawer;
 
     public function __construct(
         private readonly CompanyAccessService $access,
         private readonly PermissionAuthorizer $authorizer,
         private readonly BrokerDeliveryService $deliveries,
+        private readonly DocumentAttachmentService $documents,
         private readonly CoreModuleEntitlementResolver $moduleEntitlements = new CoreModuleEntitlementResolver,
     ) {}
 
@@ -64,7 +71,9 @@ class BrokerDeliveryController extends Controller
                     'per_page' => $eligible->perPage(),
                 ],
             ],
-            'recentDeliveries' => collect($recent->items())->map(fn (BrokerDelivery $delivery): array => $this->recentPayload($delivery))->values()->all(),
+            'recentDeliveries' => collect($recent->items())->map(
+                fn (BrokerDelivery $delivery): array => $this->recentPayload($delivery, $actor, $company, $branch),
+            )->values()->all(),
             'urls' => [
                 'index' => route('branch.broker.deliveries.index', absolute: false),
                 'memo' => route('branch.broker.deliveries.memo', absolute: false),
@@ -132,9 +141,49 @@ class BrokerDeliveryController extends Controller
             ->with('success', 'Delivery recorded.');
     }
 
+    public function attachPod(
+        Request $request,
+        BrokerDelivery $brokerDelivery,
+        Company $company,
+        Branch $branch,
+    ): RedirectResponse {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertPermission($actor, $company, $branch, PermissionCodes::BROKER_DELIVERY_MANAGE);
+        $this->assertDelivery($brokerDelivery, $company, $branch);
+
+        $validated = $request->validate([
+            'file' => ['required', 'file', 'max:2048', 'mimes:pdf,jpg,jpeg,png,webp'],
+            'label' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        try {
+            $this->deliveries->attachPodDocument(
+                $brokerDelivery,
+                $actor,
+                $validated['file'],
+                $validated['label'] ?? null,
+            );
+        } catch (BrokerAuthorizationException $e) {
+            abort(403, $e->getMessage());
+        } catch (BrokerConflictException|BrokerDomainException|DocumentDomainException|MasterDomainException|FileNotAvailableException $e) {
+            throw ValidationException::withMessages(['file' => $e->getMessage()]);
+        }
+
+        return redirect()
+            ->route('branch.broker.deliveries.index')
+            ->with('success', 'POD document uploaded.');
+    }
+
     private function assertLr(LorryReceipt $lorryReceipt, Company $company, Branch $branch): void
     {
         if ($lorryReceipt->company_id !== $company->id || $lorryReceipt->branch_id !== $branch->id) {
+            abort(404);
+        }
+    }
+
+    private function assertDelivery(BrokerDelivery $delivery, Company $company, Branch $branch): void
+    {
+        if ($delivery->company_id !== $company->id || $delivery->branch_id !== $branch->id) {
             abort(404);
         }
     }
@@ -201,11 +250,15 @@ class BrokerDeliveryController extends Controller
      *     status: string,
      *     memo_number: string|null,
      *     pod_number: string|null,
-     *     delivery_date: string|null
+     *     delivery_date: string|null,
+     *     urls: array{pod: string, documents: string},
+     *     documentDrawer: array<string, mixed>|null
      * }
      */
-    private function recentPayload(BrokerDelivery $delivery): array
+    private function recentPayload(BrokerDelivery $delivery, User $actor, Company $company, Branch $branch): array
     {
+        $canManage = $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_DELIVERY_MANAGE, $company, $branch);
+
         return [
             'id' => $delivery->id,
             'lr_number' => $delivery->lorryReceipt?->lr_number,
@@ -213,6 +266,26 @@ class BrokerDeliveryController extends Controller
             'memo_number' => $delivery->memo_number,
             'pod_number' => $delivery->pod_number,
             'delivery_date' => $delivery->delivery_date?->format('d-m-Y'),
+            'urls' => [
+                'pod' => route('branch.broker.deliveries.pod', [$delivery], absolute: false),
+                'documents' => route('branch.documents.index', [
+                    'parentType' => 'broker_delivery',
+                    'parentId' => $delivery->id,
+                ], absolute: false),
+            ],
+            'documentDrawer' => $this->documentDrawerPayload(
+                $actor,
+                $company,
+                $branch,
+                'broker_delivery',
+                $delivery->id,
+                $this->documents,
+                [
+                    'can_create' => $canManage,
+                    'can_edit' => $canManage,
+                    'can_delete' => $canManage,
+                ],
+            ),
         ];
     }
 }
