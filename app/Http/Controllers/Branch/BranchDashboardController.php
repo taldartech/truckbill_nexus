@@ -6,7 +6,6 @@ use App\Domains\Company\CompanyAccessService;
 use App\Domains\Company\Exceptions\CompanyAccessException;
 use App\Domains\Company\WorkspaceNavigationService;
 use App\Domains\Rbac\PermissionAuthorizer;
-use App\Domains\Rbac\PermissionCodes;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Company;
@@ -40,10 +39,8 @@ class BranchDashboardController extends Controller
         }
 
         $isOwner = $this->access->isCompanyOwner($user, $company);
-        $canView = $isOwner
-            || $this->authorizer->allowsCustomer($user, PermissionCodes::PLATFORM_VIEW, $company, $branch);
 
-        if (! $canView) {
+        if (! $this->access->canViewBranchOperationsPanel($user, $company, $branch, $this->authorizer)) {
             abort(403, 'Not authorized to view Branch Panel.');
         }
 

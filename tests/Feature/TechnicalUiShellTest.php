@@ -9,26 +9,35 @@ test('official truckbill logo assets are present', function () {
     expect(File::exists(public_path('brand/truckbill-logo.png')))->toBeTrue();
 });
 
-test('operational business module routes remain absent', function () {
-    $forbidden = [
+test('standalone module chooser and accounting routes remain absent', function () {
+    // Phase 5/6 register Branch-scoped operational routes such as
+    // `branch.broker.*` and OwnFleet trip/invoice routes. Those are approved.
+    // This contract still forbids top-level module choosers and accounting /
+    // permission-master namespaces that are not yet authorized.
+    $forbiddenPrefixes = [
         'broker.',
         'ownfleet.',
         'partload.',
         'accounting.',
-        'permission.master',
     ];
 
     $names = collect(Route::getRoutes())->map->getName()->filter()->values();
 
-    foreach ($forbidden as $needle) {
+    foreach ($forbiddenPrefixes as $prefix) {
         expect(
-            $names->contains(fn (?string $name): bool => $name !== null && str_contains($name, $needle))
-        )->toBeFalse();
+            $names->contains(fn (?string $name): bool => $name !== null && str_starts_with($name, $prefix))
+        )->toBeFalse("Unexpected top-level route prefix [{$prefix}]");
     }
+
+    expect(
+        $names->contains(fn (?string $name): bool => $name !== null && str_contains($name, 'permission.master'))
+    )->toBeFalse();
 
     expect(Route::has('owner.home'))->toBeTrue()
         ->and(Route::has('branch.dashboard'))->toBeTrue()
-        ->and(Route::has('workspace.landing'))->toBeTrue();
+        ->and(Route::has('workspace.landing'))->toBeTrue()
+        ->and(Route::has('branch.broker.lorry-hires.index'))->toBeTrue()
+        ->and(Route::has('branch.trips.index'))->toBeTrue();
 });
 
 test('profile settings omit self-service email change and account deletion controls', function () {

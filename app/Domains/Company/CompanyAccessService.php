@@ -3,6 +3,8 @@
 namespace App\Domains\Company;
 
 use App\Domains\Company\Exceptions\CompanyAccessException;
+use App\Domains\Rbac\PermissionAuthorizer;
+use App\Domains\Rbac\PermissionCodes;
 use App\Models\Branch;
 use App\Models\BranchAssignment;
 use App\Models\Company;
@@ -89,6 +91,32 @@ final class CompanyAccessService
     public function canPerformBranchPanelOperation(User $user, Company $company, ?Branch $branch = null): bool
     {
         return $this->canAccessBranchPanel($user, $company, $branch);
+    }
+
+    /**
+     * Branch operations dashboard / landing target (AUD-013).
+     *
+     * Tenant access (`canAccessBranchPanel`) is necessary but not sufficient:
+     * members need Owner designation or an active branch role that grants
+     * `platform.operations.view`.
+     */
+    public function canViewBranchOperationsPanel(
+        User $user,
+        Company $company,
+        Branch $branch,
+        ?PermissionAuthorizer $authorizer = null,
+    ): bool {
+        if (! $this->canAccessBranchPanel($user, $company, $branch)) {
+            return false;
+        }
+
+        if ($this->isCompanyOwner($user, $company)) {
+            return true;
+        }
+
+        $authorizer ??= new PermissionAuthorizer;
+
+        return $authorizer->allowsCustomer($user, PermissionCodes::PLATFORM_VIEW, $company, $branch);
     }
 
     /**

@@ -2,18 +2,31 @@
 
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Company\CompanyWorkspaceService;
+use App\Domains\Rbac\Enums\PermissionDomain;
+use App\Domains\Rbac\RoleAssignmentService;
+use App\Models\Role;
 use App\Models\User;
 use App\Support\Tenant\TenantContextHolder;
+use Database\Seeders\RbacSeeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Testing\TestResponse;
 
 beforeEach(function () {
     TenantContextHolder::clear();
+    (new RbacSeeder)->run();
 });
 
 afterEach(function () {
     TenantContextHolder::clear();
 });
+
+function panelCustomerRole(string $slug): Role
+{
+    return Role::query()
+        ->where('domain', PermissionDomain::Customer->value)
+        ->where('slug', $slug)
+        ->firstOrFail();
+}
 
 function panelWorkspace(): CompanyWorkspaceService
 {
@@ -96,12 +109,20 @@ test('customer with multiple owned companies lands on global owner dashboard', f
 });
 
 test('member-only customer lands on branch panel for sole assignment', function () {
-    ['company' => $company, 'headOffice' => $headOffice] = createOwnerWorkspace();
+    ['owner' => $owner, 'company' => $company, 'headOffice' => $headOffice] = createOwnerWorkspace();
     $member = User::factory()->customer()->create([
         'password' => Hash::make('member-secret'),
     ]);
     $membership = panelWorkspace()->addMembership($company, $member, 'Join');
-    panelWorkspace()->assignBranch($membership, $headOffice, 'Assign');
+    $assignment = panelWorkspace()->assignBranch($membership, $headOffice, 'Assign');
+    app(RoleAssignmentService::class)->assignCustomerBranchRole(
+        $owner,
+        $membership,
+        $headOffice,
+        $assignment,
+        panelCustomerRole('customer.viewer'),
+        'Grant viewer for branch panel',
+    );
 
     loginCustomer($member, 'member-secret');
 
@@ -115,6 +136,24 @@ test('member-only customer lands on branch panel for sole assignment', function 
 
     $this->get(route('owner.home'))
         ->assertForbidden();
+});
+
+test('branch assignment without role cannot view branch operations dashboard', function () {
+    ['company' => $company, 'headOffice' => $headOffice] = createOwnerWorkspace();
+    $member = User::factory()->customer()->create([
+        'password' => Hash::make('member-secret'),
+    ]);
+    $membership = panelWorkspace()->addMembership($company, $member, 'Join');
+    panelWorkspace()->assignBranch($membership, $headOffice, 'Assign');
+
+    loginCustomer($member, 'member-secret');
+
+    $this->get(route('workspace.landing'))
+        ->assertRedirect(route('workspace.no-access'));
+
+    enterBranchWorkspace($company, $headOffice)->assertRedirect();
+
+    $this->get(route('branch.dashboard'))->assertForbidden();
 });
 
 test('customer with no accessible companies sees dedicated no-access screen', function () {

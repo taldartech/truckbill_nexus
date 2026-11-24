@@ -4,21 +4,34 @@ use App\Domains\Company\CompanyWorkspaceService;
 use App\Domains\Company\Enums\DataVisibility;
 use App\Domains\Company\Enums\GstRegistrationType;
 use App\Domains\Company\Enums\TaxLiability;
+use App\Domains\Rbac\Enums\PermissionDomain;
+use App\Domains\Rbac\RoleAssignmentService;
 use App\Models\Company;
 use App\Models\CompanySubscriptionTrial;
 use App\Models\GstRate;
+use App\Models\Role;
 use App\Models\User;
 use App\Support\Tenant\TenantContextHolder;
+use Database\Seeders\RbacSeeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Testing\TestResponse;
 
 beforeEach(function () {
     TenantContextHolder::clear();
+    (new RbacSeeder)->run();
 });
 
 afterEach(function () {
     TenantContextHolder::clear();
 });
+
+function accessCustomerRole(string $slug): Role
+{
+    return Role::query()
+        ->where('domain', PermissionDomain::Customer->value)
+        ->where('slug', $slug)
+        ->firstOrFail();
+}
 
 function accessWorkspace(): CompanyWorkspaceService
 {
@@ -138,7 +151,15 @@ test('member-only customer can access the approved creation entry', function () 
         'email_verified_at' => now(),
     ]);
     $membership = accessWorkspace()->addMembership($company, $member, 'Join');
-    accessWorkspace()->assignBranch($membership, $branch, 'Assign');
+    $assignment = accessWorkspace()->assignBranch($membership, $branch, 'Assign');
+    app(RoleAssignmentService::class)->assignCustomerBranchRole(
+        $owner,
+        $membership,
+        $branch,
+        $assignment,
+        accessCustomerRole('customer.viewer'),
+        'Grant viewer for branch panel',
+    );
 
     accessLoginCustomer($member, 'member-secret');
 

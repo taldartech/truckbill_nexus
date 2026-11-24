@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Workspace;
 
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Company\WorkspaceNavigationService;
+use App\Domains\Rbac\PermissionAuthorizer;
 use App\Http\Controllers\Controller;
+use App\Models\Branch;
 use App\Models\Company;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -18,6 +20,7 @@ class WorkspaceLandingController extends Controller
     public function __construct(
         private readonly WorkspaceNavigationService $navigation,
         private readonly CompanyAccessService $access,
+        private readonly PermissionAuthorizer $authorizer = new PermissionAuthorizer,
     ) {}
 
     public function __invoke(Request $request): RedirectResponse
@@ -60,9 +63,16 @@ class WorkspaceLandingController extends Controller
             }
 
             if ($branches->count() === 1) {
+                $branch = Branch::query()->findOrFail($branches->first()['id']);
+
+                // AUD-013: assignment alone is not enough — require Owner or PLATFORM_VIEW.
+                if (! $this->access->canViewBranchOperationsPanel($user, $company, $branch, $this->authorizer)) {
+                    return redirect()->route('workspace.no-access');
+                }
+
                 return redirect()->route('branch.dashboard', [
                     'company' => $company,
-                    'branch' => $branches->first()['id'],
+                    'branch' => $branch,
                 ]);
             }
 
