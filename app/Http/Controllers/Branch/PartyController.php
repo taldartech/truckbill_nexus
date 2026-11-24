@@ -9,6 +9,7 @@ use App\Domains\Document\DocumentAttachmentService;
 use App\Domains\Master\Exceptions\MasterDomainException;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Party\Exceptions\PartyDomainException;
+use App\Domains\Master\Party\PartyOptionQuery;
 use App\Domains\Master\Party\PartyRoleAttributeValidator;
 use App\Domains\Master\Party\PartyService;
 use App\Domains\Master\Support\MasterAccess;
@@ -96,6 +97,49 @@ class PartyController extends Controller
                 'create' => route('branch.parties.create', absolute: false),
                 'store' => route('branch.parties.store', absolute: false),
             ]),
+        ]);
+    }
+
+    /**
+     * Bounded, role-filtered Party options for operational selectors (JSON).
+     */
+    public function options(Request $request, Company $company, Branch $branch): JsonResponse
+    {
+        $this->activateBranchPanel($request, $company, $branch, $this->access);
+
+        $validated = $request->validate([
+            'role' => ['required', Rule::enum(PartyRoleType::class)],
+            'roles' => ['sometimes', 'array', 'max:8'],
+            'roles.*' => [Rule::enum(PartyRoleType::class)],
+            'q' => ['nullable', 'string', 'max:120'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:100'],
+            'selected_id' => ['nullable', 'uuid'],
+        ]);
+
+        $roleInputs = $validated['roles'] ?? [$validated['role']];
+        $roles = [];
+        foreach ($roleInputs as $roleInput) {
+            $roles[] = $roleInput instanceof PartyRoleType
+                ? $roleInput
+                : PartyRoleType::from((string) $roleInput);
+        }
+
+        $options = app(PartyOptionQuery::class)->forRoles(
+            company: $company,
+            branch: $branch,
+            roles: $roles,
+            limit: (int) ($validated['limit'] ?? 50),
+            query: $validated['q'] ?? null,
+            selectedId: $validated['selected_id'] ?? null,
+        );
+
+        return response()->json([
+            'data' => $options,
+            'meta' => [
+                'count' => count($options),
+                'limit' => (int) ($validated['limit'] ?? 50),
+                'q' => $validated['q'] ?? '',
+            ],
         ]);
     }
 

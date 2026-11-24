@@ -77,6 +77,7 @@ class BrokerInvoiceController extends Controller
                 'store' => route('branch.broker.invoices.store', absolute: false),
                 'preview' => route('branch.broker.invoices.preview', absolute: false),
                 'filter' => route('branch.broker.invoices.create', absolute: false),
+                'parties_options' => route('branch.parties.options', absolute: false),
             ],
         ]);
     }

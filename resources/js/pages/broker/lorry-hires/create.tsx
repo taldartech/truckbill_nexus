@@ -6,6 +6,7 @@ import type { FieldReview } from '@/components/form-confirmation/types';
 import InputError from '@/components/input-error';
 import { FormSection } from '@/components/form-section';
 import { PageShell } from '@/components/page-shell';
+import { SearchablePartySelect } from '@/components/searchable-party-select';
 import { formatDisplayDate } from '@/lib/dates';
 import {
     formatMtLabel,
@@ -62,7 +63,12 @@ type Props = {
     goodsRows: GoodsRow[];
     rateTypeOptions: RateOption[];
     permissions: { can_view_freight: boolean };
-    urls: { store: string; lr_show: string; index: string };
+    urls: {
+        store: string;
+        lr_show: string;
+        index: string;
+        parties_options?: string;
+    };
 };
 
 type LineDraft = {
@@ -474,52 +480,26 @@ export default function LorryHireCreate({
                                 description="Select the transporter who will receive hire payment."
                                 columns={2}
                             >
-                                {transporterOptions.length > 0 ? (
-                                    <div className="space-y-1 md:col-span-2">
-                                        <Label htmlFor="transporter_party_id">
-                                            Payee / Transporter
-                                            {payeeRequired ? ' *' : ''}
-                                        </Label>
-                                        <select
-                                            id="transporter_party_id"
-                                            name="transporter_party_id"
-                                            required={payeeRequired}
-                                            className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                            value={transporterPartyId}
-                                            onChange={(event) =>
-                                                setTransporterPartyId(
-                                                    event.target.value,
-                                                )
-                                            }
-                                        >
-                                            <option value="">
-                                                Select transporter
-                                            </option>
-                                            {transporterOptions.map(
-                                                (option) => (
-                                                    <option
-                                                        key={option.id}
-                                                        value={option.id}
-                                                    >
-                                                        {option.name}
-                                                    </option>
-                                                ),
-                                            )}
-                                        </select>
-                                        {payee?.pan_status_label ? (
-                                            <p className="text-xs text-muted-foreground">
-                                                Suggested payee PAN status:{' '}
-                                                {payee.pan_status_label}
-                                            </p>
-                                        ) : null}
-                                    </div>
-                                ) : (
-                                    <p className="text-sm text-amber-800 md:col-span-2">
-                                        No active transporters are available.
-                                        Add a transporter party before creating
-                                        a Lorry Hire.
-                                    </p>
-                                )}
+                                <div className="space-y-1 md:col-span-2">
+                                    <SearchablePartySelect
+                                        id="transporter_party_id"
+                                        name="transporter_party_id"
+                                        label="Payee / Transporter"
+                                        options={transporterOptions}
+                                        searchUrl={urls.parties_options}
+                                        role="transporter"
+                                        required={payeeRequired}
+                                        value={transporterPartyId}
+                                        onValueChange={setTransporterPartyId}
+                                        emptyMessage="No active transporters are available. Add a transporter party before creating a Lorry Hire."
+                                    />
+                                    {payee?.pan_status_label ? (
+                                        <p className="text-xs text-muted-foreground">
+                                            Suggested payee PAN status:{' '}
+                                            {payee.pan_status_label}
+                                        </p>
+                                    ) : null}
+                                </div>
                             </FormSection>
 
                             <FormSection

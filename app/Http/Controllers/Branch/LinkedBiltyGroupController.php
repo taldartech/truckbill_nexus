@@ -116,6 +116,7 @@ class LinkedBiltyGroupController extends Controller
                 'index' => route('branch.broker.linked-bilties.index', absolute: false),
                 'store' => route('branch.broker.linked-bilties.store', absolute: false),
                 'filter' => route('branch.broker.linked-bilties.create', absolute: false),
+                'parties_options' => route('branch.parties.options', absolute: false),
             ],
         ]);
     }

@@ -156,6 +156,8 @@ class LorryReceiptController extends Controller
             'urls' => [
                 'index' => route('branch.lorry-receipts.index', absolute: false),
                 'store' => route('branch.lorry-receipts.store', absolute: false),
+                'parties_options' => route('branch.parties.options', absolute: false),
+                'parties_create' => route('branch.parties.create', absolute: false),
             ],
         ]);
     }
@@ -343,6 +345,8 @@ class LorryReceiptController extends Controller
                 'index' => route('branch.lorry-receipts.index', absolute: false),
                 'show' => route('branch.lorry-receipts.show', [$lorryReceipt], absolute: false),
                 'update' => route('branch.lorry-receipts.update', [$lorryReceipt], absolute: false),
+                'parties_options' => route('branch.parties.options', absolute: false),
+                'parties_create' => route('branch.parties.create', absolute: false),
             ],
         ]);
     }

@@ -65,19 +65,28 @@ Legacy hire math uses **float** `weight × trFrRate` (`FreightBookingCalculation
 
 ## Workflow alignment summary
 
-| Workflow                     | Classification             | Severity | Notes                                                                                                |
-| ---------------------------- | -------------------------- | -------- | ---------------------------------------------------------------------------------------------------- |
-| Master data → LR create      | **Partial**                | P2       | Unified parties/vehicles; no legacy bulk CSV (PO-LGC-005); **Batch 1** `SearchablePartySelect` on LR |
-| LR goods + freight           | **Partial**                | P1       | Domain complete; MT entry shipped; Wt./Unit KG; `OPERATIONAL_WEIGHT_UNIT_STANDARD.md`                |
-| LR → hire creation           | **Equivalent**             | P2       | `createFromLorryReceipt` vs `FreightBookingController::store`                                        |
-| Hire lifecycle edit          | **Partial**                | P1       | No full `FreightBookingController::update` parity — adjustments via `BrokerAdjustmentController`     |
-| Hire → voucher pay           | **Equivalent**             | P3       | Voucher create with hire context                                                                     |
-| Voucher edit/delete          | **PO Decision Required**   | P1       | PO-LGC-003 — legacy allows edit/destroy                                                              |
-| Customer invoice             | **Partial**                | P2       | No legacy `CustomInvoiceController`; broker invoice edit PO-LGC-002                                  |
-| Settlement PDF               | **Deferred**               | P2       | `settlementStatement` → Phase 11 / PO-LGC-006                                                        |
-| Operational reports (22+)    | **Deferred**               | P1       | Phase 11; hub only in Nexus                                                                          |
-| GL / Tally accounting        | **Deferred**               | P1       | ADR-010 Pending — no `accounting/*` in Nexus                                                         |
-| In-app Razorpay subscription | **Intentional Difference** | —        | Owner subscription in unified app                                                                    |
+| Workflow                     | Classification             | Severity | Notes                                                                                            |
+| ---------------------------- | -------------------------- | -------- | ------------------------------------------------------------------------------------------------ |
+| Master data → LR create      | **Partial**                | P2       | Unified parties/vehicles; no legacy bulk CSV (PO-LGC-005); **Batch 2** remote Party search on LR |
+| LR goods + freight           | **Partial**                | P1       | Domain complete; MT entry shipped; Wt./Unit KG; `OPERATIONAL_WEIGHT_UNIT_STANDARD.md`            |
+| LR → hire creation           | **Equivalent**             | P2       | `createFromLorryReceipt` vs `FreightBookingController::store`                                    |
+| Hire lifecycle edit          | **Partial**                | P1       | No full `FreightBookingController::update` parity — adjustments via `BrokerAdjustmentController` |
+| Hire → voucher pay           | **Equivalent**             | P3       | Voucher create with hire context                                                                 |
+| Voucher edit/delete          | **PO Decision Required**   | P1       | PO-LGC-003 — legacy allows edit/destroy                                                          |
+| Customer invoice             | **Partial**                | P2       | No legacy `CustomInvoiceController`; broker invoice edit PO-LGC-002                              |
+| Settlement PDF               | **Deferred**               | P2       | `settlementStatement` → Phase 11 / PO-LGC-006                                                    |
+| Operational reports (22+)    | **Deferred**               | P1       | Phase 11; hub only in Nexus                                                                      |
+| GL / Tally accounting        | **Deferred**               | P1       | ADR-010 Pending — no `accounting/*` in Nexus                                                     |
+| In-app Razorpay subscription | **Intentional Difference** | —        | Owner subscription in unified app                                                                |
+
+### Batch 2 progress (Nexus — in progress)
+
+| Gap                                                      | Status         | Evidence                                                                                           |
+| -------------------------------------------------------- | -------------- | -------------------------------------------------------------------------------------------------- |
+| Scalable Party search                                    | **Done**       | `PartyOptionQuery` `q`/`selected_id`; `GET branch.parties.options`; remote `SearchablePartySelect` |
+| Wire Enquiry / LR / Hire / Invoice / Linked Bilty        | **Done**       | Controllers pass `parties_options`; selectors use `searchUrl` + role                               |
+| Enquiry / Bilty / Hire / Voucher / Invoice confirmations | **Partial**    | Create surfaces wired; Memo/Delivery/Linked payment remain                                         |
+| Hire full edit                                           | **PO-LGC-007** | Adjustments + cancel only                                                                          |
 
 ### Batch 1 gaps (Nexus — closed)
 

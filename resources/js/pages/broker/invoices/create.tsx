@@ -1,6 +1,9 @@
 import { Form, Head, Link, router } from '@inertiajs/react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
+import type { FieldReview } from '@/components/form-confirmation/types';
 import { PageShell } from '@/components/page-shell';
+import { SearchablePartySelect } from '@/components/searchable-party-select';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 
@@ -35,6 +38,7 @@ type Props = {
         store: string;
         preview: string;
         filter: string;
+        parties_options?: string;
     };
 };
 
@@ -116,6 +120,9 @@ export default function BrokerInvoiceCreate({
     const [selected, setSelected] = useState<string[]>([]);
     const [preview, setPreview] = useState<Preview | null>(null);
     const [previewLoading, setPreviewLoading] = useState(false);
+    const submitAllowed = useRef(false);
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [reviewFields, setReviewFields] = useState<FieldReview[]>([]);
 
     const toggle = (id: string) => {
         setSelected((prev) =>
@@ -167,40 +174,77 @@ export default function BrokerInvoiceCreate({
         );
     }, [customerId, allReceipts]);
 
+    const customerName =
+        billingCustomers.find((row) => row.id === customerId)?.name ?? '—';
+
+    const openConfirmation = () => {
+        setReviewFields([
+            { label: 'Billing customer', value: customerName },
+            { label: 'Bilties selected', value: String(selected.length) },
+            {
+                label: 'Freight',
+                value: preview?.freight_total ?? '—',
+            },
+            {
+                label: 'Charges',
+                value: preview?.charges_total ?? '—',
+            },
+            {
+                label: 'GST',
+                value: preview?.gst_amount ?? '—',
+            },
+            {
+                label: 'Invoice total',
+                value: preview?.invoice_total ?? '—',
+            },
+        ]);
+        setConfirmOpen(true);
+    };
+
+    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+        if (!submitAllowed.current) {
+            event.preventDefault();
+            openConfirmation();
+            return;
+        }
+        submitAllowed.current = false;
+    };
+
     return (
         <>
             <Head title="Create Broker Invoice" />
             <PageShell width="form" title="Create Customer Invoice">
-                <div className="mb-4 flex flex-wrap items-end gap-3">
-                    <Label className="flex flex-col gap-1 text-sm">
-                        Billing customer filter
-                        <select
-                            className="rounded-md border border-border px-2 py-1.5"
-                            value={customerId}
-                            onChange={(event) => {
-                                const value = event.target.value;
-                                setCustomerId(value);
-                                router.get(
-                                    urls.filter,
-                                    {
-                                        billing_customer_party_id:
-                                            value || undefined,
-                                    },
-                                    { preserveState: true },
-                                );
-                            }}
-                        >
-                            <option value="">All customers</option>
-                            {billingCustomers.map((c) => (
-                                <option key={c.id} value={c.id}>
-                                    {c.name}
-                                </option>
-                            ))}
-                        </select>
-                    </Label>
+                <div className="mb-4 max-w-md">
+                    <SearchablePartySelect
+                        id="billing_customer_filter"
+                        name="billing_customer_filter"
+                        label="Billing customer filter"
+                        options={billingCustomers}
+                        searchUrl={urls.parties_options}
+                        role="customer"
+                        value={customerId}
+                        onValueChange={(value) => {
+                            setCustomerId(value);
+                            router.get(
+                                urls.filter,
+                                {
+                                    billing_customer_party_id:
+                                        value || undefined,
+                                },
+                                { preserveState: true },
+                            );
+                        }}
+                        emptyMessage="No eligible Customers in this branch."
+                    />
                 </div>
 
-                <Form action={urls.store} method="post" className="space-y-4">
+                <Form
+                    id="broker-invoice-create-form"
+                    action={urls.store}
+                    method="post"
+                    className="space-y-4"
+                    onSubmit={handleSubmit}
+                >
                     {({ processing }) => (
                         <>
                             <ReceiptSection
@@ -227,22 +271,18 @@ export default function BrokerInvoiceCreate({
                                 />
                             ))}
 
-                            <Label className="flex flex-col gap-1 text-sm">
-                                Billing customer
-                                <select
-                                    name="billing_customer_party_id"
-                                    required
-                                    className="rounded-md border border-border px-2 py-1.5"
-                                    defaultValue={customerId}
-                                >
-                                    <option value="">Select customer</option>
-                                    {billingCustomers.map((c) => (
-                                        <option key={c.id} value={c.id}>
-                                            {c.name}
-                                        </option>
-                                    ))}
-                                </select>
-                            </Label>
+                            <SearchablePartySelect
+                                id="billing_customer_party_id"
+                                name="billing_customer_party_id"
+                                label="Billing customer"
+                                options={billingCustomers}
+                                searchUrl={urls.parties_options}
+                                role="customer"
+                                required
+                                value={customerId}
+                                onValueChange={setCustomerId}
+                                emptyMessage="No eligible Customers in this branch."
+                            />
 
                             <Label className="flex flex-col gap-1 text-sm">
                                 Invoice date
@@ -324,6 +364,25 @@ export default function BrokerInvoiceCreate({
                         </>
                     )}
                 </Form>
+
+                <FormConfirmationDialog
+                    open={confirmOpen}
+                    onOpenChange={setConfirmOpen}
+                    mode="create"
+                    title="Issue this customer invoice?"
+                    description="Review customer, selected Bilties, and invoice totals before submitting."
+                    fields={reviewFields}
+                    onConfirm={() => {
+                        submitAllowed.current = true;
+                        setConfirmOpen(false);
+                        window.setTimeout(() => {
+                            const formElement = document.getElementById(
+                                'broker-invoice-create-form',
+                            ) as HTMLFormElement | null;
+                            formElement?.requestSubmit();
+                        }, 0);
+                    }}
+                />
             </PageShell>
         </>
     );

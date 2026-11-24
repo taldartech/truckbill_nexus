@@ -1,6 +1,7 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import { FormEvent, useMemo, useState } from 'react';
 import { PageShell } from '@/components/page-shell';
+import { SearchablePartySelect } from '@/components/searchable-party-select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,7 +22,12 @@ type Props = {
     payees: Array<{ id: string; name: string }>;
     eligibleReceipts: EligibleReceipt[];
     permissions: { can_create: boolean };
-    urls: { index: string; store: string; filter: string };
+    urls: {
+        index: string;
+        store: string;
+        filter: string;
+        parties_options?: string;
+    };
 };
 
 export default function LinkedBiltiesCreate({
@@ -140,19 +146,20 @@ export default function LinkedBiltiesCreate({
                             )}
                         </div>
                         <div className="space-y-1">
-                            <Label htmlFor="payee_party_id">Payee</Label>
-                            <select
+                            <SearchablePartySelect
                                 id="payee_party_id"
                                 name="payee_party_id"
-                                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                            >
-                                <option value="">Optional</option>
-                                {payees.map((payee) => (
-                                    <option key={payee.id} value={payee.id}>
-                                        {payee.name}
-                                    </option>
-                                ))}
-                            </select>
+                                label="Payee"
+                                options={payees}
+                                searchUrl={urls.parties_options}
+                                role="transporter"
+                                roles={['transporter', 'driver']}
+                                value={form.data.payee_party_id}
+                                onValueChange={(value) =>
+                                    form.setData('payee_party_id', value)
+                                }
+                                emptyMessage="No eligible payees in this branch."
+                            />
                         </div>
                         <div className="space-y-1">
                             <Label htmlFor="driver_name">Driver name</Label>

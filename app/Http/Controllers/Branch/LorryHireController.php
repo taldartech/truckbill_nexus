@@ -190,6 +190,7 @@ class LorryHireController extends Controller
                 'store' => route('branch.broker.lorry-hires.store-from-lr', [$lorryReceipt], absolute: false),
                 'lr_show' => route('branch.lorry-receipts.show', [$lorryReceipt], absolute: false),
                 'index' => route('branch.broker.lorry-hires.index', absolute: false),
+                'parties_options' => route('branch.parties.options', absolute: false),
             ],
         ]);
     }

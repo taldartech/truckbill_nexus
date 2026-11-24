@@ -218,6 +218,7 @@ class EnquiryController extends Controller
                 'index' => route('branch.enquiries.index'),
                 'store' => route('branch.enquiries.store'),
                 'parties_create' => route('branch.parties.create', absolute: false),
+                'parties_options' => route('branch.parties.options', absolute: false),
             ],
         ]);
     }

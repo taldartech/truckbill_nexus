@@ -17,11 +17,16 @@ For each approved business form: UI field → form state → request payload →
 | Trip pickup/allocation   | Weights unlabeled / KG UX            | MT placeholders; controller converts MT→KG at HTTP boundary                    |
 | Multiple Party dropdowns | Missing `visibleInBranch`            | Consolidated via `PartyOptionQuery`                                            |
 
+## Batch 2 progress
+
+- Server-side searchable Party options: `GET branch.parties.options` + remote `SearchablePartySelect` (`q`, role, `selected_id`).
+- Confirmation dialogs added on Enquiry create, Bilty create/edit, Voucher create, Broker Invoice create (Hire create already covered).
+
 ## Still open (follow-up batches)
 
-- Full field-by-field contract matrix for Memo, Voucher, Invoice, Custom Invoice, Linked Bilty payment, Admin CRM forms.
-- Confirmation dialog coverage gaps on Enquiry create and Bilty save (some surfaces still direct-submit).
-- Server-side searchable autocomplete for large Party masters.
+- Full field-by-field contract matrix for Memo, Delivery POD, Linked Bilty payment, Admin CRM forms.
+- Confirmation dialog coverage on Memo / Delivery / Linked Bilty / remaining cancel surfaces.
+- Invoice index / Trip / Vehicle / Book Balance remote selectors where large masters remain.
 
 ## Regression tests
 

@@ -1,6 +1,9 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { ArrowLeft, Save } from 'lucide-react';
+import { useRef, useState } from 'react';
 import { AppIconAction } from '@/components/app-icon-action';
+import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
+import type { FieldReview } from '@/components/form-confirmation/types';
 import { FormSection } from '@/components/form-section';
 import { PageShell } from '@/components/page-shell';
 import { SearchablePartySelect } from '@/components/searchable-party-select';
@@ -18,11 +21,17 @@ type Props = {
         index: string;
         store: string;
         parties_create?: string;
+        parties_options?: string;
     };
 };
 
 const fieldClass =
     'flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm';
+
+function formValue(data: FormData, key: string, fallback = ''): string {
+    const value = data.get(key);
+    return typeof value === 'string' ? value : fallback;
+}
 
 export default function BranchEnquiryCreate({
     company,
@@ -37,6 +46,65 @@ export default function BranchEnquiryCreate({
     }>().props;
 
     const customerOptions = customers ?? parties;
+    const submitAllowed = useRef(false);
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [reviewFields, setReviewFields] = useState<FieldReview[]>([]);
+    const [customerPartyId, setCustomerPartyId] = useState('');
+
+    const openConfirmation = (form: HTMLFormElement) => {
+        const data = new FormData(form);
+        const customerName =
+            customerOptions.find((option) => option.id === customerPartyId)
+                ?.name ?? '—';
+        const vehicleTypeId = formValue(data, 'vehicle_type_id');
+        const vehicleTypeName =
+            vehicle_types.find((type) => type.id === vehicleTypeId)?.name ??
+            '—';
+
+        setReviewFields([
+            { label: 'Customer', value: customerName },
+            {
+                label: 'Pickup',
+                value: formValue(data, 'pickup_location').trim() || '—',
+            },
+            {
+                label: 'Delivery',
+                value: formValue(data, 'delivery_location').trim() || '—',
+            },
+            { label: 'Vehicle type', value: vehicleTypeName },
+            {
+                label: 'Vehicle quantity',
+                value: formValue(data, 'vehicle_quantity', '1'),
+            },
+            {
+                label: 'Goods',
+                value:
+                    formValue(data, 'goods[0][goods_description]').trim() ||
+                    '—',
+            },
+        ]);
+        setConfirmOpen(true);
+    };
+
+    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+        if (!submitAllowed.current) {
+            event.preventDefault();
+            openConfirmation(event.currentTarget);
+            return;
+        }
+        submitAllowed.current = false;
+    };
+
+    const handleConfirm = () => {
+        submitAllowed.current = true;
+        setConfirmOpen(false);
+        window.setTimeout(() => {
+            const form = document.getElementById(
+                'enquiry-create-form',
+            ) as HTMLFormElement | null;
+            form?.requestSubmit();
+        }, 0);
+    };
 
     return (
         <>
@@ -55,9 +123,11 @@ export default function BranchEnquiryCreate({
                 }
             >
                 <Form
+                    id="enquiry-create-form"
                     action={urls.store}
                     method="post"
                     className="w-full space-y-5"
+                    onSubmit={handleSubmit}
                 >
                     {({ processing }) => (
                         <>
@@ -71,7 +141,11 @@ export default function BranchEnquiryCreate({
                                         name="customer_party_id"
                                         label="Customer"
                                         options={customerOptions}
+                                        searchUrl={urls.parties_options}
+                                        role="customer"
                                         required
+                                        value={customerPartyId}
+                                        onValueChange={setCustomerPartyId}
                                         emptyMessage="No eligible Customers in this branch. Create a Customer party first."
                                         createHref={urls.parties_create}
                                         createLabel="Create Customer"
@@ -200,6 +274,16 @@ export default function BranchEnquiryCreate({
                         </>
                     )}
                 </Form>
+
+                <FormConfirmationDialog
+                    open={confirmOpen}
+                    onOpenChange={setConfirmOpen}
+                    mode="create"
+                    title="Create this enquiry?"
+                    description="Review customer, route, and vehicle details before submitting."
+                    fields={reviewFields}
+                    onConfirm={handleConfirm}
+                />
             </PageShell>
         </>
     );

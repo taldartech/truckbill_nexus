@@ -1,7 +1,12 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import { AppIconAction } from '@/components/app-icon-action';
 import { ArrowLeft, ExternalLink, FileText } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
+import type {
+    FieldReview,
+    FormConfirmationMode,
+} from '@/components/form-confirmation/types';
 import { DetailTabPanel, DetailTabs } from '@/components/detail-tabs';
 import { PageShell } from '@/components/page-shell';
 import { MetricCard } from '@/components/ui/metric-card';
@@ -121,6 +126,21 @@ export default function LorryHireShow({
 }: Props) {
     const [tab, setTab] = useState('overview');
 
+    const adjustmentSubmitAllowed = useRef(false);
+    const cancelSubmitAllowed = useRef(false);
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [confirmMode, setConfirmMode] = useState<'adjustment' | 'cancel'>(
+        'adjustment',
+    );
+    const [reviewFields, setReviewFields] = useState<FieldReview[]>([]);
+    const [confirmTitle, setConfirmTitle] = useState('');
+    const [confirmDescription, setConfirmDescription] = useState('');
+    const [confirmDialogMode, setConfirmDialogMode] =
+        useState<FormConfirmationMode>('create');
+    const [confirmLabel, setConfirmLabel] = useState<string | undefined>(
+        undefined,
+    );
+
     const cancelForm = useForm({
         reason: '',
         settle_outstanding: true as boolean,
@@ -134,6 +154,135 @@ export default function LorryHireShow({
         rate: '',
         reason: '',
     });
+
+    const adjustmentTypeLabel = (type: string): string =>
+        adjustmentTypeOptions.find((option) => option.value === type)?.label ??
+        type.replaceAll('_', ' ');
+
+    const adjustmentAmountOrWeightLabel = (type: string): string => {
+        if (type === 'unloading_weight') {
+            return 'New unloading weight (MT)';
+        }
+        if (['shortage', 'damage'].includes(type)) {
+            return 'Quantity and rate';
+        }
+        return 'Amount';
+    };
+
+    const adjustmentAmountOrWeightValue = (
+        data: typeof adjustmentForm.data,
+    ): string => {
+        if (data.type === 'unloading_weight') {
+            return data.new_weight.trim() !== '' ? data.new_weight : '—';
+        }
+        if (['shortage', 'damage'].includes(data.type)) {
+            const qty = data.quantity.trim() !== '' ? data.quantity : '—';
+            const rate = data.rate.trim() !== '' ? data.rate : '—';
+            return `Qty ${qty} @ ${rate}`;
+        }
+        return data.amount.trim() !== '' ? data.amount : '—';
+    };
+
+    const openAdjustmentConfirmation = () => {
+        setConfirmMode('adjustment');
+        setConfirmDialogMode('create');
+        setConfirmTitle('Save this adjustment?');
+        setConfirmDescription(
+            'Review adjustment type, amount or weight, and reason before submitting.',
+        );
+        setConfirmLabel('Confirm save');
+        setReviewFields([
+            {
+                label: 'Type',
+                value: adjustmentTypeLabel(adjustmentForm.data.type),
+            },
+            {
+                label: adjustmentAmountOrWeightLabel(adjustmentForm.data.type),
+                value: adjustmentAmountOrWeightValue(adjustmentForm.data),
+            },
+            {
+                label: 'Reason',
+                value:
+                    adjustmentForm.data.reason.trim() !== ''
+                        ? adjustmentForm.data.reason
+                        : '—',
+            },
+        ]);
+        setConfirmOpen(true);
+    };
+
+    const openCancelConfirmation = () => {
+        if (!cancelPreview) {
+            return;
+        }
+        setConfirmMode('cancel');
+        setConfirmDialogMode('destructive');
+        setConfirmTitle('Cancel this Lorry Hire?');
+        setConfirmDescription(
+            'Review hire number, financial amounts, and cancellation details before confirming. This action cannot be undone.',
+        );
+        setConfirmLabel('Confirm cancellation');
+        setReviewFields([
+            {
+                label: 'Hire number',
+                value: lorryHire.hire_number,
+            },
+            {
+                label: 'Transporter freight',
+                value: cancelPreview.freight_total,
+            },
+            {
+                label: 'TDS',
+                value: cancelPreview.tds_amount,
+            },
+            {
+                label: 'Net payable',
+                value: cancelPreview.net_payable,
+            },
+            {
+                label: 'Outstanding',
+                value: cancelPreview.outstanding_amount,
+            },
+            {
+                label: 'Settle outstanding',
+                value: cancelForm.data.settle_outstanding
+                    ? cancelPreview.settle_yes_description
+                    : cancelPreview.settle_no_description,
+            },
+            {
+                label: 'Reason',
+                value:
+                    cancelForm.data.reason.trim() !== ''
+                        ? cancelForm.data.reason
+                        : '—',
+            },
+        ]);
+        setConfirmOpen(true);
+    };
+
+    const handleConfirmDialog = () => {
+        if (confirmMode === 'adjustment') {
+            adjustmentSubmitAllowed.current = true;
+        } else {
+            cancelSubmitAllowed.current = true;
+        }
+        setConfirmOpen(false);
+        window.setTimeout(() => {
+            const formId =
+                confirmMode === 'adjustment'
+                    ? 'lorry-hire-adjustment-form'
+                    : 'lorry-hire-cancel-form';
+            const formElement = document.getElementById(
+                formId,
+            ) as HTMLFormElement | null;
+            formElement?.requestSubmit();
+        }, 0);
+    };
+
+    const confirmProcessing =
+        confirmMode === 'adjustment'
+            ? adjustmentForm.processing
+            : cancelForm.processing;
 
     return (
         <>
@@ -344,9 +493,15 @@ export default function LorryHireShow({
                     <DetailTabPanel id="adjustments" activeId={tab}>
                         {permissions.can_create_adjustment ? (
                             <form
+                                id="lorry-hire-adjustment-form"
                                 className="mb-6 rounded-lg border border-border p-4"
                                 onSubmit={(event) => {
                                     event.preventDefault();
+                                    if (!adjustmentSubmitAllowed.current) {
+                                        openAdjustmentConfirmation();
+                                        return;
+                                    }
+                                    adjustmentSubmitAllowed.current = false;
                                     adjustmentForm.post(urls.adjustment_store, {
                                         preserveScroll: true,
                                     });
@@ -582,6 +737,7 @@ export default function LorryHireShow({
                     <DetailTabPanel id="cancel" activeId={tab}>
                         {cancelPreview && urls.cancel ? (
                             <form
+                                id="lorry-hire-cancel-form"
                                 className="max-w-2xl space-y-4 rounded-lg border border-destructive/30 bg-destructive/5 p-4"
                                 onSubmit={(event) => {
                                     event.preventDefault();
@@ -589,6 +745,11 @@ export default function LorryHireShow({
                                     if (!cancelUrl) {
                                         return;
                                     }
+                                    if (!cancelSubmitAllowed.current) {
+                                        openCancelConfirmation();
+                                        return;
+                                    }
+                                    cancelSubmitAllowed.current = false;
                                     cancelForm.post(cancelUrl, {
                                         preserveScroll: true,
                                     });
@@ -715,6 +876,18 @@ export default function LorryHireShow({
                         )}
                     </DetailTabPanel>
                 </DetailTabs>
+
+                <FormConfirmationDialog
+                    open={confirmOpen}
+                    onOpenChange={setConfirmOpen}
+                    mode={confirmDialogMode}
+                    title={confirmTitle}
+                    description={confirmDescription}
+                    fields={reviewFields}
+                    processing={confirmProcessing}
+                    confirmLabel={confirmLabel}
+                    onConfirm={handleConfirmDialog}
+                />
             </PageShell>
         </>
     );

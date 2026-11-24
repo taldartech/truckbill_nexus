@@ -3,6 +3,8 @@ import { ArrowLeft, Trash2 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { AppIconAction } from '@/components/app-icon-action';
+import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
+import type { FieldReview } from '@/components/form-confirmation/types';
 import InputError from '@/components/input-error';
 import { FormSection } from '@/components/form-section';
 import { PageShell } from '@/components/page-shell';
@@ -109,6 +111,8 @@ type Props = {
         store?: string;
         update?: string;
         show?: string;
+        parties_options?: string;
+        parties_create?: string;
     };
     permissions?: {
         can_view_freight?: boolean;
@@ -266,6 +270,9 @@ export default function LrForm({
     const mayViewFreight = permissions?.can_view_freight !== false;
     const formMode =
         formModeProp ?? (workflowContext === 'partload' ? 'partload' : 'truck');
+    const submitAllowed = useRef(false);
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [reviewFields, setReviewFields] = useState<FieldReview[]>([]);
 
     const [vehicleId, setVehicleId] = useState(
         (lorryReceipt as { vehicle_id?: string | null } | null)?.vehicle_id ??
@@ -416,6 +423,65 @@ export default function LrForm({
         };
     }, [charges, goods]);
 
+    const openConfirmation = (form: HTMLFormElement) => {
+        const data = new FormData(form);
+        const customerName =
+            formOptions.billingCustomers?.find(
+                (option) => option.id === billingCustomerId,
+            )?.name ?? '—';
+        const vehicleLabel =
+            formOptions.vehicles?.find((option) => option.id === vehicleId)
+                ?.label ?? '—';
+
+        const lrNumber = data.get('lr_number');
+        const lrDate = data.get('lr_date');
+        const fields: FieldReview[] = [
+            {
+                label: 'Bilty No.',
+                value:
+                    (typeof lrNumber === 'string' ? lrNumber.trim() : '') ||
+                    'Auto',
+            },
+            {
+                label: 'Bilty Date',
+                value: (typeof lrDate === 'string' ? lrDate.trim() : '') || '—',
+            },
+            { label: 'Vehicle', value: vehicleLabel },
+            { label: 'Billing Customer', value: customerName },
+            { label: 'Goods lines', value: String(goods.length) },
+            { label: 'Actual Wt (MT)', value: summary.totalActual },
+            { label: 'Charged Wt (MT)', value: summary.totalCharged },
+        ];
+        if (mayViewFreight) {
+            fields.push(
+                { label: 'Freight', value: summary.totalFreight },
+                { label: 'Total Amount', value: summary.totalAmount },
+            );
+        }
+        setReviewFields(fields);
+        setConfirmOpen(true);
+    };
+
+    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+        if (!submitAllowed.current) {
+            event.preventDefault();
+            openConfirmation(event.currentTarget);
+            return;
+        }
+        submitAllowed.current = false;
+    };
+
+    const handleConfirm = () => {
+        submitAllowed.current = true;
+        setConfirmOpen(false);
+        window.setTimeout(() => {
+            const form = document.getElementById(
+                'lorry-receipt-form',
+            ) as HTMLFormElement | null;
+            form?.requestSubmit();
+        }, 0);
+    };
+
     return (
         <>
             <Head title={title} />
@@ -439,9 +505,11 @@ export default function LrForm({
                 </datalist>
 
                 <Form
+                    id="lorry-receipt-form"
                     action={action}
                     method={method}
                     className="w-full space-y-3"
+                    onSubmit={handleSubmit}
                 >
                     {({ errors, processing }) => (
                         <>
@@ -549,6 +617,10 @@ export default function LrForm({
                                     name="billing_customer_party_id"
                                     label="Billing Customer"
                                     options={formOptions.billingCustomers ?? []}
+                                    searchUrl={urls.parties_options}
+                                    role="customer"
+                                    createHref={urls.parties_create}
+                                    createLabel="Create Customer"
                                     value={billingCustomerId}
                                     onValueChange={setBillingCustomerId}
                                     emptyMessage="No eligible Customers in this branch."
@@ -581,6 +653,14 @@ export default function LrForm({
                                                     options={
                                                         formOptions.consignors
                                                     }
+                                                    searchUrl={
+                                                        urls.parties_options
+                                                    }
+                                                    role="consignor"
+                                                    createHref={
+                                                        urls.parties_create
+                                                    }
+                                                    createLabel="Create Consignor"
                                                     required={needsParties}
                                                     defaultValue={
                                                         lorryReceipt?.consignor_party_id ??
@@ -668,6 +748,14 @@ export default function LrForm({
                                                     options={
                                                         formOptions.consignees
                                                     }
+                                                    searchUrl={
+                                                        urls.parties_options
+                                                    }
+                                                    role="consignee"
+                                                    createHref={
+                                                        urls.parties_create
+                                                    }
+                                                    createLabel="Create Consignee"
                                                     required={needsParties}
                                                     defaultValue={
                                                         lorryReceipt?.consignee_party_id ??
@@ -1581,6 +1669,20 @@ export default function LrForm({
                         </>
                     )}
                 </Form>
+
+                <FormConfirmationDialog
+                    open={confirmOpen}
+                    onOpenChange={setConfirmOpen}
+                    mode={mode === 'create' ? 'create' : 'edit'}
+                    title={
+                        mode === 'create'
+                            ? 'Create this Bilty?'
+                            : 'Save Bilty changes?'
+                    }
+                    description="Review vehicle, customer, weights, and freight before submitting."
+                    fields={reviewFields}
+                    onConfirm={handleConfirm}
+                />
             </PageShell>
         </>
     );

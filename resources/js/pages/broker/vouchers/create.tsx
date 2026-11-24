@@ -1,4 +1,7 @@
 import { Head, Link, useForm } from '@inertiajs/react';
+import { useRef, useState } from 'react';
+import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
+import type { FieldReview } from '@/components/form-confirmation/types';
 import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +25,21 @@ type Props = {
     urls: { store: string; index: string };
 };
 
+function parseAmount(value: string | null | undefined): number | null {
+    if (value === null || value === undefined || value.trim() === '') {
+        return null;
+    }
+    const parsed = Number.parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
+function formatMoney(value: number | null): string {
+    if (value === null) {
+        return '—';
+    }
+    return `₹${value.toFixed(2)}`;
+}
+
 export default function VoucherCreate({
     eligibleLorryHires,
     paymentTypeOptions,
@@ -40,9 +58,72 @@ export default function VoucherCreate({
         remark: '',
     });
 
+    const submitAllowed = useRef(false);
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [reviewFields, setReviewFields] = useState<FieldReview[]>([]);
+
     const selectedHire = eligibleLorryHires.find(
         (row) => row.id === form.data.lorry_hire_id,
     );
+
+    const proposedAmount = parseAmount(form.data.amount);
+    const outstanding = parseAmount(selectedHire?.outstanding_amount);
+    const allocatable = parseAmount(selectedHire?.allocatable_amount);
+    const resultingBalance =
+        outstanding !== null && proposedAmount !== null
+            ? outstanding - proposedAmount
+            : null;
+
+    const openConfirmation = () => {
+        const paymentTypeLabel =
+            paymentTypeOptions.find(
+                (option) => option.value === form.data.payment_type,
+            )?.label ?? form.data.payment_type;
+        const paymentModeLabel =
+            paymentModeOptions.find(
+                (option) => option.value === form.data.payment_mode,
+            )?.label ?? form.data.payment_mode;
+
+        setReviewFields([
+            {
+                label: 'Lorry Hire',
+                value: selectedHire?.hire_number ?? '—',
+            },
+            {
+                label: 'Bilty No.',
+                value: selectedHire?.lr_number ?? '—',
+            },
+            {
+                label: 'Transporter',
+                value: selectedHire?.transporter_name ?? '—',
+            },
+            {
+                label: 'Outstanding',
+                value: formatMoney(outstanding),
+            },
+            {
+                label: 'Available payable',
+                value: formatMoney(allocatable),
+            },
+            {
+                label: 'Payment type',
+                value: paymentTypeLabel,
+            },
+            {
+                label: 'Payment mode',
+                value: paymentModeLabel,
+            },
+            {
+                label: 'Proposed payment',
+                value: formatMoney(proposedAmount),
+            },
+            {
+                label: 'Resulting balance',
+                value: formatMoney(resultingBalance),
+            },
+        ]);
+        setConfirmOpen(true);
+    };
 
     return (
         <>
@@ -59,9 +140,15 @@ export default function VoucherCreate({
                 }
             >
                 <form
+                    id="voucher-create-form"
                     className="mx-auto max-w-xl space-y-4"
                     onSubmit={(event) => {
                         event.preventDefault();
+                        if (!submitAllowed.current) {
+                            openConfirmation();
+                            return;
+                        }
+                        submitAllowed.current = false;
                         form.post(urls.store);
                     }}
                 >
@@ -91,11 +178,23 @@ export default function VoucherCreate({
                             ))}
                         </select>
                         {selectedHire && (
-                            <p className="text-xs text-muted-foreground">
-                                {selectedHire.transporter_name} ·{' '}
-                                {selectedHire.vehicle_registration} ·
-                                outstanding {selectedHire.outstanding_amount}
-                            </p>
+                            <div className="rounded-md border border-border bg-muted/10 p-3 text-xs text-muted-foreground">
+                                <p>
+                                    {selectedHire.transporter_name} ·{' '}
+                                    {selectedHire.vehicle_registration}
+                                </p>
+                                <p>
+                                    Outstanding {formatMoney(outstanding)} ·
+                                    Available {formatMoney(allocatable)}
+                                </p>
+                                {proposedAmount !== null ? (
+                                    <p>
+                                        Proposed {formatMoney(proposedAmount)} ·
+                                        Resulting{' '}
+                                        {formatMoney(resultingBalance)}
+                                    </p>
+                                ) : null}
+                            </div>
                         )}
                     </div>
 
@@ -233,6 +332,25 @@ export default function VoucherCreate({
                         Save voucher
                     </Button>
                 </form>
+
+                <FormConfirmationDialog
+                    open={confirmOpen}
+                    onOpenChange={setConfirmOpen}
+                    mode="create"
+                    title="Record this voucher payment?"
+                    description="Review outstanding, proposed payment, and resulting balance before submitting."
+                    fields={reviewFields}
+                    onConfirm={() => {
+                        submitAllowed.current = true;
+                        setConfirmOpen(false);
+                        window.setTimeout(() => {
+                            const formElement = document.getElementById(
+                                'voucher-create-form',
+                            ) as HTMLFormElement | null;
+                            formElement?.requestSubmit();
+                        }, 0);
+                    }}
+                />
             </PageShell>
         </>
     );
