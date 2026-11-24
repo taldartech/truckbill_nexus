@@ -1,13 +1,13 @@
 import { Head, router } from '@inertiajs/react';
 import { Scale } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
     ResponsiveDataTable,
     type DataTableColumn,
 } from '@/components/data-table';
 import { PageShell } from '@/components/page-shell';
+import { SearchablePartySelect } from '@/components/searchable-party-select';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { MetricCard } from '@/components/ui/metric-card';
 
 type EntryRow = {
@@ -32,7 +32,7 @@ type Props = {
             per_page: number;
         };
     };
-    urls: { index: string };
+    urls: { index: string; parties_options?: string };
 };
 
 export default function TransporterBalancesIndex({
@@ -42,6 +42,10 @@ export default function TransporterBalancesIndex({
     entries,
     urls,
 }: Props) {
+    const [transporterPartyId, setTransporterPartyId] = useState(
+        filters.transporter_party_id,
+    );
+
     const columns = useMemo<DataTableColumn<EntryRow>[]>(
         () => [
             {
@@ -90,39 +94,28 @@ export default function TransporterBalancesIndex({
                     className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-card p-3 shadow-xs"
                     onSubmit={(event) => {
                         event.preventDefault();
-                        const form = event.currentTarget;
-                        const transporter_party_id = (
-                            form.elements.namedItem(
-                                'transporter_party_id',
-                            ) as HTMLSelectElement
-                        ).value;
                         router.get(
                             urls.index,
                             {
                                 transporter_party_id:
-                                    transporter_party_id || undefined,
+                                    transporterPartyId || undefined,
                             },
                             { preserveState: true },
                         );
                     }}
                 >
-                    <div className="min-w-0 flex-1 space-y-1 sm:max-w-xs">
-                        <Label htmlFor="transporter_party_id">
-                            Transporter
-                        </Label>
-                        <select
+                    <div className="min-w-0 flex-1 space-y-1 sm:max-w-md">
+                        <SearchablePartySelect
                             id="transporter_party_id"
                             name="transporter_party_id"
-                            defaultValue={filters.transporter_party_id}
-                            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                        >
-                            <option value="">All transporters</option>
-                            {transporters.map((party) => (
-                                <option key={party.id} value={party.id}>
-                                    {party.name}
-                                </option>
-                            ))}
-                        </select>
+                            label="Transporter"
+                            options={transporters}
+                            searchUrl={urls.parties_options}
+                            role="transporter"
+                            value={transporterPartyId}
+                            onValueChange={setTransporterPartyId}
+                            emptyMessage="No eligible transporters in this branch."
+                        />
                     </div>
                     <Button
                         type="submit"

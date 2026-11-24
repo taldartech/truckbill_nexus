@@ -78,6 +78,7 @@ class TransporterBookBalanceController extends Controller
                 'can_view_freight' => $maySeeFreight,
             ],
             'urls' => [
+                'parties_options' => route('branch.parties.options', absolute: false),
                 'index' => route('branch.broker.transporter-balances.index', absolute: false),
             ],
         ]);
