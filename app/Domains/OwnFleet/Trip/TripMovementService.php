@@ -158,6 +158,132 @@ final class TripMovementService
     }
 
     /**
+     * Soft-delete a pickup and its allocations while the Trip remains mutable (Rules §9).
+     */
+    public function removePickup(Trip $trip, User $actor, TripPickup $pickup): void
+    {
+        $this->assertEditable($trip, $actor);
+
+        if ($pickup->trip_id !== $trip->id || $pickup->company_id !== $trip->company_id) {
+            throw new TripDomainException('Pickup does not belong to this Trip.');
+        }
+
+        $company = Company::query()->findOrFail($trip->company_id);
+        $branch = Branch::query()->findOrFail($trip->branch_id);
+
+        $this->auditedTransaction->run(function () use ($trip, $company, $branch, $pickup): void {
+            $this->withTenant($company, $branch, function () use ($trip, $pickup): void {
+                $locked = Trip::query()->whereKey($trip->id)->lockForUpdate()->firstOrFail();
+                $this->assertTripMutable($locked);
+
+                $row = TripPickup::query()
+                    ->whereKey($pickup->id)
+                    ->whereNull('deleted_at')
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($row === null) {
+                    throw new TripDomainException('Pickup not found.');
+                }
+
+                $allocations = TripDropPickupAllocation::query()
+                    ->where('trip_pickup_id', $row->id)
+                    ->whereNull('deleted_at')
+                    ->lockForUpdate()
+                    ->get();
+
+                foreach ($allocations as $allocation) {
+                    $beforeAllocation = $allocation->toArray();
+                    $allocation->delete();
+                    $this->audit->write(
+                        AuditAction::Deleted,
+                        TripDropPickupAllocation::class,
+                        $allocation->id,
+                        remark: 'Remove allocation with trip pickup',
+                        before: $beforeAllocation,
+                        after: null,
+                    );
+                }
+
+                $before = $row->toArray();
+                $row->delete();
+
+                $this->audit->write(
+                    AuditAction::Deleted,
+                    TripPickup::class,
+                    $row->id,
+                    remark: 'Remove trip pickup',
+                    before: $before,
+                    after: null,
+                );
+            });
+        });
+    }
+
+    /**
+     * Soft-delete a drop and its allocations while the Trip remains mutable (Rules §9).
+     */
+    public function removeDrop(Trip $trip, User $actor, TripDrop $drop): void
+    {
+        $this->assertEditable($trip, $actor);
+
+        if ($drop->trip_id !== $trip->id || $drop->company_id !== $trip->company_id) {
+            throw new TripDomainException('Drop does not belong to this Trip.');
+        }
+
+        $company = Company::query()->findOrFail($trip->company_id);
+        $branch = Branch::query()->findOrFail($trip->branch_id);
+
+        $this->auditedTransaction->run(function () use ($trip, $company, $branch, $drop): void {
+            $this->withTenant($company, $branch, function () use ($trip, $drop): void {
+                $locked = Trip::query()->whereKey($trip->id)->lockForUpdate()->firstOrFail();
+                $this->assertTripMutable($locked);
+
+                $row = TripDrop::query()
+                    ->whereKey($drop->id)
+                    ->whereNull('deleted_at')
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($row === null) {
+                    throw new TripDomainException('Drop not found.');
+                }
+
+                $allocations = TripDropPickupAllocation::query()
+                    ->where('trip_drop_id', $row->id)
+                    ->whereNull('deleted_at')
+                    ->lockForUpdate()
+                    ->get();
+
+                foreach ($allocations as $allocation) {
+                    $beforeAllocation = $allocation->toArray();
+                    $allocation->delete();
+                    $this->audit->write(
+                        AuditAction::Deleted,
+                        TripDropPickupAllocation::class,
+                        $allocation->id,
+                        remark: 'Remove allocation with trip drop',
+                        before: $beforeAllocation,
+                        after: null,
+                    );
+                }
+
+                $before = $row->toArray();
+                $row->delete();
+
+                $this->audit->write(
+                    AuditAction::Deleted,
+                    TripDrop::class,
+                    $row->id,
+                    remark: 'Remove trip drop',
+                    before: $before,
+                    after: null,
+                );
+            });
+        });
+    }
+
+    /**
      * @param  array{
      *     trip_pickup_id: string,
      *     trip_drop_id: string,

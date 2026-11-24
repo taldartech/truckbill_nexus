@@ -254,7 +254,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/trips/{trip}/cancel', [TripController::class, 'cancel'])->name('branch.trips.cancel');
         Route::delete('/trips/{trip}', [TripController::class, 'destroy'])->name('branch.trips.destroy');
         Route::post('/trips/{trip}/pickups', [TripController::class, 'storePickup'])->name('branch.trips.pickups.store');
+        Route::delete('/trips/{trip}/pickups/{pickup}', [TripController::class, 'destroyPickup'])->name('branch.trips.pickups.destroy');
         Route::post('/trips/{trip}/drops', [TripController::class, 'storeDrop'])->name('branch.trips.drops.store');
+        Route::delete('/trips/{trip}/drops/{drop}', [TripController::class, 'destroyDrop'])->name('branch.trips.drops.destroy');
         Route::post('/trips/{trip}/allocations', [TripController::class, 'storeAllocation'])->name('branch.trips.allocations.store');
         Route::delete('/trips/{trip}/allocations/{allocation}', [TripController::class, 'destroyAllocation'])->name('branch.trips.allocations.destroy');
         Route::post('/trips/{trip}/expenses', [TripController::class, 'storeExpense'])->name('branch.trips.expenses.store');

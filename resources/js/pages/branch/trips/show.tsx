@@ -1,4 +1,4 @@
-import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { Form, Head, Link, router, usePage } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { AppIconAction } from '@/components/app-icon-action';
@@ -105,7 +105,9 @@ type Props = {
         index: string;
         lr_show: string;
         add_pickup: string;
+        remove_pickup?: string;
         add_drop: string;
+        remove_drop?: string;
         upsert_allocation: string;
         remove_allocation: string;
         dispatch: string;
@@ -700,24 +702,64 @@ export default function TripShow({
                                                     key={pickup.id}
                                                     className="rounded-md border border-border px-3 py-2"
                                                 >
-                                                    <p className="font-medium">
-                                                        #{pickup.position}{' '}
-                                                        {pickup.station_name}
-                                                    </p>
-                                                    <p className="text-muted-foreground">
-                                                        {pickup.weight} kg ·{' '}
-                                                        {pickup.pickup_date}
-                                                        {pickup.consignor_name
-                                                            ? ` · ${pickup.consignor_name}`
-                                                            : ''}
-                                                    </p>
-                                                    {pickup.goods_description ? (
-                                                        <p className="text-muted-foreground">
-                                                            {
-                                                                pickup.goods_description
-                                                            }
-                                                        </p>
-                                                    ) : null}
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <div>
+                                                            <p className="font-medium">
+                                                                #
+                                                                {
+                                                                    pickup.position
+                                                                }{' '}
+                                                                {
+                                                                    pickup.station_name
+                                                                }
+                                                            </p>
+                                                            <p className="text-muted-foreground">
+                                                                {pickup.weight}{' '}
+                                                                kg ·{' '}
+                                                                {
+                                                                    pickup.pickup_date
+                                                                }
+                                                                {pickup.consignor_name
+                                                                    ? ` · ${pickup.consignor_name}`
+                                                                    : ''}
+                                                            </p>
+                                                            {pickup.goods_description ? (
+                                                                <p className="text-muted-foreground">
+                                                                    {
+                                                                        pickup.goods_description
+                                                                    }
+                                                                </p>
+                                                            ) : null}
+                                                        </div>
+                                                        {mutable &&
+                                                        urls.remove_pickup ? (
+                                                            <Button
+                                                                type="button"
+                                                                size="sm"
+                                                                variant="destructive"
+                                                                onClick={() => {
+                                                                    if (
+                                                                        !window.confirm(
+                                                                            'Remove this pickup and its allocations?',
+                                                                        )
+                                                                    ) {
+                                                                        return;
+                                                                    }
+                                                                    router.delete(
+                                                                        urls.remove_pickup.replace(
+                                                                            'PICKUP_ID',
+                                                                            pickup.id,
+                                                                        ),
+                                                                        {
+                                                                            preserveScroll: true,
+                                                                        },
+                                                                    );
+                                                                }}
+                                                            >
+                                                                Remove
+                                                            </Button>
+                                                        ) : null}
+                                                    </div>
                                                 </li>
                                             ))}
                                         </ul>
@@ -836,14 +878,48 @@ export default function TripShow({
                                                     key={drop.id}
                                                     className="rounded-md border border-border px-3 py-2"
                                                 >
-                                                    <p className="font-medium">
-                                                        #{drop.position}{' '}
-                                                        {drop.station_name}
-                                                    </p>
-                                                    <p className="text-muted-foreground">
-                                                        {drop.consignee_name ??
-                                                            'Consignee optional'}
-                                                    </p>
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <div>
+                                                            <p className="font-medium">
+                                                                #{drop.position}{' '}
+                                                                {
+                                                                    drop.station_name
+                                                                }
+                                                            </p>
+                                                            <p className="text-muted-foreground">
+                                                                {drop.consignee_name ??
+                                                                    'Consignee optional'}
+                                                            </p>
+                                                        </div>
+                                                        {mutable &&
+                                                        urls.remove_drop ? (
+                                                            <Button
+                                                                type="button"
+                                                                size="sm"
+                                                                variant="destructive"
+                                                                onClick={() => {
+                                                                    if (
+                                                                        !window.confirm(
+                                                                            'Remove this drop and its allocations?',
+                                                                        )
+                                                                    ) {
+                                                                        return;
+                                                                    }
+                                                                    router.delete(
+                                                                        urls.remove_drop.replace(
+                                                                            'DROP_ID',
+                                                                            drop.id,
+                                                                        ),
+                                                                        {
+                                                                            preserveScroll: true,
+                                                                        },
+                                                                    );
+                                                                }}
+                                                            >
+                                                                Remove
+                                                            </Button>
+                                                        ) : null}
+                                                    </div>
                                                 </li>
                                             ))}
                                         </ul>

@@ -273,7 +273,9 @@ class TripController extends Controller
                 'index' => route('branch.trips.index', absolute: false),
                 'lr_show' => route('branch.lorry-receipts.show', [$trip->lorry_receipt_id], absolute: false),
                 'add_pickup' => route('branch.trips.pickups.store', [$trip], absolute: false),
+                'remove_pickup' => route('branch.trips.pickups.destroy', [$trip, 'PICKUP_ID'], absolute: false),
                 'add_drop' => route('branch.trips.drops.store', [$trip], absolute: false),
+                'remove_drop' => route('branch.trips.drops.destroy', [$trip, 'DROP_ID'], absolute: false),
                 'upsert_allocation' => route('branch.trips.allocations.store', [$trip], absolute: false),
                 'remove_allocation' => route('branch.trips.allocations.destroy', [$trip, 'ALLOCATION_ID'], absolute: false),
                 'dispatch' => route('branch.trips.dispatch', [$trip], absolute: false),
@@ -517,6 +519,54 @@ class TripController extends Controller
         return redirect()
             ->route('branch.trips.show', [$trip])
             ->with('success', 'Drop added.');
+    }
+
+    public function destroyPickup(
+        Request $request,
+        Trip $trip,
+        TripPickup $pickup,
+        Company $company,
+        Branch $branch,
+    ): RedirectResponse {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertPermission($actor, $company, $branch, PermissionCodes::TRIP_EDIT);
+        $this->assertTrip($trip, $company, $branch);
+
+        try {
+            $this->movements->removePickup($trip, $actor, $pickup);
+        } catch (TripAuthorizationException $e) {
+            abort(403, $e->getMessage());
+        } catch (TripDomainException $e) {
+            throw ValidationException::withMessages(['pickup' => $e->getMessage()]);
+        }
+
+        return redirect()
+            ->route('branch.trips.show', [$trip])
+            ->with('success', 'Pickup removed.');
+    }
+
+    public function destroyDrop(
+        Request $request,
+        Trip $trip,
+        TripDrop $drop,
+        Company $company,
+        Branch $branch,
+    ): RedirectResponse {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertPermission($actor, $company, $branch, PermissionCodes::TRIP_EDIT);
+        $this->assertTrip($trip, $company, $branch);
+
+        try {
+            $this->movements->removeDrop($trip, $actor, $drop);
+        } catch (TripAuthorizationException $e) {
+            abort(403, $e->getMessage());
+        } catch (TripDomainException $e) {
+            throw ValidationException::withMessages(['drop' => $e->getMessage()]);
+        }
+
+        return redirect()
+            ->route('branch.trips.show', [$trip])
+            ->with('success', 'Drop removed.');
     }
 
     public function storeAllocation(Request $request, Trip $trip, Company $company, Branch $branch): RedirectResponse

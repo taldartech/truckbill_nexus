@@ -172,6 +172,8 @@ final class TripService
                         throw new TripConflictException('This OwnFleet LR already has a Trip.');
                     }
 
+                    $this->assertVehicleHasNoActiveTrip($company, $vehicle->id);
+
                     $trip = Trip::query()->create([
                         'id' => (string) Str::uuid(),
                         'company_id' => $company->id,
@@ -559,6 +561,26 @@ final class TripService
         if ($lorryReceipt->status !== LrStatus::Pending) {
             throw ValidationException::withMessages([
                 'lorry_receipt_id' => 'Trip can only be created from a pending OwnFleet LR.',
+            ]);
+        }
+    }
+
+    /**
+     * One Own vehicle may only have one Pending or In Progress Trip (Rules §9).
+     */
+    private function assertVehicleHasNoActiveTrip(Company $company, string $vehicleId): void
+    {
+        $conflict = Trip::query()
+            ->where('company_id', $company->id)
+            ->where('vehicle_id', $vehicleId)
+            ->whereNull('deleted_at')
+            ->whereIn('status', [TripStatus::Pending->value, TripStatus::InProgress->value])
+            ->lockForUpdate()
+            ->exists();
+
+        if ($conflict) {
+            throw ValidationException::withMessages([
+                'vehicle_id' => 'This Own vehicle already has an active Trip (Pending or In Progress).',
             ]);
         }
     }
