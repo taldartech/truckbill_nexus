@@ -3,7 +3,7 @@
 **Status:** READY FOR PRODUCT OWNER ACCEPTANCE (authorized operational-flow scope)  
 **Date:** 24 November 2026  
 **Initial HEAD:** `701f4df`  
-**Final local HEAD:** see `git log -1` after certification commits (recorded in commit messages / Memory)
+**Final local HEAD:** `252ac0130d912b74d800e34ad286c66b931e1f10`
 
 ## Verdict
 
@@ -40,7 +40,7 @@ This is **not** a claim of full `truckbill_broker` feature replacement (reports,
 
 ## C. Local commits (this continuation)
 
-Recorded at certification time — include Vehicle remote selectors, voucher show density, OF CTAs/polish, confirmation coverage, Playwright OF parity, and this documentation pack.
+1. `252ac01` — Vehicle remote selectors; voucher show density; OF polish; CF-03; Playwright OF parity; DOC-01 pack
 
 ## D. Verification evidence
 
