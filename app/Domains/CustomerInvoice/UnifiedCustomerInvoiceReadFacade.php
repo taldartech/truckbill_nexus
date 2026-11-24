@@ -14,11 +14,16 @@ use App\Models\Company;
 use App\Models\LorryReceipt;
 use App\Models\TripInvoice;
 use App\Models\User;
+use App\Support\Database\CaseInsensitiveLike;
 use App\Support\Presentation\FreightAmountPresentation;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Pagination\LengthAwarePaginator as Paginator;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use stdClass;
 
 /**
  * Read-only consolidation of OwnFleet trip invoices and Broker customer invoices.
@@ -93,37 +98,24 @@ final class UnifiedCustomerInvoiceReadFacade
         $perPage = min(100, max(1, (int) ($filters['per_page'] ?? 15)));
         $page = max(1, (int) ($filters['page'] ?? 1));
 
-        $rows = new Collection;
+        $includeTrip = $canTrip && ($sourceFilter === null || $sourceFilter === CustomerInvoiceSource::OwnFleet);
+        $includeBroker = $canBroker && ($sourceFilter === null || $sourceFilter === CustomerInvoiceSource::Broker);
 
-        if ($canTrip && ($sourceFilter === null || $sourceFilter === CustomerInvoiceSource::OwnFleet)) {
-            $rows = $rows->merge(
-                $this->tripInvoiceRows($company, $branch, $filters, $maySeeFreight),
-            );
+        if ($includeTrip && ! $includeBroker) {
+            return $this->paginateTripInvoices($company, $branch, $filters, $maySeeFreight, $perPage, $page);
         }
 
-        if ($canBroker && ($sourceFilter === null || $sourceFilter === CustomerInvoiceSource::Broker)) {
-            $rows = $rows->merge(
-                $this->brokerInvoiceRows($company, $branch, $filters, $maySeeFreight),
-            );
+        if ($includeBroker && ! $includeTrip) {
+            return $this->paginateBrokerInvoices($company, $branch, $filters, $maySeeFreight, $perPage, $page);
         }
 
-        $sorted = $rows
-            ->sortByDesc(fn (array $row): string => ($row['sort_key'] ?? '').'|'.$row['id'])
-            ->values();
-
-        $total = $sorted->count();
-        $slice = $sorted->slice(($page - 1) * $perPage, $perPage)->values()->map(function (array $row): array {
-            unset($row['sort_key']);
-
-            return $row;
-        });
-
-        return new Paginator(
-            $slice,
-            $total,
+        return $this->paginateUnifiedUnion(
+            $company,
+            $branch,
+            $filters,
+            $maySeeFreight,
             $perPage,
             $page,
-            ['path' => request()->url(), 'query' => request()->query()],
         );
     }
 
@@ -222,54 +214,218 @@ final class UnifiedCustomerInvoiceReadFacade
 
     /**
      * @param  array<string, mixed>  $filters
-     * @return Collection<int, array<string, mixed>>
+     * @return LengthAwarePaginator<int, array<string, mixed>>
      */
-    private function tripInvoiceRows(Company $company, Branch $branch, array $filters, bool $maySeeFreight): Collection
-    {
-        $builder = TripInvoice::query()
-            ->where('company_id', $company->id)
-            ->where('branch_id', $branch->id)
-            ->whereNull('deleted_at')
-            ->with(['billingCustomer', 'lines.lorryReceipt']);
-
-        if (filled($filters['q'] ?? null)) {
-            $builder->where('invoice_number', 'ilike', '%'.((string) $filters['q']).'%');
-        }
-
-        if (filled($filters['customer_id'] ?? null)) {
-            $builder->where('billing_customer_party_id', (string) $filters['customer_id']);
-        }
-
-        if (filled($filters['payment_status'] ?? null)) {
-            $builder->where('payment_status', (string) $filters['payment_status']);
-        }
-
-        if (filled($filters['invoice_status'] ?? null)) {
-            $builder->where('status', (string) $filters['invoice_status']);
-        }
-
-        return $builder
+    private function paginateTripInvoices(
+        Company $company,
+        Branch $branch,
+        array $filters,
+        bool $maySeeFreight,
+        int $perPage,
+        int $page,
+    ): LengthAwarePaginator {
+        $builder = $this->tripInvoiceSearchQuery($company, $branch, $filters)
+            ->with(['billingCustomer', 'lines.lorryReceipt'])
             ->orderByDesc('invoice_date')
             ->orderByDesc('created_at')
-            ->limit(500)
-            ->get()
-            ->map(fn (TripInvoice $invoice): array => $this->mapTripRow($invoice, $maySeeFreight));
+            ->orderByDesc('id');
+
+        /** @var Paginator<int, TripInvoice> $paginator */
+        $paginator = $builder->paginate($perPage, ['*'], 'page', $page);
+
+        return $paginator
+            ->withPath(request()->url())
+            ->appends(request()->query())
+            ->through(fn (TripInvoice $invoice): array => $this->mapTripRow($invoice, $maySeeFreight));
     }
 
     /**
      * @param  array<string, mixed>  $filters
-     * @return Collection<int, array<string, mixed>>
+     * @return LengthAwarePaginator<int, array<string, mixed>>
      */
-    private function brokerInvoiceRows(Company $company, Branch $branch, array $filters, bool $maySeeFreight): Collection
+    private function paginateBrokerInvoices(
+        Company $company,
+        Branch $branch,
+        array $filters,
+        bool $maySeeFreight,
+        int $perPage,
+        int $page,
+    ): LengthAwarePaginator {
+        $builder = $this->brokerInvoiceSearchQuery($company, $branch, $filters)
+            ->with(['billingCustomer', 'lines.lorryReceipt'])
+            ->orderByDesc('invoice_date')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
+
+        /** @var Paginator<int, BrokerInvoice> $paginator */
+        $paginator = $builder->paginate($perPage, ['*'], 'page', $page);
+
+        return $paginator
+            ->withPath(request()->url())
+            ->appends(request()->query())
+            ->through(fn (BrokerInvoice $invoice): array => $this->mapBrokerRow($invoice, $maySeeFreight));
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return LengthAwarePaginator<int, array<string, mixed>>
+     */
+    private function paginateUnifiedUnion(
+        Company $company,
+        Branch $branch,
+        array $filters,
+        bool $maySeeFreight,
+        int $perPage,
+        int $page,
+    ): LengthAwarePaginator {
+        $union = $this->unifiedUnionQuery($company, $branch, $filters);
+
+        $total = (int) DB::query()->fromSub($union, 'unified_invoices')->count();
+
+        /** @var Collection<int, stdClass> $orderedSlice */
+        $orderedSlice = DB::query()
+            ->fromSub($union, 'unified_invoices')
+            ->orderByDesc('invoice_date')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->forPage($page, $perPage)
+            ->get();
+
+        $ownFleetValue = CustomerInvoiceSource::OwnFleet->value;
+        $brokerValue = CustomerInvoiceSource::Broker->value;
+
+        $tripIds = $orderedSlice
+            ->where('source', $ownFleetValue)
+            ->pluck('id')
+            ->map(fn (mixed $id): string => (string) $id)
+            ->all();
+
+        $brokerIds = $orderedSlice
+            ->where('source', $brokerValue)
+            ->pluck('id')
+            ->map(fn (mixed $id): string => (string) $id)
+            ->all();
+
+        $trips = $tripIds === []
+            ? collect()
+            : TripInvoice::query()
+                ->where('company_id', $company->id)
+                ->where('branch_id', $branch->id)
+                ->whereIn('id', $tripIds)
+                ->with(['billingCustomer', 'lines.lorryReceipt'])
+                ->get()
+                ->keyBy('id');
+
+        $brokers = $brokerIds === []
+            ? collect()
+            : BrokerInvoice::query()
+                ->where('company_id', $company->id)
+                ->where('branch_id', $branch->id)
+                ->whereIn('id', $brokerIds)
+                ->with(['billingCustomer', 'lines.lorryReceipt'])
+                ->get()
+                ->keyBy('id');
+
+        $items = $orderedSlice
+            ->map(function (stdClass $row) use ($trips, $brokers, $maySeeFreight, $ownFleetValue): ?array {
+                $id = (string) $row->id;
+
+                if ($row->source === $ownFleetValue) {
+                    $invoice = $trips->get($id);
+
+                    return $invoice instanceof TripInvoice
+                        ? $this->mapTripRow($invoice, $maySeeFreight)
+                        : null;
+                }
+
+                $invoice = $brokers->get($id);
+
+                return $invoice instanceof BrokerInvoice
+                    ? $this->mapBrokerRow($invoice, $maySeeFreight)
+                    : null;
+            })
+            ->filter()
+            ->values();
+
+        /** @var Collection<int, array<string, mixed>> $items */
+        return new Paginator(
+            $items,
+            $total,
+            $perPage,
+            $page,
+            ['path' => request()->url(), 'query' => request()->query()],
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     */
+    private function unifiedUnionQuery(Company $company, Branch $branch, array $filters): QueryBuilder
+    {
+        $ownFleetSource = CustomerInvoiceSource::OwnFleet->value;
+        $brokerSource = CustomerInvoiceSource::Broker->value;
+
+        $tripQuery = $this->tripInvoiceSearchQuery($company, $branch, $filters)
+            ->select([
+                'id',
+                DB::raw("'{$ownFleetSource}' as source"),
+                'invoice_date',
+                'created_at',
+            ])
+            ->toBase();
+
+        $brokerQuery = $this->brokerInvoiceSearchQuery($company, $branch, $filters)
+            ->select([
+                'id',
+                DB::raw("'{$brokerSource}' as source"),
+                'invoice_date',
+                'created_at',
+            ])
+            ->toBase();
+
+        return $tripQuery->unionAll($brokerQuery);
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return Builder<TripInvoice>
+     */
+    private function tripInvoiceSearchQuery(Company $company, Branch $branch, array $filters): Builder
+    {
+        $builder = TripInvoice::query()
+            ->where('company_id', $company->id)
+            ->where('branch_id', $branch->id)
+            ->whereNull('deleted_at');
+
+        $this->applyTripInvoiceFilters($builder, $filters);
+
+        return $builder;
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return Builder<BrokerInvoice>
+     */
+    private function brokerInvoiceSearchQuery(Company $company, Branch $branch, array $filters): Builder
     {
         $builder = BrokerInvoice::query()
             ->where('company_id', $company->id)
             ->where('branch_id', $branch->id)
-            ->whereNull('deleted_at')
-            ->with(['billingCustomer', 'lines.lorryReceipt']);
+            ->whereNull('deleted_at');
 
+        $this->applyBrokerInvoiceFilters($builder, $filters);
+
+        return $builder;
+    }
+
+    /**
+     * @param  Builder<TripInvoice>  $builder
+     * @param  array<string, mixed>  $filters
+     */
+    private function applyTripInvoiceFilters(Builder $builder, array $filters): void
+    {
         if (filled($filters['q'] ?? null)) {
-            $builder->where('invoice_number', 'ilike', '%'.((string) $filters['q']).'%');
+            CaseInsensitiveLike::whereContains($builder, 'invoice_number', (string) $filters['q']);
         }
 
         if (filled($filters['customer_id'] ?? null)) {
@@ -283,13 +439,29 @@ final class UnifiedCustomerInvoiceReadFacade
         if (filled($filters['invoice_status'] ?? null)) {
             $builder->where('status', (string) $filters['invoice_status']);
         }
+    }
 
-        return $builder
-            ->orderByDesc('invoice_date')
-            ->orderByDesc('created_at')
-            ->limit(500)
-            ->get()
-            ->map(fn (BrokerInvoice $invoice): array => $this->mapBrokerRow($invoice, $maySeeFreight));
+    /**
+     * @param  Builder<BrokerInvoice>  $builder
+     * @param  array<string, mixed>  $filters
+     */
+    private function applyBrokerInvoiceFilters(Builder $builder, array $filters): void
+    {
+        if (filled($filters['q'] ?? null)) {
+            CaseInsensitiveLike::whereContains($builder, 'invoice_number', (string) $filters['q']);
+        }
+
+        if (filled($filters['customer_id'] ?? null)) {
+            $builder->where('billing_customer_party_id', (string) $filters['customer_id']);
+        }
+
+        if (filled($filters['payment_status'] ?? null)) {
+            $builder->where('payment_status', (string) $filters['payment_status']);
+        }
+
+        if (filled($filters['invoice_status'] ?? null)) {
+            $builder->where('status', (string) $filters['invoice_status']);
+        }
     }
 
     /**
@@ -319,7 +491,6 @@ final class UnifiedCustomerInvoiceReadFacade
             'urls' => [
                 'show' => route('branch.trip-invoices.show', [$invoice], absolute: false),
             ],
-            'sort_key' => $invoice->invoice_date->format('Y-m-d'),
         ];
     }
 
@@ -350,7 +521,6 @@ final class UnifiedCustomerInvoiceReadFacade
             'urls' => [
                 'show' => route('branch.broker.invoices.show', [$invoice], absolute: false),
             ],
-            'sort_key' => $invoice->invoice_date?->format('Y-m-d') ?? '',
         ];
     }
 }

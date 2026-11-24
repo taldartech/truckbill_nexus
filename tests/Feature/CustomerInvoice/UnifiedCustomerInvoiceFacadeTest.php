@@ -1,68 +1,16 @@
 <?php
 
 require_once __DIR__.'/../../Support/OwnFleetTripHelpers.php';
+require_once __DIR__.'/InvoiceFacadeTestHelpers.php';
 
-use App\Domains\Company\CompanyWorkspaceService;
 use App\Domains\Consignment\Enums\LrWorkflowContext;
 use App\Domains\CustomerInvoice\UnifiedCustomerInvoiceReadFacade;
-use App\Domains\Rbac\Enums\PermissionDomain;
 use App\Domains\Rbac\PermissionCodes;
-use App\Domains\Rbac\RoleAssignmentService;
 use App\Models\LorryReceipt;
-use App\Models\Role;
-use App\Models\User;
+use App\Models\Party;
 use Database\Seeders\RbacSeeder;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Validation\ValidationException;
-
-function invoiceFacadeCustomerRole(string $slug): Role
-{
-    return Role::query()
-        ->where('domain', PermissionDomain::Customer->value)
-        ->where('slug', $slug)
-        ->firstOrFail();
-}
-
-function invoiceFacadeWorkspace(): array
-{
-    $workspace = app(CompanyWorkspaceService::class);
-    $rbac = app(RoleAssignmentService::class);
-
-    $owner = User::factory()->customer()->create(['password' => Hash::make('owner-secret')]);
-    $company = $workspace->createCompany($owner, 'Invoice Facade Co');
-    $branch = $company->branches()->firstOrFail();
-
-    $member = User::factory()->customer()->create(['password' => Hash::make('member-secret')]);
-    $membership = $workspace->addMembership($company, $member, 'Join');
-    $assignment = $workspace->assignBranch($membership, $branch, 'Assign');
-    $rbac->assignCustomerBranchRole(
-        $owner,
-        $membership,
-        $branch,
-        $assignment,
-        invoiceFacadeCustomerRole('customer.admin'),
-        'Grant admin',
-    );
-
-    return compact('owner', 'company', 'branch', 'member');
-}
-
-function invoiceFacadeLogin(User $user, string $password): void
-{
-    if (auth()->check()) {
-        test()->post(route('logout'));
-    }
-
-    test()->flushSession();
-    $response = test()->post(route('login.store'), [
-        'email' => $user->email,
-        'password' => $password,
-    ]);
-    $response->assertRedirect();
-    foreach ($response->headers->getCookies() as $cookie) {
-        test()->withUnencryptedCookie($cookie->getName(), $cookie->getValue());
-    }
-}
 
 beforeEach(function () {
     (new RbacSeeder)->run();
@@ -111,4 +59,70 @@ test('unified invoice index applies source filter in inertia props', function ()
         ->assertInertia(fn ($page) => $page
             ->component('branch/invoices/index')
             ->where('filters.source', 'own_fleet'));
+});
+
+test('search with own fleet source paginates beyond former five hundred row cap', function () {
+    $facade = app(UnifiedCustomerInvoiceReadFacade::class);
+    ['owner' => $owner, 'member' => $member, 'company' => $company, 'branch' => $branch] = invoiceFacadeWorkspace();
+
+    $customer = Party::factory()->create([
+        'company_id' => $company->id,
+        'name' => 'Pagination Customer',
+    ]);
+
+    $totalSeeded = 30;
+    seedLeanOwnFleetTripInvoices(
+        $company->id,
+        $branch->id,
+        $customer->id,
+        $owner->id,
+        $totalSeeded,
+    );
+
+    $perPage = 10;
+    $page = $facade->search(
+        $member,
+        $company,
+        $branch,
+        [
+            'source' => 'own_fleet',
+            'per_page' => $perPage,
+            'page' => 1,
+        ],
+        true,
+    );
+
+    expect($page)->toBeInstanceOf(LengthAwarePaginator::class)
+        ->and($page->total())->toBe($totalSeeded)
+        ->and($page->perPage())->toBe($perPage)
+        ->and($page->count())->toBe($perPage);
+});
+
+test('search applies portable case insensitive invoice number filter via facade', function () {
+    $facade = app(UnifiedCustomerInvoiceReadFacade::class);
+    ['owner' => $owner, 'member' => $member, 'company' => $company, 'branch' => $branch] = invoiceFacadeWorkspace();
+
+    $customer = Party::factory()->create([
+        'company_id' => $company->id,
+        'name' => 'Search Customer',
+    ]);
+
+    seedLeanOwnFleetTripInvoice($company->id, $branch->id, $customer->id, $owner->id, 'Case-Match-ABC-001');
+    seedLeanOwnFleetTripInvoice($company->id, $branch->id, $customer->id, $owner->id, 'Other-Number-002');
+
+    $page = $facade->search(
+        $member,
+        $company,
+        $branch,
+        [
+            'source' => 'own_fleet',
+            'q' => 'case-match-abc',
+            'per_page' => 15,
+            'page' => 1,
+        ],
+        true,
+    );
+
+    expect($page->total())->toBe(1)
+        ->and($page->items()[0]['invoice_number'])->toBe('Case-Match-ABC-001');
 });
