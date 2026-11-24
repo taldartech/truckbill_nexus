@@ -19,10 +19,12 @@ return new class extends Migration
                 ->references(['company_id', 'id'])
                 ->on('vehicles')
                 ->restrictOnDelete();
+            // MySQL rejects ON DELETE SET NULL on composite FKs when company_id is NOT NULL (errno 1830).
+            // Preserve tenant ownership; payee_party_id may be null, but party deletion is restricted while referenced.
             $table->foreign(['company_id', 'payee_party_id'], 'linked_bilty_groups_company_payee_fk')
                 ->references(['company_id', 'id'])
                 ->on('parties')
-                ->nullOnDelete();
+                ->restrictOnDelete();
         });
 
         Schema::create('linked_bilty_group_payment_idempotencies', function (Blueprint $table) {
