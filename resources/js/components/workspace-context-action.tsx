@@ -1,6 +1,10 @@
 import { Form } from '@inertiajs/react';
 import type { LucideIcon } from 'lucide-react';
+import type { ComponentProps } from 'react';
 import { AppIconAction } from '@/components/app-icon-action';
+import type { Button } from '@/components/ui/button';
+
+type ButtonVariant = ComponentProps<typeof Button>['variant'];
 
 type Props = {
     contextUrl: string;
@@ -8,6 +12,8 @@ type Props = {
     icon: LucideIcon;
     label: string;
     disabled?: boolean;
+    /** Semantic action colour — forwarded to AppIconAction. */
+    variant?: ButtonVariant;
 };
 
 /**
@@ -20,6 +26,7 @@ export function WorkspaceContextAction({
     icon,
     label,
     disabled = false,
+    variant = 'outline',
 }: Props) {
     return (
         <Form action={contextUrl} method="post" className="inline">
@@ -30,6 +37,7 @@ export function WorkspaceContextAction({
                         icon={icon}
                         label={label}
                         type="submit"
+                        variant={variant}
                         disabled={disabled || processing}
                         loading={processing}
                     />

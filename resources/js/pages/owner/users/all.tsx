@@ -1,5 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
+import { Settings2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { AppIconAction } from '@/components/app-icon-action';
 import {
     ResponsiveDataTable,
     type DataTableColumn,
@@ -178,15 +180,13 @@ export default function OwnerUsersAll({
                     emptyDescription="Invite users from a company Users screen, or adjust filters."
                     actions={(row) =>
                         row.urls.show ? (
-                            <Link
+                            <AppIconAction
+                                icon={Settings2}
+                                label="Manage membership"
                                 href={row.urls.show}
-                                className="text-xs font-medium text-primary underline"
-                            >
-                                Manage
-                            </Link>
-                        ) : (
-                            '—'
-                        )
+                                variant="info"
+                            />
+                        ) : null
                     }
                 />
 

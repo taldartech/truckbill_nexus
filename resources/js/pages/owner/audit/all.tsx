@@ -1,5 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
+import { Building2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { AppIconAction } from '@/components/app-icon-action';
 import {
     ResponsiveDataTable,
     type DataTableColumn,
@@ -131,12 +133,12 @@ export default function OwnerAuditAll({
                     emptyTitle="No audit entries"
                     emptyDescription="Audited Owner actions will appear here."
                     actions={(entry) => (
-                        <Link
+                        <AppIconAction
+                            icon={Building2}
+                            label="Open company audit"
                             href={entry.company_audit_url}
-                            className="text-xs font-medium text-primary underline"
-                        >
-                            Company audit
-                        </Link>
+                            variant="info"
+                        />
                     )}
                 />
 

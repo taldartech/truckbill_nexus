@@ -233,6 +233,7 @@ export default function OwnerCompaniesIndex({
                                 redirect={company.urls.settings}
                                 icon={Pencil}
                                 label="Edit company"
+                                variant="warning"
                                 disabled={!company.can_manage}
                             />
                             <WorkspaceContextAction
@@ -240,12 +241,14 @@ export default function OwnerCompaniesIndex({
                                 redirect={company.urls.branches}
                                 icon={GitBranch}
                                 label="Manage branches"
+                                variant="info"
                             />
                             <WorkspaceContextAction
                                 contextUrl={company.urls.context}
                                 redirect={company.urls.users}
                                 icon={Users}
                                 label="Manage users"
+                                variant="info"
                             />
                             <span className="hidden sm:contents">
                                 <WorkspaceContextAction
@@ -253,12 +256,14 @@ export default function OwnerCompaniesIndex({
                                     redirect={company.urls.subscription}
                                     icon={CreditCard}
                                     label="Manage subscription"
+                                    variant="default"
                                 />
                                 <WorkspaceContextAction
                                     contextUrl={company.urls.context}
                                     redirect={company.urls.audit}
                                     icon={History}
                                     label="View audit"
+                                    variant="secondary"
                                 />
                             </span>
                         </>

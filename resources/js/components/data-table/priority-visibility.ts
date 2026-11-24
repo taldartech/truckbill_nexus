@@ -46,3 +46,44 @@ export function visiblePrioritiesAtWidth(width: number): Set<ColumnPriority> {
 
     return visible;
 }
+
+/**
+ * Hide the expand-control column at breakpoints where every priority column
+ * is already visible (and there are no always-on detailFields).
+ * Matches Tailwind breakpoints used by `priorityVisibilityClass`.
+ */
+export function expandControlVisibilityClass(
+    maxPriority: ColumnPriority,
+    hasAlwaysOnDetailFields: boolean,
+): string {
+    if (hasAlwaysOnDetailFields) {
+        return '';
+    }
+
+    switch (maxPriority) {
+        case 0:
+            return 'hidden';
+        case 1:
+            return 'sm:hidden';
+        case 2:
+            return 'md:hidden';
+        case 3:
+            return 'xl:hidden';
+        default:
+            return 'hidden';
+    }
+}
+
+export function maxColumnPriority(
+    priorities: Iterable<ColumnPriority>,
+): ColumnPriority {
+    let max: ColumnPriority = 0;
+
+    for (const priority of priorities) {
+        if (priority > max) {
+            max = priority;
+        }
+    }
+
+    return max;
+}
