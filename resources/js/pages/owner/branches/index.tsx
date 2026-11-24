@@ -1,5 +1,7 @@
 import { Form, Head, Link, router, usePage } from '@inertiajs/react';
+import { Filter, Settings2 } from 'lucide-react';
 import { useState } from 'react';
+import { AppIconAction } from '@/components/app-icon-action';
 import { CompanyOwnerPageShell } from '@/components/owner/owner-page-header';
 import ShellEmptyState from '@/components/shell-empty-state';
 import { Button } from '@/components/ui/button';
@@ -85,7 +87,7 @@ export default function OwnerBranchesIndex({
                     </p>
                 ) : null}
 
-                <div className="flex flex-col gap-3 rounded-xl border border-border p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-2 rounded-xl border border-border p-3 sm:flex-row sm:items-center sm:justify-between">
                     <div className="text-sm text-muted-foreground">
                         Capacity:{' '}
                         <span className="font-medium text-foreground">
@@ -121,7 +123,7 @@ export default function OwnerBranchesIndex({
                     <>
                         <form
                             onSubmit={applyFilters}
-                            className="flex flex-col gap-3 rounded-xl border border-border p-4 sm:flex-row sm:items-end"
+                            className="flex flex-col gap-2 rounded-xl border border-border p-3 sm:flex-row sm:items-end"
                         >
                             <div className="flex-1 space-y-2">
                                 <Label htmlFor="branch-search">Search</Label>
@@ -149,7 +151,12 @@ export default function OwnerBranchesIndex({
                                     <option value="all">All</option>
                                 </select>
                             </div>
-                            <Button type="submit" variant="secondary">
+                            <Button
+                                type="submit"
+                                variant="secondary"
+                                className="gap-2"
+                            >
+                                <Filter className="size-4" aria-hidden />
                                 Filter
                             </Button>
                         </form>
@@ -164,27 +171,25 @@ export default function OwnerBranchesIndex({
                                 {branches.data.map((branch) => (
                                     <li
                                         key={branch.id}
-                                        className="flex flex-col gap-3 rounded-xl border border-border p-4 sm:flex-row sm:items-center sm:justify-between"
+                                        className="flex flex-col gap-2 rounded-xl border border-border p-3 sm:flex-row sm:items-center sm:justify-between"
                                     >
                                         <div>
-                                            <Link
-                                                href={branch.show_url}
-                                                className="font-medium underline-offset-4 hover:underline"
-                                            >
+                                            <p className="font-medium">
                                                 {branch.name}
-                                            </Link>
+                                            </p>
                                             <div className="mt-1">
                                                 <WorkspaceStatusBadge
                                                     status={branch.status}
                                                 />
                                             </div>
                                         </div>
-                                        <div className="flex flex-wrap gap-2">
-                                            <Button variant="outline" asChild>
-                                                <Link href={branch.show_url}>
-                                                    Manage
-                                                </Link>
-                                            </Button>
+                                        <div className="flex flex-wrap items-center gap-1">
+                                            <AppIconAction
+                                                icon={Settings2}
+                                                label="Manage branch"
+                                                href={branch.show_url}
+                                                variant="info"
+                                            />
                                             {canEnterBranch &&
                                             branch.status === 'Active' ? (
                                                 <Form

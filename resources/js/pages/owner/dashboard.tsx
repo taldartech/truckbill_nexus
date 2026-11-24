@@ -38,7 +38,7 @@ type OwnerDashboardProps = {
 
 export default function OwnerDashboard({
     company,
-    ownerPanelScope,
+    ownerPanelScope: _ownerPanelScope,
     isDeactivated,
     branches,
     subscription,
@@ -49,7 +49,7 @@ export default function OwnerDashboard({
             <Head title={`Owner Panel · ${company.name}`} />
             <OwnerPageHeader
                 title={company.name}
-                description={`Owner scope: ${ownerPanelScope}`}
+                description="Company settings, branches, users, and subscription."
                 breadcrumbs={[
                     { label: 'Companies', href: '/owner/companies' },
                     { label: company.name },

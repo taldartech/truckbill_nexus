@@ -122,7 +122,7 @@ export default function OwnerHome({
                     />
                 </section>
 
-                <div className="grid gap-6 xl:grid-cols-5">
+                <div className="grid gap-4 xl:grid-cols-5">
                     <section
                         aria-label="Company quick access"
                         className="space-y-4 xl:col-span-3"
@@ -131,12 +131,9 @@ export default function OwnerHome({
                             <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
                                 Your companies
                             </h2>
-                            <Link
-                                href={links.companies}
-                                className="text-sm font-medium text-[#2D8CFF] underline-offset-4 hover:underline"
-                            >
-                                Manage all
-                            </Link>
+                            <Button asChild variant="link" size="sm">
+                                <Link href={links.companies}>Manage all</Link>
+                            </Button>
                         </div>
                         <div className="grid gap-3 sm:grid-cols-2">
                             {companies.map((company) => (
@@ -210,12 +207,11 @@ export default function OwnerHome({
                             <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
                                 Attention
                             </h2>
-                            <Link
-                                href={links.subscriptions}
-                                className="text-sm font-medium text-[#2D8CFF] underline-offset-4 hover:underline"
-                            >
-                                Subscriptions
-                            </Link>
+                            <Button asChild variant="link" size="sm">
+                                <Link href={links.subscriptions}>
+                                    Subscriptions
+                                </Link>
+                            </Button>
                         </div>
                         <div className="rounded-xl border border-border bg-card shadow-xs">
                             {attention.length === 0 ? (
@@ -237,12 +233,16 @@ export default function OwnerHome({
                                                 {item.detail}
                                             </p>
                                             {item.href ? (
-                                                <Link
-                                                    href={item.href}
-                                                    className="inline-block text-xs font-medium text-[#2D8CFF] underline-offset-4 hover:underline"
+                                                <Button
+                                                    asChild
+                                                    variant="link"
+                                                    size="sm"
+                                                    className="h-auto p-0 text-xs"
                                                 >
-                                                    Review
-                                                </Link>
+                                                    <Link href={item.href}>
+                                                        Review
+                                                    </Link>
+                                                </Button>
                                             ) : null}
                                         </li>
                                     ))}

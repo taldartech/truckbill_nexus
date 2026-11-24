@@ -1,5 +1,7 @@
 import { Form, Head, Link, router, usePage } from '@inertiajs/react';
+import { Eye, Filter } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { AppIconAction } from '@/components/app-icon-action';
 import OwnerUsersController from '@/actions/App/Http/Controllers/Owner/OwnerUsersController';
 import InputError from '@/components/input-error';
 import ShellEmptyState from '@/components/shell-empty-state';
@@ -97,7 +99,7 @@ export default function OwnerUsersIndex({
                 ) : null}
 
                 {canManage ? (
-                    <section className="max-w-xl space-y-4 rounded-xl border border-border p-4">
+                    <section className="max-w-xl space-y-3 rounded-xl border border-border p-3">
                         <h2 className="font-medium">Invite user</h2>
                         <p className="text-sm text-muted-foreground">
                             Sends a time-limited invitation. Existing Customer
@@ -147,8 +149,8 @@ export default function OwnerUsersIndex({
                                             ))}
                                         </select>
                                         <p className="text-xs text-muted-foreground">
-                                            Branch is selected in the URL path,
-                                            never posted as a tenant field.
+                                            Optionally pre-assign a branch
+                                            before the invitee accepts.
                                         </p>
                                     </div>
                                     <Button
@@ -172,7 +174,7 @@ export default function OwnerUsersIndex({
                 <section className="space-y-4">
                     <form
                         onSubmit={applyFilters}
-                        className="flex flex-col gap-3 sm:flex-row sm:items-end"
+                        className="flex flex-col gap-2 rounded-xl border border-border p-3 sm:flex-row sm:items-end"
                     >
                         <div className="grid flex-1 gap-2">
                             <Label htmlFor="q">Search</Label>
@@ -200,7 +202,12 @@ export default function OwnerUsersIndex({
                                 <option value="all">All</option>
                             </select>
                         </div>
-                        <Button type="submit" variant="secondary">
+                        <Button
+                            type="submit"
+                            variant="secondary"
+                            className="gap-2"
+                        >
+                            <Filter className="size-4" aria-hidden />
                             Filter
                         </Button>
                     </form>
@@ -215,7 +222,7 @@ export default function OwnerUsersIndex({
                             {memberships.data.map((membership) => (
                                 <li
                                     key={membership.id}
-                                    className="flex flex-col gap-3 rounded-xl border border-border p-4 sm:flex-row sm:items-center sm:justify-between"
+                                    className="flex flex-col gap-2 rounded-xl border border-border p-3 sm:flex-row sm:items-center sm:justify-between"
                                 >
                                     <div className="space-y-1">
                                         <p className="font-medium">
@@ -231,15 +238,12 @@ export default function OwnerUsersIndex({
                                             status={membership.status}
                                         />
                                     </div>
-                                    <Button
-                                        asChild
-                                        variant="secondary"
-                                        size="sm"
-                                    >
-                                        <Link href={membership.show_url}>
-                                            View
-                                        </Link>
-                                    </Button>
+                                    <AppIconAction
+                                        icon={Eye}
+                                        label="View membership"
+                                        href={membership.show_url}
+                                        variant="info"
+                                    />
                                 </li>
                             ))}
                         </ul>

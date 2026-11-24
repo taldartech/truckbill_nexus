@@ -1,5 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
+import { Filter } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { FormSection } from '@/components/form-section';
 import {
     ResponsiveDataTable,
     type DataTableColumn,
@@ -109,48 +111,56 @@ export default function OwnerAudit({
                 ownerPanelScope={ownerPanelScope}
                 section="Company audit"
             >
-                <form
-                    onSubmit={applyFilters}
-                    className="flex flex-col gap-3 sm:flex-row sm:items-end"
-                >
-                    <div className="grid gap-2">
-                        <Label htmlFor="action">Action</Label>
-                        <select
-                            id="action"
-                            value={action}
-                            onChange={(event) => setAction(event.target.value)}
-                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs"
-                        >
-                            <option value="">All actions</option>
-                            {filterOptions.actions.map((value) => (
-                                <option key={value} value={value}>
-                                    {value}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                    <div className="grid gap-2">
-                        <Label htmlFor="subject_type">Subject</Label>
-                        <select
-                            id="subject_type"
-                            value={subjectType}
-                            onChange={(event) =>
-                                setSubjectType(event.target.value)
-                            }
-                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs"
-                        >
-                            <option value="">All subjects</option>
-                            {filterOptions.subject_types.map((value) => (
-                                <option key={value} value={value}>
-                                    {value.split('\\').pop()}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                    <Button type="submit" variant="secondary">
-                        Filter
-                    </Button>
-                </form>
+                <FormSection title="Filters" columns={2}>
+                    <form onSubmit={applyFilters} className="contents">
+                        <div className="grid gap-2">
+                            <Label htmlFor="action">Action</Label>
+                            <select
+                                id="action"
+                                value={action}
+                                onChange={(event) =>
+                                    setAction(event.target.value)
+                                }
+                                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs"
+                            >
+                                <option value="">All actions</option>
+                                {filterOptions.actions.map((value) => (
+                                    <option key={value} value={value}>
+                                        {value}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="subject_type">Subject</Label>
+                            <select
+                                id="subject_type"
+                                value={subjectType}
+                                onChange={(event) =>
+                                    setSubjectType(event.target.value)
+                                }
+                                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-xs"
+                            >
+                                <option value="">All subjects</option>
+                                {filterOptions.subject_types.map((value) => (
+                                    <option key={value} value={value}>
+                                        {value.split('\\').pop()}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="flex items-end md:col-span-2">
+                            <Button
+                                type="submit"
+                                variant="secondary"
+                                className="gap-2"
+                            >
+                                <Filter className="size-4" aria-hidden />
+                                Filter
+                            </Button>
+                        </div>
+                    </form>
+                </FormSection>
 
                 <ResponsiveDataTable
                     caption="Company audit log"

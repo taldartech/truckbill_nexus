@@ -1,5 +1,7 @@
 import { Form, Head, Link } from '@inertiajs/react';
+import { Download, Eye, Mail } from 'lucide-react';
 import { useMemo } from 'react';
+import { AppIconAction } from '@/components/app-icon-action';
 import {
     ResponsiveDataTable,
     type DataTableColumn,
@@ -104,33 +106,35 @@ export default function SubscriptionInvoices({
                     emptyTitle="No subscription invoices yet"
                     emptyDescription="Invoices appear here after billing events."
                     actions={(invoice) => (
-                        <div className="flex flex-wrap justify-end gap-2">
-                            <Link
+                        <div className="flex justify-end gap-1">
+                            <AppIconAction
+                                icon={Eye}
+                                label="Preview invoice"
                                 href={invoice.preview_url}
-                                className="text-sm underline-offset-2 hover:underline"
-                            >
-                                Preview
-                            </Link>
-                            <a
+                                variant="info"
+                            />
+                            <AppIconAction
+                                icon={Download}
+                                label="Download HTML"
                                 href={invoice.download_url}
-                                className="text-sm underline-offset-2 hover:underline"
-                                target="_blank"
-                                rel="noreferrer"
-                            >
-                                HTML
-                            </a>
+                                variant="outline"
+                            />
                             {invoice.email_url ? (
                                 <Form
                                     action={invoice.email_url}
                                     method="post"
-                                    className="inline"
+                                    className="inline-flex"
                                 >
-                                    <button
-                                        type="submit"
-                                        className="text-sm underline-offset-2 hover:underline"
-                                    >
-                                        Email
-                                    </button>
+                                    {({ processing }) => (
+                                        <AppIconAction
+                                            icon={Mail}
+                                            label="Email invoice"
+                                            type="submit"
+                                            variant="secondary"
+                                            loading={processing}
+                                            disabled={processing}
+                                        />
+                                    )}
                                 </Form>
                             ) : null}
                         </div>
