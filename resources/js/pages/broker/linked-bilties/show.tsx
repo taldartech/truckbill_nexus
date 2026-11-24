@@ -1,6 +1,8 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
+import type { FieldReview } from '@/components/form-confirmation/types';
 import { PageShell } from '@/components/page-shell';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { Button } from '@/components/ui/button';
@@ -67,7 +69,7 @@ export default function LinkedBiltyShow({
     group,
     paymentTypeOptions,
     paymentModeOptions,
-    bankCashAccounts: _bankCashAccounts,
+    bankCashAccounts,
     permissions,
     urls,
 }: Props) {
@@ -75,6 +77,12 @@ export default function LinkedBiltyShow({
     const [preview, setPreview] = useState<Preview | null>(null);
     const [previewError, setPreviewError] = useState<string | null>(null);
     const [previewing, setPreviewing] = useState(false);
+    const [paymentMode, setPaymentMode] = useState(
+        paymentModeOptions[0]?.value ?? 'bank',
+    );
+    const paySubmitAllowed = useRef(false);
+    const [payConfirmOpen, setPayConfirmOpen] = useState(false);
+    const [payReviewFields, setPayReviewFields] = useState<FieldReview[]>([]);
 
     const runPreview = useCallback(
         async (form: HTMLFormElement) => {
@@ -215,6 +223,51 @@ export default function LinkedBiltyShow({
                             method="post"
                             id="linked-bilty-pay-form"
                             className="grid gap-4 md:grid-cols-2"
+                            onSubmit={(event) => {
+                                if (!paySubmitAllowed.current) {
+                                    event.preventDefault();
+                                    const data = new FormData(
+                                        event.currentTarget,
+                                    );
+                                    const amountValue = data.get('amount');
+                                    const amount =
+                                        typeof amountValue === 'string'
+                                            ? amountValue
+                                            : '—';
+                                    setPayReviewFields([
+                                        {
+                                            label: 'Group',
+                                            value: group.group_number,
+                                        },
+                                        {
+                                            label: 'Payee',
+                                            value: group.payee_name ?? '—',
+                                        },
+                                        {
+                                            label: 'Payment amount',
+                                            value: amount,
+                                        },
+                                        {
+                                            label: 'Payment mode',
+                                            value:
+                                                paymentModeOptions.find(
+                                                    (option) =>
+                                                        option.value ===
+                                                        paymentMode,
+                                                )?.label ?? paymentMode,
+                                        },
+                                        {
+                                            label: 'Preview lines',
+                                            value: preview
+                                                ? String(preview.lines.length)
+                                                : 'Not previewed',
+                                        },
+                                    ]);
+                                    setPayConfirmOpen(true);
+                                    return;
+                                }
+                                paySubmitAllowed.current = false;
+                            }}
                         >
                             {({ processing, errors }) => (
                                 <>
@@ -276,6 +329,12 @@ export default function LinkedBiltyShow({
                                             id="payment_mode"
                                             name="payment_mode"
                                             required
+                                            value={paymentMode}
+                                            onChange={(event) =>
+                                                setPaymentMode(
+                                                    event.target.value,
+                                                )
+                                            }
                                             className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
                                         >
                                             {paymentModeOptions.map(
@@ -290,6 +349,33 @@ export default function LinkedBiltyShow({
                                             )}
                                         </select>
                                     </div>
+                                    {paymentMode === 'bank' ? (
+                                        <div className="space-y-1 md:col-span-2">
+                                            <Label htmlFor="bank_cash_account_id">
+                                                Bank/Cash account
+                                            </Label>
+                                            <select
+                                                id="bank_cash_account_id"
+                                                name="bank_cash_account_id"
+                                                required
+                                                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                            >
+                                                <option value="">
+                                                    Select account…
+                                                </option>
+                                                {bankCashAccounts.map(
+                                                    (account) => (
+                                                        <option
+                                                            key={account.id}
+                                                            value={account.id}
+                                                        >
+                                                            {account.name}
+                                                        </option>
+                                                    ),
+                                                )}
+                                            </select>
+                                        </div>
+                                    ) : null}
                                     <div className="space-y-1 md:col-span-2">
                                         <Label htmlFor="remark">Remark</Label>
                                         <Input id="remark" name="remark" />
@@ -395,6 +481,25 @@ export default function LinkedBiltyShow({
                     </p>
                 )}
             </PageShell>
+
+            <FormConfirmationDialog
+                open={payConfirmOpen}
+                onOpenChange={setPayConfirmOpen}
+                mode="create"
+                title="Record this Linked Bilty group payment?"
+                description="Review amount, mode, and allocation preview before submitting."
+                fields={payReviewFields}
+                onConfirm={() => {
+                    paySubmitAllowed.current = true;
+                    setPayConfirmOpen(false);
+                    window.setTimeout(() => {
+                        const formElement = document.getElementById(
+                            'linked-bilty-pay-form',
+                        ) as HTMLFormElement | null;
+                        formElement?.requestSubmit();
+                    }, 0);
+                }}
+            />
         </>
     );
 }

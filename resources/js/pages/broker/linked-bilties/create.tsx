@@ -82,6 +82,10 @@ export default function LinkedBiltiesCreate({
                 payees.find((row) => row.id === form.data.payee_party_id)
                     ?.name ?? '—';
             setReviewFields([
+                {
+                    label: 'Group date',
+                    value: form.data.group_date || '—',
+                },
                 { label: 'Vehicle', value: vehicleLabel },
                 { label: 'Payee', value: payeeLabel },
                 { label: 'Bilties selected', value: String(selected.length) },
@@ -92,6 +96,10 @@ export default function LinkedBiltiesCreate({
                 {
                     label: 'Reference',
                     value: form.data.reference || '—',
+                },
+                {
+                    label: 'Remarks',
+                    value: form.data.remarks || '—',
                 },
             ]);
             setConfirmOpen(true);
@@ -136,6 +144,13 @@ export default function LinkedBiltiesCreate({
                                 id="group_date"
                                 name="group_date"
                                 type="date"
+                                value={form.data.group_date}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'group_date',
+                                        event.target.value,
+                                    )
+                                }
                             />
                             {form.errors.group_date && (
                                 <p className="text-xs text-destructive">
@@ -196,15 +211,42 @@ export default function LinkedBiltiesCreate({
                         </div>
                         <div className="space-y-1">
                             <Label htmlFor="driver_name">Driver name</Label>
-                            <Input id="driver_name" name="driver_name" />
+                            <Input
+                                id="driver_name"
+                                name="driver_name"
+                                value={form.data.driver_name}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'driver_name',
+                                        event.target.value,
+                                    )
+                                }
+                            />
                         </div>
                         <div className="space-y-1">
                             <Label htmlFor="reference">Reference</Label>
-                            <Input id="reference" name="reference" />
+                            <Input
+                                id="reference"
+                                name="reference"
+                                value={form.data.reference}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'reference',
+                                        event.target.value,
+                                    )
+                                }
+                            />
                         </div>
                         <div className="space-y-1 md:col-span-2">
                             <Label htmlFor="remarks">Remarks</Label>
-                            <Input id="remarks" name="remarks" />
+                            <Input
+                                id="remarks"
+                                name="remarks"
+                                value={form.data.remarks}
+                                onChange={(event) =>
+                                    form.setData('remarks', event.target.value)
+                                }
+                            />
                         </div>
                     </section>
 

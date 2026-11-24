@@ -429,7 +429,12 @@ export async function createLinkedBiltyGroup(
     ).toBeVisible({ timeout: 15_000 });
 
     await page.locator('#vehicle_id').selectOption(vehicleId);
+    await expect(page).toHaveURL(new RegExp(`vehicle_id=${vehicleId}`), {
+        timeout: 20_000,
+    });
     await page.locator('#group_date').fill(todayIsoDate());
+    await page.locator('#group_date').dispatchEvent('input');
+    await page.locator('#group_date').dispatchEvent('change');
 
     for (const lrNumber of lrNumbers) {
         const row = page.locator('tbody tr').filter({ hasText: lrNumber });
@@ -437,6 +442,9 @@ export async function createLinkedBiltyGroup(
         await row.first().locator('input[type="checkbox"]').check();
     }
 
+    await expect(
+        page.getByRole('button', { name: 'Create linked bilty group' }),
+    ).toBeEnabled({ timeout: 10_000 });
     await page
         .getByRole('button', { name: 'Create linked bilty group' })
         .click();
@@ -467,6 +475,7 @@ export async function recordLinkedBiltyGroupPayment(
     });
 
     await page.getByRole('button', { name: 'Record group payment' }).click();
+    await confirmFormDialog(page);
     await expect(page.getByText(/payment|voucher/i).first()).toBeVisible({
         timeout: 20_000,
     });
