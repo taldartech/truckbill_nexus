@@ -8,6 +8,7 @@ import {
 } from '@/components/data-table';
 import { FormSection } from '@/components/form-section';
 import { PageShell } from '@/components/page-shell';
+import { SearchablePartySelect } from '@/components/searchable-party-select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -46,7 +47,7 @@ type Props = {
         data: InvoiceRow[];
         meta: { total: number };
     };
-    urls: { index: string; create: string };
+    urls: { index: string; create: string; parties_options?: string };
     sampleBanner: string;
 };
 
@@ -186,20 +187,17 @@ export default function CustomerInvoicesIndex({
                             />
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="customer_id">Customer</Label>
-                            <select
+                            <SearchablePartySelect
                                 id="customer_id"
+                                name="customer_id"
+                                label="Customer"
+                                options={customerOptions}
+                                searchUrl={urls.parties_options}
+                                role="customer"
                                 value={customerId}
-                                onChange={(e) => setCustomerId(e.target.value)}
-                                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                            >
-                                <option value="">All customers</option>
-                                {customerOptions.map((c) => (
-                                    <option key={c.id} value={c.id}>
-                                        {c.name}
-                                    </option>
-                                ))}
-                            </select>
+                                onValueChange={setCustomerId}
+                                emptyMessage="No eligible Customers in this branch."
+                            />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="source">Source</Label>

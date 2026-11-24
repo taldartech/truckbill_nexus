@@ -73,6 +73,7 @@ class CustomerInvoiceController extends Controller
             'urls' => [
                 'index' => route('branch.invoices.index', absolute: false),
                 'create' => route('branch.invoices.create', absolute: false),
+                'parties_options' => route('branch.parties.options', absolute: false),
             ],
             'sampleBanner' => 'SAMPLE / NON-PRODUCTION — Not a legally operative tax invoice.',
         ]);
