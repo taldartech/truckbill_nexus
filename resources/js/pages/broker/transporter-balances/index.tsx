@@ -1,7 +1,14 @@
 import { Head, router } from '@inertiajs/react';
+import { Scale } from 'lucide-react';
+import { useMemo } from 'react';
+import {
+    ResponsiveDataTable,
+    type DataTableColumn,
+} from '@/components/data-table';
 import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { MetricCard } from '@/components/ui/metric-card';
 
 type EntryRow = {
     id: string;
@@ -35,15 +42,52 @@ export default function TransporterBalancesIndex({
     entries,
     urls,
 }: Props) {
+    const columns = useMemo<DataTableColumn<EntryRow>[]>(
+        () => [
+            {
+                id: 'created_at',
+                header: 'Date',
+                priority: 0,
+                cell: (row) => row.created_at ?? '—',
+            },
+            {
+                id: 'entry_type',
+                header: 'Type',
+                priority: 1,
+                cell: (row) => row.entry_type,
+            },
+            {
+                id: 'hire_number',
+                header: 'Hire',
+                priority: 2,
+                cell: (row) => row.hire_number ?? '—',
+            },
+            {
+                id: 'amount',
+                header: 'Amount',
+                priority: 2,
+                cell: (row) => row.amount ?? '—',
+            },
+            {
+                id: 'remark',
+                header: 'Remark',
+                priority: 3,
+                className: 'max-w-xs truncate text-muted-foreground',
+                cell: (row) => row.remark ?? '—',
+            },
+        ],
+        [],
+    );
+
     return (
         <>
             <Head title="Transporter Book Balance" />
             <PageShell
                 title="Transporter Book Balance"
-                description="Outstanding balance summary per transporter. Select a transporter to view running balance and ledger entries (voucher adjustments, advances)."
+                description="Outstanding balance summary per transporter. Select a transporter to view running balance and ledger entries."
             >
                 <form
-                    className="flex flex-wrap items-end gap-3"
+                    className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-card p-3 shadow-xs"
                     onSubmit={(event) => {
                         event.preventDefault();
                         const form = event.currentTarget;
@@ -62,7 +106,7 @@ export default function TransporterBalancesIndex({
                         );
                     }}
                 >
-                    <div className="space-y-1">
+                    <div className="min-w-0 flex-1 space-y-1 sm:max-w-xs">
                         <Label htmlFor="transporter_party_id">
                             Transporter
                         </Label>
@@ -70,7 +114,7 @@ export default function TransporterBalancesIndex({
                             id="transporter_party_id"
                             name="transporter_party_id"
                             defaultValue={filters.transporter_party_id}
-                            className="h-9 min-w-[14rem] rounded-md border border-input bg-background px-3 text-sm"
+                            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
                         >
                             <option value="">All transporters</option>
                             {transporters.map((party) => (
@@ -82,70 +126,40 @@ export default function TransporterBalancesIndex({
                     </div>
                     <Button
                         type="submit"
+                        size="sm"
                         className="bg-[#2FB36F] text-white hover:bg-[#279960]"
                     >
                         View statement
                     </Button>
                 </form>
 
-                {running_balance !== null && (
-                    <p className="text-sm font-medium">
-                        Running balance: {running_balance}
-                    </p>
-                )}
+                {running_balance !== null ? (
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                        <MetricCard
+                            label="Running balance"
+                            value={running_balance}
+                            hint="For the selected transporter on this branch"
+                            icon={Scale}
+                            tone="blue"
+                        />
+                    </div>
+                ) : null}
 
-                <div className="overflow-hidden rounded-lg border border-border">
-                    <table className="min-w-full text-sm">
-                        <thead className="bg-muted/40 text-left">
-                            <tr>
-                                <th className="px-4 py-3 font-medium">Date</th>
-                                <th className="px-4 py-3 font-medium">Type</th>
-                                <th className="px-4 py-3 font-medium">Hire</th>
-                                <th className="px-4 py-3 font-medium">
-                                    Amount
-                                </th>
-                                <th className="px-4 py-3 font-medium">
-                                    Remark
-                                </th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {entries.data.length === 0 ? (
-                                <tr>
-                                    <td
-                                        colSpan={5}
-                                        className="px-4 py-8 text-center text-muted-foreground"
-                                    >
-                                        No book balance entries yet.
-                                    </td>
-                                </tr>
-                            ) : (
-                                entries.data.map((row) => (
-                                    <tr
-                                        key={row.id}
-                                        className="border-t border-border"
-                                    >
-                                        <td className="px-4 py-3">
-                                            {row.created_at}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {row.entry_type}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {row.hire_number ?? '—'}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {row.amount ?? '—'}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {row.remark ?? '—'}
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
+                <ResponsiveDataTable
+                    caption="Transporter book balance entries"
+                    columns={columns}
+                    rows={entries.data}
+                    rowKey={(row) => row.id}
+                    emptyTitle="No book balance entries yet"
+                    emptyDescription="Voucher adjustments and advances appear after broker activity."
+                />
+
+                {entries.meta.total > 0 ? (
+                    <p className="text-xs text-muted-foreground">
+                        Page {entries.meta.current_page} of{' '}
+                        {entries.meta.last_page} · {entries.meta.total} total
+                    </p>
+                ) : null}
             </PageShell>
         </>
     );

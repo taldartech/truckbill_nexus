@@ -78,36 +78,42 @@ export default function CustomerInvoicesIndex({
                 id: 'number',
                 header: 'Invoice',
                 priority: 0,
+                className: 'whitespace-nowrap font-medium',
                 cell: (row) => row.invoice_number,
             },
             {
                 id: 'date',
                 header: 'Date',
                 priority: 0,
+                className: 'whitespace-nowrap',
                 cell: (row) => row.invoice_date ?? '—',
             },
             {
                 id: 'customer',
                 header: 'Customer',
                 priority: 1,
+                className: 'max-w-[12rem] truncate',
                 cell: (row) => row.billing_customer_name ?? '—',
             },
             {
                 id: 'source',
                 header: 'Source',
                 priority: 1,
+                className: 'whitespace-nowrap',
                 cell: (row) => row.source_label,
             },
             {
                 id: 'lrs',
                 header: 'LR refs',
                 priority: 2,
+                className: 'max-w-[14rem] truncate',
                 cell: (row) => row.lr_numbers.join(', ') || '—',
             },
             {
                 id: 'total',
                 header: 'Total',
                 priority: 2,
+                className: 'whitespace-nowrap tabular-nums',
                 cell: (row) =>
                     permissions.can_view_freight
                         ? `₹${row.invoice_total}`
@@ -117,6 +123,7 @@ export default function CustomerInvoicesIndex({
                 id: 'balance',
                 header: 'Balance',
                 priority: 2,
+                className: 'whitespace-nowrap tabular-nums',
                 cell: (row) =>
                     permissions.can_view_freight ? `₹${row.balance_due}` : '—',
             },
@@ -124,6 +131,7 @@ export default function CustomerInvoicesIndex({
                 id: 'status',
                 header: 'Status',
                 priority: 3,
+                className: 'whitespace-nowrap capitalize',
                 cell: (row) => `${row.invoice_status} / ${row.payment_status}`,
             },
         ],

@@ -1,72 +1,72 @@
-# Portal Redesign — Screen Matrix (Batches E–H)
+# Portal Redesign — Screen Matrix (Batches E–J)
 
 **Date:** 24 November 2026  
 **Baseline parent:** ~`ee5ffd2` (Batches A–D)  
-**Status key:** **Fixed** = icon actions + density/copy remediated in this pass; **Partial** = list actions fixed, forms/detail polish deferred; **Open** = not audited or deferred to Batch I–J.
+**Status key:** **Fixed** = icon actions + density/copy remediated; **Partial** = list actions fixed, form polish deferred; **Open** = none remaining for this directive.
 
 ## Owner Portal
 
-| Screen                           | Route (typical)             | Batch E status | Notes                                   |
-| -------------------------------- | --------------------------- | -------------- | --------------------------------------- |
-| Home / dashboard                 | `/owner`                    | Fixed          | Link-style CTAs → buttons; tighter grid |
-| Company dashboard                | `/owner/companies/{id}`     | Fixed          | Removed raw `ownerPanelScope` copy      |
-| Users (company)                  | `.../users`                 | Fixed          | `AppIconAction` view; compact filters   |
-| Users (global)                   | `/owner/users`              | Fixed (A–D)    | Prior batch                             |
-| User show                        | `.../users/{id}`            | Partial        | No table actions; layout OK             |
-| Branches (company)               | `.../branches`              | Fixed          | Manage icon; compact filters            |
-| Branches (global)                | `/owner/branches`           | Fixed (A–D)    | Prior batch                             |
-| Companies index                  | `/owner/companies`          | Fixed (A–D)    | Prior batch                             |
-| Company audit                    | `.../audit`                 | Fixed          | `FormSection` filters                   |
-| Global audit                     | `/owner/audit`              | Fixed (A–D)    | Prior batch                             |
-| Subscription invoices            | `.../subscription/invoices` | Fixed          | Preview / download / email icons        |
-| Subscription overview & checkout | `.../subscription/*`        | Open           | Batch I visual cert                     |
-| Settings / drafts                | `.../settings`, drafts      | Open           | Low traffic                             |
+| Screen                           | Route (typical)             | Status  | Notes                                   |
+| -------------------------------- | --------------------------- | ------- | --------------------------------------- |
+| Home / dashboard                 | `/owner`                    | Fixed   | Link-style CTAs → buttons; tighter grid |
+| Company dashboard                | `/owner/companies/{id}`     | Fixed   | Removed raw `ownerPanelScope` copy      |
+| Users (company)                  | `.../users`                 | Fixed   | `AppIconAction` view; compact filters   |
+| Users (global)                   | `/owner/users`              | Fixed   | Icon manage                             |
+| User show                        | `.../users/{id}`            | Partial | Detail layout OK; text CTAs acceptable  |
+| Branches (company)               | `.../branches`              | Fixed   | Manage icon; compact filters            |
+| Branches (global)                | `/owner/branches`           | Fixed   | Enter Branch Panel fixture hardened     |
+| Companies index                  | `/owner/companies`          | Fixed   | Semantic action colours                 |
+| Company audit                    | `.../audit`                 | Fixed   | Compact filters                         |
+| Global audit                     | `/owner/audit`              | Fixed   | Icon company audit                      |
+| Subscription invoices            | `.../subscription/invoices` | Fixed   | Preview / download / email icons        |
+| Subscription overview & checkout | `.../subscription/*`        | Fixed   | Density on overview (Batch I)           |
+| Settings                         | `.../settings`              | Partial | FormSection 2-col; not icon-table work  |
 
 ## Internal (Admin) Portal
 
-| Screen                     | Route                          | Batch F status | Notes                               |
-| -------------------------- | ------------------------------ | -------------- | ----------------------------------- |
-| CRM dashboard              | `/admin/crm`                   | Fixed          | View-all link → button              |
-| CRM leads index            | `/admin/crm/leads`             | Fixed (A–D)    | Prior batch                         |
-| CRM tickets                | `/admin/crm/tickets`           | Fixed (A–D)    | Prior batch                         |
-| Companies / identities     | `/admin/companies`, identities | Partial        | Identity show company rows iconized |
-| Internal users             | `/admin/internal-users`        | Fixed (A–D)    | Prior batch                         |
-| GST / TDS rules            | `/admin/tds-rules`             | Fixed (A–D)    | Prior batch                         |
-| Subscription invoices (SA) | `/admin/subscription-invoices` | Open           | Batch I                             |
+| Screen                     | Route                          | Status  | Notes                               |
+| -------------------------- | ------------------------------ | ------- | ----------------------------------- |
+| CRM dashboard              | `/admin/crm`                   | Fixed   | View-all → button                   |
+| CRM leads index            | `/admin/crm/leads`             | Fixed   |                                     |
+| CRM tickets                | `/admin/crm/tickets`           | Fixed   |                                     |
+| Companies / identities     | `/admin/companies`, identities | Partial | Identity show company rows iconized |
+| Internal users             | `/admin/internal-users`        | Fixed   |                                     |
+| GST / TDS rules            | `/admin/tds-rules`             | Fixed   |                                     |
+| Subscription invoices (SA) | `/admin/subscription-invoices` | Fixed   | Approve icon action (Batch I)       |
 
 ## Branch / OwnFleet
 
-| Screen                        | Route                    | Batch G status | Notes                                 |
-| ----------------------------- | ------------------------ | -------------- | ------------------------------------- |
-| LR index / show               | `/lorry-receipts`        | Fixed          | Service labels; row `Eye` actions     |
-| Enquiries                     | `/enquiries`             | Fixed (A–D)    | Prior batch                           |
-| Parties / vehicles / stations | `/parties`, etc.         | Fixed          | Row icons; primary cell non-underline |
-| Bank-cash                     | `/bank-cash`             | Fixed          | Added view actions                    |
-| OwnFleet trips                | `/trips`                 | Fixed          | Actions column                        |
-| Trip invoices (legacy list)   | `/trip-invoices`         | Fixed          | Open → icon                           |
-| Unified invoices / payments   | `/invoices`, `/payments` | Fixed (A–D)    | Prior batch                           |
-| Trip / LR forms               | create-edit              | Partial        | Multi-column polish deferred          |
+| Screen                        | Route                    | Status  | Notes                             |
+| ----------------------------- | ------------------------ | ------- | --------------------------------- |
+| LR index / show               | `/lorry-receipts`        | Fixed   | Service labels; row `Eye` actions |
+| Enquiries                     | `/enquiries`             | Fixed   |                                   |
+| Parties / vehicles / stations | `/parties`, etc.         | Fixed   | Row icons                         |
+| Bank-cash                     | `/bank-cash`             | Fixed   |                                   |
+| OwnFleet trips                | `/trips`                 | Fixed   |                                   |
+| Trip invoices (legacy list)   | `/trip-invoices`         | Fixed   | Redirects into unified workspace  |
+| Unified invoices / payments   | `/invoices`, `/payments` | Fixed   | OwnFleet+Broker list evidenced    |
+| Six supporting masters        | `/goods-types`…          | Fixed   | Separate routes                   |
+| Partload create               | LR create partload       | Fixed   | No Workflow field                 |
+| Trip / LR forms               | create-edit              | Partial | Multi-column polish deferred      |
 
 ## Broker
 
-| Screen                   | Route                          | Batch H status | Notes                   |
-| ------------------------ | ------------------------------ | -------------- | ----------------------- |
-| Lorry hires index / show | `/broker/lorry-hires`          | Fixed          | Icons; detail tab links |
-| Vouchers index / show    | `/broker/vouchers`             | Fixed          |                         |
-| Daily payments           | `/broker/daily-payments`       | Fixed          |                         |
-| Customer invoices        | `/broker/invoices`             | Fixed          | Actions column          |
-| Linked bilties           | `/broker/linked-bilties`       | Fixed          |                         |
-| Registers                | `/broker/registers`            | Open           | Read-only; Batch I      |
-| Transporter balances     | `/broker/transporter-balances` | Open           | Batch I                 |
+| Screen                   | Route                          | Status | Notes                    |
+| ------------------------ | ------------------------------ | ------ | ------------------------ |
+| Lorry hires index / show | `/broker/lorry-hires`          | Fixed  | Icons; detail tab links  |
+| Vouchers index / show    | `/broker/vouchers`             | Fixed  |                          |
+| Daily payments           | `/broker/daily-payments`       | Fixed  |                          |
+| Customer invoices        | `/broker/invoices`             | Fixed  | Redirects to unified     |
+| Linked bilties           | `/broker/linked-bilties`       | Fixed  |                          |
+| Registers                | `/broker/registers`            | Fixed  | AppIconAction open tiles |
+| Transporter balances     | `/broker/transporter-balances` | Fixed  | ResponsiveDataTable      |
 
-## Summary counts (this remediation pass)
+## Summary counts
 
-| Portal    | Fixed  | Partial | Open  |
-| --------- | ------ | ------- | ----- |
-| Owner     | 9      | 2       | 3     |
-| Internal  | 1      | 2       | 1     |
-| Branch    | 8      | 1       | 0     |
-| Broker    | 6      | 0       | 2     |
-| **Total** | **24** | **5**   | **6** |
-
-Batch I–J: Playwright visual certification (`PORTAL_PLAYWRIGHT_VISUAL_CERTIFICATION.md`), remaining Open rows, and final PO sign-off.
+| Portal    |  Fixed | Partial |  Open |
+| --------- | -----: | ------: | ----: |
+| Owner     |     11 |       2 |     0 |
+| Internal  |      6 |       1 |     0 |
+| Branch    |      9 |       1 |     0 |
+| Broker    |      7 |       0 |     0 |
+| **Total** | **33** |   **4** | **0** |

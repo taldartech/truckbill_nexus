@@ -156,12 +156,12 @@ export default function SubscriptionOverview({
                         <span className="rounded-md border border-border px-2 py-0.5 text-xs">
                             {lifecycle.status.replaceAll('_', ' ')}
                         </span>
-                        <Button asChild variant="outline">
+                        <Button asChild variant="outline" size="sm">
                             <Link href="/management/subscriptions">
                                 Back to Subscriptions
                             </Link>
                         </Button>
-                        <Button asChild variant="outline">
+                        <Button asChild variant="outline" size="sm">
                             <Link href="/management/companies">
                                 View Company
                             </Link>
@@ -190,11 +190,11 @@ export default function SubscriptionOverview({
                         {errors.checkout}
                     </p>
                 ) : null}
-                <section className="space-y-3 rounded-xl border border-border p-4">
-                    <h2 className="font-semibold">Main actions</h2>
+                <section className="space-y-2 rounded-xl border border-border bg-card p-3 shadow-xs">
+                    <h2 className="text-sm font-semibold">Main actions</h2>
                     <div className="flex flex-wrap gap-2">
                         {canManage ? (
-                            <Button asChild>
+                            <Button asChild size="sm">
                                 <Link href={links.drafts}>
                                     {subscription
                                         ? 'Add Module / Upgrade'
@@ -203,7 +203,7 @@ export default function SubscriptionOverview({
                             </Button>
                         ) : null}
                         {canManage && links.checkout ? (
-                            <Button asChild>
+                            <Button asChild size="sm">
                                 <Link href={links.checkout}>
                                     Pay / activate (Test Mode)
                                 </Link>
@@ -222,37 +222,39 @@ export default function SubscriptionOverview({
                                     name="subscription_id"
                                     value={subscription.id}
                                 />
-                                <Button type="submit">Renew</Button>
+                                <Button type="submit" size="sm">
+                                    Renew
+                                </Button>
                             </Form>
                         ) : null}
-                        <Button asChild variant="outline">
+                        <Button asChild variant="outline" size="sm">
                             <Link href={links.catalogue}>
                                 Catalogue & pricing
                             </Link>
                         </Button>
-                        <Button asChild variant="outline">
+                        <Button asChild variant="outline" size="sm">
                             <Link href={links.invoices}>View Invoices</Link>
                         </Button>
-                        <Button asChild variant="outline">
+                        <Button asChild variant="outline" size="sm">
                             <Link href={links.payments}>Payment History</Link>
                         </Button>
-                        <Button asChild variant="outline">
+                        <Button asChild variant="outline" size="sm">
                             <Link href={links.credits}>Credits & quotas</Link>
                         </Button>
-                        <Button asChild variant="ghost">
+                        <Button asChild variant="ghost" size="sm">
                             <Link href={links.drafts}>Draft contracts</Link>
                         </Button>
                     </div>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                         {entitlement_note}
                     </p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-xs text-muted-foreground">
                         {payment_gate_note}
                     </p>
                     {catalogue ? (
                         <p className="text-xs text-muted-foreground">
                             Active catalogue: {catalogue.name} ({catalogue.code}
-                            ) · Scope: {ownerPanelScope}
+                            )
                         </p>
                     ) : (
                         <p className="text-sm text-muted-foreground">
@@ -268,10 +270,12 @@ export default function SubscriptionOverview({
                         {lifecycle.restriction_reason}
                     </p>
                 ) : null}
-                <section className="grid gap-4 rounded-xl border border-border p-4 md:grid-cols-3">
+                <section className="grid gap-3 rounded-xl border border-border bg-card p-3 shadow-xs md:grid-cols-3">
                     <div>
-                        <h2 className="font-semibold">Current subscription</h2>
-                        <dl className="mt-3 space-y-2 text-sm">
+                        <h2 className="text-sm font-semibold">
+                            Current subscription
+                        </h2>
+                        <dl className="mt-2 space-y-1.5 text-sm">
                             <div className="flex justify-between gap-4">
                                 <dt className="text-muted-foreground">
                                     Status
@@ -309,8 +313,8 @@ export default function SubscriptionOverview({
                         </dl>
                     </div>
                     <div>
-                        <h2 className="font-semibold">Capacity</h2>
-                        <dl className="mt-3 space-y-2 text-sm">
+                        <h2 className="text-sm font-semibold">Capacity</h2>
+                        <dl className="mt-2 space-y-1.5 text-sm">
                             <div className="flex justify-between gap-4">
                                 <dt className="text-muted-foreground">
                                     Branches (used / included + purchased)
@@ -354,8 +358,8 @@ export default function SubscriptionOverview({
                         </dl>
                     </div>
                     <div>
-                        <h2 className="font-semibold">Storage</h2>
-                        <dl className="mt-3 space-y-2 text-sm">
+                        <h2 className="text-sm font-semibold">Storage</h2>
+                        <dl className="mt-2 space-y-1.5 text-sm">
                             <div className="flex justify-between gap-4">
                                 <dt className="text-muted-foreground">
                                     Used / allocated
@@ -393,8 +397,8 @@ export default function SubscriptionOverview({
                         </dl>
                     </div>
                 </section>
-                <section className="space-y-3 rounded-xl border border-border p-4">
-                    <h2 className="font-semibold">
+                <section className="space-y-2 rounded-xl border border-border bg-card p-3 shadow-xs">
+                    <h2 className="text-sm font-semibold">
                         Quotas (Broker / Partload)
                     </h2>
                     {quotas.length === 0 ? (
@@ -614,11 +618,11 @@ export default function SubscriptionOverview({
                             No credit ledgers yet.
                         </p>
                     ) : (
-                        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                             {credit_summary.map((ledger) => (
                                 <li
                                     key={`${ledger.ledger_type}-${ledger.unit}`}
-                                    className="rounded-xl border border-border p-3"
+                                    className="rounded-lg border border-border bg-card p-2.5 shadow-xs"
                                 >
                                     <p className="text-sm text-muted-foreground">
                                         {ledger.unit}

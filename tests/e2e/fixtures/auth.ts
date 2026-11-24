@@ -16,7 +16,7 @@ export async function loginAs(
 
 export function demoCredentials(): { email: string; password: string } {
     return {
-        email: process.env.E2E_USER_EMAIL ?? 'owner@demo.truckbill.local',
+        email: process.env.E2E_USER_EMAIL ?? 'owner.alpha@demo.test',
         password:
             process.env.E2E_USER_PASSWORD ??
             process.env.LOCAL_DEMO_PASSWORD ??

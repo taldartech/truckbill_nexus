@@ -435,24 +435,6 @@ class TripInvoiceController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function presentInvoiceRow(TripInvoice $invoice, bool $maySeeFreight): array
-    {
-        return [
-            'id' => $invoice->id,
-            'invoice_number' => $invoice->invoice_number,
-            'invoice_date' => $invoice->invoice_date->format('d-m-Y'),
-            'billing_customer_name' => $invoice->billingCustomer?->name,
-            'invoice_type' => $invoice->invoice_type->value,
-            'status' => $invoice->status->value,
-            'payment_status' => $invoice->payment_status->value,
-            'invoice_total' => $this->freightPresentation->presentAmount($invoice->invoice_total, $maySeeFreight),
-            'balance_due' => $this->freightPresentation->presentAmount($invoice->balance_due, $maySeeFreight),
-        ];
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
     private function presentInvoiceDetail(TripInvoice $invoice, bool $maySeeFreight): array
     {
         $payload = [

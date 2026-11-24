@@ -1,7 +1,17 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
+import type { LucideIcon } from 'lucide-react';
+import {
+    ClipboardList,
+    FileText,
+    Link2,
+    Receipt,
+    Scale,
+    Truck,
+    Wallet,
+} from 'lucide-react';
+import { AppIconAction } from '@/components/app-icon-action';
 import { PageShell } from '@/components/page-shell';
 import { MetricCard } from '@/components/ui/metric-card';
-import { ClipboardList } from 'lucide-react';
 
 type RegisterLink = {
     key: string;
@@ -23,6 +33,17 @@ type Props = {
     urls: { index: string };
 };
 
+const registerIcons: Record<string, LucideIcon> = {
+    lorry_hires: Truck,
+    vouchers_pending: Wallet,
+    vouchers_all: FileText,
+    memo_pod: ClipboardList,
+    customer_invoices: Receipt,
+    daily_payments: Wallet,
+    transporter_balances: Scale,
+    linked_bilty: Link2,
+};
+
 export default function BrokerRegistersIndex({ counts, registers }: Props) {
     const totalSignals =
         (counts.pending_lorry_hires ?? 0) +
@@ -36,7 +57,7 @@ export default function BrokerRegistersIndex({ counts, registers }: Props) {
                 title="Broker operational registers"
                 description="Read-focused shortcuts into existing Broker list screens. Use filters on each register for pending queues."
             >
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <MetricCard
                         label="Open operational signals"
                         value={totalSignals}
@@ -46,29 +67,40 @@ export default function BrokerRegistersIndex({ counts, registers }: Props) {
                     />
                 </div>
 
-                <ul className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {registers.map((register) => (
-                        <li key={register.key}>
-                            <Link
-                                href={register.href}
-                                className="flex h-full flex-col gap-2 rounded-xl border border-border bg-card px-4 py-4 shadow-xs transition-colors hover:border-primary/40 hover:bg-muted/30"
+                <ul className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                    {registers.map((register) => {
+                        const Icon =
+                            registerIcons[register.key] ?? ClipboardList;
+
+                        return (
+                            <li
+                                key={register.key}
+                                className="flex items-start gap-2 rounded-xl border border-border bg-card px-3 py-3 shadow-xs"
                             >
-                                <div className="flex items-start justify-between gap-2">
-                                    <span className="text-sm font-semibold text-foreground">
-                                        {register.title}
-                                    </span>
-                                    {register.count !== null ? (
-                                        <span className="rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-foreground">
-                                            {register.count}
+                                <div className="min-w-0 flex-1 space-y-1">
+                                    <div className="flex items-start justify-between gap-2">
+                                        <span className="text-sm font-semibold text-foreground">
+                                            {register.title}
                                         </span>
-                                    ) : null}
+                                        {register.count !== null ? (
+                                            <span className="shrink-0 rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-foreground">
+                                                {register.count}
+                                            </span>
+                                        ) : null}
+                                    </div>
+                                    <p className="text-xs text-muted-foreground">
+                                        {register.description}
+                                    </p>
                                 </div>
-                                <span className="text-xs text-muted-foreground">
-                                    {register.description}
-                                </span>
-                            </Link>
-                        </li>
-                    ))}
+                                <AppIconAction
+                                    icon={Icon}
+                                    label={`Open ${register.title}`}
+                                    href={register.href}
+                                    variant="info"
+                                />
+                            </li>
+                        );
+                    })}
                 </ul>
             </PageShell>
         </>

@@ -1,5 +1,7 @@
 import { Form, Head, usePage } from '@inertiajs/react';
+import { Check } from 'lucide-react';
 import { useMemo } from 'react';
+import { AppIconAction } from '@/components/app-icon-action';
 import {
     PortalErrorList,
     PortalFlashBanner,
@@ -9,7 +11,6 @@ import {
     type DataTableColumn,
 } from '@/components/data-table';
 import { PageShell } from '@/components/page-shell';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 
@@ -105,13 +106,13 @@ export default function AdminSubscriptionInvoices({
                                     aria-label={`Approved number for ${invoice.company_name || invoice.id}`}
                                     className="h-8 max-w-[9rem] font-mono text-xs"
                                 />
-                                <Button
+                                <AppIconAction
+                                    icon={Check}
+                                    label="Approve invoice number"
                                     type="submit"
-                                    size="sm"
                                     variant="default"
-                                >
-                                    Approve
-                                </Button>
+                                    size="sm"
+                                />
                             </Form>
                         )}
                     />

@@ -6,7 +6,6 @@ use App\Domains\Broker\Exceptions\BrokerAuthorizationException;
 use App\Domains\Broker\Exceptions\BrokerConflictException;
 use App\Domains\Broker\Exceptions\BrokerDomainException;
 use App\Domains\Broker\Invoice\BrokerInvoiceService;
-use App\Domains\Broker\Invoice\Enums\BrokerInvoicePaymentStatus;
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Rbac\PermissionAuthorizer;
@@ -224,26 +223,6 @@ class BrokerInvoiceController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function listPayload(BrokerInvoice $invoice, bool $maySeeFreight): array
-    {
-        return [
-            'id' => $invoice->id,
-            'invoice_number' => $invoice->invoice_number,
-            'status' => $invoice->status->value,
-            'payment_status' => $invoice->payment_status->value,
-            'invoice_date' => $invoice->invoice_date?->format('d-m-Y'),
-            'billing_customer_name' => $invoice->billingCustomer?->name,
-            'invoice_total' => $this->freightPresentation->presentAmount($invoice->invoice_total, $maySeeFreight),
-            'balance_due' => $this->freightPresentation->presentAmount($invoice->balance_due, $maySeeFreight),
-            'urls' => [
-                'show' => route('branch.broker.invoices.show', [$invoice], absolute: false),
-            ],
-        ];
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
     private function eligiblePayload(LorryReceipt $lr, bool $maySeeFreight): array
     {
         return [
@@ -322,19 +301,6 @@ class BrokerInvoiceController extends Controller
                 && $invoice->status->value !== 'cancelled'
                 && ($isOwner || $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_INVOICE_CREATE, $company, $branch)),
             'can_view_freight' => $maySeeFreight,
-        ];
-    }
-
-    /**
-     * @return list<array{value: string, label: string}>
-     */
-    private function paymentStatusOptions(): array
-    {
-        return [
-            ['value' => '', 'label' => 'All'],
-            ['value' => BrokerInvoicePaymentStatus::Unpaid->value, 'label' => 'Unpaid'],
-            ['value' => BrokerInvoicePaymentStatus::Partial->value, 'label' => 'Partial'],
-            ['value' => BrokerInvoicePaymentStatus::Paid->value, 'label' => 'Paid'],
         ];
     }
 
