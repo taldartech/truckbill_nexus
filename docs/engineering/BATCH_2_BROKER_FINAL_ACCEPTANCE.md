@@ -3,7 +3,7 @@
 **Status:** IN PROGRESS — not ready for Product Owner acceptance  
 **Date:** 24 November 2026  
 **Baseline:** `d359256ea860a5a6526b98d718eeee699d552342`  
-**Local tip:** `6553caf` (see `git log`)
+**Local tip:** `f216703` (see `git log`)
 
 ## Verdict (interim)
 
@@ -40,13 +40,14 @@
 3. `b86b721` — Book Balance remote transporter selector
 4. `8f37c5a` — Memory / gap register refresh
 5. `6553caf` — unified invoice index customer search
+6. `f216703` — interim acceptance documentation
 
 ## D. Evidence to date
 
-- Pest: Party options suite + Broker filter **128 passed**
+- Pest (PostgreSQL): Party options suite + Broker filter **128 passed**
+- Pest (MySQL 8.4 Docker `:3307`): `PartyOptionsEndpointTest` **6/6 passed**
 - Playwright: enquiry selector, bilty/hire UI, complete Broker spine, linked bilty payment — **passed**
 - PHPStan / `npm run check` — passed on committed tip
-- MySQL party suite — pending this interim note
 
 ## E. Batch 3 readiness
 
