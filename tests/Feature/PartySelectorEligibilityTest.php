@@ -9,6 +9,7 @@ use App\Models\PartyRole;
 use App\Support\Tenant\TenantContextHolder;
 use Database\Seeders\RbacSeeder;
 use Database\Seeders\SubscriptionCatalogueSeeder;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Support\Facades\Cache;
 
 require_once __DIR__.'/../Support/OwnFleetTripHelpers.php';
@@ -19,6 +20,7 @@ beforeEach(function () {
     Cache::flush();
     (new RbacSeeder)->run();
     (new SubscriptionCatalogueSeeder)->run();
+    $this->withoutMiddleware(PreventRequestForgery::class);
 });
 
 afterEach(function () {

@@ -1,10 +1,13 @@
 import { Form, Head, usePage } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { AppIconAction } from '@/components/app-icon-action';
 import { DetailTabPanel, DetailTabs } from '@/components/detail-tabs';
+import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
+import type { ChangeReview } from '@/components/form-confirmation/types';
 import { FormSection } from '@/components/form-section';
 import { PageShell } from '@/components/page-shell';
+import { SearchablePartySelect } from '@/components/searchable-party-select';
 import {
     WorkflowProgress,
     type WorkflowStep,
@@ -34,6 +37,8 @@ type Props = {
         status: string;
         source: string;
         branch_id: string | null;
+        customer_party_id: string | null;
+        customer_name: string | null;
         pickup_location: string;
         delivery_location: string;
         vehicle_quantity: number;
@@ -81,6 +86,7 @@ type Props = {
             lorry_receipt_ids: string[];
         } | null;
     };
+    customers?: { id: string; name: string }[];
     branches: { id: string; name: string }[];
     assignable_users: { id: number; name: string; email: string | null }[];
     transporters: { id: string; name: string }[];
@@ -103,11 +109,14 @@ type Props = {
     capabilities: { assign: boolean; edit: boolean; convert: boolean };
     urls: {
         index: string;
+        update?: string;
         assign: string;
         follow_up: string;
         quotation_store: string;
         broadcast: string;
         convert: string;
+        parties_create?: string;
+        parties_options?: string;
     };
 };
 
@@ -179,6 +188,7 @@ export default function BranchEnquiryShow({
     company,
     branch,
     enquiry,
+    customers = [],
     branches,
     assignable_users,
     transporters,
@@ -194,6 +204,12 @@ export default function BranchEnquiryShow({
 
     const [showConvert, setShowConvert] = useState(false);
     const [tab, setTab] = useState('overview');
+    const [customerPartyId, setCustomerPartyId] = useState(
+        enquiry.customer_party_id ?? '',
+    );
+    const [editConfirmOpen, setEditConfirmOpen] = useState(false);
+    const [editChanges, setEditChanges] = useState<ChangeReview[]>([]);
+    const editSubmitAllowed = useRef(false);
     const vehicleId = vehicles[0]?.id ?? '';
     const suggestedVehicles = useMemo(
         () => conversion_preview?.suggested_vehicles ?? [],
@@ -201,6 +217,60 @@ export default function BranchEnquiryShow({
     );
 
     const broadcastTargets = transporters.slice(0, 3).map((t) => t.id);
+
+    const openEditConfirmation = (form: HTMLFormElement) => {
+        const data = new FormData(form);
+        const formText = (key: string): string => {
+            const value = data.get(key);
+            return typeof value === 'string' ? value.trim() : '';
+        };
+        const customerName =
+            customers.find((option) => option.id === customerPartyId)?.name ??
+            (
+                form.querySelector(
+                    '#customer_party_id',
+                ) as HTMLSelectElement | null
+            )?.selectedOptions?.[0]?.text?.trim() ??
+            enquiry.customer_name ??
+            '—';
+        const pickup = formText('pickup_location');
+        const delivery = formText('delivery_location');
+        const remark = formText('remark');
+
+        const changes: ChangeReview[] = [];
+        if ((enquiry.customer_party_id ?? '') !== customerPartyId) {
+            changes.push({
+                label: 'Customer',
+                previous: enquiry.customer_name ?? '—',
+                next: customerName || '—',
+                changeType: 'modified',
+            });
+        }
+        if (pickup !== enquiry.pickup_location) {
+            changes.push({
+                label: 'Pickup',
+                previous: enquiry.pickup_location,
+                next: pickup || '—',
+                changeType: 'modified',
+            });
+        }
+        if (delivery !== enquiry.delivery_location) {
+            changes.push({
+                label: 'Delivery',
+                previous: enquiry.delivery_location,
+                next: delivery || '—',
+                changeType: 'modified',
+            });
+        }
+        changes.push({
+            label: 'Audit remark',
+            previous: '—',
+            next: remark || '—',
+            changeType: 'added',
+        });
+        setEditChanges(changes);
+        setEditConfirmOpen(true);
+    };
 
     const openFollowUps = enquiry.follow_ups.filter(
         (row) => !row.completed_at,
@@ -316,6 +386,14 @@ export default function BranchEnquiryShow({
                         <FormSection title="Route & instructions" columns={2}>
                             <div className="space-y-1">
                                 <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                                    Customer
+                                </p>
+                                <p className="text-sm font-medium">
+                                    {enquiry.customer_name ?? '—'}
+                                </p>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                                     Pickup
                                 </p>
                                 <p className="text-sm font-medium">
@@ -341,6 +419,84 @@ export default function BranchEnquiryShow({
                                 </div>
                             ) : null}
                         </FormSection>
+
+                        {capabilities.edit && urls.update ? (
+                            <FormSection title="Edit enquiry" columns={2}>
+                                <Form
+                                    id="enquiry-edit-form"
+                                    action={urls.update}
+                                    method="patch"
+                                    className="space-y-3 md:col-span-2"
+                                    onSubmit={(event) => {
+                                        if (!editSubmitAllowed.current) {
+                                            event.preventDefault();
+                                            openEditConfirmation(
+                                                event.currentTarget,
+                                            );
+                                        } else {
+                                            editSubmitAllowed.current = false;
+                                        }
+                                    }}
+                                >
+                                    <SearchablePartySelect
+                                        id="customer_party_id"
+                                        name="customer_party_id"
+                                        label="Customer"
+                                        options={customers}
+                                        searchUrl={urls.parties_options}
+                                        role="customer"
+                                        createHref={urls.parties_create}
+                                        createLabel="Create Customer"
+                                        required
+                                        defaultValue={
+                                            enquiry.customer_party_id ?? ''
+                                        }
+                                        onValueChange={setCustomerPartyId}
+                                        emptyMessage="No eligible Customers in this branch."
+                                    />
+                                    <div className="grid gap-3 md:grid-cols-2">
+                                        <div className="space-y-1">
+                                            <Label htmlFor="pickup_location">
+                                                Pickup
+                                            </Label>
+                                            <Input
+                                                id="pickup_location"
+                                                name="pickup_location"
+                                                defaultValue={
+                                                    enquiry.pickup_location
+                                                }
+                                                required
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label htmlFor="delivery_location">
+                                                Delivery
+                                            </Label>
+                                            <Input
+                                                id="delivery_location"
+                                                name="delivery_location"
+                                                defaultValue={
+                                                    enquiry.delivery_location
+                                                }
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label htmlFor="edit_remark">
+                                            Audit remark
+                                        </Label>
+                                        <Input
+                                            id="edit_remark"
+                                            name="remark"
+                                            required
+                                            placeholder="Why is this enquiry changing?"
+                                        />
+                                    </div>
+                                    <Button type="submit">Save changes</Button>
+                                </Form>
+                            </FormSection>
+                        ) : null}
 
                         <FormSection title="Goods" columns={2}>
                             <ul className="space-y-2 text-sm md:col-span-2">
@@ -561,25 +717,18 @@ export default function BranchEnquiryShow({
                                         className="grid gap-3 md:col-span-3 md:grid-cols-3"
                                     >
                                         <div className="space-y-1 md:col-span-1">
-                                            <Label htmlFor="transporter_party_id">
-                                                Transporter
-                                            </Label>
-                                            <select
+                                            <SearchablePartySelect
                                                 id="transporter_party_id"
                                                 name="transporter_party_id"
-                                                className={fieldClass}
+                                                label="Transporter"
+                                                options={transporters}
+                                                searchUrl={urls.parties_options}
+                                                role="transporter"
+                                                createHref={urls.parties_create}
+                                                createLabel="Create Transporter"
                                                 required
-                                            >
-                                                <option value="">Select</option>
-                                                {transporters.map((t) => (
-                                                    <option
-                                                        key={t.id}
-                                                        value={t.id}
-                                                    >
-                                                        {t.name}
-                                                    </option>
-                                                ))}
-                                            </select>
+                                                emptyMessage="No eligible Transporters in this branch."
+                                            />
                                         </div>
                                         <div className="space-y-1">
                                             <Label htmlFor="quoted_freight">
@@ -857,6 +1006,25 @@ export default function BranchEnquiryShow({
                     </DetailTabPanel>
                 </DetailTabs>
             </PageShell>
+
+            <FormConfirmationDialog
+                open={editConfirmOpen}
+                onOpenChange={setEditConfirmOpen}
+                mode="edit"
+                title="Update this enquiry?"
+                description="Review changed fields and the mandatory audit remark before saving."
+                changes={editChanges}
+                onConfirm={() => {
+                    editSubmitAllowed.current = true;
+                    setEditConfirmOpen(false);
+                    window.setTimeout(() => {
+                        const formElement = document.getElementById(
+                            'enquiry-edit-form',
+                        ) as HTMLFormElement | null;
+                        formElement?.requestSubmit();
+                    }, 0);
+                }}
+            />
         </>
     );
 }

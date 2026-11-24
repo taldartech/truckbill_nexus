@@ -284,6 +284,9 @@ class LorryHireController extends Controller
                 'lr_show' => route('branch.lorry-receipts.show', [$lorryHire->lorry_receipt_id], absolute: false),
                 'adjustment_store' => route('branch.broker.lorry-hires.adjustments.store', [$lorryHire], absolute: false),
                 'deliveries' => route('branch.broker.deliveries.index', absolute: false),
+                'voucher_create' => route('branch.broker.vouchers.create', [
+                    'lorry_hire_id' => $lorryHire->id,
+                ], absolute: false),
                 'cancel' => $canCancel
                     ? route('branch.broker.lorry-hires.cancel', [$lorryHire], absolute: false)
                     : null,

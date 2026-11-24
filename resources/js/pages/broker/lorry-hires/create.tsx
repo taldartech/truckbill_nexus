@@ -493,6 +493,18 @@ export default function LorryHireCreate({
                                         onValueChange={setTransporterPartyId}
                                         emptyMessage="No active transporters are available. Add a transporter party before creating a Lorry Hire."
                                     />
+                                    {payee?.role_label ? (
+                                        <p className="text-xs">
+                                            <span className="rounded-md border border-border bg-muted/40 px-2 py-0.5 font-medium text-foreground">
+                                                {payee.role_label}
+                                            </span>
+                                            <span className="ml-2 text-muted-foreground">
+                                                Suggested classification from
+                                                linked Bilty vehicle owner
+                                                context
+                                            </span>
+                                        </p>
+                                    ) : null}
                                     {payee?.pan_status_label ? (
                                         <p className="text-xs text-muted-foreground">
                                             Suggested payee PAN status:{' '}
@@ -911,6 +923,17 @@ function FinancialSummaryPanel({
                     label="Gross freight margin"
                     value={`₹${formatMoney(freightMargin)}`}
                 />
+            ) : null}
+            {canViewFreight &&
+            customerFreightTotal !== null &&
+            transporterFreightTotal > customerFreightTotal ? (
+                <p
+                    className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-xs font-medium text-amber-900"
+                    role="status"
+                >
+                    Transporter freight exceeds customer freight. Confirm this
+                    commercially intentional loss before creating the hire.
+                </p>
             ) : null}
             {tdsExplanation ? (
                 <p className="border-t border-border pt-2 text-xs text-muted-foreground">

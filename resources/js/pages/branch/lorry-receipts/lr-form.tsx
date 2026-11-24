@@ -425,13 +425,40 @@ export default function LrForm({
 
     const openConfirmation = (form: HTMLFormElement) => {
         const data = new FormData(form);
+        const selectedOptionLabel = (fieldId: string): string => {
+            const element = form.querySelector(
+                `#${fieldId}`,
+            ) as HTMLSelectElement | null;
+            const text = element?.selectedOptions?.[0]?.text?.trim() ?? '';
+            if (text === '' || text.toLowerCase().startsWith('select')) {
+                return '—';
+            }
+            return text;
+        };
+        const formText = (name: string): string => {
+            const value = data.get(name);
+            return typeof value === 'string' && value.trim() !== ''
+                ? value.trim()
+                : '—';
+        };
+
         const customerName =
             formOptions.billingCustomers?.find(
                 (option) => option.id === billingCustomerId,
-            )?.name ?? '—';
+            )?.name ?? selectedOptionLabel('billing_customer_party_id');
         const vehicleLabel =
             formOptions.vehicles?.find((option) => option.id === vehicleId)
-                ?.label ?? '—';
+                ?.label ?? selectedOptionLabel('vehicle_id');
+        const consignorName = selectedOptionLabel('consignor_party_id');
+        const consigneeName = selectedOptionLabel('consignee_party_id');
+        const loadingStation =
+            formText('from_text') !== '—'
+                ? formText('from_text')
+                : selectedOptionLabel('from_station_id');
+        const unloadingStation =
+            formText('to_text') !== '—'
+                ? formText('to_text')
+                : selectedOptionLabel('to_station_id');
 
         const lrNumber = data.get('lr_number');
         const lrDate = data.get('lr_date');
@@ -448,13 +475,79 @@ export default function LrForm({
             },
             { label: 'Vehicle', value: vehicleLabel },
             { label: 'Billing Customer', value: customerName },
-            { label: 'Goods lines', value: String(goods.length) },
+            { label: 'Consignor', value: consignorName },
+            { label: 'Consignee', value: consigneeName },
+            { label: 'Loading Station', value: loadingStation },
+            { label: 'Unloading Station', value: unloadingStation },
+        ];
+
+        goods.forEach((row, index) => {
+            const goodsLabel =
+                formOptions.goodsTypes?.find(
+                    (option) => option.id === row.goods_type_id,
+                )?.name ?? `Goods ${index + 1}`;
+            const packageLabel =
+                formOptions.packageTypes?.find(
+                    (option) => option.id === row.package_type_id,
+                )?.name ?? '—';
+            const freightPreview = computeFreightPreview(row);
+            fields.push({
+                label: `Goods ${index + 1}`,
+                value: [
+                    goodsLabel,
+                    `Pkg ${packageLabel}`,
+                    `Units ${row.package_count || '—'}`,
+                    `Wt/Unit ${row.weight_per_unit || '—'} KG`,
+                    `Actual ${row.actual_weight || '—'} MT`,
+                    `Charged ${row.charged_weight || '—'} MT`,
+                    mayViewFreight
+                        ? `Rate ${row.freight_rate || '—'} (${row.freight_rate_type || '—'})`
+                        : null,
+                    mayViewFreight
+                        ? `Freight ${freightPreview !== null ? formatFixed(freightPreview, 2) : '—'}`
+                        : null,
+                    row.goods_value ? `Value ${row.goods_value}` : null,
+                    row.goods_description
+                        ? `Desc ${row.goods_description}`
+                        : null,
+                ]
+                    .filter((part): part is string => part !== null)
+                    .join(' · '),
+            });
+        });
+
+        if (ewbs.length > 0) {
+            fields.push({
+                label: 'E-Way Bills',
+                value: ewbs
+                    .map((row) => row.ewb_number.trim() || '—')
+                    .join(', '),
+            });
+        }
+
+        if (charges.length > 0) {
+            fields.push({
+                label: 'Additional Charges',
+                value: charges
+                    .map(
+                        (row) =>
+                            `${row.description.trim() || 'Charge'}: ${row.amount || '—'}`,
+                    )
+                    .join('; '),
+            });
+        }
+
+        fields.push(
             { label: 'Actual Wt (MT)', value: summary.totalActual },
             { label: 'Charged Wt (MT)', value: summary.totalCharged },
-        ];
+        );
         if (mayViewFreight) {
             fields.push(
                 { label: 'Freight', value: summary.totalFreight },
+                {
+                    label: 'Additional Charges Total',
+                    value: summary.totalAdditional,
+                },
                 { label: 'Total Amount', value: summary.totalAmount },
             );
         }

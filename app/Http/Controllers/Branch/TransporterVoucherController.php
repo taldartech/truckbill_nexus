@@ -91,6 +91,8 @@ class TransporterVoucherController extends Controller
 
         $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
 
+        $selectedHireId = $request->string('lorry_hire_id')->toString() ?: null;
+
         $hires = LorryHire::query()
             ->where('company_id', $company->id)
             ->where('branch_id', $branch->id)
@@ -100,7 +102,23 @@ class TransporterVoucherController extends Controller
             ->limit(100)
             ->get();
 
+        if ($selectedHireId !== null && ! $hires->contains(fn (LorryHire $hire): bool => $hire->id === $selectedHireId)) {
+            $selectedHire = LorryHire::query()
+                ->where('company_id', $company->id)
+                ->where('branch_id', $branch->id)
+                ->whereNull('deleted_at')
+                ->whereKey($selectedHireId)
+                ->with(['lorryReceipt', 'vehicle', 'transporter'])
+                ->first();
+            if ($selectedHire !== null) {
+                $hires = $hires->prepend($selectedHire)->unique('id')->values();
+            } else {
+                $selectedHireId = null;
+            }
+        }
+
         return Inertia::render('broker/vouchers/create', [
+            'selectedLorryHireId' => $selectedHireId,
             'eligibleLorryHires' => $hires->map(function (LorryHire $hire) use ($maySeeFreight): array {
                 $allocatable = $this->vouchers->allocatableAmount($hire);
 
@@ -112,6 +130,9 @@ class TransporterVoucherController extends Controller
                     'vehicle_registration' => $hire->vehicle?->registration_number,
                     'outstanding_amount' => $this->freightPresentation->presentAmount($hire->outstanding_amount, $maySeeFreight),
                     'allocatable_amount' => $this->freightPresentation->presentAmount($allocatable, $maySeeFreight),
+                    'net_payable' => $this->freightPresentation->presentAmount($hire->net_payable, $maySeeFreight),
+                    'freight_total' => $this->freightPresentation->presentAmount($hire->freight_total, $maySeeFreight),
+                    'tds_amount' => $this->freightPresentation->presentAmount($hire->tds_amount, $maySeeFreight),
                 ];
             })->values()->all(),
             'paymentTypeOptions' => $this->paymentTypeOptions(),

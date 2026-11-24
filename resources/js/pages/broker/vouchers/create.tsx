@@ -15,9 +15,13 @@ type HireOption = {
     vehicle_registration: string | null;
     outstanding_amount: string | null;
     allocatable_amount: string | null;
+    net_payable?: string | null;
+    freight_total?: string | null;
+    tds_amount?: string | null;
 };
 
 type Props = {
+    selectedLorryHireId?: string | null;
     eligibleLorryHires: HireOption[];
     paymentTypeOptions: Array<{ value: string; label: string }>;
     paymentModeOptions: Array<{ value: string; label: string }>;
@@ -41,14 +45,21 @@ function formatMoney(value: number | null): string {
 }
 
 export default function VoucherCreate({
+    selectedLorryHireId = null,
     eligibleLorryHires,
     paymentTypeOptions,
     paymentModeOptions,
     bankCashAccounts,
     urls,
 }: Props) {
+    const initialHireId =
+        selectedLorryHireId &&
+        eligibleLorryHires.some((hire) => hire.id === selectedLorryHireId)
+            ? selectedLorryHireId
+            : '';
+
     const form = useForm({
-        lorry_hire_id: '',
+        lorry_hire_id: initialHireId,
         amount: '',
         payment_type: paymentTypeOptions[0]?.value ?? 'advance',
         payment_mode: paymentModeOptions[0]?.value ?? 'bank',
@@ -69,6 +80,9 @@ export default function VoucherCreate({
     const proposedAmount = parseAmount(form.data.amount);
     const outstanding = parseAmount(selectedHire?.outstanding_amount);
     const allocatable = parseAmount(selectedHire?.allocatable_amount);
+    const netPayable = parseAmount(selectedHire?.net_payable);
+    const freightTotal = parseAmount(selectedHire?.freight_total);
+    const tdsAmount = parseAmount(selectedHire?.tds_amount);
     const resultingBalance =
         outstanding !== null && proposedAmount !== null
             ? outstanding - proposedAmount
@@ -83,6 +97,10 @@ export default function VoucherCreate({
             paymentModeOptions.find(
                 (option) => option.value === form.data.payment_mode,
             )?.label ?? form.data.payment_mode;
+        const accountLabel =
+            bankCashAccounts.find(
+                (account) => account.id === form.data.bank_cash_account_id,
+            )?.name ?? '—';
 
         setReviewFields([
             {
@@ -96,6 +114,22 @@ export default function VoucherCreate({
             {
                 label: 'Transporter',
                 value: selectedHire?.transporter_name ?? '—',
+            },
+            {
+                label: 'Vehicle',
+                value: selectedHire?.vehicle_registration ?? '—',
+            },
+            {
+                label: 'Transporter freight',
+                value: formatMoney(freightTotal),
+            },
+            {
+                label: 'TDS',
+                value: formatMoney(tdsAmount),
+            },
+            {
+                label: 'Net payable',
+                value: formatMoney(netPayable),
             },
             {
                 label: 'Outstanding',
@@ -112,6 +146,10 @@ export default function VoucherCreate({
             {
                 label: 'Payment mode',
                 value: paymentModeLabel,
+            },
+            {
+                label: 'Receiving / paying account',
+                value: form.data.payment_mode === 'bank' ? accountLabel : '—',
             },
             {
                 label: 'Proposed payment',
@@ -152,6 +190,39 @@ export default function VoucherCreate({
                         form.post(urls.store);
                     }}
                 >
+                    {selectedHire ? (
+                        <div className="rounded-md border border-border bg-muted/10 p-3 text-sm">
+                            <p className="font-medium text-foreground">
+                                Hire context
+                            </p>
+                            <p className="mt-1 text-xs text-muted-foreground">
+                                {selectedHire.hire_number}
+                                {selectedHire.lr_number
+                                    ? ` · LR ${selectedHire.lr_number}`
+                                    : ''}
+                            </p>
+                            <p className="mt-2 text-xs text-muted-foreground">
+                                {selectedHire.transporter_name ?? '—'} ·{' '}
+                                {selectedHire.vehicle_registration ?? '—'}
+                            </p>
+                            <div className="mt-2 grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
+                                <p>
+                                    Freight {formatMoney(freightTotal)} · TDS{' '}
+                                    {formatMoney(tdsAmount)}
+                                </p>
+                                <p>Net payable {formatMoney(netPayable)}</p>
+                                <p>Outstanding {formatMoney(outstanding)}</p>
+                                <p>Available {formatMoney(allocatable)}</p>
+                            </div>
+                            {proposedAmount !== null ? (
+                                <p className="mt-2 text-xs font-medium text-foreground">
+                                    Proposed {formatMoney(proposedAmount)} ·
+                                    Resulting {formatMoney(resultingBalance)}
+                                </p>
+                            ) : null}
+                        </div>
+                    ) : null}
+
                     <div className="space-y-1">
                         <Label htmlFor="lorry_hire_id">Lorry Hire</Label>
                         <select
@@ -177,25 +248,6 @@ export default function VoucherCreate({
                                 </option>
                             ))}
                         </select>
-                        {selectedHire && (
-                            <div className="rounded-md border border-border bg-muted/10 p-3 text-xs text-muted-foreground">
-                                <p>
-                                    {selectedHire.transporter_name} ·{' '}
-                                    {selectedHire.vehicle_registration}
-                                </p>
-                                <p>
-                                    Outstanding {formatMoney(outstanding)} ·
-                                    Available {formatMoney(allocatable)}
-                                </p>
-                                {proposedAmount !== null ? (
-                                    <p>
-                                        Proposed {formatMoney(proposedAmount)} ·
-                                        Resulting{' '}
-                                        {formatMoney(resultingBalance)}
-                                    </p>
-                                ) : null}
-                            </div>
-                        )}
                     </div>
 
                     <div className="space-y-1">

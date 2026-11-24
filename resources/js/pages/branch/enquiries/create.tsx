@@ -55,7 +55,13 @@ export default function BranchEnquiryCreate({
         const data = new FormData(form);
         const customerName =
             customerOptions.find((option) => option.id === customerPartyId)
-                ?.name ?? '—';
+                ?.name ??
+            (
+                form.querySelector(
+                    '#customer_party_id',
+                ) as HTMLSelectElement | null
+            )?.selectedOptions?.[0]?.text?.trim() ??
+            '—';
         const vehicleTypeId = formValue(data, 'vehicle_type_id');
         const vehicleTypeName =
             vehicle_types.find((type) => type.id === vehicleTypeId)?.name ??

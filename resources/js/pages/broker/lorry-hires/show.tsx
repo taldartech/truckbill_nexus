@@ -1,6 +1,6 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import { AppIconAction } from '@/components/app-icon-action';
-import { ArrowLeft, ExternalLink, FileText } from 'lucide-react';
+import { ArrowLeft, ExternalLink, FileText, Wallet } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
 import type {
@@ -111,6 +111,7 @@ type Props = {
         lr_show: string;
         adjustment_store: string;
         deliveries: string;
+        voucher_create?: string | null;
         cancel: string | null;
     };
 };
@@ -308,6 +309,15 @@ export default function LorryHireShow({
                         variant="info"
                         size="sm"
                     />
+                    {urls.voucher_create ? (
+                        <AppIconAction
+                            icon={Wallet}
+                            label="Record voucher"
+                            href={urls.voucher_create}
+                            variant="default"
+                            size="sm"
+                        />
+                    ) : null}
                 </div>
 
                 <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

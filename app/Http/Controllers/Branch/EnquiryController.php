@@ -93,7 +93,7 @@ class EnquiryController extends Controller
             ->with('success', 'Enquiry created.');
     }
 
-    public function update(Request $request, Enquiry $enquiry, Company $company, Branch $branch): JsonResponse
+    public function update(Request $request, Enquiry $enquiry, Company $company, Branch $branch): JsonResponse|RedirectResponse
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertPermission($actor, $company, $branch, PermissionCodes::ENQUIRY_EDIT);
@@ -102,8 +102,8 @@ class EnquiryController extends Controller
             abort(404);
         }
 
-        $remark = trim((string) $request->input('remark', ''));
         $payload = $this->validatedUpdatePayload($request);
+        $remark = trim((string) ($payload['remark'] ?? $request->input('remark', '')));
 
         try {
             $updated = $this->enquiries->updateManual($company, $branch, $enquiry, $actor, $payload, $remark);
@@ -112,15 +112,25 @@ class EnquiryController extends Controller
         } catch (EnquiryAuthorizationException $e) {
             abort(403, $e->getMessage());
         } catch (EnquiryDomainException $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
+            if ($request->expectsJson()) {
+                return response()->json(['message' => $e->getMessage()], 422);
+            }
+
+            throw ValidationException::withMessages(['remark' => $e->getMessage()]);
         }
 
-        return response()->json([
-            'data' => $this->enquiryPayload(
-                $updated->load('goodsRows'),
-                $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch),
-            ),
-        ]);
+        if ($request->expectsJson()) {
+            return response()->json([
+                'data' => $this->enquiryPayload(
+                    $updated->load('goodsRows'),
+                    $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch),
+                ),
+            ]);
+        }
+
+        return redirect()
+            ->route('branch.enquiries.show', [$enquiry])
+            ->with('success', 'Enquiry updated.');
     }
 
     /**
@@ -248,6 +258,7 @@ class EnquiryController extends Controller
             'broadcastRequests.targets',
             'conversion.lorryReceiptLinks',
             'assignedUser',
+            'customerParty',
         ]);
 
         $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
@@ -266,10 +277,19 @@ class EnquiryController extends Controller
             return response()->json(['data' => $data]);
         }
 
+        $customers = app(PartyOptionQuery::class)
+            ->forRoles(
+                $company,
+                $branch,
+                PartyRoleType::Customer,
+                selectedId: $enquiry->customer_party_id,
+            );
+
         return Inertia::render('branch/enquiries/show', [
             'company' => ['id' => $company->id, 'name' => $company->name],
             'branch' => ['id' => $branch->id, 'name' => $branch->name],
             'enquiry' => $data,
+            'customers' => $customers,
             'branches' => $this->branchOptions($company),
             'assignable_users' => $this->assignableUsers($company, $branch),
             'transporters' => $this->transporterOptions($company, $branch),
@@ -283,12 +303,15 @@ class EnquiryController extends Controller
             ],
             'urls' => [
                 'index' => route('branch.enquiries.index'),
+                'update' => route('branch.enquiries.update', [$enquiry]),
                 'assign' => route('branch.enquiries.assign', [$enquiry]),
                 'follow_up' => route('branch.enquiries.follow-ups.store', [$enquiry]),
                 'quotation_store' => route('branch.enquiries.quotations.store', [$enquiry]),
                 'broadcast' => route('branch.enquiries.quotation-broadcasts.store', [$enquiry]),
                 'conversion_preview' => route('branch.enquiries.conversion-preview', [$enquiry]),
                 'convert' => route('branch.enquiries.convert', [$enquiry]),
+                'parties_create' => route('branch.parties.create', absolute: false),
+                'parties_options' => route('branch.parties.options', absolute: false),
             ],
         ]);
     }
@@ -785,6 +808,9 @@ class EnquiryController extends Controller
             'status' => $enquiry->status->value,
             'enquiry_date' => $enquiry->enquiry_date?->toDateString(),
             'customer_party_id' => $enquiry->customer_party_id,
+            'customer_name' => $enquiry->relationLoaded('customerParty') && $enquiry->customerParty
+                ? $enquiry->customerParty->name
+                : null,
             'pickup_location' => $enquiry->pickup_location,
             'delivery_location' => $enquiry->delivery_location,
             'vehicle_type_id' => $enquiry->vehicle_type_id,

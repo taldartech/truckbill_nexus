@@ -95,9 +95,20 @@ export default function DeliveriesIndex({
             const customerName =
                 eligible.data.find((row) => selected.includes(row.id))
                     ?.billing_customer_name ?? '—';
+            const selectedRows = eligible.data.filter((row) =>
+                selected.includes(row.id),
+            );
             setMemoReviewFields([
                 { label: 'Billing customer', value: customerName },
                 { label: 'Bilties selected', value: String(selected.length) },
+                {
+                    label: 'Bilty numbers',
+                    value:
+                        selectedRows
+                            .map((row) => row.lr_number)
+                            .filter(Boolean)
+                            .join(', ') || '—',
+                },
                 {
                     label: 'Memo number',
                     value: memoForm.data.memo_number || '—',
@@ -125,17 +136,42 @@ export default function DeliveriesIndex({
         });
     };
 
+    const podSubmitAllowed = useRef(false);
+    const [podConfirmOpen, setPodConfirmOpen] = useState(false);
+    const [podReviewFields, setPodReviewFields] = useState<FieldReview[]>([]);
+    const [podTarget, setPodTarget] = useState<RecentRow | null>(null);
+
     const submitPod = (event: React.FormEvent, row: RecentRow) => {
         event.preventDefault();
         if (!podForm.data.file) {
             return;
         }
+        if (!podSubmitAllowed.current) {
+            setPodTarget(row);
+            setPodReviewFields([
+                { label: 'Bilty No.', value: row.lr_number ?? '—' },
+                { label: 'Memo number', value: row.memo_number ?? '—' },
+                { label: 'POD number', value: row.pod_number ?? '—' },
+                {
+                    label: 'File',
+                    value: podForm.data.file.name,
+                },
+                {
+                    label: 'Label',
+                    value: podForm.data.label.trim() || '—',
+                },
+            ]);
+            setPodConfirmOpen(true);
+            return;
+        }
+        podSubmitAllowed.current = false;
         podForm.post(row.urls.pod, {
             forceFormData: true,
             preserveScroll: true,
             onSuccess: () => {
                 podForm.reset();
                 setDocsFor(null);
+                setPodTarget(null);
             },
         });
     };
@@ -312,6 +348,7 @@ export default function DeliveriesIndex({
                                     (row.status === 'memo_assigned' ||
                                         row.status === 'delivered') ? (
                                         <form
+                                            id={`pod-upload-${row.id}`}
                                             className="mt-3 flex flex-wrap items-end gap-2"
                                             onSubmit={(event) =>
                                                 submitPod(event, row)
@@ -406,6 +443,33 @@ export default function DeliveriesIndex({
                     }, 0);
                 }}
             />
+
+            <FormConfirmationDialog
+                open={podConfirmOpen}
+                onOpenChange={(open) => {
+                    setPodConfirmOpen(open);
+                    if (!open) {
+                        setPodTarget(null);
+                    }
+                }}
+                mode="create"
+                title="Upload this POD document?"
+                description="Confirm Bilty context and file before uploading to shared Document Management."
+                fields={podReviewFields}
+                onConfirm={() => {
+                    if (!podTarget) {
+                        return;
+                    }
+                    podSubmitAllowed.current = true;
+                    setPodConfirmOpen(false);
+                    window.setTimeout(() => {
+                        const formElement = document.getElementById(
+                            `pod-upload-${podTarget.id}`,
+                        ) as HTMLFormElement | null;
+                        formElement?.requestSubmit();
+                    }, 0);
+                }}
+            />
         </>
     );
 }
@@ -427,6 +491,9 @@ function EligibleRowView({
         delivery_date: new Date().toISOString().slice(0, 10),
         remarks: '',
     });
+    const deliverAllowed = useRef(false);
+    const [deliverConfirmOpen, setDeliverConfirmOpen] = useState(false);
+    const [deliverFields, setDeliverFields] = useState<FieldReview[]>([]);
 
     return (
         <tr className="border-t border-border">
@@ -454,35 +521,85 @@ function EligibleRowView({
             {canManage ? (
                 <td className="px-4 py-3">
                     {row.memo_number ? (
-                        <form
-                            className="flex flex-wrap items-center gap-2"
-                            onSubmit={(event) => {
-                                event.preventDefault();
-                                completeForm.post(row.urls.complete, {
-                                    preserveScroll: true,
-                                });
-                            }}
-                        >
-                            <Input
-                                type="date"
-                                value={completeForm.data.delivery_date}
-                                onChange={(e) =>
-                                    completeForm.setData(
-                                        'delivery_date',
-                                        e.target.value,
-                                    )
-                                }
-                                required
-                                className="w-auto"
-                            />
-                            <Button
-                                type="submit"
-                                size="sm"
-                                disabled={completeForm.processing}
+                        <>
+                            <form
+                                id={`deliver-${row.id}`}
+                                className="flex flex-wrap items-center gap-2"
+                                onSubmit={(event) => {
+                                    event.preventDefault();
+                                    if (!deliverAllowed.current) {
+                                        setDeliverFields([
+                                            {
+                                                label: 'Bilty No.',
+                                                value: row.lr_number,
+                                            },
+                                            {
+                                                label: 'Customer',
+                                                value:
+                                                    row.billing_customer_name ??
+                                                    '—',
+                                            },
+                                            {
+                                                label: 'Memo number',
+                                                value: row.memo_number ?? '—',
+                                            },
+                                            {
+                                                label: 'Delivery date',
+                                                value:
+                                                    completeForm.data
+                                                        .delivery_date || '—',
+                                            },
+                                        ]);
+                                        setDeliverConfirmOpen(true);
+                                        return;
+                                    }
+                                    deliverAllowed.current = false;
+                                    completeForm.post(row.urls.complete, {
+                                        preserveScroll: true,
+                                    });
+                                }}
                             >
-                                Deliver
-                            </Button>
-                        </form>
+                                <Input
+                                    type="date"
+                                    value={completeForm.data.delivery_date}
+                                    onChange={(e) =>
+                                        completeForm.setData(
+                                            'delivery_date',
+                                            e.target.value,
+                                        )
+                                    }
+                                    required
+                                    className="w-auto"
+                                />
+                                <Button
+                                    type="submit"
+                                    size="sm"
+                                    disabled={completeForm.processing}
+                                >
+                                    Deliver
+                                </Button>
+                            </form>
+                            <FormConfirmationDialog
+                                open={deliverConfirmOpen}
+                                onOpenChange={setDeliverConfirmOpen}
+                                mode="create"
+                                title="Record this delivery?"
+                                description="Confirm Bilty, memo, and delivery date before completing."
+                                fields={deliverFields}
+                                processing={completeForm.processing}
+                                onConfirm={() => {
+                                    deliverAllowed.current = true;
+                                    setDeliverConfirmOpen(false);
+                                    window.setTimeout(() => {
+                                        const formElement =
+                                            document.getElementById(
+                                                `deliver-${row.id}`,
+                                            ) as HTMLFormElement | null;
+                                        formElement?.requestSubmit();
+                                    }, 0);
+                                }}
+                            />
+                        </>
                     ) : (
                         <span className="text-xs text-muted-foreground">
                             Assign memo first
