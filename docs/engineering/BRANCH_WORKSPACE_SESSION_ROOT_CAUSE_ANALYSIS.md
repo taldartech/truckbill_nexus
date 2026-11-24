@@ -2,6 +2,7 @@
 
 **Date:** 24 November 2026  
 **Baseline HEAD:** `eb72a17c332ef5b842e6ac27573bf3a52dc4d899`  
+**Remediation commit:** `3b502b3f874a7c89d0ad49056ab7f45f2b1ae0f7`  
 **Status:** Root cause identified and corrected
 
 ## Reported symptom
