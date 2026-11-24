@@ -9,6 +9,7 @@ import {
     reconcileTripMovement,
     recordTripInvoicePayments,
     submitTripCreateFromLr,
+    uploadTripDocumentViaDrawer,
 } from '../fixtures/ownfleet-workflow';
 
 test.describe('OwnFleet complete workflow', () => {
@@ -40,17 +41,8 @@ test.describe('OwnFleet complete workflow', () => {
         });
         await addDieselExpense(page);
 
-        await page.getByRole('tab', { name: 'Documents' }).click();
-        const docsButton = page.getByRole('button', {
-            name: /Manage trip documents|Trip documents/i,
-        });
-        if ((await docsButton.count()) > 0) {
-            await expect(docsButton.first()).toBeVisible();
-        } else {
-            await expect(
-                page.getByRole('link', { name: /LR \/ POD documents/i }),
-            ).toBeVisible();
-        }
+        const docLabel = `E2E trip POD ${runId}`;
+        await uploadTripDocumentViaDrawer(page, { label: docLabel });
 
         await dispatchAndCompleteTrip(page, '8800', '9120');
 

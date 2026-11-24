@@ -183,6 +183,52 @@ export async function dispatchAndCompleteTrip(
     ).toBeVisible({ timeout: 20_000 });
 }
 
+const e2eTinyPng = {
+    name: 'e2e-trip-doc.png',
+    mimeType: 'image/png',
+    buffer: Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+        'base64',
+    ),
+};
+
+/**
+ * Uploads a file through the trip show DocumentDrawer (Documents tab).
+ */
+export async function uploadTripDocumentViaDrawer(
+    page: Page,
+    options: { label: string },
+): Promise<void> {
+    await page.getByRole('tab', { name: 'Documents' }).click();
+
+    const manageDocs = page.getByRole('button', {
+        name: 'Manage trip documents',
+    });
+    await expect(manageDocs).toBeVisible({ timeout: 15_000 });
+    await manageDocs.click();
+
+    const drawer = page.getByRole('dialog', { name: 'Trip documents' });
+    await expect(drawer).toBeVisible({ timeout: 15_000 });
+
+    await drawer.locator('#drawer-file').setInputFiles(e2eTinyPng);
+    await drawer.locator('#drawer-label').fill(options.label);
+    await drawer.locator('form:has(#drawer-file) button[type="submit"]').click();
+
+    await expect(drawer.getByText(options.label).first()).toBeVisible({
+        timeout: 30_000,
+    });
+
+    await page.keyboard.press('Escape');
+    await expect(drawer).toBeHidden({ timeout: 10_000 });
+
+    const documentsPanel = page
+        .getByRole('tabpanel')
+        .filter({ has: page.getByRole('button', { name: 'Manage trip documents' }) });
+    await expect(documentsPanel.getByText(options.label).first()).toBeVisible({
+        timeout: 15_000,
+    });
+}
+
 export async function addDieselExpense(page: Page): Promise<void> {
     await page.getByRole('tab', { name: 'Expenses' }).click();
     await selectOptionAt(

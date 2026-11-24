@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Support\Audit\AuditAction;
 use App\Support\Audit\AuditedTransaction;
 use App\Support\Audit\AuditWriter;
+use App\Support\Database\CaseInsensitiveLike;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -146,12 +147,11 @@ final class BankCashAccountService
             ->orderBy('name');
 
         if ($query !== null && trim($query) !== '') {
-            $term = '%'.str_replace(['%', '_'], ['\\%', '\\_'], trim($query)).'%';
-            $builder->where(function ($inner) use ($term): void {
-                $inner->where('name', 'ilike', $term)
-                    ->orWhere('bank_name', 'ilike', $term)
-                    ->orWhere('account_holder_name', 'ilike', $term);
-            });
+            CaseInsensitiveLike::whereAnyContains($builder, [
+                'name',
+                'bank_name',
+                'account_holder_name',
+            ], $query);
         }
 
         if ($accountKind !== null && $accountKind !== '') {

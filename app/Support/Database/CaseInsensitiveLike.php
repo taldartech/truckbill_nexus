@@ -12,6 +12,25 @@ use InvalidArgumentException;
  */
 final class CaseInsensitiveLike
 {
+    /** @var list<string> */
+    private const MYSQL_COLUMNS = [
+        'account_holder_name',
+        'bank_name',
+        'chassis_number',
+        'city',
+        'code',
+        'contact_number',
+        'email',
+        'gstin',
+        'invoice_number',
+        'lr_number',
+        'make',
+        'model',
+        'name',
+        'pan',
+        'registration_number',
+    ];
+
     public static function escape(string $term): string
     {
         return str_replace(
@@ -19,6 +38,57 @@ final class CaseInsensitiveLike
             ['\\\\', '\\%', '\\_'],
             $term,
         );
+    }
+
+    public static function containsPattern(string $term): string
+    {
+        $escaped = self::escape(trim($term));
+        $driver = DB::connection()->getDriverName();
+
+        if ($driver === 'pgsql') {
+            return '%'.$escaped.'%';
+        }
+
+        return '%'.mb_strtolower($escaped, 'UTF-8').'%';
+    }
+
+    /**
+     * @template TModel of Model
+     *
+     * @param  Builder<TModel>  $builder
+     * @param  list<string>  $columns
+     * @return Builder<TModel>
+     */
+    public static function whereAnyContains(Builder $builder, array $columns, string $term): Builder
+    {
+        if ($columns === []) {
+            throw new InvalidArgumentException('At least one column is required for search.');
+        }
+
+        $pattern = self::containsPattern($term);
+        $driver = DB::connection()->getDriverName();
+
+        return $builder->where(function (Builder $inner) use ($columns, $pattern, $driver): void {
+            foreach ($columns as $index => $column) {
+                self::assertSupportedColumn($column);
+                if ($driver === 'pgsql') {
+                    if ($index === 0) {
+                        $inner->where($column, 'ilike', $pattern);
+                    } else {
+                        $inner->orWhere($column, 'ilike', $pattern);
+                    }
+
+                    continue;
+                }
+
+                $sql = 'LOWER(`'.$column.'`) LIKE ?';
+                if ($index === 0) {
+                    $inner->whereRaw($sql, [$pattern]);
+                } else {
+                    $inner->orWhereRaw($sql, [$pattern]);
+                }
+            }
+        });
     }
 
     /**
@@ -29,20 +99,17 @@ final class CaseInsensitiveLike
      */
     public static function whereContains(Builder $builder, string $column, string $term): Builder
     {
-        $escaped = self::escape($term);
-        $driver = DB::connection()->getDriverName();
-        $pattern = '%'.($driver === 'pgsql' ? $escaped : mb_strtolower($escaped, 'UTF-8')).'%';
+        return self::whereAnyContains($builder, [$column], $term);
+    }
 
-        if ($driver === 'pgsql') {
-            return $builder->where($column, 'ilike', $pattern);
+    private static function assertSupportedColumn(string $column): void
+    {
+        if (DB::connection()->getDriverName() === 'pgsql') {
+            return;
         }
 
-        return match ($column) {
-            'invoice_number' => $builder->whereRaw('LOWER(invoice_number) LIKE ?', [$pattern]),
-            'name' => $builder->whereRaw('LOWER(name) LIKE ?', [$pattern]),
-            'email' => $builder->whereRaw('LOWER(email) LIKE ?', [$pattern]),
-            'lr_number' => $builder->whereRaw('LOWER(lr_number) LIKE ?', [$pattern]),
-            default => throw new InvalidArgumentException("Unsupported LIKE column [{$column}]."),
-        };
+        if (! in_array($column, self::MYSQL_COLUMNS, true)) {
+            throw new InvalidArgumentException("Unsupported LIKE column [{$column}].");
+        }
     }
 }

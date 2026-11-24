@@ -17,6 +17,7 @@ use App\Models\User;
 use App\Support\Audit\AuditAction;
 use App\Support\Audit\AuditedTransaction;
 use App\Support\Audit\AuditWriter;
+use App\Support\Database\CaseInsensitiveLike;
 use App\Support\Tenant\TenantContext;
 use App\Support\Tenant\TenantContextHolder;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -436,14 +437,13 @@ final class PartyService
             ->orderBy('name');
 
         if ($query !== null && trim($query) !== '') {
-            $term = '%'.str_replace(['%', '_'], ['\\%', '\\_'], trim($query)).'%';
-            $builder->where(function ($inner) use ($term): void {
-                $inner->where('name', 'ilike', $term)
-                    ->orWhere('contact_number', 'ilike', $term)
-                    ->orWhere('email', 'ilike', $term)
-                    ->orWhere('pan', 'ilike', $term)
-                    ->orWhere('gstin', 'ilike', $term);
-            });
+            CaseInsensitiveLike::whereAnyContains($builder, [
+                'name',
+                'contact_number',
+                'email',
+                'pan',
+                'gstin',
+            ], $query);
         }
 
         if ($role !== null && $role !== '') {

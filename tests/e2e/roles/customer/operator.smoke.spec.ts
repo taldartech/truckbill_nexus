@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { demoCredentials, loginAs } from '../../fixtures/auth';
 import {
     DEMO_OPERATOR_EMAIL,
     enterDemoAlphaBranch,
@@ -15,21 +16,14 @@ test.describe('Customer Operator persona smoke', () => {
     );
 
     test('operator can open branch operations shell', async ({ page }) => {
-        const password =
-            process.env.E2E_USER_PASSWORD ??
-            process.env.LOCAL_DEMO_PASSWORD ??
-            '';
+        const { password } = demoCredentials();
 
         test.skip(
             !password,
             'Set E2E_USER_PASSWORD or LOCAL_DEMO_PASSWORD for demo login',
         );
 
-        await page.goto('/login', { waitUntil: 'networkidle' });
-        await page.locator('#email').fill(DEMO_OPERATOR_EMAIL);
-        await page.locator('#password').fill(password);
-        await page.getByRole('button', { name: /log in|sign in/i }).click();
-        await expect(page).not.toHaveURL(/\/login$/, { timeout: 15_000 });
+        await loginAs(page, DEMO_OPERATOR_EMAIL, password);
 
         await enterDemoAlphaBranch(page);
         await expect(page.getByRole('navigation').first()).toBeVisible({

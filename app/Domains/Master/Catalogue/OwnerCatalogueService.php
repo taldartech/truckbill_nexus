@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Support\Audit\AuditAction;
 use App\Support\Audit\AuditedTransaction;
 use App\Support\Audit\AuditWriter;
+use App\Support\Database\CaseInsensitiveLike;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Str;
@@ -163,10 +164,7 @@ final class OwnerCatalogueService
             ->orderBy('name');
 
         if ($query !== null && trim($query) !== '') {
-            $term = '%'.str_replace(['%', '_'], ['\\%', '\\_'], trim($query)).'%';
-            $builder->where(function ($inner) use ($term): void {
-                $inner->where('name', 'ilike', $term)->orWhere('code', 'ilike', $term);
-            });
+            CaseInsensitiveLike::whereAnyContains($builder, ['name', 'code'], $query);
         }
 
         return $builder->paginate($perPage);

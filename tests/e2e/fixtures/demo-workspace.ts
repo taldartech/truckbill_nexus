@@ -5,6 +5,8 @@ export const DEMO_OWNER_EMAIL = 'owner.alpha@demo.test';
 
 export const DEMO_OPERATOR_EMAIL = 'operator.alpha@demo.test';
 
+export const DEMO_VIEWER_EMAIL = 'viewer.alpha@demo.test';
+
 export const DEMO_COMPANY_NAME = 'Demo Logistics Alpha';
 
 export async function loginDemoOperator(

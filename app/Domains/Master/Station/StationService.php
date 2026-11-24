@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Support\Audit\AuditAction;
 use App\Support\Audit\AuditedTransaction;
 use App\Support\Audit\AuditWriter;
+use App\Support\Database\CaseInsensitiveLike;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -212,12 +213,7 @@ final class StationService
             ->orderBy('name');
 
         if ($query !== null && trim($query) !== '') {
-            $term = '%'.str_replace(['%', '_'], ['\\%', '\\_'], trim($query)).'%';
-            $builder->where(function ($inner) use ($term): void {
-                $inner->where('name', 'ilike', $term)
-                    ->orWhere('code', 'ilike', $term)
-                    ->orWhere('city', 'ilike', $term);
-            });
+            CaseInsensitiveLike::whereAnyContains($builder, ['name', 'code', 'city'], $query);
         }
 
         return $builder->paginate($perPage);

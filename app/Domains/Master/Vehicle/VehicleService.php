@@ -17,6 +17,7 @@ use App\Models\Vehicle;
 use App\Support\Audit\AuditAction;
 use App\Support\Audit\AuditedTransaction;
 use App\Support\Audit\AuditWriter;
+use App\Support\Database\CaseInsensitiveLike;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -194,13 +195,12 @@ final class VehicleService
             ->orderBy('registration_number');
 
         if ($query !== null && trim($query) !== '') {
-            $term = '%'.$this->escapeLike(trim($query)).'%';
-            $builder->where(function ($inner) use ($term): void {
-                $inner->where('registration_number', 'ilike', $term)
-                    ->orWhere('make', 'ilike', $term)
-                    ->orWhere('model', 'ilike', $term)
-                    ->orWhere('chassis_number', 'ilike', $term);
-            });
+            CaseInsensitiveLike::whereAnyContains($builder, [
+                'registration_number',
+                'make',
+                'model',
+                'chassis_number',
+            ], $query);
         }
 
         if ($vehicleType !== null && $vehicleType !== '') {
