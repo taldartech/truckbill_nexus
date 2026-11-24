@@ -400,6 +400,7 @@ export async function recordBrokerInvoicePayments(
     await page.locator('input[name="tds_amount"]').fill('0');
     await page.locator('input[name="deduction_amount"]').fill('0');
     await page.getByRole('button', { name: 'Save payment' }).click();
+    await confirmFormDialog(page);
     await expect(page.getByText(partialAmount).first()).toBeVisible({
         timeout: 15_000,
     });
@@ -412,6 +413,7 @@ export async function recordBrokerInvoicePayments(
         if (numeric && numeric !== '0' && numeric !== '0.00') {
             await page.locator('input[name="amount_received"]').fill(numeric);
             await page.getByRole('button', { name: 'Save payment' }).click();
+            await confirmFormDialog(page);
         }
     }
 }

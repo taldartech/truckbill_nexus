@@ -3,7 +3,7 @@
 **Status:** IN PROGRESS — not ready for Product Owner acceptance  
 **Date:** 24 November 2026  
 **Baseline:** `d359256ea860a5a6526b98d718eeee699d552342`  
-**Local tip:** `f216703` (see `git log`)
+**Local tip:** see `git log -1` after receipt confirmation commit
 
 ## Verdict (interim)
 
@@ -15,23 +15,23 @@
 | ------------------------------- | ---------------------------------------------------------------------- |
 | Initial Nexus HEAD              | `d359256ea860a5a6526b98d718eeee699d552342`                             |
 | Remote HEAD (verified at start) | `d359256…`                                                             |
-| Final local HEAD (interim)      | `6553caf…`                                                             |
+| Final local HEAD (interim)      | pending tip after receipt confirmation                                 |
 | GitHub Actions baseline         | https://github.com/taldartech/truckbill_nexus/actions/runs/45401597608 |
 | Legacy tracking                 | `git ls-files legacy/` empty; trees ignored                            |
 
 ## B. Workflow status (interim)
 
-| Area                                            | Status                                                                                |
-| ----------------------------------------------- | ------------------------------------------------------------------------------------- |
-| Masters / Party selectors                       | **Partial** → scalable search shipped on key forms                                    |
-| Enquiry / Quotation / Conversion                | Partial (selector + confirmation; full quotation matrix not re-certified this run)    |
-| Bilty                                           | Partial → MT + searchable + confirmation; financial freeze retained                   |
-| Lorry Hire / TDS / Adjustments                  | Partial → create/adjust/cancel OK; full PATCH = PO-LGC-007                            |
-| Vouchers / Bulk / Linked / Book Balance / Daily | Partial → voucher + linked + book balance selector improved                           |
-| Memo / Delivery / POD                           | Partial → memo confirmation; POD browser upload covered in complete journey           |
-| Customer Invoice / Receipt                      | Partial → invoice create confirmation + searchable filters; receipt confirmation open |
-| Printing / Pagination / Confirmations           | Partial                                                                               |
-| Security / No-Freight / Concurrency             | Not re-certified end-to-end this run (preserve prior remediations)                    |
+| Area                                            | Status                                                                             |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Masters / Party selectors                       | **Partial** → scalable search shipped on key forms                                 |
+| Enquiry / Quotation / Conversion                | Partial (selector + confirmation; full quotation matrix not re-certified this run) |
+| Bilty                                           | Partial → MT + searchable + confirmation; financial freeze retained                |
+| Lorry Hire / TDS / Adjustments                  | Partial → create/adjust/cancel OK; full PATCH = PO-LGC-007                         |
+| Vouchers / Bulk / Linked / Book Balance / Daily | Partial → voucher + linked + book balance selector improved                        |
+| Memo / Delivery / POD                           | Partial → memo confirmation; POD browser upload covered in complete journey        |
+| Customer Invoice / Receipt                      | Partial → invoice + receipt confirmations + searchable filters                     |
+| Printing / Pagination / Confirmations           | Partial                                                                            |
+| Security / No-Freight / Concurrency             | Not re-certified end-to-end this run (preserve prior remediations)                 |
 
 ## C. Local commits
 
@@ -40,7 +40,8 @@
 3. `b86b721` — Book Balance remote transporter selector
 4. `8f37c5a` — Memory / gap register refresh
 5. `6553caf` — unified invoice index customer search
-6. `f216703` — interim acceptance documentation
+6. `f216703` / `59e397b` — interim acceptance documentation
+7. (next) customer receipt confirmation on Broker invoice show
 
 ## D. Evidence to date
 

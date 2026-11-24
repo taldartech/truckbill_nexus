@@ -1,7 +1,9 @@
 import { Form, Head, Link } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { DetailTabPanel, DetailTabs } from '@/components/detail-tabs';
+import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
+import type { FieldReview } from '@/components/form-confirmation/types';
 import InputError from '@/components/input-error';
 import { PageShell } from '@/components/page-shell';
 import { MetricCard } from '@/components/ui/metric-card';
@@ -236,6 +238,36 @@ function PaymentsPanel({
     urls: Props['urls'];
     cancelled: boolean;
 }) {
+    const submitAllowed = useRef(false);
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [reviewFields, setReviewFields] = useState<FieldReview[]>([]);
+
+    const openConfirmation = (form: HTMLFormElement) => {
+        const data = new FormData(form);
+        const read = (key: string, fallback: string): string => {
+            const value = data.get(key);
+            return typeof value === 'string' ? value : fallback;
+        };
+        setReviewFields([
+            {
+                label: 'Invoice',
+                value: invoice.invoice_number,
+            },
+            {
+                label: 'Invoice total',
+                value: invoice.invoice_total ?? '—',
+            },
+            {
+                label: 'Current outstanding',
+                value: invoice.balance_due ?? '—',
+            },
+            { label: 'Proposed receipt', value: read('amount_received', '—') },
+            { label: 'Customer TDS', value: read('tds_amount', '0') },
+            { label: 'Deduction', value: read('deduction_amount', '0') },
+        ]);
+        setConfirmOpen(true);
+    };
+
     return (
         <div className="space-y-6">
             <div className="overflow-x-auto rounded-lg border border-border">
@@ -285,9 +317,18 @@ function PaymentsPanel({
 
             {permissions.can_record_payment && !cancelled && (
                 <Form
+                    id="broker-invoice-payment-form"
                     action={urls.payment}
                     method="post"
                     className="grid max-w-xl gap-3 rounded-lg border border-border p-4"
+                    onSubmit={(event) => {
+                        if (!submitAllowed.current) {
+                            event.preventDefault();
+                            openConfirmation(event.currentTarget);
+                            return;
+                        }
+                        submitAllowed.current = false;
+                    }}
                 >
                     {({ processing, errors }) => (
                         <>
@@ -377,6 +418,25 @@ function PaymentsPanel({
                     )}
                 </Form>
             )}
+
+            <FormConfirmationDialog
+                open={confirmOpen}
+                onOpenChange={setConfirmOpen}
+                mode="create"
+                title="Record this customer receipt?"
+                description="Review invoice outstanding and proposed payment before submitting."
+                fields={reviewFields}
+                onConfirm={() => {
+                    submitAllowed.current = true;
+                    setConfirmOpen(false);
+                    window.setTimeout(() => {
+                        const formElement = document.getElementById(
+                            'broker-invoice-payment-form',
+                        ) as HTMLFormElement | null;
+                        formElement?.requestSubmit();
+                    }, 0);
+                }}
+            />
         </div>
     );
 }
