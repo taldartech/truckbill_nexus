@@ -138,10 +138,10 @@ class BrokerInvoiceController extends Controller
 
         try {
             $invoice = $this->invoices->createInvoice($company, $branch, $actor, $validated);
-        } catch (BrokerConflictException|BrokerDomainException $e) {
-            throw ValidationException::withMessages(['lorry_receipt_ids' => $e->getMessage()]);
         } catch (BrokerAuthorizationException|ValidationException $e) {
             throw $e;
+        } catch (BrokerConflictException|BrokerDomainException $e) {
+            throw ValidationException::withMessages(['lorry_receipt_ids' => $e->getMessage()]);
         }
 
         return redirect()->route('branch.broker.invoices.show', [$invoice]);
@@ -210,10 +210,10 @@ class BrokerInvoiceController extends Controller
 
         try {
             $this->invoices->cancel($brokerInvoice, $actor, $validated['cancellation_remark']);
-        } catch (BrokerConflictException|BrokerDomainException $e) {
-            throw ValidationException::withMessages(['cancellation_remark' => $e->getMessage()]);
         } catch (BrokerAuthorizationException|ValidationException $e) {
             throw $e;
+        } catch (BrokerConflictException|BrokerDomainException $e) {
+            throw ValidationException::withMessages(['cancellation_remark' => $e->getMessage()]);
         }
 
         return redirect()->route('branch.broker.invoices.show', [$brokerInvoice]);
@@ -237,10 +237,10 @@ class BrokerInvoiceController extends Controller
 
         try {
             $this->invoices->recordPayment($brokerInvoice, $actor, $validated);
-        } catch (BrokerConflictException|BrokerDomainException $e) {
-            throw ValidationException::withMessages(['amount_received' => $e->getMessage()]);
         } catch (BrokerAuthorizationException|ValidationException $e) {
             throw $e;
+        } catch (BrokerConflictException|BrokerDomainException $e) {
+            throw ValidationException::withMessages(['amount_received' => $e->getMessage()]);
         }
 
         return redirect()->route('branch.broker.invoices.show', [$brokerInvoice]);

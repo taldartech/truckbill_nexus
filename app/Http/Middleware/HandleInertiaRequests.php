@@ -88,9 +88,9 @@ class HandleInertiaRequests extends Middleware
             ? $routeCompany->id
             : WorkspaceSession::companyId($request);
 
-        // Management (Owner) routes clear branch chrome; Branch Panel keeps session branch.
+        // Owner chrome hides branch in shared props only — never mutate session here.
+        // Prefetch / background GETs to owner.* must not destroy an active Branch Panel.
         if ($request->routeIs('owner.*')) {
-            $request->session()->forget(WorkspaceSession::BRANCH_KEY);
             $activeBranchId = null;
         } else {
             $activeBranchId = $routeBranch instanceof Branch

@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Owner;
 use App\Domains\Company\OwnerGlobalPanelService;
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Support\Workspace\WorkspaceSession;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -26,8 +25,8 @@ class OwnerHomeController extends Controller
         // Designated Owners only — branch members must not open /owner via direct URL.
         $this->panel->assertOwnsAtLeastOneCompany($user);
 
-        // Global Owner management is list-driven — clear active company/branch context.
-        WorkspaceSession::clear($request);
+        // Do not WorkspaceSession::clear() here — Inertia prefetch of /management
+        // must not destroy an active Branch Panel. Explicit leave-branch clears it.
 
         $payload = $this->panel->dashboardPayload($user);
 

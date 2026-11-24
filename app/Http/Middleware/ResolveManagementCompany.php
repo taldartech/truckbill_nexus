@@ -36,8 +36,8 @@ final class ResolveManagementCompany
             abort(403, 'Owner Panel management requires company ownership.');
         }
 
-        // Clear branch so Owner chrome is never mixed with Branch Panel.
-        $request->session()->forget(WorkspaceSession::BRANCH_KEY);
+        // Do not clear BRANCH_KEY here — safe GETs / Inertia prefetch must not
+        // destroy an active Branch Panel. Explicit leave/switch clears branch.
 
         $companyId = WorkspaceSession::companyId($request);
         if ($companyId === null) {

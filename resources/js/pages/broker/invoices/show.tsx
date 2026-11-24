@@ -295,8 +295,9 @@ function PaymentsPanel({
                                 <h3 className="text-sm font-semibold">
                                     Record payment
                                 </h3>
-                                <span className="text-xs text-muted-foreground font-medium">
-                                    Remaining Balance: ₹{invoice.balance_due ?? '0.00'}
+                                <span className="text-xs font-medium text-muted-foreground">
+                                    Remaining Balance: ₹
+                                    {invoice.balance_due ?? '0.00'}
                                 </span>
                             </div>
                             <Label className="flex flex-col gap-1 text-sm">

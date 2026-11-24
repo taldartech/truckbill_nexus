@@ -73,6 +73,32 @@ final class WorkspaceSession
     }
 
     /**
+     * Leave Branch Panel while retaining company for Owner management.
+     */
+    public static function clearBranch(Request $request): void
+    {
+        if (! $request->session()->has(self::BRANCH_KEY)) {
+            return;
+        }
+
+        $request->session()->forget(self::BRANCH_KEY);
+        self::bumpVersion($request);
+    }
+
+    /**
+     * Ensure company is selected. When the company is unchanged, preserve branch.
+     * When the company changes, clear branch (caller must re-select).
+     */
+    public static function ensureCompany(Request $request, string $companyId): void
+    {
+        if (self::companyId($request) === $companyId) {
+            return;
+        }
+
+        self::put($request, $companyId, null);
+    }
+
+    /**
      * Compare client-submitted context version with the session (multi-tab safety).
      */
     public static function matchesSubmittedVersion(Request $request): bool

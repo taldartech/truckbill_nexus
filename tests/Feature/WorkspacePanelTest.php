@@ -7,6 +7,7 @@ use App\Domains\Rbac\RoleAssignmentService;
 use App\Models\Role;
 use App\Models\User;
 use App\Support\Tenant\TenantContextHolder;
+use App\Support\Workspace\WorkspaceSession;
 use Database\Seeders\RbacSeeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Testing\TestResponse;
@@ -350,6 +351,13 @@ test('returning to owner panel clears active branch chrome after branch visit', 
     $this->get(route('branch.dashboard'))->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('workspace.active_branch_id', $headOffice->id));
+
+    // Explicit leave clears branch; owner chrome then shows null branch.
+    $this->post(route('workspace.context.leave-branch'))
+        ->assertRedirect(route('owner.home'));
+
+    expect(session(WorkspaceSession::BRANCH_KEY))->toBeNull()
+        ->and(session(WorkspaceSession::COMPANY_KEY))->toBe($company->id);
 
     $this->get(route('owner.home'))
         ->assertOk()

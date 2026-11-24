@@ -38,7 +38,7 @@ trait AuthorizesOwnerPanel
             abort(403, 'Owner Panel access denied.');
         }
 
-        WorkspaceSession::put($request, $company->id);
+        WorkspaceSession::ensureCompany($request, $company->id);
 
         return ['user' => $user, 'scope' => $scope];
     }

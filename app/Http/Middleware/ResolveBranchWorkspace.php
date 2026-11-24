@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Support\Workspace\WorkspaceSession;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -71,6 +72,16 @@ final class ResolveBranchWorkspace
 
     private function missingContext(Request $request): Response
     {
+        Log::notice('branch_workspace_context_missing', [
+            'correlation_id' => $request->attributes->get('correlation_id'),
+            'user_id' => $request->user()?->id,
+            'route' => $request->route()?->getName(),
+            'method' => $request->method(),
+            'has_company' => WorkspaceSession::companyId($request) !== null,
+            'has_branch' => WorkspaceSession::branchId($request) !== null,
+            'redirect_reason' => 'missing_branch_workspace_context',
+        ]);
+
         if ($request->isMethodSafe() && ! $request->expectsJson()) {
             return redirect()
                 ->route('workspace.landing')

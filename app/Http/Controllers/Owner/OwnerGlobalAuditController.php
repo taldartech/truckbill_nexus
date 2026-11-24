@@ -7,7 +7,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\User;
 use App\Support\Audit\AuditEntry;
-use App\Support\Workspace\WorkspaceSession;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -26,7 +25,6 @@ class OwnerGlobalAuditController extends Controller
         /** @var User $user */
         $user = $request->user();
         $this->panel->assertOwnsAtLeastOneCompany($user);
-        WorkspaceSession::clear($request);
 
         $companyId = $request->query('company');
         $companyId = is_string($companyId) ? $companyId : null;

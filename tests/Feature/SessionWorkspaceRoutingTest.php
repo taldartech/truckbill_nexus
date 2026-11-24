@@ -129,7 +129,12 @@ test('global branches enter panel posts context then opens selected branch dashb
 
     sessionRoutingLogin($owner);
 
-    // Visiting Owner Branches clears branch chrome (owner.*).
+    // Global Owner list GETs must not destroy an active Branch Panel session.
+    enterBranchWorkspace($company, $alpha, internalRoute('branch.dashboard'))
+        ->assertRedirect(internalRoute('branch.dashboard'));
+
+    expect(session(WorkspaceSession::BRANCH_KEY))->toBe($alpha->id);
+
     $this->get(route('owner.branches.all'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
@@ -138,15 +143,11 @@ test('global branches enter panel posts context then opens selected branch dashb
                 'company' => $company,
                 'branch' => $alpha,
             ]))
-            ->where('branches.data.0.urls.enter_branch', internalRoute('branch.dashboard')));
+            ->where('branches.data.0.urls.enter_branch', internalRoute('branch.dashboard'))
+            ->where('workspace.active_branch_id', null));
 
-    expect(session(WorkspaceSession::BRANCH_KEY))->toBeNull();
-
-    enterBranchWorkspace($company, $alpha, internalRoute('branch.dashboard'))
-        ->assertRedirect(internalRoute('branch.dashboard'));
-
-    expect(session(WorkspaceSession::COMPANY_KEY))->toBe($company->id);
-    expect(session(WorkspaceSession::BRANCH_KEY))->toBe($alpha->id);
+    expect(session(WorkspaceSession::COMPANY_KEY))->toBe($company->id)
+        ->and(session(WorkspaceSession::BRANCH_KEY))->toBe($alpha->id);
 
     $versionAfterEnter = (int) session(WorkspaceSession::VERSION_KEY, 0);
 

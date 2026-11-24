@@ -93,6 +93,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('workspace.context.branch');
     Route::post('/workspace/context/clear', [WorkspaceContextController::class, 'clear'])
         ->name('workspace.context.clear');
+    Route::post('/workspace/context/leave-branch', [WorkspaceContextController::class, 'leaveBranch'])
+        ->name('workspace.context.leave-branch');
 
     /*
     |--------------------------------------------------------------------------

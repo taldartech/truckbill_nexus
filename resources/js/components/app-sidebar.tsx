@@ -1,4 +1,4 @@
-import { Link, usePage } from '@inertiajs/react';
+import { Link, router, usePage } from '@inertiajs/react';
 import {
     ArrowLeftFromLine,
     Building2,
@@ -37,6 +37,7 @@ import admin, {
     subscriptionInvoices,
     tdsRules,
 } from '@/routes/admin';
+import { leaveBranch as leaveBranchContext } from '@/routes/workspace/context';
 import type { NavItem } from '@/types';
 import type { WorkspaceShare } from '@/types/workspace';
 
@@ -385,12 +386,16 @@ export function AppSidebar() {
                             <Link
                                 href={
                                     isCustomer
-                                        ? ownsAnyCompany
-                                            ? '/management'
-                                            : '/workspace'
+                                        ? inBranchPanel
+                                            ? '/operations'
+                                            : ownsAnyCompany
+                                              ? '/management'
+                                              : '/workspace'
                                         : dashboard()
                                 }
-                                prefetch
+                                // Never prefetch Owner routes from Branch Panel —
+                                // owner.* GETs previously cleared session branch.
+                                prefetch={!inBranchPanel || !ownsAnyCompany}
                             >
                                 <AppLogo />
                             </Link>
@@ -417,13 +422,13 @@ export function AppSidebar() {
                     <SidebarMenu>
                         <SidebarMenuItem>
                             <SidebarMenuButton
-                                asChild
                                 tooltip="Return to Owner Portal"
+                                onClick={() => {
+                                    router.post(leaveBranchContext.url());
+                                }}
                             >
-                                <Link href="/management" prefetch>
-                                    <ArrowLeftFromLine />
-                                    <span>Return to Owner Portal</span>
-                                </Link>
+                                <ArrowLeftFromLine />
+                                <span>Return to Owner Portal</span>
                             </SidebarMenuButton>
                         </SidebarMenuItem>
                     </SidebarMenu>
