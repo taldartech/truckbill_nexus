@@ -31,6 +31,8 @@ type Props = {
         to_station_name: string | null;
         consignor_name: string | null;
         consignee_name: string | null;
+        vehicle_id: string | null;
+        vehicle_registration: string | null;
         freight_total: string;
     };
     vehicles: VehicleOption[];
@@ -49,7 +51,7 @@ export default function TripCreate({
     urls,
 }: Props) {
     const { errors } = usePage<{ errors?: Record<string, string> }>().props;
-    const [vehicleId, setVehicleId] = useState(vehicles[0]?.id ?? '');
+    const vehicleId = lorryReceipt.vehicle_id ?? vehicles[0]?.id ?? '';
     const [useSubstitute, setUseSubstitute] = useState(false);
     const selectedVehicle = useMemo(
         () => vehicles.find((vehicle) => vehicle.id === vehicleId) ?? null,
@@ -99,32 +101,28 @@ export default function TripCreate({
                         <>
                             <FormSection title="Vehicle & drivers" columns={2}>
                                 <div className="grid gap-2 md:col-span-2">
-                                    <Label htmlFor="vehicle_id">Vehicle</Label>
-                                    <select
-                                        id="vehicle_id"
+                                    <Label htmlFor="vehicle_display">
+                                        Vehicle (from LR)
+                                    </Label>
+                                    <input
+                                        type="hidden"
                                         name="vehicle_id"
-                                        required
                                         value={vehicleId}
-                                        onChange={(event) =>
-                                            setVehicleId(event.target.value)
+                                    />
+                                    <Input
+                                        id="vehicle_display"
+                                        readOnly
+                                        value={
+                                            lorryReceipt.vehicle_registration ??
+                                            selectedVehicle?.registration_number ??
+                                            'No Own vehicle on this LR'
                                         }
-                                        className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-                                    >
-                                        <option value="" disabled>
-                                            Select vehicle
-                                        </option>
-                                        {vehicles.map((vehicle) => (
-                                            <option
-                                                key={vehicle.id}
-                                                value={vehicle.id}
-                                            >
-                                                {vehicle.registration_number}
-                                                {vehicle.primary_driver_name
-                                                    ? ` · ${vehicle.primary_driver_name}`
-                                                    : ''}
-                                            </option>
-                                        ))}
-                                    </select>
+                                        className="bg-muted"
+                                    />
+                                    <p className="text-xs text-muted-foreground">
+                                        Trip must use the Own vehicle already
+                                        assigned on the Lorry Receipt.
+                                    </p>
                                     <InputError message={errors?.vehicle_id} />
                                 </div>
 

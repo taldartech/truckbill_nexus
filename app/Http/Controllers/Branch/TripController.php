@@ -126,7 +126,17 @@ class TripController extends Controller
                 ->with('info', 'This OwnFleet LR already has a Trip.');
         }
 
-        $lorryReceipt->load(['fromStation', 'toStation', 'consignor', 'consignee']);
+        $lorryReceipt->load(['fromStation', 'toStation', 'consignor', 'consignee', 'vehicle.primaryDriver']);
+
+        $lrVehicle = $lorryReceipt->vehicle;
+        $vehicles = $lrVehicle !== null && $lrVehicle->deleted_at === null
+            ? [[
+                'id' => $lrVehicle->id,
+                'registration_number' => $lrVehicle->registration_number,
+                'primary_driver_party_id' => $lrVehicle->primary_driver_party_id,
+                'primary_driver_name' => $lrVehicle->primaryDriver?->name,
+            ]]
+            : [];
 
         return Inertia::render('branch/trips/create', [
             'lorryReceipt' => [
@@ -137,12 +147,14 @@ class TripController extends Controller
                 'to_station_name' => $lorryReceipt->toStation?->name,
                 'consignor_name' => $lorryReceipt->consignor?->name,
                 'consignee_name' => $lorryReceipt->consignee?->name,
+                'vehicle_id' => $lorryReceipt->vehicle_id,
+                'vehicle_registration' => $lrVehicle?->registration_number,
                 'freight_total' => $this->freightPresentation->presentAmount(
                     $lorryReceipt->freight_total,
                     $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch),
                 ),
             ],
-            'vehicles' => $this->vehicleOptions($company, $branch),
+            'vehicles' => $vehicles,
             'drivers' => $this->driverOptions($company, $branch),
             'permissions' => $this->tripPermissions($actor, $company, $branch, $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch)),
             'urls' => [

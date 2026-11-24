@@ -5,6 +5,7 @@ namespace App\Domains\OwnFleet\Trip;
 use App\Domains\Consignment\Enums\LrStatus;
 use App\Domains\Consignment\Enums\LrWorkflowContext;
 use App\Domains\Master\Party\Enums\PartyRoleType;
+use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
 use App\Domains\OwnFleet\Enums\TripStatus;
 use App\Domains\OwnFleet\Enums\TripTimingPerformance;
 use App\Domains\OwnFleet\Trip\Exceptions\TripAuthorizationException;
@@ -99,35 +100,13 @@ final class TripService
         $this->assertOwnFleetEntitled($company);
         $this->assertLorryReceiptEligible($lorryReceipt);
 
-        $vehicleId = $payload['vehicle_id'];
-        if ($vehicleId === '') {
-            throw ValidationException::withMessages([
-                'vehicle_id' => 'Vehicle is required.',
-            ]);
-        }
-
-        $vehicle = Vehicle::query()
-            ->where('company_id', $company->id)
-            ->whereKey($vehicleId)
-            ->whereNull('deleted_at')
-            ->first();
-
-        if ($vehicle === null || ! $vehicle->is_active) {
-            throw ValidationException::withMessages([
-                'vehicle_id' => 'Vehicle is not available in this company.',
-            ]);
-        }
-
-        $vehicleVisible = Vehicle::query()
-            ->whereKey($vehicle->id)
-            ->visibleInBranch($company->id, $branch->id)
-            ->exists();
-
-        if (! $vehicleVisible) {
-            throw ValidationException::withMessages([
-                'vehicle_id' => 'Vehicle is not visible in this branch.',
-            ]);
-        }
+        $submittedVehicleId = (string) ($payload['vehicle_id'] ?? '');
+        $vehicle = $this->resolveOwnVehicleFromLorryReceipt(
+            $lorryReceipt,
+            $company,
+            $branch,
+            $submittedVehicleId,
+        );
 
         $useSubstitute = (bool) ($payload['use_substitute_driver'] ?? false);
         $primaryDriverId = $vehicle->primary_driver_party_id;
@@ -582,6 +561,66 @@ final class TripService
                 'lorry_receipt_id' => 'Trip can only be created from a pending OwnFleet LR.',
             ]);
         }
+    }
+
+    /**
+     * Trip vehicle is locked to the OwnFleet LR vehicle (Rules §9).
+     * Client-submitted vehicle_id must match; Market / inactive / off-branch rejected.
+     */
+    private function resolveOwnVehicleFromLorryReceipt(
+        LorryReceipt $lorryReceipt,
+        Company $company,
+        Branch $branch,
+        string $submittedVehicleId,
+    ): Vehicle {
+        if ($submittedVehicleId === '') {
+            throw ValidationException::withMessages([
+                'vehicle_id' => 'Vehicle is required.',
+            ]);
+        }
+
+        if ($lorryReceipt->vehicle_id === null || $lorryReceipt->vehicle_id === '') {
+            throw ValidationException::withMessages([
+                'vehicle_id' => 'OwnFleet LR must have an Own vehicle before creating a Trip.',
+            ]);
+        }
+
+        if ($submittedVehicleId !== $lorryReceipt->vehicle_id) {
+            throw ValidationException::withMessages([
+                'vehicle_id' => 'Trip vehicle must match the OwnFleet LR vehicle.',
+            ]);
+        }
+
+        $vehicle = Vehicle::query()
+            ->where('company_id', $company->id)
+            ->whereKey($lorryReceipt->vehicle_id)
+            ->whereNull('deleted_at')
+            ->first();
+
+        if ($vehicle === null || ! $vehicle->is_active) {
+            throw ValidationException::withMessages([
+                'vehicle_id' => 'Vehicle is not available in this company.',
+            ]);
+        }
+
+        if ($vehicle->ownership !== VehicleOwnership::Own) {
+            throw ValidationException::withMessages([
+                'vehicle_id' => 'OwnFleet Trip requires an Own vehicle.',
+            ]);
+        }
+
+        $vehicleVisible = Vehicle::query()
+            ->whereKey($vehicle->id)
+            ->visibleInBranch($company->id, $branch->id)
+            ->exists();
+
+        if (! $vehicleVisible) {
+            throw ValidationException::withMessages([
+                'vehicle_id' => 'Vehicle is not visible in this branch.',
+            ]);
+        }
+
+        return $vehicle;
     }
 
     private function assertDriverParty(Company $company, Branch $branch, string $partyId, string $field): void

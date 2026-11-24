@@ -260,3 +260,71 @@ test('http create trip from ownfleet lr persists and lists', function () {
             ->where('linkedTrip.id', $trip->id)
             ->where('permissions.can_create_trip', false));
 });
+
+test('trip creation rejects a different own vehicle than the lr', function () {
+    $ctx = tripWorkspace();
+    tripActivate($ctx['company'], $ctx['branch']);
+    $lr = tripCreateOwnFleetLr($ctx);
+
+    $otherVehicle = Vehicle::query()->create([
+        'company_id' => $ctx['company']->id,
+        'branch_id' => null,
+        'registration_number' => 'MH12TRIPOTHER',
+        'is_active' => true,
+        'ownership' => VehicleOwnership::Own->value,
+        'truck_type_id' => $ctx['vehicle']->truck_type_id,
+        'tyre_layout_id' => $ctx['vehicle']->tyre_layout_id,
+        'primary_driver_party_id' => $ctx['primaryDriver']->id,
+    ]);
+
+    expect(fn () => app(TripService::class)->createFromLorryReceipt($lr, $ctx['member'], [
+        'vehicle_id' => $otherVehicle->id,
+    ]))->toThrow(ValidationException::class);
+});
+
+test('trip creation rejects market vehicle even when submitted', function () {
+    $ctx = tripWorkspace([
+        SubscriptionModule::OwnFleet->value,
+        SubscriptionModule::Broker->value,
+    ]);
+    tripActivate($ctx['company'], $ctx['branch']);
+    $lr = tripCreateOwnFleetLr($ctx);
+
+    $marketVehicle = Vehicle::query()->create([
+        'company_id' => $ctx['company']->id,
+        'branch_id' => null,
+        'registration_number' => 'MH12TRIPMKT01',
+        'is_active' => true,
+        'ownership' => VehicleOwnership::Market->value,
+        'truck_type_id' => $ctx['vehicle']->truck_type_id,
+        'tyre_layout_id' => $ctx['vehicle']->tyre_layout_id,
+        'primary_driver_party_id' => $ctx['primaryDriver']->id,
+    ]);
+
+    // Forge LR vehicle to market after create — Trip must still reject Market ownership.
+    $lr->forceFill(['vehicle_id' => $marketVehicle->id])->save();
+
+    expect(fn () => app(TripService::class)->createFromLorryReceipt($lr->fresh(), $ctx['member'], [
+        'vehicle_id' => $marketVehicle->id,
+    ]))->toThrow(ValidationException::class);
+});
+
+test('http create trip form locks vehicle to the lr truck', function () {
+    $ctx = tripWorkspace();
+    tripActivate($ctx['company'], $ctx['branch']);
+    $lr = tripCreateOwnFleetLr($ctx);
+
+    $this->flushSession();
+    CustomerWebSession::query()->where('user_id', $ctx['member']->id)->delete();
+    $this->actingAs($ctx['member']);
+    session()->forget(WebSessionService::SESSION_VERSION_KEY);
+    seedBranchSession($ctx['company'], $ctx['branch']);
+
+    $this->get(route('branch.trips.create-from-lr', [$lr]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('branch/trips/create')
+            ->where('lorryReceipt.vehicle_id', $ctx['vehicle']->id)
+            ->has('vehicles', 1)
+            ->where('vehicles.0.id', $ctx['vehicle']->id));
+});
