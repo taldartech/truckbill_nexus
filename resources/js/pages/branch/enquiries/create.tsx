@@ -21,6 +21,7 @@ type Props = {
         index: string;
         store: string;
         parties_create?: string;
+        parties_store?: string;
         parties_options?: string;
     };
 };
@@ -153,8 +154,10 @@ export default function BranchEnquiryCreate({
                                         value={customerPartyId}
                                         onValueChange={setCustomerPartyId}
                                         emptyMessage="No eligible Customers in this branch. Create a Customer party first."
+                                        createStoreUrl={urls.parties_store}
                                         createHref={urls.parties_create}
-                                        createLabel="Create Customer"
+                                        createLabel="Add"
+                                        createRole="customer"
                                         error={errors?.customer_party_id}
                                     />
                                 </div>

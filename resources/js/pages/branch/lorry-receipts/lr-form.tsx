@@ -1,7 +1,6 @@
 import { Form, Head, Link } from '@inertiajs/react';
 import { ArrowLeft, Trash2 } from 'lucide-react';
-import type { ReactNode } from 'react';
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppIconAction } from '@/components/app-icon-action';
 import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
 import { normalizeComparable } from '@/components/form-confirmation/diff';
@@ -10,9 +9,15 @@ import type {
     FieldReview,
 } from '@/components/form-confirmation/types';
 import InputError from '@/components/input-error';
-import { FormSection } from '@/components/form-section';
 import { PageShell } from '@/components/page-shell';
-import { SearchablePartySelect } from '@/components/searchable-party-select';
+import {
+    QuickCreatePartySheet,
+    type QuickCreatePartyRole,
+} from '@/components/masters/quick-create-party-sheet';
+import {
+    SearchablePartySelect,
+    type PartyOption,
+} from '@/components/searchable-party-select';
 import {
     SearchableVehicleSelect,
     type VehicleSelectOption,
@@ -29,6 +34,17 @@ import {
     parseNumeric,
     wpuKgFromActualMt,
 } from '@/lib/operational-weight';
+import {
+    LrfDriverTdsSummary,
+    LrfInnerPanel,
+    LrfPartyCard,
+    LrfPartyMetaGrid,
+    LrfPayPills,
+    LrfReceiptCard,
+    LrfRouteConnector,
+    LrfSection,
+    lrfSectionShell,
+} from '@/pages/branch/lorry-receipts/lr-form-sections';
 
 type Option = { value: string; label: string };
 type NamedOption = { id: string; name: string; code?: string };
@@ -100,9 +116,9 @@ type Props = {
     lorryReceipt: LorryReceiptDetail | null;
     formOptions: {
         rateTypeOptions: Option[];
-        consignors: NamedOption[];
-        consignees: NamedOption[];
-        billingCustomers?: NamedOption[];
+        consignors: PartyOption[];
+        consignees: PartyOption[];
+        billingCustomers?: PartyOption[];
         stations: NamedOption[];
         goodsTypes: NamedOption[];
         packageTypes: NamedOption[];
@@ -114,9 +130,12 @@ type Props = {
         update?: string;
         show?: string;
         parties_options?: string;
+        parties_tds_for_payee?: string;
         parties_create?: string;
+        parties_store?: string;
         vehicles_options?: string;
         vehicles_create?: string;
+        vehicles_store?: string;
     };
     permissions?: {
         can_view_freight?: boolean;
@@ -134,11 +153,7 @@ const fieldClass =
     'flex h-9 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm';
 const dateFieldClass = `${fieldClass} min-w-[9.5rem]`;
 
-const sectionShellClass =
-    'overflow-hidden rounded-xl border border-border bg-card shadow-xs';
-const sectionHeaderClass =
-    'flex items-center justify-between gap-3 border-b border-border bg-gradient-to-r from-[#2FB36F]/10 via-[#2D8CFF]/5 to-transparent px-4 py-3';
-const sectionBodyClass = 'p-4';
+type IntendedPayeeType = 'owner' | 'agency' | '';
 
 function todayIsoLocal(): string {
     const d = new Date();
@@ -369,33 +384,21 @@ function mapGoodsFromReceipt(goods: LorryReceiptDetail['goods']): GoodsRow[] {
     });
 }
 
-function FormPanelWithAction({
-    title,
-    action,
-    children,
-}: {
-    title: string;
-    action?: ReactNode;
-    children: ReactNode;
-}) {
-    return (
-        <section className={sectionShellClass}>
-            <header className={sectionHeaderClass}>
-                <h2 className="text-sm font-semibold tracking-tight text-foreground">
-                    {title}
-                </h2>
-                {action}
-            </header>
-            <div className={sectionBodyClass}>{children}</div>
-        </section>
-    );
+function findPartyOption(
+    parties: PartyOption[],
+    id: string | null | undefined,
+): PartyOption | null {
+    if (!id) {
+        return null;
+    }
+    return parties.find((party) => party.id === id) ?? null;
 }
 
 export default function LrForm({
     mode,
     formMode: formModeProp,
     workflowContext,
-    contextLabel,
+    contextLabel: _contextLabel,
     lorryReceipt,
     formOptions,
     urls,
@@ -430,6 +433,44 @@ export default function LrForm({
         (lorryReceipt as { billing_customer_party_id?: string | null } | null)
             ?.billing_customer_party_id ?? '',
     );
+    const [consignorPartyId, setConsignorPartyId] = useState(
+        lorryReceipt?.consignor_party_id ?? '',
+    );
+    const [consigneePartyId, setConsigneePartyId] = useState(
+        lorryReceipt?.consignee_party_id ?? '',
+    );
+    const [consignorParty, setConsignorParty] = useState<PartyOption | null>(
+        () =>
+            findPartyOption(
+                formOptions.consignors,
+                lorryReceipt?.consignor_party_id,
+            ),
+    );
+    const [consigneeParty, setConsigneeParty] = useState<PartyOption | null>(
+        () =>
+            findPartyOption(
+                formOptions.consignees,
+                lorryReceipt?.consignee_party_id,
+            ),
+    );
+    const [intendedPayeeType, setIntendedPayeeType] =
+        useState<IntendedPayeeType>(() => {
+            const stored = (
+                lorryReceipt as { intended_payee_type?: string | null } | null
+            )?.intended_payee_type;
+            if (stored === 'owner' || stored === 'agency') {
+                return stored;
+            }
+            return '';
+        });
+    const [intendedPayeePartyId, setIntendedPayeePartyId] = useState(
+        (lorryReceipt as { intended_payee_party_id?: string | null } | null)
+            ?.intended_payee_party_id ?? '',
+    );
+    const [agencyPayeeParty, setAgencyPayeeParty] =
+        useState<PartyOption | null>(null);
+    const [headerQuickCreate, setHeaderQuickCreate] =
+        useState<QuickCreatePartyRole | null>(null);
     const [goods, setGoods] = useState<GoodsRow[]>(() =>
         lorryReceipt?.goods?.length
             ? mapGoodsFromReceipt(lorryReceipt.goods)
@@ -483,8 +524,100 @@ export default function LrForm({
     const method = mode === 'create' ? 'post' : 'patch';
     const title =
         mode === 'create'
-            ? 'Create Bilty'
-            : `Edit Bilty ${lorryReceipt?.lr_number ?? ''}`;
+            ? 'Add New Good Receipt (Bilty)'
+            : `Edit Good Receipt (Bilty) ${lorryReceipt?.lr_number ?? ''}`;
+    const subtitle =
+        'Complete steps 1–3 to save. Optional details can be added anytime.';
+    const isMarketVehicle =
+        showVehicle &&
+        Boolean(vehicleId) &&
+        selectedVehicle?.ownership === 'market';
+    const isOwnVehicle =
+        showVehicle &&
+        Boolean(vehicleId) &&
+        selectedVehicle?.ownership === 'own';
+    const showPayTo = isMarketVehicle;
+    const showPayeeRow =
+        showPayTo &&
+        (intendedPayeeType === 'owner' || intendedPayeeType === 'agency');
+    const [tdsPreviewLabel, setTdsPreviewLabel] = useState('—');
+    const routeFlowHint =
+        consignorParty && consigneeParty
+            ? `${consignorParty.name}${consignorParty.city ? ` (${consignorParty.city})` : ''} → ${consigneeParty.name}${consigneeParty.city ? ` (${consigneeParty.city})` : ''}`
+            : 'Goods move from consignor → consignee';
+
+    useEffect(() => {
+        if (!isMarketVehicle) {
+            setIntendedPayeeType('');
+            setIntendedPayeePartyId('');
+        }
+    }, [isMarketVehicle]);
+
+    useEffect(() => {
+        if (intendedPayeeType !== 'owner') {
+            return;
+        }
+        if (selectedVehicle?.owner_party_id) {
+            setIntendedPayeePartyId(selectedVehicle.owner_party_id);
+        } else {
+            setIntendedPayeePartyId('');
+        }
+    }, [intendedPayeeType, selectedVehicle?.owner_party_id]);
+
+    useEffect(() => {
+        const payeeId =
+            intendedPayeeType === 'owner'
+                ? (selectedVehicle?.owner_party_id ?? intendedPayeePartyId)
+                : intendedPayeePartyId;
+        const endpoint = urls.parties_tds_for_payee;
+        if (!payeeId || !endpoint || !showPayeeRow) {
+            setTdsPreviewLabel('—');
+            return;
+        }
+        const controller = new AbortController();
+        const timer = window.setTimeout(() => {
+            const params = new URLSearchParams({ party_id: payeeId });
+            void fetch(`${endpoint}?${params.toString()}`, {
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+                signal: controller.signal,
+            })
+                .then(async (response) => {
+                    if (!response.ok) {
+                        throw new Error('TDS preview failed');
+                    }
+                    const payload = (await response.json()) as {
+                        applicable_percent?: string | null;
+                    };
+                    const percent = payload.applicable_percent?.trim();
+                    setTdsPreviewLabel(
+                        percent && percent !== '' ? `${percent}%` : '—',
+                    );
+                })
+                .catch((error: unknown) => {
+                    if (
+                        error instanceof DOMException &&
+                        error.name === 'AbortError'
+                    ) {
+                        return;
+                    }
+                    setTdsPreviewLabel('—');
+                });
+        }, 200);
+        return () => {
+            controller.abort();
+            window.clearTimeout(timer);
+        };
+    }, [
+        intendedPayeePartyId,
+        intendedPayeeType,
+        selectedVehicle?.owner_party_id,
+        showPayeeRow,
+        urls.parties_tds_for_payee,
+    ]);
 
     const ownershipBadge = useMemo(() => {
         if (!selectedVehicle?.ownership) {
@@ -586,8 +719,23 @@ export default function LrForm({
             formOptions.vehicles?.find((option) => option.id === vehicleId)
                 ?.label ??
             selectedOptionLabel('vehicle_id');
-        const consignorName = selectedOptionLabel('consignor_party_id');
-        const consigneeName = selectedOptionLabel('consignee_party_id');
+        const consignorName =
+            consignorParty?.name ?? selectedOptionLabel('consignor_party_id');
+        const consigneeName =
+            consigneeParty?.name ?? selectedOptionLabel('consignee_party_id');
+        const payeeTypeLabel =
+            intendedPayeeType === 'owner'
+                ? 'Truck Owner'
+                : intendedPayeeType === 'agency'
+                  ? 'Agency'
+                  : '—';
+        const payeePartyLabel =
+            intendedPayeeType === 'owner'
+                ? (selectedVehicle?.owner_name ??
+                  (intendedPayeePartyId !== '' ? intendedPayeePartyId : '—'))
+                : intendedPayeeType === 'agency'
+                  ? (agencyPayeeParty?.name ?? '—')
+                  : '—';
         const loadingStation =
             formText('from_text') !== '—'
                 ? formText('from_text')
@@ -615,6 +763,34 @@ export default function LrForm({
                 'Vehicle',
                 originalVehicleLabel,
                 vehicleLabel,
+            );
+            const originalPayeeType =
+                (
+                    lorryReceipt as {
+                        intended_payee_type?: string | null;
+                    }
+                ).intended_payee_type ?? '';
+            const originalPayeeTypeLabel =
+                originalPayeeType === 'owner'
+                    ? 'Truck Owner'
+                    : originalPayeeType === 'agency'
+                      ? 'Agency'
+                      : '—';
+            pushScalarChange(
+                changes,
+                'Pay To',
+                originalPayeeTypeLabel,
+                payeeTypeLabel,
+            );
+            pushScalarChange(
+                changes,
+                'Intended Payee',
+                (
+                    lorryReceipt as {
+                        intended_payee_party_id?: string | null;
+                    }
+                ).intended_payee_party_id ?? '—',
+                payeePartyLabel,
             );
             const originalBillingId =
                 (
@@ -816,7 +992,13 @@ export default function LrForm({
                 value: (typeof lrDate === 'string' ? lrDate.trim() : '') || '—',
             },
             { label: 'Vehicle', value: vehicleLabel },
-            { label: 'Billing Customer', value: customerName },
+            { label: 'Customer', value: customerName },
+            ...(showPayTo
+                ? [
+                      { label: 'Pay To', value: payeeTypeLabel },
+                      { label: 'Intended Payee', value: payeePartyLabel },
+                  ]
+                : []),
             { label: 'Consignor', value: consignorName },
             { label: 'Consignee', value: consigneeName },
             { label: 'Loading Station', value: loadingStation },
@@ -929,15 +1111,42 @@ export default function LrForm({
             <Head title={title} />
             <PageShell
                 width="full"
+                chrome="compact"
                 title={title}
-                description={contextLabel}
-                actions={
+                description={subtitle}
+                titleAddon={
                     <AppIconAction
                         icon={ArrowLeft}
                         label="Back"
                         href={urls.show ?? urls.index}
                         variant="outline"
+                        size="sm"
+                        className="h-[30px] px-2.5 text-xs font-semibold"
                     />
+                }
+                actions={
+                    urls.parties_store || urls.parties_create ? (
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                                if (urls.parties_store) {
+                                    setHeaderQuickCreate('customer');
+                                    return;
+                                }
+                                if (urls.parties_create) {
+                                    window.open(
+                                        urls.parties_create,
+                                        '_blank',
+                                        'noopener,noreferrer',
+                                    );
+                                }
+                            }}
+                        >
+                            Add Customer
+                        </Button>
+                    ) : undefined
                 }
             >
                 <datalist id="stations-list">
@@ -974,148 +1183,399 @@ export default function LrForm({
                                 />
                             ) : null}
 
-                            <FormSection title="Section A" columns={3}>
-                                {mode === 'create' ? (
-                                    <div className="space-y-2">
-                                        <Label htmlFor="lr_number">
-                                            Bilty No.
-                                        </Label>
-                                        <Input
-                                            id="lr_number"
-                                            name="lr_number"
-                                            placeholder="Auto-generated if left blank"
-                                        />
-                                        <InputError
-                                            message={errors.lr_number}
-                                        />
-                                    </div>
-                                ) : (
-                                    <div className="space-y-2">
-                                        <Label htmlFor="lr_number_display">
-                                            Bilty No.
-                                        </Label>
-                                        <Input
-                                            id="lr_number_display"
-                                            value={
-                                                lorryReceipt?.lr_number ?? ''
-                                            }
-                                            disabled
-                                            readOnly
-                                        />
-                                    </div>
-                                )}
-                                <div className="space-y-2">
-                                    <Label htmlFor="lr_date">Date</Label>
-                                    <Input
-                                        id="lr_date"
-                                        name="lr_date"
-                                        type="date"
-                                        className={dateFieldClass}
-                                        defaultValue={
-                                            mode === 'create'
-                                                ? todayIsoLocal()
-                                                : (lorryReceipt?.lr_date ?? '')
+                            <LrfSection
+                                step={1}
+                                title="Receipt Details"
+                                description="Who is shipping, which truck, and who gets paid."
+                                tone="receipt"
+                            >
+                                <div className="grid gap-3 md:grid-cols-2">
+                                    <LrfReceiptCard
+                                        title="Document"
+                                        className={
+                                            showVehicle
+                                                ? undefined
+                                                : 'md:col-span-2'
                                         }
-                                    />
-                                    <InputError message={errors.lr_date} />
-                                </div>
-                                {showVehicle ? (
-                                    <div className="space-y-2">
-                                        <div className="flex items-start gap-2">
-                                            <div className="min-w-0 flex-1">
-                                                <SearchableVehicleSelect
-                                                    id="vehicle_id"
-                                                    name="vehicle_id"
-                                                    label="Truck"
-                                                    options={
-                                                        formOptions.vehicles ??
-                                                        []
+                                    >
+                                        <div className="grid gap-3 sm:grid-cols-2">
+                                            {mode === 'create' ? (
+                                                <div className="space-y-1.5">
+                                                    <Label htmlFor="lr_number">
+                                                        Bilty Number
+                                                    </Label>
+                                                    <Input
+                                                        id="lr_number"
+                                                        name="lr_number"
+                                                        className="h-9"
+                                                        placeholder="Auto-generated if left blank"
+                                                    />
+                                                    <InputError
+                                                        message={
+                                                            errors.lr_number
+                                                        }
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-1.5">
+                                                    <Label htmlFor="lr_number_display">
+                                                        Bilty Number
+                                                    </Label>
+                                                    <Input
+                                                        id="lr_number_display"
+                                                        className="h-9"
+                                                        value={
+                                                            lorryReceipt?.lr_number ??
+                                                            ''
+                                                        }
+                                                        disabled
+                                                        readOnly
+                                                    />
+                                                </div>
+                                            )}
+                                            <div className="space-y-1.5">
+                                                <Label htmlFor="lr_date">
+                                                    Bilty Date
+                                                </Label>
+                                                <Input
+                                                    id="lr_date"
+                                                    name="lr_date"
+                                                    type="date"
+                                                    className={dateFieldClass}
+                                                    defaultValue={
+                                                        mode === 'create'
+                                                            ? todayIsoLocal()
+                                                            : (lorryReceipt?.lr_date ??
+                                                              '')
                                                     }
-                                                    searchUrl={
-                                                        urls.vehicles_options
-                                                    }
-                                                    value={vehicleId}
-                                                    onValueChange={(
-                                                        next,
-                                                        option,
-                                                    ) => {
-                                                        setVehicleId(next);
-                                                        setSelectedVehicleMeta(
-                                                            option,
-                                                        );
-                                                    }}
-                                                    required={mode === 'create'}
-                                                    disabled={mode === 'edit'}
-                                                    createHref={
-                                                        urls.vehicles_create
-                                                    }
-                                                    createLabel="Create Vehicle"
-                                                    emptyMessage="No eligible vehicles in this branch."
-                                                    error={errors.vehicle_id}
+                                                />
+                                                <InputError
+                                                    message={errors.lr_date}
                                                 />
                                             </div>
-                                            <div className="pt-7">
-                                                {ownershipBadge}
-                                            </div>
                                         </div>
-                                        {selectedVehicle?.owner_declaration_missing ? (
-                                            <p
-                                                className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-xs text-amber-950"
-                                                role="status"
-                                            >
-                                                Vehicle owner declaration is
-                                                incomplete. Update the
-                                                transporter declaration before
-                                                creating Lorry Hire / TDS
-                                                calculations.
-                                                {selectedVehicle.owner_name
-                                                    ? ` Owner: ${selectedVehicle.owner_name}.`
-                                                    : ''}
-                                            </p>
-                                        ) : null}
-                                        <InputError
-                                            message={errors.workflow_context}
+                                        <SearchablePartySelect
+                                            id="billing_customer_party_id"
+                                            name="billing_customer_party_id"
+                                            label="Customer"
+                                            options={
+                                                formOptions.billingCustomers ??
+                                                []
+                                            }
+                                            searchUrl={urls.parties_options}
+                                            role="customer"
+                                            createStoreUrl={urls.parties_store}
+                                            createHref={urls.parties_create}
+                                            createLabel="Add"
+                                            createRole="customer"
+                                            value={billingCustomerId}
+                                            onValueChange={setBillingCustomerId}
+                                            emptyMessage="No eligible Customers in this branch."
+                                            error={
+                                                errors.billing_customer_party_id
+                                            }
                                         />
-                                    </div>
-                                ) : null}
-                                <SearchablePartySelect
-                                    id="billing_customer_party_id"
-                                    name="billing_customer_party_id"
-                                    label="Billing Customer"
-                                    options={formOptions.billingCustomers ?? []}
-                                    searchUrl={urls.parties_options}
-                                    role="customer"
-                                    createHref={urls.parties_create}
-                                    createLabel="Create Customer"
-                                    value={billingCustomerId}
-                                    onValueChange={setBillingCustomerId}
-                                    emptyMessage="No eligible Customers in this branch."
-                                    error={errors.billing_customer_party_id}
-                                />
-                            </FormSection>
+                                    </LrfReceiptCard>
+
+                                    {showVehicle ? (
+                                        <LrfReceiptCard title="Vehicle & Payee">
+                                            <div className="grid gap-3 sm:grid-cols-2">
+                                                <div className="space-y-1.5">
+                                                    <SearchableVehicleSelect
+                                                        id="vehicle_id"
+                                                        name="vehicle_id"
+                                                        label="Truck"
+                                                        options={
+                                                            formOptions.vehicles ??
+                                                            []
+                                                        }
+                                                        searchUrl={
+                                                            urls.vehicles_options
+                                                        }
+                                                        value={vehicleId}
+                                                        onValueChange={(
+                                                            next,
+                                                            option,
+                                                        ) => {
+                                                            setVehicleId(next);
+                                                            setSelectedVehicleMeta(
+                                                                option,
+                                                            );
+                                                        }}
+                                                        required={
+                                                            mode === 'create'
+                                                        }
+                                                        disabled={
+                                                            mode === 'edit'
+                                                        }
+                                                        createStoreUrl={
+                                                            urls.vehicles_store
+                                                        }
+                                                        createHref={
+                                                            urls.vehicles_create
+                                                        }
+                                                        createLabel="Add"
+                                                        partiesOptionsUrl={
+                                                            urls.parties_options
+                                                        }
+                                                        partiesStoreUrl={
+                                                            urls.parties_store
+                                                        }
+                                                        emptyMessage="No eligible vehicles in this branch."
+                                                        error={
+                                                            errors.vehicle_id
+                                                        }
+                                                    />
+                                                    {ownershipBadge ? (
+                                                        <div className="flex justify-end">
+                                                            {ownershipBadge}
+                                                        </div>
+                                                    ) : null}
+                                                </div>
+
+                                                {showPayTo ? (
+                                                    <div className="space-y-1.5">
+                                                        <Label>Pay To</Label>
+                                                        <LrfPayPills
+                                                            value={
+                                                                intendedPayeeType
+                                                            }
+                                                            onChange={(
+                                                                next,
+                                                            ) => {
+                                                                setIntendedPayeeType(
+                                                                    next,
+                                                                );
+                                                                if (
+                                                                    next ===
+                                                                    'agency'
+                                                                ) {
+                                                                    setIntendedPayeePartyId(
+                                                                        '',
+                                                                    );
+                                                                }
+                                                            }}
+                                                        />
+                                                        <input
+                                                            type="hidden"
+                                                            name="intended_payee_type"
+                                                            value={
+                                                                intendedPayeeType
+                                                            }
+                                                        />
+                                                    </div>
+                                                ) : null}
+                                            </div>
+
+                                            {isOwnVehicle ? (
+                                                <p className="text-xs text-muted-foreground">
+                                                    Own fleet vehicle — internal
+                                                    ownership; Pay To selection
+                                                    is not required.
+                                                </p>
+                                            ) : null}
+
+                                            {showPayeeRow ? (
+                                                <div className="grid gap-3 sm:grid-cols-2">
+                                                    <div className="space-y-1.5">
+                                                        {intendedPayeeType ===
+                                                        'owner' ? (
+                                                            <>
+                                                                <Label>
+                                                                    Truck Owner
+                                                                </Label>
+                                                                <input
+                                                                    type="hidden"
+                                                                    name="intended_payee_party_id"
+                                                                    value={
+                                                                        intendedPayeePartyId
+                                                                    }
+                                                                />
+                                                                <div className="flex min-h-9 items-center rounded-md border border-input bg-muted/20 px-3 text-sm font-medium">
+                                                                    {selectedVehicle?.owner_name ??
+                                                                        '—'}
+                                                                </div>
+                                                                {!selectedVehicle?.owner_party_id ? (
+                                                                    <p
+                                                                        className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-xs text-amber-950"
+                                                                        role="status"
+                                                                    >
+                                                                        Truck
+                                                                        owner is
+                                                                        missing
+                                                                        on this
+                                                                        vehicle.
+                                                                        Link an
+                                                                        owner
+                                                                        party
+                                                                        before
+                                                                        hire /
+                                                                        TDS.
+                                                                    </p>
+                                                                ) : null}
+                                                            </>
+                                                        ) : (
+                                                            <SearchablePartySelect
+                                                                id="intended_payee_party_id"
+                                                                name="intended_payee_party_id"
+                                                                label="Agency"
+                                                                options={[]}
+                                                                searchUrl={
+                                                                    urls.parties_options
+                                                                }
+                                                                role="transporter"
+                                                                createStoreUrl={
+                                                                    urls.parties_store
+                                                                }
+                                                                createHref={
+                                                                    urls.parties_create
+                                                                }
+                                                                createLabel="Add"
+                                                                createRole="transporter"
+                                                                value={
+                                                                    intendedPayeePartyId
+                                                                }
+                                                                onValueChange={
+                                                                    setIntendedPayeePartyId
+                                                                }
+                                                                onPartyChange={
+                                                                    setAgencyPayeeParty
+                                                                }
+                                                                required
+                                                                emptyMessage="Search transporter agency…"
+                                                            />
+                                                        )}
+                                                    </div>
+                                                    <div className="space-y-1.5">
+                                                        <Label>
+                                                            Driver / TDS
+                                                        </Label>
+                                                        <LrfDriverTdsSummary
+                                                            driverName={
+                                                                selectedVehicle?.primary_driver_name
+                                                            }
+                                                            tdsLabel={
+                                                                tdsPreviewLabel
+                                                            }
+                                                        />
+                                                    </div>
+                                                </div>
+                                            ) : null}
+
+                                            {selectedVehicle?.owner_declaration_missing ? (
+                                                <p
+                                                    className="rounded-md border border-amber-500/40 bg-amber-500/10 px-2 py-1.5 text-xs text-amber-950"
+                                                    role="status"
+                                                >
+                                                    Vehicle owner declaration is
+                                                    incomplete. Update the
+                                                    transporter declaration
+                                                    before creating Lorry Hire /
+                                                    TDS calculations.
+                                                    {selectedVehicle.owner_name
+                                                        ? ` Owner: ${selectedVehicle.owner_name}.`
+                                                        : ''}
+                                                </p>
+                                            ) : null}
+                                            <InputError
+                                                message={
+                                                    errors.workflow_context
+                                                }
+                                            />
+                                        </LrfReceiptCard>
+                                    ) : null}
+                                </div>
+                            </LrfSection>
 
                             {needsTextLocations ||
                             needsStations ||
                             needsParties ||
                             partiesOptional ? (
-                                <FormSection
+                                <LrfSection
+                                    step={2}
                                     title="Parties & Route"
-                                    columns={1}
+                                    description="Goods travel from consignor to consignee."
+                                    tone="route"
                                 >
-                                    <div className="grid gap-4 md:grid-cols-2">
-                                        <div className="space-y-3 rounded-lg border border-border/70 p-3">
-                                            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                                                Loading
-                                            </p>
+                                    <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-stretch">
+                                        <LrfPartyCard
+                                            badge="FROM"
+                                            badgeTone="from"
+                                            title="Consignor"
+                                            footer={
+                                                needsTextLocations ? (
+                                                    <div className="space-y-1.5">
+                                                        <Label htmlFor="from_text">
+                                                            Loading Station
+                                                        </Label>
+                                                        <Input
+                                                            id="from_text"
+                                                            name="from_text"
+                                                            className="h-9"
+                                                            list="stations-list"
+                                                            placeholder="Optional"
+                                                            defaultValue={
+                                                                lorryReceipt?.from_text ??
+                                                                ''
+                                                            }
+                                                        />
+                                                        <InputError
+                                                            message={
+                                                                errors.from_text
+                                                            }
+                                                        />
+                                                    </div>
+                                                ) : needsStations ? (
+                                                    <div className="space-y-1.5">
+                                                        <Label htmlFor="from_station_id">
+                                                            Loading Station *
+                                                        </Label>
+                                                        <select
+                                                            id="from_station_id"
+                                                            name="from_station_id"
+                                                            className={
+                                                                fieldClass
+                                                            }
+                                                            defaultValue={
+                                                                lorryReceipt?.from_station_id ??
+                                                                ''
+                                                            }
+                                                            required
+                                                        >
+                                                            <option value="">
+                                                                Select
+                                                            </option>
+                                                            {formOptions.stations.map(
+                                                                (station) => (
+                                                                    <option
+                                                                        key={
+                                                                            station.id
+                                                                        }
+                                                                        value={
+                                                                            station.id
+                                                                        }
+                                                                    >
+                                                                        {
+                                                                            station.name
+                                                                        }
+                                                                    </option>
+                                                                ),
+                                                            )}
+                                                        </select>
+                                                        <InputError
+                                                            message={
+                                                                errors.from_station_id
+                                                            }
+                                                        />
+                                                    </div>
+                                                ) : null
+                                            }
+                                        >
                                             {needsParties || partiesOptional ? (
                                                 <SearchablePartySelect
                                                     id="consignor_party_id"
                                                     name="consignor_party_id"
-                                                    label={
-                                                        needsParties
-                                                            ? 'Consignor'
-                                                            : 'Consignor'
-                                                    }
+                                                    label="Consignor"
                                                     options={
                                                         formOptions.consignors
                                                     }
@@ -1123,14 +1583,25 @@ export default function LrForm({
                                                         urls.parties_options
                                                     }
                                                     role="consignor"
+                                                    createStoreUrl={
+                                                        urls.parties_store
+                                                    }
                                                     createHref={
                                                         urls.parties_create
                                                     }
-                                                    createLabel="Create Consignor"
+                                                    createLabel="Add"
+                                                    createRole="consignor"
                                                     required={needsParties}
+                                                    value={consignorPartyId}
                                                     defaultValue={
                                                         lorryReceipt?.consignor_party_id ??
                                                         ''
+                                                    }
+                                                    onValueChange={
+                                                        setConsignorPartyId
+                                                    }
+                                                    onPartyChange={
+                                                        setConsignorParty
                                                     }
                                                     emptyMessage="No eligible Consignors in this branch."
                                                     error={
@@ -1138,74 +1609,107 @@ export default function LrForm({
                                                     }
                                                 />
                                             ) : null}
-                                            {needsTextLocations ? (
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="from_text">
-                                                        Loading Station
-                                                    </Label>
-                                                    <Input
-                                                        id="from_text"
-                                                        name="from_text"
-                                                        list="stations-list"
-                                                        defaultValue={
-                                                            lorryReceipt?.from_text ??
-                                                            ''
-                                                        }
-                                                    />
-                                                    <InputError
-                                                        message={
-                                                            errors.from_text
-                                                        }
-                                                    />
-                                                </div>
-                                            ) : null}
-                                            {needsStations ? (
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="from_station_id">
-                                                        Loading Station *
-                                                    </Label>
-                                                    <select
-                                                        id="from_station_id"
-                                                        name="from_station_id"
-                                                        className={fieldClass}
-                                                        defaultValue={
-                                                            lorryReceipt?.from_station_id ??
-                                                            ''
-                                                        }
-                                                        required
-                                                    >
-                                                        <option value="">
-                                                            Select
-                                                        </option>
-                                                        {formOptions.stations.map(
-                                                            (station) => (
-                                                                <option
-                                                                    key={
-                                                                        station.id
-                                                                    }
-                                                                    value={
-                                                                        station.id
-                                                                    }
-                                                                >
-                                                                    {
-                                                                        station.name
-                                                                    }
-                                                                </option>
-                                                            ),
-                                                        )}
-                                                    </select>
-                                                    <InputError
-                                                        message={
-                                                            errors.from_station_id
-                                                        }
-                                                    />
-                                                </div>
-                                            ) : null}
-                                        </div>
-                                        <div className="space-y-3 rounded-lg border border-border/70 p-3">
-                                            <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                                                Unloading
-                                            </p>
+                                            <LrfPartyMetaGrid
+                                                items={[
+                                                    {
+                                                        label: 'Contact',
+                                                        value:
+                                                            consignorParty?.contact_number ??
+                                                            '—',
+                                                    },
+                                                    {
+                                                        label: 'City',
+                                                        value:
+                                                            consignorParty?.city ??
+                                                            '—',
+                                                    },
+                                                    {
+                                                        label: 'State',
+                                                        value:
+                                                            consignorParty?.state ??
+                                                            '—',
+                                                    },
+                                                ]}
+                                            />
+                                        </LrfPartyCard>
+
+                                        <LrfRouteConnector
+                                            routeHint={routeFlowHint}
+                                        />
+
+                                        <LrfPartyCard
+                                            badge="TO"
+                                            badgeTone="to"
+                                            title="Consignee"
+                                            footer={
+                                                needsTextLocations ? (
+                                                    <div className="space-y-1.5">
+                                                        <Label htmlFor="to_text">
+                                                            Unloading Station
+                                                        </Label>
+                                                        <Input
+                                                            id="to_text"
+                                                            name="to_text"
+                                                            className="h-9"
+                                                            list="stations-list"
+                                                            placeholder="Optional"
+                                                            defaultValue={
+                                                                lorryReceipt?.to_text ??
+                                                                ''
+                                                            }
+                                                        />
+                                                        <InputError
+                                                            message={
+                                                                errors.to_text
+                                                            }
+                                                        />
+                                                    </div>
+                                                ) : needsStations ? (
+                                                    <div className="space-y-1.5">
+                                                        <Label htmlFor="to_station_id">
+                                                            Unloading Station *
+                                                        </Label>
+                                                        <select
+                                                            id="to_station_id"
+                                                            name="to_station_id"
+                                                            className={
+                                                                fieldClass
+                                                            }
+                                                            defaultValue={
+                                                                lorryReceipt?.to_station_id ??
+                                                                ''
+                                                            }
+                                                            required
+                                                        >
+                                                            <option value="">
+                                                                Select
+                                                            </option>
+                                                            {formOptions.stations.map(
+                                                                (station) => (
+                                                                    <option
+                                                                        key={
+                                                                            station.id
+                                                                        }
+                                                                        value={
+                                                                            station.id
+                                                                        }
+                                                                    >
+                                                                        {
+                                                                            station.name
+                                                                        }
+                                                                    </option>
+                                                                ),
+                                                            )}
+                                                        </select>
+                                                        <InputError
+                                                            message={
+                                                                errors.to_station_id
+                                                            }
+                                                        />
+                                                    </div>
+                                                ) : null
+                                            }
+                                        >
                                             {needsParties || partiesOptional ? (
                                                 <SearchablePartySelect
                                                     id="consignee_party_id"
@@ -1218,14 +1722,25 @@ export default function LrForm({
                                                         urls.parties_options
                                                     }
                                                     role="consignee"
+                                                    createStoreUrl={
+                                                        urls.parties_store
+                                                    }
                                                     createHref={
                                                         urls.parties_create
                                                     }
-                                                    createLabel="Create Consignee"
+                                                    createLabel="Add"
+                                                    createRole="consignee"
                                                     required={needsParties}
+                                                    value={consigneePartyId}
                                                     defaultValue={
                                                         lorryReceipt?.consignee_party_id ??
                                                         ''
+                                                    }
+                                                    onValueChange={
+                                                        setConsigneePartyId
+                                                    }
+                                                    onPartyChange={
+                                                        setConsigneeParty
                                                     }
                                                     emptyMessage="No eligible Consignees in this branch."
                                                     error={
@@ -1233,320 +1748,84 @@ export default function LrForm({
                                                     }
                                                 />
                                             ) : null}
-                                            {needsTextLocations ? (
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="to_text">
-                                                        Unloading Station
-                                                    </Label>
-                                                    <Input
-                                                        id="to_text"
-                                                        name="to_text"
-                                                        list="stations-list"
-                                                        defaultValue={
-                                                            lorryReceipt?.to_text ??
-                                                            ''
-                                                        }
-                                                    />
-                                                    <InputError
-                                                        message={errors.to_text}
-                                                    />
-                                                </div>
-                                            ) : null}
-                                            {needsStations ? (
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="to_station_id">
-                                                        Unloading Station *
-                                                    </Label>
-                                                    <select
-                                                        id="to_station_id"
-                                                        name="to_station_id"
-                                                        className={fieldClass}
-                                                        defaultValue={
-                                                            lorryReceipt?.to_station_id ??
-                                                            ''
-                                                        }
-                                                        required
-                                                    >
-                                                        <option value="">
-                                                            Select
-                                                        </option>
-                                                        {formOptions.stations.map(
-                                                            (station) => (
-                                                                <option
-                                                                    key={
-                                                                        station.id
-                                                                    }
-                                                                    value={
-                                                                        station.id
-                                                                    }
-                                                                >
-                                                                    {
-                                                                        station.name
-                                                                    }
-                                                                </option>
-                                                            ),
-                                                        )}
-                                                    </select>
-                                                    <InputError
-                                                        message={
-                                                            errors.to_station_id
-                                                        }
-                                                    />
-                                                </div>
-                                            ) : null}
-                                        </div>
+                                            <LrfPartyMetaGrid
+                                                items={[
+                                                    {
+                                                        label: 'Contact',
+                                                        value:
+                                                            consigneeParty?.contact_number ??
+                                                            '—',
+                                                    },
+                                                    {
+                                                        label: 'City',
+                                                        value:
+                                                            consigneeParty?.city ??
+                                                            '—',
+                                                    },
+                                                    {
+                                                        label: 'State',
+                                                        value:
+                                                            consigneeParty?.state ??
+                                                            '—',
+                                                    },
+                                                ]}
+                                            />
+                                        </LrfPartyCard>
                                     </div>
-                                </FormSection>
+                                </LrfSection>
                             ) : null}
 
-                            <FormPanelWithAction
-                                title="Goods"
-                                action={
-                                    <Button
-                                        type="button"
-                                        variant="secondary"
-                                        size="sm"
-                                        onClick={() =>
-                                            setGoods((current) => [
-                                                ...current,
-                                                emptyGoods(),
-                                            ])
+                            <LrfSection
+                                step={3}
+                                title="Goods & Charges"
+                                description="Cargo details and auto-calculated freight amount"
+                                tone="goods"
+                            >
+                                <div className="space-y-3">
+                                    <LrfInnerPanel
+                                        title="Goods"
+                                        action={
+                                            <Button
+                                                type="button"
+                                                variant="secondary"
+                                                size="sm"
+                                                onClick={() =>
+                                                    setGoods((current) => [
+                                                        ...current,
+                                                        emptyGoods(),
+                                                    ])
+                                                }
+                                            >
+                                                Add row
+                                            </Button>
                                         }
                                     >
-                                        Add row
-                                    </Button>
-                                }
-                            >
-                                <InputError message={errors.goods} />
+                                        <InputError message={errors.goods} />
 
-                                <div className="space-y-3">
-                                    {goods.map((row, index) => (
-                                        <div
-                                            key={index}
-                                            className="space-y-3 rounded-lg border border-border/70 p-3"
-                                        >
-                                            <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
-                                                <div className="space-y-1">
-                                                    <Label className="text-xs">
-                                                        Goods Type
-                                                    </Label>
-                                                    <select
-                                                        name={`goods[${index}][goods_type_id]`}
-                                                        className={fieldClass}
-                                                        value={
-                                                            row.goods_type_id
-                                                        }
-                                                        onChange={(e) =>
-                                                            applyGoodsField(
-                                                                index,
-                                                                {
-                                                                    goods_type_id:
-                                                                        e.target
-                                                                            .value,
-                                                                },
-                                                                'other',
-                                                            )
-                                                        }
-                                                    >
-                                                        <option value="">
-                                                            Select
-                                                        </option>
-                                                        {formOptions.goodsTypes.map(
-                                                            (item) => (
-                                                                <option
-                                                                    key={
-                                                                        item.id
-                                                                    }
-                                                                    value={
-                                                                        item.id
-                                                                    }
-                                                                >
-                                                                    {item.name}
-                                                                </option>
-                                                            ),
-                                                        )}
-                                                    </select>
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <Label className="text-xs">
-                                                        Package Type
-                                                    </Label>
-                                                    <select
-                                                        name={`goods[${index}][package_type_id]`}
-                                                        className={fieldClass}
-                                                        value={
-                                                            row.package_type_id
-                                                        }
-                                                        onChange={(e) =>
-                                                            applyGoodsField(
-                                                                index,
-                                                                {
-                                                                    package_type_id:
-                                                                        e.target
-                                                                            .value,
-                                                                },
-                                                                'other',
-                                                            )
-                                                        }
-                                                    >
-                                                        <option value="">
-                                                            Select
-                                                        </option>
-                                                        {formOptions.packageTypes.map(
-                                                            (item) => (
-                                                                <option
-                                                                    key={
-                                                                        item.id
-                                                                    }
-                                                                    value={
-                                                                        item.id
-                                                                    }
-                                                                >
-                                                                    {item.name}
-                                                                </option>
-                                                            ),
-                                                        )}
-                                                    </select>
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <Label className="text-xs">
-                                                        No. of Units
-                                                    </Label>
-                                                    <Input
-                                                        name={`goods[${index}][package_count]`}
-                                                        type="number"
-                                                        min="0"
-                                                        step="0.001"
-                                                        className="h-9"
-                                                        value={
-                                                            row.package_count
-                                                        }
-                                                        onChange={(e) =>
-                                                            applyGoodsField(
-                                                                index,
-                                                                {
-                                                                    package_count:
-                                                                        e.target
-                                                                            .value,
-                                                                },
-                                                                'package_count',
-                                                            )
-                                                        }
-                                                    />
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <Label className="text-xs">
-                                                        Wt./Unit (KG)
-                                                    </Label>
-                                                    <Input
-                                                        type="number"
-                                                        min="0"
-                                                        step="0.001"
-                                                        className="h-9"
-                                                        value={
-                                                            row.weight_per_unit
-                                                        }
-                                                        onChange={(e) =>
-                                                            applyGoodsField(
-                                                                index,
-                                                                {
-                                                                    weight_per_unit:
-                                                                        e.target
-                                                                            .value,
-                                                                },
-                                                                'weight_per_unit',
-                                                            )
-                                                        }
-                                                        aria-label={`Weight per unit KG row ${index + 1}`}
-                                                    />
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <Label className="text-xs">
-                                                        Actual Weight (MT)
-                                                    </Label>
-                                                    <input
-                                                        type="hidden"
-                                                        name={`goods[${index}][actual_weight]`}
-                                                        value={mtToKg(
-                                                            row.actual_weight,
-                                                        )}
-                                                    />
-                                                    <Input
-                                                        type="number"
-                                                        min="0"
-                                                        step="0.001"
-                                                        className="h-9"
-                                                        value={
-                                                            row.actual_weight
-                                                        }
-                                                        onChange={(e) =>
-                                                            applyGoodsField(
-                                                                index,
-                                                                {
-                                                                    actual_weight:
-                                                                        e.target
-                                                                            .value,
-                                                                },
-                                                                'actual_weight',
-                                                            )
-                                                        }
-                                                        aria-label={`Actual weight MT row ${index + 1}`}
-                                                    />
-                                                </div>
-                                                <div className="space-y-1">
-                                                    <Label className="text-xs">
-                                                        Charged Weight (MT)
-                                                    </Label>
-                                                    <input
-                                                        type="hidden"
-                                                        name={`goods[${index}][charged_weight]`}
-                                                        value={mtToKg(
-                                                            row.charged_weight,
-                                                        )}
-                                                    />
-                                                    <Input
-                                                        type="number"
-                                                        min="0"
-                                                        step="0.001"
-                                                        className="h-9"
-                                                        value={
-                                                            row.charged_weight
-                                                        }
-                                                        onChange={(e) =>
-                                                            applyGoodsField(
-                                                                index,
-                                                                {
-                                                                    charged_weight:
-                                                                        e.target
-                                                                            .value,
-                                                                },
-                                                                'other',
-                                                            )
-                                                        }
-                                                        aria-label={`Charged weight MT row ${index + 1}`}
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
-                                                {mayViewFreight ? (
-                                                    <>
+                                        <div className="space-y-3">
+                                            {goods.map((row, index) => (
+                                                <div
+                                                    key={index}
+                                                    className="space-y-3 rounded-lg border border-border/70 p-3"
+                                                >
+                                                    <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
                                                         <div className="space-y-1">
                                                             <Label className="text-xs">
-                                                                Rate Type
+                                                                Goods Type
                                                             </Label>
                                                             <select
-                                                                name={`goods[${index}][freight_rate_type]`}
+                                                                name={`goods[${index}][goods_type_id]`}
                                                                 className={
                                                                     fieldClass
                                                                 }
                                                                 value={
-                                                                    row.freight_rate_type
+                                                                    row.goods_type_id
                                                                 }
                                                                 onChange={(e) =>
                                                                     applyGoodsField(
                                                                         index,
                                                                         {
-                                                                            freight_rate_type:
+                                                                            goods_type_id:
                                                                                 e
                                                                                     .target
                                                                                     .value,
@@ -1554,22 +1833,22 @@ export default function LrForm({
                                                                         'other',
                                                                     )
                                                                 }
-                                                                required
                                                             >
-                                                                {formOptions.rateTypeOptions.map(
-                                                                    (
-                                                                        option,
-                                                                    ) => (
+                                                                <option value="">
+                                                                    Select
+                                                                </option>
+                                                                {formOptions.goodsTypes.map(
+                                                                    (item) => (
                                                                         <option
                                                                             key={
-                                                                                option.value
+                                                                                item.id
                                                                             }
                                                                             value={
-                                                                                option.value
+                                                                                item.id
                                                                             }
                                                                         >
                                                                             {
-                                                                                option.label
+                                                                                item.name
                                                                             }
                                                                         </option>
                                                                     ),
@@ -1578,22 +1857,21 @@ export default function LrForm({
                                                         </div>
                                                         <div className="space-y-1">
                                                             <Label className="text-xs">
-                                                                Rate
+                                                                Package Type
                                                             </Label>
-                                                            <Input
-                                                                name={`goods[${index}][freight_rate]`}
-                                                                type="number"
-                                                                min="0"
-                                                                step="0.0001"
-                                                                className="h-9"
+                                                            <select
+                                                                name={`goods[${index}][package_type_id]`}
+                                                                className={
+                                                                    fieldClass
+                                                                }
                                                                 value={
-                                                                    row.freight_rate
+                                                                    row.package_type_id
                                                                 }
                                                                 onChange={(e) =>
                                                                     applyGoodsField(
                                                                         index,
                                                                         {
-                                                                            freight_rate:
+                                                                            package_type_id:
                                                                                 e
                                                                                     .target
                                                                                     .value,
@@ -1601,524 +1879,781 @@ export default function LrForm({
                                                                         'other',
                                                                     )
                                                                 }
-                                                                required
+                                                            >
+                                                                <option value="">
+                                                                    Select
+                                                                </option>
+                                                                {formOptions.packageTypes.map(
+                                                                    (item) => (
+                                                                        <option
+                                                                            key={
+                                                                                item.id
+                                                                            }
+                                                                            value={
+                                                                                item.id
+                                                                            }
+                                                                        >
+                                                                            {
+                                                                                item.name
+                                                                            }
+                                                                        </option>
+                                                                    ),
+                                                                )}
+                                                            </select>
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <Label className="text-xs">
+                                                                No. of Units
+                                                            </Label>
+                                                            <Input
+                                                                name={`goods[${index}][package_count]`}
+                                                                type="number"
+                                                                min="0"
+                                                                step="0.001"
+                                                                className="h-9"
+                                                                value={
+                                                                    row.package_count
+                                                                }
+                                                                onChange={(e) =>
+                                                                    applyGoodsField(
+                                                                        index,
+                                                                        {
+                                                                            package_count:
+                                                                                e
+                                                                                    .target
+                                                                                    .value,
+                                                                        },
+                                                                        'package_count',
+                                                                    )
+                                                                }
                                                             />
                                                         </div>
                                                         <div className="space-y-1">
                                                             <Label className="text-xs">
-                                                                Freight Amount
+                                                                Wt./Unit (KG)
                                                             </Label>
-                                                            <span className="flex h-9 items-center text-muted-foreground tabular-nums">
-                                                                {formatPreviewAmount(
-                                                                    computeFreightPreview(
-                                                                        row,
-                                                                    ),
-                                                                )}
-                                                            </span>
-                                                        </div>
-                                                    </>
-                                                ) : null}
-                                                <div className="space-y-1">
-                                                    <Label className="text-xs">
-                                                        Goods Value
-                                                    </Label>
-                                                    <Input
-                                                        name={`goods[${index}][goods_value]`}
-                                                        type="number"
-                                                        min="0"
-                                                        step="0.01"
-                                                        className="h-9"
-                                                        value={row.goods_value}
-                                                        onChange={(e) =>
-                                                            applyGoodsField(
-                                                                index,
-                                                                {
-                                                                    goods_value:
-                                                                        e.target
-                                                                            .value,
-                                                                },
-                                                                'other',
-                                                            )
-                                                        }
-                                                    />
-                                                </div>
-                                                <div className="space-y-1 md:col-span-2 xl:col-span-1">
-                                                    <Label className="text-xs">
-                                                        Goods Description
-                                                        <span className="font-normal text-muted-foreground">
-                                                            {' '}
-                                                            (optional)
-                                                        </span>
-                                                    </Label>
-                                                    <Input
-                                                        name={`goods[${index}][goods_description]`}
-                                                        className="h-9"
-                                                        value={
-                                                            row.goods_description
-                                                        }
-                                                        onChange={(e) =>
-                                                            applyGoodsField(
-                                                                index,
-                                                                {
-                                                                    goods_description:
-                                                                        e.target
-                                                                            .value,
-                                                                },
-                                                                'other',
-                                                            )
-                                                        }
-                                                    />
-                                                </div>
-                                                <div className="flex items-end justify-end">
-                                                    {goods.length > 1 ? (
-                                                        <Button
-                                                            type="button"
-                                                            variant="destructive"
-                                                            size="sm"
-                                                            className="gap-1.5"
-                                                            onClick={() =>
-                                                                setGoods(
-                                                                    (current) =>
-                                                                        current.filter(
-                                                                            (
-                                                                                _,
-                                                                                i,
-                                                                            ) =>
-                                                                                i !==
-                                                                                index,
-                                                                        ),
-                                                                )
-                                                            }
-                                                        >
-                                                            <Trash2
-                                                                className="size-3.5"
-                                                                aria-hidden
-                                                            />
-                                                            Remove
-                                                        </Button>
-                                                    ) : null}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </FormPanelWithAction>
-
-                            <FormPanelWithAction
-                                title="E-way bills"
-                                action={
-                                    <Button
-                                        type="button"
-                                        variant="secondary"
-                                        size="sm"
-                                        onClick={() =>
-                                            setEwbs((current) => [
-                                                ...current,
-                                                {
-                                                    ewb_number: '',
-                                                    ewb_date: '',
-                                                    valid_until: '',
-                                                },
-                                            ])
-                                        }
-                                    >
-                                        Add EWB
-                                    </Button>
-                                }
-                            >
-                                {ewbs.length === 0 ? (
-                                    <p className="text-sm text-muted-foreground">
-                                        No e-way bills added yet.
-                                    </p>
-                                ) : (
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full min-w-[520px] text-left text-sm">
-                                            <thead className="text-muted-foreground">
-                                                <tr className="border-b border-border">
-                                                    <th className="px-2 py-2 font-medium">
-                                                        Number
-                                                    </th>
-                                                    <th className="px-2 py-2 font-medium">
-                                                        Date
-                                                    </th>
-                                                    <th className="px-2 py-2 font-medium">
-                                                        Valid until
-                                                    </th>
-                                                    <th className="px-2 py-2 font-medium">
-                                                        Remove
-                                                    </th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {ewbs.map((row, index) => (
-                                                    <tr
-                                                        key={index}
-                                                        className="border-b border-border/70"
-                                                    >
-                                                        <td className="px-2 py-2">
                                                             <Input
-                                                                name={`eway_bills[${index}][ewb_number]`}
-                                                                className="h-9"
-                                                                value={
-                                                                    row.ewb_number
-                                                                }
-                                                                onChange={(e) =>
-                                                                    setEwbs(
-                                                                        (
-                                                                            current,
-                                                                        ) =>
-                                                                            current.map(
-                                                                                (
-                                                                                    item,
-                                                                                    i,
-                                                                                ) =>
-                                                                                    i ===
-                                                                                    index
-                                                                                        ? {
-                                                                                              ...item,
-                                                                                              ewb_number:
-                                                                                                  e
-                                                                                                      .target
-                                                                                                      .value,
-                                                                                          }
-                                                                                        : item,
-                                                                            ),
-                                                                    )
-                                                                }
-                                                                required
-                                                            />
-                                                        </td>
-                                                        <td className="px-2 py-2">
-                                                            <Input
-                                                                name={`eway_bills[${index}][ewb_date]`}
-                                                                type="date"
-                                                                className={
-                                                                    dateFieldClass
-                                                                }
-                                                                value={
-                                                                    row.ewb_date
-                                                                }
-                                                                onChange={(e) =>
-                                                                    setEwbs(
-                                                                        (
-                                                                            current,
-                                                                        ) =>
-                                                                            current.map(
-                                                                                (
-                                                                                    item,
-                                                                                    i,
-                                                                                ) =>
-                                                                                    i ===
-                                                                                    index
-                                                                                        ? {
-                                                                                              ...item,
-                                                                                              ewb_date:
-                                                                                                  e
-                                                                                                      .target
-                                                                                                      .value,
-                                                                                          }
-                                                                                        : item,
-                                                                            ),
-                                                                    )
-                                                                }
-                                                            />
-                                                        </td>
-                                                        <td className="px-2 py-2">
-                                                            <Input
-                                                                name={`eway_bills[${index}][valid_until]`}
-                                                                type="date"
-                                                                className={
-                                                                    dateFieldClass
-                                                                }
-                                                                value={
-                                                                    row.valid_until
-                                                                }
-                                                                onChange={(e) =>
-                                                                    setEwbs(
-                                                                        (
-                                                                            current,
-                                                                        ) =>
-                                                                            current.map(
-                                                                                (
-                                                                                    item,
-                                                                                    i,
-                                                                                ) =>
-                                                                                    i ===
-                                                                                    index
-                                                                                        ? {
-                                                                                              ...item,
-                                                                                              valid_until:
-                                                                                                  e
-                                                                                                      .target
-                                                                                                      .value,
-                                                                                          }
-                                                                                        : item,
-                                                                            ),
-                                                                    )
-                                                                }
-                                                                required
-                                                            />
-                                                        </td>
-                                                        <td className="px-2 py-2">
-                                                            <Button
-                                                                type="button"
-                                                                variant="destructive"
-                                                                size="sm"
-                                                                className="gap-1.5"
-                                                                onClick={() =>
-                                                                    setEwbs(
-                                                                        (
-                                                                            current,
-                                                                        ) =>
-                                                                            current.filter(
-                                                                                (
-                                                                                    _,
-                                                                                    i,
-                                                                                ) =>
-                                                                                    i !==
-                                                                                    index,
-                                                                            ),
-                                                                    )
-                                                                }
-                                                            >
-                                                                <Trash2
-                                                                    className="size-3.5"
-                                                                    aria-hidden
-                                                                />
-                                                                Remove
-                                                            </Button>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                )}
-                            </FormPanelWithAction>
-
-                            <FormPanelWithAction
-                                title="Additional charges"
-                                action={
-                                    <Button
-                                        type="button"
-                                        variant="secondary"
-                                        size="sm"
-                                        onClick={() =>
-                                            setCharges((current) => [
-                                                ...current,
-                                                {
-                                                    description: '',
-                                                    amount: '',
-                                                },
-                                            ])
-                                        }
-                                    >
-                                        Add charge
-                                    </Button>
-                                }
-                            >
-                                {charges.length === 0 ? (
-                                    <p className="text-sm text-muted-foreground">
-                                        No additional charges added yet.
-                                    </p>
-                                ) : (
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full min-w-[420px] text-left text-sm">
-                                            <thead className="text-muted-foreground">
-                                                <tr className="border-b border-border">
-                                                    <th className="px-2 py-2 font-medium">
-                                                        Description
-                                                    </th>
-                                                    <th className="px-2 py-2 font-medium">
-                                                        Amount
-                                                    </th>
-                                                    <th className="px-2 py-2 font-medium">
-                                                        Remove
-                                                    </th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {charges.map((row, index) => (
-                                                    <tr
-                                                        key={index}
-                                                        className="border-b border-border/70"
-                                                    >
-                                                        <td className="px-2 py-2">
-                                                            <Input
-                                                                name={`additional_charges[${index}][description]`}
-                                                                className="h-9"
-                                                                value={
-                                                                    row.description
-                                                                }
-                                                                onChange={(e) =>
-                                                                    setCharges(
-                                                                        (
-                                                                            current,
-                                                                        ) =>
-                                                                            current.map(
-                                                                                (
-                                                                                    item,
-                                                                                    i,
-                                                                                ) =>
-                                                                                    i ===
-                                                                                    index
-                                                                                        ? {
-                                                                                              ...item,
-                                                                                              description:
-                                                                                                  e
-                                                                                                      .target
-                                                                                                      .value,
-                                                                                          }
-                                                                                        : item,
-                                                                            ),
-                                                                    )
-                                                                }
-                                                                required
-                                                            />
-                                                        </td>
-                                                        <td className="px-2 py-2">
-                                                            <Input
-                                                                name={`additional_charges[${index}][amount]`}
                                                                 type="number"
-                                                                min="0.01"
+                                                                min="0"
+                                                                step="0.001"
+                                                                className="h-9"
+                                                                value={
+                                                                    row.weight_per_unit
+                                                                }
+                                                                onChange={(e) =>
+                                                                    applyGoodsField(
+                                                                        index,
+                                                                        {
+                                                                            weight_per_unit:
+                                                                                e
+                                                                                    .target
+                                                                                    .value,
+                                                                        },
+                                                                        'weight_per_unit',
+                                                                    )
+                                                                }
+                                                                aria-label={`Weight per unit KG row ${index + 1}`}
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <Label className="text-xs">
+                                                                Actual Weight
+                                                                (MT)
+                                                            </Label>
+                                                            <input
+                                                                type="hidden"
+                                                                name={`goods[${index}][actual_weight]`}
+                                                                value={mtToKg(
+                                                                    row.actual_weight,
+                                                                )}
+                                                            />
+                                                            <Input
+                                                                type="number"
+                                                                min="0"
+                                                                step="0.001"
+                                                                className="h-9"
+                                                                value={
+                                                                    row.actual_weight
+                                                                }
+                                                                onChange={(e) =>
+                                                                    applyGoodsField(
+                                                                        index,
+                                                                        {
+                                                                            actual_weight:
+                                                                                e
+                                                                                    .target
+                                                                                    .value,
+                                                                        },
+                                                                        'actual_weight',
+                                                                    )
+                                                                }
+                                                                aria-label={`Actual weight MT row ${index + 1}`}
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <Label className="text-xs">
+                                                                Charged Weight
+                                                                (MT)
+                                                            </Label>
+                                                            <input
+                                                                type="hidden"
+                                                                name={`goods[${index}][charged_weight]`}
+                                                                value={mtToKg(
+                                                                    row.charged_weight,
+                                                                )}
+                                                            />
+                                                            <Input
+                                                                type="number"
+                                                                min="0"
+                                                                step="0.001"
+                                                                className="h-9"
+                                                                value={
+                                                                    row.charged_weight
+                                                                }
+                                                                onChange={(e) =>
+                                                                    applyGoodsField(
+                                                                        index,
+                                                                        {
+                                                                            charged_weight:
+                                                                                e
+                                                                                    .target
+                                                                                    .value,
+                                                                        },
+                                                                        'other',
+                                                                    )
+                                                                }
+                                                                aria-label={`Charged weight MT row ${index + 1}`}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+                                                        {mayViewFreight ? (
+                                                            <>
+                                                                <div className="space-y-1">
+                                                                    <Label className="text-xs">
+                                                                        Rate
+                                                                        Type
+                                                                    </Label>
+                                                                    <select
+                                                                        name={`goods[${index}][freight_rate_type]`}
+                                                                        className={
+                                                                            fieldClass
+                                                                        }
+                                                                        value={
+                                                                            row.freight_rate_type
+                                                                        }
+                                                                        onChange={(
+                                                                            e,
+                                                                        ) =>
+                                                                            applyGoodsField(
+                                                                                index,
+                                                                                {
+                                                                                    freight_rate_type:
+                                                                                        e
+                                                                                            .target
+                                                                                            .value,
+                                                                                },
+                                                                                'other',
+                                                                            )
+                                                                        }
+                                                                        required
+                                                                    >
+                                                                        {formOptions.rateTypeOptions.map(
+                                                                            (
+                                                                                option,
+                                                                            ) => (
+                                                                                <option
+                                                                                    key={
+                                                                                        option.value
+                                                                                    }
+                                                                                    value={
+                                                                                        option.value
+                                                                                    }
+                                                                                >
+                                                                                    {
+                                                                                        option.label
+                                                                                    }
+                                                                                </option>
+                                                                            ),
+                                                                        )}
+                                                                    </select>
+                                                                </div>
+                                                                <div className="space-y-1">
+                                                                    <Label className="text-xs">
+                                                                        Rate
+                                                                    </Label>
+                                                                    <Input
+                                                                        name={`goods[${index}][freight_rate]`}
+                                                                        type="number"
+                                                                        min="0"
+                                                                        step="0.0001"
+                                                                        className="h-9"
+                                                                        value={
+                                                                            row.freight_rate
+                                                                        }
+                                                                        onChange={(
+                                                                            e,
+                                                                        ) =>
+                                                                            applyGoodsField(
+                                                                                index,
+                                                                                {
+                                                                                    freight_rate:
+                                                                                        e
+                                                                                            .target
+                                                                                            .value,
+                                                                                },
+                                                                                'other',
+                                                                            )
+                                                                        }
+                                                                        required
+                                                                    />
+                                                                </div>
+                                                                <div className="space-y-1">
+                                                                    <Label className="text-xs">
+                                                                        Freight
+                                                                        Amount
+                                                                    </Label>
+                                                                    <span className="flex h-9 items-center text-muted-foreground tabular-nums">
+                                                                        {formatPreviewAmount(
+                                                                            computeFreightPreview(
+                                                                                row,
+                                                                            ),
+                                                                        )}
+                                                                    </span>
+                                                                </div>
+                                                            </>
+                                                        ) : null}
+                                                        <div className="space-y-1">
+                                                            <Label className="text-xs">
+                                                                Goods Value
+                                                            </Label>
+                                                            <Input
+                                                                name={`goods[${index}][goods_value]`}
+                                                                type="number"
+                                                                min="0"
                                                                 step="0.01"
                                                                 className="h-9"
                                                                 value={
-                                                                    row.amount
+                                                                    row.goods_value
                                                                 }
                                                                 onChange={(e) =>
-                                                                    setCharges(
-                                                                        (
-                                                                            current,
-                                                                        ) =>
-                                                                            current.map(
-                                                                                (
-                                                                                    item,
-                                                                                    i,
-                                                                                ) =>
-                                                                                    i ===
-                                                                                    index
-                                                                                        ? {
-                                                                                              ...item,
-                                                                                              amount: e
-                                                                                                  .target
-                                                                                                  .value,
-                                                                                          }
-                                                                                        : item,
-                                                                            ),
+                                                                    applyGoodsField(
+                                                                        index,
+                                                                        {
+                                                                            goods_value:
+                                                                                e
+                                                                                    .target
+                                                                                    .value,
+                                                                        },
+                                                                        'other',
                                                                     )
                                                                 }
-                                                                required
                                                             />
-                                                        </td>
-                                                        <td className="px-2 py-2">
-                                                            <Button
-                                                                type="button"
-                                                                variant="destructive"
-                                                                size="sm"
-                                                                className="gap-1.5"
-                                                                onClick={() =>
-                                                                    setCharges(
-                                                                        (
-                                                                            current,
-                                                                        ) =>
-                                                                            current.filter(
-                                                                                (
-                                                                                    _,
-                                                                                    i,
-                                                                                ) =>
-                                                                                    i !==
-                                                                                    index,
-                                                                            ),
+                                                        </div>
+                                                        <div className="space-y-1 md:col-span-2 xl:col-span-1">
+                                                            <Label className="text-xs">
+                                                                Goods
+                                                                Description
+                                                                <span className="font-normal text-muted-foreground">
+                                                                    {' '}
+                                                                    (optional)
+                                                                </span>
+                                                            </Label>
+                                                            <Input
+                                                                name={`goods[${index}][goods_description]`}
+                                                                className="h-9"
+                                                                value={
+                                                                    row.goods_description
+                                                                }
+                                                                onChange={(e) =>
+                                                                    applyGoodsField(
+                                                                        index,
+                                                                        {
+                                                                            goods_description:
+                                                                                e
+                                                                                    .target
+                                                                                    .value,
+                                                                        },
+                                                                        'other',
                                                                     )
                                                                 }
-                                                            >
-                                                                <Trash2
-                                                                    className="size-3.5"
-                                                                    aria-hidden
-                                                                />
+                                                            />
+                                                        </div>
+                                                        <div className="flex items-end justify-end">
+                                                            {goods.length >
+                                                            1 ? (
+                                                                <Button
+                                                                    type="button"
+                                                                    variant="destructive"
+                                                                    size="sm"
+                                                                    className="gap-1.5"
+                                                                    onClick={() =>
+                                                                        setGoods(
+                                                                            (
+                                                                                current,
+                                                                            ) =>
+                                                                                current.filter(
+                                                                                    (
+                                                                                        _,
+                                                                                        i,
+                                                                                    ) =>
+                                                                                        i !==
+                                                                                        index,
+                                                                                ),
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    <Trash2
+                                                                        className="size-3.5"
+                                                                        aria-hidden
+                                                                    />
+                                                                    Remove
+                                                                </Button>
+                                                            ) : null}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </LrfInnerPanel>
+
+                                    <LrfInnerPanel
+                                        title="E-way bills"
+                                        action={
+                                            <Button
+                                                type="button"
+                                                variant="secondary"
+                                                size="sm"
+                                                onClick={() =>
+                                                    setEwbs((current) => [
+                                                        ...current,
+                                                        {
+                                                            ewb_number: '',
+                                                            ewb_date: '',
+                                                            valid_until: '',
+                                                        },
+                                                    ])
+                                                }
+                                            >
+                                                Add EWB
+                                            </Button>
+                                        }
+                                    >
+                                        {ewbs.length === 0 ? (
+                                            <p className="text-sm text-muted-foreground">
+                                                No e-way bills added yet.
+                                            </p>
+                                        ) : (
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full min-w-[520px] text-left text-sm">
+                                                    <thead className="text-muted-foreground">
+                                                        <tr className="border-b border-border">
+                                                            <th className="px-2 py-2 font-medium">
+                                                                Number
+                                                            </th>
+                                                            <th className="px-2 py-2 font-medium">
+                                                                Date
+                                                            </th>
+                                                            <th className="px-2 py-2 font-medium">
+                                                                Valid until
+                                                            </th>
+                                                            <th className="px-2 py-2 font-medium">
                                                                 Remove
-                                                            </Button>
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                )}
-                            </FormPanelWithAction>
+                                                            </th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {ewbs.map(
+                                                            (row, index) => (
+                                                                <tr
+                                                                    key={index}
+                                                                    className="border-b border-border/70"
+                                                                >
+                                                                    <td className="px-2 py-2">
+                                                                        <Input
+                                                                            name={`eway_bills[${index}][ewb_number]`}
+                                                                            className="h-9"
+                                                                            value={
+                                                                                row.ewb_number
+                                                                            }
+                                                                            onChange={(
+                                                                                e,
+                                                                            ) =>
+                                                                                setEwbs(
+                                                                                    (
+                                                                                        current,
+                                                                                    ) =>
+                                                                                        current.map(
+                                                                                            (
+                                                                                                item,
+                                                                                                i,
+                                                                                            ) =>
+                                                                                                i ===
+                                                                                                index
+                                                                                                    ? {
+                                                                                                          ...item,
+                                                                                                          ewb_number:
+                                                                                                              e
+                                                                                                                  .target
+                                                                                                                  .value,
+                                                                                                      }
+                                                                                                    : item,
+                                                                                        ),
+                                                                                )
+                                                                            }
+                                                                            required
+                                                                        />
+                                                                    </td>
+                                                                    <td className="px-2 py-2">
+                                                                        <Input
+                                                                            name={`eway_bills[${index}][ewb_date]`}
+                                                                            type="date"
+                                                                            className={
+                                                                                dateFieldClass
+                                                                            }
+                                                                            value={
+                                                                                row.ewb_date
+                                                                            }
+                                                                            onChange={(
+                                                                                e,
+                                                                            ) =>
+                                                                                setEwbs(
+                                                                                    (
+                                                                                        current,
+                                                                                    ) =>
+                                                                                        current.map(
+                                                                                            (
+                                                                                                item,
+                                                                                                i,
+                                                                                            ) =>
+                                                                                                i ===
+                                                                                                index
+                                                                                                    ? {
+                                                                                                          ...item,
+                                                                                                          ewb_date:
+                                                                                                              e
+                                                                                                                  .target
+                                                                                                                  .value,
+                                                                                                      }
+                                                                                                    : item,
+                                                                                        ),
+                                                                                )
+                                                                            }
+                                                                        />
+                                                                    </td>
+                                                                    <td className="px-2 py-2">
+                                                                        <Input
+                                                                            name={`eway_bills[${index}][valid_until]`}
+                                                                            type="date"
+                                                                            className={
+                                                                                dateFieldClass
+                                                                            }
+                                                                            value={
+                                                                                row.valid_until
+                                                                            }
+                                                                            onChange={(
+                                                                                e,
+                                                                            ) =>
+                                                                                setEwbs(
+                                                                                    (
+                                                                                        current,
+                                                                                    ) =>
+                                                                                        current.map(
+                                                                                            (
+                                                                                                item,
+                                                                                                i,
+                                                                                            ) =>
+                                                                                                i ===
+                                                                                                index
+                                                                                                    ? {
+                                                                                                          ...item,
+                                                                                                          valid_until:
+                                                                                                              e
+                                                                                                                  .target
+                                                                                                                  .value,
+                                                                                                      }
+                                                                                                    : item,
+                                                                                        ),
+                                                                                )
+                                                                            }
+                                                                            required
+                                                                        />
+                                                                    </td>
+                                                                    <td className="px-2 py-2">
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="destructive"
+                                                                            size="sm"
+                                                                            className="gap-1.5"
+                                                                            onClick={() =>
+                                                                                setEwbs(
+                                                                                    (
+                                                                                        current,
+                                                                                    ) =>
+                                                                                        current.filter(
+                                                                                            (
+                                                                                                _,
+                                                                                                i,
+                                                                                            ) =>
+                                                                                                i !==
+                                                                                                index,
+                                                                                        ),
+                                                                                )
+                                                                            }
+                                                                        >
+                                                                            <Trash2
+                                                                                className="size-3.5"
+                                                                                aria-hidden
+                                                                            />
+                                                                            Remove
+                                                                        </Button>
+                                                                    </td>
+                                                                </tr>
+                                                            ),
+                                                        )}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        )}
+                                    </LrfInnerPanel>
 
-                            <section
-                                className={`${sectionShellClass} px-4 py-3`}
-                            >
-                                <h2 className="mb-3 text-sm font-semibold tracking-tight">
-                                    Summary
-                                </h2>
-                                <dl className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
-                                    <div className="flex justify-between gap-3 sm:block">
-                                        <dt className="text-muted-foreground">
-                                            Total Units
-                                        </dt>
-                                        <dd className="font-medium tabular-nums">
-                                            {summary.totalUnits}
-                                        </dd>
-                                    </div>
-                                    <div className="flex justify-between gap-3 sm:block">
-                                        <dt className="text-muted-foreground">
-                                            Actual Wt (MT)
-                                        </dt>
-                                        <dd className="font-medium tabular-nums">
-                                            {summary.totalActual}
-                                        </dd>
-                                    </div>
-                                    <div className="flex justify-between gap-3 sm:block">
-                                        <dt className="text-muted-foreground">
-                                            Charged Wt (MT)
-                                        </dt>
-                                        <dd className="font-medium tabular-nums">
-                                            {summary.totalCharged}
-                                        </dd>
-                                    </div>
-                                    {mayViewFreight ? (
-                                        <>
-                                            <div className="flex justify-between gap-3 sm:block">
-                                                <dt className="text-muted-foreground">
-                                                    Freight
-                                                </dt>
-                                                <dd className="font-medium tabular-nums">
-                                                    {summary.totalFreight}
-                                                </dd>
+                                    <LrfInnerPanel
+                                        title="Additional charges"
+                                        action={
+                                            <Button
+                                                type="button"
+                                                variant="secondary"
+                                                size="sm"
+                                                onClick={() =>
+                                                    setCharges((current) => [
+                                                        ...current,
+                                                        {
+                                                            description: '',
+                                                            amount: '',
+                                                        },
+                                                    ])
+                                                }
+                                            >
+                                                Add charge
+                                            </Button>
+                                        }
+                                    >
+                                        {charges.length === 0 ? (
+                                            <p className="text-sm text-muted-foreground">
+                                                No additional charges added yet.
+                                            </p>
+                                        ) : (
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full min-w-[420px] text-left text-sm">
+                                                    <thead className="text-muted-foreground">
+                                                        <tr className="border-b border-border">
+                                                            <th className="px-2 py-2 font-medium">
+                                                                Description
+                                                            </th>
+                                                            <th className="px-2 py-2 font-medium">
+                                                                Amount
+                                                            </th>
+                                                            <th className="px-2 py-2 font-medium">
+                                                                Remove
+                                                            </th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {charges.map(
+                                                            (row, index) => (
+                                                                <tr
+                                                                    key={index}
+                                                                    className="border-b border-border/70"
+                                                                >
+                                                                    <td className="px-2 py-2">
+                                                                        <Input
+                                                                            name={`additional_charges[${index}][description]`}
+                                                                            className="h-9"
+                                                                            value={
+                                                                                row.description
+                                                                            }
+                                                                            onChange={(
+                                                                                e,
+                                                                            ) =>
+                                                                                setCharges(
+                                                                                    (
+                                                                                        current,
+                                                                                    ) =>
+                                                                                        current.map(
+                                                                                            (
+                                                                                                item,
+                                                                                                i,
+                                                                                            ) =>
+                                                                                                i ===
+                                                                                                index
+                                                                                                    ? {
+                                                                                                          ...item,
+                                                                                                          description:
+                                                                                                              e
+                                                                                                                  .target
+                                                                                                                  .value,
+                                                                                                      }
+                                                                                                    : item,
+                                                                                        ),
+                                                                                )
+                                                                            }
+                                                                            required
+                                                                        />
+                                                                    </td>
+                                                                    <td className="px-2 py-2">
+                                                                        <Input
+                                                                            name={`additional_charges[${index}][amount]`}
+                                                                            type="number"
+                                                                            min="0.01"
+                                                                            step="0.01"
+                                                                            className="h-9"
+                                                                            value={
+                                                                                row.amount
+                                                                            }
+                                                                            onChange={(
+                                                                                e,
+                                                                            ) =>
+                                                                                setCharges(
+                                                                                    (
+                                                                                        current,
+                                                                                    ) =>
+                                                                                        current.map(
+                                                                                            (
+                                                                                                item,
+                                                                                                i,
+                                                                                            ) =>
+                                                                                                i ===
+                                                                                                index
+                                                                                                    ? {
+                                                                                                          ...item,
+                                                                                                          amount: e
+                                                                                                              .target
+                                                                                                              .value,
+                                                                                                      }
+                                                                                                    : item,
+                                                                                        ),
+                                                                                )
+                                                                            }
+                                                                            required
+                                                                        />
+                                                                    </td>
+                                                                    <td className="px-2 py-2">
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="destructive"
+                                                                            size="sm"
+                                                                            className="gap-1.5"
+                                                                            onClick={() =>
+                                                                                setCharges(
+                                                                                    (
+                                                                                        current,
+                                                                                    ) =>
+                                                                                        current.filter(
+                                                                                            (
+                                                                                                _,
+                                                                                                i,
+                                                                                            ) =>
+                                                                                                i !==
+                                                                                                index,
+                                                                                        ),
+                                                                                )
+                                                                            }
+                                                                        >
+                                                                            <Trash2
+                                                                                className="size-3.5"
+                                                                                aria-hidden
+                                                                            />
+                                                                            Remove
+                                                                        </Button>
+                                                                    </td>
+                                                                </tr>
+                                                            ),
+                                                        )}
+                                                    </tbody>
+                                                </table>
                                             </div>
-                                            <div className="flex justify-between gap-3 sm:block">
-                                                <dt className="text-muted-foreground">
-                                                    Additional Charges
-                                                </dt>
-                                                <dd className="font-medium tabular-nums">
-                                                    {summary.totalAdditional}
-                                                </dd>
-                                            </div>
-                                            <div className="flex justify-between gap-3 sm:block">
-                                                <dt className="text-muted-foreground">
-                                                    Total Amount
-                                                </dt>
-                                                <dd className="font-medium tabular-nums">
-                                                    {summary.totalAmount}
-                                                </dd>
-                                            </div>
-                                        </>
-                                    ) : null}
-                                    <div className="flex justify-between gap-3 sm:block">
-                                        <dt className="text-muted-foreground">
-                                            Goods Value
-                                        </dt>
-                                        <dd className="font-medium tabular-nums">
-                                            {summary.totalGoodsValue}
-                                        </dd>
-                                    </div>
-                                </dl>
-                            </section>
+                                        )}
+                                    </LrfInnerPanel>
 
-                            <div className="flex items-center justify-end gap-3">
+                                    <section
+                                        className={`${lrfSectionShell} px-4 py-3`}
+                                    >
+                                        <h2 className="mb-3 text-sm font-semibold tracking-tight">
+                                            Summary
+                                        </h2>
+                                        <dl className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                                            <div className="flex justify-between gap-3 sm:block">
+                                                <dt className="text-muted-foreground">
+                                                    Total Units
+                                                </dt>
+                                                <dd className="font-medium tabular-nums">
+                                                    {summary.totalUnits}
+                                                </dd>
+                                            </div>
+                                            <div className="flex justify-between gap-3 sm:block">
+                                                <dt className="text-muted-foreground">
+                                                    Actual Wt (MT)
+                                                </dt>
+                                                <dd className="font-medium tabular-nums">
+                                                    {summary.totalActual}
+                                                </dd>
+                                            </div>
+                                            <div className="flex justify-between gap-3 sm:block">
+                                                <dt className="text-muted-foreground">
+                                                    Charged Wt (MT)
+                                                </dt>
+                                                <dd className="font-medium tabular-nums">
+                                                    {summary.totalCharged}
+                                                </dd>
+                                            </div>
+                                            {mayViewFreight ? (
+                                                <>
+                                                    <div className="flex justify-between gap-3 sm:block">
+                                                        <dt className="text-muted-foreground">
+                                                            Freight
+                                                        </dt>
+                                                        <dd className="font-medium tabular-nums">
+                                                            {
+                                                                summary.totalFreight
+                                                            }
+                                                        </dd>
+                                                    </div>
+                                                    <div className="flex justify-between gap-3 sm:block">
+                                                        <dt className="text-muted-foreground">
+                                                            Additional Charges
+                                                        </dt>
+                                                        <dd className="font-medium tabular-nums">
+                                                            {
+                                                                summary.totalAdditional
+                                                            }
+                                                        </dd>
+                                                    </div>
+                                                    <div className="flex justify-between gap-3 sm:block">
+                                                        <dt className="text-muted-foreground">
+                                                            Total Amount
+                                                        </dt>
+                                                        <dd className="font-medium tabular-nums">
+                                                            {
+                                                                summary.totalAmount
+                                                            }
+                                                        </dd>
+                                                    </div>
+                                                </>
+                                            ) : null}
+                                            <div className="flex justify-between gap-3 sm:block">
+                                                <dt className="text-muted-foreground">
+                                                    Goods Value
+                                                </dt>
+                                                <dd className="font-medium tabular-nums">
+                                                    {summary.totalGoodsValue}
+                                                </dd>
+                                            </div>
+                                        </dl>
+                                    </section>
+                                </div>
+                            </LrfSection>
+
+                            <div className="flex items-center justify-end gap-3 border-t border-border/60 pt-3">
                                 <Button variant="outline" asChild>
                                     <Link href={urls.show ?? urls.index}>
                                         Cancel
@@ -2168,6 +2703,23 @@ export default function LrForm({
                             : undefined
                     }
                 />
+
+                {urls.parties_store && headerQuickCreate ? (
+                    <QuickCreatePartySheet
+                        open={headerQuickCreate !== null}
+                        onOpenChange={(open) => {
+                            if (!open) {
+                                setHeaderQuickCreate(null);
+                            }
+                        }}
+                        storeUrl={urls.parties_store}
+                        role={headerQuickCreate}
+                        onCreated={(party) => {
+                            setBillingCustomerId(party.id);
+                            setHeaderQuickCreate(null);
+                        }}
+                    />
+                ) : null}
             </PageShell>
         </>
     );

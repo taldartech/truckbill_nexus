@@ -73,6 +73,8 @@ type Props = {
         lr_show: string;
         index: string;
         parties_options?: string;
+        parties_store?: string;
+        parties_create?: string;
     };
 };
 
@@ -531,6 +533,10 @@ export default function LorryHireCreate({
                                         options={transporterOptions}
                                         searchUrl={urls.parties_options}
                                         role="transporter"
+                                        createStoreUrl={urls.parties_store}
+                                        createHref={urls.parties_create}
+                                        createLabel="Add"
+                                        createRole="transporter"
                                         required={payeeRequired}
                                         value={transporterPartyId}
                                         onValueChange={setTransporterPartyId}

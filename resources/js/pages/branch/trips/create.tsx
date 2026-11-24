@@ -44,6 +44,7 @@ type Props = {
         index: string;
         parties_options?: string;
         parties_create?: string;
+        parties_store?: string;
     };
 };
 

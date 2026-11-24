@@ -157,9 +157,12 @@ class LorryReceiptController extends Controller
                 'index' => route('branch.lorry-receipts.index', absolute: false),
                 'store' => route('branch.lorry-receipts.store', absolute: false),
                 'parties_options' => route('branch.parties.options', absolute: false),
+                'parties_tds_for_payee' => route('branch.parties.tds-for-payee', absolute: false),
                 'parties_create' => route('branch.parties.create', absolute: false),
+                'parties_store' => route('branch.parties.store', absolute: false),
                 'vehicles_options' => route('branch.vehicles.options', absolute: false),
                 'vehicles_create' => route('branch.vehicles.create', absolute: false),
+                'vehicles_store' => route('branch.vehicles.store', absolute: false),
             ],
         ]);
     }
@@ -363,9 +366,12 @@ class LorryReceiptController extends Controller
                 'show' => route('branch.lorry-receipts.show', [$lorryReceipt], absolute: false),
                 'update' => route('branch.lorry-receipts.update', [$lorryReceipt], absolute: false),
                 'parties_options' => route('branch.parties.options', absolute: false),
+                'parties_tds_for_payee' => route('branch.parties.tds-for-payee', absolute: false),
                 'parties_create' => route('branch.parties.create', absolute: false),
+                'parties_store' => route('branch.parties.store', absolute: false),
                 'vehicles_options' => route('branch.vehicles.options', absolute: false),
                 'vehicles_create' => route('branch.vehicles.create', absolute: false),
+                'vehicles_store' => route('branch.vehicles.store', absolute: false),
             ],
         ]);
     }
@@ -520,6 +526,8 @@ class LorryReceiptController extends Controller
             'form_mode' => ['nullable', Rule::in([LrWorkflowContextResolver::FORM_TRUCK, LrWorkflowContextResolver::FORM_PARTLOAD])],
             'workflow_context' => ['nullable', Rule::enum(LrWorkflowContext::class)],
             'vehicle_id' => ['nullable', 'uuid'],
+            'intended_payee_type' => ['nullable', Rule::in(['owner', 'agency'])],
+            'intended_payee_party_id' => ['nullable', 'uuid'],
             'billing_customer_party_id' => ['nullable', 'uuid'],
             'lr_date' => ['nullable', 'date'],
             'from_text' => ['nullable', 'string', 'max:255'],
@@ -836,6 +844,8 @@ class LorryReceiptController extends Controller
             'consignor_party_id' => $lr->consignor_party_id,
             'consignee_party_id' => $lr->consignee_party_id,
             'vehicle_id' => $lr->vehicle_id,
+            'intended_payee_type' => $lr->intended_payee_type,
+            'intended_payee_party_id' => $lr->intended_payee_party_id,
             'billing_customer_party_id' => $lr->billing_customer_party_id,
             'consignor_name' => $lr->consignor?->name,
             'consignee_name' => $lr->consignee?->name,

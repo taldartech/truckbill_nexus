@@ -116,6 +116,7 @@ type Props = {
         broadcast: string;
         convert: string;
         parties_create?: string;
+        parties_store?: string;
         parties_options?: string;
     };
 };
@@ -445,8 +446,10 @@ export default function BranchEnquiryShow({
                                         options={customers}
                                         searchUrl={urls.parties_options}
                                         role="customer"
+                                        createStoreUrl={urls.parties_store}
                                         createHref={urls.parties_create}
-                                        createLabel="Create Customer"
+                                        createLabel="Add"
+                                        createRole="customer"
                                         required
                                         defaultValue={
                                             enquiry.customer_party_id ?? ''
@@ -724,8 +727,12 @@ export default function BranchEnquiryShow({
                                                 options={transporters}
                                                 searchUrl={urls.parties_options}
                                                 role="transporter"
+                                                createStoreUrl={
+                                                    urls.parties_store
+                                                }
                                                 createHref={urls.parties_create}
-                                                createLabel="Create Transporter"
+                                                createLabel="Add"
+                                                createRole="transporter"
                                                 required
                                                 emptyMessage="No eligible Transporters in this branch."
                                             />

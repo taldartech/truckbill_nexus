@@ -134,6 +134,7 @@ class TripController extends Controller
                 'index' => route('branch.trips.index', absolute: false),
                 'parties_options' => route('branch.parties.options', absolute: false),
                 'parties_create' => route('branch.parties.create', absolute: false),
+                'parties_store' => route('branch.parties.store', absolute: false),
             ],
         ]);
     }

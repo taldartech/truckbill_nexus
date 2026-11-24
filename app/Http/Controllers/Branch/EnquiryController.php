@@ -228,6 +228,7 @@ class EnquiryController extends Controller
                 'index' => route('branch.enquiries.index'),
                 'store' => route('branch.enquiries.store'),
                 'parties_create' => route('branch.parties.create', absolute: false),
+                'parties_store' => route('branch.parties.store', absolute: false),
                 'parties_options' => route('branch.parties.options', absolute: false),
             ],
         ]);
@@ -311,6 +312,7 @@ class EnquiryController extends Controller
                 'conversion_preview' => route('branch.enquiries.conversion-preview', [$enquiry]),
                 'convert' => route('branch.enquiries.convert', [$enquiry]),
                 'parties_create' => route('branch.parties.create', absolute: false),
+                'parties_store' => route('branch.parties.store', absolute: false),
                 'parties_options' => route('branch.parties.options', absolute: false),
             ],
         ]);

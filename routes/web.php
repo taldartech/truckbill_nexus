@@ -287,6 +287,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('/parties', [PartyController::class, 'index'])->name('branch.parties.index');
         Route::get('/parties/options', [PartyController::class, 'options'])->name('branch.parties.options');
+        Route::get('/parties/tds-for-payee', [PartyController::class, 'tdsForPayee'])->name('branch.parties.tds-for-payee');
         Route::get('/parties/create', [PartyController::class, 'create'])->name('branch.parties.create');
         Route::post('/parties/tds-preview', [PartyController::class, 'previewTds'])->name('branch.parties.tds-preview');
         Route::post('/parties', [PartyController::class, 'store'])->name('branch.parties.store');

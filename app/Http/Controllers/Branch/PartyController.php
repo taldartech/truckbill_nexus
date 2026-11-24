@@ -143,6 +143,59 @@ class PartyController extends Controller
         ]);
     }
 
+    /**
+     * Informational TDS % for Bilty Pay To preview (authoritative snapshot remains on Lorry Hire).
+     */
+    public function tdsForPayee(Request $request, Company $company, Branch $branch): JsonResponse
+    {
+        $this->activateBranchPanel($request, $company, $branch, $this->access);
+
+        $validated = $request->validate([
+            'party_id' => ['required', 'uuid'],
+        ]);
+
+        $party = Party::query()
+            ->visibleInBranch($company->id, $branch->id)
+            ->whereKey($validated['party_id'])
+            ->whereNull('deleted_at')
+            ->first();
+
+        if ($party === null) {
+            return response()->json([
+                'applicable_percent' => null,
+                'explanation' => null,
+            ]);
+        }
+
+        $role = PartyRole::query()
+            ->where('company_id', $company->id)
+            ->where('party_id', $party->id)
+            ->where('role', PartyRoleType::Transporter->value)
+            ->whereNull('deleted_at')
+            ->whereNull('deactivated_at')
+            ->first();
+
+        $roleAttrs = is_array($role?->role_attributes) ? $role->role_attributes : [];
+        $context = $this->transporterTds->buildContextFromTransporter(
+            ['pan' => $party->pan],
+            $roleAttrs,
+        );
+
+        try {
+            $result = $this->transporterTds->calculate($context);
+        } catch (TaxDomainException) {
+            return response()->json([
+                'applicable_percent' => null,
+                'explanation' => null,
+            ]);
+        }
+
+        return response()->json([
+            'applicable_percent' => number_format((float) $result->applicableRate, 3, '.', ''),
+            'explanation' => (string) $result->explanation,
+        ]);
+    }
+
     public function create(Request $request, Company $company, Branch $branch): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
@@ -308,7 +361,11 @@ class PartyController extends Controller
         }
 
         if ($request->expectsJson()) {
-            return response()->json(['data' => $party], 201);
+            $party->loadMissing('roles');
+
+            return response()->json([
+                'data' => $this->partyListPayload($party),
+            ], 201);
         }
 
         return redirect()

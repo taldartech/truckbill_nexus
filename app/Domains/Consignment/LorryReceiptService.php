@@ -14,6 +14,7 @@ use App\Domains\Consignment\Exceptions\LorryReceiptDomainException;
 use App\Domains\Consignment\Freight\FreightCalculator;
 use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Master\Party\Enums\PartyRoleType;
+use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
 use App\Domains\Numbering\DocumentNumberAllocator;
 use App\Domains\Numbering\Enums\DocumentNumberScopeType;
 use App\Domains\Numbering\Enums\DocumentNumberType;
@@ -158,6 +159,8 @@ final class LorryReceiptService
                     'consignor_party_id' => $normalized['consignor_party_id'],
                     'consignee_party_id' => $normalized['consignee_party_id'],
                     'vehicle_id' => $normalized['vehicle_id'],
+                    'intended_payee_type' => $normalized['intended_payee_type'],
+                    'intended_payee_party_id' => $normalized['intended_payee_party_id'],
                     'billing_customer_party_id' => $normalized['billing_customer_party_id'],
                     'status' => LrStatus::Pending,
                     'goods_value' => $normalized['goods_value'],
@@ -246,6 +249,8 @@ final class LorryReceiptService
                     'consignee_party_id' => $normalized['consignee_party_id'],
                     // vehicle_id / workflow_context remain immutable after create
                     'billing_customer_party_id' => $normalized['billing_customer_party_id'],
+                    'intended_payee_type' => $normalized['intended_payee_type'],
+                    'intended_payee_party_id' => $normalized['intended_payee_party_id'],
                     'goods_value' => $normalized['goods_value'],
                     'freight_total' => $normalized['freight_total'],
                     'additional_charges_total' => $normalized['additional_charges_total'],
@@ -407,6 +412,14 @@ final class LorryReceiptService
         $consigneeId = $this->optionalUuid($payload['consignee_party_id'] ?? null);
         $vehicleId = $this->optionalUuid($payload['vehicle_id'] ?? null);
         $billingCustomerId = $this->optionalUuid($payload['billing_customer_party_id'] ?? null);
+        $intendedPayeeType = $this->normalizeIntendedPayeeType($payload['intended_payee_type'] ?? null);
+        $intendedPayeePartyId = $this->optionalUuid($payload['intended_payee_party_id'] ?? null);
+        if ($context !== LrWorkflowContext::Broker) {
+            $intendedPayeeType = null;
+            $intendedPayeePartyId = null;
+        } else {
+            $this->assertIntendedPayee($company, $vehicleId, $intendedPayeeType, $intendedPayeePartyId);
+        }
 
         [
             $fromText,
@@ -496,6 +509,8 @@ final class LorryReceiptService
             'consignor_party_id' => $consignorId,
             'consignee_party_id' => $consigneeId,
             'vehicle_id' => $vehicleId,
+            'intended_payee_type' => $intendedPayeeType,
+            'intended_payee_party_id' => $intendedPayeePartyId,
             'billing_customer_party_id' => $billingCustomerId,
             'goods' => $goods,
             'eway_bills' => $ewayBills,
@@ -575,6 +590,96 @@ final class LorryReceiptService
         if (! $hasRole) {
             throw ValidationException::withMessages([
                 'billing_customer_party_id' => 'Billing Customer must have an active Customer role.',
+            ]);
+        }
+    }
+
+    private function normalizeIntendedPayeeType(mixed $value): ?string
+    {
+        $type = strtolower(trim((string) $value));
+        if ($type === '') {
+            return null;
+        }
+        if (! in_array($type, ['owner', 'agency'], true)) {
+            throw ValidationException::withMessages([
+                'intended_payee_type' => 'Pay To must be Truck Owner or Agency.',
+            ]);
+        }
+
+        return $type;
+    }
+
+    /**
+     * Validate operator Pay To intent when provided on Broker market Bilties.
+     * Does not create a Lorry Hire or payable — hire create confirms the payee.
+     * UI requires Pay To for market vehicles; API may omit during transitional tests.
+     */
+    private function assertIntendedPayee(
+        Company $company,
+        ?string $vehicleId,
+        ?string $payeeType,
+        ?string $payeePartyId,
+    ): void {
+        if ($payeeType === null && $payeePartyId === null) {
+            return;
+        }
+
+        if ($payeeType === null || $payeePartyId === null) {
+            throw ValidationException::withMessages([
+                'intended_payee_party_id' => 'Pay To type and Payee must be provided together.',
+            ]);
+        }
+
+        if ($vehicleId === null) {
+            throw ValidationException::withMessages([
+                'intended_payee_type' => 'Select a market vehicle before choosing Pay To.',
+            ]);
+        }
+
+        $vehicle = Vehicle::query()
+            ->where('company_id', $company->id)
+            ->whereKey($vehicleId)
+            ->whereNull('deleted_at')
+            ->first();
+
+        if ($vehicle === null || $vehicle->ownership !== VehicleOwnership::Market) {
+            throw ValidationException::withMessages([
+                'intended_payee_type' => 'Pay To applies only to market vehicles.',
+            ]);
+        }
+
+        if ($payeeType === 'owner') {
+            $ownerId = $vehicle->owner_party_id;
+            if ($ownerId === null || $ownerId === '' || $ownerId !== $payeePartyId) {
+                throw ValidationException::withMessages([
+                    'intended_payee_party_id' => 'Truck Owner payee must match the vehicle’s registered owner.',
+                ]);
+            }
+        }
+
+        $party = Party::query()
+            ->where('company_id', $company->id)
+            ->whereKey($payeePartyId)
+            ->whereNull('deleted_at')
+            ->first();
+
+        if ($party === null) {
+            throw ValidationException::withMessages([
+                'intended_payee_party_id' => 'Selected Payee is invalid for this company.',
+            ]);
+        }
+
+        $hasTransporter = PartyRole::query()
+            ->where('company_id', $company->id)
+            ->where('party_id', $party->id)
+            ->where('role', PartyRoleType::Transporter->value)
+            ->whereNull('deleted_at')
+            ->whereNull('deactivated_at')
+            ->exists();
+
+        if (! $hasTransporter) {
+            throw ValidationException::withMessages([
+                'intended_payee_party_id' => 'Selected Payee must have an active Transporter role.',
             ]);
         }
     }

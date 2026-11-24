@@ -33,7 +33,9 @@ class LorryReceipt extends Model
     protected $fillable = [
         'id', 'company_id', 'branch_id', 'workflow_context', 'lr_number', 'lr_date',
         'from_text', 'to_text', 'from_station_id', 'to_station_id',
-        'consignor_party_id', 'consignee_party_id', 'vehicle_id', 'billing_customer_party_id',
+        'consignor_party_id', 'consignee_party_id', 'vehicle_id',
+        'intended_payee_type', 'intended_payee_party_id',
+        'billing_customer_party_id',
         'status', 'goods_value',
         'freight_total', 'additional_charges_total', 'created_by_user_id',
         'delivered_at', 'cancelled_at', 'cancellation_remark',
@@ -108,6 +110,12 @@ class LorryReceipt extends Model
     public function billingCustomer(): BelongsTo
     {
         return $this->belongsTo(Party::class, 'billing_customer_party_id');
+    }
+
+    /** @return BelongsTo<Party, $this> */
+    public function intendedPayee(): BelongsTo
+    {
+        return $this->belongsTo(Party::class, 'intended_payee_party_id');
     }
 
     /** @return HasOne<Trip, $this> */

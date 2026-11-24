@@ -115,8 +115,10 @@ class LinkedBiltyGroupController extends Controller
                 'store' => route('branch.broker.linked-bilties.store', absolute: false),
                 'filter' => route('branch.broker.linked-bilties.create', absolute: false),
                 'parties_options' => route('branch.parties.options', absolute: false),
+                'parties_store' => route('branch.parties.store', absolute: false),
                 'vehicles_options' => route('branch.vehicles.options', absolute: false),
                 'vehicles_create' => route('branch.vehicles.create', absolute: false),
+                'vehicles_store' => route('branch.vehicles.store', absolute: false),
             ],
         ]);
     }

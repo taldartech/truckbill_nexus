@@ -167,3 +167,25 @@ test('transporter role requires approved fields', function () {
         roles: [['role' => PartyRoleType::Transporter->value, 'attributes' => ['pan' => 'ABCDE1234F']]],
     ))->toThrow(ValidationException::class);
 });
+
+test('json party store returns option payload for quick create', function () {
+    ['owner' => $owner, 'company' => $company, 'branch' => $branch] = partyWorkspace();
+    actingAsCustomer($owner);
+    seedBranchSession($company, $branch);
+
+    $response = $this->postJson(route('branch.parties.store'), [
+        'name' => 'Quick Customer',
+        'contact_number' => '9888777666',
+        'state' => 'Maharashtra',
+        'city' => 'Pune',
+        'roles' => [
+            ['role' => 'customer', 'attributes' => []],
+        ],
+    ]);
+
+    $response->assertCreated()
+        ->assertJsonPath('data.name', 'Quick Customer')
+        ->assertJsonStructure([
+            'data' => ['id', 'name', 'contact_number', 'city', 'state'],
+        ]);
+});

@@ -1,12 +1,18 @@
-import { useEffect, useMemo, useState } from 'react';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
+import {
+    QuickCreatePartySheet,
+    type QuickCreatePartyRole,
+} from '@/components/masters/quick-create-party-sheet';
+import {
+    SearchableCombobox,
+    type ComboboxOption,
+} from '@/components/searchable-combobox';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
 export type PartyOption = {
     id: string;
     name: string;
     city?: string | null;
+    state?: string | null;
     contact_number?: string | null;
 };
 
@@ -25,18 +31,21 @@ type Props = {
     defaultValue?: string;
     value?: string;
     onValueChange?: (value: string) => void;
+    onPartyChange?: (party: PartyOption | null) => void;
     emptyMessage?: string;
+    /** Full-page create fallback when quick create is unavailable. */
     createHref?: string;
     createLabel?: string;
+    /** JSON store URL for inline quick create (preferred over createHref). */
+    createStoreUrl?: string;
+    /** Role assigned when quick-creating from this selector. */
+    createRole?: QuickCreatePartyRole;
     error?: string;
     className?: string;
     disabled?: boolean;
 };
 
-const fieldClass =
-    'flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm';
-
-function optionLabel(option: PartyOption): string {
+function partyOptionLabel(option: PartyOption): string {
     const parts = [option.name];
     if (option.city) {
         parts.push(option.city);
@@ -45,6 +54,13 @@ function optionLabel(option: PartyOption): string {
         parts.push(option.contact_number);
     }
     return parts.join(' · ');
+}
+
+function toComboboxOption(option: PartyOption): ComboboxOption {
+    return {
+        id: option.id,
+        label: partyOptionLabel(option),
+    };
 }
 
 /**
@@ -63,46 +79,56 @@ export function SearchablePartySelect({
     defaultValue = '',
     value,
     onValueChange,
+    onPartyChange,
     emptyMessage = 'No eligible parties available.',
     createHref,
-    createLabel = 'Create party',
+    createLabel = 'Add',
+    createStoreUrl,
+    createRole,
     error,
     className,
     disabled = false,
 }: Props) {
-    const [query, setQuery] = useState('');
-    const [internalValue, setInternalValue] = useState(defaultValue);
-    const [remoteOptions, setRemoteOptions] = useState<PartyOption[] | null>(
-        null,
+    const partyByIdRef = useRef<Map<string, PartyOption>>(new Map());
+    const [extraOptions, setExtraOptions] = useState<PartyOption[]>([]);
+    const [quickCreateOpen, setQuickCreateOpen] = useState(false);
+
+    const mergedOptions = useMemo(() => {
+        const map = new Map<string, PartyOption>();
+        for (const option of options) {
+            map.set(option.id, option);
+        }
+        for (const option of extraOptions) {
+            map.set(option.id, option);
+        }
+        partyByIdRef.current = map;
+        return [...map.values()];
+    }, [options, extraOptions]);
+
+    const comboboxOptions = useMemo(
+        () => mergedOptions.map(toComboboxOption),
+        [mergedOptions],
     );
-    const [loading, setLoading] = useState(false);
-    const [searchError, setSearchError] = useState<string | null>(null);
-    const selected = value ?? internalValue;
 
-    const sourceOptions = remoteOptions ?? options;
+    const remoteEnabled = Boolean(searchUrl && role);
+    const quickCreateRole =
+        createRole ??
+        (role === 'customer' ||
+        role === 'consignor' ||
+        role === 'consignee' ||
+        role === 'transporter'
+            ? role
+            : undefined);
+    const canQuickCreate = Boolean(
+        createStoreUrl && createStoreUrl !== '' && quickCreateRole,
+    );
 
-    const filtered = useMemo(() => {
-        if (searchUrl) {
-            return sourceOptions;
-        }
-        const q = query.trim().toLowerCase();
-        if (q === '') {
-            return sourceOptions;
-        }
-        return sourceOptions.filter((option) =>
-            optionLabel(option).toLowerCase().includes(q),
-        );
-    }, [query, searchUrl, sourceOptions]);
-
-    useEffect(() => {
-        if (!searchUrl || !role) {
-            return;
-        }
-
-        const controller = new AbortController();
-        const timer = window.setTimeout(() => {
+    const buildSearchParams = useCallback(
+        (query: string, selectedId: string) => {
             const params = new URLSearchParams();
-            params.set('role', role);
+            if (role) {
+                params.set('role', role);
+            }
             if (roles && roles.length > 0) {
                 for (const item of roles) {
                     params.append('roles[]', item);
@@ -112,147 +138,94 @@ export function SearchablePartySelect({
                 params.set('q', query.trim());
             }
             params.set('limit', '50');
-            if (selected !== '') {
-                params.set('selected_id', selected);
+            if (selectedId !== '') {
+                params.set('selected_id', selectedId);
             }
+            return params;
+        },
+        [role, roles],
+    );
 
-            setLoading(true);
-            setSearchError(null);
+    const mapResponse = useCallback((json: unknown): ComboboxOption[] => {
+        const payload = json as { data?: PartyOption[] };
+        const data = payload.data ?? [];
+        for (const option of data) {
+            partyByIdRef.current.set(option.id, option);
+        }
+        return data.map(toComboboxOption);
+    }, []);
 
-            void fetch(`${searchUrl}?${params.toString()}`, {
-                headers: {
-                    Accept: 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                },
-                credentials: 'same-origin',
-                signal: controller.signal,
-            })
-                .then(async (response) => {
-                    if (!response.ok) {
-                        throw new Error('Party search failed.');
-                    }
-                    const payload = (await response.json()) as {
-                        data?: PartyOption[];
-                    };
-                    setRemoteOptions(payload.data ?? []);
-                })
-                .catch((error: unknown) => {
-                    if (
-                        error instanceof DOMException &&
-                        error.name === 'AbortError'
-                    ) {
-                        return;
-                    }
-                    setSearchError('Unable to search parties.');
-                })
-                .finally(() => {
-                    setLoading(false);
-                });
-        }, 250);
+    const applyParty = useCallback(
+        (party: PartyOption | null) => {
+            const nextId = party?.id ?? '';
+            onValueChange?.(nextId);
+            onPartyChange?.(party);
+        },
+        [onPartyChange, onValueChange],
+    );
 
-        return () => {
-            controller.abort();
-            window.clearTimeout(timer);
-        };
-    }, [query, role, roles, searchUrl, selected]);
+    const addAction = canQuickCreate
+        ? {
+              label: createLabel,
+              onClick: () => setQuickCreateOpen(true),
+          }
+        : createHref && createHref !== ''
+          ? { label: createLabel, href: createHref }
+          : undefined;
 
-    const selectedStillVisible =
-        selected === '' || filtered.some((option) => option.id === selected);
-
-    const selectedFallbackName =
-        options.find((option) => option.id === selected)?.name ??
-        remoteOptions?.find((option) => option.id === selected)?.name ??
-        'Selected party';
-
-    const showEmptyState = !searchUrl && options.length === 0;
+    const showEmptyState = !searchUrl && mergedOptions.length === 0;
 
     return (
-        <div className={cn('space-y-2', className)}>
-            <Label htmlFor={id}>{label}</Label>
-            {showEmptyState ? (
-                <div className="space-y-2 rounded-md border border-dashed p-3 text-sm text-muted-foreground">
-                    <p>{emptyMessage}</p>
-                    {createHref ? (
-                        <a
-                            href={createHref}
-                            className="font-medium text-primary underline-offset-4 hover:underline"
-                        >
-                            {createLabel}
-                        </a>
-                    ) : null}
-                </div>
-            ) : (
-                <>
-                    <Input
-                        type="search"
-                        value={query}
-                        onChange={(event) => setQuery(event.target.value)}
-                        placeholder={`Search ${label.toLowerCase()}…`}
-                        aria-label={`Search ${label}`}
-                        disabled={disabled}
-                        autoComplete="off"
-                    />
-                    {loading ? (
-                        <p className="text-xs text-muted-foreground">
-                            Searching…
-                        </p>
-                    ) : null}
-                    <select
-                        id={id}
-                        name={name}
-                        required={required}
-                        disabled={disabled}
-                        className={fieldClass}
-                        value={selected}
-                        onChange={(event) => {
-                            const next = event.target.value;
-                            if (value === undefined) {
-                                setInternalValue(next);
+        <>
+            <SearchableCombobox
+                id={id}
+                name={name}
+                label={label}
+                options={comboboxOptions}
+                value={value}
+                defaultValue={defaultValue}
+                onValueChange={(nextId) => {
+                    if (nextId === '') {
+                        applyParty(null);
+                        return;
+                    }
+                    const party =
+                        partyByIdRef.current.get(nextId) ??
+                        mergedOptions.find((item) => item.id === nextId) ??
+                        null;
+                    applyParty(party);
+                }}
+                searchUrl={remoteEnabled ? searchUrl : undefined}
+                buildSearchParams={
+                    remoteEnabled ? buildSearchParams : undefined
+                }
+                mapResponse={remoteEnabled ? mapResponse : undefined}
+                required={required}
+                disabled={disabled}
+                clearable={!required}
+                emptyMessage={emptyMessage}
+                error={error}
+                className={className}
+                addAction={addAction}
+                showEmptyState={showEmptyState}
+            />
+            {canQuickCreate && quickCreateRole && createStoreUrl ? (
+                <QuickCreatePartySheet
+                    open={quickCreateOpen}
+                    onOpenChange={setQuickCreateOpen}
+                    storeUrl={createStoreUrl}
+                    role={quickCreateRole}
+                    onCreated={(party) => {
+                        setExtraOptions((current) => {
+                            if (current.some((item) => item.id === party.id)) {
+                                return current;
                             }
-                            onValueChange?.(next);
-                        }}
-                    >
-                        <option value="" disabled={required}>
-                            Select {label.toLowerCase()}
-                        </option>
-                        {!selectedStillVisible && selected !== '' ? (
-                            <option value={selected}>
-                                {selectedFallbackName}
-                            </option>
-                        ) : null}
-                        {filtered.map((option) => (
-                            <option key={option.id} value={option.id}>
-                                {optionLabel(option)}
-                            </option>
-                        ))}
-                    </select>
-                    {filtered.length === 0 && !loading ? (
-                        <p className="text-xs text-muted-foreground">
-                            {query.trim() === ''
-                                ? emptyMessage
-                                : `No matches for “${query}”.`}
-                        </p>
-                    ) : null}
-                    {searchError ? (
-                        <p className="text-xs text-destructive" role="alert">
-                            {searchError}
-                        </p>
-                    ) : null}
-                    {createHref ? (
-                        <a
-                            href={createHref}
-                            className="text-xs font-medium text-primary underline-offset-4 hover:underline"
-                        >
-                            {createLabel}
-                        </a>
-                    ) : null}
-                </>
-            )}
-            {error ? (
-                <p className="text-sm text-destructive" role="alert">
-                    {error}
-                </p>
+                            return [...current, party];
+                        });
+                        applyParty(party);
+                    }}
+                />
             ) : null}
-        </div>
+        </>
     );
 }

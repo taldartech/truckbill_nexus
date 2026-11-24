@@ -15,7 +15,7 @@ final class PartyOptionQuery
 {
     /**
      * @param  PartyRoleType|list<PartyRoleType>  $roles
-     * @return list<array{id: string, name: string, city: string|null, contact_number: string|null}>
+     * @return list<array{id: string, name: string, city: string|null, state: string|null, contact_number: string|null}>
      */
     public function forRoles(
         Company $company,
@@ -50,7 +50,7 @@ final class PartyOptionQuery
             ], $query);
         }
 
-        $parties = $builder->get(['id', 'name', 'city', 'contact_number']);
+        $parties = $builder->get(['id', 'name', 'city', 'state', 'contact_number']);
 
         $options = [];
         $seen = [];
@@ -69,7 +69,7 @@ final class PartyOptionQuery
                         ->whereNull('deleted_at')
                         ->whereNull('deactivated_at');
                 })
-                ->first(['id', 'name', 'city', 'contact_number']);
+                ->first(['id', 'name', 'city', 'state', 'contact_number']);
 
             if ($selected !== null) {
                 array_unshift($options, $this->optionPayload($selected));
@@ -92,7 +92,7 @@ final class PartyOptionQuery
     }
 
     /**
-     * @return array{id: string, name: string, city: string|null, contact_number: string|null}
+     * @return array{id: string, name: string, city: string|null, state: string|null, contact_number: string|null}
      */
     private function optionPayload(Party $party): array
     {
@@ -100,6 +100,7 @@ final class PartyOptionQuery
             'id' => $party->id,
             'name' => $party->name,
             'city' => $party->city,
+            'state' => $party->state,
             'contact_number' => $party->contact_number,
         ];
     }

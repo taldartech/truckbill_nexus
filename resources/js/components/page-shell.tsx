@@ -9,6 +9,10 @@ type PageShellProps = {
     className?: string;
     /** Prefer full content width for operational pages. */
     width?: 'full' | 'wide' | 'form';
+    /** `compact` skips the gradient title card for dense operational toolbars. */
+    chrome?: 'default' | 'compact';
+    /** Rendered beside the title when chrome is compact (e.g. back button). */
+    titleAddon?: ReactNode;
 };
 
 const widthClass = {
@@ -28,6 +32,8 @@ export function PageShell({
     children,
     className,
     width = 'full',
+    chrome = 'default',
+    titleAddon,
 }: PageShellProps) {
     return (
         <div
@@ -37,24 +43,22 @@ export function PageShell({
                 className,
             )}
         >
-            {(title || actions) && (
-                <div className="rounded-xl border border-border bg-card p-4 shadow-xs md:p-5">
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                        <div className="min-w-0 space-y-1">
-                            <div
-                                className="mb-2 h-1 w-16 rounded-full"
-                                style={{
-                                    backgroundImage: 'var(--brand-gradient)',
-                                }}
-                                aria-hidden
-                            />
+            {(title || actions) &&
+                (chrome === 'compact' ? (
+                    <div className="mb-1 flex flex-wrap items-start justify-between gap-3">
+                        <div className="min-w-0 flex-1 space-y-1">
                             {title ? (
-                                <h1 className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">
-                                    {title}
-                                </h1>
-                            ) : null}
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <h1 className="text-lg font-bold tracking-tight text-slate-900">
+                                        {title}
+                                    </h1>
+                                    {titleAddon}
+                                </div>
+                            ) : (
+                                titleAddon
+                            )}
                             {description ? (
-                                <p className="max-w-3xl text-sm text-muted-foreground">
+                                <p className="max-w-3xl text-[0.78rem] text-muted-foreground">
                                     {description}
                                 </p>
                             ) : null}
@@ -65,8 +69,37 @@ export function PageShell({
                             </div>
                         ) : null}
                     </div>
-                </div>
-            )}
+                ) : (
+                    <div className="rounded-xl border border-border bg-card p-4 shadow-xs md:p-5">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="min-w-0 space-y-1">
+                                <div
+                                    className="mb-2 h-1 w-16 rounded-full"
+                                    style={{
+                                        backgroundImage:
+                                            'var(--brand-gradient)',
+                                    }}
+                                    aria-hidden
+                                />
+                                {title ? (
+                                    <h1 className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">
+                                        {title}
+                                    </h1>
+                                ) : null}
+                                {description ? (
+                                    <p className="max-w-3xl text-sm text-muted-foreground">
+                                        {description}
+                                    </p>
+                                ) : null}
+                            </div>
+                            {actions ? (
+                                <div className="flex flex-wrap items-center gap-2">
+                                    {actions}
+                                </div>
+                            ) : null}
+                        </div>
+                    </div>
+                ))}
             {children}
         </div>
     );

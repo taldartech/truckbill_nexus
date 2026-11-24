@@ -86,7 +86,9 @@ test.describe('Bilty UI + Lorry Hire financial workflow', () => {
 
         await page.goto('/lorry-receipts/create');
         await expect(
-            page.getByRole('heading', { name: 'Create Bilty' }),
+            page.getByRole('heading', {
+                name: /Add New Good Receipt \(Bilty\)|Create Bilty/i,
+            }),
         ).toBeVisible();
         await expect(page.getByText('Goods Description').first()).toBeVisible();
         await expect(page.getByText('(optional)').first()).toBeVisible();
@@ -129,6 +131,13 @@ test.describe('Bilty UI + Lorry Hire financial workflow', () => {
         await capture(page, 'lorry-hire-create', VIEWPORTS[6]);
 
         await page.getByRole('button', { name: 'Create Lorry Hire' }).click();
+        await expect(
+            page.getByRole('heading', { name: 'Create this Lorry Hire?' }),
+        ).toBeVisible({ timeout: 5_000 });
+        await page
+            .getByRole('dialog')
+            .getByRole('button', { name: 'Create Lorry Hire' })
+            .click();
         await expect(page).toHaveURL(/\/broker\/lorry-hires\/[0-9a-f-]+$/, {
             timeout: 30_000,
         });

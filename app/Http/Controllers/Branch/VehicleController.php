@@ -156,7 +156,7 @@ class VehicleController extends Controller
         ]);
     }
 
-    public function store(Request $request, Company $company, Branch $branch): RedirectResponse
+    public function store(Request $request, Company $company, Branch $branch): RedirectResponse|JsonResponse
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
 
@@ -192,6 +192,31 @@ class VehicleController extends Controller
             );
         } catch (MasterDomainException $e) {
             abort(403, $e->getMessage());
+        }
+
+        if ($request->expectsJson()) {
+            $options = app(VehicleOptionQuery::class)->forBranch(
+                company: $company,
+                branch: $branch,
+                limit: 1,
+                selectedId: $vehicle->id,
+                activeOnly: false,
+            );
+
+            return response()->json([
+                'data' => $options[0] ?? [
+                    'id' => $vehicle->id,
+                    'registration_number' => $vehicle->registration_number,
+                    'ownership' => $vehicle->ownership?->value,
+                    'ownership_label' => $vehicle->ownership?->label(),
+                    'label' => $vehicle->registration_number,
+                    'owner_party_id' => $vehicle->owner_party_id,
+                    'owner_name' => null,
+                    'owner_declaration_missing' => false,
+                    'primary_driver_party_id' => $vehicle->primary_driver_party_id,
+                    'primary_driver_name' => null,
+                ],
+            ], 201);
         }
 
         return redirect()

@@ -35,6 +35,8 @@ type Props = {
         parties_options?: string;
         vehicles_options?: string;
         vehicles_create?: string;
+        vehicles_store?: string;
+        parties_store?: string;
     };
 };
 
@@ -187,8 +189,11 @@ export default function LinkedBiltiesCreate({
                                         },
                                     );
                                 }}
+                                createStoreUrl={urls.vehicles_store}
                                 createHref={urls.vehicles_create}
-                                createLabel="Create Vehicle"
+                                createLabel="Add"
+                                partiesOptionsUrl={urls.parties_options}
+                                partiesStoreUrl={urls.parties_store}
                                 emptyMessage="No market vehicles in this branch."
                                 error={form.errors.vehicle_id}
                             />
@@ -202,6 +207,9 @@ export default function LinkedBiltiesCreate({
                                 searchUrl={urls.parties_options}
                                 role="transporter"
                                 roles={['transporter', 'driver']}
+                                createStoreUrl={urls.parties_store}
+                                createLabel="Add"
+                                createRole="transporter"
                                 value={form.data.payee_party_id}
                                 onValueChange={(value) =>
                                     form.setData('payee_party_id', value)

@@ -49,10 +49,28 @@ async function selectOptionAt(
     index: number,
 ): Promise<void> {
     const field = page.locator(selector);
-    await expect(field).toBeVisible();
+    // Combobox keeps a sr-only native <select>; id fields expose `${id}-trigger`.
+    const trigger =
+        selector.startsWith('#') && !selector.includes('[')
+            ? page.locator(`${selector}-trigger`)
+            : null;
+    if (trigger && (await trigger.count()) > 0) {
+        await expect(trigger).toBeVisible();
+    }
     const option = field.locator('option[value]:not([value=""])').nth(index);
     const value = await option.getAttribute('value');
     if (!value) {
+        // Open combobox and pick by index from the live listbox.
+        if (trigger && (await trigger.count()) > 0) {
+            await trigger.click();
+            const live = page
+                .getByRole('listbox')
+                .getByRole('option')
+                .nth(index);
+            await expect(live).toBeVisible({ timeout: 10_000 });
+            await live.click();
+            return;
+        }
         throw new Error(`No option at index ${index} for ${selector}`);
     }
     await field.selectOption(value);
@@ -63,7 +81,7 @@ async function selectMarketVehicle(
     vehicleId?: string,
 ): Promise<string> {
     const vehicle = page.locator('#vehicle_id');
-    await expect(vehicle).toBeVisible();
+    await expect(page.locator('#vehicle_id-trigger')).toBeVisible();
     if (vehicleId) {
         await vehicle.selectOption(vehicleId);
         return vehicleId;
@@ -80,7 +98,21 @@ async function selectMarketVehicle(
             }
         }
     }
-    throw new Error('No Market vehicle option in LR create form.');
+    // Open combobox and pick first Market option from the live list.
+    await page.locator('#vehicle_id-trigger').click();
+    const marketOption = page
+        .getByRole('listbox')
+        .getByRole('option')
+        .filter({ hasText: /\bMarket\b/i })
+        .first();
+    await expect(marketOption).toBeVisible({ timeout: 10_000 });
+    const label = (await marketOption.innerText()).trim();
+    await marketOption.click();
+    const selected = await vehicle.inputValue();
+    if (!selected) {
+        throw new Error(`Market vehicle select failed after picking ${label}`);
+    }
+    return selected;
 }
 
 export async function loginAndEnterBrokerBranch(page: Page): Promise<void> {
@@ -107,6 +139,18 @@ export async function createBrokerLrViaUi(
 
     const vehicleId = await selectMarketVehicle(page, options?.vehicleId);
     await expect(page.locator('#from_text')).toBeVisible();
+
+    // Market Pay To — prefer Truck Owner when the pill is enabled.
+    const ownerPill = page.getByRole('button', { name: 'Truck Owner' });
+    if (await ownerPill.isVisible().catch(() => false)) {
+        const disabled = await ownerPill.isDisabled().catch(() => false);
+        if (!disabled) {
+            await ownerPill.click();
+        } else {
+            await page.getByRole('button', { name: 'Agency' }).click();
+            await selectOptionAt(page, '#intended_payee_party_id', 0);
+        }
+    }
 
     await page.locator('#from_text').fill('E2E Broker origin');
     await page.locator('#to_text').fill('E2E Broker destination');
@@ -165,6 +209,18 @@ export async function createBrokerLrAndContinueToHire(
     await expect(page).toHaveURL(/\/lorry-receipts\/create/);
 
     const vehicleId = await selectMarketVehicle(page);
+
+    const ownerPill = page.getByRole('button', { name: 'Truck Owner' });
+    if (await ownerPill.isVisible().catch(() => false)) {
+        const disabled = await ownerPill.isDisabled().catch(() => false);
+        if (!disabled) {
+            await ownerPill.click();
+        } else {
+            await page.getByRole('button', { name: 'Agency' }).click();
+            await selectOptionAt(page, '#intended_payee_party_id', 0);
+        }
+    }
+
     await page.locator('#from_text').fill('E2E Hire-from-save origin');
     await page.locator('#to_text').fill('E2E Hire-from-save destination');
     await selectOptionAt(page, '#billing_customer_party_id', 0);

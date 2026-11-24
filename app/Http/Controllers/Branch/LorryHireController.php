@@ -197,6 +197,8 @@ class LorryHireController extends Controller
                 'lr_show' => route('branch.lorry-receipts.show', [$lorryReceipt], absolute: false),
                 'index' => route('branch.broker.lorry-hires.index', absolute: false),
                 'parties_options' => route('branch.parties.options', absolute: false),
+                'parties_store' => route('branch.parties.store', absolute: false),
+                'parties_create' => route('branch.parties.create', absolute: false),
             ],
         ]);
     }
@@ -655,7 +657,8 @@ class LorryHireController extends Controller
      */
     private function payeePreview(LorryReceipt $lorryReceipt, Company $company, Branch $branch): ?array
     {
-        $partyId = $lorryReceipt->vehicle?->owner_party_id;
+        $partyId = $lorryReceipt->intended_payee_party_id
+            ?: $lorryReceipt->vehicle?->owner_party_id;
         if ($partyId === null || $partyId === '') {
             return null;
         }

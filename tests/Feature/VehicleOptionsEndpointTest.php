@@ -1,8 +1,11 @@
 <?php
 
+use App\Domains\Master\Party\Enums\PartyRoleType;
+use App\Domains\Master\Party\PartyService;
 use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
 use App\Domains\Master\Vehicle\VehicleOptionQuery;
 use App\Models\Vehicle;
+use App\Support\Tenant\TenantContext;
 use App\Support\Tenant\TenantContextHolder;
 use Database\Seeders\RbacSeeder;
 use Database\Seeders\SubscriptionCatalogueSeeder;
@@ -84,4 +87,51 @@ test('vehicle option query hydrates selected id beyond the bounded page', functi
 
     expect(collect($options)->pluck('id')->all())->toContain($selected->id)
         ->and(count($options))->toBeLessThanOrEqual(11);
+});
+
+test('json vehicle store returns option payload for quick create', function () {
+    $ctx = tripWorkspace();
+    tripActivate($ctx['company'], $ctx['branch']);
+    rbacHttpAs($ctx['owner'], $ctx);
+
+    TenantContextHolder::inject(new TenantContext(
+        companyId: $ctx['company']->id,
+        branchId: $ctx['branch']->id,
+        ownerId: (string) $ctx['company']->owner_user_id,
+    ));
+
+    $ownerParty = app(PartyService::class)->create(
+        actor: $ctx['owner'],
+        company: $ctx['company'],
+        branch: null,
+        attributes: [
+            'name' => 'Quick Truck Owner',
+            'contact_number' => '9777666555',
+            'pan' => 'QXOWN1234P',
+            'state' => 'MH',
+            'city' => 'Pune',
+        ],
+        roles: [[
+            'role' => PartyRoleType::Transporter->value,
+            'attributes' => [
+                'pan_status' => 'active',
+                'declaration' => true,
+                'declaration_type' => 'owner',
+            ],
+        ]],
+        remark: 'Quick create owner',
+    );
+
+    $this->postJson(route('branch.vehicles.store'), [
+        'registration_number' => 'MH12QXCREATE01',
+        'ownership' => VehicleOwnership::Market->value,
+        'owner_party_id' => $ownerParty->id,
+        'vehicle_type' => 'Container',
+        'is_active' => true,
+    ])
+        ->assertCreated()
+        ->assertJsonPath('data.registration_number', 'MH12QXCREATE01')
+        ->assertJsonStructure([
+            'data' => ['id', 'registration_number', 'ownership', 'label'],
+        ]);
 });
