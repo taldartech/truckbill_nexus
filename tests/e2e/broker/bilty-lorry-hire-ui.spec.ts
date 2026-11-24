@@ -90,7 +90,10 @@ test.describe('Bilty UI + Lorry Hire financial workflow', () => {
         ).toBeVisible();
         await expect(page.getByText('Goods Description').first()).toBeVisible();
         await expect(page.getByText('(optional)').first()).toBeVisible();
-        await expect(page.getByText('Wt./Unit (kg)').first()).toBeVisible();
+        await expect(page.getByText('Wt./Unit (KG)').first()).toBeVisible();
+        await expect(
+            page.getByText('Actual Weight (MT)').first(),
+        ).toBeVisible();
         await expect(page.getByRole('button', { name: 'Remove' })).toHaveCount(
             0,
         );
@@ -115,7 +118,8 @@ test.describe('Bilty UI + Lorry Hire financial workflow', () => {
             page.getByRole('heading', { name: 'Create Lorry Hire' }),
         ).toBeVisible();
         await page.locator('#rate_type_0').selectOption('per_mt');
-        await page.locator('#loading_weight_0').fill('8000');
+        // Loading weight UI is MT (8.000 MT ≡ 8000 KG).
+        await page.locator('#loading_weight_0').fill('8');
         await page.locator('#rate_0').fill('7500');
         await expect(page.getByText('Financial summary')).toBeVisible();
         await expect(page.getByText(/60000\.00|₹60000/).first()).toBeVisible({

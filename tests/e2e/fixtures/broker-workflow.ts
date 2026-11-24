@@ -96,8 +96,9 @@ export async function createBrokerLrViaUi(
         await descriptionInput.fill('');
     }
     await page.locator('input[name="goods[0][package_count]"]').fill('1');
-    await page.locator('input[name="goods[0][actual_weight]"]').fill('8000');
-    await page.locator('input[name="goods[0][charged_weight]"]').fill('8000');
+    // Operational entry is MT; 8.000 MT → 8000 KG canonical storage.
+    await page.getByLabel('Actual weight MT row 1').fill('8');
+    await page.getByLabel('Charged weight MT row 1').fill('8');
     await page
         .locator('select[name="goods[0][freight_rate_type]"]')
         .selectOption('per_mt')
@@ -148,7 +149,14 @@ export async function createLorryHireFromLr(
     await rateInput.fill(options?.transporterRate ?? '7500');
 
     if (options?.loadingWeightKg !== undefined) {
-        await page.locator('#loading_weight_0').fill(options.loadingWeightKg);
+        // UI expects MT; callers may still pass KG strings for backward compatibility.
+        const raw = options.loadingWeightKg;
+        const asNumber = Number(raw);
+        const mt =
+            Number.isFinite(asNumber) && asNumber >= 100
+                ? (asNumber / 1000).toFixed(3)
+                : raw;
+        await page.locator('#loading_weight_0').fill(mt);
     }
 
     await expect(page.getByText('Financial summary')).toBeVisible();

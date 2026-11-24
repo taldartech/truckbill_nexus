@@ -82,8 +82,9 @@ export async function createOwnFleetLrViaUi(
         .locator('input[name="goods[0][goods_description]"]')
         .fill(goodsDescription);
     await page.locator('input[name="goods[0][package_count]"]').fill('1');
-    await page.locator('input[name="goods[0][actual_weight]"]').fill('1000');
-    await page.locator('input[name="goods[0][charged_weight]"]').fill('1000');
+    // Operational entry is MT; 1.000 MT → 1000 KG canonical storage.
+    await page.getByLabel('Actual weight MT row 1').fill('1');
+    await page.getByLabel('Charged weight MT row 1').fill('1');
     await page.locator('input[name="goods[0][freight_rate]"]').fill('15000');
 
     await page.getByRole('button', { name: 'Save Bilty' }).click();
