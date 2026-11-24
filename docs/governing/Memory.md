@@ -34,8 +34,9 @@ Shared PostgreSQL tenancy. Company/branch scope server-enforced. Edit/delete rem
 
 ## Modules
 
-Enquiry; Unified Consignment/LR; Broker/Market-Hired; OwnFleet Trip; Partload; Accounting; Subscription; in-app notifications; SMS/WhatsApp/Email; Vehicle Documents; Tyres; Batteries; Maintenance; Spare Parts/Store; Workshop/Job Cards.  
-**Excluded:** Partload Expense Management (DEC-005). OwnFleet expense management remains in scope.
+Enquiry; Unified Consignment/LR (**Bilty**); Broker/Market-Hired; OwnFleet Trip; Partload; Accounting; Subscription; in-app notifications; SMS/WhatsApp/Email; Vehicle Documents; Tyres; Batteries; Maintenance; Spare Parts/Store; Workshop/Job Cards.  
+**Excluded:** Partload Expense Management (DEC-005). OwnFleet expense management remains in scope.  
+**Bilty ops UX (PO-LGC-011…016, 24 Nov 2026):** Bilty Register is the primary OwnFleet/Broker workspace; standalone Trips nav removed; optional Bilty No.; Loading/Unloading Station labels; Per MT default; Wt./Unit assist.
 
 ## Masters
 

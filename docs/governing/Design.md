@@ -29,9 +29,19 @@ Self-service email change and self-service account deletion must not appear in p
 
 List columns: source, status, customer, route, goods/weight, vehicle requirement, expected loading date, branch and assignee. Company-level unassigned external queue. Detail tabs for goods, follow-ups, assignment history, quotations, attachments and conversion. Market-Hired quotation comparison view with rate basis, total charges, advance, payment terms, delivery estimate and validity.
 
-## 6. Unified LR and operational screens
+## 6. Unified LR (Bilty) and operational screens
 
-Context-aware LR form with common goods grid, EWB, numbering and workflow panels. Show From/To/party requirements by workflow. OwnFleet Trip detail: vehicle/driver, multi-point route/allocation, dispatch/completion odometer, expenses, POD/docs, invoice, financial summary and history. Broker Lorry Hire detail: transporter freight, TDS basis, vouchers, outstanding, adjustments, POD/Memo and invoice. Partload screens: Bilty, Loading Report, Challan, Main Challan, Inward Register, DR. Print-friendly operational documents. Challan computed fields and manual overrides visibly differentiated. QR/Exchange Code data preview before inward creation.  
+**Product Owner UX decisions (24 November 2026 — Bilty operational workflow remediation):**
+
+- The **Bilty Register** is the primary operational workspace for OwnFleet and Broker.
+- Standalone **OwnFleet Trips** navigation is removed from normal menus; Trips remain an internal entity managed through the related Bilty.
+- Bilty creation uses a single **Bilty No.** field (blank = auto; entered = manual). No Number Mode dropdown.
+- Route labels are **Loading Station** / **Unloading Station** (not From/To Text).
+- New goods rows default to **Per MT** rate type. **Wt./Unit** assists Actual Weight calculation on the client; Charged Weight stays independent.
+- Compact full-width goods table, E-Way Bill and Additional Charges layouts for daily transport-office entry.
+- Register rows expose ownership-specific actions: Own → **Manage Expenses**; Market → **Manage Lorry Hire**.
+
+Context-aware Bilty form with common goods grid, EWB, numbering and workflow panels. Show Loading/Unloading Station and party requirements by workflow. OwnFleet Trip detail (opened from Bilty): vehicle/driver, multi-point route/allocation, dispatch/completion odometer, expenses, POD/docs, invoice, financial summary and history. Broker Lorry Hire detail (opened from Bilty): transporter freight, TDS basis, vouchers, outstanding, adjustments, POD/Memo and invoice. Partload screens: Bilty, Loading Report, Challan, Main Challan, Inward Register, DR. Print-friendly operational documents. Challan computed fields and manual overrides visibly differentiated. QR/Exchange Code data preview before inward creation.  
 Partload Expense Management UI is out of scope (DEC-005).
 
 ## 7. Accounting UI

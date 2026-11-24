@@ -120,6 +120,21 @@ Unchanged: exact trial/grace/restricted matrices. Engineering **must not** inven
 
 ---
 
+## PO-LGC-011…016 — Bilty UX / operational workspace (**ACCEPTED** 24 Nov 2026)
+
+Explicit Product Owner authorization in the Bilty UI remediation assignment:
+
+| ID         | Decision                                                                 | Status   |
+| ---------- | ------------------------------------------------------------------------ | -------- |
+| PO-LGC-011 | Optional Bilty No. (blank = auto); no Number Mode UI                     | Accepted |
+| PO-LGC-012 | Loading Station / Unloading Station terminology                          | Accepted |
+| PO-LGC-013 | Default freight rate type **Per MT** for new goods rows                  | Accepted |
+| PO-LGC-014 | Wt./Unit client calculation assistance (Charged Weight independent)      | Accepted |
+| PO-LGC-015 | Bilty Register is primary OwnFleet/Broker ops workspace                  | Accepted |
+| PO-LGC-016 | Remove standalone OwnFleet Trips nav; keep Trip domain + historical URLs | Accepted |
+
+---
+
 ## Existing Pending gates (do not duplicate decisions)
 
 | Gate                         | Status                                                       |
