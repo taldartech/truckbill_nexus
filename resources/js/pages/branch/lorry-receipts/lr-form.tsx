@@ -268,10 +268,10 @@ export default function LrForm({
                                         </select>
                                         <p className="text-xs text-muted-foreground">
                                             {resolvedContext === 'own_fleet'
-                                                ? 'Own vehicle → OwnFleet LR (stations required).'
+                                                ? 'Company-owned vehicle — station route required.'
                                                 : resolvedContext === 'broker'
-                                                  ? 'Market vehicle → Broker LR (free-text route).'
-                                                  : 'Ownership on the selected vehicle classifies Broker or OwnFleet automatically.'}
+                                                  ? 'Market-hired vehicle — free-text route fields apply.'
+                                                  : 'Vehicle ownership determines whether stations or free-text route fields apply.'}
                                         </p>
                                         <InputError
                                             message={errors.vehicle_id}
@@ -280,16 +280,7 @@ export default function LrForm({
                                             message={errors.workflow_context}
                                         />
                                     </div>
-                                ) : (
-                                    <div className="space-y-2">
-                                        <Label>Workflow</Label>
-                                        <Input
-                                            value={contextLabel}
-                                            disabled
-                                            readOnly
-                                        />
-                                    </div>
-                                )}
+                                ) : null}
                                 <div className="space-y-2">
                                     <Label htmlFor="billing_customer_party_id">
                                         Billing Customer

@@ -250,15 +250,31 @@ test('station create is owner-only while members can view directory', function (
     ])->assertRedirect();
 });
 
-test('supporting catalogues page lists payment modes read-only', function () {
+test('goods types store rejects forged catalogue type in payload', function () {
+    ['owner' => $owner, 'company' => $company, 'branch' => $branch] = uiMastersWorkspace();
+    uiActingAsCustomer($owner);
+    enterBranchWorkspace($company, $branch)->assertRedirect();
+
+    $this->post(route('branch.goods-types.store'), [
+        'catalogue_type' => 'truck_type',
+        'code' => 'BAD',
+        'name' => 'Bad Forge',
+        'remark' => 'Test',
+    ])->assertSessionHasErrors('catalogue_type');
+});
+
+test('goods types master renders without payment modes and legacy catalogues redirects', function () {
     ['owner' => $owner, 'company' => $company, 'branch' => $branch] = uiMastersWorkspace();
     uiActingAsCustomer($owner);
     enterBranchWorkspace($company, $branch)->assertRedirect();
 
     $this->get(route('branch.catalogues.index'))
+        ->assertRedirect(route('branch.goods-types.index'));
+
+    $this->get(route('branch.goods-types.index'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('branch/masters/catalogues/index')
-            ->has('paymentModes')
+            ->component('branch/masters/catalogue-type/index')
+            ->missing('paymentModes')
             ->where('canManageOwnerCatalogues', true));
 });

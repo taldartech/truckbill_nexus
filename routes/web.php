@@ -20,6 +20,7 @@ use App\Http\Controllers\Branch\BrokerDeliveryController;
 use App\Http\Controllers\Branch\BrokerInvoiceController;
 use App\Http\Controllers\Branch\BrokerRegistersController;
 use App\Http\Controllers\Branch\CatalogueController;
+use App\Http\Controllers\Branch\CustomerInvoiceController;
 use App\Http\Controllers\Branch\DocumentAttachmentController;
 use App\Http\Controllers\Branch\EnquiryController;
 use App\Http\Controllers\Branch\LinkedBiltyGroupController;
@@ -256,6 +257,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/trips/{trip}/expenses', [TripController::class, 'storeExpense'])->name('branch.trips.expenses.store');
         Route::delete('/trips/{trip}/expenses/{expense}', [TripController::class, 'destroyExpense'])->name('branch.trips.expenses.destroy');
 
+        Route::get('/invoices', [CustomerInvoiceController::class, 'index'])->name('branch.invoices.index');
+        Route::get('/invoices/create', [CustomerInvoiceController::class, 'create'])->name('branch.invoices.create');
+        Route::post('/invoices/route-create', [CustomerInvoiceController::class, 'routeCreate'])->name('branch.invoices.route-create');
+
         Route::get('/trip-invoices', [TripInvoiceController::class, 'index'])->name('branch.trip-invoices.index');
         Route::get('/trip-invoices/create', [TripInvoiceController::class, 'create'])->name('branch.trip-invoices.create');
         Route::get('/trip-invoices/consolidate', [TripInvoiceController::class, 'consolidate'])->name('branch.trip-invoices.consolidate');
@@ -310,8 +315,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/stations/{station}/default-transporter', [StationController::class, 'setDefaultTransporter'])
             ->name('branch.stations.default-transporter');
 
-        Route::get('/catalogues', [CatalogueController::class, 'index'])->name('branch.catalogues.index');
-        Route::post('/catalogues', [CatalogueController::class, 'store'])->name('branch.catalogues.store');
+        Route::get('/catalogues', [CatalogueController::class, 'legacyIndex'])->name('branch.catalogues.index');
+        Route::get('/goods-types', [CatalogueController::class, 'goodsTypes'])->name('branch.goods-types.index');
+        Route::post('/goods-types', [CatalogueController::class, 'storeGoodsTypes'])->name('branch.goods-types.store');
+        Route::get('/truck-types', [CatalogueController::class, 'truckTypes'])->name('branch.truck-types.index');
+        Route::post('/truck-types', [CatalogueController::class, 'storeTruckTypes'])->name('branch.truck-types.store');
+        Route::get('/tyre-layouts', [CatalogueController::class, 'tyreLayouts'])->name('branch.tyre-layouts.index');
+        Route::post('/tyre-layouts', [CatalogueController::class, 'storeTyreLayouts'])->name('branch.tyre-layouts.store');
+        Route::get('/document-types', [CatalogueController::class, 'documentTypes'])->name('branch.document-types.index');
+        Route::post('/document-types', [CatalogueController::class, 'storeDocumentTypes'])->name('branch.document-types.store');
+        Route::get('/expense-categories', [CatalogueController::class, 'expenseCategories'])->name('branch.expense-categories.index');
+        Route::post('/expense-categories', [CatalogueController::class, 'storeExpenseCategories'])->name('branch.expense-categories.store');
+        Route::get('/package-types', [CatalogueController::class, 'packageTypes'])->name('branch.package-types.index');
+        Route::post('/package-types', [CatalogueController::class, 'storePackageTypes'])->name('branch.package-types.store');
         Route::patch('/catalogues/{catalogueItem}', [CatalogueController::class, 'update'])->name('branch.catalogues.update');
         Route::delete('/catalogues/{catalogueItem}', [CatalogueController::class, 'destroy'])->name('branch.catalogues.destroy');
 

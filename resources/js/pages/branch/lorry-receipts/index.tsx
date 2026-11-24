@@ -56,9 +56,18 @@ function statusLabel(status: string): string {
 }
 
 function contextLabel(context: string): string {
-    return context
-        .replaceAll('_', ' ')
-        .replace(/\b\w/g, (c) => c.toUpperCase());
+    switch (context) {
+        case 'own_fleet':
+            return 'Own Fleet';
+        case 'broker':
+            return 'Broker';
+        case 'partload':
+            return 'Partload';
+        default:
+            return context
+                .replaceAll('_', ' ')
+                .replace(/\b\w/g, (c) => c.toUpperCase());
+    }
 }
 
 function CreateLrAction({ action }: { action: CreateAction }) {
@@ -131,7 +140,7 @@ export default function LorryReceiptsIndex({
             },
             {
                 id: 'workflow_context',
-                header: 'Module',
+                header: 'Service',
                 priority: 2,
                 cell: (row) => contextLabel(row.workflow_context),
             },
