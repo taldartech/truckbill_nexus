@@ -3,7 +3,8 @@
 **Status:** **REOPENED — UI/UX REJECTION**  
 **Date:** 24 November 2026  
 **Initial HEAD (prior functional claim):** `701f4df` → `edbc718`  
-**UI/UX correction baseline:** `edbc718`
+**UI/UX correction baseline:** `edbc718`  
+**UI/UX correction HEAD (partial):** `196a7ae`
 
 ## Verdict
 

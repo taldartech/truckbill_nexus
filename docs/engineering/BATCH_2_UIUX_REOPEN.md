@@ -3,6 +3,7 @@
 **Date:** 24 November 2026  
 **Authority:** Product Owner rejection of visual/interaction parity verdict  
 **Baseline HEAD:** `edbc718`  
+**Correction HEAD (this pass):** `196a7ae`  
 **Status:** **REOPENED — IN PROGRESS** (do not declare Batch 2 complete)
 
 ## Rejection summary
