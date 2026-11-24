@@ -14,6 +14,9 @@ E2E_REQUIRE_DEMO=1 npm run test:e2e
 # OwnFleet financial journey (after seeder):
 E2E_REQUIRE_DEMO=1 E2E_USER_PASSWORD="$LOCAL_DEMO_PASSWORD" PLAYWRIGHT_USE_SYSTEM_CHROME=1 \
   npx playwright test tests/e2e/ownfleet/complete-workflow.spec.ts
+# Broker financial journeys (after seeder):
+E2E_REQUIRE_DEMO=1 E2E_USER_PASSWORD="$LOCAL_DEMO_PASSWORD" PLAYWRIGHT_USE_SYSTEM_CHROME=1 \
+  npx playwright test tests/e2e/broker/
 ```
 
 ## Rules
@@ -35,6 +38,7 @@ tests/e2e/
   crm/
   enquiry/
   ownfleet/
+  broker/
 ```
 
 ## CI
