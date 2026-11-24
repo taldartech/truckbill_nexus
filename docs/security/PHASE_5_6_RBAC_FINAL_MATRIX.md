@@ -18,4 +18,4 @@
 
 ## Open
 
-Full 11-persona forged-HTTP browser matrix not re-run in this assignment. Rely on existing `tests/Feature/Rbac` until Stage O browser certification is scheduled.
+Full 11-persona forged-HTTP **browser** matrix remains scheduled (Stage O). Server-side certification expanded in `tests/Feature/Rbac/Phase5Phase6SensitiveMutationHttpTest.php` (personas: Owner, admin, operator, viewer, no-freight, custom). Playwright lightweight persona smokes under `tests/e2e/roles/customer/` require `E2E_REQUIRE_DEMO` and `LOCAL_DEMO_PASSWORD` / `E2E_USER_PASSWORD` — no credentials committed.

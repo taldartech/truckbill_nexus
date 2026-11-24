@@ -32,6 +32,7 @@ E2E_REQUIRE_DEMO=1 E2E_USER_PASSWORD="$LOCAL_DEMO_PASSWORD" PLAYWRIGHT_USE_SYSTE
 tests/e2e/
   auth/
   fixtures/
+  roles/customer/   # persona smokes (env credentials only)
   company/      # expand as journeys land
   masters/
   subscription/
@@ -40,6 +41,8 @@ tests/e2e/
   ownfleet/
   broker/
 ```
+
+Persona smokes (`roles/customer/*.smoke.spec.ts`) skip unless `E2E_REQUIRE_DEMO=1` and a password env (`E2E_USER_PASSWORD` or `LOCAL_DEMO_PASSWORD`) is set. Demo emails are public fixtures (`@demo.test`); never commit passwords.
 
 ## CI
 
