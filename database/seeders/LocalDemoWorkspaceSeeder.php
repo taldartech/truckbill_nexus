@@ -461,6 +461,18 @@ class LocalDemoWorkspaceSeeder extends Seeder
             truckTypeId: $catalogues['truck']->id,
             tyreLayoutId: $catalogues['tyre']->id,
         );
+        // Separate Own vehicle for the Pending-trip demo fixture so invoice
+        // fixtures can complete trips on $vehicleHead without violating Rules §9
+        // (one active Pending/In Progress trip per Own vehicle).
+        $vehiclePendingTrip = $this->ensureVehicle(
+            $company,
+            $head,
+            'MH12PEND'.substr((string) crc32($company->id.'pend'), 0, 4),
+            ownership: VehicleOwnership::Own,
+            primaryDriverPartyId: $primaryDriver->id,
+            truckTypeId: $catalogues['truck']->id,
+            tyreLayoutId: $catalogues['tyre']->id,
+        );
         $marketVehicle = $this->ensureVehicle(
             $company,
             $second,
@@ -527,18 +539,6 @@ class LocalDemoWorkspaceSeeder extends Seeder
         }
 
         $access->activateContext($owner, $company, $head);
-        $this->ensureOwnFleetTripFixtures(
-            $lorryReceipts,
-            app(TripService::class),
-            $company,
-            $head,
-            $owner,
-            $vehicleHead,
-            $fromStation,
-            $toStation,
-            $catalogues,
-            'demo-ownfleet:'.$company->id.':pending',
-        );
         $this->ensureOwnFleetInvoiceFixtures(
             app(LorryReceiptService::class),
             app(TripService::class),
@@ -552,6 +552,18 @@ class LocalDemoWorkspaceSeeder extends Seeder
             $fromStation,
             $toStation,
             $catalogues,
+        );
+        $this->ensureOwnFleetTripFixtures(
+            $lorryReceipts,
+            app(TripService::class),
+            $company,
+            $head,
+            $owner,
+            $vehiclePendingTrip,
+            $fromStation,
+            $toStation,
+            $catalogues,
+            'demo-ownfleet:'.$company->id.':pending',
         );
 
         if ($companyName === self::COMPANY_A_NAME) {
