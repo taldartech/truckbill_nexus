@@ -330,8 +330,7 @@ export default function TripShow({
                             </div>
                             {documentDrawer ? (
                                 <ul className="divide-y divide-border rounded-lg border border-border text-sm">
-                                    {documentDrawer.attachments.length ===
-                                    0 ? (
+                                    {documentDrawer.attachments.length === 0 ? (
                                         <li className="px-3 py-2 text-muted-foreground">
                                             No trip documents yet.
                                         </li>

@@ -150,7 +150,9 @@ export async function createAdjustInAdvanceVoucher(
         .first();
     const hireId = await option.getAttribute('value');
     if (!hireId) {
-        throw new Error(`Lorry hire ${hireNumber} not in voucher eligible list.`);
+        throw new Error(
+            `Lorry hire ${hireNumber} not in voucher eligible list.`,
+        );
     }
     await hireSelect.selectOption(hireId);
 
@@ -208,9 +210,7 @@ export async function assignMemoAndDeliverLr(
 
     await page.locator('#memo_number').fill(memoNumber);
     await page.locator('#pod_number').fill(`POD-${memoNumber}`);
-    await page
-        .getByRole('button', { name: 'Assign memo to selected' })
-        .click();
+    await page.getByRole('button', { name: 'Assign memo to selected' }).click();
 
     const eligibleRow = page
         .locator('table tbody tr')
@@ -266,7 +266,9 @@ export async function uploadPodIfAvailable(
         .locator('form')
         .getByRole('button', { name: 'Upload POD', exact: true })
         .click();
-    await expect(recentBlock.getByRole('button', { name: /Documents/i })).toBeVisible({
+    await expect(
+        recentBlock.getByRole('button', { name: /Documents/i }),
+    ).toBeVisible({
         timeout: 20_000,
     });
 }
@@ -294,10 +296,7 @@ export async function createBrokerCustomerInvoice(
         page.getByRole('heading', { name: 'Create Customer Invoice' }),
     ).toBeVisible({ timeout: 15_000 });
 
-    const lrLabel = page
-        .locator('label')
-        .filter({ hasText: lrNumber })
-        .first();
+    const lrLabel = page.locator('label').filter({ hasText: lrNumber }).first();
     await expect(lrLabel).toBeVisible({ timeout: 20_000 });
     await lrLabel.locator('input[type="checkbox"]').check();
 
@@ -352,12 +351,10 @@ export async function recordBrokerInvoicePayments(
         timeout: 15_000,
     });
 
-    const balanceDue = await page.getByText('Balance due', { exact: true });
+    const balanceDue = page.getByText('Balance due', { exact: true });
     if (await balanceDue.isVisible()) {
         const balanceText =
-            (await balanceDue
-                .locator('xpath=../..')
-                .textContent()) ?? '';
+            (await balanceDue.locator('xpath=../..').textContent()) ?? '';
         const numeric = balanceText.match(/[\d,.]+/)?.[0];
         if (numeric && numeric !== '0' && numeric !== '0.00') {
             await page.locator('input[name="amount_received"]').fill(numeric);
@@ -413,10 +410,8 @@ export async function recordLinkedBiltyGroupPayment(
         timeout: 20_000,
     });
 
-    await page
-        .getByRole('button', { name: 'Record group payment' })
-        .click();
-    await expect(
-        page.getByText(/payment|voucher/i).first(),
-    ).toBeVisible({ timeout: 20_000 });
+    await page.getByRole('button', { name: 'Record group payment' }).click();
+    await expect(page.getByText(/payment|voucher/i).first()).toBeVisible({
+        timeout: 20_000,
+    });
 }

@@ -23,19 +23,14 @@ test.describe('Broker linked bilty payment', () => {
 
         await loginAndEnterBrokerBranch(page);
 
-        const lrOne = await createBrokerLrViaUi(
-            page,
-            `E2E linked A ${runId}`,
-        );
+        const lrOne = await createBrokerLrViaUi(page, `E2E linked A ${runId}`);
         const hireOne = await createLorryHireFromLr(page);
         expect(lrOne.lrNumber).toBeTruthy();
         expect(hireOne.hireNumber).toBeTruthy();
 
-        const lrTwo = await createBrokerLrViaUi(
-            page,
-            `E2E linked B ${runId}`,
-            { vehicleId: lrOne.vehicleId ?? undefined },
-        );
+        const lrTwo = await createBrokerLrViaUi(page, `E2E linked B ${runId}`, {
+            vehicleId: lrOne.vehicleId ?? undefined,
+        });
         expect(lrTwo.lrNumber).toBeTruthy();
         expect(lrTwo.vehicleId).toBe(lrOne.vehicleId);
 

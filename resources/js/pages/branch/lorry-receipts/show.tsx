@@ -545,8 +545,7 @@ export default function LorryReceiptShow({
                             </div>
                             {documentDrawer ? (
                                 <ul className="divide-y divide-border rounded-lg border border-border text-sm">
-                                    {documentDrawer.attachments.length ===
-                                    0 ? (
+                                    {documentDrawer.attachments.length === 0 ? (
                                         <li className="px-3 py-2 text-muted-foreground">
                                             No files attached yet.
                                         </li>

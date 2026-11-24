@@ -64,9 +64,9 @@ test.describe('Broker complete workflow', () => {
         await recordBrokerInvoicePayments(page, '5000');
 
         await page.goto('/broker/invoices');
-        await expect(page.getByRole('heading', { name: 'Invoices' })).toBeVisible(
-            { timeout: 15_000 },
-        );
+        await expect(
+            page.getByRole('heading', { name: 'Invoices' }),
+        ).toBeVisible({ timeout: 15_000 });
         await expect(page.getByText(invoiceNumber).first()).toBeVisible();
     });
 });

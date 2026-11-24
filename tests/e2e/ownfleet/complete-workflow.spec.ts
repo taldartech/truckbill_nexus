@@ -64,9 +64,9 @@ test.describe('OwnFleet complete workflow', () => {
         await recordTripInvoicePayments(page, '5000');
 
         await page.goto('/invoices');
-        await expect(page.getByRole('heading', { name: 'Invoices' })).toBeVisible(
-            { timeout: 15_000 },
-        );
+        await expect(
+            page.getByRole('heading', { name: 'Invoices' }),
+        ).toBeVisible({ timeout: 15_000 });
         await expect(page.getByText(invoiceNumber).first()).toBeVisible();
     });
 
@@ -115,9 +115,9 @@ test.describe('OwnFleet complete workflow', () => {
         await openLrCreateTrip(page);
 
         await expect(page.locator('select#vehicle_id')).toHaveCount(0);
-        await expect(page.locator('input[name="vehicle_id"][type="hidden"]')).toHaveCount(
-            1,
-        );
+        await expect(
+            page.locator('input[name="vehicle_id"][type="hidden"]'),
+        ).toHaveCount(1);
         await expect(page.locator('#vehicle_display')).toHaveAttribute(
             'readonly',
         );

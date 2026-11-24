@@ -393,9 +393,7 @@ function EligibleRowView({
                 </td>
             ) : null}
             <td className="px-4 py-3 font-medium">{row.lr_number}</td>
-            <td className="px-4 py-3">
-                {row.billing_customer_name ?? '—'}
-            </td>
+            <td className="px-4 py-3">{row.billing_customer_name ?? '—'}</td>
             <td className="px-4 py-3">{row.memo_number ?? '—'}</td>
             <td className="px-4 py-3">
                 {row.delivery_status ? (

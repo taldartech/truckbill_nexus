@@ -112,9 +112,7 @@ export async function submitTripCreateFromLr(page: Page): Promise<void> {
     await expect(page.locator('select#vehicle_id')).toHaveCount(0);
     await page.getByRole('button', { name: 'Create Trip' }).click();
     await expect(page).toHaveURL(/\/trips\/[0-9a-f-]+$/, { timeout: 30_000 });
-    await expect(page.getByRole('heading', { level: 1 })).toContainText(
-        'Trip',
-    );
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Trip');
 }
 
 export async function reconcileTripMovement(
@@ -179,7 +177,9 @@ export async function dispatchAndCompleteTrip(
     await page.locator('#ending_odometer').fill(endingOdometer);
     await page.getByRole('button', { name: 'Complete trip' }).click();
     await expect(
-        page.locator('[data-status="completed"]').or(page.getByText('Completed')),
+        page
+            .locator('[data-status="completed"]')
+            .or(page.getByText('Completed')),
     ).toBeVisible({ timeout: 20_000 });
 }
 
