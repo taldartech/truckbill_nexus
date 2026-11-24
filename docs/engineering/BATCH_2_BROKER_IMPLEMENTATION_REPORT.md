@@ -7,17 +7,18 @@
 
 ## Commits this batch (local only — no push)
 
-| SHA                   | Purpose                                                                                                                     |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| `6802dc9`             | Scalable Party search + Enquiry/Bilty/Hire/Voucher/Invoice confirmations                                                    |
-| `62695e5`             | Memo/Linked confirmations + Playwright fixture updates + E2E/party cert docs                                                |
-| `b86b721`             | Book Balance remote transporter selector                                                                                    |
-| `8f37c5a`             | Memory and gap register                                                                                                     |
-| `6553caf`             | Unified Invoice customer search                                                                                             |
-| `f216703` / `59e397b` | Interim acceptance documentation                                                                                            |
-| `fc923aa`             | Customer receipt confirmation                                                                                               |
-| `4b3b874`             | Linked Bilty form binding and payment accounts                                                                              |
-| _(pending)_           | Operational-flow UX: hire chip/amber, voucher preselect, bilty confirm, enquiry edit, delivery/POD confirm, PO-LGC-017 docs |
+| SHA                   | Purpose                                                                               |
+| --------------------- | ------------------------------------------------------------------------------------- |
+| `6802dc9`             | Scalable Party search + Enquiry/Bilty/Hire/Voucher/Invoice confirmations              |
+| `62695e5`             | Memo/Linked confirmations + Playwright fixture updates + E2E/party cert docs          |
+| `b86b721`             | Book Balance remote transporter selector                                              |
+| `8f37c5a`             | Memory and gap register                                                               |
+| `6553caf`             | Unified Invoice customer search                                                       |
+| `f216703` / `59e397b` | Interim acceptance documentation                                                      |
+| `fc923aa`             | Customer receipt confirmation                                                         |
+| `4b3b874`             | Linked Bilty form binding and payment accounts                                        |
+| `ab9e20d`             | Hire chip/amber, voucher preselect, bilty confirm, enquiry edit, delivery/POD confirm |
+| `619974d`             | PO-LGC-017 operational-flow design pack + Memory / gap register                       |
 
 ## Implemented (cumulative)
 
