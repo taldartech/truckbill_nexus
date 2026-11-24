@@ -1,4 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
+import { Eye } from 'lucide-react';
+import { AppIconAction } from '@/components/app-icon-action';
 import { PageShell } from '@/components/page-shell';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { Button } from '@/components/ui/button';
@@ -143,13 +145,14 @@ export default function VouchersIndex({
                                 <th className="px-4 py-3 font-medium">
                                     Status
                                 </th>
+                                <th className="px-4 py-3 font-medium" />
                             </tr>
                         </thead>
                         <tbody>
                             {vouchers.data.length === 0 ? (
                                 <tr>
                                     <td
-                                        colSpan={6}
+                                        colSpan={7}
                                         className="px-4 py-8 text-center text-muted-foreground"
                                     >
                                         No vouchers yet.
@@ -161,13 +164,8 @@ export default function VouchersIndex({
                                         key={row.id}
                                         className="border-t border-border"
                                     >
-                                        <td className="px-4 py-3">
-                                            <Link
-                                                href={row.urls.show}
-                                                className="font-medium text-[#2FB36F] hover:underline"
-                                            >
-                                                {row.voucher_number}
-                                            </Link>
+                                        <td className="px-4 py-3 font-medium">
+                                            {row.voucher_number}
                                         </td>
                                         <td className="px-4 py-3">
                                             {row.hire_number}
@@ -187,6 +185,14 @@ export default function VouchersIndex({
                                         <td className="px-4 py-3">
                                             <WorkspaceStatusBadge
                                                 status={row.status}
+                                            />
+                                        </td>
+                                        <td className="px-4 py-3 text-right">
+                                            <AppIconAction
+                                                icon={Eye}
+                                                label="Open voucher"
+                                                href={row.urls.show}
+                                                variant="info"
                                             />
                                         </td>
                                     </tr>

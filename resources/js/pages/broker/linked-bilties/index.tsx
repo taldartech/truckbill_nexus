@@ -1,4 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
+import { Eye } from 'lucide-react';
+import { AppIconAction } from '@/components/app-icon-action';
 import { PageShell } from '@/components/page-shell';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { Button } from '@/components/ui/button';
@@ -102,12 +104,12 @@ export default function LinkedBiltiesIndex({
                                             />
                                         </td>
                                         <td className="px-4 py-3 text-right">
-                                            <Link
+                                            <AppIconAction
+                                                icon={Eye}
+                                                label="Open linked bilty group"
                                                 href={row.urls.show}
-                                                className="text-[#2FB36F] hover:underline"
-                                            >
-                                                Open
-                                            </Link>
+                                                variant="info"
+                                            />
                                         </td>
                                     </tr>
                                 ))

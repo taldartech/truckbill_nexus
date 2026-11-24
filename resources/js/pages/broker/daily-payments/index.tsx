@@ -1,5 +1,7 @@
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
+import { Eye } from 'lucide-react';
 import { useState } from 'react';
+import { AppIconAction } from '@/components/app-icon-action';
 import { PageShell } from '@/components/page-shell';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { Button } from '@/components/ui/button';
@@ -140,13 +142,14 @@ export default function DailyPaymentsIndex({
                                 <th className="px-4 py-3 font-medium">
                                     Status
                                 </th>
+                                <th className="px-4 py-3 font-medium" />
                             </tr>
                         </thead>
                         <tbody>
                             {vouchers.length === 0 ? (
                                 <tr>
                                     <td
-                                        colSpan={6}
+                                        colSpan={permissions.can_status ? 7 : 6}
                                         className="px-4 py-8 text-center text-muted-foreground"
                                     >
                                         No vouchers for this date.
@@ -171,13 +174,8 @@ export default function DailyPaymentsIndex({
                                                 />
                                             </td>
                                         )}
-                                        <td className="px-4 py-3">
-                                            <Link
-                                                href={row.urls.show}
-                                                className="font-medium text-[#2FB36F] hover:underline"
-                                            >
-                                                {row.voucher_number}
-                                            </Link>
+                                        <td className="px-4 py-3 font-medium">
+                                            {row.voucher_number}
                                         </td>
                                         <td className="px-4 py-3">
                                             {row.hire_number}
@@ -191,6 +189,14 @@ export default function DailyPaymentsIndex({
                                         <td className="px-4 py-3">
                                             <WorkspaceStatusBadge
                                                 status={row.status}
+                                            />
+                                        </td>
+                                        <td className="px-4 py-3 text-right">
+                                            <AppIconAction
+                                                icon={Eye}
+                                                label="Open voucher"
+                                                href={row.urls.show}
+                                                variant="info"
                                             />
                                         </td>
                                     </tr>

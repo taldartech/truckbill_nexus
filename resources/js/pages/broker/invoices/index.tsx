@@ -1,4 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
+import { Eye } from 'lucide-react';
+import { AppIconAction } from '@/components/app-icon-action';
 import { PageShell } from '@/components/page-shell';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { Button } from '@/components/ui/button';
@@ -105,13 +107,16 @@ export default function BrokerInvoicesIndex({
                                 <th className="px-4 py-3 text-right">
                                     Balance
                                 </th>
+                                <th className="px-4 py-3 text-right">
+                                    Actions
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
                             {invoices.data.length === 0 ? (
                                 <tr>
                                     <td
-                                        colSpan={6}
+                                        colSpan={7}
                                         className="px-4 py-8 text-center text-muted-foreground"
                                     >
                                         No customer invoices yet.
@@ -123,13 +128,8 @@ export default function BrokerInvoicesIndex({
                                         key={row.id}
                                         className="border-t border-border hover:bg-muted/30"
                                     >
-                                        <td className="px-4 py-3">
-                                            <Link
-                                                href={row.urls.show}
-                                                className="font-medium text-[#2D8CFF] hover:underline"
-                                            >
-                                                {row.invoice_number}
-                                            </Link>
+                                        <td className="px-4 py-3 font-medium">
+                                            {row.invoice_number}
                                         </td>
                                         <td className="px-4 py-3">
                                             {row.billing_customer_name ?? '—'}
@@ -147,6 +147,14 @@ export default function BrokerInvoicesIndex({
                                         </td>
                                         <td className="px-4 py-3 text-right">
                                             {row.balance_due ?? '—'}
+                                        </td>
+                                        <td className="px-4 py-3 text-right">
+                                            <AppIconAction
+                                                icon={Eye}
+                                                label="Open invoice"
+                                                href={row.urls.show}
+                                                variant="info"
+                                            />
                                         </td>
                                     </tr>
                                 ))

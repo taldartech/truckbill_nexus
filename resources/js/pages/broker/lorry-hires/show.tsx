@@ -1,5 +1,6 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft } from 'lucide-react';
+import { AppIconAction } from '@/components/app-icon-action';
+import { ArrowLeft, ExternalLink, FileText } from 'lucide-react';
 import { useState } from 'react';
 import { DetailTabPanel, DetailTabs } from '@/components/detail-tabs';
 import { PageShell } from '@/components/page-shell';
@@ -148,12 +149,13 @@ export default function LorryHireShow({
             >
                 <div className="flex flex-wrap items-center gap-3">
                     <WorkspaceStatusBadge status={lorryHire.status} />
-                    <Link
+                    <AppIconAction
+                        icon={FileText}
+                        label={`Open LR ${lorryHire.lr_number}`}
                         href={urls.lr_show}
-                        className="text-sm font-medium text-[#2FB36F] hover:underline"
-                    >
-                        LR {lorryHire.lr_number}
-                    </Link>
+                        variant="info"
+                        size="sm"
+                    />
                 </div>
 
                 <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -554,12 +556,15 @@ export default function LorryHireShow({
                             />
                         </dl>
                         {permissions.can_manage_delivery ? (
-                            <Link
-                                href={urls.deliveries}
-                                className="mt-4 inline-flex text-sm font-medium text-[#2FB36F] hover:underline"
-                            >
-                                Open Delivery / Memo workspace
-                            </Link>
+                            <div className="mt-3">
+                                <AppIconAction
+                                    icon={ExternalLink}
+                                    label="Open Delivery / Memo workspace"
+                                    href={urls.deliveries}
+                                    variant="secondary"
+                                    size="sm"
+                                />
+                            </div>
                         ) : null}
                     </DetailTabPanel>
                     <DetailTabPanel id="cancel" activeId={tab}>

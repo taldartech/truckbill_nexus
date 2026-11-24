@@ -1,5 +1,6 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft } from 'lucide-react';
+import { AppIconAction } from '@/components/app-icon-action';
+import { ArrowLeft, Eye } from 'lucide-react';
 import { PageShell } from '@/components/page-shell';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { Button } from '@/components/ui/button';
@@ -90,13 +91,17 @@ export default function VoucherShow({
                 {voucher.lorry_hire && (
                     <div className="mt-8 rounded-lg border border-border p-4">
                         <h2 className="text-sm font-semibold">Lorry Hire</h2>
-                        <p className="mt-2 text-sm">
-                            <Link
+                        <p className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+                            <AppIconAction
+                                icon={Eye}
+                                label={`Open lorry hire ${voucher.lorry_hire.hire_number}`}
                                 href={urls.lorry_hire_show}
-                                className="text-[#2FB36F] hover:underline"
-                            >
+                                variant="info"
+                                size="sm"
+                            />
+                            <span className="font-medium">
                                 {voucher.lorry_hire.hire_number}
-                            </Link>
+                            </span>
                             {voucher.lorry_hire.lr_number
                                 ? ` · LR ${voucher.lorry_hire.lr_number}`
                                 : ''}

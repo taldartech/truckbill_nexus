@@ -115,3 +115,7 @@ Dated workstream records with verified local commit SHAs. Living product Memory 
 | 2026-11-24 | P6 Batch F | `103d41d6c962233ef254e6f04cd2edc04f54ed35` | Broker customer invoices. |
 | 2026-11-24 | P6 Batch G | `d114c1ed66768b5c333ca5a22a7e724aeccfdd51` | Linked bilty groups, proportional payment. |
 | 2026-11-24 | P6 Batch H–J | `4f7509e37e3ace895f7f762db0c9d64a2fd27675` | Registers hub, demo broker fixtures, certification docs, Phase 7 handoff; Pest 57 Broker+seeder pass locally. |
+| 2026-11-24 | Portal UX E–H | `bd3b724` | Owner: icon actions, compact filters, subscription invoice row tools (`fix(ui): Owner Portal action icons and denser layouts`). |
+| 2026-11-24 | Portal UX E–H | `df4b263` | Internal: CRM dashboard + identity company icons (`fix(ui): Internal Portal CRM and admin list actions`). |
+| 2026-11-24 | Portal UX E–H | `ef7f8fa` | Branch/OwnFleet: LR service labels, masters/trips icon actions (`fix(ui): Branch and OwnFleet operational screen density`). |
+| 2026-11-24 | Portal UX E–H | _(pending H SHA)_ | Broker list/detail icon polish + screen matrix / table-actions cert (`fix(ui): Broker operational UI polish`). |

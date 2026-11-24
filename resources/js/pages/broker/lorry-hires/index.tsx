@@ -1,4 +1,6 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
+import { Eye } from 'lucide-react';
+import { AppIconAction } from '@/components/app-icon-action';
 import { PageShell } from '@/components/page-shell';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { Button } from '@/components/ui/button';
@@ -157,12 +159,12 @@ export default function LorryHiresIndex({
                                             {row.freight_total ?? '—'}
                                         </td>
                                         <td className="px-4 py-3 text-right">
-                                            <Link
+                                            <AppIconAction
+                                                icon={Eye}
+                                                label="Open lorry hire"
                                                 href={row.urls.show}
-                                                className="font-medium text-[#2FB36F] hover:underline"
-                                            >
-                                                Open
-                                            </Link>
+                                                variant="info"
+                                            />
                                         </td>
                                     </tr>
                                 ))
