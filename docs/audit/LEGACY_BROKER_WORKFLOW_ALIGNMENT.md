@@ -90,12 +90,12 @@ Legacy hire math uses **float** `weight × trFrRate` (`FreightBookingCalculation
 
 ## Overstated “Equivalent” corrections (broker)
 
-| ID       | Prior      | **Revised** | Rationale                                                                      |
-| -------- | ---------- | ----------- | ------------------------------------------------------------------------------ |
-| BRK-LR02 | Equivalent | **Partial** | Create works; party selector + weight entry not yet legacy-parity UX (Batch 1) |
-| BRK-LR03 | Equivalent | **Partial** | Same UX gaps on edit; financial freeze rules differ                            |
-| BRK-FH02 | Equivalent | **Partial** | Create-from-LR OK; independent hire field edit vs legacy `update` incomplete   |
-| BRK-M09  | Equivalent | **Partial** | `VehicleController` OK; driver register + bulk upload absent                   |
+| ID       | Prior      | **Revised**  | Rationale                                                                    |
+| -------- | ---------- | ------------ | ---------------------------------------------------------------------------- |
+| BRK-LR02 | Equivalent | **Improved** | Batch 1 closed: searchable role-filtered parties + MT weight UX on create    |
+| BRK-LR03 | Equivalent | **Partial**  | Same UX gaps on edit; financial freeze rules differ                          |
+| BRK-FH02 | Equivalent | **Partial**  | Create-from-LR OK; independent hire field edit vs legacy `update` incomplete |
+| BRK-M09  | Equivalent | **Partial**  | `VehicleController` OK; driver register + bulk upload absent                 |
 
 ---
 

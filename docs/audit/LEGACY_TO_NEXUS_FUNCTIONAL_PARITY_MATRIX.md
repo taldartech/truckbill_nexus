@@ -58,7 +58,7 @@ Workflow alignment inspection (`legacy/*` under Nexus repo) downgraded rows wher
 
 **Broker Equivalent count (peer §1–9):** 33 → **29** after LR02/LR03/FH02/M09 reclass (peer doc counts unchanged; merged matrix uses revised workflow truth).
 
-**Batch 1 (committed `03bdae1` + follow-ups):** party selector eligibility + MT weight UX — see `OPERATIONAL_WEIGHT_UNIT_STANDARD.md`, `PARTY_SELECTOR_ELIGIBILITY_CERTIFICATION.md`.
+**Batch 1 closed** (`03bdae1`…`0765acc`): party selector eligibility, LR searchable parties, MT weight UX, Pint legacy exclude — see `OPERATIONAL_WEIGHT_UNIT_STANDARD.md`, `PARTY_SELECTOR_ELIGIBILITY_CERTIFICATION.md`.
 
 ---
 
