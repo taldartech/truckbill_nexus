@@ -1,10 +1,13 @@
 # Legacy → Nexus Functional Parity Matrix (Merged)
 
-**Audit date:** 24 November 2026  
-**Sources merged:** `LEGACY_BROKER_FUNCTIONAL_PARITY.md` (116 rows) · `LEGACY_OWNFLEET_FUNCTIONAL_PARITY.md` (138 rows) · shared cross-app rows (14 rows)  
-**Nexus HEAD:** `3aa5bfe5970721d3fff5632e6a1c62b23c456784`  
+**Audit date:** 24 November 2026 (expanded pass — all four legacy apps)  
+**Sources merged:** `LEGACY_BROKER_FUNCTIONAL_PARITY.md` (116) · `LEGACY_OWNFLEET_FUNCTIONAL_PARITY.md` (138) · `LEGACY_*_WORKFLOW_ALIGNMENT.md` · `LEGACY_PARTLOAD_WORKFLOW_ANALYSIS.md` (PLD-20) · `LEGACY_ADMIN_WORKFLOW_ALIGNMENT.md` (ADM-18) · SHR (14)  
+**Legacy read-only paths (Nexus repo):** `legacy/truckbill_broker` · `legacy/truckbill_ownfleet` · `legacy/truckbill_admin` · `legacy/truckbill_partload`  
+**Legacy SHAs:** broker `6a90e955…` (stable) · ownfleet `9423293e…` (development) · admin `b951db33…` (main) · partload `fb9b955e…` (account)  
+**Nexus HEAD:** `e05d1d6f505ac076963ede60b86e4ebe062e2edb`  
 **Phase authority:** `docs/governing/Phases.md`  
-**ID scheme:** `BRK-*` Broker · `OF-*` OwnFleet · `SHR-*` Shared (deduplicated once)
+**ID scheme:** `BRK-*` · `OF-*` · `SHR-*` · `ADM-*` · `PLD-*`  
+**Weight standard:** `docs/architecture/OPERATIONAL_WEIGHT_UNIT_STANDARD.md`
 
 ---
 
@@ -26,6 +29,8 @@
 
 ## Reconciliation adjustments (this merge)
 
+### Prior broker report deferrals
+
 Peer Broker audit marked **R19**, **R20** as Missing Current Scope (Phase 11 report exports). Per `Phases.md` §11, operational/financial **report reproduction** is Phase 11 — reclassified **Deferred Future Phase** in this matrix (does not change Broker spine counts in source doc).
 
 | Original ID | Peer classification   | **Merged classification** | Rationale                                       |
@@ -34,6 +39,26 @@ Peer Broker audit marked **R19**, **R20** as Missing Current Scope (Phase 11 rep
 | BRK-R20     | Missing Current Scope | **Deferred Future Phase** | Voucher receipt export — Phase 11               |
 
 **Adjusted Broker Missing Current Scope:** 9 → **7** (M16, M17, FH07, VP03, VP04, VP09, IN03).
+
+### Overstated **Equivalent** corrections (24 Nov expanded pass)
+
+Workflow alignment inspection (`legacy/*` under Nexus repo) downgraded rows where domain logic exists but **operator workflow** (party pickers, weight UX, hire edit depth, Partload catalogues) is not yet comparable.
+
+| ID       | Was        | **Now**     | Evidence                                                               |
+| -------- | ---------- | ----------- | ---------------------------------------------------------------------- |
+| SHR-04   | Equivalent | **Partial** | Partload `PackageType`, `Group`, `Agent` masters absent in Nexus       |
+| SHR-11   | Improved   | **Partial** | Legacy admin onboarding/offline subscription desk not in Nexus CRM     |
+| BRK-LR02 | Equivalent | **Partial** | `lr-form.tsx` native party `<select>`; Batch 1 `SearchablePartySelect` |
+| BRK-LR03 | Equivalent | **Partial** | Same + financial freeze vs legacy edit                                 |
+| BRK-FH02 | Equivalent | **Partial** | No `FreightBookingController::update` parity                           |
+| BRK-M09  | Equivalent | **Partial** | Vehicle CRUD OK; driver register bulk absent                           |
+| OF-B02   | Equivalent | **Partial** | Legacy `TripFormRedesigned.vue` multi-leg UX deeper                    |
+| OF-B18   | Equivalent | **Partial** | Legacy `weight_ton` leg calc vs Nexus allocations                      |
+| OF-E05   | Equivalent | **Partial** | Trip invoice path — Not Verified E2E                                   |
+
+**Broker Equivalent count (peer §1–9):** 33 → **29** after LR02/LR03/FH02/M09 reclass (peer doc counts unchanged; merged matrix uses revised workflow truth).
+
+**Batch 1 (in flight):** party selector + weight MT/KG on unified LR — see `OPERATIONAL_WEIGHT_UNIT_STANDARD.md`.
 
 ---
 
@@ -44,14 +69,14 @@ Peer Broker audit marked **R19**, **R20** as Missing Current Scope (Phase 11 rep
 | SHR-01 | Single company workspace (no module picker) | 3 apps                    | Unified Inertia app                     | Improved              | P3  | 1–2   |
 | SHR-02 | Unified Party master + roles                | Per-app masters           | `PartyController`                       | Improved              | P3  | 3     |
 | SHR-03 | Unified LR (workflow context)               | Broker bilty; OF embedded | `LorryReceiptController` + context enum | Improved              | P2  | 4–6   |
-| SHR-04 | Station / goods / truck type catalogues     | Duplicated masters        | Owner + Branch catalogues               | Equivalent            | P3  | 3     |
+| SHR-04 | Station / goods / truck type catalogues     | Duplicated masters        | Owner + Branch catalogues               | **Partial**           | P3  | 3/7   |
 | SHR-05 | Document upload / replace / audit           | Per-app attachments       | `DocumentAttachmentService`             | Improved              | P2  | 3/5/6 |
 | SHR-06 | Platform subscription / entitlement         | Per-app Razorpay gate     | Owner subscription + resolver           | Improved              | P2  | 3     |
 | SHR-07 | Branch tenant isolation                     | Per-app company_id        | `TenantContext` + policies              | Improved              | P1  | 1–2   |
 | SHR-08 | Decimal-safe money (bcmath)                 | Float helpers             | Domain services                         | Improved              | P1  | 5–6   |
 | SHR-09 | E-way bill on consignment                   | Split across apps         | LR `ewayBills` primary                  | Improved              | P3  | 4     |
 | SHR-10 | Unified customer invoice list               | N/A (isolated)            | `UnifiedCustomerInvoiceReadFacade`      | Improved              | P3  | 5–6   |
-| SHR-11 | Internal CRM (leads)                        | `truckbill_admin`         | Nexus `/admin/crm/*`                    | Improved              | P2  | 2A    |
+| SHR-11 | Internal CRM (leads)                        | `truckbill_admin`         | Nexus `/admin/crm/*`                    | Partial               | P2  | 2A    |
 | SHR-12 | Permission Master (not legacy role names)   | `role:moderator` etc.     | Permission codes                        | Improved              | P3  | 2     |
 | SHR-13 | Masters bulk CSV import                     | All three apps            | Scope gated — **PO-LGC-005**            | PO Decision           | P2  | 3     |
 | SHR-14 | Production tax invoice PDF                  | Legacy PDF tests          | Sample only; EX pending                 | Deferred Future Phase | P1  | 3/11  |
@@ -129,46 +154,90 @@ _Full register: `LEGACY_OWNFLEET_FUNCTIONAL_PARITY.md`. IDs prefixed `OF-`._
 
 ---
 
-## D. Grand totals (268 rows) — post-remediation + challenge
+## D. Admin control plane (`ADM-*`)
 
-Broker Missing rows reclassified: VP03/VP04/IN03/M17 → **PO Decision**; VP09/FH07 → **Deferred (P11 / PO-LGC-006)**; M16 already PO. SHR-13 → PO. OF B06/B15 closed; C06 → Deferred.
+_Full workflow: `LEGACY_ADMIN_WORKFLOW_ALIGNMENT.md`. Phase 2A / platform — not customer Broker/OF/Partload modules._
 
-| Classification         | BRK §1–9 |      OF |    SHR | **Grand total** |
-| ---------------------- | -------: | ------: | -----: | --------------: |
-| Equivalent             |       33 |      33 |      1 |          **67** |
-| Improved               |       16 |      10 |     11 |          **37** |
-| Partial                |       29 |      15 |      0 |          **44** |
-| Missing Current Scope  |        0 |       0 |      0 |           **0** |
-| Deferred Future Phase  |       21 |      68 |      1 |          **90** |
-| Intentional Difference |        6 |       6 |      0 |          **12** |
-| Deprecated             |        1 |       2 |      0 |           **3** |
-| PO Decision            |        7 |       2 |      1 |          **10** |
-| Not Verified           |        2 |       2 |      0 |           **4** |
-| **Subtotal**           |  **116** | **138** | **14** |         **268** |
+| Classification         |  Count |
+| ---------------------- | -----: |
+| Equivalent             |      0 |
+| Improved               |      4 |
+| Partial                |     10 |
+| Missing                |      3 |
+| Deferred Future Phase  |      0 |
+| Intentional Difference |      2 |
+| PO Decision Required   |      0 |
+| Not Verified           |      1 |
+| Deprecated             |      0 |
+| **Total ADM**          | **18** |
+
+---
+
+## E. Partload (`PLD-*`) — Phase 7 unauthorized
+
+_Full analysis: `LEGACY_PARTLOAD_WORKFLOW_ANALYSIS.md`. Readiness: `PHASE_7_LEGACY_PARTLOAD_READINESS.md`._
+
+| Classification         |  Count |
+| ---------------------- | -----: |
+| Equivalent             |      0 |
+| Improved               |      1 |
+| Partial                |      6 |
+| Missing                |     10 |
+| Deferred Future Phase  |      2 |
+| Intentional Difference |      1 |
+| PO Decision Required   |      0 |
+| Not Verified           |      1 |
+| Deprecated             |      0 |
+| **Total PLD**          | **20** |
+
+---
+
+## F. Grand totals (306 rows) — four-app merge
+
+Broker/OF peer registers (254) + SHR (14) + ADM (18) + PLD (20). SHR-04/SHR-11 reclass applied in section A.
+
+| Classification         | BRK §1–9† |     OF† |    SHR |    ADM |    PLD | **Grand total** |
+| ---------------------- | --------: | ------: | -----: | -----: | -----: | --------------: |
+| Equivalent             |    29→33‡ |  30→33‡ |      0 |      0 |      0 |      **62–67**‡ |
+| Improved               |        16 |      10 |     10 |      4 |      1 |          **41** |
+| Partial                |    33→29‡ |  18→15‡ |      2 |     10 |      6 |      **64–70**‡ |
+| Missing                |         0 |       0 |      0 |      3 |     10 |          **13** |
+| Missing Current Scope  |         0 |       0 |      0 |      0 |      0 |           **0** |
+| Deferred Future Phase  |        21 |      68 |      1 |      0 |      2 |          **92** |
+| Intentional Difference |         6 |       6 |      0 |      2 |      1 |          **15** |
+| Deprecated             |         1 |       2 |      0 |      0 |      0 |           **3** |
+| PO Decision            |         7 |       2 |      1 |      0 |      0 |          **10** |
+| Not Verified           |         2 |       2 |      0 |      1 |      1 |           **6** |
+| **Subtotal**           |   **116** | **138** | **14** | **18** | **20** |         **306** |
+
+† BRK/OF columns show **workflow-adjusted Equivalent/Partial** (first number) vs **peer register** (second) where they differ.  
+‡ Use **62 Equivalent / 70 Partial** for migration planning when applying workflow downgrades; peer BRK/OF CSV indexes remain authoritative for row text.
 
 _Exclude BRK-P01…P06 (6) from migration parity math — same treatment as peer Broker §10._
 
-**Migration-relevant total (268 − 6 deprecated/platform broker context):** **262** capability rows for customer impact planning.
+**Migration-relevant total (306 − 6):** **300** capability rows (includes Partload as explicit Missing majority until PO-P7-AUTH).
 
 ---
 
-## E. Phase mapping rollup (legacy presence → Nexus phase)
+## G. Phase mapping rollup (legacy presence → Nexus phase)
 
-| Phase      | BRK rows (indicative) | OF rows (indicative) | SHR | Notes                            |
-| ---------- | --------------------: | -------------------: | --: | -------------------------------- |
-| 3          |                    12 |                    8 |   4 | Masters, bulk import gap         |
-| 4          |                     8 |                    4 |   3 | Unified LR                       |
-| 5          |                     2 |                   52 |   2 | OF core + deferred fleet modules |
-| 6          |                    78 |                    4 |   2 | Broker spine                     |
-| 8          |                    13 |                    0 |   0 | GL / accounting defer            |
-| 9          |                     1 |                    2 |   0 | Notifications                    |
-| 10         |                     1 |                   58 |   0 | Assets / payroll                 |
-| 11         |                    24 |                   54 |   1 | Reports                          |
-| PO / mixed |                     2 |                    8 |   2 | Decisions                        |
+| Phase      | BRK |  OF | SHR | ADM | PLD | Notes                             |
+| ---------- | --: | --: | --: | --: | --: | --------------------------------- |
+| 2A / admin |   0 |   0 |   1 |  18 |   0 | CRM + subscription control plane  |
+| 3          |  12 |   8 |   4 |   0 |   4 | Masters; Partload agents/packages |
+| 4          |   8 |   4 |   2 |   0 |   2 | Unified LR; enquiry partload      |
+| 5          |   2 |  52 |   2 |   0 |   0 | OF core + deferred fleet          |
+| 6          |  78 |   4 |   1 |   0 |   0 | Broker spine                      |
+| 7          |   0 |   0 |   0 |   0 |  20 | Partload challan/inward/delivery  |
+| 8          |  13 |   0 |   0 |   0 |   2 | GL / accounting defer             |
+| 9          |   1 |   2 |   0 |   0 |   0 | Notifications                     |
+| 10         |   1 |  58 |   0 |   0 |   0 | Assets / payroll                  |
+| 11         |  24 |  54 |   1 |   0 |   2 | Reports                           |
+| PO / mixed |   2 |   8 |   1 |   0 |   0 | Decisions                         |
 
 ---
 
-## F. Former P1 Missing Current Scope — disposition
+## H. Former P1 Missing Current Scope — disposition
 
 | ID       | Capability                           | Disposition                       |
 | -------- | ------------------------------------ | --------------------------------- |
@@ -188,10 +257,17 @@ _Exclude BRK-P01…P06 (6) from migration parity math — same treatment as peer
 
 ---
 
-## G. Index pointer
+## I. Index pointer
 
-Broker CSV-style index: peer doc § Capability index.  
-OwnFleet register: peer doc § Capability register.  
+| App      | Workflow alignment                      | Row register                           |
+| -------- | --------------------------------------- | -------------------------------------- |
+| Broker   | `LEGACY_BROKER_WORKFLOW_ALIGNMENT.md`   | `LEGACY_BROKER_FUNCTIONAL_PARITY.md`   |
+| OwnFleet | `LEGACY_OWNFLEET_WORKFLOW_ALIGNMENT.md` | `LEGACY_OWNFLEET_FUNCTIONAL_PARITY.md` |
+| Admin    | `LEGACY_ADMIN_WORKFLOW_ALIGNMENT.md`    | ADM-* in this matrix §D                |
+| Partload | `LEGACY_PARTLOAD_WORKFLOW_ANALYSIS.md`  | PLD-* in this matrix §E                |
+
+Weight / freight: `OPERATIONAL_WEIGHT_UNIT_STANDARD.md`.  
+Phase 7 readiness: `PHASE_7_LEGACY_PARTLOAD_READINESS.md`.  
 Nexus-only requirements: `NEXUS_EXCLUSIVE_REQUIREMENTS_AUDIT.md`.
 
 ---

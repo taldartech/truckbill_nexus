@@ -6,11 +6,11 @@ use App\Domains\Company\CompanyAccessService;
 use App\Domains\CustomerInvoice\Enums\CustomerInvoiceSource;
 use App\Domains\CustomerInvoice\UnifiedCustomerInvoiceReadFacade;
 use App\Domains\Master\Party\Enums\PartyRoleType;
+use App\Domains\Master\Party\PartyOptionQuery;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Company;
-use App\Models\Party;
 use App\Support\Presentation\FreightAmountPresentation;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -44,19 +44,8 @@ class CustomerInvoiceController extends Controller
 
         $page = $this->invoices->search($actor, $company, $branch, $filters, $maySeeFreight);
 
-        $customers = Party::query()
-            ->where('company_id', $company->id)
-            ->whereNull('deleted_at')
-            ->whereHas('roles', function ($query): void {
-                $query->where('role', PartyRoleType::Customer->value)
-                    ->whereNull('deleted_at')
-                    ->whereNull('deactivated_at');
-            })
-            ->orderBy('name')
-            ->get(['id', 'name'])
-            ->map(fn (Party $party): array => ['id' => $party->id, 'name' => $party->name])
-            ->values()
-            ->all();
+        $customers = app(PartyOptionQuery::class)
+            ->forRoles($company, $branch, PartyRoleType::Customer, 300);
 
         return Inertia::render('branch/invoices/index', [
             'filters' => $filters,

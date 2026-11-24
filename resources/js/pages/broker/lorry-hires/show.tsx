@@ -293,7 +293,9 @@ export default function LorryHireShow({
                                                     )}
                                             </td>
                                             <td className="px-4 py-3">
-                                                {line.loading_weight ?? '—'}
+                                                {line.loading_weight
+                                                    ? `${(Number(line.loading_weight) / 1000).toFixed(3)} MT`
+                                                    : '—'}
                                             </td>
                                             <td className="px-4 py-3 font-medium">
                                                 {line.freight_amount ?? '—'}

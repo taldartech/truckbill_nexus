@@ -10,6 +10,7 @@ use App\Domains\Broker\Exceptions\BrokerDomainException;
 use App\Domains\Broker\LinkedBilty\LinkedBiltyGroupService;
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Master\Party\Enums\PartyRoleType;
+use App\Domains\Master\Party\PartyOptionQuery;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
 use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
@@ -21,7 +22,6 @@ use App\Models\Branch;
 use App\Models\Company;
 use App\Models\LinkedBiltyGroup;
 use App\Models\LorryReceipt;
-use App\Models\Party;
 use App\Models\TransporterVoucher;
 use App\Models\User;
 use App\Models\Vehicle;
@@ -96,17 +96,12 @@ class LinkedBiltyGroupController extends Controller
             ->limit(200)
             ->get(['id', 'registration_number']);
 
-        $payees = Party::query()
-            ->where('company_id', $company->id)
-            ->whereNull('deleted_at')
-            ->whereHas('roles', function ($query): void {
-                $query->whereIn('role', [PartyRoleType::Transporter->value, PartyRoleType::Driver->value])
-                    ->whereNull('deleted_at')
-                    ->whereNull('deactivated_at');
-            })
-            ->orderBy('name')
-            ->limit(100)
-            ->get(['id', 'name']);
+        $payees = app(PartyOptionQuery::class)->forRoles(
+            $company,
+            $branch,
+            [PartyRoleType::Transporter, PartyRoleType::Driver],
+            100,
+        );
 
         return Inertia::render('broker/linked-bilties/create', [
             'filters' => ['vehicle_id' => $vehicleId],
@@ -114,10 +109,7 @@ class LinkedBiltyGroupController extends Controller
                 'id' => $row->id,
                 'registration_number' => $row->registration_number,
             ])->values()->all(),
-            'payees' => $payees->map(fn (Party $row): array => [
-                'id' => $row->id,
-                'name' => $row->name,
-            ])->values()->all(),
+            'payees' => $payees,
             'eligibleReceipts' => $eligible->map(fn (LorryReceipt $lr): array => $this->eligibleReceiptPayload($lr, $maySeeFreight))->values()->all(),
             'permissions' => $this->groupPermissions($actor, $company, $branch, $maySeeFreight),
             'urls' => [

@@ -10,6 +10,14 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    actualMtFromUnitsAndWpuKg,
+    formatFixed,
+    kgToMt,
+    mtToKg,
+    parseNumeric,
+    wpuKgFromActualMt,
+} from '@/lib/operational-weight';
 
 type Option = { value: string; label: string };
 type NamedOption = { id: string; name: string; code?: string };
@@ -130,31 +138,6 @@ function todayIsoLocal(): string {
     return `${y}-${m}-${day}`;
 }
 
-function parseNumeric(value: string): number | null {
-    const trimmed = value.trim();
-    if (trimmed === '') {
-        return null;
-    }
-    const parsed = Number(trimmed);
-    return Number.isFinite(parsed) ? parsed : null;
-}
-
-function formatFixed(value: number, digits: number): string {
-    return value.toFixed(digits);
-}
-
-function deriveWeightPerUnit(
-    actualWeight: string,
-    packageCount: string,
-): string {
-    const actual = parseNumeric(actualWeight);
-    const units = parseNumeric(packageCount);
-    if (actual === null || units === null || units === 0) {
-        return '';
-    }
-    return formatFixed(actual / units, 3);
-}
-
 function computeFreightPreview(row: GoodsRow): number | null {
     const rate = parseNumeric(row.freight_rate);
     if (rate === null) {
@@ -162,8 +145,11 @@ function computeFreightPreview(row: GoodsRow): number | null {
     }
 
     const units = parseNumeric(row.package_count);
-    const actual = parseNumeric(row.actual_weight);
-    const charged = parseNumeric(row.charged_weight);
+    // UI stores actual/charged weight in MT; freight math uses KG for per-kg types.
+    const actualMt = parseNumeric(row.actual_weight);
+    const chargedMt = parseNumeric(row.charged_weight);
+    const actualKg = actualMt === null ? null : actualMt * 1000;
+    const chargedKg = chargedMt === null ? null : chargedMt * 1000;
 
     switch (row.freight_rate_type) {
         case 'fixed_amount':
@@ -175,20 +161,20 @@ function computeFreightPreview(row: GoodsRow): number | null {
             return rate * units;
         case 'per_kg':
         case 'per_actual_weight':
-            if (actual === null) {
+            if (actualKg === null) {
                 return null;
             }
-            return rate * actual;
+            return rate * actualKg;
         case 'per_mt':
-            if (actual === null) {
+            if (actualMt === null) {
                 return null;
             }
-            return rate * (actual / 1000);
+            return rate * actualMt;
         case 'per_charged_weight':
-            if (charged === null) {
+            if (chargedKg === null) {
                 return null;
             }
-            return rate * charged;
+            return rate * chargedKg;
         default:
             return null;
     }
@@ -227,15 +213,16 @@ function mapGoodsFromReceipt(goods: LorryReceiptDetail['goods']): GoodsRow[] {
     }
     return goods.map((row) => {
         const packageCount = row.package_count ?? '';
-        const actualWeight = row.actual_weight ?? '';
+        const actualMt = kgToMt(row.actual_weight);
+        const chargedMt = kgToMt(row.charged_weight);
         return {
             goods_type_id: row.goods_type_id ?? '',
             package_type_id: row.package_type_id ?? '',
             goods_description: row.goods_description ?? '',
             package_count: packageCount,
-            weight_per_unit: deriveWeightPerUnit(actualWeight, packageCount),
-            actual_weight: actualWeight,
-            charged_weight: row.charged_weight ?? '',
+            weight_per_unit: wpuKgFromActualMt(actualMt, packageCount),
+            actual_weight: actualMt,
+            charged_weight: chargedMt,
             freight_rate_type: row.freight_rate_type,
             freight_rate: row.freight_rate ?? '0',
             goods_value: row.goods_value ?? '',
@@ -374,29 +361,18 @@ export default function LrForm({
                     const next: GoodsRow = { ...row, ...patch };
 
                     if (source === 'weight_per_unit') {
-                        const units = parseNumeric(next.package_count);
-                        const wpu = parseNumeric(next.weight_per_unit);
-                        if (units !== null && wpu !== null) {
-                            next.actual_weight = formatFixed(units * wpu, 3);
-                        }
-                    } else if (source === 'actual_weight') {
-                        const units = parseNumeric(next.package_count);
-                        const actual = parseNumeric(next.actual_weight);
-                        if (units !== null && units !== 0 && actual !== null) {
-                            next.weight_per_unit = formatFixed(
-                                actual / units,
-                                3,
-                            );
-                        }
-                    } else if (source === 'package_count') {
-                        const units = parseNumeric(next.package_count);
-                        const actual = parseNumeric(next.actual_weight);
-                        if (units !== null && units !== 0 && actual !== null) {
-                            next.weight_per_unit = formatFixed(
-                                actual / units,
-                                3,
-                            );
-                        }
+                        next.actual_weight = actualMtFromUnitsAndWpuKg(
+                            next.package_count,
+                            next.weight_per_unit,
+                        );
+                    } else if (
+                        source === 'actual_weight' ||
+                        source === 'package_count'
+                    ) {
+                        next.weight_per_unit = wpuKgFromActualMt(
+                            next.actual_weight,
+                            next.package_count,
+                        );
                     }
 
                     return next;
@@ -970,7 +946,7 @@ export default function LrForm({
                                                 </div>
                                                 <div className="space-y-1">
                                                     <Label className="text-xs">
-                                                        Wt./Unit (kg)
+                                                        Wt./Unit (KG)
                                                     </Label>
                                                     <Input
                                                         type="number"
@@ -991,15 +967,21 @@ export default function LrForm({
                                                                 'weight_per_unit',
                                                             )
                                                         }
-                                                        aria-label={`Weight per unit row ${index + 1}`}
+                                                        aria-label={`Weight per unit KG row ${index + 1}`}
                                                     />
                                                 </div>
                                                 <div className="space-y-1">
                                                     <Label className="text-xs">
-                                                        Actual Weight (kg)
+                                                        Actual Weight (MT)
                                                     </Label>
-                                                    <Input
+                                                    <input
+                                                        type="hidden"
                                                         name={`goods[${index}][actual_weight]`}
+                                                        value={mtToKg(
+                                                            row.actual_weight,
+                                                        )}
+                                                    />
+                                                    <Input
                                                         type="number"
                                                         min="0"
                                                         step="0.001"
@@ -1018,14 +1000,21 @@ export default function LrForm({
                                                                 'actual_weight',
                                                             )
                                                         }
+                                                        aria-label={`Actual weight MT row ${index + 1}`}
                                                     />
                                                 </div>
                                                 <div className="space-y-1">
                                                     <Label className="text-xs">
-                                                        Charged Weight (kg)
+                                                        Charged Weight (MT)
                                                     </Label>
-                                                    <Input
+                                                    <input
+                                                        type="hidden"
                                                         name={`goods[${index}][charged_weight]`}
+                                                        value={mtToKg(
+                                                            row.charged_weight,
+                                                        )}
+                                                    />
+                                                    <Input
                                                         type="number"
                                                         min="0"
                                                         step="0.001"
@@ -1044,6 +1033,7 @@ export default function LrForm({
                                                                 'other',
                                                             )
                                                         }
+                                                        aria-label={`Charged weight MT row ${index + 1}`}
                                                     />
                                                 </div>
                                             </div>
@@ -1585,7 +1575,7 @@ export default function LrForm({
                                     </div>
                                     <div className="flex justify-between gap-3 sm:block">
                                         <dt className="text-muted-foreground">
-                                            Actual Wt
+                                            Actual Wt (MT)
                                         </dt>
                                         <dd className="font-medium tabular-nums">
                                             {summary.totalActual}
@@ -1593,7 +1583,7 @@ export default function LrForm({
                                     </div>
                                     <div className="flex justify-between gap-3 sm:block">
                                         <dt className="text-muted-foreground">
-                                            Charged Wt
+                                            Charged Wt (MT)
                                         </dt>
                                         <dd className="font-medium tabular-nums">
                                             {summary.totalCharged}

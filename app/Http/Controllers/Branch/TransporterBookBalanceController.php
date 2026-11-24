@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Branch;
 use App\Domains\Broker\Voucher\TransporterBookBalanceService;
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Master\Party\Enums\PartyRoleType;
+use App\Domains\Master\Party\PartyOptionQuery;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
 use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
@@ -13,7 +14,6 @@ use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Company;
-use App\Models\Party;
 use App\Models\TransporterBookBalanceEntry;
 use App\Models\User;
 use App\Support\Presentation\FreightAmountPresentation;
@@ -41,16 +41,8 @@ class TransporterBookBalanceController extends Controller
         $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
         $transporterId = $request->string('transporter_party_id')->toString() ?: null;
 
-        $transporters = Party::query()
-            ->where('company_id', $company->id)
-            ->whereNull('deleted_at')
-            ->whereHas('roles', fn ($q) => $q
-                ->where('role', PartyRoleType::Transporter->value)
-                ->whereNull('deleted_at')
-                ->whereNull('deactivated_at'))
-            ->orderBy('name')
-            ->limit(200)
-            ->get(['id', 'name']);
+        $transporters = app(PartyOptionQuery::class)
+            ->forRoles($company, $branch, PartyRoleType::Transporter);
 
         $page = $this->balances->search(
             company: $company,
@@ -67,10 +59,7 @@ class TransporterBookBalanceController extends Controller
             'filters' => [
                 'transporter_party_id' => $transporterId ?? '',
             ],
-            'transporters' => $transporters->map(fn (Party $party): array => [
-                'id' => $party->id,
-                'name' => $party->name,
-            ])->values()->all(),
+            'transporters' => $transporters,
             'running_balance' => $runningBalance !== null
                 ? $this->freightPresentation->presentAmount($runningBalance, $maySeeFreight)
                 : null,

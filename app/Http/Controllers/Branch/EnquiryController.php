@@ -13,6 +13,7 @@ use App\Domains\Enquiry\Exceptions\EnquiryConflictException;
 use App\Domains\Enquiry\Exceptions\EnquiryDomainException;
 use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Master\Party\Enums\PartyRoleType;
+use App\Domains\Master\Party\PartyOptionQuery;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
@@ -29,8 +30,6 @@ use App\Models\EnquiryQuotation;
 use App\Models\EnquiryQuotationBroadcastRequest;
 use App\Models\EnquiryStatusHistory;
 use App\Models\OwnerCatalogueItem;
-use App\Models\Party;
-use App\Models\PartyRole;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Support\Presentation\FreightAmountPresentation;
@@ -194,12 +193,8 @@ class EnquiryController extends Controller
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertPermission($actor, $company, $branch, PermissionCodes::ENQUIRY_CREATE);
 
-        $parties = Party::query()
-            ->where('company_id', $company->id)
-            ->whereNull('deleted_at')
-            ->orderBy('name')
-            ->limit(200)
-            ->get(['id', 'name']);
+        $customers = app(PartyOptionQuery::class)
+            ->forRoles($company, $branch, PartyRoleType::Customer);
 
         $vehicleTypes = OwnerCatalogueItem::query()
             ->where('owner_user_id', $company->owner_user_id)
@@ -213,10 +208,8 @@ class EnquiryController extends Controller
         return Inertia::render('branch/enquiries/create', [
             'company' => ['id' => $company->id, 'name' => $company->name],
             'branch' => ['id' => $branch->id, 'name' => $branch->name],
-            'parties' => $parties->map(fn ($party): array => [
-                'id' => $party->id,
-                'name' => $party->name,
-            ])->values()->all(),
+            'parties' => $customers,
+            'customers' => $customers,
             'vehicle_types' => $vehicleTypes->map(fn ($type): array => [
                 'id' => $type->id,
                 'name' => $type->name,
@@ -224,6 +217,7 @@ class EnquiryController extends Controller
             'urls' => [
                 'index' => route('branch.enquiries.index'),
                 'store' => route('branch.enquiries.store'),
+                'parties_create' => route('branch.parties.create', absolute: false),
             ],
         ]);
     }
@@ -277,7 +271,7 @@ class EnquiryController extends Controller
             'enquiry' => $data,
             'branches' => $this->branchOptions($company),
             'assignable_users' => $this->assignableUsers($company, $branch),
-            'transporters' => $this->transporterOptions($company),
+            'transporters' => $this->transporterOptions($company, $branch),
             'vehicles' => $this->vehicleOptions($company),
             'conversion_preview' => $conversionPreview,
             'capabilities' => [
@@ -657,27 +651,10 @@ class EnquiryController extends Controller
     /**
      * @return list<array{id: string, name: string}>
      */
-    private function transporterOptions(Company $company): array
+    private function transporterOptions(Company $company, Branch $branch): array
     {
-        $partyIds = PartyRole::query()
-            ->where('company_id', $company->id)
-            ->where('role', PartyRoleType::Transporter->value)
-            ->whereNull('deactivated_at')
-            ->whereNull('deleted_at')
-            ->pluck('party_id');
-
-        $rows = Party::query()
-            ->where('company_id', $company->id)
-            ->whereIn('id', $partyIds)
-            ->whereNull('deleted_at')
-            ->orderBy('name')
-            ->limit(200)
-            ->get(['id', 'name'])
-            ->map(fn (Party $party): array => ['id' => $party->id, 'name' => $party->name])
-            ->values()
-            ->all();
-
-        return array_values($rows);
+        return app(PartyOptionQuery::class)
+            ->forRoles($company, $branch, PartyRoleType::Transporter);
     }
 
     /**

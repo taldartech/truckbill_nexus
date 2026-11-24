@@ -7,6 +7,12 @@ import InputError from '@/components/input-error';
 import { FormSection } from '@/components/form-section';
 import { PageShell } from '@/components/page-shell';
 import { formatDisplayDate } from '@/lib/dates';
+import {
+    formatMtLabel,
+    kgToMt,
+    mtToKg,
+    parseNumeric,
+} from '@/lib/operational-weight';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -66,15 +72,6 @@ type LineDraft = {
     is_fixed_amount: boolean;
 };
 
-function parseNumeric(value: string | null | undefined): number | null {
-    const trimmed = (value ?? '').trim();
-    if (trimmed === '') {
-        return null;
-    }
-    const parsed = Number(trimmed);
-    return Number.isFinite(parsed) ? parsed : null;
-}
-
 function formatMoney(value: number | null): string {
     if (value === null) {
         return '—';
@@ -87,6 +84,12 @@ function formatWeight(value: string | null): string {
         return '—';
     }
     return value;
+}
+
+function formatWeightMt(value: string | null): string {
+    return formatMtLabel(
+        value === null || value.trim() === '' ? null : kgToMt(value),
+    );
 }
 
 function goodsRowLabel(row: GoodsRow): string {
@@ -111,7 +114,9 @@ function computeTransporterFreightPreview(
         return null;
     }
 
-    const loading = parseNumeric(draft.loading_weight);
+    // UI draft.loading_weight is MT; convert for KG-based rate types.
+    const loadingMt = parseNumeric(draft.loading_weight);
+    const loadingKg = loadingMt === null ? null : loadingMt * 1000;
     const packages = parseNumeric(row.package_count);
 
     switch (draft.rate_type) {
@@ -124,20 +129,16 @@ function computeTransporterFreightPreview(
             return rate * packages;
         case 'per_kg':
         case 'per_actual_weight':
-            if (loading === null) {
-                return null;
-            }
-            return rate * loading;
-        case 'per_mt':
-            if (loading === null) {
-                return null;
-            }
-            return rate * (loading / 1000);
         case 'per_charged_weight':
-            if (loading === null) {
+            if (loadingKg === null) {
                 return null;
             }
-            return rate * loading;
+            return rate * loadingKg;
+        case 'per_mt':
+            if (loadingMt === null) {
+                return null;
+            }
+            return rate * loadingMt;
         default:
             return null;
     }
@@ -236,7 +237,7 @@ export default function LorryHireCreate({
 
     const [lineDrafts, setLineDrafts] = useState<LineDraft[]>(() =>
         goodsRows.map((row) => ({
-            loading_weight: row.suggested_loading_weight ?? '',
+            loading_weight: kgToMt(row.suggested_loading_weight),
             rate_type: 'per_mt',
             rate: '',
             is_fixed_amount: false,
@@ -568,14 +569,14 @@ export default function LorryHireCreate({
                                                         )}
                                                     />
                                                     <ReadOnlyMetric
-                                                        label="Actual weight (kg)"
-                                                        value={formatWeight(
+                                                        label="Actual weight (MT)"
+                                                        value={formatWeightMt(
                                                             row.actual_weight,
                                                         )}
                                                     />
                                                     <ReadOnlyMetric
-                                                        label="Charged weight (kg)"
-                                                        value={formatWeight(
+                                                        label="Charged weight (MT)"
+                                                        value={formatWeightMt(
                                                             row.charged_weight,
                                                         )}
                                                     />
@@ -612,11 +613,17 @@ export default function LorryHireCreate({
                                                             htmlFor={`loading_weight_${index}`}
                                                             className="text-xs"
                                                         >
-                                                            Loading weight (kg)
+                                                            Loading weight (MT)
                                                         </Label>
+                                                        <input
+                                                            type="hidden"
+                                                            name={`goods_lines[${index}][loading_weight]`}
+                                                            value={mtToKg(
+                                                                draft.loading_weight,
+                                                            )}
+                                                        />
                                                         <Input
                                                             id={`loading_weight_${index}`}
-                                                            name={`goods_lines[${index}][loading_weight]`}
                                                             type="number"
                                                             min="0"
                                                             step="0.001"

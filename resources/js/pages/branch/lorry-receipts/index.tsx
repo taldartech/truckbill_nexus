@@ -16,6 +16,7 @@ import {
 } from '@/components/data-table';
 import { PageShell } from '@/components/page-shell';
 import { formatDisplayDate } from '@/lib/dates';
+import { formatMtLabel, kgToMt } from '@/lib/operational-weight';
 import { Badge } from '@/components/ui/badge';
 import { TablePagination } from '@/components/table-pagination';
 import { Button } from '@/components/ui/button';
@@ -236,13 +237,13 @@ export default function LorryReceiptsIndex({
             },
             {
                 id: 'charged_weight_total',
-                header: 'Weight',
+                header: 'Weight (MT)',
                 priority: 2,
-                width: '6rem',
-                minWidth: '6rem',
+                width: '7rem',
+                minWidth: '7rem',
                 align: 'right',
                 className: 'whitespace-nowrap tabular-nums',
-                cell: (row) => row.charged_weight_total,
+                cell: (row) => formatMtLabel(kgToMt(row.charged_weight_total)),
             },
             {
                 id: 'status',

@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { MetricCard } from '@/components/ui/metric-card';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { formatDisplayDateTime } from '@/lib/dates';
+import { formatMtLabel, kgToMt } from '@/lib/operational-weight';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
@@ -671,8 +672,12 @@ export default function TripShow({
                                 <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
                                     {reconciliation.pickups.map((row) => (
                                         <li key={row.id}>
-                                            Pickup remaining {row.remaining} /{' '}
-                                            {row.weight}
+                                            Pickup remaining{' '}
+                                            {formatMtLabel(
+                                                kgToMt(row.remaining),
+                                            )}{' '}
+                                            /{' '}
+                                            {formatMtLabel(kgToMt(row.weight))}
                                             {row.reconciled ? ' · OK' : ''}
                                         </li>
                                     ))}
@@ -714,8 +719,12 @@ export default function TripShow({
                                                                 }
                                                             </p>
                                                             <p className="text-muted-foreground">
-                                                                {pickup.weight}{' '}
-                                                                kg ·{' '}
+                                                                {formatMtLabel(
+                                                                    kgToMt(
+                                                                        pickup.weight,
+                                                                    ),
+                                                                )}{' '}
+                                                                ·{' '}
                                                                 {
                                                                     pickup.pickup_date
                                                                 }
@@ -841,7 +850,8 @@ export default function TripShow({
                                                         step="0.001"
                                                         min="0.001"
                                                         required
-                                                        placeholder="Weight"
+                                                        placeholder="Weight (MT)"
+                                                        aria-label="Pickup weight in MT"
                                                     />
                                                     <Input
                                                         name="pickup_date"
@@ -1029,7 +1039,7 @@ export default function TripShow({
                                                     Drop
                                                 </th>
                                                 <th className="px-3 py-2">
-                                                    Weight
+                                                    Weight (MT)
                                                 </th>
                                                 <th className="px-3 py-2">
                                                     Freight
@@ -1073,9 +1083,11 @@ export default function TripShow({
                                                                     '—'}
                                                             </td>
                                                             <td className="px-3 py-2">
-                                                                {
-                                                                    allocation.allocation_weight
-                                                                }
+                                                                {formatMtLabel(
+                                                                    kgToMt(
+                                                                        allocation.allocation_weight,
+                                                                    ),
+                                                                )}
                                                             </td>
                                                             <td className="px-3 py-2">
                                                                 ₹
@@ -1151,7 +1163,13 @@ export default function TripShow({
                                                             {
                                                                 pickup.station_name
                                                             }{' '}
-                                                            ({pickup.weight})
+                                                            (
+                                                            {formatMtLabel(
+                                                                kgToMt(
+                                                                    pickup.weight,
+                                                                ),
+                                                            )}
+                                                            )
                                                         </option>
                                                     ),
                                                 )}
@@ -1181,7 +1199,8 @@ export default function TripShow({
                                                 step="0.001"
                                                 min="0.001"
                                                 required
-                                                placeholder="Allocation weight"
+                                                placeholder="Allocation weight (MT)"
+                                                aria-label="Allocation weight in MT"
                                             />
                                             <Input
                                                 name="rate"

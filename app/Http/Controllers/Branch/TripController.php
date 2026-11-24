@@ -7,6 +7,7 @@ use App\Domains\Consignment\Enums\LrWorkflowContext;
 use App\Domains\Document\DocumentAttachmentService;
 use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Master\Party\Enums\PartyRoleType;
+use App\Domains\Master\Party\PartyOptionQuery;
 use App\Domains\OwnFleet\Trip\Exceptions\TripAuthorizationException;
 use App\Domains\OwnFleet\Trip\Exceptions\TripConflictException;
 use App\Domains\OwnFleet\Trip\Exceptions\TripDomainException;
@@ -25,8 +26,6 @@ use App\Models\Branch;
 use App\Models\Company;
 use App\Models\LorryReceipt;
 use App\Models\OwnerCatalogueItem;
-use App\Models\Party;
-use App\Models\PartyRole;
 use App\Models\PaymentMode;
 use App\Models\Station;
 use App\Models\Trip;
@@ -36,6 +35,7 @@ use App\Models\TripExpense;
 use App\Models\TripPickup;
 use App\Models\User;
 use App\Support\Presentation\FreightAmountPresentation;
+use App\Support\Weight\OperationalWeight;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -452,6 +452,9 @@ class TripController extends Controller
             'pickup_date' => ['required', 'date'],
         ]);
 
+        // Inertia trip forms submit operational weights in MT; domain stores KG.
+        $validated['weight'] = OperationalWeight::mtToKg((string) $validated['weight']);
+
         try {
             $this->movements->addPickup($trip, $actor, $validated);
         } catch (ValidationException $e) {
@@ -559,6 +562,9 @@ class TripController extends Controller
             'goods_value' => ['nullable', 'numeric', 'min:0'],
         ]);
 
+        // Inertia trip forms submit operational weights in MT; domain stores KG.
+        $validated['allocation_weight'] = OperationalWeight::mtToKg((string) $validated['allocation_weight']);
+
         try {
             $this->movements->upsertAllocation($trip, $actor, $validated);
         } catch (ValidationException $e) {
@@ -654,32 +660,11 @@ class TripController extends Controller
     }
 
     /**
-     * @return array<int, array{id: string, name: string}>
+     * @return list<array{id: string, name: string}>
      */
     private function driverOptions(Company $company, Branch $branch): array
     {
-        $driverPartyIds = PartyRole::query()
-            ->where('company_id', $company->id)
-            ->where('role', PartyRoleType::Driver->value)
-            ->whereNull('deleted_at')
-            ->whereNull('deactivated_at')
-            ->pluck('party_id');
-
-        return Party::query()
-            ->where('company_id', $company->id)
-            ->whereIn('id', $driverPartyIds)
-            ->whereNull('deleted_at')
-            ->where(function ($query) use ($branch): void {
-                $query->whereNull('branch_id')->orWhere('branch_id', $branch->id);
-            })
-            ->orderBy('name')
-            ->get(['id', 'name'])
-            ->map(fn (Party $party): array => [
-                'id' => $party->id,
-                'name' => $party->name,
-            ])
-            ->values()
-            ->all();
+        return app(PartyOptionQuery::class)->forRoles($company, $branch, PartyRoleType::Driver);
     }
 
     /**
@@ -815,31 +800,10 @@ class TripController extends Controller
     }
 
     /**
-     * @return array<int, array{id: string, name: string}>
+     * @return list<array{id: string, name: string}>
      */
     private function partyRoleOptions(Company $company, Branch $branch, PartyRoleType $role): array
     {
-        $partyIds = PartyRole::query()
-            ->where('company_id', $company->id)
-            ->where('role', $role->value)
-            ->whereNull('deleted_at')
-            ->whereNull('deactivated_at')
-            ->pluck('party_id');
-
-        return Party::query()
-            ->where('company_id', $company->id)
-            ->whereIn('id', $partyIds)
-            ->whereNull('deleted_at')
-            ->where(function ($query) use ($branch): void {
-                $query->whereNull('branch_id')->orWhere('branch_id', $branch->id);
-            })
-            ->orderBy('name')
-            ->get(['id', 'name'])
-            ->map(fn (Party $party): array => [
-                'id' => $party->id,
-                'name' => $party->name,
-            ])
-            ->values()
-            ->all();
+        return app(PartyOptionQuery::class)->forRoles($company, $branch, $role);
     }
 }

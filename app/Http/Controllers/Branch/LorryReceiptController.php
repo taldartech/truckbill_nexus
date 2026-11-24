@@ -16,6 +16,7 @@ use App\Domains\Consignment\LrWorkflowContextResolver;
 use App\Domains\Document\DocumentAttachmentService;
 use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Master\Party\Enums\PartyRoleType;
+use App\Domains\Master\Party\PartyOptionQuery;
 use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
 use App\Domains\OwnFleet\Trip\TripService;
 use App\Domains\Rbac\PermissionAuthorizer;
@@ -32,7 +33,6 @@ use App\Models\LrAdditionalCharge;
 use App\Models\LrEwayBill;
 use App\Models\LrGoodsRow;
 use App\Models\OwnerCatalogueItem;
-use App\Models\Party;
 use App\Models\Station;
 use App\Models\User;
 use App\Models\Vehicle;
@@ -535,41 +535,10 @@ class LorryReceiptController extends Controller
      */
     private function formOptions(Company $company, Branch $branch, User $actor, string $formMode): array
     {
-        $consignors = Party::query()
-            ->where('company_id', $company->id)
-            ->whereNull('deleted_at')
-            ->whereHas('roles', function ($query): void {
-                $query->where('role', PartyRoleType::Consignor->value)
-                    ->whereNull('deleted_at')
-                    ->whereNull('deactivated_at');
-            })
-            ->orderBy('name')
-            ->limit(300)
-            ->get(['id', 'name']);
-
-        $consignees = Party::query()
-            ->where('company_id', $company->id)
-            ->whereNull('deleted_at')
-            ->whereHas('roles', function ($query): void {
-                $query->where('role', PartyRoleType::Consignee->value)
-                    ->whereNull('deleted_at')
-                    ->whereNull('deactivated_at');
-            })
-            ->orderBy('name')
-            ->limit(300)
-            ->get(['id', 'name']);
-
-        $billingCustomers = Party::query()
-            ->where('company_id', $company->id)
-            ->whereNull('deleted_at')
-            ->whereHas('roles', function ($query): void {
-                $query->where('role', PartyRoleType::Customer->value)
-                    ->whereNull('deleted_at')
-                    ->whereNull('deactivated_at');
-            })
-            ->orderBy('name')
-            ->limit(300)
-            ->get(['id', 'name']);
+        $partyOptions = app(PartyOptionQuery::class);
+        $consignors = $partyOptions->forRoles($company, $branch, PartyRoleType::Consignor, 300);
+        $consignees = $partyOptions->forRoles($company, $branch, PartyRoleType::Consignee, 300);
+        $billingCustomers = $partyOptions->forRoles($company, $branch, PartyRoleType::Customer, 300);
 
         $stations = Station::query()
             ->where('owner_user_id', $company->owner_user_id)
@@ -634,20 +603,18 @@ class LorryReceiptController extends Controller
         return [
             'rateTypeOptions' => collect(FreightRateType::cases())->map(fn (FreightRateType $type): array => [
                 'value' => $type->value,
-                'label' => str_replace('_', ' ', ucfirst($type->value)),
+                'label' => match ($type) {
+                    FreightRateType::FixedAmount => 'Fixed Amount',
+                    FreightRateType::PerPackageUnit => 'Per Unit',
+                    FreightRateType::PerKg => 'Per KG',
+                    FreightRateType::PerMt => 'Per MT',
+                    FreightRateType::PerActualWeight => 'Per Actual Weight',
+                    FreightRateType::PerChargedWeight => 'Per Charged Weight',
+                },
             ])->values()->all(),
-            'consignors' => $consignors->map(fn (Party $party): array => [
-                'id' => $party->id,
-                'name' => $party->name,
-            ])->values()->all(),
-            'consignees' => $consignees->map(fn (Party $party): array => [
-                'id' => $party->id,
-                'name' => $party->name,
-            ])->values()->all(),
-            'billingCustomers' => $billingCustomers->map(fn (Party $party): array => [
-                'id' => $party->id,
-                'name' => $party->name,
-            ])->values()->all(),
+            'consignors' => $consignors,
+            'consignees' => $consignees,
+            'billingCustomers' => $billingCustomers,
             'stations' => $stations->map(fn (Station $station): array => [
                 'id' => $station->id,
                 'name' => $station->name,

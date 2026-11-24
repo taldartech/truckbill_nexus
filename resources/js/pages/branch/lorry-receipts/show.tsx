@@ -12,6 +12,7 @@ import { MetricCard } from '@/components/ui/metric-card';
 import { PageShell } from '@/components/page-shell';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { formatDisplayDate } from '@/lib/dates';
+import { formatMtLabel, kgToMt } from '@/lib/operational-weight';
 import { workflowContextLabel } from '@/lib/workflow-context-label';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -399,11 +400,17 @@ export default function LorryReceiptShow({
                                                             '—'}
                                                     </td>
                                                     <td className="px-2 py-2">
-                                                        {row.actual_weight ||
-                                                            '—'}{' '}
+                                                        {formatMtLabel(
+                                                            kgToMt(
+                                                                row.actual_weight,
+                                                            ),
+                                                        )}{' '}
                                                         /{' '}
-                                                        {row.charged_weight ||
-                                                            '—'}
+                                                        {formatMtLabel(
+                                                            kgToMt(
+                                                                row.charged_weight,
+                                                            ),
+                                                        )}
                                                     </td>
                                                     <td className="px-2 py-2">
                                                         {row.freight_rate_type.replaceAll(

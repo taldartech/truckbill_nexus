@@ -8,6 +8,7 @@ use App\Domains\Broker\Exceptions\BrokerDomainException;
 use App\Domains\Broker\Invoice\BrokerInvoiceService;
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Master\Party\Enums\PartyRoleType;
+use App\Domains\Master\Party\PartyOptionQuery;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
 use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
@@ -20,7 +21,6 @@ use App\Models\BrokerInvoice;
 use App\Models\BrokerInvoicePayment;
 use App\Models\Company;
 use App\Models\LorryReceipt;
-use App\Models\Party;
 use App\Models\User;
 use App\Support\Presentation\FreightAmountPresentation;
 use Illuminate\Http\JsonResponse;
@@ -63,24 +63,12 @@ class BrokerInvoiceController extends Controller
 
         $eligible = $this->invoices->listEligibleLorryReceipts($company, $branch, $billingCustomerId);
 
-        $customers = Party::query()
-            ->where('company_id', $company->id)
-            ->whereNull('deleted_at')
-            ->whereHas('roles', function ($query): void {
-                $query->where('role', PartyRoleType::Customer->value)
-                    ->whereNull('deleted_at')
-                    ->whereNull('deactivated_at');
-            })
-            ->orderBy('name')
-            ->limit(300)
-            ->get(['id', 'name']);
+        $customers = app(PartyOptionQuery::class)
+            ->forRoles($company, $branch, PartyRoleType::Customer, 300);
 
         return Inertia::render('broker/invoices/create', [
             'filters' => ['billing_customer_party_id' => $billingCustomerId],
-            'billingCustomers' => $customers->map(fn ($party): array => [
-                'id' => $party->id,
-                'name' => $party->name,
-            ])->values()->all(),
+            'billingCustomers' => $customers,
             'eligibleWithMemo' => $eligible['with_memo']->map(fn (LorryReceipt $lr) => $this->eligiblePayload($lr, $maySeeFreight))->values()->all(),
             'eligibleWithoutMemo' => $eligible['without_memo']->map(fn (LorryReceipt $lr) => $this->eligiblePayload($lr, $maySeeFreight))->values()->all(),
             'permissions' => $this->invoicePermissions($actor, $company, $branch, $maySeeFreight),

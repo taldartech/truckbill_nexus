@@ -3,6 +3,7 @@ import { ArrowLeft, Save } from 'lucide-react';
 import { AppIconAction } from '@/components/app-icon-action';
 import { FormSection } from '@/components/form-section';
 import { PageShell } from '@/components/page-shell';
+import { SearchablePartySelect } from '@/components/searchable-party-select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,8 +12,13 @@ type Props = {
     company: { id: string; name: string };
     branch: { id: string; name: string };
     parties: { id: string; name: string }[];
+    customers?: { id: string; name: string }[];
     vehicle_types: { id: string; name: string }[];
-    urls: { index: string; store: string };
+    urls: {
+        index: string;
+        store: string;
+        parties_create?: string;
+    };
 };
 
 const fieldClass =
@@ -22,12 +28,15 @@ export default function BranchEnquiryCreate({
     company,
     branch,
     parties,
+    customers,
     vehicle_types,
     urls,
 }: Props) {
     const { errors } = usePage<{
         errors?: Record<string, string>;
     }>().props;
+
+    const customerOptions = customers ?? parties;
 
     return (
         <>
@@ -45,12 +54,6 @@ export default function BranchEnquiryCreate({
                     />
                 }
             >
-                {errors?.customer_party_id ? (
-                    <p className="text-sm text-destructive" role="alert">
-                        {errors.customer_party_id}
-                    </p>
-                ) : null}
-
                 <Form
                     action={urls.store}
                     method="post"
@@ -62,29 +65,18 @@ export default function BranchEnquiryCreate({
                                 title="Customer and enquiry"
                                 columns={2}
                             >
-                                <div className="space-y-2 md:col-span-2 lg:col-span-1">
-                                    <Label htmlFor="customer_party_id">
-                                        Customer party
-                                    </Label>
-                                    <select
+                                <div className="md:col-span-2 lg:col-span-1">
+                                    <SearchablePartySelect
                                         id="customer_party_id"
                                         name="customer_party_id"
+                                        label="Customer"
+                                        options={customerOptions}
                                         required
-                                        className={fieldClass}
-                                        defaultValue=""
-                                    >
-                                        <option value="" disabled>
-                                            Select party
-                                        </option>
-                                        {parties.map((party) => (
-                                            <option
-                                                key={party.id}
-                                                value={party.id}
-                                            >
-                                                {party.name}
-                                            </option>
-                                        ))}
-                                    </select>
+                                        emptyMessage="No eligible Customers in this branch. Create a Customer party first."
+                                        createHref={urls.parties_create}
+                                        createLabel="Create Customer"
+                                        error={errors?.customer_party_id}
+                                    />
                                 </div>
                             </FormSection>
 

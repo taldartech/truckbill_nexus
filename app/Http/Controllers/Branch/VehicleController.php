@@ -8,6 +8,7 @@ use App\Domains\Document\DocumentAttachmentService;
 use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Master\Exceptions\MasterDomainException;
 use App\Domains\Master\Party\Enums\PartyRoleType;
+use App\Domains\Master\Party\PartyOptionQuery;
 use App\Domains\Master\Support\MasterAccess;
 use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
 use App\Domains\Master\Vehicle\VehicleService;
@@ -18,8 +19,6 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\OwnerCatalogueItem;
-use App\Models\Party;
-use App\Models\PartyRole;
 use App\Models\User;
 use App\Models\Vehicle;
 use Illuminate\Http\RedirectResponse;
@@ -337,33 +336,7 @@ class VehicleController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        $transporterIds = PartyRole::query()
-            ->where('company_id', $company->id)
-            ->where('role', PartyRoleType::Transporter->value)
-            ->whereNull('deleted_at')
-            ->whereNull('deactivated_at')
-            ->pluck('party_id');
-
-        $driverIds = PartyRole::query()
-            ->where('company_id', $company->id)
-            ->where('role', PartyRoleType::Driver->value)
-            ->whereNull('deleted_at')
-            ->whereNull('deactivated_at')
-            ->pluck('party_id');
-
-        $transporters = Party::query()
-            ->visibleInBranch($company->id, $branch->id)
-            ->whereIn('id', $transporterIds)
-            ->whereNull('deleted_at')
-            ->orderBy('name')
-            ->get(['id', 'name']);
-
-        $drivers = Party::query()
-            ->visibleInBranch($company->id, $branch->id)
-            ->whereIn('id', $driverIds)
-            ->whereNull('deleted_at')
-            ->orderBy('name')
-            ->get(['id', 'name']);
+        $partyOptions = app(PartyOptionQuery::class);
 
         return [
             'ownershipOptions' => collect(VehicleOwnership::cases())->map(fn (VehicleOwnership $case): array => [
@@ -378,14 +351,8 @@ class VehicleController extends Controller
                 'id' => $item->id,
                 'name' => $item->name,
             ])->values()->all(),
-            'transporters' => $transporters->map(fn (Party $party): array => [
-                'id' => $party->id,
-                'name' => $party->name,
-            ])->values()->all(),
-            'drivers' => $drivers->map(fn (Party $party): array => [
-                'id' => $party->id,
-                'name' => $party->name,
-            ])->values()->all(),
+            'transporters' => $partyOptions->forRoles($company, $branch, PartyRoleType::Transporter),
+            'drivers' => $partyOptions->forRoles($company, $branch, PartyRoleType::Driver),
         ];
     }
 

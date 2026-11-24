@@ -1,5 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
 import { Button } from '@/components/ui/button';
+import { formatMtLabel, kgToMt } from '@/lib/operational-weight';
 
 type LorryReceipt = {
     lr_number: string;
@@ -141,8 +142,13 @@ export default function LorryReceiptPrint({
                                         {row.package_count || '—'}
                                     </td>
                                     <td className="py-2">
-                                        {row.actual_weight || '—'} /{' '}
-                                        {row.charged_weight || '—'}
+                                        {formatMtLabel(
+                                            kgToMt(row.actual_weight),
+                                        )}{' '}
+                                        /{' '}
+                                        {formatMtLabel(
+                                            kgToMt(row.charged_weight),
+                                        )}
                                     </td>
                                     <td className="py-2">
                                         {row.freight_amount}

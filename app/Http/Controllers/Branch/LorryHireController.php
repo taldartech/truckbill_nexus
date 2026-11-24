@@ -15,6 +15,7 @@ use App\Domains\Company\CompanyAccessService;
 use App\Domains\Consignment\Enums\FreightRateType;
 use App\Domains\Consignment\Enums\LrWorkflowContext;
 use App\Domains\Master\Party\Enums\PartyRoleType;
+use App\Domains\Master\Party\PartyOptionQuery;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
 use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
@@ -707,27 +708,9 @@ class LorryHireController extends Controller
     /**
      * @return list<array{id: string, name: string}>
      */
-    /**
-     * @return list<array{id: string, name: string}>
-     */
     private function transporterOptions(Company $company, Branch $branch): array
     {
-        $partyIds = PartyRole::query()
-            ->where('company_id', $company->id)
-            ->where('role', PartyRoleType::Transporter->value)
-            ->whereNull('deactivated_at')
-            ->whereNull('deleted_at')
-            ->pluck('party_id');
-
-        return Party::query()
-            ->visibleInBranch($company->id, $branch->id)
-            ->whereIn('id', $partyIds)
-            ->whereNull('deleted_at')
-            ->orderBy('name')
-            ->limit(200)
-            ->get(['id', 'name'])
-            ->map(fn (Party $party): array => ['id' => $party->id, 'name' => $party->name])
-            ->values()
-            ->all();
+        return app(PartyOptionQuery::class)
+            ->forRoles($company, $branch, PartyRoleType::Transporter);
     }
 }
