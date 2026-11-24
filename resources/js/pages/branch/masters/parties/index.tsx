@@ -67,14 +67,7 @@ export default function PartiesIndex({
                 id: 'name',
                 header: 'Name',
                 priority: 0,
-                cell: (row) => (
-                    <Link
-                        href={partyShowUrl(row.id)}
-                        className="font-medium hover:underline"
-                    >
-                        {row.name}
-                    </Link>
-                ),
+                cell: (row) => <span className="font-medium">{row.name}</span>,
             },
             {
                 id: 'roles',

@@ -1,4 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
+import { Eye } from 'lucide-react';
+import { AppIconAction } from '@/components/app-icon-action';
 import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
 
@@ -127,12 +129,12 @@ export default function TripInvoicesIndex({
                                         {row.payment_status}
                                     </td>
                                     <td className="px-3 py-2 text-right">
-                                        <Link
+                                        <AppIconAction
+                                            icon={Eye}
+                                            label="Open invoice"
                                             href={`/trip-invoices/${row.id}`}
-                                            className="text-primary underline"
-                                        >
-                                            Open
-                                        </Link>
+                                            variant="info"
+                                        />
                                     </td>
                                 </tr>
                             ))}

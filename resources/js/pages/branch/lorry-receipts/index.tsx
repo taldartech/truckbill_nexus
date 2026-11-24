@@ -1,5 +1,9 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Eye, Filter } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { AppIconAction } from '@/components/app-icon-action';
+import { FormSection } from '@/components/form-section';
+import { workflowContextLabel } from '@/lib/workflow-context-label';
 import {
     ResponsiveDataTable,
     type DataTableColumn,
@@ -55,21 +59,6 @@ function statusLabel(status: string): string {
     return status.replaceAll('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function contextLabel(context: string): string {
-    switch (context) {
-        case 'own_fleet':
-            return 'Own Fleet';
-        case 'broker':
-            return 'Broker';
-        case 'partload':
-            return 'Partload';
-        default:
-            return context
-                .replaceAll('_', ' ')
-                .replace(/\b\w/g, (c) => c.toUpperCase());
-    }
-}
-
 function CreateLrAction({ action }: { action: CreateAction }) {
     if (action.mode === 'blocked') {
         return (
@@ -114,12 +103,7 @@ export default function LorryReceiptsIndex({
                 header: 'LR No',
                 priority: 0,
                 cell: (row) => (
-                    <Link
-                        href={`/lorry-receipts/${row.id}`}
-                        className="font-medium text-primary underline-offset-4 hover:underline"
-                    >
-                        {row.lr_number}
-                    </Link>
+                    <span className="font-medium">{row.lr_number}</span>
                 ),
             },
             {
@@ -142,7 +126,7 @@ export default function LorryReceiptsIndex({
                 id: 'workflow_context',
                 header: 'Service',
                 priority: 2,
-                cell: (row) => contextLabel(row.workflow_context),
+                cell: (row) => workflowContextLabel(row.workflow_context),
             },
             {
                 id: 'route',
@@ -188,64 +172,70 @@ export default function LorryReceiptsIndex({
                     </p>
                 ) : null}
 
-                <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-                    <form
-                        onSubmit={applyFilters}
-                        className="flex w-full flex-col gap-3 md:flex-row md:items-end"
-                    >
-                        <div className="flex-1 space-y-2">
-                            <Label htmlFor="lr-q">Search</Label>
-                            <Input
-                                id="lr-q"
-                                value={q}
-                                onChange={(e) => setQ(e.target.value)}
-                                placeholder="LR number, from, to…"
-                            />
-                        </div>
-                        <div className="space-y-2 md:w-40">
-                            <Label htmlFor="lr-status">Status</Label>
-                            <select
-                                id="lr-status"
-                                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                value={status}
-                                onChange={(e) => setStatus(e.target.value)}
-                            >
-                                <option value="">All</option>
-                                {statusOptions.map((option) => (
-                                    <option
-                                        key={option.value}
-                                        value={option.value}
-                                    >
-                                        {option.label}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="space-y-2 md:w-44">
-                            <Label htmlFor="lr-context">Module</Label>
-                            <select
-                                id="lr-context"
-                                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                value={workflowContext}
-                                onChange={(e) =>
-                                    setWorkflowContext(e.target.value)
-                                }
-                            >
-                                <option value="">All</option>
-                                {contextOptions.map((option) => (
-                                    <option
-                                        key={option.value}
-                                        value={option.value}
-                                    >
-                                        {option.label}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                        <Button type="submit" variant="secondary">
-                            Filter
-                        </Button>
-                    </form>
+                <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+                    <FormSection title="Filters" columns={3}>
+                        <form onSubmit={applyFilters} className="contents">
+                            <div className="space-y-2">
+                                <Label htmlFor="lr-q">Search</Label>
+                                <Input
+                                    id="lr-q"
+                                    value={q}
+                                    onChange={(e) => setQ(e.target.value)}
+                                    placeholder="LR number, from, to…"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="lr-status">Status</Label>
+                                <select
+                                    id="lr-status"
+                                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                    value={status}
+                                    onChange={(e) => setStatus(e.target.value)}
+                                >
+                                    <option value="">All</option>
+                                    {statusOptions.map((option) => (
+                                        <option
+                                            key={option.value}
+                                            value={option.value}
+                                        >
+                                            {option.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="lr-context">Service</Label>
+                                <select
+                                    id="lr-context"
+                                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                    value={workflowContext}
+                                    onChange={(e) =>
+                                        setWorkflowContext(e.target.value)
+                                    }
+                                >
+                                    <option value="">All</option>
+                                    {contextOptions.map((option) => (
+                                        <option
+                                            key={option.value}
+                                            value={option.value}
+                                        >
+                                            {option.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="flex items-end md:col-span-3">
+                                <Button
+                                    type="submit"
+                                    variant="secondary"
+                                    className="gap-2"
+                                >
+                                    <Filter className="size-4" aria-hidden />
+                                    Filter
+                                </Button>
+                            </div>
+                        </form>
+                    </FormSection>
                     <div className="flex flex-wrap items-center justify-end gap-2">
                         {permissions.can_create && partloadCreateUrl ? (
                             <Button asChild variant="outline">
@@ -270,6 +260,14 @@ export default function LorryReceiptsIndex({
                     rowKey={(row) => row.id}
                     emptyTitle="No Lorry Receipts found"
                     emptyDescription="Create an LR or adjust filters."
+                    actions={(row) => (
+                        <AppIconAction
+                            icon={Eye}
+                            label={`Open LR ${row.lr_number}`}
+                            href={`/lorry-receipts/${row.id}`}
+                            variant="info"
+                        />
+                    )}
                 />
 
                 {lorryReceipts.data.length > 0 ? (

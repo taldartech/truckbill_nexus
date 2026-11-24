@@ -8,6 +8,7 @@ import { MetricCard } from '@/components/ui/metric-card';
 import { PageShell } from '@/components/page-shell';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { formatDisplayDate } from '@/lib/dates';
+import { workflowContextLabel } from '@/lib/workflow-context-label';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -102,7 +103,9 @@ export default function LorryReceiptShow({
             <Head title={`LR ${lorryReceipt.lr_number}`} />
             <PageShell
                 title={`LR ${lorryReceipt.lr_number}`}
-                description={lorryReceipt.workflow_context.replaceAll('_', ' ')}
+                description={workflowContextLabel(
+                    lorryReceipt.workflow_context,
+                )}
                 actions={
                     <>
                         <AppIconAction
@@ -286,10 +289,9 @@ export default function LorryReceiptShow({
                                     value={lorryReceipt.status}
                                 />
                                 <Detail
-                                    label="Context"
-                                    value={lorryReceipt.workflow_context.replaceAll(
-                                        '_',
-                                        ' ',
+                                    label="Service"
+                                    value={workflowContextLabel(
+                                        lorryReceipt.workflow_context,
                                     )}
                                 />
                                 <Detail

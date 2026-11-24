@@ -1,4 +1,6 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
+import { Eye } from 'lucide-react';
+import { AppIconAction } from '@/components/app-icon-action';
 import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -119,13 +121,16 @@ export default function TripsIndex({
                                 <th className="hidden px-3 py-2 font-medium xl:table-cell">
                                     Created
                                 </th>
+                                <th className="px-3 py-2 text-right font-medium">
+                                    Actions
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
                             {trips.data.length === 0 ? (
                                 <tr>
                                     <td
-                                        colSpan={6}
+                                        colSpan={7}
                                         className="px-3 py-8 text-center text-muted-foreground"
                                     >
                                         No OwnFleet Trips yet.
@@ -137,13 +142,8 @@ export default function TripsIndex({
                                         key={trip.id}
                                         className="border-t border-border"
                                     >
-                                        <td className="px-3 py-2">
-                                            <Link
-                                                href={trip.urls.show}
-                                                className="font-medium text-[#2D8CFF] underline-offset-4 hover:underline"
-                                            >
-                                                {trip.lr_number ?? 'Trip'}
-                                            </Link>
+                                        <td className="px-3 py-2 font-medium">
+                                            {trip.lr_number ?? 'Trip'}
                                         </td>
                                         <td className="hidden px-3 py-2 md:table-cell">
                                             {[
@@ -164,6 +164,14 @@ export default function TripsIndex({
                                         </td>
                                         <td className="hidden px-3 py-2 xl:table-cell">
                                             {trip.created_at ?? '—'}
+                                        </td>
+                                        <td className="px-3 py-2 text-right">
+                                            <AppIconAction
+                                                icon={Eye}
+                                                label="Open trip"
+                                                href={trip.urls.show}
+                                                variant="info"
+                                            />
                                         </td>
                                     </tr>
                                 ))

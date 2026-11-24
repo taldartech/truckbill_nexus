@@ -46,14 +46,7 @@ export default function StationsIndex({
                 id: 'code',
                 header: 'Code',
                 priority: 0,
-                cell: (row) => (
-                    <Link
-                        href={showUrl(row.id)}
-                        className="font-medium hover:underline"
-                    >
-                        {row.code}
-                    </Link>
-                ),
+                cell: (row) => <span className="font-medium">{row.code}</span>,
             },
             {
                 id: 'status',

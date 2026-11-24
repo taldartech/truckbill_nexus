@@ -52,12 +52,9 @@ export default function VehiclesIndex({
                 header: 'Registration',
                 priority: 0,
                 cell: (row) => (
-                    <Link
-                        href={showUrl(row.id)}
-                        className="font-medium hover:underline"
-                    >
+                    <span className="font-medium">
                         {row.registration_number}
-                    </Link>
+                    </span>
                 ),
             },
             {

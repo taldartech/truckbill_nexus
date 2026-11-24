@@ -1,5 +1,7 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Eye, Filter } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { AppIconAction } from '@/components/app-icon-action';
 import {
     ResponsiveDataTable,
     type DataTableColumn,
@@ -50,14 +52,7 @@ export default function BankCashIndex({
                 id: 'name',
                 header: 'Name',
                 priority: 0,
-                cell: (row) => (
-                    <Link
-                        href={showUrl(row.id)}
-                        className="font-medium hover:underline"
-                    >
-                        {row.name}
-                    </Link>
-                ),
+                cell: (row) => <span className="font-medium">{row.name}</span>,
             },
             {
                 id: 'status',
@@ -133,7 +128,12 @@ export default function BankCashIndex({
                                 <option value="cash">Cash</option>
                             </select>
                         </div>
-                        <Button type="submit" variant="secondary">
+                        <Button
+                            type="submit"
+                            variant="secondary"
+                            className="gap-2"
+                        >
+                            <Filter className="size-4" aria-hidden />
                             Filter
                         </Button>
                     </form>
@@ -150,6 +150,14 @@ export default function BankCashIndex({
                     rowKey={(row) => row.id}
                     emptyTitle="No accounts"
                     emptyDescription="Create a bank or cash account."
+                    actions={(row) => (
+                        <AppIconAction
+                            icon={Eye}
+                            label="View account"
+                            href={showUrl(row.id)}
+                            variant="info"
+                        />
+                    )}
                 />
             </PageShell>
         </>
