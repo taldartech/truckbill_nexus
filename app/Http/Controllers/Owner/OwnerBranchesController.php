@@ -16,6 +16,7 @@ use App\Models\BranchRoleAssignment;
 use App\Models\Company;
 use App\Models\CompanyMembership;
 use App\Models\Role;
+use App\Models\User;
 use App\Support\Audit\AuditEntry;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -107,111 +108,106 @@ class OwnerBranchesController extends Controller
         ]);
     }
 
-    public function create(Request $request, Company $company): Response
+    /**
+     * Global Create Branch — no WorkspaceSession required.
+     * Optional ?company= preselects an owned company (query key is not company_id).
+     */
+    public function createGlobal(Request $request): Response|RedirectResponse
     {
-        ['scope' => $scope] = $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
+        $user = $this->authorizeOwnerIdentity($request);
+        $companyOptions = $this->eligibleCompanyOptions($user);
 
-        $capacity = $this->branches->capacitySnapshot($company);
+        if ($companyOptions === []) {
+            return redirect()
+                ->route('owner.companies.create')
+                ->with('info', 'Create a company before adding a branch.');
+        }
 
-        $members = CompanyMembership::query()
-            ->where('company_id', $company->id)
-            ->whereNull('deactivated_at')
-            ->whereNull('deleted_at')
-            ->where('user_id', '!=', $company->owner_user_id)
-            ->with('user:id,name,email')
-            ->orderBy('created_at')
-            ->get();
+        $requestedId = $request->query('company');
+        $requestedId = is_string($requestedId) && $requestedId !== '' ? $requestedId : null;
 
-        $roles = Role::query()
-            ->where('domain', PermissionDomain::Customer->value)
-            ->whereNull('deactivated_at')
-            ->whereNull('deleted_at')
-            ->orderBy('name')
-            ->get(['id', 'name', 'slug']);
+        $company = null;
+        if ($requestedId !== null) {
+            $company = Company::query()
+                ->whereKey($requestedId)
+                ->where('owner_user_id', $user->id)
+                ->whereNull('deleted_at')
+                ->first();
 
-        return Inertia::render('owner/branches/create', [
-            'company' => $this->companyPayload($company),
-            'ownerPanelScope' => $scope,
-            'capacity' => $capacity,
-            'canCreate' => $capacity['available_branch_slots'] >= 1,
-            'members' => $members->map(fn (CompanyMembership $membership): array => [
-                'user_id' => $membership->user_id,
-                'name' => $membership->user?->name,
-                'email' => $membership->user?->email,
-            ])->values(),
-            'customerRoles' => $roles->map(fn (Role $role): array => [
-                'id' => $role->id,
-                'name' => $role->name,
-                'slug' => $role->slug,
-            ])->values(),
-            'links' => [
-                'index' => route('owner.branches'),
-                'store' => route('owner.branches.store'),
-            ],
-        ]);
+            if ($company === null) {
+                abort(403, 'You do not own the selected company.');
+            }
+        }
+
+        if ($company === null && count($companyOptions) === 1) {
+            $company = Company::query()->whereKey($companyOptions[0]['id'])->first();
+        }
+
+        if ($company === null) {
+            return Inertia::render('owner/branches/create', [
+                'mode' => 'global',
+                'company' => null,
+                'companyOptions' => $companyOptions,
+                'ownerPanelScope' => CompanyAccessService::OWNER_PANEL_FULL,
+                'capacity' => null,
+                'canCreate' => false,
+                'members' => [],
+                'customerRoles' => $this->customerRoleOptions(),
+                'links' => [
+                    'index' => route('owner.branches.all'),
+                    'store' => null,
+                    'create' => route('owner.branches.create.global'),
+                    'subscription' => null,
+                ],
+            ]);
+        }
+
+        return $this->renderCreateForm($request, $company, mode: 'global', companyOptions: $companyOptions);
     }
 
+    /**
+     * Company-addressed Create Branch — Company comes from the route, not session.
+     */
+    public function createForCompany(Request $request, Company $company): Response
+    {
+        $user = $this->authorizeOwnerIdentity($request);
+        if (! $this->access->isCompanyOwner($user, $company) || $company->trashed()) {
+            abort(403, 'Owner Panel access denied.');
+        }
+
+        return $this->renderCreateForm(
+            $request,
+            $company,
+            mode: 'company',
+            companyOptions: $this->eligibleCompanyOptions($user),
+            companyLocked: true,
+        );
+    }
+
+    /**
+     * Company-addressed store — explicit route Company is the mutation target.
+     */
+    public function storeForCompany(Request $request, Company $company): RedirectResponse
+    {
+        return $this->persistBranch($request, $company);
+    }
+
+    /**
+     * Legacy session-scoped create (management.company). Redirects to explicit company URL.
+     */
+    public function create(Request $request, Company $company): RedirectResponse
+    {
+        $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
+
+        return redirect()->route('owner.companies.branches.create', ['company' => $company]);
+    }
+
+    /**
+     * Legacy session-scoped store — still authorized against the session company.
+     */
     public function store(Request $request, Company $company): RedirectResponse
     {
-        ['user' => $user] = $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
-
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'remark' => ['required', 'string', 'max:1000'],
-            'assignments' => ['nullable', 'array', 'max:50'],
-            'assignments.*.user_id' => [
-                'required',
-                'integer',
-                Rule::exists('company_memberships', 'user_id')->where(function ($query) use ($company): void {
-                    $query->where('company_id', $company->id)
-                        ->whereNull('deactivated_at')
-                        ->whereNull('deleted_at');
-                }),
-            ],
-            'assignments.*.role_id' => [
-                'required',
-                'uuid',
-                Rule::exists('roles', 'id')->where(function ($query): void {
-                    $query->where('domain', PermissionDomain::Customer->value)
-                        ->whereNull('deactivated_at')
-                        ->whereNull('deleted_at');
-                }),
-            ],
-        ]);
-
-        /** @var list<array{user_id: int|string, role_id: string}> $assignments */
-        $assignments = [];
-        $seenUsers = [];
-        foreach ($validated['assignments'] ?? [] as $row) {
-            if (! is_array($row) || ! isset($row['user_id'], $row['role_id'])) {
-                continue;
-            }
-            $userKey = (string) $row['user_id'];
-            if (isset($seenUsers[$userKey])) {
-                continue;
-            }
-            $seenUsers[$userKey] = true;
-            $assignments[] = [
-                'user_id' => $row['user_id'],
-                'role_id' => (string) $row['role_id'],
-            ];
-        }
-
-        try {
-            $branch = $this->branches->createBranch(
-                $user,
-                $company,
-                $validated['name'],
-                $validated['remark'],
-                $assignments,
-            );
-        } catch (CompanyDomainException|RbacDomainException|RbacAuthorizationException|InvalidArgumentException $e) {
-            throw ValidationException::withMessages(['name' => $e->getMessage()]);
-        }
-
-        return redirect()
-            ->route('owner.branches.show', ['branch' => $branch])
-            ->with('success', 'Branch created.');
+        return $this->persistBranch($request, $company);
     }
 
     public function show(Request $request, Branch $branch, Company $company): Response
@@ -351,5 +347,163 @@ class OwnerBranchesController extends Controller
         if ($branch->company_id !== $company->id) {
             abort(404);
         }
+    }
+
+    private function persistBranch(Request $request, Company $company): RedirectResponse
+    {
+        ['user' => $user] = $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'remark' => ['required', 'string', 'max:1000'],
+            'assignments' => ['nullable', 'array', 'max:50'],
+            'assignments.*.user_id' => [
+                'required',
+                'integer',
+                Rule::exists('company_memberships', 'user_id')->where(function ($query) use ($company): void {
+                    $query->where('company_id', $company->id)
+                        ->whereNull('deactivated_at')
+                        ->whereNull('deleted_at');
+                }),
+            ],
+            'assignments.*.role_id' => [
+                'required',
+                'uuid',
+                Rule::exists('roles', 'id')->where(function ($query): void {
+                    $query->where('domain', PermissionDomain::Customer->value)
+                        ->whereNull('deactivated_at')
+                        ->whereNull('deleted_at');
+                }),
+            ],
+        ]);
+
+        /** @var list<array{user_id: int|string, role_id: string}> $assignments */
+        $assignments = [];
+        $seenUsers = [];
+        foreach ($validated['assignments'] ?? [] as $row) {
+            if (! is_array($row) || ! isset($row['user_id'], $row['role_id'])) {
+                continue;
+            }
+            $userKey = (string) $row['user_id'];
+            if (isset($seenUsers[$userKey])) {
+                continue;
+            }
+            $seenUsers[$userKey] = true;
+            $assignments[] = [
+                'user_id' => $row['user_id'],
+                'role_id' => (string) $row['role_id'],
+            ];
+        }
+
+        try {
+            $branch = $this->branches->createBranch(
+                $user,
+                $company,
+                $validated['name'],
+                $validated['remark'],
+                $assignments,
+            );
+        } catch (CompanyDomainException|RbacDomainException|RbacAuthorizationException|InvalidArgumentException $e) {
+            throw ValidationException::withMessages(['name' => $e->getMessage()]);
+        }
+
+        return redirect()
+            ->route('owner.branches.all')
+            ->with('success', 'Branch created for '.$company->name.'.');
+    }
+
+    /**
+     * @param  list<array{id: string, name: string, status: string, available_branch_slots: int}>  $companyOptions
+     */
+    private function renderCreateForm(
+        Request $request,
+        Company $company,
+        string $mode,
+        array $companyOptions,
+        bool $companyLocked = false,
+    ): Response {
+        ['scope' => $scope] = $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
+
+        $capacity = $this->branches->capacitySnapshot($company);
+
+        $members = CompanyMembership::query()
+            ->where('company_id', $company->id)
+            ->whereNull('deactivated_at')
+            ->whereNull('deleted_at')
+            ->where('user_id', '!=', $company->owner_user_id)
+            ->with('user:id,name,email')
+            ->orderBy('created_at')
+            ->get();
+
+        return Inertia::render('owner/branches/create', [
+            'mode' => $mode,
+            'company' => $this->companyPayload($company),
+            'companyLocked' => $companyLocked || $mode === 'company',
+            'companyOptions' => $companyOptions,
+            'ownerPanelScope' => $scope,
+            'capacity' => $capacity,
+            'canCreate' => $capacity['available_branch_slots'] >= 1,
+            'members' => $members->map(fn (CompanyMembership $membership): array => [
+                'user_id' => $membership->user_id,
+                'name' => $membership->user?->name,
+                'email' => $membership->user?->email,
+            ])->values(),
+            'customerRoles' => $this->customerRoleOptions(),
+            'links' => [
+                'index' => route('owner.branches.all'),
+                'store' => route('owner.companies.branches.store', ['company' => $company]),
+                'create' => route('owner.branches.create.global'),
+                // Context POST only for operational entry — capacity CTA uses enter then subscription.
+                'subscription' => route('workspace.context.company', [
+                    'company' => $company,
+                ]),
+                'subscription_redirect' => route('owner.subscription', absolute: false),
+            ],
+        ]);
+    }
+
+    /**
+     * @return list<array{id: string, name: string, status: string, available_branch_slots: int}>
+     */
+    private function eligibleCompanyOptions(User $user): array
+    {
+        return Company::query()
+            ->where('owner_user_id', $user->id)
+            ->whereNull('deleted_at')
+            ->whereNull('deactivated_at')
+            ->orderBy('name')
+            ->get()
+            ->map(function (Company $company): array {
+                $capacity = $this->branches->capacitySnapshot($company);
+
+                return [
+                    'id' => $company->id,
+                    'name' => $company->name,
+                    'status' => 'Active',
+                    'available_branch_slots' => (int) $capacity['available_branch_slots'],
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @return list<array{id: string, name: string, slug: string}>
+     */
+    private function customerRoleOptions(): array
+    {
+        return Role::query()
+            ->where('domain', PermissionDomain::Customer->value)
+            ->whereNull('deactivated_at')
+            ->whereNull('deleted_at')
+            ->orderBy('name')
+            ->get(['id', 'name', 'slug'])
+            ->map(fn (Role $role): array => [
+                'id' => $role->id,
+                'name' => $role->name,
+                'slug' => $role->slug,
+            ])
+            ->values()
+            ->all();
     }
 }

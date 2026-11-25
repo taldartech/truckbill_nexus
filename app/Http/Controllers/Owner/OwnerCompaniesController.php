@@ -13,7 +13,6 @@ use App\Domains\Tax\GstRateService;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\User;
-use App\Support\Workspace\WorkspaceSession;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -175,13 +174,17 @@ class OwnerCompaniesController extends Controller
             throw ValidationException::withMessages(['name' => $e->getMessage()]);
         }
 
-        $this->access->activateContext($user, $company);
-        WorkspaceSession::put($request, $company->id);
+        // Do not bind operational WorkspaceSession on company create.
+        // Branch creation uses an explicit company-addressed route.
+
+        if ($createBranch) {
+            return redirect()
+                ->route('owner.home')
+                ->with('success', 'Company created with initial branch.');
+        }
 
         return redirect()
-            ->route('owner.home')
-            ->with('success', $createBranch
-                ? 'Company created with initial branch.'
-                : 'Company created. You may create a branch next or continue in Owner Dashboard.');
+            ->route('owner.companies.branches.create', ['company' => $company])
+            ->with('success', 'Company created. Create the first branch for this company.');
     }
 }

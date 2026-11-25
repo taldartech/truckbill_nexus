@@ -106,11 +106,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/management/companies/create', [OwnerCompaniesController::class, 'create'])->name('owner.companies.create');
     Route::post('/management/companies', [OwnerCompaniesController::class, 'store'])->name('owner.companies.store');
     Route::get('/management/branches', OwnerGlobalBranchesController::class)->name('owner.branches.all');
+    // Global Create Branch — explicit Company target via route/query (not WorkspaceSession).
+    Route::get('/management/branches/create', [OwnerBranchesController::class, 'createGlobal'])
+        ->name('owner.branches.create.global');
+    Route::get('/management/companies/{company}/branches/create', [OwnerBranchesController::class, 'createForCompany'])
+        ->name('owner.companies.branches.create');
+    Route::post('/management/companies/{company}/branches', [OwnerBranchesController::class, 'storeForCompany'])
+        ->name('owner.companies.branches.store');
     Route::get('/management/users', OwnerGlobalUsersController::class)->name('owner.users.all');
     Route::get('/management/subscriptions', [OwnerSubscriptionsController::class, 'index'])->name('owner.subscriptions.index');
     Route::get('/management/audit', OwnerGlobalAuditController::class)->name('owner.audit.all');
 
     // Company-scoped management — company resolved from session (management.company).
+    // Prefer explicit /management/companies/{company}/… routes for mutations when available.
     Route::middleware('management.company')->group(function () {
         Route::get('/management/subscription', [OwnerSubscriptionController::class, 'overview'])->name('owner.subscription');
         Route::get('/management/subscription/catalogue', [OwnerSubscriptionController::class, 'catalogue'])->name('owner.subscription.catalogue');

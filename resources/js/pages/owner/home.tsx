@@ -3,10 +3,13 @@ import {
     Building2,
     CreditCard,
     GitBranch,
+    Plus,
+    Settings,
     TriangleAlert,
     Users,
 } from 'lucide-react';
 import { OwnerPageHeader } from '@/components/owner/owner-page-header';
+import { WorkspaceContextAction } from '@/components/workspace-context-action';
 import { Button } from '@/components/ui/button';
 import { MetricCard } from '@/components/ui/metric-card';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
@@ -17,10 +20,13 @@ type CompanyCard = {
     status: string;
     subscription_status: string;
     branch_count: number;
+    can_manage: boolean;
     urls: {
-        dashboard: string;
+        context: string;
+        settings: string;
         branches: string;
         subscription: string;
+        create_branch: string | null;
     };
 };
 
@@ -164,35 +170,48 @@ export default function OwnerHome({
                                         </div>
                                     </div>
                                     <div className="mt-4 flex flex-wrap gap-2">
-                                        <Button
-                                            asChild
-                                            size="sm"
+                                        <WorkspaceContextAction
+                                            contextUrl={company.urls.context}
+                                            redirect={company.urls.settings}
+                                            icon={Settings}
+                                            label="Manage company"
                                             variant="info"
-                                        >
-                                            <Link href={company.urls.dashboard}>
-                                                Open
-                                            </Link>
-                                        </Button>
-                                        <Button
-                                            asChild
-                                            size="sm"
-                                            variant="outline"
-                                        >
-                                            <Link href={company.urls.branches}>
-                                                Branches
-                                            </Link>
-                                        </Button>
-                                        <Button
-                                            asChild
-                                            size="sm"
-                                            variant="outline"
-                                        >
-                                            <Link
-                                                href={company.urls.subscription}
+                                            disabled={!company.can_manage}
+                                        />
+                                        {company.urls.create_branch ? (
+                                            <Button
+                                                asChild
+                                                size="sm"
+                                                className="gap-1.5 bg-[#2FB36F] text-white hover:bg-[#279960]"
                                             >
-                                                Subscription
-                                            </Link>
-                                        </Button>
+                                                <Link
+                                                    href={
+                                                        company.urls
+                                                            .create_branch
+                                                    }
+                                                >
+                                                    <Plus
+                                                        className="size-3.5"
+                                                        aria-hidden
+                                                    />
+                                                    Create branch
+                                                </Link>
+                                            </Button>
+                                        ) : null}
+                                        <WorkspaceContextAction
+                                            contextUrl={company.urls.context}
+                                            redirect={company.urls.branches}
+                                            icon={GitBranch}
+                                            label="Branches"
+                                            variant="outline"
+                                        />
+                                        <WorkspaceContextAction
+                                            contextUrl={company.urls.context}
+                                            redirect={company.urls.subscription}
+                                            icon={CreditCard}
+                                            label="Subscription"
+                                            variant="outline"
+                                        />
                                     </div>
                                 </div>
                             ))}

@@ -43,6 +43,7 @@ type CompanyRow = {
         subscription: string;
         audit: string;
         users: string;
+        create_branch: string | null;
     };
 };
 
@@ -243,6 +244,14 @@ export default function OwnerCompaniesIndex({
                                 label="Manage branches"
                                 variant="info"
                             />
+                            {company.urls.create_branch ? (
+                                <AppIconAction
+                                    icon={Plus}
+                                    label="Create branch"
+                                    href={company.urls.create_branch}
+                                    variant="default"
+                                />
+                            ) : null}
                             <WorkspaceContextAction
                                 contextUrl={company.urls.context}
                                 redirect={company.urls.users}

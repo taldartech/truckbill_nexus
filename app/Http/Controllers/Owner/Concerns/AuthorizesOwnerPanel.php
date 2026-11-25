@@ -6,9 +6,15 @@ use App\Domains\Company\CompanyAccessService;
 use App\Domains\Company\Exceptions\CompanyAccessException;
 use App\Models\Company;
 use App\Models\User;
-use App\Support\Workspace\WorkspaceSession;
 use Illuminate\Http\Request;
 
+/**
+ * Owner Panel authorization against an explicitly targeted Company.
+ *
+ * Administrative authorization must not establish or mutate operational
+ * WorkspaceSession company/branch values. Request-scoped TenantContext is
+ * activated for domain services and cleared by the tenant lifecycle middleware.
+ */
 trait AuthorizesOwnerPanel
 {
     /**
@@ -33,14 +39,38 @@ trait AuthorizesOwnerPanel
         }
 
         try {
+            // Request-scoped tenant context only — does not write WorkspaceSession.
             $access->activateContext($user, $company);
         } catch (CompanyAccessException) {
             abort(403, 'Owner Panel access denied.');
         }
 
-        WorkspaceSession::ensureCompany($request, $company->id);
-
         return ['user' => $user, 'scope' => $scope];
+    }
+
+    /**
+     * Confirm the authenticated user owns at least one Company (global Owner identity).
+     */
+    protected function authorizeOwnerIdentity(Request $request): User
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        if ($user === null || ! $user->isCustomer() || ! $user->isActive()) {
+            abort(403, 'Owner Panel requires an active Customer identity.');
+        }
+
+        $ownsCompany = Company::query()
+            ->where('owner_user_id', $user->id)
+            ->whereNull('deleted_at')
+            ->exists();
+
+        if (! $ownsCompany) {
+            // First-time owners may still access company creation; callers decide.
+            return $user;
+        }
+
+        return $user;
     }
 
     /**

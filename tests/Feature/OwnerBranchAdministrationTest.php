@@ -76,15 +76,19 @@ test('owner can list create edit and enter branch management screens', function 
             ->has('branches.data', 1));
 
     $this->get(route('owner.branches.create'))
+        ->assertRedirect(route('owner.companies.branches.create', ['company' => $company]));
+
+    $this->get(route('owner.companies.branches.create', ['company' => $company]))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('owner/branches/create')
-            ->where('canCreate', true));
+            ->where('canCreate', true)
+            ->where('company.id', $company->id));
 
-    $this->post(route('owner.branches.store'), [
+    $this->post(route('owner.companies.branches.store', ['company' => $company]), [
         'name' => 'Warehouse West',
         'remark' => 'Opened west warehouse',
-    ])->assertRedirect();
+    ])->assertRedirect(route('owner.branches.all'));
 
     $warehouse = Branch::query()
         ->where('company_id', $company->id)
@@ -134,7 +138,7 @@ test('branch create may assign existing members and roles without granting other
     loginBranchAdminCustomer($owner);
     enterManagementCompany($company)->assertRedirect();
 
-    $this->post(route('owner.branches.store'), [
+    $this->post(route('owner.companies.branches.store', ['company' => $company]), [
         'name' => 'Depot North',
         'remark' => 'New depot with clerk',
         'assignments' => [
@@ -143,7 +147,7 @@ test('branch create may assign existing members and roles without granting other
                 'role_id' => $role->id,
             ],
         ],
-    ])->assertRedirect();
+    ])->assertRedirect(route('owner.branches.all'));
 
     $depot = Branch::query()
         ->where('company_id', $company->id)
@@ -179,13 +183,13 @@ test('branch capacity is enforced for owner create', function () {
     loginBranchAdminCustomer($owner);
     enterManagementCompany($company)->assertRedirect();
 
-    $this->post(route('owner.branches.store'), [
+    $this->post(route('owner.companies.branches.store', ['company' => $company]), [
         'name' => 'Second Branch',
         'remark' => 'Uses remaining included slot',
-    ])->assertRedirect();
+    ])->assertRedirect(route('owner.branches.all'));
 
-    $this->from(route('owner.branches.create'))
-        ->post(route('owner.branches.store'), [
+    $this->from(route('owner.companies.branches.create', ['company' => $company]))
+        ->post(route('owner.companies.branches.store', ['company' => $company]), [
             'name' => 'Third Branch',
             'remark' => 'Should exceed default included capacity',
         ])
@@ -202,10 +206,10 @@ test('owner can deactivate non-last branch and cannot deactivate last active bra
     loginBranchAdminCustomer($owner);
     enterManagementCompany($company)->assertRedirect();
 
-    $this->post(route('owner.branches.store'), [
+    $this->post(route('owner.companies.branches.store', ['company' => $company]), [
         'name' => 'Closeable',
         'remark' => 'Will deactivate',
-    ])->assertRedirect();
+    ])->assertRedirect(route('owner.branches.all'));
 
     $closeable = Branch::query()
         ->where('company_id', $company->id)

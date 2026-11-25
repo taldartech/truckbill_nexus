@@ -78,7 +78,8 @@ class WorkspaceContextController extends Controller
     }
 
     /**
-     * Explicit Return to Owner Panel — clears branch context only.
+     * Explicit Return to Owner Panel — clears operational company and branch session.
+     * Owner Panel administration does not require an active WorkspaceSession company.
      */
     public function leaveBranch(Request $request): RedirectResponse
     {
@@ -86,13 +87,17 @@ class WorkspaceContextController extends Controller
         $user = $request->user();
 
         $companyId = WorkspaceSession::companyId($request);
-        WorkspaceSession::clearBranch($request);
+        $wasOwner = false;
 
         if ($companyId !== null) {
             $company = Company::query()->whereKey($companyId)->whereNull('deleted_at')->first();
-            if ($company !== null && $this->access->isCompanyOwner($user, $company)) {
-                return redirect()->route('owner.home');
-            }
+            $wasOwner = $company !== null && $this->access->isCompanyOwner($user, $company);
+        }
+
+        WorkspaceSession::clear($request);
+
+        if ($wasOwner || Company::query()->where('owner_user_id', $user->id)->whereNull('deleted_at')->exists()) {
+            return redirect()->route('owner.home');
         }
 
         return redirect()->route('workspace.landing');

@@ -24,6 +24,7 @@ Shared PostgreSQL database. Every tenant record has company_id; branch-specific 
 - **Owner identity deactivation:** the Owner identity cannot log in. This is not the same as company deactivation.
 - **Company deactivation:** does not deactivate the Owner identity. Branch Panel access for that company is blocked for the Company Owner and all company users. **Owner Panel remains accessible** for an active Owner (identity able to log in, with active Owner designation) for permitted company-level administrative and billing information. Deactivation must not restore operational Branch Panel access. Exhaustive permitted Owner Panel actions remain **Pending** — do not invent them.
 - **Authorization exception:** company deactivated status must **not** be applied as a blanket deny that blocks the Owner Panel exception above. Branch Panel and other operational surfaces remain blocked for that company. Owner Panel still requires an active Owner designation and an active (login-capable) identity.
+- **Owner Panel vs operational workspace (ADR-015 amendment, 25 Nov 2026):** The Owner Panel is **global to the authenticated Owner**. Global administration does not require an active operational Company/Branch `WorkspaceSession`. Administrative targets come from explicit route parameters or authorized resource relationships. Only Enter Company / Enter Branch establish operational session context; Return to Owner Portal clears it. Deactivation restrictions apply to the **explicit target company**, never a stale session company.
 
 ## 4. Identity/session model
 

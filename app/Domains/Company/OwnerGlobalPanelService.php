@@ -125,6 +125,9 @@ final class OwnerGlobalPanelService
                 'subscription' => SafeInternalRedirect::route('owner.subscription'),
                 'audit' => SafeInternalRedirect::route('owner.audit'),
                 'users' => SafeInternalRedirect::route('owner.users'),
+                'create_branch' => $company->isActive()
+                    ? SafeInternalRedirect::route('owner.companies.branches.create', ['company' => $company])
+                    : null,
             ],
         ];
     }
@@ -431,9 +434,9 @@ final class OwnerGlobalPanelService
                 'enter_branch' => ($company !== null && $companyActive && $branch->isActive())
                     ? SafeInternalRedirect::route('branch.dashboard')
                     : null,
-                'create_for_company' => $company === null
-                    ? null
-                    : SafeInternalRedirect::route('owner.branches.create'),
+                'create_for_company' => ($company !== null && $companyActive)
+                    ? SafeInternalRedirect::route('owner.companies.branches.create', ['company' => $company])
+                    : null,
             ],
         ];
     }

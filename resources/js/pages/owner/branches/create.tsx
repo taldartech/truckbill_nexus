@@ -1,12 +1,19 @@
-import { Form, Head, Link, usePage } from '@inertiajs/react';
-import { useState } from 'react';
-import OwnerBranchesController from '@/actions/App/Http/Controllers/Owner/OwnerBranchesController';
+import { Form, Head, Link, router, usePage } from '@inertiajs/react';
+import { useMemo, useState } from 'react';
 import InputError from '@/components/input-error';
 import ShellEmptyState from '@/components/shell-empty-state';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { CompanyOwnerPageShell } from '@/components/owner/owner-page-header';
+import { OwnerPageHeader } from '@/components/owner/owner-page-header';
+import {
+    SearchableCombobox,
+    type ComboboxOption,
+} from '@/components/searchable-combobox';
+import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
+import type { FieldReview } from '@/components/form-confirmation/types';
+import { WorkspaceContextAction } from '@/components/workspace-context-action';
+import { CreditCard } from 'lucide-react';
 
 type MemberOption = {
     user_id: number;
@@ -20,20 +27,33 @@ type RoleOption = {
     slug: string;
 };
 
+type CompanyOption = {
+    id: string;
+    name: string;
+    status: string;
+    available_branch_slots: number;
+};
+
 type OwnerBranchesCreateProps = {
-    company: { id: string; name: string; status: string };
+    mode?: 'global' | 'company';
+    company: { id: string; name: string; status: string } | null;
+    companyLocked?: boolean;
+    companyOptions?: CompanyOption[];
     ownerPanelScope: string;
     capacity: {
         branch_limit: number;
         used_branches: number;
         available_branch_slots: number;
-    };
+    } | null;
     canCreate: boolean;
     members: MemberOption[];
     customerRoles: RoleOption[];
     links: {
         index: string;
-        store: string;
+        store: string | null;
+        create?: string;
+        subscription?: string | null;
+        subscription_redirect?: string | null;
     };
 };
 
@@ -47,9 +67,11 @@ type PageErrors = {
 };
 
 export default function OwnerBranchesCreate({
+    mode = 'company',
     company,
-    ownerPanelScope,
-    capacity: _capacity,
+    companyLocked = false,
+    companyOptions = [],
+    capacity,
     canCreate,
     members,
     customerRoles,
@@ -57,6 +79,30 @@ export default function OwnerBranchesCreate({
 }: OwnerBranchesCreateProps) {
     const { errors } = usePage<PageErrors>().props;
     const [assignments, setAssignments] = useState<AssignmentDraft[]>([]);
+    const [branchName, setBranchName] = useState('');
+    const [remark, setRemark] = useState('');
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [reviewFields, setReviewFields] = useState<FieldReview[]>([]);
+    const submitAllowed = useMemo(() => ({ current: false }), []);
+
+    const companyComboboxOptions: ComboboxOption[] = companyOptions.map(
+        (option) => ({
+            id: option.id,
+            label: option.name,
+            description: `${option.status} · ${option.available_branch_slots} slot(s) available`,
+        }),
+    );
+
+    const selectCompany = (companyId: string) => {
+        if (!links.create || companyId === '') {
+            return;
+        }
+        router.get(
+            links.create,
+            { company: companyId },
+            { preserveState: false },
+        );
+    };
 
     const addAssignment = () => {
         setAssignments((current) => [
@@ -86,29 +132,128 @@ export default function OwnerBranchesCreate({
         );
     };
 
+    const openConfirmation = () => {
+        setReviewFields([
+            { label: 'Company', value: company?.name ?? '—' },
+            { label: 'Branch name', value: branchName.trim() || '—' },
+            {
+                label: 'Capacity remaining',
+                value:
+                    capacity !== null
+                        ? String(capacity.available_branch_slots)
+                        : '—',
+            },
+            {
+                label: 'Member assignments',
+                value:
+                    assignments.length === 0
+                        ? 'None'
+                        : `${assignments.length} assignment(s)`,
+            },
+            { label: 'Remark', value: remark.trim() || '—' },
+        ]);
+        setConfirmOpen(true);
+    };
+
+    const title = company ? `Create branch · ${company.name}` : 'Create branch';
+
     return (
         <>
-            <Head title={`Create branch · ${company.name}`} />
-            <CompanyOwnerPageShell
-                company={company}
-                ownerPanelScope={ownerPanelScope}
-                section="Create branch"
-                width="form"
+            <Head title={title} />
+            <OwnerPageHeader
+                title="Create branch"
+                description={
+                    mode === 'global'
+                        ? 'Select the company this branch belongs to. This does not change your operational workspace.'
+                        : `Creating a branch for ${company?.name ?? 'the selected company'}.`
+                }
+                actions={
+                    <Button asChild variant="outline">
+                        <Link href={links.index}>Back to branches</Link>
+                    </Button>
+                }
             >
-                {!canCreate ? (
+                {mode === 'global' ? (
+                    <div className="mb-6 max-w-xl space-y-2 rounded-xl border border-border p-4">
+                        <SearchableCombobox
+                            id="target_company"
+                            name="target_company_display"
+                            label="Company"
+                            options={companyComboboxOptions}
+                            value={company?.id ?? ''}
+                            onValueChange={(next) => selectCompany(next)}
+                            required
+                            clearable={false}
+                            disabled={companyLocked}
+                            placeholder="Search owned companies…"
+                            emptyMessage="No eligible active companies."
+                        />
+                        {!company ? (
+                            <p className="text-sm text-muted-foreground">
+                                Choose a company to load capacity and continue.
+                            </p>
+                        ) : null}
+                    </div>
+                ) : null}
+
+                {company && company.status !== 'Active' ? (
+                    <ShellEmptyState
+                        title="Company deactivated"
+                        description="Branch creation is unavailable for this deactivated company. Select a different active company."
+                    />
+                ) : !company ? null : !canCreate ? (
                     <ShellEmptyState
                         title="Branch capacity reached"
-                        description="Purchase additional branch capacity before creating another branch."
+                        description="Purchase additional branch capacity for this company before creating another branch. This is a capacity limit — the company is not deactivated."
+                        action={
+                            links.subscription ? (
+                                <WorkspaceContextAction
+                                    contextUrl={links.subscription}
+                                    redirect={
+                                        links.subscription_redirect ??
+                                        '/management/subscription'
+                                    }
+                                    icon={CreditCard}
+                                    label="Open subscription"
+                                />
+                            ) : undefined
+                        }
                     />
-                ) : (
+                ) : links.store ? (
                     <Form
-                        {...OwnerBranchesController.store.form()}
+                        action={links.store}
+                        method="post"
                         className="max-w-2xl space-y-6 rounded-xl border border-border p-4"
+                        onSubmit={(event) => {
+                            if (!submitAllowed.current) {
+                                event.preventDefault();
+                                openConfirmation();
+                            }
+                            submitAllowed.current = false;
+                        }}
                     >
                         {({ processing, errors: formErrors }) => (
                             <>
+                                {companyLocked || mode === 'company' ? (
+                                    <div className="space-y-1">
+                                        <Label>Company</Label>
+                                        <p className="text-sm font-medium">
+                                            {company.name}
+                                        </p>
+                                    </div>
+                                ) : null}
+
+                                {capacity ? (
+                                    <p className="text-sm text-muted-foreground">
+                                        Capacity: {capacity.used_branches} used
+                                        of {capacity.branch_limit} ·{' '}
+                                        {capacity.available_branch_slots}{' '}
+                                        available
+                                    </p>
+                                ) : null}
+
                                 <div className="space-y-2">
-                                    <Label htmlFor="branch-name">
+                                    <Label htmlFor="branch-name" required>
                                         Branch name
                                     </Label>
                                     <Input
@@ -117,6 +262,10 @@ export default function OwnerBranchesCreate({
                                         required
                                         maxLength={255}
                                         autoFocus
+                                        value={branchName}
+                                        onChange={(e) =>
+                                            setBranchName(e.target.value)
+                                        }
                                     />
                                     <InputError
                                         message={
@@ -126,15 +275,19 @@ export default function OwnerBranchesCreate({
                                 </div>
 
                                 <div className="space-y-2">
-                                    <Label htmlFor="branch-remark">
+                                    <Label htmlFor="remark" required>
                                         Remark
                                     </Label>
                                     <Input
-                                        id="branch-remark"
+                                        id="remark"
                                         name="remark"
                                         required
                                         maxLength={1000}
-                                        placeholder="Why is this branch being created?"
+                                        value={remark}
+                                        onChange={(e) =>
+                                            setRemark(e.target.value)
+                                        }
+                                        placeholder="Reason for creating this branch"
                                     />
                                     <InputError
                                         message={
@@ -145,129 +298,117 @@ export default function OwnerBranchesCreate({
 
                                 <div className="space-y-3">
                                     <div className="flex items-center justify-between gap-2">
-                                        <div>
-                                            <h2 className="font-medium">
-                                                Assign existing members
-                                            </h2>
-                                            <p className="text-sm text-muted-foreground">
-                                                Optional. Selects existing
-                                                company members and Customer
-                                                roles only. Does not create
-                                                identities. The Owner already
-                                                accesses every branch.
-                                            </p>
-                                        </div>
+                                        <Label>
+                                            Optional member assignments
+                                        </Label>
                                         <Button
                                             type="button"
-                                            variant="secondary"
+                                            variant="outline"
+                                            size="sm"
                                             onClick={addAssignment}
-                                            disabled={
-                                                members.length === 0 ||
-                                                customerRoles.length === 0
-                                            }
+                                            disabled={members.length === 0}
                                         >
-                                            Add member
+                                            Add assignment
                                         </Button>
                                     </div>
-
                                     {assignments.map((row, index) => (
                                         <div
                                             key={`assignment-${index}`}
-                                            className="grid gap-3 rounded-lg border border-border p-3 sm:grid-cols-[1fr_1fr_auto]"
+                                            className="grid gap-2 rounded-lg border border-border p-3 sm:grid-cols-3"
                                         >
-                                            <div className="space-y-2">
-                                                <Label
-                                                    htmlFor={`assignments-${index}-user`}
-                                                >
-                                                    Member
-                                                </Label>
-                                                <select
-                                                    id={`assignments-${index}-user`}
-                                                    name={`assignments[${index}][user_id]`}
-                                                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs"
-                                                    value={row.user_id}
-                                                    onChange={(event) =>
-                                                        updateAssignment(
-                                                            index,
-                                                            'user_id',
-                                                            event.target.value,
-                                                        )
-                                                    }
-                                                    required
-                                                >
-                                                    {members.map((member) => (
-                                                        <option
-                                                            key={member.user_id}
-                                                            value={
-                                                                member.user_id
-                                                            }
-                                                        >
-                                                            {member.name} (
-                                                            {member.email})
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label
-                                                    htmlFor={`assignments-${index}-role`}
-                                                >
-                                                    Role
-                                                </Label>
-                                                <select
-                                                    id={`assignments-${index}-role`}
-                                                    name={`assignments[${index}][role_id]`}
-                                                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs"
-                                                    value={row.role_id}
-                                                    onChange={(event) =>
-                                                        updateAssignment(
-                                                            index,
-                                                            'role_id',
-                                                            event.target.value,
-                                                        )
-                                                    }
-                                                    required
-                                                >
-                                                    {customerRoles.map(
-                                                        (role) => (
-                                                            <option
-                                                                key={role.id}
-                                                                value={role.id}
-                                                            >
-                                                                {role.name}
-                                                            </option>
-                                                        ),
-                                                    )}
-                                                </select>
-                                            </div>
-                                            <div className="flex items-end">
-                                                <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    onClick={() =>
-                                                        removeAssignment(index)
-                                                    }
-                                                >
-                                                    Remove
-                                                </Button>
-                                            </div>
+                                            <select
+                                                name={`assignments[${index}][user_id]`}
+                                                className="h-9 rounded-md border border-input bg-transparent px-2 text-sm"
+                                                value={row.user_id}
+                                                onChange={(e) =>
+                                                    updateAssignment(
+                                                        index,
+                                                        'user_id',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                            >
+                                                {members.map((member) => (
+                                                    <option
+                                                        key={member.user_id}
+                                                        value={member.user_id}
+                                                    >
+                                                        {member.name ??
+                                                            member.email}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <select
+                                                name={`assignments[${index}][role_id]`}
+                                                className="h-9 rounded-md border border-input bg-transparent px-2 text-sm"
+                                                value={row.role_id}
+                                                onChange={(e) =>
+                                                    updateAssignment(
+                                                        index,
+                                                        'role_id',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                            >
+                                                {customerRoles.map((role) => (
+                                                    <option
+                                                        key={role.id}
+                                                        value={role.id}
+                                                    >
+                                                        {role.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                onClick={() =>
+                                                    removeAssignment(index)
+                                                }
+                                            >
+                                                Remove
+                                            </Button>
                                         </div>
                                     ))}
                                 </div>
 
                                 <div className="flex flex-wrap gap-2">
-                                    <Button type="submit" disabled={processing}>
+                                    <Button
+                                        type="submit"
+                                        disabled={processing}
+                                        className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                                    >
                                         Create branch
                                     </Button>
-                                    <Button variant="outline" asChild>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        asChild
+                                    >
                                         <Link href={links.index}>Cancel</Link>
                                     </Button>
                                 </div>
                             </>
                         )}
                     </Form>
-                )}
-            </CompanyOwnerPageShell>
+                ) : null}
+            </OwnerPageHeader>
+
+            <FormConfirmationDialog
+                open={confirmOpen}
+                onOpenChange={setConfirmOpen}
+                mode="create"
+                title="Create this branch?"
+                description="Confirm company, branch name, and capacity impact before submitting."
+                fields={reviewFields}
+                onConfirm={() => {
+                    submitAllowed.current = true;
+                    const form = document.querySelector(
+                        'form[action]',
+                    ) as HTMLFormElement | null;
+                    form?.requestSubmit();
+                }}
+            />
         </>
     );
 }

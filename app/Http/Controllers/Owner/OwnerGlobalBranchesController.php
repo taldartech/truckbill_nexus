@@ -65,6 +65,7 @@ class OwnerGlobalBranchesController extends Controller
                 'index' => route('owner.branches.all'),
                 'companies' => route('owner.companies.index'),
                 'create_company' => route('owner.companies.create'),
+                'create_branch' => route('owner.branches.create.global'),
             ],
         ]);
     }

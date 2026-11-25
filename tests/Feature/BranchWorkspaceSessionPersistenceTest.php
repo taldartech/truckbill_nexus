@@ -96,7 +96,7 @@ test('branch context survives permission cache flush within a valid session', fu
     expect(session(WorkspaceSession::BRANCH_KEY))->toBe($branch->id);
 });
 
-test('explicit leave-branch clears branch and lands on owner home', function () {
+test('explicit leave-branch clears operational workspace and lands on owner home', function () {
     ['owner' => $owner, 'company' => $company, 'branch' => $branch] = persistOwnerWorkspace();
     persistLogin($owner);
     enterBranchWorkspace($company, $branch)->assertRedirect();
@@ -105,7 +105,7 @@ test('explicit leave-branch clears branch and lands on owner home', function () 
         ->assertRedirect(route('owner.home'));
 
     expect(session(WorkspaceSession::BRANCH_KEY))->toBeNull()
-        ->and(session(WorkspaceSession::COMPANY_KEY))->toBe($company->id);
+        ->and(session(WorkspaceSession::COMPANY_KEY))->toBeNull();
 
     $this->get(route('branch.dashboard'))
         ->assertRedirect(route('workspace.landing'));

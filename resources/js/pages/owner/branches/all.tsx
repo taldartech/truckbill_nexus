@@ -47,6 +47,7 @@ type Props = {
         index: string;
         companies: string;
         create_company: string;
+        create_branch?: string;
     };
 };
 
@@ -91,7 +92,16 @@ export default function OwnerBranchesAll({
                 id: 'company',
                 header: 'Company',
                 priority: 2,
-                cell: (row) => row.company?.name ?? '—',
+                cell: (row) => (
+                    <span className="inline-flex flex-col gap-0.5">
+                        <span>{row.company?.name ?? '—'}</span>
+                        {row.company?.status === 'Deactivated' ? (
+                            <span className="text-[11px] text-amber-700">
+                                Company deactivated
+                            </span>
+                        ) : null}
+                    </span>
+                ),
             },
             {
                 id: 'assigned_users',
@@ -103,34 +113,38 @@ export default function OwnerBranchesAll({
         [],
     );
 
-    const createSource =
-        branches.data.find(
-            (row) =>
-                row.urls.company_context &&
-                row.urls.create_for_company &&
-                (!company || row.company?.id === company),
-        ) ?? null;
+    const createHref =
+        links.create_branch ??
+        (company
+            ? `/management/companies/${company}/branches/create`
+            : '/management/branches/create');
 
     return (
         <>
             <Head title="Owner · Branches" />
             <OwnerPageHeader
                 title="Branches"
-                description="Branches across every company you own."
+                description="Branches across every company you own. Create Branch selects the target company explicitly — it does not use a previous operational session."
                 actions={
                     <>
                         <Button asChild variant="outline">
                             <Link href={links.companies}>Companies</Link>
                         </Button>
-                        {createSource?.urls.company_context &&
-                        createSource.urls.create_for_company ? (
-                            <WorkspaceContextAction
-                                contextUrl={createSource.urls.company_context}
-                                redirect={createSource.urls.create_for_company}
-                                icon={Plus}
-                                label="Create branch"
-                            />
-                        ) : null}
+                        <Button
+                            asChild
+                            className="gap-1.5 bg-[#2FB36F] text-white hover:bg-[#279960]"
+                        >
+                            <Link
+                                href={
+                                    company
+                                        ? `/management/companies/${company}/branches/create`
+                                        : createHref
+                                }
+                            >
+                                <Plus className="size-3.5" aria-hidden />
+                                Create branch
+                            </Link>
+                        </Button>
                     </>
                 }
             >

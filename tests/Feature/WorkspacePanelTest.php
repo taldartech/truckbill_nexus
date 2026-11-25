@@ -352,18 +352,19 @@ test('returning to owner panel clears active branch chrome after branch visit', 
         ->assertInertia(fn ($page) => $page
             ->where('workspace.active_branch_id', $headOffice->id));
 
-    // Explicit leave clears branch; owner chrome then shows null branch.
+    // Explicit leave clears company + branch; Owner Panel is session-independent.
     $this->post(route('workspace.context.leave-branch'))
         ->assertRedirect(route('owner.home'));
 
     expect(session(WorkspaceSession::BRANCH_KEY))->toBeNull()
-        ->and(session(WorkspaceSession::COMPANY_KEY))->toBe($company->id);
+        ->and(session(WorkspaceSession::COMPANY_KEY))->toBeNull();
 
     $this->get(route('owner.home'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('owner/home')
-            ->where('workspace.active_branch_id', null));
+            ->where('workspace.active_branch_id', null)
+            ->where('workspace.active_company_id', null));
 });
 
 test('login redirects customers to workspace landing', function () {
