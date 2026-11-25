@@ -111,4 +111,19 @@ test('closed period rejects posting', function () {
         ['gl_ledger_id' => $cash->id, 'debit_amount' => '10.00', 'credit_amount' => 0],
         ['gl_ledger_id' => $capital->id, 'debit_amount' => 0, 'credit_amount' => '10.00'],
     ], $ctx['branch']))->toThrow(AccountingDomainException::class);
+
+    app(AccountingPeriodService::class)->reopen($period->fresh(), $ctx['member'], 'Reopen for correction');
+
+    $voucher = app(VoucherPostingService::class)->postManual($ctx['company'], $ctx['member'], [
+        'voucher_type' => AccountingVoucherType::Journal,
+        'voucher_date' => now()->toDateString(),
+        'source_type' => 'test.reopen',
+        'source_id' => 'reopen-1',
+        'posting_purpose' => 'after_reopen',
+    ], [
+        ['gl_ledger_id' => $cash->id, 'debit_amount' => '10.00', 'credit_amount' => 0],
+        ['gl_ledger_id' => $capital->id, 'debit_amount' => 0, 'credit_amount' => '10.00'],
+    ], $ctx['branch']);
+
+    expect((string) $voucher->total_debit)->toBe('10.00');
 });

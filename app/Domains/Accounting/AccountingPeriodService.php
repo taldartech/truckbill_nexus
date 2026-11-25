@@ -78,12 +78,14 @@ final class AccountingPeriodService
             return $period;
         }
 
-        return $this->audited->run(function () use ($period, $actor, $remark): AccountingPeriod {
+        $company = Company::query()->findOrFail($period->company_id);
+
+        return $this->audited->run(function () use ($period, $actor, $remark, $company): AccountingPeriod {
             $previous = TenantContextHolder::get();
             TenantContextHolder::inject(new TenantContext(
-                companyId: $period->company_id,
+                companyId: $company->id,
                 branchId: null,
-                ownerId: null,
+                ownerId: (string) $company->owner_user_id,
                 isInternal: false,
                 isOwnerScope: true,
             ));
@@ -94,6 +96,57 @@ final class AccountingPeriodService
                     'status' => AccountingPeriodStatus::Closed,
                     'closed_at' => now(),
                     'closed_by_user_id' => $actor->id,
+                ])->save();
+
+                $this->audit->write(
+                    AuditAction::Updated,
+                    AccountingPeriod::class,
+                    $period->id,
+                    remark: $remark !== '' ? $remark : 'Close accounting period',
+                    before: $before,
+                    after: $period->fresh()?->toArray(),
+                );
+
+                return $period->refresh();
+            } finally {
+                if ($previous === null) {
+                    TenantContextHolder::clear();
+                } else {
+                    TenantContextHolder::inject($previous);
+                }
+            }
+        });
+    }
+
+    public function reopen(AccountingPeriod $period, User $actor, string $remark): AccountingPeriod
+    {
+        if ($period->status === AccountingPeriodStatus::Open) {
+            return $period;
+        }
+
+        $remark = trim($remark);
+        if ($remark === '') {
+            throw new AccountingDomainException('Reopening a closed period requires a remark.');
+        }
+
+        $company = Company::query()->findOrFail($period->company_id);
+
+        return $this->audited->run(function () use ($period, $remark, $company): AccountingPeriod {
+            $previous = TenantContextHolder::get();
+            TenantContextHolder::inject(new TenantContext(
+                companyId: $company->id,
+                branchId: null,
+                ownerId: (string) $company->owner_user_id,
+                isInternal: false,
+                isOwnerScope: true,
+            ));
+
+            try {
+                $before = $period->toArray();
+                $period->forceFill([
+                    'status' => AccountingPeriodStatus::Open,
+                    'closed_at' => null,
+                    'closed_by_user_id' => null,
                 ])->save();
 
                 $this->audit->write(
