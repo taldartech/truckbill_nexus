@@ -46,6 +46,8 @@ Enquiry; Unified Consignment/LR (**Bilty**); Broker/Market-Hired; OwnFleet Trip;
 
 **Owner Panel session decoupling (25 Nov 2026):** Global Owner administration must not require or mutate operational `WorkspaceSession` company/branch. Create Branch uses explicit `/management/companies/{company}/branches` routes (and global `/management/branches/create` with optional `?company=` preselect). `AuthorizesOwnerPanel` no longer calls `WorkspaceSession::ensureCompany()`. Return to Owner Portal clears **both** company and branch session keys. Root cause of false “company is deactivated” on Create Branch was authorizing the stale session company instead of the form/route target. ADR-015 amended; Pest `OwnerPanelSessionIndependenceTest`.
 
+**Owner Branch profile + operational defect closure (25 Nov 2026, in progress):** Branch columns for contact/HO/address/GST mode + `EffectiveGstConfigurationResolver`; Hire create no longer edits Loading Weight and inherits Bilty Actual/Charged weights; Payee ID init no longer requires empty `transporterOptions`; Reference By gains optional `reference_by_party_id`; LR goods weight/freight validation requires positive values; Demo Manager role includes `lr.delete`. Full legacy-first Owner Panel visual reconstruction and City/State Master remain open.
+
 ## Masters
 
 Party roles Customer, Consignor, Consignee, Transporter, Driver, General Vendor, Pump Vendor. Truck Owner merged into Transporter. Party/Vehicle/Bank scope follows Data Visibility. Station Master shared across Owner's companies. Goods Type, Truck Type, Tyre Layout, Document Type, Expense Category and Package Type Owner-specific. Payment modes centrally seeded.

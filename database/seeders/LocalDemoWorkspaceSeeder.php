@@ -667,6 +667,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
                     PermissionCodes::LR_CREATE,
                     PermissionCodes::LR_EDIT,
                     PermissionCodes::LR_CANCEL,
+                    PermissionCodes::LR_DELETE,
                     PermissionCodes::TRIP_VIEW,
                     PermissionCodes::TRIP_CREATE,
                     PermissionCodes::TRIP_EDIT,

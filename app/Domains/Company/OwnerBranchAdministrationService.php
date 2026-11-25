@@ -36,6 +36,7 @@ final class OwnerBranchAdministrationService
 
     /**
      * @param  list<array{user_id: int|string, role_id: string}>  $memberAssignments
+     * @param  array<string, mixed>  $attributes
      */
     public function createBranch(
         User $actor,
@@ -43,6 +44,7 @@ final class OwnerBranchAdministrationService
         string $name,
         string $remark,
         array $memberAssignments = [],
+        array $attributes = [],
     ): Branch {
         $this->assertOwnerMayMutate($actor, $company);
 
@@ -56,8 +58,8 @@ final class OwnerBranchAdministrationService
 
         $this->assertBranchCapacityAvailable($company);
 
-        return $this->auditedTransaction->run(function () use ($actor, $company, $name, $remark, $memberAssignments): Branch {
-            $branch = $this->workspace->createBranch($company, trim($name), $remark);
+        return $this->auditedTransaction->run(function () use ($actor, $company, $name, $remark, $memberAssignments, $attributes): Branch {
+            $branch = $this->workspace->createBranch($company, trim($name), $remark, $attributes);
 
             foreach ($memberAssignments as $assignment) {
                 $this->assignExistingMemberToNewBranch(
@@ -74,12 +76,20 @@ final class OwnerBranchAdministrationService
         });
     }
 
-    public function updateBranch(User $actor, Branch $branch, string $name, string $remark): Branch
-    {
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    public function updateBranch(
+        User $actor,
+        Branch $branch,
+        string $name,
+        string $remark,
+        array $attributes = [],
+    ): Branch {
         $company = Company::query()->findOrFail($branch->company_id);
         $this->assertOwnerMayMutate($actor, $company);
 
-        return $this->workspace->updateBranch($branch, $name, $remark);
+        return $this->workspace->updateBranch($branch, $name, $remark, $attributes);
     }
 
     public function deactivateBranch(User $actor, Branch $branch, string $remark): Branch

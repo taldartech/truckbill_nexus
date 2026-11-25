@@ -593,6 +593,10 @@ export default function LrForm({
     const [clientInvoiceNumber, setClientInvoiceNumber] = useState(
         lorryReceipt?.client_invoice_number ?? '',
     );
+    const [referenceByPartyId, setReferenceByPartyId] = useState(
+        (lorryReceipt as { reference_by_party_id?: string | null } | null)
+            ?.reference_by_party_id ?? '',
+    );
     const [referenceBy, setReferenceBy] = useState(
         lorryReceipt?.reference_by ?? '',
     );
@@ -3045,17 +3049,41 @@ export default function LrForm({
                                         </p>
                                     </div>
                                     <div className="space-y-1">
-                                        <Label htmlFor="reference_by">
-                                            Reference By
-                                        </Label>
-                                        <Input
-                                            id="reference_by"
+                                        <SearchablePartySelect
+                                            id="reference_by_party_id"
+                                            name="reference_by_party_id"
+                                            label="Reference By"
+                                            options={[]}
+                                            value={referenceByPartyId}
+                                            onValueChange={(next) => {
+                                                setReferenceByPartyId(next);
+                                                if (next === '') {
+                                                    setReferenceBy('');
+                                                }
+                                            }}
+                                            searchUrl={urls.parties_options}
+                                            role="general_vendor"
+                                            roles={[
+                                                'general_vendor',
+                                                'customer',
+                                                'transporter',
+                                            ]}
+                                            createStoreUrl={urls.parties_store}
+                                            createHref={urls.parties_create}
+                                            createLabel="Add"
+                                            createRole="customer"
+                                            emptyMessage="No eligible reference parties in this branch."
+                                        />
+                                        {referenceBy && !referenceByPartyId ? (
+                                            <p className="text-[11px] text-muted-foreground">
+                                                Historical text reference:{' '}
+                                                {referenceBy}
+                                            </p>
+                                        ) : null}
+                                        <input
+                                            type="hidden"
                                             name="reference_by"
                                             value={referenceBy}
-                                            onChange={(e) =>
-                                                setReferenceBy(e.target.value)
-                                            }
-                                            placeholder="Broker / agent / contact"
                                         />
                                     </div>
                                 </div>

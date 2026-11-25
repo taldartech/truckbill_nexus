@@ -46,6 +46,24 @@ type OwnerBranchesCreateProps = {
         available_branch_slots: number;
     } | null;
     canCreate: boolean;
+    existingHeadOffice?: { id: string; name: string } | null;
+    companyGst?: {
+        gst_registration_type: string | null;
+        tax_liability: string | null;
+        gstin: string | null;
+        gst_rate_id: string | null;
+        gst_rate_snapshot: Record<string, unknown> | null;
+    };
+    gstOptions?: {
+        registration_types: Array<{ value: string; label: string }>;
+        tax_liabilities: Array<{ value: string; label: string }>;
+        gst_rates: Array<{
+            id: string;
+            code: string;
+            name: string;
+            rate_percent: string;
+        }>;
+    };
     members: MemberOption[];
     customerRoles: RoleOption[];
     links: {
@@ -73,6 +91,9 @@ export default function OwnerBranchesCreate({
     companyOptions = [],
     capacity,
     canCreate,
+    existingHeadOffice = null,
+    companyGst,
+    gstOptions,
     members,
     customerRoles,
     links,
@@ -80,6 +101,21 @@ export default function OwnerBranchesCreate({
     const { errors } = usePage<PageErrors>().props;
     const [assignments, setAssignments] = useState<AssignmentDraft[]>([]);
     const [branchName, setBranchName] = useState('');
+    const [contactNumber, setContactNumber] = useState('');
+    const [isHeadOffice, setIsHeadOffice] = useState('0');
+    const [address, setAddress] = useState('');
+    const [state, setState] = useState('');
+    const [city, setCity] = useState('');
+    const [pin, setPin] = useState('');
+    const [inheritGst, setInheritGst] = useState(true);
+    const [gstRegistrationType, setGstRegistrationType] = useState(
+        companyGst?.gst_registration_type ?? '',
+    );
+    const [taxLiability, setTaxLiability] = useState(
+        companyGst?.tax_liability ?? '',
+    );
+    const [gstin, setGstin] = useState(companyGst?.gstin ?? '');
+    const [gstRateId, setGstRateId] = useState(companyGst?.gst_rate_id ?? '');
     const [remark, setRemark] = useState('');
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [reviewFields, setReviewFields] = useState<FieldReview[]>([]);
@@ -136,6 +172,34 @@ export default function OwnerBranchesCreate({
         setReviewFields([
             { label: 'Company', value: company?.name ?? '—' },
             { label: 'Branch name', value: branchName.trim() || '—' },
+            {
+                label: 'Contact number',
+                value: contactNumber.trim() || '—',
+            },
+            {
+                label: 'Head Office',
+                value: isHeadOffice === '1' ? 'Yes' : 'No',
+            },
+            {
+                label: 'Address',
+                value:
+                    [address, city, state, pin]
+                        .map((part) => part.trim())
+                        .filter(Boolean)
+                        .join(', ') || '—',
+            },
+            {
+                label: 'GST configuration',
+                value: inheritGst
+                    ? 'Inherit from Company'
+                    : 'Independent Branch GST',
+            },
+            {
+                label: 'GSTIN',
+                value: inheritGst
+                    ? (companyGst?.gstin ?? '—')
+                    : gstin.trim() || '—',
+            },
             {
                 label: 'Capacity remaining',
                 value:
@@ -252,26 +316,305 @@ export default function OwnerBranchesCreate({
                                     </p>
                                 ) : null}
 
-                                <div className="space-y-2">
-                                    <Label htmlFor="branch-name" required>
-                                        Branch name
-                                    </Label>
-                                    <Input
-                                        id="branch-name"
-                                        name="name"
-                                        required
-                                        maxLength={255}
-                                        autoFocus
-                                        value={branchName}
-                                        onChange={(e) =>
-                                            setBranchName(e.target.value)
+                                <div className="grid gap-4 sm:grid-cols-2">
+                                    <div className="space-y-2 sm:col-span-2">
+                                        <Label htmlFor="branch-name" required>
+                                            Branch name
+                                        </Label>
+                                        <Input
+                                            id="branch-name"
+                                            name="name"
+                                            required
+                                            maxLength={255}
+                                            autoFocus
+                                            value={branchName}
+                                            onChange={(e) =>
+                                                setBranchName(e.target.value)
+                                            }
+                                        />
+                                        <InputError
+                                            message={
+                                                formErrors.name ?? errors?.name
+                                            }
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="contact_number">
+                                            Contact number
+                                        </Label>
+                                        <Input
+                                            id="contact_number"
+                                            name="contact_number"
+                                            inputMode="numeric"
+                                            maxLength={10}
+                                            placeholder="10-digit mobile"
+                                            value={contactNumber}
+                                            onChange={(e) =>
+                                                setContactNumber(
+                                                    e.target.value.replace(
+                                                        /\D/g,
+                                                        '',
+                                                    ),
+                                                )
+                                            }
+                                        />
+                                        <InputError
+                                            message={
+                                                formErrors.contact_number ??
+                                                errors?.contact_number
+                                            }
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="head_office" required>
+                                            Head Office
+                                        </Label>
+                                        <select
+                                            id="head_office"
+                                            name="is_head_office"
+                                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+                                            value={isHeadOffice}
+                                            onChange={(e) =>
+                                                setIsHeadOffice(e.target.value)
+                                            }
+                                            required
+                                        >
+                                            <option value="0">No</option>
+                                            <option
+                                                value="1"
+                                                disabled={
+                                                    existingHeadOffice !== null
+                                                }
+                                            >
+                                                Yes
+                                            </option>
+                                        </select>
+                                        {existingHeadOffice ? (
+                                            <p className="text-xs text-amber-700">
+                                                Existing Head Office:{' '}
+                                                {existingHeadOffice.name}. Clear
+                                                that designation before
+                                                assigning another.
+                                            </p>
+                                        ) : (
+                                            <p className="text-xs text-muted-foreground">
+                                                Only one Head Office is allowed
+                                                per company.
+                                            </p>
+                                        )}
+                                    </div>
+                                    <div className="space-y-2 sm:col-span-2">
+                                        <Label htmlFor="address">Address</Label>
+                                        <textarea
+                                            id="address"
+                                            name="address"
+                                            rows={3}
+                                            className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm"
+                                            value={address}
+                                            onChange={(e) =>
+                                                setAddress(e.target.value)
+                                            }
+                                            placeholder="Branch address"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="state">State</Label>
+                                        <Input
+                                            id="state"
+                                            name="state"
+                                            value={state}
+                                            onChange={(e) =>
+                                                setState(e.target.value)
+                                            }
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="city">City</Label>
+                                        <Input
+                                            id="city"
+                                            name="city"
+                                            value={city}
+                                            onChange={(e) =>
+                                                setCity(e.target.value)
+                                            }
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="pin">Pincode</Label>
+                                        <Input
+                                            id="pin"
+                                            name="pin"
+                                            value={pin}
+                                            onChange={(e) =>
+                                                setPin(e.target.value)
+                                            }
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-3 rounded-lg border border-border p-4">
+                                    <label className="flex items-center gap-2 text-sm font-medium">
+                                        <input
+                                            type="checkbox"
+                                            checked={inheritGst}
+                                            onChange={(e) =>
+                                                setInheritGst(e.target.checked)
+                                            }
+                                        />
+                                        Inherit GST from Company
+                                    </label>
+                                    <input
+                                        type="hidden"
+                                        name="gst_mode"
+                                        value={
+                                            inheritGst
+                                                ? 'inherit_company'
+                                                : 'independent'
                                         }
                                     />
-                                    <InputError
-                                        message={
-                                            formErrors.name ?? errors?.name
-                                        }
-                                    />
+                                    {inheritGst ? (
+                                        <dl className="grid gap-2 text-sm sm:grid-cols-2">
+                                            <div>
+                                                <dt className="text-xs text-muted-foreground">
+                                                    GSTIN
+                                                </dt>
+                                                <dd>
+                                                    {companyGst?.gstin ?? '—'}
+                                                </dd>
+                                            </div>
+                                            <div>
+                                                <dt className="text-xs text-muted-foreground">
+                                                    Scheme
+                                                </dt>
+                                                <dd>
+                                                    {companyGst?.tax_liability?.toUpperCase() ??
+                                                        '—'}
+                                                </dd>
+                                            </div>
+                                        </dl>
+                                    ) : (
+                                        <div className="grid gap-3 sm:grid-cols-2">
+                                            <div className="space-y-2">
+                                                <Label
+                                                    htmlFor="gst_registration_type"
+                                                    required
+                                                >
+                                                    GST registration type
+                                                </Label>
+                                                <select
+                                                    id="gst_registration_type"
+                                                    name="gst_registration_type"
+                                                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+                                                    value={gstRegistrationType}
+                                                    onChange={(e) =>
+                                                        setGstRegistrationType(
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    required
+                                                >
+                                                    <option value="">
+                                                        Select…
+                                                    </option>
+                                                    {(
+                                                        gstOptions?.registration_types ??
+                                                        []
+                                                    ).map((option) => (
+                                                        <option
+                                                            key={option.value}
+                                                            value={option.value}
+                                                        >
+                                                            {option.label}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label
+                                                    htmlFor="tax_liability"
+                                                    required
+                                                >
+                                                    GST scheme
+                                                </Label>
+                                                <select
+                                                    id="tax_liability"
+                                                    name="tax_liability"
+                                                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+                                                    value={taxLiability}
+                                                    onChange={(e) =>
+                                                        setTaxLiability(
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    required
+                                                >
+                                                    <option value="">
+                                                        Select…
+                                                    </option>
+                                                    {(
+                                                        gstOptions?.tax_liabilities ??
+                                                        []
+                                                    ).map((option) => (
+                                                        <option
+                                                            key={option.value}
+                                                            value={option.value}
+                                                        >
+                                                            {option.label}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="gstin">
+                                                    GST number
+                                                </Label>
+                                                <Input
+                                                    id="gstin"
+                                                    name="gstin"
+                                                    value={gstin}
+                                                    onChange={(e) =>
+                                                        setGstin(
+                                                            e.target.value.toUpperCase(),
+                                                        )
+                                                    }
+                                                    maxLength={15}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="gst_rate_id">
+                                                    GST rate
+                                                </Label>
+                                                <select
+                                                    id="gst_rate_id"
+                                                    name="gst_rate_id"
+                                                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+                                                    value={gstRateId}
+                                                    onChange={(e) =>
+                                                        setGstRateId(
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                >
+                                                    <option value="">
+                                                        Select…
+                                                    </option>
+                                                    {(
+                                                        gstOptions?.gst_rates ??
+                                                        []
+                                                    ).map((rate) => (
+                                                        <option
+                                                            key={rate.id}
+                                                            value={rate.id}
+                                                        >
+                                                            {rate.name} (
+                                                            {rate.rate_percent}
+                                                            %)
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="space-y-2">

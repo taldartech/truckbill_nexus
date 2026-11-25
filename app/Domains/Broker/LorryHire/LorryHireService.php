@@ -462,9 +462,14 @@ final class LorryHireService
                 ]);
             }
 
-            $loadingWeight = filled($input['loading_weight'] ?? null)
-                ? $this->formattedWeight((string) $input['loading_weight'])
-                : $this->loadingWeightFromGoodsRow($row);
+            // Weights are inherited from the linked Bilty — client loading_weight is ignored.
+            $actualWeight = $row->actual_weight !== null
+                ? $this->formattedWeight((string) $row->actual_weight)
+                : '0.000';
+            $chargedWeight = $row->charged_weight !== null
+                ? $this->formattedWeight((string) $row->charged_weight)
+                : $actualWeight;
+            $loadingWeightSnapshot = $this->loadingWeightFromGoodsRow($row);
 
             // Authoritative semantics come from the linked Bilty goods row — never trust client overrides.
             $semantics = $row->rate_semantics ?? FreightRateSemantics::WeightKg;
@@ -474,8 +479,8 @@ final class LorryHireService
                 'rate' => $rate,
                 'is_fixed_amount' => $isFixed,
                 'package_count' => $row->package_count,
-                'actual_weight' => $loadingWeight,
-                'charged_weight' => $loadingWeight,
+                'actual_weight' => $actualWeight,
+                'charged_weight' => $chargedWeight,
                 'rate_semantics' => $semantics,
             ]);
 
@@ -485,7 +490,7 @@ final class LorryHireService
                 'rate' => number_format((float) $rate, 4, '.', ''),
                 'is_fixed_amount' => $isFixed,
                 'freight_amount' => $freightAmount,
-                'loading_weight' => $loadingWeight,
+                'loading_weight' => $loadingWeightSnapshot,
                 'rate_semantics' => $semantics,
             ];
         }

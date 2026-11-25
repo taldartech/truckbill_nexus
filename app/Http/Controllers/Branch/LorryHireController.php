@@ -163,7 +163,8 @@ class LorryHireController extends Controller
             'payee' => $payee,
             'suggestedPayeeId' => $payee['id'] ?? null,
             'transporterOptions' => [],
-            'payeeRequired' => $payee !== null,
+            // Payee is always required for Broker hire; null payee means Bilty must be corrected.
+            'payeeRequired' => true,
             'tdsPreview' => $tdsPreview,
             'goodsRows' => $lorryReceipt->goodsRows->map(function ($row) use ($maySeeFreight): array {
                 $type = $row->freight_rate_type;

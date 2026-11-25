@@ -2,6 +2,9 @@
 
 namespace App\Models;
 
+use App\Domains\Company\Enums\BranchGstMode;
+use App\Domains\Company\Enums\GstRegistrationType;
+use App\Domains\Company\Enums\TaxLiability;
 use App\Domains\Company\Exceptions\CompanyDomainException;
 use Database\Factories\BranchFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -16,6 +19,18 @@ use Illuminate\Support\Str;
  * @property string $id
  * @property string $company_id
  * @property string $name
+ * @property string|null $contact_number
+ * @property bool $is_head_office
+ * @property string|null $address
+ * @property string|null $state
+ * @property string|null $city
+ * @property string|null $pin
+ * @property BranchGstMode $gst_mode
+ * @property GstRegistrationType|null $gst_registration_type
+ * @property TaxLiability|null $tax_liability
+ * @property string|null $gstin
+ * @property string|null $gst_rate_id
+ * @property array<string, mixed>|null $gst_rate_snapshot
  * @property Carbon|null $deactivated_at
  * @property Carbon|null $deleted_at
  */
@@ -34,6 +49,18 @@ class Branch extends Model
     protected $fillable = [
         'company_id',
         'name',
+        'contact_number',
+        'is_head_office',
+        'address',
+        'state',
+        'city',
+        'pin',
+        'gst_mode',
+        'gst_registration_type',
+        'tax_liability',
+        'gstin',
+        'gst_rate_id',
+        'gst_rate_snapshot',
         'deactivated_at',
     ];
 
@@ -43,6 +70,11 @@ class Branch extends Model
     protected function casts(): array
     {
         return [
+            'is_head_office' => 'boolean',
+            'gst_mode' => BranchGstMode::class,
+            'gst_registration_type' => GstRegistrationType::class,
+            'tax_liability' => TaxLiability::class,
+            'gst_rate_snapshot' => 'array',
             'deactivated_at' => 'datetime',
             'deleted_at' => 'datetime',
         ];
@@ -53,6 +85,10 @@ class Branch extends Model
         static::creating(function (Branch $branch): void {
             if (! filled($branch->getAttribute('id'))) {
                 $branch->setAttribute('id', (string) Str::uuid());
+            }
+
+            if ($branch->getAttribute('gst_mode') === null) {
+                $branch->setAttribute('gst_mode', BranchGstMode::InheritCompany);
             }
         });
     }
@@ -68,6 +104,14 @@ class Branch extends Model
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    /**
+     * @return BelongsTo<GstRate, $this>
+     */
+    public function gstRate(): BelongsTo
+    {
+        return $this->belongsTo(GstRate::class, 'gst_rate_id');
     }
 
     /**

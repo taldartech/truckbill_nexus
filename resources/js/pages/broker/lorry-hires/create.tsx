@@ -4,12 +4,7 @@ import { FormConfirmationDialog } from '@/components/form-confirmation/form-conf
 import type { FieldReview } from '@/components/form-confirmation/types';
 import InputError from '@/components/input-error';
 import { formatDisplayDate } from '@/lib/dates';
-import {
-    formatMtLabel,
-    kgToMt,
-    mtToKg,
-    parseNumeric,
-} from '@/lib/operational-weight';
+import { formatMtLabel, kgToMt, parseNumeric } from '@/lib/operational-weight';
 import {
     LrfActions,
     LrfLinkedHero,
@@ -130,10 +125,11 @@ function computeTransporterFreightPreview(
         return null;
     }
 
-    // UI draft.loading_weight is MT; convert for KG-based rate types.
-    const loadingMt = parseNumeric(draft.loading_weight);
-    const loadingKg = loadingMt === null ? null : loadingMt * 1000;
     const packages = parseNumeric(row.package_count);
+    const actualMt = kgToMt(row.actual_weight);
+    const chargedMt = kgToMt(row.charged_weight ?? row.actual_weight);
+    const actualNum = parseNumeric(actualMt);
+    const chargedNum = parseNumeric(chargedMt);
 
     switch (draft.rate_type) {
         case 'fixed_amount':
@@ -143,22 +139,17 @@ function computeTransporterFreightPreview(
                 return null;
             }
             return rate * packages;
-        case 'per_kg':
-            if (loadingKg === null) {
-                return null;
-            }
-            return rate * loadingKg;
         case 'per_actual_weight':
+            if (actualNum === null) {
+                return null;
+            }
+            return rate * actualNum;
         case 'per_charged_weight':
-            if (loadingMt === null) {
-                return null;
-            }
-            return rate * loadingMt;
         case 'per_mt':
-            if (loadingMt === null) {
+            if (chargedNum === null) {
                 return null;
             }
-            return rate * loadingMt;
+            return rate * chargedNum;
         default:
             return null;
     }
@@ -241,14 +232,15 @@ function initialTransporterPartyId(
     transporterOptions: Array<{ id: string; name: string }>,
     suggestedPayeeId?: string | null,
 ): string {
+    // Authoritative inherited payee from Bilty — do not require transporterOptions membership.
+    if (payee?.id) {
+        return payee.id;
+    }
     if (
         suggestedPayeeId &&
         transporterOptions.some((option) => option.id === suggestedPayeeId)
     ) {
         return suggestedPayeeId;
-    }
-    if (payee && transporterOptions.some((option) => option.id === payee.id)) {
-        return payee.id;
     }
     if (transporterOptions.length === 1) {
         return transporterOptions[0].id;
@@ -695,7 +687,7 @@ export default function LorryHireCreate({
                                                 : ''}
                                         </p>
                                     ) : null}
-                                    {!transporterPartyId && payeeRequired ? (
+                                    {payeeRequired && !payee ? (
                                         <p
                                             className="text-xs text-destructive"
                                             role="alert"
@@ -798,53 +790,32 @@ export default function LorryHireCreate({
                                                 </div>
 
                                                 <div className="mt-3 grid gap-3 border-t border-border pt-3 md:grid-cols-2 xl:grid-cols-4">
-                                                    <div className="space-y-1">
-                                                        <Label
-                                                            htmlFor={`loading_weight_${index}`}
-                                                            className="text-xs"
-                                                        >
-                                                            Loading weight (MT)
-                                                        </Label>
-                                                        <input
-                                                            type="hidden"
-                                                            name={`goods_lines[${index}][loading_weight]`}
-                                                            value={mtToKg(
-                                                                draft.loading_weight,
-                                                            )}
-                                                        />
-                                                        <Input
-                                                            id={`loading_weight_${index}`}
-                                                            type="number"
-                                                            min="0"
-                                                            step="0.001"
-                                                            className="h-9"
-                                                            value={
-                                                                draft.loading_weight
-                                                            }
-                                                            onChange={(event) =>
-                                                                updateLine(
-                                                                    index,
-                                                                    {
-                                                                        loading_weight:
-                                                                            event
-                                                                                .target
-                                                                                .value,
-                                                                    },
-                                                                )
-                                                            }
-                                                        />
-                                                        <InputError
-                                                            message={fieldError(
-                                                                errors,
-                                                                `goods_lines.${index}.loading_weight`,
-                                                            )}
-                                                        />
-                                                    </div>
+                                                    <ReadOnlyMetric
+                                                        label="Actual weight (MT)"
+                                                        value={formatWeightMt(
+                                                            row.actual_weight,
+                                                        )}
+                                                    />
+                                                    <ReadOnlyMetric
+                                                        label="Charged weight (MT)"
+                                                        value={formatWeightMt(
+                                                            row.charged_weight ??
+                                                                row.actual_weight,
+                                                        )}
+                                                    />
+                                                    <ReadOnlyMetric
+                                                        label="Units"
+                                                        value={
+                                                            row.package_count ??
+                                                            '—'
+                                                        }
+                                                    />
 
                                                     <div className="space-y-1">
                                                         <Label
                                                             htmlFor={`rate_type_${index}`}
                                                             className="text-xs"
+                                                            required
                                                         >
                                                             Rate type
                                                         </Label>

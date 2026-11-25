@@ -88,6 +88,8 @@ test('owner can list create edit and enter branch management screens', function 
     $this->post(route('owner.companies.branches.store', ['company' => $company]), [
         'name' => 'Warehouse West',
         'remark' => 'Opened west warehouse',
+        'is_head_office' => false,
+        'gst_mode' => 'inherit_company',
     ])->assertRedirect(route('owner.branches.all'));
 
     $warehouse = Branch::query()
@@ -141,6 +143,8 @@ test('branch create may assign existing members and roles without granting other
     $this->post(route('owner.companies.branches.store', ['company' => $company]), [
         'name' => 'Depot North',
         'remark' => 'New depot with clerk',
+        'is_head_office' => false,
+        'gst_mode' => 'inherit_company',
         'assignments' => [
             [
                 'user_id' => $member->id,
@@ -186,12 +190,16 @@ test('branch capacity is enforced for owner create', function () {
     $this->post(route('owner.companies.branches.store', ['company' => $company]), [
         'name' => 'Second Branch',
         'remark' => 'Uses remaining included slot',
+        'is_head_office' => false,
+        'gst_mode' => 'inherit_company',
     ])->assertRedirect(route('owner.branches.all'));
 
     $this->from(route('owner.companies.branches.create', ['company' => $company]))
         ->post(route('owner.companies.branches.store', ['company' => $company]), [
             'name' => 'Third Branch',
             'remark' => 'Should exceed default included capacity',
+            'is_head_office' => false,
+            'gst_mode' => 'inherit_company',
         ])
         ->assertSessionHasErrors('name');
 
@@ -209,6 +217,8 @@ test('owner can deactivate non-last branch and cannot deactivate last active bra
     $this->post(route('owner.companies.branches.store', ['company' => $company]), [
         'name' => 'Closeable',
         'remark' => 'Will deactivate',
+        'is_head_office' => false,
+        'gst_mode' => 'inherit_company',
     ])->assertRedirect(route('owner.branches.all'));
 
     $closeable = Branch::query()

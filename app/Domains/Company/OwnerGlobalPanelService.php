@@ -413,6 +413,12 @@ final class OwnerGlobalPanelService
         return [
             'id' => $branch->id,
             'name' => $branch->name,
+            'contact_number' => $branch->contact_number,
+            'is_head_office' => (bool) $branch->is_head_office,
+            'city' => $branch->city,
+            'state' => $branch->state,
+            'address' => $branch->address,
+            'gst_mode' => $branch->gst_mode?->value ?? 'inherit_company',
             'status' => $branch->isActive() ? 'Active' : 'Deactivated',
             'assigned_users_count' => (int) ($branch->assigned_users_count ?? 0),
             'created_at' => $branch->created_at?->toIso8601String(),

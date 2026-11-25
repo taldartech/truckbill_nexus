@@ -3,11 +3,15 @@
 namespace App\Http\Controllers\Owner;
 
 use App\Domains\Company\CompanyAccessService;
+use App\Domains\Company\Enums\GstRegistrationType;
+use App\Domains\Company\Enums\TaxLiability;
 use App\Domains\Company\Exceptions\CompanyDomainException;
 use App\Domains\Company\OwnerBranchAdministrationService;
 use App\Domains\Rbac\Enums\PermissionDomain;
 use App\Domains\Rbac\Exceptions\RbacAuthorizationException;
 use App\Domains\Rbac\Exceptions\RbacDomainException;
+use App\Domains\Tax\EffectiveGstConfigurationResolver;
+use App\Domains\Tax\GstRateService;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Owner\Concerns\AuthorizesOwnerPanel;
 use App\Models\Branch;
@@ -36,6 +40,8 @@ class OwnerBranchesController extends Controller
     public function __construct(
         private readonly CompanyAccessService $access,
         private readonly OwnerBranchAdministrationService $branches,
+        private readonly EffectiveGstConfigurationResolver $gstResolver = new EffectiveGstConfigurationResolver,
+        private readonly GstRateService $gstRates = new GstRateService,
     ) {}
 
     public function index(Request $request, Company $company): Response
@@ -356,6 +362,17 @@ class OwnerBranchesController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'remark' => ['required', 'string', 'max:1000'],
+            'contact_number' => ['nullable', 'digits:10'],
+            'is_head_office' => ['required', 'boolean'],
+            'address' => ['nullable', 'string', 'max:2000'],
+            'state' => ['nullable', 'string', 'max:100'],
+            'city' => ['nullable', 'string', 'max:100'],
+            'pin' => ['nullable', 'string', 'max:10'],
+            'gst_mode' => ['required', Rule::in(['inherit_company', 'independent'])],
+            'gst_registration_type' => ['nullable', 'string', 'max:32'],
+            'tax_liability' => ['nullable', 'string', 'max:16'],
+            'gstin' => ['nullable', 'string', 'max:15'],
+            'gst_rate_id' => ['nullable', 'uuid', 'exists:gst_rates,id'],
             'assignments' => ['nullable', 'array', 'max:50'],
             'assignments.*.user_id' => [
                 'required',
@@ -377,6 +394,13 @@ class OwnerBranchesController extends Controller
             ],
         ]);
 
+        if ($validated['gst_mode'] === 'independent') {
+            $request->validate([
+                'gst_registration_type' => ['required', 'string', 'max:32'],
+                'tax_liability' => ['required', 'string', 'max:16'],
+            ]);
+        }
+
         /** @var list<array{user_id: int|string, role_id: string}> $assignments */
         $assignments = [];
         $seenUsers = [];
@@ -395,6 +419,24 @@ class OwnerBranchesController extends Controller
             ];
         }
 
+        $attributes = [
+            'contact_number' => $validated['contact_number'] ?? null,
+            'is_head_office' => (bool) $validated['is_head_office'],
+            'address' => $validated['address'] ?? null,
+            'state' => $validated['state'] ?? null,
+            'city' => $validated['city'] ?? null,
+            'pin' => $validated['pin'] ?? null,
+            'gst_mode' => $validated['gst_mode'],
+            'gst_registration_type' => isset($validated['gst_registration_type'])
+                ? GstRegistrationType::from((string) $validated['gst_registration_type'])
+                : null,
+            'tax_liability' => isset($validated['tax_liability'])
+                ? TaxLiability::from((string) $validated['tax_liability'])
+                : null,
+            'gstin' => $validated['gstin'] ?? null,
+            'gst_rate_id' => $validated['gst_rate_id'] ?? null,
+        ];
+
         try {
             $branch = $this->branches->createBranch(
                 $user,
@@ -402,6 +444,7 @@ class OwnerBranchesController extends Controller
                 $validated['name'],
                 $validated['remark'],
                 $assignments,
+                $attributes,
             );
         } catch (CompanyDomainException|RbacDomainException|RbacAuthorizationException|InvalidArgumentException $e) {
             throw ValidationException::withMessages(['name' => $e->getMessage()]);
@@ -435,6 +478,14 @@ class OwnerBranchesController extends Controller
             ->orderBy('created_at')
             ->get();
 
+        $existingHeadOffice = Branch::query()
+            ->where('company_id', $company->id)
+            ->where('is_head_office', true)
+            ->whereNull('deleted_at')
+            ->first(['id', 'name']);
+
+        $companyGst = $this->gstResolver->companyGstPayload($company);
+
         return Inertia::render('owner/branches/create', [
             'mode' => $mode,
             'company' => $this->companyPayload($company),
@@ -443,6 +494,33 @@ class OwnerBranchesController extends Controller
             'ownerPanelScope' => $scope,
             'capacity' => $capacity,
             'canCreate' => $capacity['available_branch_slots'] >= 1,
+            'existingHeadOffice' => $existingHeadOffice === null ? null : [
+                'id' => $existingHeadOffice->id,
+                'name' => $existingHeadOffice->name,
+            ],
+            'companyGst' => [
+                'gst_registration_type' => $companyGst['registration_type']?->value,
+                'tax_liability' => $companyGst['tax_liability']?->value,
+                'gstin' => $companyGst['gstin'],
+                'gst_rate_id' => $companyGst['gst_rate_id'],
+                'gst_rate_snapshot' => $companyGst['gst_rate_snapshot'],
+            ],
+            'gstOptions' => [
+                'registration_types' => array_map(
+                    fn (GstRegistrationType $case): array => ['value' => $case->value, 'label' => $case->name],
+                    GstRegistrationType::cases(),
+                ),
+                'tax_liabilities' => array_map(
+                    fn (TaxLiability $case): array => ['value' => $case->value, 'label' => strtoupper($case->value)],
+                    TaxLiability::cases(),
+                ),
+                'gst_rates' => $this->gstRates->listActive()->map(fn ($rate): array => [
+                    'id' => $rate->id,
+                    'code' => $rate->code,
+                    'name' => $rate->name,
+                    'rate_percent' => (string) $rate->rate_percent,
+                ])->values(),
+            ],
             'members' => $members->map(fn (CompanyMembership $membership): array => [
                 'user_id' => $membership->user_id,
                 'name' => $membership->user?->name,

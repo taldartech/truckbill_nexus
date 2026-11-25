@@ -134,6 +134,12 @@ test('stale deactivated company session does not block create branch for active 
     $this->post(route('owner.companies.branches.store', ['company' => $companyC]), [
         'name' => 'Charlie Depot',
         'remark' => 'First branch for newly created active company',
+        'is_head_office' => true,
+        'gst_mode' => 'inherit_company',
+        'contact_number' => '9876543210',
+        'address' => 'Depot Road',
+        'state' => 'Maharashtra',
+        'city' => 'Pune',
     ])->assertRedirect(route('owner.branches.all'));
 
     $branch = Branch::query()
@@ -142,7 +148,10 @@ test('stale deactivated company session does not block create branch for active 
         ->first();
 
     expect($branch)->not->toBeNull()
-        ->and($branch->company_id)->toBe($companyC->id);
+        ->and($branch->company_id)->toBe($companyC->id)
+        ->and($branch->contact_number)->toBe('9876543210')
+        ->and($branch->is_head_office)->toBeTrue()
+        ->and($branch->gst_mode->value)->toBe('inherit_company');
 
     // Stale B session must remain untouched by administrative create.
     expect(session(WorkspaceSession::COMPANY_KEY))->toBe($companyB->id);
@@ -151,6 +160,8 @@ test('stale deactivated company session does not block create branch for active 
     $this->post(route('owner.companies.branches.store', ['company' => $companyA]), [
         'name' => 'Alpha Depot',
         'remark' => 'Create while stale B session present',
+        'is_head_office' => false,
+        'gst_mode' => 'inherit_company',
     ])->assertRedirect(route('owner.branches.all'));
 
     expect(Branch::query()
@@ -170,6 +181,8 @@ test('create branch against deactivated company is correctly rejected', function
     $this->post(route('owner.companies.branches.store', ['company' => $companyB]), [
         'name' => 'Should Fail',
         'remark' => 'Deactivated target',
+        'is_head_office' => false,
+        'gst_mode' => 'inherit_company',
     ])->assertForbidden();
 });
 
@@ -183,6 +196,8 @@ test('create branch for another owners company is denied', function () {
     $this->post(route('owner.companies.branches.store', ['company' => $foreign]), [
         'name' => 'Hijack',
         'remark' => 'Cross-owner',
+        'is_head_office' => false,
+        'gst_mode' => 'inherit_company',
     ])->assertForbidden();
 });
 
@@ -217,6 +232,8 @@ test('branch capacity exhaustion reports capacity error not deactivation', funct
         ->post(route('owner.companies.branches.store', ['company' => $company]), [
             'name' => 'Third Excess',
             'remark' => 'Should hit capacity',
+            'is_head_office' => false,
+            'gst_mode' => 'inherit_company',
         ])
         ->assertSessionHasErrors('name');
 

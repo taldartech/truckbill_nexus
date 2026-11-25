@@ -2,6 +2,7 @@
 
 namespace App\Domains\Company;
 
+use App\Domains\Company\Enums\BranchGstMode;
 use App\Domains\Company\Enums\DataVisibility;
 use App\Domains\Company\Exceptions\CompanyDomainException;
 use App\Domains\Master\BankCash\BankCashAccountService;
@@ -193,20 +194,26 @@ final class CompanyWorkspaceService
         });
     }
 
-    public function createBranch(Company $company, string $name, string $remark): Branch
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    public function createBranch(Company $company, string $name, string $remark, array $attributes = []): Branch
     {
         if (trim($remark) === '') {
             throw new InvalidArgumentException('A remark is required when creating a branch after company setup.');
         }
 
-        return $this->auditedTransaction->run(function () use ($company, $name, $remark): Branch {
-            return $this->withCompanyAuditContext($company, true, function () use ($company, $name, $remark): Branch {
-                return $this->createBranchWithinContext($company, $name, $remark);
+        return $this->auditedTransaction->run(function () use ($company, $name, $remark, $attributes): Branch {
+            return $this->withCompanyAuditContext($company, true, function () use ($company, $name, $remark, $attributes): Branch {
+                return $this->createBranchWithinContext($company, $name, $remark, $attributes);
             });
         });
     }
 
-    public function updateBranch(Branch $branch, string $name, string $remark): Branch
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    public function updateBranch(Branch $branch, string $name, string $remark, array $attributes = []): Branch
     {
         if (trim($remark) === '') {
             throw new InvalidArgumentException('A remark is required for branch updates.');
@@ -218,10 +225,14 @@ final class CompanyWorkspaceService
 
         $company = Company::query()->findOrFail($branch->company_id);
 
-        return $this->auditedTransaction->run(function () use ($company, $branch, $name, $remark): Branch {
-            return $this->withCompanyAuditContext($company, true, function () use ($branch, $name, $remark): Branch {
+        return $this->auditedTransaction->run(function () use ($company, $branch, $name, $remark, $attributes): Branch {
+            return $this->withCompanyAuditContext($company, true, function () use ($company, $branch, $name, $remark, $attributes): Branch {
                 $before = $this->branchSnapshot($branch);
-                $branch->forceFill(['name' => trim($name)])->save();
+                $payload = array_merge(
+                    $this->normalizeBranchAttributes($company, $attributes, $branch->id),
+                    ['name' => trim($name)],
+                );
+                $branch->forceFill($payload)->save();
 
                 $this->auditWriter->write(
                     AuditAction::Updated,
@@ -509,14 +520,25 @@ final class CompanyWorkspaceService
         });
     }
 
-    private function createBranchWithinContext(Company $company, string $name, ?string $remark = null): Branch
-    {
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function createBranchWithinContext(
+        Company $company,
+        string $name,
+        ?string $remark = null,
+        array $attributes = [],
+    ): Branch {
+        $normalized = $this->normalizeBranchAttributes($company, $attributes);
+
         $branch = new Branch;
-        $branch->forceFill([
+        $branch->forceFill(array_merge([
             'company_id' => $company->id,
             'name' => $name,
             'deactivated_at' => null,
-        ]);
+            'gst_mode' => BranchGstMode::InheritCompany,
+            'is_head_office' => false,
+        ], $normalized));
         $branch->save();
 
         $this->auditWriter->write(
@@ -529,6 +551,91 @@ final class CompanyWorkspaceService
         );
 
         return $branch;
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     * @return array<string, mixed>
+     */
+    private function normalizeBranchAttributes(
+        Company $company,
+        array $attributes,
+        ?string $exceptBranchId = null,
+    ): array {
+        if ($attributes === []) {
+            return [];
+        }
+
+        $normalized = [];
+
+        if (array_key_exists('contact_number', $attributes)) {
+            $contact = trim((string) ($attributes['contact_number'] ?? ''));
+            $normalized['contact_number'] = $contact !== '' ? $contact : null;
+            if ($normalized['contact_number'] !== null && ! preg_match('/^\d{10}$/', $normalized['contact_number'])) {
+                throw new InvalidArgumentException('Contact number must be a 10-digit mobile number when provided.');
+            }
+        }
+
+        if (array_key_exists('is_head_office', $attributes)) {
+            $normalized['is_head_office'] = (bool) $attributes['is_head_office'];
+        }
+
+        foreach (['address', 'state', 'city', 'pin'] as $field) {
+            if (array_key_exists($field, $attributes)) {
+                $value = trim((string) ($attributes[$field] ?? ''));
+                $normalized[$field] = $value !== '' ? $value : null;
+            }
+        }
+
+        if (array_key_exists('gst_mode', $attributes)) {
+            $mode = $attributes['gst_mode'] instanceof BranchGstMode
+                ? $attributes['gst_mode']
+                : BranchGstMode::from((string) $attributes['gst_mode']);
+            $normalized['gst_mode'] = $mode;
+
+            if ($mode === BranchGstMode::InheritCompany) {
+                $normalized['gst_registration_type'] = null;
+                $normalized['tax_liability'] = null;
+                $normalized['gstin'] = null;
+                $normalized['gst_rate_id'] = null;
+                $normalized['gst_rate_snapshot'] = null;
+            } else {
+                $normalized['gst_registration_type'] = $attributes['gst_registration_type'] ?? null;
+                $normalized['tax_liability'] = $attributes['tax_liability'] ?? null;
+                $gstin = trim((string) ($attributes['gstin'] ?? ''));
+                $normalized['gstin'] = $gstin !== '' ? strtoupper($gstin) : null;
+                $normalized['gst_rate_id'] = $attributes['gst_rate_id'] ?? null;
+                $normalized['gst_rate_snapshot'] = $attributes['gst_rate_snapshot'] ?? null;
+
+                if ($normalized['gst_registration_type'] === null || $normalized['tax_liability'] === null) {
+                    throw new InvalidArgumentException('Independent Branch GST requires registration type and GST scheme.');
+                }
+            }
+        }
+
+        if (($normalized['is_head_office'] ?? false) === true) {
+            $this->assertNoConflictingHeadOffice($company, $exceptBranchId);
+        }
+
+        return $normalized;
+    }
+
+    private function assertNoConflictingHeadOffice(Company $company, ?string $exceptBranchId = null): void
+    {
+        $query = Branch::query()
+            ->where('company_id', $company->id)
+            ->where('is_head_office', true)
+            ->whereNull('deleted_at');
+
+        if ($exceptBranchId !== null) {
+            $query->whereKeyNot($exceptBranchId);
+        }
+
+        if ($query->lockForUpdate()->exists()) {
+            throw new CompanyDomainException(
+                'This company already has a Head Office. Clear that designation before assigning another.',
+            );
+        }
     }
 
     /**
@@ -657,6 +764,19 @@ final class CompanyWorkspaceService
             'id' => $branch->id,
             'company_id' => $branch->company_id,
             'name' => $branch->name,
+            'contact_number' => $branch->contact_number,
+            'is_head_office' => (bool) $branch->is_head_office,
+            'address' => $branch->address,
+            'state' => $branch->state,
+            'city' => $branch->city,
+            'pin' => $branch->pin,
+            'gst_mode' => $branch->gst_mode instanceof BranchGstMode
+                ? $branch->gst_mode->value
+                : (string) ($branch->gst_mode ?? BranchGstMode::InheritCompany->value),
+            'gstin' => $branch->gstin,
+            'gst_registration_type' => $branch->gst_registration_type?->value,
+            'tax_liability' => $branch->tax_liability?->value,
+            'gst_rate_id' => $branch->gst_rate_id,
             'deactivated_at' => $branch->deactivated_at?->toISOString(),
         ];
     }

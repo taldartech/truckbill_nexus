@@ -32,7 +32,7 @@ class LorryReceipt extends Model
 
     protected $fillable = [
         'id', 'company_id', 'branch_id', 'workflow_context', 'lr_number',
-        'external_gr_number', 'client_invoice_number', 'reference_by',
+        'external_gr_number', 'client_invoice_number', 'reference_by', 'reference_by_party_id',
         'lr_date',
         'from_text', 'to_text', 'from_station_id', 'to_station_id',
         'consignor_party_id', 'consignee_party_id', 'vehicle_id',
@@ -118,6 +118,12 @@ class LorryReceipt extends Model
     public function intendedPayee(): BelongsTo
     {
         return $this->belongsTo(Party::class, 'intended_payee_party_id');
+    }
+
+    /** @return BelongsTo<Party, $this> */
+    public function referenceByParty(): BelongsTo
+    {
+        return $this->belongsTo(Party::class, 'reference_by_party_id');
     }
 
     /** @return HasOne<Trip, $this> */

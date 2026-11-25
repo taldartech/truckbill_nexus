@@ -191,6 +191,7 @@ final class LorryReceiptService
                     'external_gr_number' => $normalized['external_gr_number'],
                     'client_invoice_number' => $normalized['client_invoice_number'],
                     'reference_by' => $normalized['reference_by'],
+                    'reference_by_party_id' => $normalized['reference_by_party_id'],
                     'freight_total' => $normalized['freight_total'],
                     'additional_charges_total' => $normalized['additional_charges_total'],
                     'created_by_user_id' => $actor->id,
@@ -282,6 +283,7 @@ final class LorryReceiptService
                     'external_gr_number' => $normalized['external_gr_number'],
                     'client_invoice_number' => $normalized['client_invoice_number'],
                     'reference_by' => $normalized['reference_by'],
+                    'reference_by_party_id' => $normalized['reference_by_party_id'],
                     'freight_total' => $normalized['freight_total'],
                     'additional_charges_total' => $normalized['additional_charges_total'],
                 ])->save();
@@ -555,6 +557,23 @@ final class LorryReceiptService
             }
         }
 
+        $referenceByPartyId = $this->optionalUuid($payload['reference_by_party_id'] ?? null);
+        $referenceByText = $this->optionalTrimmedString($payload['reference_by'] ?? null, 255);
+        if ($referenceByPartyId !== null) {
+            $referenceParty = Party::query()
+                ->visibleInBranch($company->id, $branch->id)
+                ->whereKey($referenceByPartyId)
+                ->whereNull('deleted_at')
+                ->first();
+            if ($referenceParty === null) {
+                throw ValidationException::withMessages([
+                    'reference_by_party_id' => 'Selected Reference By party is not available in this branch.',
+                ]);
+            }
+            // Prefer Party Master name for display; preserve free-text only when no party is linked.
+            $referenceByText = $referenceParty->name;
+        }
+
         return [
             'workflow_context' => $context,
             'number_mode' => $numberMode,
@@ -579,7 +598,8 @@ final class LorryReceiptService
             'goods_value' => $resolvedGoodsValue,
             'external_gr_number' => $this->optionalTrimmedString($payload['external_gr_number'] ?? null, 100),
             'client_invoice_number' => $this->optionalTrimmedString($payload['client_invoice_number'] ?? null, 100),
-            'reference_by' => $this->optionalTrimmedString($payload['reference_by'] ?? null, 255),
+            'reference_by' => $referenceByText,
+            'reference_by_party_id' => $referenceByPartyId,
         ];
     }
 
