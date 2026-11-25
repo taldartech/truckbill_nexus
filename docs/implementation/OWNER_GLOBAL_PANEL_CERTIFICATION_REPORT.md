@@ -3,7 +3,7 @@
 **Decisions:** `PO-OWNER-GLOBAL-MANAGEMENT`, `PO-MASTER-COMPANY-VISIBILITY`  
 **Date:** 23 November 2026 (amended 25 November 2026 — session decoupling)  
 **Starting HEAD:** `bcb1d58b528c7ae87cebde2d37a146555e7c5d70`  
-**Tip HEAD:** _(session-decoupling commit — see git log)_  
+**Tip HEAD:** `e036c5f74ad32eedc4cb387f4f3336ed3269f544`  
 **Status:** Locally certified for session-decoupling slice — no push / no production deploy
 
 ## Scope delivered
