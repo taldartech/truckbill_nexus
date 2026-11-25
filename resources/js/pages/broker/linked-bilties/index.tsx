@@ -1,9 +1,8 @@
 import { Head, Link } from '@inertiajs/react';
-import { Eye } from 'lucide-react';
+import { Eye, Plus } from 'lucide-react';
 import { AppIconAction } from '@/components/app-icon-action';
-import { PageShell } from '@/components/page-shell';
+import { AppIndexListCard, AppIndexPage } from '@/components/app-index-page';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
-import { Button } from '@/components/ui/button';
 
 type GroupRow = {
     id: string;
@@ -38,86 +37,79 @@ export default function LinkedBiltiesIndex({
     return (
         <>
             <Head title="Linked Bilties" />
-            <PageShell
-                title="Linked Bilty Groups"
-                actions={
-                    permissions.can_create ? (
-                        <Link href={urls.create}>
-                            <Button className="bg-[#2FB36F] text-white hover:bg-[#279960]">
+            <AppIndexPage>
+                <AppIndexListCard
+                    title="Linked Bilty Groups"
+                    toolbar={
+                        permissions.can_create ? (
+                            <Link
+                                href={urls.create}
+                                className="app-index-header-btn"
+                            >
+                                <Plus className="h-3.5 w-3.5" />
                                 Create group
-                            </Button>
-                        </Link>
-                    ) : null
-                }
-            >
-                <div className="overflow-x-auto rounded-lg border border-border">
-                    <table className="w-full min-w-[640px] text-sm">
-                        <thead className="border-b bg-muted/40 text-left text-muted-foreground">
-                            <tr>
-                                <th className="px-4 py-3 font-medium">
-                                    Group No
-                                </th>
-                                <th className="px-4 py-3 font-medium">Date</th>
-                                <th className="px-4 py-3 font-medium">
-                                    Vehicle
-                                </th>
-                                <th className="px-4 py-3 font-medium">
-                                    Members
-                                </th>
-                                <th className="px-4 py-3 font-medium">
-                                    Status
-                                </th>
-                                <th className="px-4 py-3 font-medium" />
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {groups.data.length === 0 ? (
+                            </Link>
+                        ) : null
+                    }
+                >
+                    <div className="overflow-x-auto">
+                        <table className="app-index-table min-w-full">
+                            <thead>
                                 <tr>
-                                    <td
-                                        colSpan={6}
-                                        className="px-4 py-8 text-center text-muted-foreground"
-                                    >
-                                        No linked bilty groups yet.
-                                    </td>
+                                    <th>Group No</th>
+                                    <th>Date</th>
+                                    <th>Vehicle</th>
+                                    <th className="text-center">Members</th>
+                                    <th>Status</th>
+                                    <th className="text-center">Actions</th>
                                 </tr>
-                            ) : (
-                                groups.data.map((row) => (
-                                    <tr
-                                        key={row.id}
-                                        className="border-b border-border/60"
-                                    >
-                                        <td className="px-4 py-3 font-medium">
-                                            {row.group_number}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {row.group_date ?? '—'}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {row.vehicle_registration ?? '—'}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {row.member_count}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <WorkspaceStatusBadge
-                                                status={row.status}
-                                            />
-                                        </td>
-                                        <td className="px-4 py-3 text-right">
-                                            <AppIconAction
-                                                icon={Eye}
-                                                label="Open linked bilty group"
-                                                href={row.urls.show}
-                                                variant="info"
-                                            />
+                            </thead>
+                            <tbody>
+                                {groups.data.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={6}>
+                                            <p className="app-index-empty">
+                                                No linked bilty groups yet.
+                                            </p>
                                         </td>
                                     </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </PageShell>
+                                ) : (
+                                    groups.data.map((row) => (
+                                        <tr key={row.id}>
+                                            <td className="font-medium">
+                                                {row.group_number}
+                                            </td>
+                                            <td>{row.group_date ?? '—'}</td>
+                                            <td>
+                                                {row.vehicle_registration ??
+                                                    '—'}
+                                            </td>
+                                            <td className="text-center">
+                                                {row.member_count}
+                                            </td>
+                                            <td>
+                                                <WorkspaceStatusBadge
+                                                    status={row.status}
+                                                />
+                                            </td>
+                                            <td>
+                                                <div className="flex justify-center">
+                                                    <AppIconAction
+                                                        icon={Eye}
+                                                        label="Open linked group"
+                                                        href={row.urls.show}
+                                                        variant="info"
+                                                    />
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </AppIndexListCard>
+            </AppIndexPage>
         </>
     );
 }

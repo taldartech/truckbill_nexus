@@ -1,8 +1,15 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, useForm } from '@inertiajs/react';
 import { AppIconAction } from '@/components/app-icon-action';
+import {
+    FbCompactTable,
+    FbDetailCard,
+    FbDetailLayout,
+    FbDetailPage,
+    FbFinancialSummary,
+    FbInfoGrid,
+    FbInfoItem,
+} from '@/components/fb-detail';
 import { ArrowLeft, Eye, FileText } from 'lucide-react';
-import { PageShell } from '@/components/page-shell';
-import { MetricCard } from '@/components/ui/metric-card';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { Button } from '@/components/ui/button';
 
@@ -66,215 +73,284 @@ export default function VoucherShow({
 }: Props) {
     const statusForm = useForm({ status: nextStatus ?? '' });
     const hire = voucher.lorry_hire;
+    const outstandingNumber = Number(hire?.outstanding_amount ?? NaN);
+    const balanceDue =
+        Number.isFinite(outstandingNumber) && outstandingNumber > 0;
+    const cleared =
+        Number.isFinite(outstandingNumber) && outstandingNumber <= 0;
 
     return (
         <>
             <Head title={`Voucher ${voucher.voucher_number}`} />
-            <PageShell
-                title={`Voucher ${voucher.voucher_number}`}
-                actions={
-                    <Link
-                        href={urls.index}
-                        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-                    >
-                        <ArrowLeft className="h-4 w-4" />
-                        All vouchers
-                    </Link>
-                }
-            >
-                <div className="flex flex-wrap items-center gap-3">
-                    <WorkspaceStatusBadge status={voucher.status} />
-                    {hire ? (
-                        <AppIconAction
-                            icon={Eye}
-                            label={`Open hire ${hire.hire_number}`}
-                            href={urls.lorry_hire_show}
-                            variant="info"
-                            size="sm"
-                        />
-                    ) : null}
-                </div>
+            <FbDetailPage>
+                <FbDetailLayout
+                    main={
+                        <>
+                            <FbDetailCard
+                                title={`Voucher Payment (${voucher.voucher_number})`}
+                                badges={
+                                    <WorkspaceStatusBadge
+                                        status={voucher.status}
+                                    />
+                                }
+                                actions={
+                                    <>
+                                        <AppIconAction
+                                            icon={ArrowLeft}
+                                            label="Back to vouchers"
+                                            href={urls.index}
+                                            variant="outline"
+                                            size="sm"
+                                        />
+                                        {hire ? (
+                                            <AppIconAction
+                                                icon={Eye}
+                                                label={`Open hire ${hire.hire_number}`}
+                                                href={urls.lorry_hire_show}
+                                                variant="info"
+                                                size="sm"
+                                            />
+                                        ) : null}
+                                        {urls.lr_show ? (
+                                            <AppIconAction
+                                                icon={FileText}
+                                                label="Open bilty"
+                                                href={urls.lr_show}
+                                                variant="secondary"
+                                                size="sm"
+                                            />
+                                        ) : null}
+                                    </>
+                                }
+                            >
+                                <FbInfoGrid>
+                                    <FbInfoItem
+                                        label="Amount"
+                                        value={voucher.amount}
+                                        accent
+                                    />
+                                    <FbInfoItem
+                                        label="Payment type"
+                                        value={voucher.payment_type}
+                                    />
+                                    <FbInfoItem
+                                        label="Payment mode"
+                                        value={voucher.payment_mode}
+                                    />
+                                    <FbInfoItem
+                                        label="Date"
+                                        value={
+                                            voucher.voucher_date ??
+                                            voucher.created_at
+                                        }
+                                    />
+                                    <FbInfoItem
+                                        label="Payee"
+                                        value={voucher.payee_name}
+                                    />
+                                    <FbInfoItem
+                                        label="Account / reference"
+                                        value={
+                                            voucher.bank_cash_account_name ??
+                                            voucher.cash_reference ??
+                                            voucher.pump_reference
+                                        }
+                                    />
+                                    {voucher.remark ? (
+                                        <FbInfoItem
+                                            label="Remark"
+                                            value={voucher.remark}
+                                            full
+                                        />
+                                    ) : null}
+                                </FbInfoGrid>
+                            </FbDetailCard>
 
-                <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    <MetricCard
-                        label="Voucher amount"
-                        value={voucher.amount ?? '—'}
-                    />
-                    <MetricCard
-                        label="Payment type"
-                        value={voucher.payment_type}
-                    />
-                    <MetricCard
-                        label="Payment mode"
-                        value={voucher.payment_mode ?? '—'}
-                    />
-                    <MetricCard
-                        label="Account / reference"
-                        value={
-                            voucher.bank_cash_account_name ??
-                            voucher.cash_reference ??
-                            voucher.pump_reference ??
-                            '—'
-                        }
-                    />
-                </div>
-
-                <div className="mt-6 grid gap-4 lg:grid-cols-2">
-                    <section className="rounded-lg border border-border p-4">
-                        <h2 className="text-sm font-semibold">
-                            Payment details
-                        </h2>
-                        <dl className="mt-3 space-y-2 text-sm">
-                            <div className="flex justify-between gap-3">
-                                <dt className="text-muted-foreground">Date</dt>
-                                <dd>
-                                    {voucher.voucher_date ??
-                                        voucher.created_at ??
-                                        '—'}
-                                </dd>
-                            </div>
-                            <div className="flex justify-between gap-3">
-                                <dt className="text-muted-foreground">Payee</dt>
-                                <dd>{voucher.payee_name ?? '—'}</dd>
-                            </div>
-                            <div className="flex justify-between gap-3">
-                                <dt className="text-muted-foreground">
-                                    Bank/Cash account
-                                </dt>
-                                <dd>{voucher.bank_cash_account_name ?? '—'}</dd>
-                            </div>
-                            {voucher.remark ? (
-                                <div>
-                                    <dt className="text-muted-foreground">
-                                        Remark
-                                    </dt>
-                                    <dd className="mt-1">{voucher.remark}</dd>
-                                </div>
+                            {hire ? (
+                                <FbDetailCard title="Lorry Hire context">
+                                    <FbInfoGrid>
+                                        <FbInfoItem
+                                            label="Hire #"
+                                            value={hire.hire_number}
+                                            accent
+                                        />
+                                        <FbInfoItem
+                                            label="LR"
+                                            value={hire.lr_number}
+                                        />
+                                        <FbInfoItem
+                                            label="Transporter"
+                                            value={hire.transporter_name}
+                                        />
+                                        <FbInfoItem
+                                            label="Truck"
+                                            value={hire.vehicle_registration}
+                                        />
+                                        <FbInfoItem
+                                            label="TR Freight"
+                                            value={hire.freight_total}
+                                        />
+                                        <FbInfoItem
+                                            label="TDS"
+                                            value={
+                                                hire.tds_percent
+                                                    ? `${hire.tds_amount ?? '—'} (${hire.tds_percent}%)`
+                                                    : hire.tds_amount
+                                            }
+                                        />
+                                        <FbInfoItem
+                                            label="Net payable"
+                                            value={hire.net_payable}
+                                        />
+                                        <FbInfoItem
+                                            label="Paid / Outstanding"
+                                            value={`${hire.paid_amount ?? '—'} / ${hire.outstanding_amount ?? '—'}`}
+                                        />
+                                    </FbInfoGrid>
+                                </FbDetailCard>
                             ) : null}
-                        </dl>
-                    </section>
 
-                    {hire ? (
-                        <section className="rounded-lg border border-border p-4">
-                            <h2 className="text-sm font-semibold">
-                                Lorry Hire context
-                            </h2>
-                            <p className="mt-2 text-sm font-medium">
-                                {hire.hire_number}
-                                {hire.lr_number
-                                    ? ` · LR ${hire.lr_number}`
-                                    : ''}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                                {hire.transporter_name ?? '—'} ·{' '}
-                                {hire.vehicle_registration ?? '—'}
-                            </p>
-                            <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
-                                <div>
-                                    <dt className="text-xs text-muted-foreground">
-                                        Transporter freight
-                                    </dt>
-                                    <dd>{hire.freight_total ?? '—'}</dd>
-                                </div>
-                                <div>
-                                    <dt className="text-xs text-muted-foreground">
-                                        TDS
-                                        {hire.tds_percent
-                                            ? ` (${hire.tds_percent}%)`
-                                            : ''}
-                                    </dt>
-                                    <dd>{hire.tds_amount ?? '—'}</dd>
-                                </div>
-                                <div>
-                                    <dt className="text-xs text-muted-foreground">
-                                        Net payable
-                                    </dt>
-                                    <dd>{hire.net_payable ?? '—'}</dd>
-                                </div>
-                                <div>
-                                    <dt className="text-xs text-muted-foreground">
-                                        Paid / Outstanding
-                                    </dt>
-                                    <dd>
-                                        {hire.paid_amount ?? '—'} /{' '}
-                                        {hire.outstanding_amount ?? '—'}
-                                    </dd>
-                                </div>
-                            </dl>
-                        </section>
-                    ) : null}
-                </div>
-
-                {hire && hire.adjustments.length > 0 ? (
-                    <section className="mt-6 rounded-lg border border-border p-4">
-                        <h2 className="text-sm font-semibold">Adjustments</h2>
-                        <ul className="mt-2 space-y-2 text-sm">
-                            {hire.adjustments.map((row, index) => (
-                                <li
-                                    key={`${row.type}-${index}`}
-                                    className="rounded-md border border-border px-3 py-2"
+                            {hire && hire.adjustments.length > 0 ? (
+                                <FbCompactTable
+                                    title="Adjustments"
+                                    count={hire.adjustments.length}
+                                    headers={['Type', 'Amount', 'Reason']}
+                                    empty="No adjustments."
                                 >
-                                    {row.type.replaceAll('_', ' ')} ·{' '}
-                                    {row.amount ?? '—'}
-                                    {row.reason ? ` — ${row.reason}` : ''}
-                                </li>
-                            ))}
-                        </ul>
-                    </section>
-                ) : null}
+                                    {hire.adjustments.map((row, index) => (
+                                        <tr key={`${row.type}-${index}`}>
+                                            <td className="px-3 py-2">
+                                                {row.type.replaceAll('_', ' ')}
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                {row.amount ?? '—'}
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                {row.reason ?? '—'}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </FbCompactTable>
+                            ) : null}
 
-                {hire && hire.voucher_history.length > 0 ? (
-                    <section className="mt-6 rounded-lg border border-border p-4">
-                        <h2 className="text-sm font-semibold">
-                            Voucher history on this hire
-                        </h2>
-                        <ul className="mt-2 space-y-2 text-sm">
-                            {hire.voucher_history.map((row) => (
-                                <li
-                                    key={row.id}
-                                    className={`flex flex-wrap items-center justify-between gap-2 rounded-md border px-3 py-2 ${
-                                        row.is_current
-                                            ? 'border-primary/40 bg-primary/5'
-                                            : 'border-border'
-                                    }`}
+                            {hire && hire.voucher_history.length > 0 ? (
+                                <FbCompactTable
+                                    title="Voucher history on this hire"
+                                    count={hire.voucher_history.length}
+                                    headers={[
+                                        'Voucher',
+                                        'Type',
+                                        'Amount',
+                                        'Status',
+                                    ]}
+                                    empty="No voucher history."
                                 >
-                                    <span>
-                                        {row.voucher_number} ·{' '}
-                                        {row.payment_type} · {row.amount ?? '—'}
-                                    </span>
-                                    <WorkspaceStatusBadge status={row.status} />
-                                </li>
-                            ))}
-                        </ul>
-                    </section>
-                ) : null}
+                                    {hire.voucher_history.map((row) => (
+                                        <tr
+                                            key={row.id}
+                                            className={
+                                                row.is_current
+                                                    ? 'bg-emerald-50/60'
+                                                    : undefined
+                                            }
+                                        >
+                                            <td className="px-3 py-2 font-medium">
+                                                {row.voucher_number}
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                {row.payment_type}
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                {row.amount ?? '—'}
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                <WorkspaceStatusBadge
+                                                    status={row.status}
+                                                />
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </FbCompactTable>
+                            ) : null}
 
-                {permissions.can_status && nextStatus ? (
-                    <form
-                        className="mt-6 flex flex-wrap items-center gap-3"
-                        onSubmit={(event) => {
-                            event.preventDefault();
-                            statusForm.post(urls.status);
-                        }}
-                    >
-                        <input type="hidden" name="status" value={nextStatus} />
-                        <Button
-                            type="submit"
-                            disabled={statusForm.processing}
-                            className="bg-[#2FB36F] text-white hover:bg-[#279960]"
-                        >
-                            Mark as {nextStatus.replaceAll('_', ' ')}
-                        </Button>
-                        <AppIconAction
-                            icon={FileText}
-                            label="Back to hire"
-                            href={urls.lorry_hire_show}
-                            variant="outline"
-                            size="sm"
-                        />
-                    </form>
-                ) : null}
-            </PageShell>
+                            {permissions.can_status && nextStatus ? (
+                                <FbDetailCard title="Status action">
+                                    <form
+                                        className="flex flex-wrap items-center gap-3 px-4 py-3"
+                                        onSubmit={(event) => {
+                                            event.preventDefault();
+                                            statusForm.post(urls.status);
+                                        }}
+                                    >
+                                        <input
+                                            type="hidden"
+                                            name="status"
+                                            value={nextStatus}
+                                        />
+                                        <Button
+                                            type="submit"
+                                            disabled={statusForm.processing}
+                                            className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                                        >
+                                            Mark as{' '}
+                                            {nextStatus.replaceAll('_', ' ')}
+                                        </Button>
+                                    </form>
+                                </FbDetailCard>
+                            ) : null}
+                        </>
+                    }
+                    side={
+                        <>
+                            <FbFinancialSummary
+                                balanceDue={balanceDue}
+                                cleared={cleared}
+                                trAmount={hire?.freight_total ?? '—'}
+                                deductions={hire?.tds_amount ?? '—'}
+                                balance={hire?.outstanding_amount ?? '—'}
+                                rows={[
+                                    {
+                                        label: 'Voucher amount',
+                                        value: voucher.amount ?? '—',
+                                    },
+                                    {
+                                        label: 'TR Freight',
+                                        value: hire?.freight_total ?? '—',
+                                    },
+                                    {
+                                        label: 'TDS',
+                                        value: hire?.tds_amount ?? '—',
+                                    },
+                                    {
+                                        label: 'Net payable',
+                                        value: hire?.net_payable ?? '—',
+                                    },
+                                    {
+                                        label: 'Outstanding',
+                                        value: hire?.outstanding_amount ?? '—',
+                                    },
+                                ]}
+                            />
+                            <FbDetailCard title="Record Info">
+                                <FbInfoGrid>
+                                    <FbInfoItem
+                                        label="Voucher #"
+                                        value={voucher.voucher_number}
+                                    />
+                                    <FbInfoItem
+                                        label="Status"
+                                        value={voucher.status}
+                                    />
+                                    <FbInfoItem
+                                        label="Created"
+                                        value={voucher.created_at}
+                                    />
+                                </FbInfoGrid>
+                            </FbDetailCard>
+                        </>
+                    }
+                />
+            </FbDetailPage>
         </>
     );
 }

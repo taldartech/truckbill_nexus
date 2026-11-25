@@ -10,7 +10,7 @@ import {
     Wallet,
 } from 'lucide-react';
 import { AppIconAction } from '@/components/app-icon-action';
-import { PageShell } from '@/components/page-shell';
+import { AppIndexListCard, AppIndexPage } from '@/components/app-index-page';
 import { MetricCard } from '@/components/ui/metric-card';
 
 type RegisterLink = {
@@ -53,10 +53,7 @@ export default function BrokerRegistersIndex({ counts, registers }: Props) {
     return (
         <>
             <Head title="Broker Operational Registers" />
-            <PageShell
-                title="Broker operational registers"
-                description="Read-focused shortcuts into existing Broker list screens. Use filters on each register for pending queues."
-            >
+            <AppIndexPage className="space-y-3">
                 <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                     <MetricCard
                         label="Open operational signals"
@@ -67,42 +64,49 @@ export default function BrokerRegistersIndex({ counts, registers }: Props) {
                     />
                 </div>
 
-                <ul className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                    {registers.map((register) => {
-                        const Icon =
-                            registerIcons[register.key] ?? ClipboardList;
+                <AppIndexListCard title="Broker Operational Registers">
+                    <p className="border-b border-[#e5e7eb] bg-[#f8fafc] px-4 py-3 text-xs text-muted-foreground">
+                        Read-focused shortcuts into existing Broker list
+                        screens. Use filters on each register for pending
+                        queues.
+                    </p>
+                    <ul className="grid gap-2 p-4 sm:grid-cols-2 lg:grid-cols-3">
+                        {registers.map((register) => {
+                            const Icon =
+                                registerIcons[register.key] ?? ClipboardList;
 
-                        return (
-                            <li
-                                key={register.key}
-                                className="flex items-start gap-2 rounded-xl border border-border bg-card px-3 py-3 shadow-xs"
-                            >
-                                <div className="min-w-0 flex-1 space-y-1">
-                                    <div className="flex items-start justify-between gap-2">
-                                        <span className="text-sm font-semibold text-foreground">
-                                            {register.title}
-                                        </span>
-                                        {register.count !== null ? (
-                                            <span className="shrink-0 rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-foreground">
-                                                {register.count}
+                            return (
+                                <li
+                                    key={register.key}
+                                    className="flex items-start gap-2 rounded-xl border border-border bg-card px-3 py-3 shadow-xs"
+                                >
+                                    <div className="min-w-0 flex-1 space-y-1">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <span className="text-sm font-semibold text-foreground">
+                                                {register.title}
                                             </span>
-                                        ) : null}
+                                            {register.count !== null ? (
+                                                <span className="shrink-0 rounded-md bg-muted px-2 py-0.5 text-xs font-medium text-foreground">
+                                                    {register.count}
+                                                </span>
+                                            ) : null}
+                                        </div>
+                                        <p className="text-xs text-muted-foreground">
+                                            {register.description}
+                                        </p>
                                     </div>
-                                    <p className="text-xs text-muted-foreground">
-                                        {register.description}
-                                    </p>
-                                </div>
-                                <AppIconAction
-                                    icon={Icon}
-                                    label={`Open ${register.title}`}
-                                    href={register.href}
-                                    variant="info"
-                                />
-                            </li>
-                        );
-                    })}
-                </ul>
-            </PageShell>
+                                    <AppIconAction
+                                        icon={Icon}
+                                        label={`Open ${register.title}`}
+                                        href={register.href}
+                                        variant="info"
+                                    />
+                                </li>
+                            );
+                        })}
+                    </ul>
+                </AppIndexListCard>
+            </AppIndexPage>
         </>
     );
 }

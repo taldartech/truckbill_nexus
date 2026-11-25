@@ -1,8 +1,11 @@
-import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Head, router, useForm } from '@inertiajs/react';
 import { FormEvent, useMemo, useRef, useState } from 'react';
 import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
 import type { FieldReview } from '@/components/form-confirmation/types';
-import { PageShell } from '@/components/page-shell';
+import {
+    LrfPage,
+    LrfSection,
+} from '@/pages/branch/lorry-receipts/lr-form-sections';
 import { SearchablePartySelect } from '@/components/searchable-party-select';
 import {
     SearchableVehicleSelect,
@@ -126,155 +129,150 @@ export default function LinkedBiltiesCreate({
     return (
         <>
             <Head title="Create Linked Bilty Group" />
-            <PageShell
-                chrome="compact"
+            <LrfPage
                 title="Create Linked Bilty Group"
-                description="Group market-vehicle bilties that share one payee and payment journey."
-                actions={
-                    <Link
-                        href={urls.index}
-                        className="text-sm text-muted-foreground hover:text-foreground"
-                    >
-                        Back to list
-                    </Link>
-                }
+                subtitle="Group market-vehicle bilties that share one payee and payment journey."
+                backHref={urls.index}
+                backLabel="Linked Bilties"
             >
                 <form
                     id="linked-bilty-create-form"
-                    className="space-y-4"
+                    className="space-y-3"
                     onSubmit={submit}
                 >
-                    <section className="grid gap-4 md:grid-cols-2">
-                        <div className="space-y-3 rounded-lg border border-border bg-card p-4">
-                            <h2 className="text-sm font-semibold text-[#2FB36F]">
-                                1. Document
-                            </h2>
-                            <div className="space-y-1">
-                                <Label htmlFor="group_date">Group date</Label>
-                                <Input
-                                    id="group_date"
-                                    name="group_date"
-                                    type="date"
-                                    value={form.data.group_date}
-                                    onChange={(event) =>
-                                        form.setData(
-                                            'group_date',
-                                            event.target.value,
-                                        )
-                                    }
-                                />
-                                {form.errors.group_date && (
-                                    <p className="text-xs text-destructive">
-                                        {form.errors.group_date}
-                                    </p>
-                                )}
-                            </div>
-                            <div className="space-y-1">
-                                <Label htmlFor="reference">Reference</Label>
-                                <Input
-                                    id="reference"
-                                    name="reference"
-                                    value={form.data.reference}
-                                    onChange={(event) =>
-                                        form.setData(
-                                            'reference',
-                                            event.target.value,
-                                        )
-                                    }
-                                />
-                            </div>
-                            <div className="space-y-1">
-                                <Label htmlFor="remarks">Remarks</Label>
-                                <Input
-                                    id="remarks"
-                                    name="remarks"
-                                    value={form.data.remarks}
-                                    onChange={(event) =>
-                                        form.setData(
-                                            'remarks',
-                                            event.target.value,
-                                        )
-                                    }
-                                />
-                            </div>
-                        </div>
-                        <div className="space-y-3 rounded-lg border border-border bg-card p-4">
-                            <h2 className="text-sm font-semibold text-[#2FB36F]">
-                                2. Vehicle &amp; Payee
-                            </h2>
-                            <SearchableVehicleSelect
-                                id="vehicle_id"
-                                name="vehicle_id"
-                                label="Market vehicle"
-                                options={vehicles}
-                                searchUrl={urls.vehicles_options}
-                                ownership="market"
-                                required
-                                value={vehicleId}
-                                onValueChange={(next) => {
-                                    setVehicleId(next);
-                                    form.setData('vehicle_id', next);
-                                    setSelected([]);
-                                    router.get(
-                                        urls.filter,
-                                        { vehicle_id: next || undefined },
-                                        {
-                                            preserveState: true,
-                                            replace: true,
-                                        },
-                                    );
-                                }}
-                                createStoreUrl={urls.vehicles_store}
-                                createHref={urls.vehicles_create}
-                                createLabel="Add"
-                                partiesOptionsUrl={urls.parties_options}
-                                partiesStoreUrl={urls.parties_store}
-                                emptyMessage="No market vehicles in this branch."
-                                error={form.errors.vehicle_id}
-                            />
-                            <SearchablePartySelect
-                                id="payee_party_id"
-                                name="payee_party_id"
-                                label="Payee"
-                                options={payees}
-                                searchUrl={urls.parties_options}
-                                role="transporter"
-                                roles={['transporter', 'driver']}
-                                createStoreUrl={urls.parties_store}
-                                createLabel="Add"
-                                createRole="transporter"
-                                value={form.data.payee_party_id}
-                                onValueChange={(value) =>
-                                    form.setData('payee_party_id', value)
+                    <LrfSection
+                        step={1}
+                        title="Document"
+                        description="Group date and reference."
+                        tone="receipt"
+                    >
+                        <div className="space-y-1">
+                            <Label htmlFor="group_date">Group date</Label>
+                            <Input
+                                id="group_date"
+                                name="group_date"
+                                type="date"
+                                value={form.data.group_date}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'group_date',
+                                        event.target.value,
+                                    )
                                 }
-                                emptyMessage="No eligible payees in this branch."
                             />
-                            <div className="space-y-1">
-                                <Label htmlFor="driver_name">Driver name</Label>
-                                <Input
-                                    id="driver_name"
-                                    name="driver_name"
-                                    value={form.data.driver_name}
-                                    onChange={(event) =>
-                                        form.setData(
-                                            'driver_name',
-                                            event.target.value,
-                                        )
-                                    }
-                                />
-                            </div>
+                            {form.errors.group_date && (
+                                <p className="text-xs text-destructive">
+                                    {form.errors.group_date}
+                                </p>
+                            )}
                         </div>
-                    </section>
+                        <div className="space-y-1">
+                            <Label htmlFor="reference">Reference</Label>
+                            <Input
+                                id="reference"
+                                name="reference"
+                                value={form.data.reference}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'reference',
+                                        event.target.value,
+                                    )
+                                }
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <Label htmlFor="remarks">Remarks</Label>
+                            <Input
+                                id="remarks"
+                                name="remarks"
+                                value={form.data.remarks}
+                                onChange={(event) =>
+                                    form.setData('remarks', event.target.value)
+                                }
+                            />
+                        </div>
+                    </LrfSection>
 
-                    <section className="space-y-3 rounded-lg border border-border p-4">
-                        <div className="flex items-center justify-between gap-2">
-                            <h2 className="text-sm font-semibold text-[#2FB36F]">
-                                3. Member bilties (minimum 2)
-                            </h2>
-                            <span className="text-xs text-muted-foreground">
+                    <LrfSection
+                        step={2}
+                        title="Vehicle & Payee"
+                        description="Market vehicle and intended payee."
+                        tone="route"
+                    >
+                        <SearchableVehicleSelect
+                            id="vehicle_id"
+                            name="vehicle_id"
+                            label="Market vehicle"
+                            options={vehicles}
+                            searchUrl={urls.vehicles_options}
+                            ownership="market"
+                            required
+                            value={vehicleId}
+                            onValueChange={(next) => {
+                                setVehicleId(next);
+                                form.setData('vehicle_id', next);
+                                setSelected([]);
+                                router.get(
+                                    urls.filter,
+                                    { vehicle_id: next || undefined },
+                                    {
+                                        preserveState: true,
+                                        replace: true,
+                                    },
+                                );
+                            }}
+                            createStoreUrl={urls.vehicles_store}
+                            createHref={urls.vehicles_create}
+                            createLabel="Add"
+                            partiesOptionsUrl={urls.parties_options}
+                            partiesStoreUrl={urls.parties_store}
+                            emptyMessage="No market vehicles in this branch."
+                            error={form.errors.vehicle_id}
+                        />
+                        <SearchablePartySelect
+                            id="payee_party_id"
+                            name="payee_party_id"
+                            label="Payee"
+                            options={payees}
+                            searchUrl={urls.parties_options}
+                            role="transporter"
+                            roles={['transporter', 'driver']}
+                            createStoreUrl={urls.parties_store}
+                            createLabel="Add"
+                            createRole="transporter"
+                            value={form.data.payee_party_id}
+                            onValueChange={(value) =>
+                                form.setData('payee_party_id', value)
+                            }
+                            emptyMessage="No eligible payees in this branch."
+                        />
+                        <div className="space-y-1">
+                            <Label htmlFor="driver_name">Driver name</Label>
+                            <Input
+                                id="driver_name"
+                                name="driver_name"
+                                value={form.data.driver_name}
+                                onChange={(event) =>
+                                    form.setData(
+                                        'driver_name',
+                                        event.target.value,
+                                    )
+                                }
+                            />
+                        </div>
+                    </LrfSection>
+
+                    <LrfSection
+                        step={3}
+                        title="Member bilties"
+                        description="Select at least two eligible Broker bilties."
+                        tone="goods"
+                        headRight={
+                            <span className="text-xs text-slate-500">
                                 {selected.length} selected
                             </span>
-                        </div>
+                        }
+                    >
                         {form.errors.lorry_receipt_ids && (
                             <p className="text-xs text-destructive">
                                 {form.errors.lorry_receipt_ids}
@@ -346,15 +344,19 @@ export default function LinkedBiltiesCreate({
                                 </tbody>
                             </table>
                         </div>
-                    </section>
 
-                    <Button
-                        type="submit"
-                        disabled={form.processing || selected.length < 2}
-                        className="bg-[#2FB36F] text-white hover:bg-[#279960]"
-                    >
-                        Create linked bilty group
-                    </Button>
+                        <div className="mt-4">
+                            <Button
+                                type="submit"
+                                disabled={
+                                    form.processing || selected.length < 2
+                                }
+                                className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                            >
+                                Create linked bilty group
+                            </Button>
+                        </div>
+                    </LrfSection>
                 </form>
 
                 <FormConfirmationDialog
@@ -375,7 +377,7 @@ export default function LinkedBiltiesCreate({
                         }, 0);
                     }}
                 />
-            </PageShell>
+            </LrfPage>
         </>
     );
 }

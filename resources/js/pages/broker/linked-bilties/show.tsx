@@ -1,9 +1,17 @@
-import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { Form, Head, usePage } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
+import { AppIconAction } from '@/components/app-icon-action';
+import {
+    FbCompactTable,
+    FbDetailCard,
+    FbDetailLayout,
+    FbDetailPage,
+    FbInfoGrid,
+    FbInfoItem,
+} from '@/components/fb-detail';
 import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
 import type { FieldReview } from '@/components/form-confirmation/types';
-import { PageShell } from '@/components/page-shell';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -130,407 +138,487 @@ export default function LinkedBiltyShow({
     return (
         <>
             <Head title={`Linked Bilty ${group.group_number}`} />
-            <PageShell
-                title={`Group ${group.group_number}`}
-                actions={
-                    <Link
-                        href={urls.index}
-                        className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-                    >
-                        <ArrowLeft className="h-4 w-4" />
-                        All groups
-                    </Link>
-                }
-            >
+            <FbDetailPage>
                 {flash.success ? (
-                    <p className="mb-4 rounded-md border border-[#2FB36F]/30 bg-[#2FB36F]/10 px-3 py-2 text-sm text-[#1f7a4d]">
+                    <p
+                        role="status"
+                        className="mb-3 rounded-md border border-[#2FB36F]/30 bg-[#2FB36F]/10 px-3 py-2 text-sm text-[#1f7a4d]"
+                    >
                         {flash.success}
                     </p>
                 ) : null}
 
-                <section className="mb-8 grid gap-3 rounded-lg border border-border p-4 md:grid-cols-2">
-                    <div>
-                        <p className="text-xs text-muted-foreground">Status</p>
-                        <WorkspaceStatusBadge status={group.status} />
-                    </div>
-                    <div>
-                        <p className="text-xs text-muted-foreground">Date</p>
-                        <p className="text-sm">{group.group_date ?? '—'}</p>
-                    </div>
-                    <div>
-                        <p className="text-xs text-muted-foreground">Vehicle</p>
-                        <p className="text-sm">
-                            {group.vehicle_registration ?? '—'}
-                        </p>
-                    </div>
-                    <div>
-                        <p className="text-xs text-muted-foreground">Payee</p>
-                        <p className="text-sm">{group.payee_name ?? '—'}</p>
-                    </div>
-                    <div>
-                        <p className="text-xs text-muted-foreground">Driver</p>
-                        <p className="text-sm">{group.driver_name ?? '—'}</p>
-                    </div>
-                    <div>
-                        <p className="text-xs text-muted-foreground">
-                            Reference
-                        </p>
-                        <p className="text-sm">{group.reference ?? '—'}</p>
-                    </div>
-                </section>
-
-                <section className="mb-8 overflow-x-auto rounded-lg border border-border">
-                    <table className="w-full min-w-[720px] text-sm">
-                        <thead className="border-b bg-muted/40 text-left text-muted-foreground">
-                            <tr>
-                                <th className="px-4 py-3">LR No</th>
-                                <th className="px-4 py-3">Hire No</th>
-                                <th className="px-4 py-3">Hire ready</th>
-                                <th className="px-4 py-3">Allocatable</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {group.members.map((member) => (
-                                <tr
-                                    key={member.member_id}
-                                    className="border-b border-border/60"
-                                >
-                                    <td className="px-4 py-3">
-                                        {member.lr_number ?? '—'}
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        {member.hire_number ?? '—'}
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        {member.has_hire ? 'Yes' : 'No'}
-                                    </td>
-                                    <td className="px-4 py-3">
-                                        {member.allocatable_amount ?? '—'}
-                                    </td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </section>
-
-                {permissions.can_pay && allMembersHaveHire ? (
-                    <section className="space-y-4 rounded-lg border border-border p-4">
-                        <h2 className="text-sm font-semibold text-[#2FB36F]">
-                            Group payment
-                        </h2>
-                        <Form
-                            action={urls.pay}
-                            method="post"
-                            id="linked-bilty-pay-form"
-                            className="grid gap-4 md:grid-cols-2"
-                            onSubmit={(event) => {
-                                if (!paySubmitAllowed.current) {
-                                    event.preventDefault();
-                                    const data = new FormData(
-                                        event.currentTarget,
-                                    );
-                                    const amountValue = data.get('amount');
-                                    const amount =
-                                        typeof amountValue === 'string'
-                                            ? amountValue
-                                            : '—';
-                                    const accountId = data.get(
-                                        'bank_cash_account_id',
-                                    );
-                                    const accountLabel =
-                                        typeof accountId === 'string' &&
-                                        accountId !== ''
-                                            ? (bankCashAccounts.find(
-                                                  (account) =>
-                                                      account.id === accountId,
-                                              )?.name ?? accountId)
-                                            : '—';
-                                    const paymentTypeValue =
-                                        data.get('payment_type');
-                                    const paymentTypeLabel =
-                                        typeof paymentTypeValue === 'string'
-                                            ? (paymentTypeOptions.find(
-                                                  (option) =>
-                                                      option.value ===
-                                                      paymentTypeValue,
-                                              )?.label ?? paymentTypeValue)
-                                            : '—';
-                                    const fields: FieldReview[] = [
-                                        {
-                                            label: 'Group',
-                                            value: group.group_number,
-                                        },
-                                        {
-                                            label: 'Payee',
-                                            value: group.payee_name ?? '—',
-                                        },
-                                        {
-                                            label: 'Payment amount',
-                                            value: amount,
-                                        },
-                                        {
-                                            label: 'Payment type',
-                                            value: paymentTypeLabel,
-                                        },
-                                        {
-                                            label: 'Payment mode',
-                                            value:
-                                                paymentModeOptions.find(
-                                                    (option) =>
-                                                        option.value ===
-                                                        paymentMode,
-                                                )?.label ?? paymentMode,
-                                        },
-                                        {
-                                            label: 'Receiving / paying account',
-                                            value:
-                                                paymentMode === 'bank'
-                                                    ? accountLabel
-                                                    : 'Cash',
-                                        },
-                                        {
-                                            label: 'Total eligible',
-                                            value:
-                                                preview?.total_eligible ??
-                                                'Preview first',
-                                        },
-                                    ];
-                                    if (preview && preview.lines.length > 0) {
-                                        for (const line of preview.lines) {
-                                            const lr =
-                                                line.lr_number ??
-                                                line.hire_number ??
-                                                line.member_id;
-                                            fields.push({
-                                                label: `Allocation · ${lr}`,
-                                                value: `Eligible ${line.eligible_outstanding ?? '—'} → Allocated ${line.allocated_amount ?? '—'}`,
-                                            });
-                                        }
-                                    } else {
-                                        fields.push({
-                                            label: 'Allocations',
-                                            value: 'Not previewed — run Preview allocation first',
-                                        });
-                                    }
-                                    setPayReviewFields(fields);
-                                    setPayConfirmOpen(true);
-                                    return;
-                                }
-                                paySubmitAllowed.current = false;
-                            }}
-                        >
-                            {({ processing, errors }) => (
-                                <>
-                                    <div className="space-y-1">
-                                        <Label htmlFor="amount">
-                                            Payment amount
-                                        </Label>
-                                        <Input
-                                            id="amount"
-                                            name="amount"
-                                            type="number"
-                                            min="0.01"
-                                            step="0.01"
-                                            required
-                                        />
-                                        {errors.amount && (
-                                            <p className="text-xs text-destructive">
-                                                {errors.amount}
-                                            </p>
-                                        )}
-                                    </div>
-                                    <div className="space-y-1">
-                                        <Label htmlFor="voucher_date">
-                                            Voucher date
-                                        </Label>
-                                        <Input
-                                            id="voucher_date"
-                                            name="voucher_date"
-                                            type="date"
-                                        />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <Label htmlFor="payment_type">
-                                            Payment type
-                                        </Label>
-                                        <select
-                                            id="payment_type"
-                                            name="payment_type"
-                                            required
-                                            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                        >
-                                            {paymentTypeOptions.map(
-                                                (option) => (
-                                                    <option
-                                                        key={option.value}
-                                                        value={option.value}
-                                                    >
-                                                        {option.label}
-                                                    </option>
-                                                ),
-                                            )}
-                                        </select>
-                                    </div>
-                                    <div className="space-y-1">
-                                        <Label htmlFor="payment_mode">
-                                            Payment mode
-                                        </Label>
-                                        <select
-                                            id="payment_mode"
-                                            name="payment_mode"
-                                            required
-                                            value={paymentMode}
-                                            onChange={(event) =>
-                                                setPaymentMode(
-                                                    event.target.value,
-                                                )
-                                            }
-                                            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                        >
-                                            {paymentModeOptions.map(
-                                                (option) => (
-                                                    <option
-                                                        key={option.value}
-                                                        value={option.value}
-                                                    >
-                                                        {option.label}
-                                                    </option>
-                                                ),
-                                            )}
-                                        </select>
-                                    </div>
-                                    {paymentMode === 'bank' ? (
-                                        <div className="space-y-1 md:col-span-2">
-                                            <Label htmlFor="bank_cash_account_id">
-                                                Bank/Cash account
-                                            </Label>
-                                            <select
-                                                id="bank_cash_account_id"
-                                                name="bank_cash_account_id"
-                                                required
-                                                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                            >
-                                                <option value="">
-                                                    Select account…
-                                                </option>
-                                                {bankCashAccounts.map(
-                                                    (account) => (
-                                                        <option
-                                                            key={account.id}
-                                                            value={account.id}
-                                                        >
-                                                            {account.name}
-                                                        </option>
-                                                    ),
-                                                )}
-                                            </select>
-                                        </div>
-                                    ) : null}
-                                    <div className="space-y-1 md:col-span-2">
-                                        <Label htmlFor="remark">Remark</Label>
-                                        <Input id="remark" name="remark" />
-                                    </div>
-                                    <input
-                                        type="hidden"
-                                        name="idempotency_key"
-                                        value={group.id}
+                <FbDetailLayout
+                    main={
+                        <>
+                            <FbDetailCard
+                                title={`Linked Bilty Group (${group.group_number})`}
+                                badges={
+                                    <WorkspaceStatusBadge
+                                        status={group.status}
                                     />
-                                    <div className="flex flex-wrap gap-2 md:col-span-2">
-                                        <Button
-                                            type="button"
-                                            variant="outline"
-                                            disabled={previewing}
-                                            onClick={() => {
-                                                const form =
-                                                    document.getElementById(
-                                                        'linked-bilty-pay-form',
-                                                    ) as HTMLFormElement | null;
-                                                if (form) {
-                                                    void runPreview(form);
+                                }
+                                actions={
+                                    <AppIconAction
+                                        icon={ArrowLeft}
+                                        label="All groups"
+                                        href={urls.index}
+                                        variant="outline"
+                                        size="sm"
+                                    />
+                                }
+                            >
+                                <FbInfoGrid>
+                                    <FbInfoItem
+                                        label="Date"
+                                        value={group.group_date}
+                                    />
+                                    <FbInfoItem
+                                        label="Vehicle"
+                                        value={group.vehicle_registration}
+                                        accent
+                                    />
+                                    <FbInfoItem
+                                        label="Payee"
+                                        value={group.payee_name}
+                                    />
+                                    <FbInfoItem
+                                        label="Driver"
+                                        value={group.driver_name}
+                                    />
+                                    <FbInfoItem
+                                        label="Reference"
+                                        value={group.reference}
+                                        span2
+                                    />
+                                </FbInfoGrid>
+                            </FbDetailCard>
+
+                            <FbCompactTable
+                                title="Group members"
+                                count={group.members.length}
+                                headers={[
+                                    'LR No',
+                                    'Hire No',
+                                    'Hire ready',
+                                    'Allocatable',
+                                ]}
+                                empty="No members in this group."
+                            >
+                                {group.members.map((member) => (
+                                    <tr key={member.member_id}>
+                                        <td className="px-3 py-2">
+                                            {member.lr_number ?? '—'}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            {member.hire_number ?? '—'}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            {member.has_hire ? 'Yes' : 'No'}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            {member.allocatable_amount ?? '—'}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </FbCompactTable>
+
+                            {permissions.can_pay && allMembersHaveHire ? (
+                                <FbDetailCard title="Group payment">
+                                    <div className="space-y-4 px-4 py-3">
+                                        <Form
+                                            action={urls.pay}
+                                            method="post"
+                                            id="linked-bilty-pay-form"
+                                            className="grid gap-4 md:grid-cols-2"
+                                            onSubmit={(event) => {
+                                                if (!paySubmitAllowed.current) {
+                                                    event.preventDefault();
+                                                    const data = new FormData(
+                                                        event.currentTarget,
+                                                    );
+                                                    const amountValue =
+                                                        data.get('amount');
+                                                    const amount =
+                                                        typeof amountValue ===
+                                                        'string'
+                                                            ? amountValue
+                                                            : '—';
+                                                    const accountId = data.get(
+                                                        'bank_cash_account_id',
+                                                    );
+                                                    const accountLabel =
+                                                        typeof accountId ===
+                                                            'string' &&
+                                                        accountId !== ''
+                                                            ? (bankCashAccounts.find(
+                                                                  (account) =>
+                                                                      account.id ===
+                                                                      accountId,
+                                                              )?.name ??
+                                                              accountId)
+                                                            : '—';
+                                                    const paymentTypeValue =
+                                                        data.get(
+                                                            'payment_type',
+                                                        );
+                                                    const paymentTypeLabel =
+                                                        typeof paymentTypeValue ===
+                                                        'string'
+                                                            ? (paymentTypeOptions.find(
+                                                                  (option) =>
+                                                                      option.value ===
+                                                                      paymentTypeValue,
+                                                              )?.label ??
+                                                              paymentTypeValue)
+                                                            : '—';
+                                                    const fields: FieldReview[] =
+                                                        [
+                                                            {
+                                                                label: 'Group',
+                                                                value: group.group_number,
+                                                            },
+                                                            {
+                                                                label: 'Payee',
+                                                                value:
+                                                                    group.payee_name ??
+                                                                    '—',
+                                                            },
+                                                            {
+                                                                label: 'Payment amount',
+                                                                value: amount,
+                                                            },
+                                                            {
+                                                                label: 'Payment type',
+                                                                value: paymentTypeLabel,
+                                                            },
+                                                            {
+                                                                label: 'Payment mode',
+                                                                value:
+                                                                    paymentModeOptions.find(
+                                                                        (
+                                                                            option,
+                                                                        ) =>
+                                                                            option.value ===
+                                                                            paymentMode,
+                                                                    )?.label ??
+                                                                    paymentMode,
+                                                            },
+                                                            {
+                                                                label: 'Receiving / paying account',
+                                                                value:
+                                                                    paymentMode ===
+                                                                    'bank'
+                                                                        ? accountLabel
+                                                                        : 'Cash',
+                                                            },
+                                                            {
+                                                                label: 'Total eligible',
+                                                                value:
+                                                                    preview?.total_eligible ??
+                                                                    'Preview first',
+                                                            },
+                                                        ];
+                                                    if (
+                                                        preview &&
+                                                        preview.lines.length > 0
+                                                    ) {
+                                                        for (const line of preview.lines) {
+                                                            const lr =
+                                                                line.lr_number ??
+                                                                line.hire_number ??
+                                                                line.member_id;
+                                                            fields.push({
+                                                                label: `Allocation · ${lr}`,
+                                                                value: `Eligible ${line.eligible_outstanding ?? '—'} → Allocated ${line.allocated_amount ?? '—'}`,
+                                                            });
+                                                        }
+                                                    } else {
+                                                        fields.push({
+                                                            label: 'Allocations',
+                                                            value: 'Not previewed — run Preview allocation first',
+                                                        });
+                                                    }
+                                                    setPayReviewFields(fields);
+                                                    setPayConfirmOpen(true);
+                                                    return;
                                                 }
+                                                paySubmitAllowed.current = false;
                                             }}
                                         >
-                                            {previewing
-                                                ? 'Previewing…'
-                                                : 'Preview allocation'}
-                                        </Button>
-                                        <Button
-                                            type="submit"
-                                            disabled={processing}
-                                            className="bg-[#2FB36F] text-white hover:bg-[#279960]"
-                                        >
-                                            Record group payment
-                                        </Button>
+                                            {({ processing, errors }) => (
+                                                <>
+                                                    <div className="space-y-1">
+                                                        <Label htmlFor="amount">
+                                                            Payment amount
+                                                        </Label>
+                                                        <Input
+                                                            id="amount"
+                                                            name="amount"
+                                                            type="number"
+                                                            min="0.01"
+                                                            step="0.01"
+                                                            required
+                                                        />
+                                                        {errors.amount && (
+                                                            <p className="text-xs text-destructive">
+                                                                {errors.amount}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <Label htmlFor="voucher_date">
+                                                            Voucher date
+                                                        </Label>
+                                                        <Input
+                                                            id="voucher_date"
+                                                            name="voucher_date"
+                                                            type="date"
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <Label htmlFor="payment_type">
+                                                            Payment type
+                                                        </Label>
+                                                        <select
+                                                            id="payment_type"
+                                                            name="payment_type"
+                                                            required
+                                                            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                                        >
+                                                            {paymentTypeOptions.map(
+                                                                (option) => (
+                                                                    <option
+                                                                        key={
+                                                                            option.value
+                                                                        }
+                                                                        value={
+                                                                            option.value
+                                                                        }
+                                                                    >
+                                                                        {
+                                                                            option.label
+                                                                        }
+                                                                    </option>
+                                                                ),
+                                                            )}
+                                                        </select>
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <Label htmlFor="payment_mode">
+                                                            Payment mode
+                                                        </Label>
+                                                        <select
+                                                            id="payment_mode"
+                                                            name="payment_mode"
+                                                            required
+                                                            value={paymentMode}
+                                                            onChange={(event) =>
+                                                                setPaymentMode(
+                                                                    event.target
+                                                                        .value,
+                                                                )
+                                                            }
+                                                            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                                        >
+                                                            {paymentModeOptions.map(
+                                                                (option) => (
+                                                                    <option
+                                                                        key={
+                                                                            option.value
+                                                                        }
+                                                                        value={
+                                                                            option.value
+                                                                        }
+                                                                    >
+                                                                        {
+                                                                            option.label
+                                                                        }
+                                                                    </option>
+                                                                ),
+                                                            )}
+                                                        </select>
+                                                    </div>
+                                                    {paymentMode === 'bank' ? (
+                                                        <div className="space-y-1 md:col-span-2">
+                                                            <Label htmlFor="bank_cash_account_id">
+                                                                Bank/Cash
+                                                                account
+                                                            </Label>
+                                                            <select
+                                                                id="bank_cash_account_id"
+                                                                name="bank_cash_account_id"
+                                                                required
+                                                                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                                            >
+                                                                <option value="">
+                                                                    Select
+                                                                    account…
+                                                                </option>
+                                                                {bankCashAccounts.map(
+                                                                    (
+                                                                        account,
+                                                                    ) => (
+                                                                        <option
+                                                                            key={
+                                                                                account.id
+                                                                            }
+                                                                            value={
+                                                                                account.id
+                                                                            }
+                                                                        >
+                                                                            {
+                                                                                account.name
+                                                                            }
+                                                                        </option>
+                                                                    ),
+                                                                )}
+                                                            </select>
+                                                        </div>
+                                                    ) : null}
+                                                    <div className="space-y-1 md:col-span-2">
+                                                        <Label htmlFor="remark">
+                                                            Remark
+                                                        </Label>
+                                                        <Input
+                                                            id="remark"
+                                                            name="remark"
+                                                        />
+                                                    </div>
+                                                    <input
+                                                        type="hidden"
+                                                        name="idempotency_key"
+                                                        value={group.id}
+                                                    />
+                                                    <div className="flex flex-wrap gap-2 md:col-span-2">
+                                                        <Button
+                                                            type="button"
+                                                            variant="outline"
+                                                            disabled={
+                                                                previewing
+                                                            }
+                                                            onClick={() => {
+                                                                const form =
+                                                                    document.getElementById(
+                                                                        'linked-bilty-pay-form',
+                                                                    ) as HTMLFormElement | null;
+                                                                if (form) {
+                                                                    void runPreview(
+                                                                        form,
+                                                                    );
+                                                                }
+                                                            }}
+                                                        >
+                                                            {previewing
+                                                                ? 'Previewing…'
+                                                                : 'Preview allocation'}
+                                                        </Button>
+                                                        <Button
+                                                            type="submit"
+                                                            disabled={
+                                                                processing
+                                                            }
+                                                            className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                                                        >
+                                                            Record group payment
+                                                        </Button>
+                                                    </div>
+                                                </>
+                                            )}
+                                        </Form>
+                                        {previewError ? (
+                                            <p className="text-sm text-destructive">
+                                                {previewError}
+                                            </p>
+                                        ) : null}
+                                        {preview ? (
+                                            <div className="overflow-x-auto rounded-md border border-border/80">
+                                                <table className="w-full min-w-[640px] text-sm">
+                                                    <thead className="border-b text-left text-muted-foreground">
+                                                        <tr>
+                                                            <th className="px-3 py-2">
+                                                                LR
+                                                            </th>
+                                                            <th className="px-3 py-2">
+                                                                Hire
+                                                            </th>
+                                                            <th className="px-3 py-2">
+                                                                Eligible
+                                                            </th>
+                                                            <th className="px-3 py-2">
+                                                                Allocated
+                                                            </th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {preview.lines.map(
+                                                            (line) => (
+                                                                <tr
+                                                                    key={
+                                                                        line.member_id
+                                                                    }
+                                                                    className="border-b border-border/50"
+                                                                >
+                                                                    <td className="px-3 py-2">
+                                                                        {line.lr_number ??
+                                                                            '—'}
+                                                                    </td>
+                                                                    <td className="px-3 py-2">
+                                                                        {line.hire_number ??
+                                                                            '—'}
+                                                                    </td>
+                                                                    <td className="px-3 py-2">
+                                                                        {line.eligible_outstanding ??
+                                                                            '—'}
+                                                                    </td>
+                                                                    <td className="px-3 py-2 font-medium text-[#2FB36F]">
+                                                                        {line.allocated_amount ??
+                                                                            '—'}
+                                                                    </td>
+                                                                </tr>
+                                                            ),
+                                                        )}
+                                                    </tbody>
+                                                    <tfoot>
+                                                        <tr>
+                                                            <td
+                                                                colSpan={3}
+                                                                className="px-3 py-2 text-right text-muted-foreground"
+                                                            >
+                                                                Payment total
+                                                            </td>
+                                                            <td className="px-3 py-2 font-semibold">
+                                                                {preview.payment_amount ??
+                                                                    '—'}
+                                                            </td>
+                                                        </tr>
+                                                    </tfoot>
+                                                </table>
+                                            </div>
+                                        ) : null}
                                     </div>
-                                </>
+                                </FbDetailCard>
+                            ) : (
+                                <p className="text-sm text-muted-foreground">
+                                    Each member must have a Lorry Hire before
+                                    group payment.
+                                </p>
                             )}
-                        </Form>
-                        {previewError ? (
-                            <p className="text-sm text-destructive">
-                                {previewError}
-                            </p>
-                        ) : null}
-                        {preview ? (
-                            <div className="overflow-x-auto rounded-md border border-border/80">
-                                <table className="w-full min-w-[640px] text-sm">
-                                    <thead className="border-b text-left text-muted-foreground">
-                                        <tr>
-                                            <th className="px-3 py-2">LR</th>
-                                            <th className="px-3 py-2">Hire</th>
-                                            <th className="px-3 py-2">
-                                                Eligible
-                                            </th>
-                                            <th className="px-3 py-2">
-                                                Allocated
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {preview.lines.map((line) => (
-                                            <tr
-                                                key={line.member_id}
-                                                className="border-b border-border/50"
-                                            >
-                                                <td className="px-3 py-2">
-                                                    {line.lr_number ?? '—'}
-                                                </td>
-                                                <td className="px-3 py-2">
-                                                    {line.hire_number ?? '—'}
-                                                </td>
-                                                <td className="px-3 py-2">
-                                                    {line.eligible_outstanding ??
-                                                        '—'}
-                                                </td>
-                                                <td className="px-3 py-2 font-medium text-[#2FB36F]">
-                                                    {line.allocated_amount ??
-                                                        '—'}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                    <tfoot>
-                                        <tr>
-                                            <td
-                                                colSpan={3}
-                                                className="px-3 py-2 text-right text-muted-foreground"
-                                            >
-                                                Payment total
-                                            </td>
-                                            <td className="px-3 py-2 font-semibold">
-                                                {preview.payment_amount ?? '—'}
-                                            </td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
-                        ) : null}
-                    </section>
-                ) : (
-                    <p className="text-sm text-muted-foreground">
-                        Each member must have a Lorry Hire before group payment.
-                    </p>
-                )}
-            </PageShell>
+                        </>
+                    }
+                    side={
+                        group.remarks ? (
+                            <FbDetailCard title="Remarks">
+                                <p className="px-4 py-3 text-sm text-slate-700">
+                                    {group.remarks}
+                                </p>
+                            </FbDetailCard>
+                        ) : (
+                            <div />
+                        )
+                    }
+                />
+            </FbDetailPage>
 
             <FormConfirmationDialog
                 open={payConfirmOpen}

@@ -2,7 +2,11 @@ import { Head, router, useForm } from '@inertiajs/react';
 import { Eye } from 'lucide-react';
 import { useState } from 'react';
 import { AppIconAction } from '@/components/app-icon-action';
-import { PageShell } from '@/components/page-shell';
+import {
+    AppIndexFilters,
+    AppIndexListCard,
+    AppIndexPage,
+} from '@/components/app-index-page';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,161 +55,153 @@ export default function DailyPaymentsIndex({
     return (
         <>
             <Head title="Daily Transporter Payments" />
-            <PageShell title="Daily Transporter Payments">
-                <p className="text-sm text-muted-foreground">
-                    Vouchers created on the selected date. Advance status in
-                    bulk when authorised.
-                </p>
-
-                <form
-                    className="flex flex-wrap items-end gap-3"
-                    onSubmit={(event) => {
-                        event.preventDefault();
-                        const form = event.currentTarget;
-                        const date = (
-                            form.elements.namedItem('date') as HTMLInputElement
-                        ).value;
-                        router.get(
-                            urls.index,
-                            { date: date || undefined },
-                            { preserveState: true },
-                        );
-                    }}
-                >
-                    <div className="space-y-1">
-                        <Label htmlFor="date">Date</Label>
-                        <Input
-                            id="date"
-                            name="date"
-                            type="date"
-                            defaultValue={filters.date}
-                        />
-                    </div>
-                    <Button
-                        type="submit"
-                        className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+            <AppIndexPage>
+                <AppIndexListCard title="Daily Transporter Payments">
+                    <AppIndexFilters
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            const form = event.currentTarget;
+                            const date = (
+                                form.elements.namedItem(
+                                    'date',
+                                ) as HTMLInputElement
+                            ).value;
+                            router.get(
+                                urls.index,
+                                { date: date || undefined },
+                                { preserveState: true },
+                            );
+                        }}
                     >
-                        Load day
-                    </Button>
-                </form>
-
-                {permissions.can_status && selected.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
+                        <div className="space-y-1">
+                            <Label htmlFor="date">Date</Label>
+                            <Input
+                                id="date"
+                                name="date"
+                                type="date"
+                                defaultValue={filters.date}
+                            />
+                        </div>
                         <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => {
-                                bulkForm.setData({
-                                    voucher_ids: selected,
-                                    status: 'in_progress',
-                                    date: filters.date,
-                                });
-                                bulkForm.post(urls.bulk_status);
-                            }}
-                        >
-                            Mark selected In Progress
-                        </Button>
-                        <Button
-                            type="button"
+                            type="submit"
                             className="bg-[#2FB36F] text-white hover:bg-[#279960]"
-                            onClick={() => {
-                                bulkForm.setData({
-                                    voucher_ids: selected,
-                                    status: 'paid',
-                                    date: filters.date,
-                                });
-                                bulkForm.post(urls.bulk_status);
-                            }}
                         >
-                            Mark selected Paid
+                            Load day
                         </Button>
-                    </div>
-                )}
+                    </AppIndexFilters>
 
-                <div className="overflow-hidden rounded-lg border border-border">
-                    <table className="min-w-full text-sm">
-                        <thead className="bg-muted/40 text-left">
-                            <tr>
-                                {permissions.can_status && (
-                                    <th className="px-4 py-3" />
-                                )}
-                                <th className="px-4 py-3 font-medium">
-                                    Voucher #
-                                </th>
-                                <th className="px-4 py-3 font-medium">Hire</th>
-                                <th className="px-4 py-3 font-medium">
-                                    Transporter
-                                </th>
-                                <th className="px-4 py-3 font-medium">
-                                    Amount
-                                </th>
-                                <th className="px-4 py-3 font-medium">
-                                    Status
-                                </th>
-                                <th className="px-4 py-3 font-medium" />
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {vouchers.length === 0 ? (
+                    {permissions.can_status && selected.length > 0 ? (
+                        <div className="flex flex-wrap gap-2 border-b border-[#e5e7eb] bg-white px-4 py-3">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={() => {
+                                    bulkForm.setData({
+                                        voucher_ids: selected,
+                                        status: 'in_progress',
+                                        date: filters.date,
+                                    });
+                                    bulkForm.post(urls.bulk_status);
+                                }}
+                            >
+                                Mark selected In Progress
+                            </Button>
+                            <Button
+                                type="button"
+                                className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                                onClick={() => {
+                                    bulkForm.setData({
+                                        voucher_ids: selected,
+                                        status: 'paid',
+                                        date: filters.date,
+                                    });
+                                    bulkForm.post(urls.bulk_status);
+                                }}
+                            >
+                                Mark selected Paid
+                            </Button>
+                        </div>
+                    ) : null}
+
+                    <div className="overflow-x-auto">
+                        <table className="app-index-table min-w-full">
+                            <thead>
                                 <tr>
-                                    <td
-                                        colSpan={permissions.can_status ? 7 : 6}
-                                        className="px-4 py-8 text-center text-muted-foreground"
-                                    >
-                                        No vouchers for this date.
-                                    </td>
+                                    {permissions.can_status ? (
+                                        <th className="text-center"> </th>
+                                    ) : null}
+                                    <th>Voucher #</th>
+                                    <th>Hire</th>
+                                    <th>Transporter</th>
+                                    <th className="text-end">Amount</th>
+                                    <th>Mode</th>
+                                    <th>Status</th>
+                                    <th className="text-center">Actions</th>
                                 </tr>
-                            ) : (
-                                vouchers.map((row) => (
-                                    <tr
-                                        key={row.id}
-                                        className="border-t border-border"
-                                    >
-                                        {permissions.can_status && (
-                                            <td className="px-4 py-3">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selected.includes(
-                                                        row.id,
-                                                    )}
-                                                    onChange={() =>
-                                                        toggle(row.id)
-                                                    }
-                                                />
-                                            </td>
-                                        )}
-                                        <td className="px-4 py-3 font-medium">
-                                            {row.voucher_number}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {row.hire_number}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {row.transporter_name}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {row.amount ?? '—'}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <WorkspaceStatusBadge
-                                                status={row.status}
-                                            />
-                                        </td>
-                                        <td className="px-4 py-3 text-right">
-                                            <AppIconAction
-                                                icon={Eye}
-                                                label="Open voucher"
-                                                href={row.urls.show}
-                                                variant="info"
-                                            />
+                            </thead>
+                            <tbody>
+                                {vouchers.length === 0 ? (
+                                    <tr>
+                                        <td
+                                            colSpan={
+                                                permissions.can_status ? 8 : 7
+                                            }
+                                        >
+                                            <p className="app-index-empty">
+                                                No vouchers for this date.
+                                            </p>
                                         </td>
                                     </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </PageShell>
+                                ) : (
+                                    vouchers.map((row) => (
+                                        <tr key={row.id}>
+                                            {permissions.can_status ? (
+                                                <td className="text-center">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={selected.includes(
+                                                            row.id,
+                                                        )}
+                                                        onChange={() =>
+                                                            toggle(row.id)
+                                                        }
+                                                    />
+                                                </td>
+                                            ) : null}
+                                            <td className="font-medium">
+                                                {row.voucher_number}
+                                            </td>
+                                            <td>{row.hire_number ?? '—'}</td>
+                                            <td>
+                                                {row.transporter_name ?? '—'}
+                                            </td>
+                                            <td className="text-end tabular-nums">
+                                                {row.amount ?? '—'}
+                                            </td>
+                                            <td>{row.payment_mode ?? '—'}</td>
+                                            <td>
+                                                <WorkspaceStatusBadge
+                                                    status={row.status}
+                                                />
+                                            </td>
+                                            <td>
+                                                <div className="flex justify-center">
+                                                    <AppIconAction
+                                                        icon={Eye}
+                                                        label="Open voucher"
+                                                        href={row.urls.show}
+                                                        variant="info"
+                                                    />
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </AppIndexListCard>
+            </AppIndexPage>
         </>
     );
 }

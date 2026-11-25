@@ -1,8 +1,11 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, useForm } from '@inertiajs/react';
 import { useMemo, useRef, useState } from 'react';
 import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
 import type { FieldReview } from '@/components/form-confirmation/types';
-import { PageShell } from '@/components/page-shell';
+import {
+    LrfPage,
+    LrfSection,
+} from '@/pages/branch/lorry-receipts/lr-form-sections';
 import {
     SearchableCombobox,
     type ComboboxOption,
@@ -22,6 +25,9 @@ type HireOption = {
     net_payable?: string | null;
     freight_total?: string | null;
     tds_amount?: string | null;
+    billing_customer_name?: string | null;
+    consignor_name?: string | null;
+    consignee_name?: string | null;
 };
 
 type Props = {
@@ -197,22 +203,70 @@ export default function VoucherCreate({
 
     return (
         <>
-            <Head title="Create Transporter Voucher" />
-            <PageShell
-                title="Create Transporter Voucher"
-                chrome="compact"
-                actions={
-                    <Link
-                        href={urls.index}
-                        className="text-sm text-muted-foreground hover:text-foreground"
-                    >
-                        Back to vouchers
-                    </Link>
-                }
+            <Head title="Add Voucher Payment" />
+            <LrfPage
+                title="Add Voucher Payment"
+                subtitle="Record transporter payment against an open Lorry Hire."
+                backHref={urls.index}
+                backLabel="Vouchers"
             >
+                {selectedHire ? (
+                    <div className="mb-3 overflow-hidden rounded-xl border border-[#bae6fd] bg-[#f0f9ff]">
+                        <div className="grid gap-2 px-4 py-3 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                            <p>
+                                <span className="font-semibold text-slate-700">
+                                    LR Number:
+                                </span>{' '}
+                                {selectedHire.lr_number ?? '—'}
+                            </p>
+                            <p>
+                                <span className="font-semibold text-slate-700">
+                                    Transporter:
+                                </span>{' '}
+                                {selectedHire.transporter_name ?? '—'}
+                            </p>
+                            <p>
+                                <span className="font-semibold text-slate-700">
+                                    Truck:
+                                </span>{' '}
+                                {selectedHire.vehicle_registration ?? '—'}
+                            </p>
+                            <p>
+                                <span className="font-semibold text-slate-700">
+                                    Customer:
+                                </span>{' '}
+                                {selectedHire.billing_customer_name ?? '—'}
+                            </p>
+                            <p>
+                                <span className="font-semibold text-slate-700">
+                                    Consignor:
+                                </span>{' '}
+                                {selectedHire.consignor_name ?? '—'}
+                            </p>
+                            <p>
+                                <span className="font-semibold text-slate-700">
+                                    Consignee:
+                                </span>{' '}
+                                {selectedHire.consignee_name ?? '—'}
+                            </p>
+                            <p>
+                                <span className="font-semibold text-slate-700">
+                                    Amount:
+                                </span>{' '}
+                                {formatMoney(outstanding)}
+                            </p>
+                            <p>
+                                <span className="font-semibold text-slate-700">
+                                    Available:
+                                </span>{' '}
+                                {formatMoney(allocatable)}
+                            </p>
+                        </div>
+                    </div>
+                ) : null}
+
                 <form
                     id="voucher-create-form"
-                    className="mx-auto max-w-xl space-y-4"
                     onSubmit={(event) => {
                         event.preventDefault();
                         if (!submitAllowed.current) {
@@ -223,178 +277,178 @@ export default function VoucherCreate({
                         form.post(urls.store);
                     }}
                 >
-                    {selectedHire ? (
-                        <div className="rounded-md border border-border bg-muted/10 p-3 text-sm">
-                            <p className="font-medium text-foreground">
-                                Hire context
-                            </p>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                                {selectedHire.hire_number}
-                                {selectedHire.lr_number
-                                    ? ` · LR ${selectedHire.lr_number}`
-                                    : ''}
-                            </p>
-                            <p className="mt-2 text-xs text-muted-foreground">
-                                {selectedHire.transporter_name ?? '—'} ·{' '}
-                                {selectedHire.vehicle_registration ?? '—'}
-                            </p>
-                            <div className="mt-2 grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
-                                <p>
-                                    Freight {formatMoney(freightTotal)} · TDS{' '}
-                                    {formatMoney(tdsAmount)}
-                                </p>
-                                <p>Net payable {formatMoney(netPayable)}</p>
-                                <p>Outstanding {formatMoney(outstanding)}</p>
-                                <p>Available {formatMoney(allocatable)}</p>
-                            </div>
-                            {proposedAmount !== null ? (
-                                <p className="mt-2 text-xs font-medium text-foreground">
-                                    Proposed {formatMoney(proposedAmount)} ·
-                                    Resulting {formatMoney(resultingBalance)}
-                                </p>
-                            ) : null}
-                        </div>
-                    ) : null}
-
-                    <SearchableCombobox
-                        id="lorry_hire_id"
-                        name="lorry_hire_id"
-                        label="Lorry Hire"
-                        options={hireOptions}
-                        value={form.data.lorry_hire_id}
-                        onValueChange={(next) =>
-                            form.setData('lorry_hire_id', next)
-                        }
-                        required
-                        clearable={!selectedLorryHireId}
-                        placeholder="Search hire, bilty or transporter…"
-                        emptyMessage="No allocatable lorry hires in this branch."
-                        error={form.errors.lorry_hire_id}
-                    />
-
-                    <div className="space-y-1">
-                        <Label htmlFor="amount">Amount</Label>
-                        <Input
-                            id="amount"
-                            type="number"
-                            min="0.01"
-                            step="0.01"
-                            value={form.data.amount}
-                            onChange={(event) =>
-                                form.setData('amount', event.target.value)
-                            }
-                            required
-                        />
-                        {form.errors.amount && (
-                            <p className="text-xs text-destructive">
-                                {form.errors.amount}
-                            </p>
-                        )}
-                    </div>
-
-                    <div className="grid gap-4 sm:grid-cols-2">
-                        <div className="space-y-1">
-                            <Label htmlFor="payment_type">Payment type</Label>
-                            <select
-                                id="payment_type"
-                                value={form.data.payment_type}
-                                onChange={(event) =>
-                                    form.setData(
-                                        'payment_type',
-                                        event.target.value,
-                                    )
-                                }
-                                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                            >
-                                {paymentTypeOptions.map((option) => (
-                                    <option
-                                        key={option.value}
-                                        value={option.value}
-                                    >
-                                        {option.label}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="space-y-1">
-                            <Label htmlFor="payment_mode">Payment mode</Label>
-                            <select
-                                id="payment_mode"
-                                value={form.data.payment_mode}
-                                onChange={(event) =>
-                                    form.setData(
-                                        'payment_mode',
-                                        event.target.value,
-                                    )
-                                }
-                                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                            >
-                                {paymentModeOptions.map((option) => (
-                                    <option
-                                        key={option.value}
-                                        value={option.value}
-                                    >
-                                        {option.label}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                    </div>
-
-                    {form.data.payment_mode === 'bank' && (
-                        <SearchableCombobox
-                            id="bank_cash_account_id"
-                            name="bank_cash_account_id"
-                            label="Bank/Cash account"
-                            options={accountOptions}
-                            value={form.data.bank_cash_account_id}
-                            onValueChange={(next) =>
-                                form.setData('bank_cash_account_id', next)
-                            }
-                            required
-                            placeholder="Search account…"
-                            emptyMessage="No bank/cash accounts in this branch."
-                            error={form.errors.bank_cash_account_id}
-                        />
-                    )}
-
-                    {form.data.payment_mode === 'paid_to_pump' && (
-                        <div className="space-y-1">
-                            <Label htmlFor="pump_reference">
-                                Pump reference
-                            </Label>
-                            <Input
-                                id="pump_reference"
-                                value={form.data.pump_reference}
-                                onChange={(event) =>
-                                    form.setData(
-                                        'pump_reference',
-                                        event.target.value,
-                                    )
-                                }
-                                required
-                            />
-                        </div>
-                    )}
-
-                    <div className="space-y-1">
-                        <Label htmlFor="remark">Remark</Label>
-                        <Input
-                            id="remark"
-                            value={form.data.remark}
-                            onChange={(event) =>
-                                form.setData('remark', event.target.value)
-                            }
-                        />
-                    </div>
-
-                    <Button
-                        type="submit"
-                        disabled={form.processing}
-                        className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                    <LrfSection
+                        step={1}
+                        title="Payment details"
+                        description="Select hire, amount, type and mode."
+                        tone="receipt"
                     >
-                        Save voucher
-                    </Button>
+                        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                            <div className="sm:col-span-2 lg:col-span-3">
+                                <SearchableCombobox
+                                    id="lorry_hire_id"
+                                    name="lorry_hire_id"
+                                    label="Lorry Hire"
+                                    options={hireOptions}
+                                    value={form.data.lorry_hire_id}
+                                    onValueChange={(next) =>
+                                        form.setData('lorry_hire_id', next)
+                                    }
+                                    required
+                                    clearable={!selectedLorryHireId}
+                                    placeholder="Search hire, bilty or transporter…"
+                                    emptyMessage="No allocatable lorry hires in this branch."
+                                    error={form.errors.lorry_hire_id}
+                                />
+                            </div>
+
+                            <div className="space-y-1">
+                                <Label htmlFor="payment_type">
+                                    Payment Type *
+                                </Label>
+                                <select
+                                    id="payment_type"
+                                    value={form.data.payment_type}
+                                    onChange={(event) =>
+                                        form.setData(
+                                            'payment_type',
+                                            event.target.value,
+                                        )
+                                    }
+                                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                >
+                                    {paymentTypeOptions.map((option) => (
+                                        <option
+                                            key={option.value}
+                                            value={option.value}
+                                        >
+                                            {option.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="space-y-1">
+                                <Label htmlFor="payment_mode">
+                                    Payment Mode *
+                                </Label>
+                                <select
+                                    id="payment_mode"
+                                    value={form.data.payment_mode}
+                                    onChange={(event) =>
+                                        form.setData(
+                                            'payment_mode',
+                                            event.target.value,
+                                        )
+                                    }
+                                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                >
+                                    {paymentModeOptions.map((option) => (
+                                        <option
+                                            key={option.value}
+                                            value={option.value}
+                                        >
+                                            {option.label}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="space-y-1">
+                                <Label htmlFor="amount">Amount *</Label>
+                                <Input
+                                    id="amount"
+                                    type="number"
+                                    min="0.01"
+                                    step="0.01"
+                                    value={form.data.amount}
+                                    onChange={(event) =>
+                                        form.setData(
+                                            'amount',
+                                            event.target.value,
+                                        )
+                                    }
+                                    required
+                                />
+                                {form.errors.amount ? (
+                                    <p className="text-xs text-destructive">
+                                        {form.errors.amount}
+                                    </p>
+                                ) : null}
+                                {proposedAmount !== null ? (
+                                    <p className="text-xs text-slate-500">
+                                        Resulting balance{' '}
+                                        {formatMoney(resultingBalance)}
+                                    </p>
+                                ) : null}
+                            </div>
+
+                            {form.data.payment_mode === 'bank' ? (
+                                <div className="sm:col-span-2 lg:col-span-3">
+                                    <SearchableCombobox
+                                        id="bank_cash_account_id"
+                                        name="bank_cash_account_id"
+                                        label="Bank/Cash account"
+                                        options={accountOptions}
+                                        value={form.data.bank_cash_account_id}
+                                        onValueChange={(next) =>
+                                            form.setData(
+                                                'bank_cash_account_id',
+                                                next,
+                                            )
+                                        }
+                                        required
+                                        placeholder="Search account…"
+                                        emptyMessage="No bank/cash accounts in this branch."
+                                        error={form.errors.bank_cash_account_id}
+                                    />
+                                </div>
+                            ) : null}
+
+                            {form.data.payment_mode === 'paid_to_pump' ? (
+                                <div className="space-y-1">
+                                    <Label htmlFor="pump_reference">
+                                        Pump reference
+                                    </Label>
+                                    <Input
+                                        id="pump_reference"
+                                        value={form.data.pump_reference}
+                                        onChange={(event) =>
+                                            form.setData(
+                                                'pump_reference',
+                                                event.target.value,
+                                            )
+                                        }
+                                        required
+                                    />
+                                </div>
+                            ) : null}
+
+                            <div className="space-y-1 sm:col-span-2 lg:col-span-3">
+                                <Label htmlFor="remark">Remark</Label>
+                                <Input
+                                    id="remark"
+                                    value={form.data.remark}
+                                    onChange={(event) =>
+                                        form.setData(
+                                            'remark',
+                                            event.target.value,
+                                        )
+                                    }
+                                />
+                            </div>
+                        </div>
+
+                        <div className="mt-4 flex flex-wrap gap-2">
+                            <Button
+                                type="submit"
+                                disabled={form.processing}
+                                className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                            >
+                                Save voucher
+                            </Button>
+                        </div>
+                    </LrfSection>
                 </form>
 
                 <FormConfirmationDialog
@@ -415,7 +469,7 @@ export default function VoucherCreate({
                         }, 0);
                     }}
                 />
-            </PageShell>
+            </LrfPage>
         </>
     );
 }

@@ -1,7 +1,11 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Eye } from 'lucide-react';
+import { Eye, Plus } from 'lucide-react';
 import { AppIconAction } from '@/components/app-icon-action';
-import { PageShell } from '@/components/page-shell';
+import {
+    AppIndexFilters,
+    AppIndexListCard,
+    AppIndexPage,
+} from '@/components/app-index-page';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -48,160 +52,167 @@ export default function VouchersIndex({
 }: Props) {
     return (
         <>
-            <Head title="Transporter Vouchers" />
-            <PageShell
-                title="Transporter Voucher Payments"
-                description="Voucher register. Filter status=pending for the pending voucher queue."
-                actions={
-                    permissions.can_create ? (
-                        <Link href={urls.create}>
-                            <Button className="bg-[#2FB36F] text-white hover:bg-[#279960]">
+            <Head title="Voucher Payments" />
+            <AppIndexPage>
+                <AppIndexListCard
+                    title="Voucher Payments"
+                    toolbar={
+                        permissions.can_create ? (
+                            <Link
+                                href={urls.create}
+                                className="app-index-header-btn"
+                            >
+                                <Plus className="h-3.5 w-3.5" />
                                 Create voucher
-                            </Button>
-                        </Link>
-                    ) : null
-                }
-            >
-                <form
-                    className="flex flex-wrap items-end gap-3"
-                    onSubmit={(event) => {
-                        event.preventDefault();
-                        const form = event.currentTarget;
-                        const status = (
-                            form.elements.namedItem(
-                                'status',
-                            ) as HTMLSelectElement
-                        ).value;
-                        const payment_mode = (
-                            form.elements.namedItem(
-                                'payment_mode',
-                            ) as HTMLSelectElement
-                        ).value;
-                        router.get(
-                            urls.index,
-                            {
-                                status: status || undefined,
-                                payment_mode: payment_mode || undefined,
-                            },
-                            { preserveState: true },
-                        );
-                    }}
+                            </Link>
+                        ) : null
+                    }
                 >
-                    <div className="space-y-1">
-                        <Label htmlFor="status">Status</Label>
-                        <select
-                            id="status"
-                            name="status"
-                            defaultValue={filters.status}
-                            className="h-9 min-w-[10rem] rounded-md border border-input bg-background px-3 text-sm"
-                        >
-                            <option value="">All</option>
-                            {statusOptions.map((option) => (
-                                <option key={option.value} value={option.value}>
-                                    {option.label}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                    <div className="space-y-1">
-                        <Label htmlFor="payment_mode">Mode</Label>
-                        <select
-                            id="payment_mode"
-                            name="payment_mode"
-                            defaultValue={filters.payment_mode}
-                            className="h-9 min-w-[10rem] rounded-md border border-input bg-background px-3 text-sm"
-                        >
-                            <option value="">All</option>
-                            {paymentModeOptions.map((option) => (
-                                <option key={option.value} value={option.value}>
-                                    {option.label}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                    <Button
-                        type="submit"
-                        className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                    <AppIndexFilters
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            const form = event.currentTarget;
+                            const status = (
+                                form.elements.namedItem(
+                                    'status',
+                                ) as HTMLSelectElement
+                            ).value;
+                            const payment_mode = (
+                                form.elements.namedItem(
+                                    'payment_mode',
+                                ) as HTMLSelectElement
+                            ).value;
+                            router.get(
+                                urls.index,
+                                {
+                                    status: status || undefined,
+                                    payment_mode: payment_mode || undefined,
+                                },
+                                { preserveState: true },
+                            );
+                        }}
                     >
-                        Filter
-                    </Button>
-                </form>
+                        <div className="space-y-1">
+                            <Label htmlFor="status">Status</Label>
+                            <select
+                                id="status"
+                                name="status"
+                                defaultValue={filters.status}
+                                className="h-9 min-w-[10rem] rounded-md border border-input bg-background px-3 text-sm"
+                            >
+                                <option value="">All</option>
+                                {statusOptions.map((option) => (
+                                    <option
+                                        key={option.value}
+                                        value={option.value}
+                                    >
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="space-y-1">
+                            <Label htmlFor="payment_mode">Mode</Label>
+                            <select
+                                id="payment_mode"
+                                name="payment_mode"
+                                defaultValue={filters.payment_mode}
+                                className="h-9 min-w-[10rem] rounded-md border border-input bg-background px-3 text-sm"
+                            >
+                                <option value="">All</option>
+                                {paymentModeOptions.map((option) => (
+                                    <option
+                                        key={option.value}
+                                        value={option.value}
+                                    >
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <Button
+                            type="submit"
+                            className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                        >
+                            Filter
+                        </Button>
+                    </AppIndexFilters>
 
-                <div className="overflow-hidden rounded-lg border border-border">
-                    <table className="min-w-full text-sm">
-                        <thead className="bg-muted/40 text-left">
-                            <tr>
-                                <th className="px-4 py-3 font-medium">
-                                    Voucher #
-                                </th>
-                                <th className="px-4 py-3 font-medium">Hire</th>
-                                <th className="px-4 py-3 font-medium">
-                                    Transporter
-                                </th>
-                                <th className="px-4 py-3 font-medium">
-                                    Amount
-                                </th>
-                                <th className="px-4 py-3 font-medium">Mode</th>
-                                <th className="px-4 py-3 font-medium">
-                                    Status
-                                </th>
-                                <th className="px-4 py-3 font-medium" />
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {vouchers.data.length === 0 ? (
+                    <div className="overflow-x-auto">
+                        <table className="app-index-table min-w-full">
+                            <thead>
                                 <tr>
-                                    <td
-                                        colSpan={7}
-                                        className="px-4 py-8 text-center text-muted-foreground"
-                                    >
-                                        No vouchers yet.
-                                    </td>
+                                    <th>Date</th>
+                                    <th>Voucher #</th>
+                                    <th>LR / Hire</th>
+                                    <th>Transporter</th>
+                                    <th>Truck</th>
+                                    <th>Type</th>
+                                    <th>Mode</th>
+                                    <th className="text-end">Amount</th>
+                                    <th>Status</th>
+                                    <th className="text-center">Actions</th>
                                 </tr>
-                            ) : (
-                                vouchers.data.map((row) => (
-                                    <tr
-                                        key={row.id}
-                                        className="border-t border-border"
-                                    >
-                                        <td className="px-4 py-3 font-medium">
-                                            {row.voucher_number}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {row.hire_number}
-                                            {row.lr_number
-                                                ? ` · LR ${row.lr_number}`
-                                                : ''}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {row.transporter_name}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {row.amount ?? '—'}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {row.payment_mode}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <WorkspaceStatusBadge
-                                                status={row.status}
-                                            />
-                                        </td>
-                                        <td className="px-4 py-3 text-right">
-                                            <AppIconAction
-                                                icon={Eye}
-                                                label="Open voucher"
-                                                href={row.urls.show}
-                                                variant="info"
-                                            />
+                            </thead>
+                            <tbody>
+                                {vouchers.data.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={10}>
+                                            <p className="app-index-empty">
+                                                No vouchers yet.
+                                            </p>
                                         </td>
                                     </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </PageShell>
+                                ) : (
+                                    vouchers.data.map((row) => (
+                                        <tr key={row.id}>
+                                            <td>{row.created_at ?? '—'}</td>
+                                            <td className="font-medium">
+                                                {row.voucher_number}
+                                            </td>
+                                            <td>
+                                                {row.lr_number
+                                                    ? `LR ${row.lr_number}`
+                                                    : '—'}
+                                                {row.hire_number
+                                                    ? ` · ${row.hire_number}`
+                                                    : ''}
+                                            </td>
+                                            <td>
+                                                {row.transporter_name ?? '—'}
+                                            </td>
+                                            <td>
+                                                {row.vehicle_registration ??
+                                                    '—'}
+                                            </td>
+                                            <td>{row.payment_type}</td>
+                                            <td>{row.payment_mode ?? '—'}</td>
+                                            <td className="text-end tabular-nums">
+                                                {row.amount ?? '—'}
+                                            </td>
+                                            <td>
+                                                <WorkspaceStatusBadge
+                                                    status={row.status}
+                                                />
+                                            </td>
+                                            <td>
+                                                <div className="flex justify-center">
+                                                    <AppIconAction
+                                                        icon={Eye}
+                                                        label="Open voucher"
+                                                        href={row.urls.show}
+                                                        variant="info"
+                                                    />
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </AppIndexListCard>
+            </AppIndexPage>
         </>
     );
 }

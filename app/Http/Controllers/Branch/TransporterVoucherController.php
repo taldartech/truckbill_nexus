@@ -99,7 +99,13 @@ class TransporterVoucherController extends Controller
             ->where('company_id', $company->id)
             ->where('branch_id', $branch->id)
             ->whereNull('deleted_at')
-            ->with(['lorryReceipt', 'vehicle', 'transporter'])
+            ->with([
+                'lorryReceipt.billingCustomer',
+                'lorryReceipt.consignor',
+                'lorryReceipt.consignee',
+                'vehicle',
+                'transporter',
+            ])
             ->orderByDesc('created_at')
             ->limit(100)
             ->get();
@@ -110,7 +116,13 @@ class TransporterVoucherController extends Controller
                 ->where('branch_id', $branch->id)
                 ->whereNull('deleted_at')
                 ->whereKey($selectedHireId)
-                ->with(['lorryReceipt', 'vehicle', 'transporter'])
+                ->with([
+                    'lorryReceipt.billingCustomer',
+                    'lorryReceipt.consignor',
+                    'lorryReceipt.consignee',
+                    'vehicle',
+                    'transporter',
+                ])
                 ->first();
             if ($selectedHire !== null) {
                 $hires = $hires->prepend($selectedHire)->unique('id')->values();
@@ -131,6 +143,9 @@ class TransporterVoucherController extends Controller
                     'lr_number' => $hire->lorryReceipt?->lr_number,
                     'transporter_name' => $hire->transporter?->name,
                     'vehicle_registration' => $hire->vehicle?->registration_number,
+                    'billing_customer_name' => $hire->lorryReceipt?->billingCustomer?->name,
+                    'consignor_name' => $hire->lorryReceipt?->consignor?->name,
+                    'consignee_name' => $hire->lorryReceipt?->consignee?->name,
                     'outstanding_amount' => $this->freightPresentation->presentAmount($summary['outstanding_amount'], $maySeeFreight),
                     'allocatable_amount' => $this->freightPresentation->presentAmount($allocatable, $maySeeFreight),
                     'net_payable' => $this->freightPresentation->presentAmount($summary['net_payable'], $maySeeFreight),

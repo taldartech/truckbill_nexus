@@ -2,7 +2,10 @@ import { Form, Head, Link, router } from '@inertiajs/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
 import type { FieldReview } from '@/components/form-confirmation/types';
-import { PageShell } from '@/components/page-shell';
+import {
+    LrfPage,
+    LrfSection,
+} from '@/pages/branch/lorry-receipts/lr-form-sections';
 import { SearchablePartySelect } from '@/components/searchable-party-select';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -42,14 +45,12 @@ type Props = {
     };
 };
 
-function ReceiptSection({
-    title,
+function ReceiptChecklist({
     receipts,
     selected,
     onToggle,
     customerId,
 }: {
-    title: string;
     receipts: EligibleLr[];
     selected: string[];
     onToggle: (id: string) => void;
@@ -70,40 +71,33 @@ function ReceiptSection({
     }
 
     return (
-        <section className="space-y-3 rounded-lg border border-border p-4">
-            <h2 className="text-sm font-semibold text-[#2FB36F]">{title}</h2>
-            <ul className="space-y-2">
-                {visible.map((lr) => (
-                    <li key={lr.id}>
-                        <label className="flex cursor-pointer items-start gap-2 text-sm">
-                            <input
-                                type="checkbox"
-                                className="mt-1"
-                                checked={selected.includes(lr.id)}
-                                onChange={() => onToggle(lr.id)}
-                            />
-                            <span>
-                                <span className="font-medium">
-                                    {lr.lr_number}
-                                </span>
-                                {lr.lr_date ? ` · ${lr.lr_date}` : ''}
-                                {lr.memo_number
-                                    ? ` · Memo ${lr.memo_number}`
+        <ul className="space-y-2">
+            {visible.map((lr) => (
+                <li key={lr.id}>
+                    <label className="flex cursor-pointer items-start gap-2 text-sm">
+                        <input
+                            type="checkbox"
+                            className="mt-1"
+                            checked={selected.includes(lr.id)}
+                            onChange={() => onToggle(lr.id)}
+                        />
+                        <span>
+                            <span className="font-medium">{lr.lr_number}</span>
+                            {lr.lr_date ? ` · ${lr.lr_date}` : ''}
+                            {lr.memo_number ? ` · Memo ${lr.memo_number}` : ''}
+                            {lr.pod_number ? ` · POD ${lr.pod_number}` : ''}
+                            <br />
+                            <span className="text-muted-foreground">
+                                {lr.billing_customer_name ?? 'No customer'}{' '}
+                                {lr.freight_total
+                                    ? `· ${lr.freight_total}`
                                     : ''}
-                                {lr.pod_number ? ` · POD ${lr.pod_number}` : ''}
-                                <br />
-                                <span className="text-muted-foreground">
-                                    {lr.billing_customer_name ?? 'No customer'}{' '}
-                                    {lr.freight_total
-                                        ? `· ${lr.freight_total}`
-                                        : ''}
-                                </span>
                             </span>
-                        </label>
-                    </li>
-                ))}
-            </ul>
-        </section>
+                        </span>
+                    </label>
+                </li>
+            ))}
+        </ul>
     );
 }
 
@@ -213,154 +207,194 @@ export default function BrokerInvoiceCreate({
     return (
         <>
             <Head title="Create Broker Invoice" />
-            <PageShell width="form" title="Create Customer Invoice">
-                <div className="mb-4 max-w-md">
-                    <SearchablePartySelect
-                        id="billing_customer_filter"
-                        name="billing_customer_filter"
-                        label="Billing customer filter"
-                        options={billingCustomers}
-                        searchUrl={urls.parties_options}
-                        role="customer"
-                        value={customerId}
-                        onValueChange={(value) => {
-                            setCustomerId(value);
-                            router.get(
-                                urls.filter,
-                                {
-                                    billing_customer_party_id:
-                                        value || undefined,
-                                },
-                                { preserveState: true },
-                            );
-                        }}
-                        emptyMessage="No eligible Customers in this branch."
-                    />
-                </div>
+            <LrfPage
+                title="Create Customer Invoice"
+                subtitle="Select delivered bilties and issue a customer invoice."
+                backHref={urls.index}
+                backLabel="Invoices"
+            >
+                <LrfSection
+                    step={1}
+                    title="Customer filter"
+                    description="Narrow eligible bilties by billing customer."
+                    tone="receipt"
+                >
+                    <div className="max-w-md">
+                        <SearchablePartySelect
+                            id="billing_customer_filter"
+                            name="billing_customer_filter"
+                            label="Billing customer filter"
+                            options={billingCustomers}
+                            searchUrl={urls.parties_options}
+                            role="customer"
+                            value={customerId}
+                            onValueChange={(value) => {
+                                setCustomerId(value);
+                                router.get(
+                                    urls.filter,
+                                    {
+                                        billing_customer_party_id:
+                                            value || undefined,
+                                    },
+                                    { preserveState: true },
+                                );
+                            }}
+                            emptyMessage="No eligible Customers in this branch."
+                        />
+                    </div>
+                </LrfSection>
 
                 <Form
                     id="broker-invoice-create-form"
                     action={urls.store}
                     method="post"
-                    className="space-y-4"
+                    className="space-y-3"
                     onSubmit={handleSubmit}
                 >
                     {({ processing }) => (
                         <>
-                            <ReceiptSection
-                                title="Delivered with Memo / POD"
-                                receipts={eligibleWithMemo}
-                                selected={selected}
-                                onToggle={toggle}
-                                customerId={customerId}
-                            />
-                            <ReceiptSection
-                                title="Delivered without Memo"
-                                receipts={eligibleWithoutMemo}
-                                selected={selected}
-                                onToggle={toggle}
-                                customerId={customerId}
-                            />
-
-                            {selected.map((id) => (
-                                <input
-                                    key={id}
-                                    type="hidden"
-                                    name="lorry_receipt_ids[]"
-                                    value={id}
-                                />
-                            ))}
-
-                            <SearchablePartySelect
-                                id="billing_customer_party_id"
-                                name="billing_customer_party_id"
-                                label="Billing customer"
-                                options={billingCustomers}
-                                searchUrl={urls.parties_options}
-                                role="customer"
-                                required
-                                value={customerId}
-                                onValueChange={setCustomerId}
-                                emptyMessage="No eligible Customers in this branch."
-                            />
-
-                            <Label className="flex flex-col gap-1 text-sm">
-                                Invoice date
-                                <input
-                                    type="date"
-                                    name="invoice_date"
-                                    className="rounded-md border border-border px-2 py-1.5"
-                                />
-                            </Label>
-
-                            {preview && (
-                                <div className="rounded-lg border border-[#2D8CFF]/30 bg-[#2D8CFF]/5 p-4 text-sm">
-                                    <h3 className="font-semibold text-[#2D8CFF]">
-                                        Freight preview
-                                    </h3>
-                                    <dl className="mt-2 grid grid-cols-2 gap-2">
-                                        <div>
-                                            <dt className="text-muted-foreground">
-                                                Freight
-                                            </dt>
-                                            <dd>
-                                                {previewLoading
-                                                    ? '…'
-                                                    : (preview.freight_total ??
-                                                      '—')}
-                                            </dd>
-                                        </div>
-                                        <div>
-                                            <dt className="text-muted-foreground">
-                                                Charges
-                                            </dt>
-                                            <dd>
-                                                {preview.charges_total ?? '—'}
-                                            </dd>
-                                        </div>
-                                        <div>
-                                            <dt className="text-muted-foreground">
-                                                Shortage / damage
-                                            </dt>
-                                            <dd>
-                                                {preview.shortage_damage_total ??
-                                                    '—'}
-                                            </dd>
-                                        </div>
-                                        <div>
-                                            <dt className="text-muted-foreground">
-                                                GST
-                                            </dt>
-                                            <dd>{preview.gst_amount ?? '—'}</dd>
-                                        </div>
-                                        <div className="col-span-2">
-                                            <dt className="text-muted-foreground">
-                                                Invoice total
-                                            </dt>
-                                            <dd className="text-lg font-semibold">
-                                                {preview.invoice_total ?? '—'}
-                                            </dd>
-                                        </div>
-                                    </dl>
-                                </div>
-                            )}
-
-                            <div className="flex gap-2">
-                                <Button
-                                    type="submit"
-                                    disabled={
-                                        processing ||
-                                        selected.length === 0 ||
-                                        !customerId
-                                    }
-                                    className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                            {eligibleWithMemo.length > 0 ? (
+                                <LrfSection
+                                    step={2}
+                                    title="Delivered with Memo / POD"
+                                    description="Select bilties ready for billing."
+                                    tone="route"
                                 >
-                                    Issue invoice
-                                </Button>
-                                <Button asChild variant="ghost">
-                                    <Link href={urls.index}>Back</Link>
-                                </Button>
-                            </div>
+                                    <ReceiptChecklist
+                                        receipts={eligibleWithMemo}
+                                        selected={selected}
+                                        onToggle={toggle}
+                                        customerId={customerId}
+                                    />
+                                </LrfSection>
+                            ) : null}
+
+                            {eligibleWithoutMemo.length > 0 ? (
+                                <LrfSection
+                                    step={3}
+                                    title="Delivered without Memo"
+                                    description="Select memo-free deliveries for billing."
+                                    tone="goods"
+                                >
+                                    <ReceiptChecklist
+                                        receipts={eligibleWithoutMemo}
+                                        selected={selected}
+                                        onToggle={toggle}
+                                        customerId={customerId}
+                                    />
+                                </LrfSection>
+                            ) : null}
+
+                            <LrfSection
+                                step={4}
+                                title="Invoice details"
+                                description="Billing customer, date, and totals."
+                                tone="optional"
+                            >
+                                {selected.map((id) => (
+                                    <input
+                                        key={id}
+                                        type="hidden"
+                                        name="lorry_receipt_ids[]"
+                                        value={id}
+                                    />
+                                ))}
+
+                                <SearchablePartySelect
+                                    id="billing_customer_party_id"
+                                    name="billing_customer_party_id"
+                                    label="Billing customer"
+                                    options={billingCustomers}
+                                    searchUrl={urls.parties_options}
+                                    role="customer"
+                                    required
+                                    value={customerId}
+                                    onValueChange={setCustomerId}
+                                    emptyMessage="No eligible Customers in this branch."
+                                />
+
+                                <Label className="mt-4 flex flex-col gap-1 text-sm">
+                                    Invoice date
+                                    <input
+                                        type="date"
+                                        name="invoice_date"
+                                        className="rounded-md border border-border px-2 py-1.5"
+                                    />
+                                </Label>
+
+                                {preview && (
+                                    <div className="mt-4 rounded-lg border border-[#2D8CFF]/30 bg-[#2D8CFF]/5 p-4 text-sm">
+                                        <h3 className="font-semibold text-[#2D8CFF]">
+                                            Freight preview
+                                        </h3>
+                                        <dl className="mt-2 grid grid-cols-2 gap-2">
+                                            <div>
+                                                <dt className="text-muted-foreground">
+                                                    Freight
+                                                </dt>
+                                                <dd>
+                                                    {previewLoading
+                                                        ? '…'
+                                                        : (preview.freight_total ??
+                                                          '—')}
+                                                </dd>
+                                            </div>
+                                            <div>
+                                                <dt className="text-muted-foreground">
+                                                    Charges
+                                                </dt>
+                                                <dd>
+                                                    {preview.charges_total ??
+                                                        '—'}
+                                                </dd>
+                                            </div>
+                                            <div>
+                                                <dt className="text-muted-foreground">
+                                                    Shortage / damage
+                                                </dt>
+                                                <dd>
+                                                    {preview.shortage_damage_total ??
+                                                        '—'}
+                                                </dd>
+                                            </div>
+                                            <div>
+                                                <dt className="text-muted-foreground">
+                                                    GST
+                                                </dt>
+                                                <dd>
+                                                    {preview.gst_amount ?? '—'}
+                                                </dd>
+                                            </div>
+                                            <div className="col-span-2">
+                                                <dt className="text-muted-foreground">
+                                                    Invoice total
+                                                </dt>
+                                                <dd className="text-lg font-semibold">
+                                                    {preview.invoice_total ??
+                                                        '—'}
+                                                </dd>
+                                            </div>
+                                        </dl>
+                                    </div>
+                                )}
+
+                                <div className="mt-4 flex gap-2">
+                                    <Button
+                                        type="submit"
+                                        disabled={
+                                            processing ||
+                                            selected.length === 0 ||
+                                            !customerId
+                                        }
+                                        className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                                    >
+                                        Issue invoice
+                                    </Button>
+                                    <Button asChild variant="ghost">
+                                        <Link href={urls.index}>Back</Link>
+                                    </Button>
+                                </div>
+                            </LrfSection>
                         </>
                     )}
                 </Form>
@@ -383,7 +417,7 @@ export default function BrokerInvoiceCreate({
                         }, 0);
                     }}
                 />
-            </PageShell>
+            </LrfPage>
         </>
     );
 }

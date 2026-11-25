@@ -1,14 +1,12 @@
 import { Head, router } from '@inertiajs/react';
-import { Scale } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import {
-    ResponsiveDataTable,
-    type DataTableColumn,
-} from '@/components/data-table';
-import { PageShell } from '@/components/page-shell';
+    AppIndexFilters,
+    AppIndexListCard,
+    AppIndexPage,
+} from '@/components/app-index-page';
 import { SearchablePartySelect } from '@/components/searchable-party-select';
 import { Button } from '@/components/ui/button';
-import { MetricCard } from '@/components/ui/metric-card';
 
 type EntryRow = {
     id: string;
@@ -46,114 +44,107 @@ export default function TransporterBalancesIndex({
         filters.transporter_party_id,
     );
 
-    const columns = useMemo<DataTableColumn<EntryRow>[]>(
-        () => [
-            {
-                id: 'created_at',
-                header: 'Date',
-                priority: 0,
-                cell: (row) => row.created_at ?? '—',
-            },
-            {
-                id: 'entry_type',
-                header: 'Type',
-                priority: 1,
-                cell: (row) => row.entry_type,
-            },
-            {
-                id: 'hire_number',
-                header: 'Hire',
-                priority: 2,
-                cell: (row) => row.hire_number ?? '—',
-            },
-            {
-                id: 'amount',
-                header: 'Amount',
-                priority: 2,
-                cell: (row) => row.amount ?? '—',
-            },
-            {
-                id: 'remark',
-                header: 'Remark',
-                priority: 3,
-                className: 'max-w-xs truncate text-muted-foreground',
-                cell: (row) => row.remark ?? '—',
-            },
-        ],
-        [],
-    );
-
     return (
         <>
             <Head title="Transporter Book Balance" />
-            <PageShell
-                title="Transporter Book Balance"
-                description="Outstanding balance summary per transporter. Select a transporter to view running balance and ledger entries."
-            >
-                <form
-                    className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-card p-3 shadow-xs"
-                    onSubmit={(event) => {
-                        event.preventDefault();
-                        router.get(
-                            urls.index,
-                            {
-                                transporter_party_id:
-                                    transporterPartyId || undefined,
-                            },
-                            { preserveState: true },
-                        );
-                    }}
-                >
-                    <div className="min-w-0 flex-1 space-y-1 sm:max-w-md">
-                        <SearchablePartySelect
-                            id="transporter_party_id"
-                            name="transporter_party_id"
-                            label="Transporter"
-                            options={transporters}
-                            searchUrl={urls.parties_options}
-                            role="transporter"
-                            value={transporterPartyId}
-                            onValueChange={setTransporterPartyId}
-                            emptyMessage="No eligible transporters in this branch."
-                        />
-                    </div>
-                    <Button
-                        type="submit"
-                        size="sm"
-                        className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+            <AppIndexPage>
+                <AppIndexListCard title="Transporter Book Balance">
+                    <AppIndexFilters
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            router.get(
+                                urls.index,
+                                {
+                                    transporter_party_id:
+                                        transporterPartyId || undefined,
+                                },
+                                { preserveState: true },
+                            );
+                        }}
                     >
-                        View statement
-                    </Button>
-                </form>
+                        <div className="min-w-0 flex-1 space-y-1 sm:max-w-md">
+                            <SearchablePartySelect
+                                id="transporter_party_id"
+                                name="transporter_party_id"
+                                label="Transporter"
+                                options={transporters}
+                                searchUrl={urls.parties_options}
+                                role="transporter"
+                                value={transporterPartyId}
+                                onValueChange={setTransporterPartyId}
+                                emptyMessage="No eligible transporters in this branch."
+                            />
+                        </div>
+                        <Button
+                            type="submit"
+                            size="sm"
+                            className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                        >
+                            View statement
+                        </Button>
+                    </AppIndexFilters>
 
-                {running_balance !== null ? (
-                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                        <MetricCard
-                            label="Running balance"
-                            value={running_balance}
-                            hint="For the selected transporter on this branch"
-                            icon={Scale}
-                            tone="blue"
-                        />
+                    {running_balance !== null ? (
+                        <div className="border-b border-[#e5e7eb] bg-[#f0fdf4] px-4 py-3">
+                            <p className="text-xs font-semibold tracking-wide text-slate-500 uppercase">
+                                Running balance
+                            </p>
+                            <p className="text-2xl font-bold text-slate-900 tabular-nums">
+                                {running_balance}
+                            </p>
+                        </div>
+                    ) : null}
+
+                    <div className="overflow-x-auto">
+                        <table className="app-index-table min-w-full">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Type</th>
+                                    <th>Hire</th>
+                                    <th className="text-end">Amount</th>
+                                    <th>Remark</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {entries.data.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={5}>
+                                            <p className="app-index-empty">
+                                                No book balance entries yet.
+                                                Select a transporter to view the
+                                                statement.
+                                            </p>
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    entries.data.map((row) => (
+                                        <tr key={row.id}>
+                                            <td>{row.created_at ?? '—'}</td>
+                                            <td>{row.entry_type}</td>
+                                            <td>{row.hire_number ?? '—'}</td>
+                                            <td className="text-end font-medium tabular-nums">
+                                                {row.amount ?? '—'}
+                                            </td>
+                                            <td className="max-w-xs truncate text-slate-500">
+                                                {row.remark ?? '—'}
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
                     </div>
-                ) : null}
 
-                <ResponsiveDataTable
-                    caption="Transporter book balance entries"
-                    columns={columns}
-                    rows={entries.data}
-                    rowKey={(row) => row.id}
-                    emptyTitle="No book balance entries yet"
-                    emptyDescription="Voucher adjustments and advances appear after broker activity."
-                />
-
-                {entries.meta.total > 0 ? (
-                    <p className="text-xs text-muted-foreground">
-                        Page {entries.meta.current_page} of{' '}
-                        {entries.meta.last_page} · {entries.meta.total} total
-                    </p>
-                ) : null}
-            </PageShell>
+                    {entries.meta.total > 0 ? (
+                        <p className="border-t border-[#e5e7eb] px-4 py-3 text-xs text-slate-500">
+                            Page {entries.meta.current_page} of{' '}
+                            {entries.meta.last_page} · {entries.meta.total}{' '}
+                            total
+                        </p>
+                    ) : null}
+                </AppIndexListCard>
+            </AppIndexPage>
         </>
     );
 }
