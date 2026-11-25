@@ -1,10 +1,10 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 import InputError from '@/components/input-error';
-import { ArrowLeft } from 'lucide-react';
-import { AppIconAction } from '@/components/app-icon-action';
-import { FormSection } from '@/components/form-section';
-import { PageShell } from '@/components/page-shell';
+import {
+    LrfPage,
+    LrfSection,
+} from '@/pages/branch/lorry-receipts/lr-form-sections';
 import { SearchablePartySelect } from '@/components/searchable-party-select';
 import { formatDisplayDate } from '@/lib/dates';
 import { Button } from '@/components/ui/button';
@@ -65,46 +65,65 @@ export default function TripCreate({
     return (
         <>
             <Head title={`Create Trip · ${lorryReceipt.lr_number}`} />
-            <PageShell
-                width="form"
+            <LrfPage
                 title="Create OwnFleet Trip"
-                description={`From LR ${lorryReceipt.lr_number}`}
-                actions={
-                    <AppIconAction
-                        icon={ArrowLeft}
-                        label="Back to LR"
-                        href={urls.lr_show}
-                        variant="outline"
-                    />
-                }
+                subtitle={`From Bilty ${lorryReceipt.lr_number}`}
+                backHref={urls.lr_show}
+                backLabel="Bilty"
             >
-                <FormSection title="Source LR" columns={2}>
-                    <p className="font-medium text-foreground md:col-span-2">
-                        LR {lorryReceipt.lr_number} ·{' '}
-                        {formatDisplayDate(lorryReceipt.lr_date)}
-                    </p>
-                    <p className="text-muted-foreground md:col-span-2">
-                        {[
-                            lorryReceipt.from_station_name,
-                            lorryReceipt.to_station_name,
-                        ]
-                            .filter(Boolean)
-                            .join(' → ') || 'Route not set'}
-                    </p>
-                    <p className="text-muted-foreground">
-                        Freight ₹{lorryReceipt.freight_total}
-                    </p>
-                </FormSection>
+                <LrfSection
+                    step={1}
+                    title="Source Bilty"
+                    description="Trip inherits the Own vehicle and route from this LR."
+                    tone="receipt"
+                >
+                    <div className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                        <p>
+                            <span className="font-semibold text-slate-700">
+                                LR:
+                            </span>{' '}
+                            {lorryReceipt.lr_number}
+                        </p>
+                        <p>
+                            <span className="font-semibold text-slate-700">
+                                Date:
+                            </span>{' '}
+                            {formatDisplayDate(lorryReceipt.lr_date)}
+                        </p>
+                        <p>
+                            <span className="font-semibold text-slate-700">
+                                Route:
+                            </span>{' '}
+                            {[
+                                lorryReceipt.from_station_name,
+                                lorryReceipt.to_station_name,
+                            ]
+                                .filter(Boolean)
+                                .join(' → ') || '—'}
+                        </p>
+                        <p>
+                            <span className="font-semibold text-slate-700">
+                                Freight:
+                            </span>{' '}
+                            ₹{lorryReceipt.freight_total}
+                        </p>
+                    </div>
+                </LrfSection>
 
                 <Form
                     action={urls.store}
                     method="post"
-                    className="grid w-full gap-4"
+                    className="grid w-full gap-3"
                 >
                     {({ processing }) => (
-                        <>
-                            <FormSection title="Vehicle & drivers" columns={2}>
-                                <div className="grid gap-2 md:col-span-2">
+                        <LrfSection
+                            step={2}
+                            title="Vehicle & drivers"
+                            description="Confirm Own vehicle and optional substitute driver."
+                            tone="route"
+                        >
+                            <div className="grid gap-4 sm:grid-cols-2">
+                                <div className="grid gap-2 sm:col-span-2">
                                     <Label htmlFor="vehicle_display">
                                         Vehicle (from LR)
                                     </Label>
@@ -131,22 +150,22 @@ export default function TripCreate({
                                 </div>
 
                                 {selectedVehicle?.primary_driver_name ? (
-                                    <p className="text-sm text-muted-foreground">
+                                    <p className="text-sm text-muted-foreground sm:col-span-2">
                                         Primary driver:{' '}
-                                        <span className="text-foreground">
+                                        <span className="font-medium text-foreground">
                                             {
                                                 selectedVehicle.primary_driver_name
                                             }
                                         </span>
                                     </p>
                                 ) : (
-                                    <p className="text-sm text-amber-700">
+                                    <p className="text-sm text-amber-700 sm:col-span-2">
                                         This vehicle has no primary driver. Use
                                         a substitute driver for this Trip.
                                     </p>
                                 )}
 
-                                <label className="flex items-center gap-2 text-sm">
+                                <label className="flex items-center gap-2 text-sm sm:col-span-2">
                                     <input
                                         type="checkbox"
                                         name="use_substitute_driver"
@@ -162,21 +181,23 @@ export default function TripCreate({
                                 </label>
 
                                 {useSubstitute ? (
-                                    <SearchablePartySelect
-                                        id="substitute_driver_party_id"
-                                        name="substitute_driver_party_id"
-                                        label="Substitute driver"
-                                        options={drivers}
-                                        searchUrl={urls.parties_options}
-                                        role="driver"
-                                        createHref={urls.parties_create}
-                                        createLabel="Create Driver"
-                                        required
-                                        emptyMessage="No eligible drivers in this branch."
-                                        error={
-                                            errors?.substitute_driver_party_id
-                                        }
-                                    />
+                                    <div className="sm:col-span-2">
+                                        <SearchablePartySelect
+                                            id="substitute_driver_party_id"
+                                            name="substitute_driver_party_id"
+                                            label="Substitute driver"
+                                            options={drivers}
+                                            searchUrl={urls.parties_options}
+                                            role="driver"
+                                            createHref={urls.parties_create}
+                                            createLabel="Create Driver"
+                                            required
+                                            emptyMessage="No eligible drivers in this branch."
+                                            error={
+                                                errors?.substitute_driver_party_id
+                                            }
+                                        />
+                                    </div>
                                 ) : null}
 
                                 <div className="grid gap-2">
@@ -193,7 +214,7 @@ export default function TripCreate({
                                     />
                                 </div>
 
-                                <div className="flex flex-wrap gap-2 md:col-span-2">
+                                <div className="flex flex-wrap gap-2 sm:col-span-2">
                                     <Button
                                         type="submit"
                                         variant="primary"
@@ -207,11 +228,11 @@ export default function TripCreate({
                                         <Link href={urls.lr_show}>Cancel</Link>
                                     </Button>
                                 </div>
-                            </FormSection>
-                        </>
+                            </div>
+                        </LrfSection>
                     )}
                 </Form>
-            </PageShell>
+            </LrfPage>
         </>
     );
 }

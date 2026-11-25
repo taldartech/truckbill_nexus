@@ -1,10 +1,16 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import {
+    FbDetailCard,
+    FbDetailPage,
+    FbInfoGrid,
+    FbInfoItem,
+} from '@/components/fb-detail';
+import {
     DocumentDrawer,
     type DocumentDrawerProps,
 } from '@/components/masters/document-drawer';
-import { PageShell } from '@/components/page-shell';
+import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { Button } from '@/components/ui/button';
 
 type Account = {
@@ -49,70 +55,82 @@ export default function BankCashShow({
     return (
         <>
             <Head title={account.name} />
-            <PageShell title={account.name}>
+            <FbDetailPage>
                 {flash?.success ? (
                     <p
                         role="status"
-                        className="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm"
+                        className="mb-3 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm"
                     >
                         {flash.success}
                     </p>
                 ) : null}
-                <div className="flex flex-wrap gap-2">
-                    {permissions.can_edit ? (
-                        <Button asChild variant="outline">
-                            <Link href={links.edit}>Edit</Link>
-                        </Button>
-                    ) : null}
-                    {documentDrawer ? (
-                        <Button
-                            type="button"
-                            variant="outline"
-                            onClick={() => setDocsOpen(true)}
-                        >
-                            Documents
-                        </Button>
-                    ) : (
-                        <Button asChild variant="outline">
-                            <Link href={links.documents}>Documents</Link>
-                        </Button>
-                    )}
-                    {permissions.can_delete ? (
-                        <Button
-                            type="button"
-                            variant="destructive"
-                            onClick={() => {
-                                const remark = window.prompt(
-                                    'Remark for soft deletion',
-                                );
-                                if (!remark) return;
-                                router.delete(links.destroy, {
-                                    data: { remark },
-                                });
-                            }}
-                        >
-                            Soft delete
-                        </Button>
-                    ) : null}
-                </div>
-                <dl className="grid gap-4 rounded-xl border border-border p-4 sm:grid-cols-2">
-                    {[
-                        ['Kind', account.account_kind],
-                        ['Bank', account.bank_name],
-                        ['Account (masked)', account.account_number_masked],
-                        ['IFSC', account.ifsc],
-                        ['Holder', account.account_holder_name],
-                        ['Status', account.is_active ? 'Active' : 'Inactive'],
-                    ].map(([label, value]) => (
-                        <div key={label}>
-                            <dt className="text-xs tracking-wide text-muted-foreground uppercase">
-                                {label}
-                            </dt>
-                            <dd className="mt-1 text-sm">{value || '—'}</dd>
-                        </div>
-                    ))}
-                </dl>
-            </PageShell>
+
+                <FbDetailCard
+                    title={account.name}
+                    badges={
+                        <WorkspaceStatusBadge
+                            status={account.is_active ? 'Active' : 'Inactive'}
+                        />
+                    }
+                    actions={
+                        <>
+                            {permissions.can_edit ? (
+                                <Button asChild variant="outline" size="sm">
+                                    <Link href={links.edit}>Edit</Link>
+                                </Button>
+                            ) : null}
+                            {documentDrawer ? (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setDocsOpen(true)}
+                                >
+                                    Documents
+                                </Button>
+                            ) : (
+                                <Button asChild variant="outline" size="sm">
+                                    <Link href={links.documents}>
+                                        Documents
+                                    </Link>
+                                </Button>
+                            )}
+                            {permissions.can_delete ? (
+                                <Button
+                                    type="button"
+                                    variant="destructive"
+                                    size="sm"
+                                    onClick={() => {
+                                        const remark = window.prompt(
+                                            'Remark for soft deletion',
+                                        );
+                                        if (!remark) return;
+                                        router.delete(links.destroy, {
+                                            data: { remark },
+                                        });
+                                    }}
+                                >
+                                    Soft delete
+                                </Button>
+                            ) : null}
+                        </>
+                    }
+                >
+                    <FbInfoGrid>
+                        <FbInfoItem label="Kind" value={account.account_kind} />
+                        <FbInfoItem label="Bank" value={account.bank_name} />
+                        <FbInfoItem
+                            label="Account (masked)"
+                            value={account.account_number_masked}
+                        />
+                        <FbInfoItem label="IFSC" value={account.ifsc} />
+                        <FbInfoItem
+                            label="Holder"
+                            value={account.account_holder_name}
+                        />
+                    </FbInfoGrid>
+                </FbDetailCard>
+            </FbDetailPage>
             {documentDrawer ? (
                 <DocumentDrawer
                     open={docsOpen}

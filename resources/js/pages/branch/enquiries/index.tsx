@@ -1,13 +1,16 @@
-import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Eye, Filter, Plus } from 'lucide-react';
 import { useMemo } from 'react';
 import { AppIconAction } from '@/components/app-icon-action';
 import {
+    AppIndexFilters,
+    AppIndexListCard,
+    AppIndexPage,
+} from '@/components/app-index-page';
+import {
     ResponsiveDataTable,
     type DataTableColumn,
 } from '@/components/data-table';
-import { FormSection } from '@/components/form-section';
-import { PageShell } from '@/components/page-shell';
 import { TablePagination } from '@/components/table-pagination';
 import { Button } from '@/components/ui/button';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
@@ -92,35 +95,50 @@ export default function BranchEnquiriesIndex({
     return (
         <>
             <Head title={`Enquiries · ${branch.name}`} />
-            <PageShell
-                title="Enquiries"
-                description={`Broker pipeline for ${branch.name}.`}
-                actions={
-                    can_create ? (
-                        <Button asChild variant="primary" className="gap-2">
-                            <Link href={urls.create}>
-                                <Plus className="size-4" />
+            <AppIndexPage>
+                <AppIndexListCard
+                    title="Enquiries"
+                    toolbar={
+                        can_create ? (
+                            <Link
+                                href={urls.create}
+                                className="app-index-header-btn"
+                            >
+                                <Plus className="h-3.5 w-3.5" />
                                 Create enquiry
                             </Link>
-                        </Button>
-                    ) : null
-                }
-            >
-                {flash?.success ? (
-                    <p
-                        role="status"
-                        className="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm"
-                    >
-                        {flash.success}
-                    </p>
-                ) : null}
+                        ) : null
+                    }
+                >
+                    {flash?.success ? (
+                        <p
+                            role="status"
+                            className="border-b border-[#e5e7eb] bg-[#f8fafc] px-4 py-2 text-sm text-[#334155]"
+                        >
+                            {flash.success}
+                        </p>
+                    ) : null}
 
-                {can_include_unassigned ? (
-                    <FormSection title="Queue filters" columns={2}>
-                        <Form
-                            action={urls.index}
-                            method="get"
-                            className="contents"
+                    {can_include_unassigned ? (
+                        <AppIndexFilters
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                const form = event.currentTarget;
+                                const unassigned = (
+                                    form.elements.namedItem(
+                                        'unassigned',
+                                    ) as HTMLInputElement
+                                ).checked;
+                                router.get(
+                                    urls.index,
+                                    {
+                                        unassigned: unassigned
+                                            ? '1'
+                                            : undefined,
+                                    },
+                                    { preserveState: true, replace: true },
+                                );
+                            }}
                         >
                             <label className="flex items-center gap-2 text-sm">
                                 <input
@@ -131,50 +149,51 @@ export default function BranchEnquiriesIndex({
                                 />
                                 Include company unassigned queue
                             </label>
-                            <FilterApplyButton />
-                        </Form>
-                    </FormSection>
-                ) : null}
+                            <Button
+                                type="submit"
+                                className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                            >
+                                <Filter className="mr-1.5 size-3.5" />
+                                Apply
+                            </Button>
+                        </AppIndexFilters>
+                    ) : null}
 
-                <ResponsiveDataTable
-                    caption="Enquiries"
-                    columns={columns}
-                    rows={enquiries.data}
-                    rowKey={(row) => row.id}
-                    emptyTitle="No enquiries found"
-                    emptyDescription="Create an enquiry or adjust filters."
-                    actions={(enquiry) => (
-                        <AppIconAction
-                            icon={Eye}
-                            label="Open enquiry"
-                            href={`${urls.index}/${enquiry.id}`}
-                            variant="info"
+                    <div className="p-4">
+                        <ResponsiveDataTable
+                            caption="Enquiries"
+                            columns={columns}
+                            rows={enquiries.data}
+                            rowKey={(row) => row.id}
+                            emptyTitle="No enquiries found"
+                            emptyDescription="Create an enquiry or adjust filters."
+                            actions={(enquiry) => (
+                                <AppIconAction
+                                    icon={Eye}
+                                    label="Open enquiry"
+                                    href={`${urls.index}/${enquiry.id}`}
+                                    variant="info"
+                                />
+                            )}
                         />
-                    )}
-                />
 
-                <TablePagination
-                    baseUrl={urls.index}
-                    meta={enquiries.meta}
-                    query={{
-                        unassigned: filters.unassigned ? '1' : undefined,
-                    }}
-                />
-                {enquiries.meta.includes_unassigned ? (
-                    <p className="text-xs text-muted-foreground">
-                        Includes unassigned queue
-                    </p>
-                ) : null}
-            </PageShell>
+                        <TablePagination
+                            baseUrl={urls.index}
+                            meta={enquiries.meta}
+                            query={{
+                                unassigned: filters.unassigned
+                                    ? '1'
+                                    : undefined,
+                            }}
+                        />
+                        {enquiries.meta.includes_unassigned ? (
+                            <p className="mt-2 text-xs text-muted-foreground">
+                                Includes unassigned queue
+                            </p>
+                        ) : null}
+                    </div>
+                </AppIndexListCard>
+            </AppIndexPage>
         </>
-    );
-}
-
-function FilterApplyButton() {
-    return (
-        <Button type="submit" variant="secondary" className="gap-2">
-            <Filter className="size-4" />
-            Apply
-        </Button>
     );
 }

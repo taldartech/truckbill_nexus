@@ -163,7 +163,7 @@ export default function LorryReceiptShow({
     return (
         <>
             <Head title={`Bilty ${lorryReceipt.lr_number}`} />
-            <FbDetailPage>
+            <FbDetailPage title={`Bilty ${lorryReceipt.lr_number}`}>
                 {lorryReceipt.status === 'cancelled' ? (
                     <div
                         className="mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"

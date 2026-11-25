@@ -1,8 +1,10 @@
 import { Form, Head, Link } from '@inertiajs/react';
 import { useState } from 'react';
 import InputError from '@/components/input-error';
-import { FormSection } from '@/components/form-section';
-import { PageShell } from '@/components/page-shell';
+import {
+    LrfPage,
+    LrfSection,
+} from '@/pages/branch/lorry-receipts/lr-form-sections';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -70,110 +72,158 @@ export default function VehicleForm({
                         : `Edit ${vehicle?.registration_number}`
                 }
             />
-            <PageShell
-                width="form"
+            <LrfPage
                 title={
                     mode === 'create'
                         ? 'Create vehicle'
                         : `Edit ${vehicle?.registration_number}`
                 }
-                description="Registration, ownership, driver assignment, and technical specifications."
+                subtitle="Registration, ownership, driver assignment, and technical specifications."
+                backHref={links.index}
+                backLabel="Vehicles"
             >
                 <Form
                     action={action}
                     method={mode === 'create' ? 'post' : 'patch'}
-                    className="grid w-full gap-5"
+                    className="space-y-3"
                 >
                     {({ errors, processing }) => (
                         <>
-                            <FormSection
+                            <LrfSection
+                                step={1}
                                 title="Registration & ownership"
-                                columns={2}
+                                description="Fleet identity, ownership, and specifications."
+                                tone="receipt"
                             >
-                                <div className="space-y-2">
-                                    <Label htmlFor="registration_number">
-                                        Registration number
-                                    </Label>
-                                    <Input
-                                        id="registration_number"
-                                        name="registration_number"
-                                        defaultValue={
-                                            vehicle?.registration_number ?? ''
-                                        }
-                                        required
-                                    />
-                                    <InputError
-                                        message={errors.registration_number}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="ownership">Ownership</Label>
-                                    <select
-                                        id="ownership"
-                                        name="ownership"
-                                        className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                        value={ownership}
-                                        onChange={(e) =>
-                                            setOwnership(e.target.value)
-                                        }
-                                        required
-                                    >
-                                        {formOptions.ownershipOptions.map(
-                                            (option) => (
-                                                <option
-                                                    key={option.value}
-                                                    value={option.value}
+                                <div className="grid gap-3 md:grid-cols-2">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="registration_number">
+                                            Registration number
+                                        </Label>
+                                        <Input
+                                            id="registration_number"
+                                            name="registration_number"
+                                            defaultValue={
+                                                vehicle?.registration_number ??
+                                                ''
+                                            }
+                                            required
+                                        />
+                                        <InputError
+                                            message={errors.registration_number}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="ownership">
+                                            Ownership
+                                        </Label>
+                                        <select
+                                            id="ownership"
+                                            name="ownership"
+                                            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                            value={ownership}
+                                            onChange={(e) =>
+                                                setOwnership(e.target.value)
+                                            }
+                                            required
+                                        >
+                                            {formOptions.ownershipOptions.map(
+                                                (option) => (
+                                                    <option
+                                                        key={option.value}
+                                                        value={option.value}
+                                                    >
+                                                        {option.label}
+                                                    </option>
+                                                ),
+                                            )}
+                                        </select>
+                                        <InputError
+                                            message={errors.ownership}
+                                        />
+                                    </div>
+                                    {ownership === 'own' ? (
+                                        <>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="truck_type_id">
+                                                    Truck Type
+                                                </Label>
+                                                <select
+                                                    id="truck_type_id"
+                                                    name="truck_type_id"
+                                                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                                    defaultValue={
+                                                        vehicle?.truck_type_id ??
+                                                        ''
+                                                    }
+                                                    required
                                                 >
-                                                    {option.label}
-                                                </option>
-                                            ),
-                                        )}
-                                    </select>
-                                    <InputError message={errors.ownership} />
-                                </div>
-                                {ownership === 'own' ? (
-                                    <>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="truck_type_id">
-                                                Truck Type
+                                                    <option value="">
+                                                        Select…
+                                                    </option>
+                                                    {formOptions.truckTypes.map(
+                                                        (item) => (
+                                                            <option
+                                                                key={item.id}
+                                                                value={item.id}
+                                                            >
+                                                                {item.name}
+                                                            </option>
+                                                        ),
+                                                    )}
+                                                </select>
+                                                <InputError
+                                                    message={
+                                                        errors.truck_type_id
+                                                    }
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="tyre_layout_id">
+                                                    Tyre Layout
+                                                </Label>
+                                                <select
+                                                    id="tyre_layout_id"
+                                                    name="tyre_layout_id"
+                                                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                                    defaultValue={
+                                                        vehicle?.tyre_layout_id ??
+                                                        ''
+                                                    }
+                                                    required
+                                                >
+                                                    <option value="">
+                                                        Select…
+                                                    </option>
+                                                    {formOptions.tyreLayouts.map(
+                                                        (item) => (
+                                                            <option
+                                                                key={item.id}
+                                                                value={item.id}
+                                                            >
+                                                                {item.name}
+                                                            </option>
+                                                        ),
+                                                    )}
+                                                </select>
+                                                <InputError
+                                                    message={
+                                                        errors.tyre_layout_id
+                                                    }
+                                                />
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="space-y-2 md:col-span-2">
+                                            <Label htmlFor="owner_party_id">
+                                                Vehicle Owner (Transporter)
                                             </Label>
                                             <select
-                                                id="truck_type_id"
-                                                name="truck_type_id"
+                                                id="owner_party_id"
+                                                name="owner_party_id"
                                                 className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
                                                 defaultValue={
-                                                    vehicle?.truck_type_id ?? ''
-                                                }
-                                                required
-                                            >
-                                                <option value="">
-                                                    Select…
-                                                </option>
-                                                {formOptions.truckTypes.map(
-                                                    (item) => (
-                                                        <option
-                                                            key={item.id}
-                                                            value={item.id}
-                                                        >
-                                                            {item.name}
-                                                        </option>
-                                                    ),
-                                                )}
-                                            </select>
-                                            <InputError
-                                                message={errors.truck_type_id}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="tyre_layout_id">
-                                                Tyre Layout
-                                            </Label>
-                                            <select
-                                                id="tyre_layout_id"
-                                                name="tyre_layout_id"
-                                                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                                defaultValue={
-                                                    vehicle?.tyre_layout_id ??
+                                                    vehicle?.owner_party_id ??
                                                     ''
                                                 }
                                                 required
@@ -181,38 +231,37 @@ export default function VehicleForm({
                                                 <option value="">
                                                     Select…
                                                 </option>
-                                                {formOptions.tyreLayouts.map(
-                                                    (item) => (
+                                                {formOptions.transporters.map(
+                                                    (party) => (
                                                         <option
-                                                            key={item.id}
-                                                            value={item.id}
+                                                            key={party.id}
+                                                            value={party.id}
                                                         >
-                                                            {item.name}
+                                                            {party.name}
                                                         </option>
                                                     ),
                                                 )}
                                             </select>
                                             <InputError
-                                                message={errors.tyre_layout_id}
+                                                message={errors.owner_party_id}
                                             />
                                         </div>
-                                    </>
-                                ) : (
+                                    )}
                                     <div className="space-y-2 md:col-span-2">
-                                        <Label htmlFor="owner_party_id">
-                                            Vehicle Owner (Transporter)
+                                        <Label htmlFor="primary_driver_party_id">
+                                            Primary Driver
                                         </Label>
                                         <select
-                                            id="owner_party_id"
-                                            name="owner_party_id"
+                                            id="primary_driver_party_id"
+                                            name="primary_driver_party_id"
                                             className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
                                             defaultValue={
-                                                vehicle?.owner_party_id ?? ''
+                                                vehicle?.primary_driver_party_id ??
+                                                ''
                                             }
-                                            required
                                         >
-                                            <option value="">Select…</option>
-                                            {formOptions.transporters.map(
+                                            <option value="">None</option>
+                                            {formOptions.drivers.map(
                                                 (party) => (
                                                     <option
                                                         key={party.id}
@@ -224,123 +273,116 @@ export default function VehicleForm({
                                             )}
                                         </select>
                                         <InputError
-                                            message={errors.owner_party_id}
+                                            message={
+                                                errors.primary_driver_party_id
+                                            }
                                         />
                                     </div>
-                                )}
-                                <div className="space-y-2 md:col-span-2">
-                                    <Label htmlFor="primary_driver_party_id">
-                                        Primary Driver
-                                    </Label>
-                                    <select
-                                        id="primary_driver_party_id"
-                                        name="primary_driver_party_id"
-                                        className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                        defaultValue={
-                                            vehicle?.primary_driver_party_id ??
-                                            ''
-                                        }
-                                    >
-                                        <option value="">None</option>
-                                        {formOptions.drivers.map((party) => (
-                                            <option
-                                                key={party.id}
-                                                value={party.id}
-                                            >
-                                                {party.name}
-                                            </option>
-                                        ))}
-                                    </select>
-                                    <InputError
-                                        message={errors.primary_driver_party_id}
-                                    />
+                                    {[
+                                        [
+                                            'vehicle_type',
+                                            'Vehicle type',
+                                            vehicle?.vehicle_type ?? '',
+                                        ],
+                                        ['make', 'Make', vehicle?.make ?? ''],
+                                        [
+                                            'model',
+                                            'Model',
+                                            vehicle?.model ?? '',
+                                        ],
+                                        [
+                                            'manufacture_year',
+                                            'Manufacture year',
+                                            vehicle?.manufacture_year?.toString() ??
+                                                '',
+                                        ],
+                                        [
+                                            'chassis_number',
+                                            'Chassis number',
+                                            vehicle?.chassis_number ?? '',
+                                        ],
+                                        [
+                                            'engine_number',
+                                            'Engine number',
+                                            vehicle?.engine_number ?? '',
+                                        ],
+                                        [
+                                            'capacity_mt',
+                                            'Capacity (MT)',
+                                            vehicle?.capacity_mt?.toString() ??
+                                                '',
+                                        ],
+                                    ].map(([name, label, value]) => (
+                                        <div key={name} className="space-y-2">
+                                            <Label htmlFor={name}>
+                                                {label}
+                                            </Label>
+                                            <Input
+                                                id={name}
+                                                name={name}
+                                                defaultValue={value}
+                                            />
+                                            <InputError
+                                                message={errors[name]}
+                                            />
+                                        </div>
+                                    ))}
                                 </div>
-                                {[
-                                    [
-                                        'vehicle_type',
-                                        'Vehicle type',
-                                        vehicle?.vehicle_type ?? '',
-                                    ],
-                                    ['make', 'Make', vehicle?.make ?? ''],
-                                    ['model', 'Model', vehicle?.model ?? ''],
-                                    [
-                                        'manufacture_year',
-                                        'Manufacture year',
-                                        vehicle?.manufacture_year?.toString() ??
-                                            '',
-                                    ],
-                                    [
-                                        'chassis_number',
-                                        'Chassis number',
-                                        vehicle?.chassis_number ?? '',
-                                    ],
-                                    [
-                                        'engine_number',
-                                        'Engine number',
-                                        vehicle?.engine_number ?? '',
-                                    ],
-                                    [
-                                        'capacity_mt',
-                                        'Capacity (MT)',
-                                        vehicle?.capacity_mt?.toString() ?? '',
-                                    ],
-                                ].map(([name, label, value]) => (
-                                    <div key={name} className="space-y-2">
-                                        <Label htmlFor={name}>{label}</Label>
+                            </LrfSection>
+                            <LrfSection
+                                step={2}
+                                title="Status & audit"
+                                description="Active flag and save remark."
+                                tone="optional"
+                            >
+                                <div className="space-y-3">
+                                    <label className="flex items-center gap-2 text-sm">
+                                        <input
+                                            type="checkbox"
+                                            name="is_active"
+                                            value="1"
+                                            defaultChecked={
+                                                vehicle?.is_active ?? true
+                                            }
+                                        />
+                                        Active
+                                    </label>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="remark">Remark</Label>
                                         <Input
-                                            id={name}
-                                            name={name}
-                                            defaultValue={value}
+                                            id="remark"
+                                            name="remark"
+                                            required={mode === 'edit'}
+                                            defaultValue={
+                                                mode === 'create'
+                                                    ? 'Create vehicle'
+                                                    : ''
+                                            }
                                         />
-                                        <InputError message={errors[name]} />
+                                        <InputError message={errors.remark} />
                                     </div>
-                                ))}
-                            </FormSection>
-                            <FormSection title="Status & audit" columns={1}>
-                                <label className="flex items-center gap-2 text-sm">
-                                    <input
-                                        type="checkbox"
-                                        name="is_active"
-                                        value="1"
-                                        defaultChecked={
-                                            vehicle?.is_active ?? true
-                                        }
-                                    />
-                                    Active
-                                </label>
-                                <div className="space-y-2">
-                                    <Label htmlFor="remark">Remark</Label>
-                                    <Input
-                                        id="remark"
-                                        name="remark"
-                                        required={mode === 'edit'}
-                                        defaultValue={
-                                            mode === 'create'
-                                                ? 'Create vehicle'
-                                                : ''
-                                        }
-                                    />
-                                    <InputError message={errors.remark} />
+                                    <div className="flex gap-3">
+                                        <Button
+                                            type="submit"
+                                            variant="primary"
+                                            disabled={processing}
+                                        >
+                                            {processing ? 'Saving…' : 'Save'}
+                                        </Button>
+                                        <Button asChild variant="outline">
+                                            <Link
+                                                href={links.show ?? links.index}
+                                            >
+                                                Cancel
+                                            </Link>
+                                        </Button>
+                                    </div>
                                 </div>
-                                <div className="flex gap-3">
-                                    <Button
-                                        type="submit"
-                                        variant="primary"
-                                        disabled={processing}
-                                    >
-                                        {processing ? 'Saving…' : 'Save'}
-                                    </Button>
-                                    <Button asChild variant="outline">
-                                        <Link href={links.show ?? links.index}>
-                                            Cancel
-                                        </Link>
-                                    </Button>
-                                </div>
-                            </FormSection>
+                            </LrfSection>
                         </>
                     )}
                 </Form>
-            </PageShell>
+            </LrfPage>
         </>
     );
 }

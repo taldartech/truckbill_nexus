@@ -2,14 +2,21 @@ import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 export function FbDetailPage({
+    title,
     children,
     className,
 }: {
+    title?: string;
     children: ReactNode;
     className?: string;
 }) {
     return (
         <div className={cn('fb-detail-page app-index-page', className)}>
+            {title ? (
+                <h1 className="mb-3 text-lg font-semibold text-slate-900">
+                    {title}
+                </h1>
+            ) : null}
             {children}
         </div>
     );

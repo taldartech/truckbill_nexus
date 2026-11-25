@@ -5,8 +5,8 @@ import { AppIconAction } from '@/components/app-icon-action';
 import { DetailTabPanel, DetailTabs } from '@/components/detail-tabs';
 import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
 import type { ChangeReview } from '@/components/form-confirmation/types';
+import { FbDetailCard, FbDetailPage } from '@/components/fb-detail';
 import { FormSection } from '@/components/form-section';
-import { PageShell } from '@/components/page-shell';
 import { SearchablePartySelect } from '@/components/searchable-party-select';
 import {
     WorkflowProgress,
@@ -291,19 +291,26 @@ export default function BranchEnquiryShow({
             <Head
                 title={`${enquiry.enquiry_number ?? 'Enquiry'} · ${branch.name}`}
             />
-            <PageShell
-                title={enquiry.enquiry_number ?? enquiry.id.slice(0, 8)}
-                description={`${company.name} · ${branch.name} · ${enquiry.source}`}
-                actions={
-                    <AppIconAction
-                        icon={ArrowLeft}
-                        label="Back to enquiries"
-                        href={urls.index}
-                        variant="outline"
-                    />
-                }
-            >
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <FbDetailPage>
+                <FbDetailCard
+                    title={enquiry.enquiry_number ?? enquiry.id.slice(0, 8)}
+                    badges={<WorkspaceStatusBadge status={enquiry.status} />}
+                    actions={
+                        <AppIconAction
+                            icon={ArrowLeft}
+                            label="Back to enquiries"
+                            href={urls.index}
+                            variant="outline"
+                            size="sm"
+                        />
+                    }
+                >
+                    <p className="border-b border-[#e2e8f0] px-4 py-2 text-xs text-slate-500">
+                        {company.name} · {branch.name} · {enquiry.source}
+                    </p>
+                </FbDetailCard>
+
+                <div className="mt-3 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <MetricCard
                         label="Status"
                         value={<WorkspaceStatusBadge status={enquiry.status} />}
@@ -1012,7 +1019,7 @@ export default function BranchEnquiryShow({
                         </FormSection>
                     </DetailTabPanel>
                 </DetailTabs>
-            </PageShell>
+            </FbDetailPage>
 
             <FormConfirmationDialog
                 open={editConfirmOpen}

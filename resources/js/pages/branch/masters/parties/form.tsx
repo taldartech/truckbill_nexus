@@ -11,7 +11,10 @@ import type {
 } from '@/components/form-confirmation/types';
 import { FormSection } from '@/components/form-section';
 import InputError from '@/components/input-error';
-import { PageShell } from '@/components/page-shell';
+import {
+    LrfPage,
+    LrfSection,
+} from '@/pages/branch/lorry-receipts/lr-form-sections';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -770,569 +773,617 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
                     mode === 'create' ? 'Create party' : `Edit ${party?.name}`
                 }
             />
-            <PageShell
-                width="form"
+            <LrfPage
                 title={
                     mode === 'create' ? 'Create party' : `Edit ${party?.name}`
                 }
-                description="Sectioned party master — roles unlock transporter TDS and driver panels."
+                subtitle="Sectioned party master — roles unlock transporter TDS and driver panels."
+                backHref={links.index}
+                backLabel="Parties"
             >
                 <Form
                     id="party-master-form"
                     action={action}
                     method={method}
-                    className="grid w-full gap-5"
+                    className="space-y-3"
                     onSubmit={handleSubmit}
                 >
                     {({ errors, processing }) => (
                         <>
-                            <FormSection
+                            <LrfSection
+                                step={1}
                                 title="Basic"
                                 description="Legal or trading name for this party."
-                                columns={1}
+                                tone="receipt"
                             >
-                                <div className="space-y-2">
-                                    <Label htmlFor="name">Name *</Label>
-                                    <Input
-                                        id="name"
-                                        name="name"
-                                        required
-                                        defaultValue={party?.name ?? ''}
-                                    />
-                                    <InputError message={errors.name} />
+                                <div className="space-y-3">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="name">Name *</Label>
+                                        <Input
+                                            id="name"
+                                            name="name"
+                                            required
+                                            defaultValue={party?.name ?? ''}
+                                        />
+                                        <InputError message={errors.name} />
+                                    </div>
                                 </div>
-                            </FormSection>
+                            </LrfSection>
 
-                            <FormSection
+                            <LrfSection
+                                step={2}
                                 title="Contact"
                                 description="Reachable contact for operations and billing."
-                                columns={2}
+                                tone="route"
                             >
-                                <div className="space-y-2">
-                                    <Label htmlFor="contact_person">
-                                        Contact person
-                                        {contactPersonRequired ? ' *' : ''}
-                                    </Label>
-                                    <Input
-                                        id="contact_person"
-                                        name="contact_person"
-                                        required={contactPersonRequired}
-                                        defaultValue={
-                                            party?.contact_person ?? ''
-                                        }
-                                    />
-                                    <InputError
-                                        message={errors.contact_person}
-                                    />
+                                <div className="grid gap-3 md:grid-cols-2">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="contact_person">
+                                            Contact person
+                                            {contactPersonRequired ? ' *' : ''}
+                                        </Label>
+                                        <Input
+                                            id="contact_person"
+                                            name="contact_person"
+                                            required={contactPersonRequired}
+                                            defaultValue={
+                                                party?.contact_person ?? ''
+                                            }
+                                        />
+                                        <InputError
+                                            message={errors.contact_person}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="contact_number">
+                                            Contact number
+                                            {contactNumberRequired ? ' *' : ''}
+                                        </Label>
+                                        <Input
+                                            id="contact_number"
+                                            name="contact_number"
+                                            required={contactNumberRequired}
+                                            defaultValue={
+                                                party?.contact_number ?? ''
+                                            }
+                                        />
+                                        <InputError
+                                            message={errors.contact_number}
+                                        />
+                                    </div>
+                                    <div className="space-y-2 md:col-span-2">
+                                        <Label htmlFor="email">Email</Label>
+                                        <Input
+                                            id="email"
+                                            name="email"
+                                            type="email"
+                                            defaultValue={party?.email ?? ''}
+                                        />
+                                        <InputError message={errors.email} />
+                                    </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="contact_number">
-                                        Contact number
-                                        {contactNumberRequired ? ' *' : ''}
-                                    </Label>
-                                    <Input
-                                        id="contact_number"
-                                        name="contact_number"
-                                        required={contactNumberRequired}
-                                        defaultValue={
-                                            party?.contact_number ?? ''
-                                        }
-                                    />
-                                    <InputError
-                                        message={errors.contact_number}
-                                    />
-                                </div>
-                                <div className="space-y-2 md:col-span-2">
-                                    <Label htmlFor="email">Email</Label>
-                                    <Input
-                                        id="email"
-                                        name="email"
-                                        type="email"
-                                        defaultValue={party?.email ?? ''}
-                                    />
-                                    <InputError message={errors.email} />
-                                </div>
-                            </FormSection>
+                            </LrfSection>
 
-                            <FormSection
+                            <LrfSection
+                                step={3}
                                 title="Address"
                                 description="Location used on LR and invoice documents."
-                                columns={2}
+                                tone="goods"
                             >
-                                <div className="space-y-2">
-                                    <Label htmlFor="state">
-                                        State
-                                        {stateCityRequired ? ' *' : ''}
-                                    </Label>
-                                    <Input
-                                        id="state"
-                                        name="state"
-                                        required={stateCityRequired}
-                                        defaultValue={party?.state ?? ''}
-                                    />
-                                    <InputError message={errors.state} />
+                                <div className="grid gap-3 md:grid-cols-2">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="state">
+                                            State
+                                            {stateCityRequired ? ' *' : ''}
+                                        </Label>
+                                        <Input
+                                            id="state"
+                                            name="state"
+                                            required={stateCityRequired}
+                                            defaultValue={party?.state ?? ''}
+                                        />
+                                        <InputError message={errors.state} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="city">
+                                            City
+                                            {stateCityRequired ? ' *' : ''}
+                                        </Label>
+                                        <Input
+                                            id="city"
+                                            name="city"
+                                            required={stateCityRequired}
+                                            defaultValue={party?.city ?? ''}
+                                        />
+                                        <InputError message={errors.city} />
+                                    </div>
+                                    <div className="space-y-2 md:col-span-2">
+                                        <Label htmlFor="address">Address</Label>
+                                        <Input
+                                            id="address"
+                                            name="address"
+                                            defaultValue={party?.address ?? ''}
+                                        />
+                                    </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="city">
-                                        City
-                                        {stateCityRequired ? ' *' : ''}
-                                    </Label>
-                                    <Input
-                                        id="city"
-                                        name="city"
-                                        required={stateCityRequired}
-                                        defaultValue={party?.city ?? ''}
-                                    />
-                                    <InputError message={errors.city} />
-                                </div>
-                                <div className="space-y-2 md:col-span-2">
-                                    <Label htmlFor="address">Address</Label>
-                                    <Input
-                                        id="address"
-                                        name="address"
-                                        defaultValue={party?.address ?? ''}
-                                    />
-                                </div>
-                            </FormSection>
+                            </LrfSection>
 
-                            <FormSection
+                            <LrfSection
+                                step={4}
                                 title="Roles"
                                 description="Select one or more roles. Role-specific panels appear below."
-                                columns={3}
+                                tone="optional"
                             >
-                                <InputError message={errors.roles} />
-                                <InputError
-                                    message={
-                                        errors['roles.attributes'] as
-                                            | string
-                                            | undefined
-                                    }
-                                />
-                                <div
-                                    className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3"
-                                    role="group"
-                                    aria-label="Party roles"
-                                >
-                                    {roleOptions.map((option) => {
-                                        const checked = selectedRoles.includes(
-                                            option.value,
-                                        );
+                                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                                    <InputError message={errors.roles} />
+                                    <InputError
+                                        message={
+                                            errors['roles.attributes'] as
+                                                | string
+                                                | undefined
+                                        }
+                                    />
+                                    <div
+                                        className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3"
+                                        role="group"
+                                        aria-label="Party roles"
+                                    >
+                                        {roleOptions.map((option) => {
+                                            const checked =
+                                                selectedRoles.includes(
+                                                    option.value,
+                                                );
 
-                                        return (
-                                            <button
-                                                key={option.value}
-                                                type="button"
-                                                role="checkbox"
-                                                aria-checked={checked}
-                                                onClick={() =>
-                                                    toggleRole(option.value)
-                                                }
-                                                className={cn(
-                                                    'rounded-lg border px-3 py-2.5 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
-                                                    checked
-                                                        ? 'border-primary bg-accent text-accent-foreground shadow-xs'
-                                                        : 'border-border bg-background hover:border-primary/40',
-                                                )}
-                                            >
-                                                <span className="font-medium">
-                                                    {option.label}
-                                                </span>
-                                                {checked ? (
-                                                    <input
-                                                        type="hidden"
-                                                        name={`roles[${roleIndex[option.value]}][role]`}
-                                                        value={option.value}
-                                                    />
-                                                ) : null}
-                                            </button>
-                                        );
-                                    })}
+                                            return (
+                                                <button
+                                                    key={option.value}
+                                                    type="button"
+                                                    role="checkbox"
+                                                    aria-checked={checked}
+                                                    onClick={() =>
+                                                        toggleRole(option.value)
+                                                    }
+                                                    className={cn(
+                                                        'rounded-lg border px-3 py-2.5 text-left text-sm transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none',
+                                                        checked
+                                                            ? 'border-primary bg-accent text-accent-foreground shadow-xs'
+                                                            : 'border-border bg-background hover:border-primary/40',
+                                                    )}
+                                                >
+                                                    <span className="font-medium">
+                                                        {option.label}
+                                                    </span>
+                                                    {checked ? (
+                                                        <input
+                                                            type="hidden"
+                                                            name={`roles[${roleIndex[option.value]}][role]`}
+                                                            value={option.value}
+                                                        />
+                                                    ) : null}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
-                            </FormSection>
+                            </LrfSection>
 
                             {needsDriver ? (
-                                <FormSection
+                                <LrfSection
+                                    step={5}
                                     title="Driver details"
                                     description="Shown when the driver role is selected."
-                                    columns={2}
+                                    tone="route"
                                 >
-                                    <div className="space-y-2">
-                                        <Label htmlFor="driver_type">
-                                            Driver type *
-                                        </Label>
-                                        <select
-                                            id="driver_type"
-                                            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                            value={driver.driver_type}
-                                            onChange={(event) =>
-                                                setDriver((current) => ({
-                                                    ...current,
-                                                    driver_type:
-                                                        event.target.value ===
-                                                        'market'
-                                                            ? 'market'
-                                                            : 'permanent',
-                                                }))
-                                            }
-                                        >
-                                            <option value="permanent">
-                                                Permanent
-                                            </option>
-                                            <option value="market">
-                                                Market
-                                            </option>
-                                        </select>
-                                        <input
-                                            type="hidden"
-                                            name={`roles[${roleIndex.driver}][attributes][driver_type]`}
-                                            value={driver.driver_type}
-                                        />
-                                        <InputError
-                                            message={
-                                                errors[
-                                                    'roles.attributes.driver_type'
-                                                ]
-                                            }
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="license_number">
-                                            License number
-                                            {driver.driver_type === 'permanent'
-                                                ? ' *'
-                                                : ''}
-                                        </Label>
-                                        <Input
-                                            id="license_number"
-                                            required={
-                                                driver.driver_type ===
+                                    <div className="grid gap-3 md:grid-cols-2">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="driver_type">
+                                                Driver type *
+                                            </Label>
+                                            <select
+                                                id="driver_type"
+                                                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                                value={driver.driver_type}
+                                                onChange={(event) =>
+                                                    setDriver((current) => ({
+                                                        ...current,
+                                                        driver_type:
+                                                            event.target
+                                                                .value ===
+                                                            'market'
+                                                                ? 'market'
+                                                                : 'permanent',
+                                                    }))
+                                                }
+                                            >
+                                                <option value="permanent">
+                                                    Permanent
+                                                </option>
+                                                <option value="market">
+                                                    Market
+                                                </option>
+                                            </select>
+                                            <input
+                                                type="hidden"
+                                                name={`roles[${roleIndex.driver}][attributes][driver_type]`}
+                                                value={driver.driver_type}
+                                            />
+                                            <InputError
+                                                message={
+                                                    errors[
+                                                        'roles.attributes.driver_type'
+                                                    ]
+                                                }
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="license_number">
+                                                License number
+                                                {driver.driver_type ===
                                                 'permanent'
-                                            }
-                                            value={driver.license_number}
-                                            onChange={(event) =>
-                                                setDriver((current) => ({
-                                                    ...current,
-                                                    license_number:
-                                                        event.target.value,
-                                                }))
-                                            }
-                                        />
-                                        {driver.license_number !== '' ? (
-                                            <input
-                                                type="hidden"
-                                                name={`roles[${roleIndex.driver}][attributes][license_number]`}
+                                                    ? ' *'
+                                                    : ''}
+                                            </Label>
+                                            <Input
+                                                id="license_number"
+                                                required={
+                                                    driver.driver_type ===
+                                                    'permanent'
+                                                }
                                                 value={driver.license_number}
+                                                onChange={(event) =>
+                                                    setDriver((current) => ({
+                                                        ...current,
+                                                        license_number:
+                                                            event.target.value,
+                                                    }))
+                                                }
                                             />
-                                        ) : null}
-                                        <InputError
-                                            message={
-                                                errors[
-                                                    'roles.attributes.license_number'
-                                                ]
-                                            }
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="license_expiry">
-                                            License expiry
-                                        </Label>
-                                        <Input
-                                            id="license_expiry"
-                                            type="date"
-                                            value={driver.license_expiry}
-                                            onChange={(event) =>
-                                                setDriver((current) => ({
-                                                    ...current,
-                                                    license_expiry:
-                                                        event.target.value,
-                                                }))
-                                            }
-                                        />
-                                        {driver.license_expiry !== '' ? (
-                                            <input
-                                                type="hidden"
-                                                name={`roles[${roleIndex.driver}][attributes][license_expiry]`}
+                                            {driver.license_number !== '' ? (
+                                                <input
+                                                    type="hidden"
+                                                    name={`roles[${roleIndex.driver}][attributes][license_number]`}
+                                                    value={
+                                                        driver.license_number
+                                                    }
+                                                />
+                                            ) : null}
+                                            <InputError
+                                                message={
+                                                    errors[
+                                                        'roles.attributes.license_number'
+                                                    ]
+                                                }
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="license_expiry">
+                                                License expiry
+                                            </Label>
+                                            <Input
+                                                id="license_expiry"
+                                                type="date"
                                                 value={driver.license_expiry}
+                                                onChange={(event) =>
+                                                    setDriver((current) => ({
+                                                        ...current,
+                                                        license_expiry:
+                                                            event.target.value,
+                                                    }))
+                                                }
                                             />
-                                        ) : null}
-                                    </div>
-                                    {driver.driver_type === 'permanent'
-                                        ? (
-                                              [
+                                            {driver.license_expiry !== '' ? (
+                                                <input
+                                                    type="hidden"
+                                                    name={`roles[${roleIndex.driver}][attributes][license_expiry]`}
+                                                    value={
+                                                        driver.license_expiry
+                                                    }
+                                                />
+                                            ) : null}
+                                        </div>
+                                        {driver.driver_type === 'permanent'
+                                            ? (
                                                   [
-                                                      'joining_date',
-                                                      'Joining date',
-                                                      'date',
-                                                  ],
-                                                  [
-                                                      'aadhaar',
-                                                      'Aadhaar',
-                                                      'text',
-                                                  ],
-                                                  ['pan', 'Driver PAN', 'text'],
-                                                  [
-                                                      'emergency_contact_name',
-                                                      'Emergency contact name',
-                                                      'text',
-                                                  ],
-                                                  [
-                                                      'emergency_contact_mobile',
-                                                      'Emergency contact mobile',
-                                                      'text',
-                                                  ],
-                                                  [
-                                                      'monthly_payment_base',
-                                                      'Monthly payment base',
-                                                      'text',
-                                                  ],
-                                              ] as const
-                                          ).map(([key, label, type]) => (
-                                              <div
-                                                  key={key}
-                                                  className="space-y-2"
-                                              >
-                                                  <Label htmlFor={key}>
-                                                      {label}
-                                                  </Label>
-                                                  <Input
-                                                      id={key}
-                                                      type={type}
-                                                      value={driver[key]}
-                                                      onChange={(event) =>
-                                                          setDriver(
-                                                              (current) => ({
-                                                                  ...current,
-                                                                  [key]: event
-                                                                      .target
-                                                                      .value,
-                                                              }),
-                                                          )
-                                                      }
-                                                  />
-                                                  {driver[key] !== '' ? (
-                                                      <input
-                                                          type="hidden"
-                                                          name={`roles[${roleIndex.driver}][attributes][${key}]`}
+                                                      [
+                                                          'joining_date',
+                                                          'Joining date',
+                                                          'date',
+                                                      ],
+                                                      [
+                                                          'aadhaar',
+                                                          'Aadhaar',
+                                                          'text',
+                                                      ],
+                                                      [
+                                                          'pan',
+                                                          'Driver PAN',
+                                                          'text',
+                                                      ],
+                                                      [
+                                                          'emergency_contact_name',
+                                                          'Emergency contact name',
+                                                          'text',
+                                                      ],
+                                                      [
+                                                          'emergency_contact_mobile',
+                                                          'Emergency contact mobile',
+                                                          'text',
+                                                      ],
+                                                      [
+                                                          'monthly_payment_base',
+                                                          'Monthly payment base',
+                                                          'text',
+                                                      ],
+                                                  ] as const
+                                              ).map(([key, label, type]) => (
+                                                  <div
+                                                      key={key}
+                                                      className="space-y-2"
+                                                  >
+                                                      <Label htmlFor={key}>
+                                                          {label}
+                                                      </Label>
+                                                      <Input
+                                                          id={key}
+                                                          type={type}
                                                           value={driver[key]}
+                                                          onChange={(event) =>
+                                                              setDriver(
+                                                                  (
+                                                                      current,
+                                                                  ) => ({
+                                                                      ...current,
+                                                                      [key]: event
+                                                                          .target
+                                                                          .value,
+                                                                  }),
+                                                              )
+                                                          }
                                                       />
-                                                  ) : null}
-                                              </div>
-                                          ))
-                                        : null}
-                                </FormSection>
+                                                      {driver[key] !== '' ? (
+                                                          <input
+                                                              type="hidden"
+                                                              name={`roles[${roleIndex.driver}][attributes][${key}]`}
+                                                              value={
+                                                                  driver[key]
+                                                              }
+                                                          />
+                                                      ) : null}
+                                                  </div>
+                                              ))
+                                            : null}
+                                    </div>
+                                </LrfSection>
                             ) : null}
 
-                            <FormSection
+                            <LrfSection
+                                step={needsDriver ? 6 : 5}
                                 title="GST & PAN"
                                 description="Tax identifiers shared across roles."
-                                columns={2}
+                                tone="goods"
                             >
-                                <div className="space-y-2">
-                                    <Label htmlFor="gstin">GSTIN</Label>
-                                    <Input
-                                        id="gstin"
-                                        name="gstin"
-                                        defaultValue={party?.gstin ?? ''}
-                                    />
-                                    <InputError message={errors.gstin} />
+                                <div className="grid gap-3 md:grid-cols-2">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="gstin">GSTIN</Label>
+                                        <Input
+                                            id="gstin"
+                                            name="gstin"
+                                            defaultValue={party?.gstin ?? ''}
+                                        />
+                                        <InputError message={errors.gstin} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="is_gst_applicable">
+                                            GST applicable
+                                        </Label>
+                                        <select
+                                            id="is_gst_applicable"
+                                            name="is_gst_applicable"
+                                            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                            defaultValue={
+                                                party?.is_gst_applicable ===
+                                                false
+                                                    ? '0'
+                                                    : '1'
+                                            }
+                                        >
+                                            <option value="1">Yes</option>
+                                            <option value="0">No</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-2 md:col-span-2">
+                                        <Label htmlFor="pan">
+                                            PAN
+                                            {needsTransporter ? ' *' : ''}
+                                        </Label>
+                                        <Input
+                                            id="pan"
+                                            name="pan"
+                                            required={needsTransporter}
+                                            value={pan}
+                                            onChange={(event) =>
+                                                setPan(
+                                                    event.target.value.toUpperCase(),
+                                                )
+                                            }
+                                        />
+                                        <InputError message={errors.pan} />
+                                    </div>
                                 </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="is_gst_applicable">
-                                        GST applicable
-                                    </Label>
-                                    <select
-                                        id="is_gst_applicable"
-                                        name="is_gst_applicable"
-                                        className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                        defaultValue={
-                                            party?.is_gst_applicable === false
-                                                ? '0'
-                                                : '1'
-                                        }
-                                    >
-                                        <option value="1">Yes</option>
-                                        <option value="0">No</option>
-                                    </select>
-                                </div>
-                                <div className="space-y-2 md:col-span-2">
-                                    <Label htmlFor="pan">
-                                        PAN
-                                        {needsTransporter ? ' *' : ''}
-                                    </Label>
-                                    <Input
-                                        id="pan"
-                                        name="pan"
-                                        required={needsTransporter}
-                                        value={pan}
-                                        onChange={(event) =>
-                                            setPan(
-                                                event.target.value.toUpperCase(),
-                                            )
-                                        }
-                                    />
-                                    <InputError message={errors.pan} />
-                                </div>
-                            </FormSection>
+                            </LrfSection>
 
                             {needsTransporter ||
                             (needsDriver &&
                                 driver.driver_type === 'permanent') ? (
-                                <FormSection
+                                <LrfSection
+                                    step={needsDriver ? 7 : 6}
                                     title="Bank"
                                     description="Settlement accounts for transporter payouts and driver payroll."
-                                    columns={2}
+                                    tone="optional"
                                 >
-                                    {needsTransporter ? (
-                                        <>
-                                            <p className="text-xs font-medium text-muted-foreground md:col-span-2">
-                                                Transporter payout
-                                            </p>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="short_name">
-                                                    Short name
-                                                </Label>
-                                                <Input
-                                                    id="short_name"
-                                                    value={
-                                                        transporter.short_name
-                                                    }
-                                                    onChange={(event) =>
-                                                        setTransporter(
-                                                            (current) => ({
-                                                                ...current,
-                                                                short_name:
-                                                                    event.target
-                                                                        .value,
-                                                            }),
-                                                        )
-                                                    }
-                                                />
-                                                {transporter.short_name !==
-                                                '' ? (
-                                                    <input
-                                                        type="hidden"
-                                                        name={`roles[${roleIndex.transporter}][attributes][short_name]`}
+                                    <div className="grid gap-3 md:grid-cols-2">
+                                        {needsTransporter ? (
+                                            <>
+                                                <p className="text-xs font-medium text-muted-foreground md:col-span-2">
+                                                    Transporter payout
+                                                </p>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="short_name">
+                                                        Short name
+                                                    </Label>
+                                                    <Input
+                                                        id="short_name"
                                                         value={
                                                             transporter.short_name
                                                         }
-                                                    />
-                                                ) : null}
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="beneficiary_id">
-                                                    Beneficiary ID
-                                                </Label>
-                                                <Input
-                                                    id="beneficiary_id"
-                                                    value={
-                                                        transporter.beneficiary_id
-                                                    }
-                                                    onChange={(event) =>
-                                                        setTransporter(
-                                                            (current) => ({
-                                                                ...current,
-                                                                beneficiary_id:
-                                                                    event.target
-                                                                        .value,
-                                                            }),
-                                                        )
-                                                    }
-                                                />
-                                                {transporter.beneficiary_id !==
-                                                '' ? (
-                                                    <input
-                                                        type="hidden"
-                                                        name={`roles[${roleIndex.transporter}][attributes][beneficiary_id]`}
-                                                        value={
-                                                            transporter.beneficiary_id
-                                                        }
-                                                    />
-                                                ) : null}
-                                            </div>
-                                            <div className="space-y-2 md:col-span-2">
-                                                <Label htmlFor="bank_account">
-                                                    Bank account
-                                                </Label>
-                                                <Input
-                                                    id="bank_account"
-                                                    value={
-                                                        transporter.bank_account
-                                                    }
-                                                    onChange={(event) =>
-                                                        setTransporter(
-                                                            (current) => ({
-                                                                ...current,
-                                                                bank_account:
-                                                                    event.target
-                                                                        .value,
-                                                            }),
-                                                        )
-                                                    }
-                                                />
-                                                {transporter.bank_account !==
-                                                '' ? (
-                                                    <input
-                                                        type="hidden"
-                                                        name={`roles[${roleIndex.transporter}][attributes][bank_account]`}
-                                                        value={
-                                                            transporter.bank_account
-                                                        }
-                                                    />
-                                                ) : null}
-                                            </div>
-                                        </>
-                                    ) : null}
-                                    {needsDriver &&
-                                    driver.driver_type === 'permanent' ? (
-                                        <>
-                                            <p className="text-xs font-medium text-muted-foreground md:col-span-2">
-                                                Driver payroll
-                                            </p>
-                                            {(
-                                                [
-                                                    ['bank_name', 'Bank name'],
-                                                    [
-                                                        'bank_account_number',
-                                                        'Bank account number',
-                                                    ],
-                                                    ['ifsc', 'IFSC'],
-                                                ] as const
-                                            ).map(([key, label]) => (
-                                                <div
-                                                    key={key}
-                                                    className="space-y-2"
-                                                >
-                                                    <Label
-                                                        htmlFor={`driver_${key}`}
-                                                    >
-                                                        {label}
-                                                    </Label>
-                                                    <Input
-                                                        id={`driver_${key}`}
-                                                        value={driver[key]}
                                                         onChange={(event) =>
-                                                            setDriver(
+                                                            setTransporter(
                                                                 (current) => ({
                                                                     ...current,
-                                                                    [key]: event
-                                                                        .target
-                                                                        .value,
+                                                                    short_name:
+                                                                        event
+                                                                            .target
+                                                                            .value,
                                                                 }),
                                                             )
                                                         }
                                                     />
-                                                    {driver[key] !== '' ? (
+                                                    {transporter.short_name !==
+                                                    '' ? (
                                                         <input
                                                             type="hidden"
-                                                            name={`roles[${roleIndex.driver}][attributes][${key}]`}
-                                                            value={driver[key]}
+                                                            name={`roles[${roleIndex.transporter}][attributes][short_name]`}
+                                                            value={
+                                                                transporter.short_name
+                                                            }
                                                         />
                                                     ) : null}
                                                 </div>
-                                            ))}
-                                        </>
-                                    ) : null}
-                                </FormSection>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="beneficiary_id">
+                                                        Beneficiary ID
+                                                    </Label>
+                                                    <Input
+                                                        id="beneficiary_id"
+                                                        value={
+                                                            transporter.beneficiary_id
+                                                        }
+                                                        onChange={(event) =>
+                                                            setTransporter(
+                                                                (current) => ({
+                                                                    ...current,
+                                                                    beneficiary_id:
+                                                                        event
+                                                                            .target
+                                                                            .value,
+                                                                }),
+                                                            )
+                                                        }
+                                                    />
+                                                    {transporter.beneficiary_id !==
+                                                    '' ? (
+                                                        <input
+                                                            type="hidden"
+                                                            name={`roles[${roleIndex.transporter}][attributes][beneficiary_id]`}
+                                                            value={
+                                                                transporter.beneficiary_id
+                                                            }
+                                                        />
+                                                    ) : null}
+                                                </div>
+                                                <div className="space-y-2 md:col-span-2">
+                                                    <Label htmlFor="bank_account">
+                                                        Bank account
+                                                    </Label>
+                                                    <Input
+                                                        id="bank_account"
+                                                        value={
+                                                            transporter.bank_account
+                                                        }
+                                                        onChange={(event) =>
+                                                            setTransporter(
+                                                                (current) => ({
+                                                                    ...current,
+                                                                    bank_account:
+                                                                        event
+                                                                            .target
+                                                                            .value,
+                                                                }),
+                                                            )
+                                                        }
+                                                    />
+                                                    {transporter.bank_account !==
+                                                    '' ? (
+                                                        <input
+                                                            type="hidden"
+                                                            name={`roles[${roleIndex.transporter}][attributes][bank_account]`}
+                                                            value={
+                                                                transporter.bank_account
+                                                            }
+                                                        />
+                                                    ) : null}
+                                                </div>
+                                            </>
+                                        ) : null}
+                                        {needsDriver &&
+                                        driver.driver_type === 'permanent' ? (
+                                            <>
+                                                <p className="text-xs font-medium text-muted-foreground md:col-span-2">
+                                                    Driver payroll
+                                                </p>
+                                                {(
+                                                    [
+                                                        [
+                                                            'bank_name',
+                                                            'Bank name',
+                                                        ],
+                                                        [
+                                                            'bank_account_number',
+                                                            'Bank account number',
+                                                        ],
+                                                        ['ifsc', 'IFSC'],
+                                                    ] as const
+                                                ).map(([key, label]) => (
+                                                    <div
+                                                        key={key}
+                                                        className="space-y-2"
+                                                    >
+                                                        <Label
+                                                            htmlFor={`driver_${key}`}
+                                                        >
+                                                            {label}
+                                                        </Label>
+                                                        <Input
+                                                            id={`driver_${key}`}
+                                                            value={driver[key]}
+                                                            onChange={(event) =>
+                                                                setDriver(
+                                                                    (
+                                                                        current,
+                                                                    ) => ({
+                                                                        ...current,
+                                                                        [key]: event
+                                                                            .target
+                                                                            .value,
+                                                                    }),
+                                                                )
+                                                            }
+                                                        />
+                                                        {driver[key] !== '' ? (
+                                                            <input
+                                                                type="hidden"
+                                                                name={`roles[${roleIndex.driver}][attributes][${key}]`}
+                                                                value={
+                                                                    driver[key]
+                                                                }
+                                                            />
+                                                        ) : null}
+                                                    </div>
+                                                ))}
+                                            </>
+                                        ) : null}
+                                    </div>
+                                </LrfSection>
                             ) : null}
 
                             {needsTransporter ? (
@@ -1347,24 +1398,31 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
                                 />
                             ) : null}
 
-                            <FormSection title="Remark" columns={1}>
-                                <div className="space-y-2">
-                                    <Label htmlFor="remark">
-                                        Remark{mode === 'edit' ? ' *' : ''}
-                                    </Label>
-                                    <Input
-                                        id="remark"
-                                        name="remark"
-                                        required={mode === 'edit'}
-                                        defaultValue={
-                                            mode === 'create'
-                                                ? 'Create party'
-                                                : ''
-                                        }
-                                    />
-                                    <InputError message={errors.remark} />
+                            <LrfSection
+                                step={8}
+                                title="Remark"
+                                description="Audit remark for this save."
+                                tone="optional"
+                            >
+                                <div className="space-y-3">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="remark">
+                                            Remark{mode === 'edit' ? ' *' : ''}
+                                        </Label>
+                                        <Input
+                                            id="remark"
+                                            name="remark"
+                                            required={mode === 'edit'}
+                                            defaultValue={
+                                                mode === 'create'
+                                                    ? 'Create party'
+                                                    : ''
+                                            }
+                                        />
+                                        <InputError message={errors.remark} />
+                                    </div>
                                 </div>
-                            </FormSection>
+                            </LrfSection>
 
                             <div className="sticky bottom-0 z-10 -mx-1 flex flex-wrap items-center justify-end gap-3 border-t border-border bg-background/95 px-1 py-3 backdrop-blur supports-backdrop-filter:bg-background/80">
                                 <Button asChild variant="outline">
@@ -1405,7 +1463,7 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
                     processing={false}
                     onConfirm={handleConfirm}
                 />
-            </PageShell>
+            </LrfPage>
         </>
     );
 }

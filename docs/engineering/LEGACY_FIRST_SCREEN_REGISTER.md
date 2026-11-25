@@ -28,11 +28,11 @@
 | Customer Invoice detail                             | invoices show                                                                           | IMPLEMENTED — LAYOUT               | Pending       | `FbDetailPage`                                        |
 | Customer Invoice register                           | invoices index                                                                          | IMPLEMENTED — LAYOUT               | Pending       | AppIndex (`/broker/invoices`)                         |
 | Customer Receipt                                    | invoice payments                                                                        | PRESERVED ON DETAIL                | —             | Payment form on invoice show                          |
-| Enquiry / Quotation                                 | enquiries                                                                               | NOT STARTED                        | —             |                                                       |
+| Enquiry / Quotation                                 | enquiries                                                                               | IMPLEMENTED — LAYOUT               | Pending       | AppIndex / Lrf / Fb                                   |
 | POD / Document management                           | document drawer                                                                         | PRESERVED                          | —             | Drawer on bilty/trip                                  |
 | Printing workflows                                  | print routes                                                                            | PRESERVED                          | —             | Existing print actions                                |
-| Trip index                                          | OwnFleet Vue trips index                                                                | NOT STARTED (PageShell)            | —             |                                                       |
-| Trip create / init                                  | OwnFleet create                                                                         | NOT STARTED (PageShell)            | —             | LR-first only                                         |
+| Trip index                                          | OwnFleet Vue trips index                                                                | IMPLEMENTED — LAYOUT               | Pending       | AppIndex                                              |
+| Trip create / init                                  | OwnFleet create                                                                         | IMPLEMENTED — LAYOUT               | Pending       | `LrfPage`; LR-first only                              |
 | Trip operational workspace                          | `TripDetailPage.vue`                                                                    | IMPLEMENTED — BROWSER CAPTURED     | Yes           | `trip-detail` 8/4; expenses inline                    |
 | Driver assignment                                   | on trip / bilty Own                                                                     | PRESERVED                          | —             | On create/show fields                                 |
 | Multi-point Pickup/Drop                             | Trip multi-point Vue                                                                    | PARTIAL                            | —             | Movements on trip show; no dedicated MP create        |
@@ -45,17 +45,17 @@
 | Station Master index                                | masters                                                                                 | IMPLEMENTED — LAYOUT               | Capture retry | AppIndex                                              |
 | Goods / Truck / Tyre / Package / Expense catalogues | catalogues                                                                              | IMPLEMENTED — LAYOUT               | Pending       | AppIndex                                              |
 | Bank/Cash Accounts index                            | masters                                                                                 | IMPLEMENTED — LAYOUT               | Pending       | AppIndex                                              |
-| Master create/edit/show forms                       | Blade CRUD                                                                              | NOT STARTED (PageShell)            | —             | Forms remain FormSection                              |
+| Master create/edit/show forms                       | Blade CRUD                                                                              | IMPLEMENTED — LAYOUT               | Pending       | Party/vehicle/station/bank-cash Lrf + Fb show         |
 
 ## Counts (authorized operational + masters in this register)
 
-| Metric                                                               | Count                                                                                                          |
-| -------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| Total applicable screens listed                                      | 42                                                                                                             |
-| Reconstructed (layout migrated off generic PageShell where targeted) | 28                                                                                                             |
-| Browser-captured this pass                                           | 16+ under `storage/visual-certification/legacy-first/`                                                         |
-| Live legacy visual comparison                                        | Blocked — legacy apps not launched; source Blade/Vue + Nexus screenshots only                                  |
-| Blocked / intentional gaps                                           | Dedicated trip expenses route; archive/restore; stop-scoped expenses; Enquiry; master forms; Batch 4 / Phase 7 |
+| Metric                                                               | Count                                                                                   |
+| -------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Total applicable screens listed                                      | 42                                                                                      |
+| Reconstructed (layout migrated off generic PageShell where targeted) | 36                                                                                      |
+| Browser-captured this pass                                           | 16+ under `storage/visual-certification/legacy-first/`                                  |
+| Live legacy visual comparison                                        | Blocked — legacy apps not launched; source Blade/Vue + Nexus screenshots only           |
+| Blocked / intentional gaps                                           | Dedicated trip expenses route; archive/restore; stop-scoped expenses; Batch 4 / Phase 7 |
 
 ## Intentional approved differences (preserve)
 

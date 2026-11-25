@@ -178,7 +178,7 @@ export default function LorryReceiptsIndex({
             },
             {
                 id: 'lr_number',
-                header: 'LR / Bilty',
+                header: 'Bilty No',
                 priority: 0,
                 width: '8.5rem',
                 minWidth: '8.5rem',
@@ -238,7 +238,7 @@ export default function LorryReceiptsIndex({
             },
             {
                 id: 'vehicle_registration',
-                header: 'Truck',
+                header: 'Truck No',
                 priority: 1,
                 width: '8rem',
                 minWidth: '7.5rem',

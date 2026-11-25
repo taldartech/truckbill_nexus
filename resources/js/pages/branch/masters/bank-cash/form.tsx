@@ -1,8 +1,10 @@
 import { Form, Head, Link } from '@inertiajs/react';
 import { useState } from 'react';
 import InputError from '@/components/input-error';
-import { FormSection } from '@/components/form-section';
-import { PageShell } from '@/components/page-shell';
+import {
+    LrfPage,
+    LrfSection,
+} from '@/pages/branch/lorry-receipts/lr-form-sections';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -45,25 +47,31 @@ export default function BankCashForm({ mode, account, links }: Props) {
                         : `Edit ${account?.name}`
                 }
             />
-            <PageShell
-                width="form"
+            <LrfPage
                 title={
                     mode === 'create'
                         ? 'Create account'
                         : `Edit ${account?.name}`
                 }
-                description="Branch bank and cash accounts for settlements."
+                subtitle="Branch bank and cash accounts for settlements."
+                backHref={links.index}
+                backLabel="Bank / cash"
             >
                 <Form
                     action={action}
                     method={mode === 'create' ? 'post' : 'patch'}
-                    className="grid w-full gap-5"
+                    className="space-y-3"
                 >
                     {({ errors, processing }) => (
                         <>
-                            <FormSection title="Account details" columns={2}>
-                                {mode === 'create' ? (
-                                    <>
+                            <LrfSection
+                                step={1}
+                                title="Account details"
+                                description="Kind, name, and banking fields."
+                                tone="receipt"
+                            >
+                                <div className="grid gap-3 md:grid-cols-2">
+                                    {mode === 'create' ? (
                                         <div className="space-y-2">
                                             <Label htmlFor="account_kind">
                                                 Kind
@@ -85,132 +93,145 @@ export default function BankCashForm({ mode, account, links }: Props) {
                                                 </option>
                                             </select>
                                         </div>
-                                    </>
-                                ) : null}
-                                <div className="space-y-2">
-                                    <Label htmlFor="name">Name</Label>
-                                    <Input
-                                        id="name"
-                                        name="name"
-                                        required
-                                        defaultValue={account?.name ?? ''}
-                                    />
-                                    <InputError message={errors.name} />
-                                </div>
-                                {kind === 'bank' ||
-                                account?.account_kind === 'bank' ? (
-                                    <>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="bank_name">
-                                                Bank name
-                                            </Label>
-                                            <Input
-                                                id="bank_name"
-                                                name="bank_name"
-                                                defaultValue={
-                                                    account?.bank_name ?? ''
-                                                }
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="account_number">
-                                                {mode === 'edit'
-                                                    ? 'Account number (leave blank to keep)'
-                                                    : 'Account number'}
-                                            </Label>
-                                            <Input
-                                                id="account_number"
-                                                name="account_number"
-                                                placeholder={
-                                                    account?.account_number_masked ??
-                                                    ''
-                                                }
-                                                autoComplete="off"
-                                            />
-                                            <InputError
-                                                message={errors.account_number}
-                                            />
-                                            {mode === 'edit' &&
-                                            account?.account_number_masked ? (
-                                                <p className="text-xs text-muted-foreground">
-                                                    Current masked:{' '}
-                                                    {
-                                                        account.account_number_masked
+                                    ) : null}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="name">Name</Label>
+                                        <Input
+                                            id="name"
+                                            name="name"
+                                            required
+                                            defaultValue={account?.name ?? ''}
+                                        />
+                                        <InputError message={errors.name} />
+                                    </div>
+                                    {kind === 'bank' ||
+                                    account?.account_kind === 'bank' ? (
+                                        <>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="bank_name">
+                                                    Bank name
+                                                </Label>
+                                                <Input
+                                                    id="bank_name"
+                                                    name="bank_name"
+                                                    defaultValue={
+                                                        account?.bank_name ?? ''
                                                     }
-                                                </p>
-                                            ) : null}
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="ifsc">IFSC</Label>
-                                            <Input
-                                                id="ifsc"
-                                                name="ifsc"
-                                                defaultValue={
-                                                    account?.ifsc ?? ''
-                                                }
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="account_holder_name">
-                                                Account holder
-                                            </Label>
-                                            <Input
-                                                id="account_holder_name"
-                                                name="account_holder_name"
-                                                defaultValue={
-                                                    account?.account_holder_name ??
-                                                    ''
-                                                }
-                                            />
-                                        </div>
-                                    </>
-                                ) : null}
-                                <label className="flex items-center gap-2 text-sm md:col-span-2">
-                                    <input
-                                        type="checkbox"
-                                        name="is_active"
-                                        value="1"
-                                        defaultChecked={
-                                            account?.is_active ?? true
-                                        }
-                                    />{' '}
-                                    Active
-                                </label>
-                            </FormSection>
-                            <FormSection title="Remark" columns={1}>
-                                <div className="space-y-2">
-                                    <Label htmlFor="remark">Remark</Label>
-                                    <Input
-                                        id="remark"
-                                        name="remark"
-                                        required={mode === 'edit'}
-                                        defaultValue={
-                                            mode === 'create'
-                                                ? 'Create bank/cash account'
-                                                : ''
-                                        }
-                                    />
-                                    <InputError message={errors.remark} />
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="account_number">
+                                                    {mode === 'edit'
+                                                        ? 'Account number (leave blank to keep)'
+                                                        : 'Account number'}
+                                                </Label>
+                                                <Input
+                                                    id="account_number"
+                                                    name="account_number"
+                                                    placeholder={
+                                                        account?.account_number_masked ??
+                                                        ''
+                                                    }
+                                                    autoComplete="off"
+                                                />
+                                                <InputError
+                                                    message={
+                                                        errors.account_number
+                                                    }
+                                                />
+                                                {mode === 'edit' &&
+                                                account?.account_number_masked ? (
+                                                    <p className="text-xs text-muted-foreground">
+                                                        Current masked:{' '}
+                                                        {
+                                                            account.account_number_masked
+                                                        }
+                                                    </p>
+                                                ) : null}
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="ifsc">
+                                                    IFSC
+                                                </Label>
+                                                <Input
+                                                    id="ifsc"
+                                                    name="ifsc"
+                                                    defaultValue={
+                                                        account?.ifsc ?? ''
+                                                    }
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="account_holder_name">
+                                                    Account holder
+                                                </Label>
+                                                <Input
+                                                    id="account_holder_name"
+                                                    name="account_holder_name"
+                                                    defaultValue={
+                                                        account?.account_holder_name ??
+                                                        ''
+                                                    }
+                                                />
+                                            </div>
+                                        </>
+                                    ) : null}
+                                    <label className="flex items-center gap-2 text-sm md:col-span-2">
+                                        <input
+                                            type="checkbox"
+                                            name="is_active"
+                                            value="1"
+                                            defaultChecked={
+                                                account?.is_active ?? true
+                                            }
+                                        />{' '}
+                                        Active
+                                    </label>
                                 </div>
-                                <div className="flex gap-3">
-                                    <Button
-                                        type="submit"
-                                        variant="primary"
-                                        disabled={processing}
-                                    >
-                                        {processing ? 'Saving…' : 'Save'}
-                                    </Button>
-                                    <Button asChild variant="outline">
-                                        <Link href={links.show ?? links.index}>
-                                            Cancel
-                                        </Link>
-                                    </Button>
+                            </LrfSection>
+                            <LrfSection
+                                step={2}
+                                title="Remark"
+                                description="Audit trail for this save."
+                                tone="optional"
+                            >
+                                <div className="space-y-3">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="remark">Remark</Label>
+                                        <Input
+                                            id="remark"
+                                            name="remark"
+                                            required={mode === 'edit'}
+                                            defaultValue={
+                                                mode === 'create'
+                                                    ? 'Create bank/cash account'
+                                                    : ''
+                                            }
+                                        />
+                                        <InputError message={errors.remark} />
+                                    </div>
+                                    <div className="flex gap-3">
+                                        <Button
+                                            type="submit"
+                                            variant="primary"
+                                            disabled={processing}
+                                        >
+                                            {processing ? 'Saving…' : 'Save'}
+                                        </Button>
+                                        <Button asChild variant="outline">
+                                            <Link
+                                                href={links.show ?? links.index}
+                                            >
+                                                Cancel
+                                            </Link>
+                                        </Button>
+                                    </div>
                                 </div>
-                            </FormSection>
+                            </LrfSection>
                         </>
                     )}
                 </Form>
-            </PageShell>
+            </LrfPage>
         </>
     );
 }
