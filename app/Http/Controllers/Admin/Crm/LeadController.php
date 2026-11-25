@@ -2,21 +2,16 @@
 
 namespace App\Http\Controllers\Admin\Crm;
 
-use App\Domains\Company\Enums\DataVisibility;
-use App\Domains\Company\Enums\GstRegistrationType;
-use App\Domains\Company\Enums\TaxLiability;
-use App\Domains\Company\Exceptions\CompanyDomainException;
 use App\Domains\Crm\Enums\InterestedProduct;
 use App\Domains\Crm\Enums\LeadSource;
 use App\Domains\Crm\Enums\LeadStatus;
 use App\Domains\Crm\Exceptions\CrmDomainException;
-use App\Domains\Crm\LeadConversionService;
 use App\Domains\Crm\LeadService;
+use App\Domains\Crm\Onboarding\LeadOnboardingService;
 use App\Http\Controllers\Controller;
 use App\Models\Crm\Lead;
 use App\Models\Crm\LeadActivity;
 use App\Models\Crm\LeadFollowUp;
-use App\Models\GstRate;
 use App\Models\InternalRoleAssignment;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -30,7 +25,7 @@ class LeadController extends Controller
 {
     public function __construct(
         private readonly LeadService $leads = new LeadService,
-        private readonly LeadConversionService $conversions = new LeadConversionService,
+        private readonly LeadOnboardingService $onboarding = new LeadOnboardingService,
     ) {}
 
     public function index(Request $request): Response
@@ -148,7 +143,7 @@ class LeadController extends Controller
 
         $lead->load([
             'assignee:id,name,email',
-            'activities' => fn ($q) => $q->orderByDesc('created_at')->limit(50),
+            'activities' => fn ($q) => $q->with('actor:id,name,email')->orderByDesc('created_at')->limit(50),
             'followUps' => fn ($q) => $q->with('assignee:id,name,email')->orderByDesc('due_at'),
             'convertedCompany:id,name',
         ]);
@@ -178,11 +173,11 @@ class LeadController extends Controller
                     fn (LeadStatus $s): string => $s->value,
                     $statusTransitions,
                 ),
-                'can_convert' => $lead->status === LeadStatus::Qualified,
                 'converted_company' => $lead->convertedCompany === null ? null : [
                     'id' => $lead->convertedCompany->id,
                     'name' => $lead->convertedCompany->name,
                 ],
+                'can_invite' => $lead->status->canReceiveOnboardingInvite() && filled($lead->email),
             ],
             'follow_ups' => $lead->followUps->map(fn (LeadFollowUp $followUp): array => [
                 'id' => $followUp->id,
@@ -200,7 +195,11 @@ class LeadController extends Controller
                 'id' => $activity->id,
                 'activity_type' => $activity->activity_type,
                 'body' => $activity->body,
-                'created_at' => $activity->created_at?->toIso8601String(),
+                'is_note' => $activity->activity_type === 'note',
+                'actor' => $activity->actor !== null
+                    ? ($activity->actor->name !== '' ? $activity->actor->name : $activity->actor->email)
+                    : null,
+                'created_at' => $activity->created_at?->timezone('Asia/Kolkata')->format('d-m-Y H:i'),
             ])->values()->all(),
             'assignable_users' => $this->isAdmin($actor)
                 ? $this->leads->assignableInternalUsers()->map(fn (User $user): array => [
@@ -210,25 +209,16 @@ class LeadController extends Controller
                 ])->values()->all()
                 : [],
             'can_assign' => $this->isAdmin($actor) && ! $lead->status->isTerminal(),
-            'gst_rates' => GstRate::query()
-                ->where('is_active', true)
-                ->orderBy('rate_percent')
-                ->get(['id', 'code', 'name', 'rate_percent'])
-                ->map(fn (GstRate $rate): array => [
-                    'id' => $rate->id,
-                    'label' => rtrim(rtrim((string) $rate->rate_percent, '0'), '.').'% GST',
-                ])
-                ->values()
-                ->all(),
-            'gst_registration_types' => array_map(fn (GstRegistrationType $t): string => $t->value, GstRegistrationType::cases()),
-            'tax_liabilities' => array_map(fn (TaxLiability $t): string => $t->value, TaxLiability::cases()),
-            'data_visibilities' => array_map(fn (DataVisibility $t): string => $t->value, DataVisibility::cases()),
+            'onboarding' => $this->onboardingSummary($lead),
             'urls' => [
                 'index' => route('admin.crm.leads.index'),
                 'transition' => route('admin.crm.leads.transition', $lead),
                 'assign' => route('admin.crm.leads.assign', $lead),
                 'follow_up' => route('admin.crm.leads.follow-ups.store', $lead),
-                'convert' => route('admin.crm.leads.convert', $lead),
+                'note' => route('admin.crm.leads.notes.store', $lead),
+                'invite' => route('admin.crm.leads.invite', $lead),
+                'invite_resend' => route('admin.crm.leads.invite.resend', $lead),
+                'invite_revoke' => route('admin.crm.leads.invite.revoke', $lead),
             ],
         ]);
     }
@@ -324,50 +314,111 @@ class LeadController extends Controller
             ->with('success', 'Follow-up completed.');
     }
 
-    public function convert(Request $request, Lead $lead): RedirectResponse
+    public function storeNote(Request $request, Lead $lead): RedirectResponse
     {
         $actor = $this->assertInternal($request);
 
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'pan' => ['required', 'string', 'max:10'],
-            'registered_address' => ['required', 'string', 'max:500'],
-            'state' => ['required', 'string', 'max:100'],
-            'city' => ['required', 'string', 'max:100'],
-            'pin' => ['required', 'string', 'max:6'],
-            'mobile' => ['required', 'string', 'max:15'],
-            'email' => ['nullable', 'email', 'max:255'],
-            'gst_registration_type' => ['required', Rule::enum(GstRegistrationType::class)],
-            'tax_liability' => ['required', Rule::enum(TaxLiability::class)],
-            'gstin' => ['nullable', 'string', 'max:15'],
-            'gst_rate_id' => ['nullable', 'uuid', 'exists:gst_rates,id'],
-            'data_visibility' => ['required', Rule::enum(DataVisibility::class)],
-            'timezone' => ['nullable', 'string', 'max:64'],
-            'initial_branch_name' => ['nullable', 'string', 'max:255'],
-            'new_password' => ['nullable', 'string', 'min:12', 'max:128'],
+            'body' => ['required', 'string', 'max:5000'],
         ]);
 
-        $branchName = filled($validated['initial_branch_name'] ?? null)
-            ? (string) $validated['initial_branch_name']
-            : 'Head Office';
-        $password = filled($validated['new_password'] ?? null) ? (string) $validated['new_password'] : null;
-        unset($validated['initial_branch_name'], $validated['new_password']);
-
         try {
-            $result = $this->conversions->convert(
-                $actor,
-                $lead,
-                $validated,
-                $branchName,
-                $password,
-            );
-        } catch (CrmDomainException|CompanyDomainException $e) {
-            throw ValidationException::withMessages(['name' => $e->getMessage()]);
+            $this->leads->addNote($actor, $lead, $validated['body']);
+        } catch (CrmDomainException $e) {
+            throw ValidationException::withMessages(['body' => $e->getMessage()]);
         }
 
         return redirect()
-            ->route('admin.crm.leads.show', $result['lead'])
-            ->with('success', 'Lead converted to company '.$result['company']->name.'.');
+            ->route('admin.crm.leads.show', $lead)
+            ->with('success', 'Note added.');
+    }
+
+    public function invite(Request $request, Lead $lead): RedirectResponse
+    {
+        $actor = $this->assertInternal($request);
+
+        try {
+            $result = $this->onboarding->sendInvite($actor, $lead);
+        } catch (CrmDomainException $e) {
+            throw ValidationException::withMessages(['invite' => $e->getMessage()]);
+        }
+
+        $message = 'Onboarding invitation '.$result['invitation']->delivery_status.'.';
+        if (in_array(config('mail.default'), ['array', 'log'], true)) {
+            $message .= ' Test link: '.$result['accept_url'];
+        }
+
+        return redirect()
+            ->route('admin.crm.leads.show', $lead)
+            ->with('success', $message)
+            ->with('onboarding_accept_url', $result['accept_url']);
+    }
+
+    public function resendInvite(Request $request, Lead $lead): RedirectResponse
+    {
+        $actor = $this->assertInternal($request);
+
+        try {
+            $result = $this->onboarding->resendInvite($actor, $lead);
+        } catch (CrmDomainException $e) {
+            throw ValidationException::withMessages(['invite' => $e->getMessage()]);
+        }
+
+        return redirect()
+            ->route('admin.crm.leads.show', $lead)
+            ->with('success', 'Onboarding invitation resent.')
+            ->with('onboarding_accept_url', $result['accept_url']);
+    }
+
+    public function revokeInvite(Request $request, Lead $lead): RedirectResponse
+    {
+        $actor = $this->assertInternal($request);
+
+        $validated = $request->validate([
+            'remark' => ['required', 'string', 'max:500'],
+        ]);
+
+        try {
+            $this->onboarding->revokeInvite($actor, $lead, $validated['remark']);
+        } catch (CrmDomainException $e) {
+            throw ValidationException::withMessages(['remark' => $e->getMessage()]);
+        }
+
+        return redirect()
+            ->route('admin.crm.leads.show', $lead)
+            ->with('success', 'Onboarding invitation revoked.');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function onboardingSummary(Lead $lead): array
+    {
+        $invitation = $this->onboarding->latestInvitation($lead);
+        if ($invitation === null) {
+            return [
+                'status' => 'not_invited',
+                'recipient' => $lead->email,
+                'can_send' => $lead->status->canReceiveOnboardingInvite() && filled($lead->email),
+                'can_resend' => false,
+                'can_revoke' => false,
+                'accept_url' => null,
+            ];
+        }
+
+        return [
+            'status' => $invitation->statusLabel(),
+            'recipient' => $invitation->email,
+            'sent_at' => $invitation->sent_at?->timezone('Asia/Kolkata')->format('d-m-Y H:i'),
+            'expires_at' => $invitation->expires_at->timezone('Asia/Kolkata')->format('d-m-Y H:i'),
+            'completed_at' => $invitation->used_at?->timezone('Asia/Kolkata')->format('d-m-Y H:i'),
+            'delivery_status' => $invitation->delivery_status,
+            'completed_user_id' => $invitation->completed_user_id,
+            'can_send' => ! $invitation->isActive() && $lead->status->canReceiveOnboardingInvite() && filled($lead->email),
+            'can_resend' => $invitation->isActive() || $invitation->statusLabel() === 'expired',
+            'can_revoke' => $invitation->isActive(),
+            'accept_url' => null,
+        ];
     }
 
     private function assertInternal(Request $request): User

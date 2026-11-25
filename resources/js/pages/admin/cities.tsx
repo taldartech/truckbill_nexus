@@ -1,5 +1,6 @@
+import { QuickCreateCitySheet } from '@/components/geography/quick-create-city-sheet';
 import { Form, Head, router, usePage } from '@inertiajs/react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
     PortalErrorList,
     PortalFlashBanner,
@@ -77,6 +78,8 @@ export default function AdminCities({
         flash?: { success?: string | null };
         errors?: Record<string, string>;
     }>().props;
+
+    const [createOpen, setCreateOpen] = useState(false);
 
     const { rows, meta } = useMemo(
         () => resolveCities(cities, pagination),
@@ -198,51 +201,33 @@ export default function AdminCities({
                     </FormSection>
                 </form>
 
-                <Form action={urls.store} method="post">
-                    <FormSection title="Create city" columns={2}>
-                        <div className="space-y-2">
-                            <Label htmlFor="state_id" required>
-                                State
-                            </Label>
-                            <select
-                                id="state_id"
-                                name="state_id"
-                                required
-                                defaultValue={filters.state_id || ''}
-                                className={selectClass}
-                            >
-                                <option value="" disabled>
-                                    Select state
-                                </option>
-                                {states.map((state) => (
-                                    <option key={state.id} value={state.id}>
-                                        {state.name}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="city_name" required>
-                                City name
-                            </Label>
-                            <Input
-                                id="city_name"
-                                name="name"
-                                required
-                                maxLength={120}
-                                placeholder="City name"
-                            />
-                        </div>
-                        <div className="md:col-span-2">
-                            <Button
-                                type="submit"
-                                className="bg-[#2FB36F] text-white hover:bg-[#279960]"
-                            >
-                                Create city
-                            </Button>
-                        </div>
-                    </FormSection>
-                </Form>
+                <FormSection title="Create city" columns={1}>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <Button
+                            type="button"
+                            className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                            onClick={() => setCreateOpen(true)}
+                        >
+                            Add City
+                        </Button>
+                    </div>
+                </FormSection>
+
+                <QuickCreateCitySheet
+                    open={createOpen}
+                    onOpenChange={setCreateOpen}
+                    storeUrl={urls.store}
+                    initialStateId={filters.state_id || ''}
+                    initialStateName={
+                        states.find((state) => state.id === filters.state_id)
+                            ?.name ?? ''
+                    }
+                    onCreated={() => {
+                        router.reload({
+                            only: ['cities', 'states', 'pagination'],
+                        });
+                    }}
+                />
 
                 <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
                     <ResponsiveDataTable
@@ -251,7 +236,7 @@ export default function AdminCities({
                         rows={rows}
                         rowKey={(row) => row.id}
                         emptyTitle="No cities match these filters"
-                        emptyDescription="Adjust filters or create a city above."
+                        emptyDescription="Adjust filters or add a new city."
                         actions={(city) => (
                             <Form
                                 action={city.toggle_url}

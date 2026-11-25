@@ -21,65 +21,6 @@ use InvalidArgumentException;
  */
 class IdentityLifecycleController extends Controller
 {
-    public function index(Request $request): Response
-    {
-        $this->assertSuperAdmin($request);
-
-        $search = trim((string) $request->query('q', ''));
-        $status = trim((string) $request->query('status', 'all'));
-        $type = trim((string) $request->query('type', 'all'));
-
-        $query = User::query()->orderBy('email');
-
-        if ($search !== '') {
-            $query->where(function ($builder) use ($search): void {
-                $builder->where('email', 'ilike', '%'.$search.'%')
-                    ->orWhere('name', 'ilike', '%'.$search.'%');
-            });
-        }
-
-        if ($status === 'active') {
-            $query->active();
-        } elseif ($status === 'deactivated') {
-            $query->deactivated();
-        }
-
-        if ($type === 'customer') {
-            $query->customer();
-        } elseif ($type === 'internal') {
-            $query->internal();
-        }
-
-        $users = $query->paginate(25)->withQueryString();
-
-        return Inertia::render('admin/identities/index', [
-            'filters' => [
-                'q' => $search,
-                'status' => $status === '' ? 'all' : $status,
-                'type' => $type === '' ? 'all' : $type,
-            ],
-            'identities' => [
-                'data' => $users->getCollection()->map(fn (User $user): array => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'identity_type' => $user->identity_type?->value,
-                    'is_super_admin' => $user->is_super_admin,
-                    'is_active' => $user->isActive(),
-                    'deactivated_at' => $user->deactivated_at?->toIso8601String(),
-                    'show_url' => route('admin.identities.show', $user),
-                ])->values()->all(),
-                'links' => $users->linkCollection()->toArray(),
-                'meta' => [
-                    'current_page' => $users->currentPage(),
-                    'last_page' => $users->lastPage(),
-                    'total' => $users->total(),
-                ],
-            ],
-            'index_url' => route('admin.identities.index'),
-        ]);
-    }
-
     public function show(Request $request, User $user): Response
     {
         $actor = $this->assertSuperAdmin($request);
@@ -107,7 +48,9 @@ class IdentityLifecycleController extends Controller
                 'show_url' => route('admin.companies.show', $company),
             ])->values()->all(),
             'urls' => [
-                'index' => route('admin.identities.index'),
+                'index' => $user->isInternal()
+                    ? route('admin.internal-users.index')
+                    : route('admin.companies.index'),
                 'deactivate' => route('admin.identities.deactivate', $user),
                 'reactivate' => route('admin.identities.reactivate', $user),
             ],

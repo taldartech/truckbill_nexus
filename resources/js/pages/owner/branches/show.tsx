@@ -6,6 +6,7 @@ import { FormSection } from '@/components/form-section';
 import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
 import type { FieldReview } from '@/components/form-confirmation/types';
 import { StateCityFields } from '@/components/geography/state-city-fields';
+import { readCanManageGeography } from '@/lib/geography-permissions';
 import { OwnerPageHeader } from '@/components/owner/owner-page-header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -132,7 +133,9 @@ export default function OwnerBranchesShow({
     audit,
     links,
 }: OwnerBranchesShowProps) {
-    const { flash, errors } = usePage<FlashPageProps>().props;
+    const page = usePage<FlashPageProps>();
+    const { flash, errors } = page.props;
+    const canQuickCreateGeography = readCanManageGeography(page.props);
     const [confirmDeactivate, setConfirmDeactivate] = useState(false);
 
     const [branchName, setBranchName] = useState(branch.name);
@@ -440,6 +443,9 @@ export default function OwnerBranchesShow({
                                     </div>
                                     <div className="sm:col-span-2">
                                         <StateCityFields
+                                            canQuickCreate={
+                                                canQuickCreateGeography
+                                            }
                                             stateId={stateId}
                                             cityId={cityId}
                                             stateName={state}

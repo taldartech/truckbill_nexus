@@ -58,6 +58,7 @@ class HandleInertiaRequests extends Middleware
                     'created_at' => $user->created_at,
                     'updated_at' => $user->updated_at,
                 ],
+                'can_manage_geography' => $user !== null && $user->isInternal() && $user->isActive(),
             ],
             'flash' => [
                 'success' => $request->session()->get('success'),
@@ -65,6 +66,7 @@ class HandleInertiaRequests extends Middleware
                 'info' => $request->session()->get('info'),
                 'toast' => $request->session()->get('toast'),
                 'tds_preview' => $request->session()->get('tds_preview'),
+                'onboarding_accept_url' => $request->session()->get('onboarding_accept_url'),
             ],
             'tds_preview' => $request->session()->get('tds_preview'),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',

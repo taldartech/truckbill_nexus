@@ -79,7 +79,8 @@ test('customer and ordinary internal cannot access company lifecycle ui', functi
 
     lifecycleLogin($internal, 'internal-secret');
     $this->get(route('admin.companies.index'))->assertForbidden();
-    $this->get(route('admin.identities.index'))->assertForbidden();
+    // Customer Identities register removed — show remains for lifecycle deep links.
+    $this->get(route('admin.identities.show', $owner))->assertForbidden();
     $this->get(route('admin.internal-users.index'))->assertForbidden();
 });
 
@@ -92,10 +93,6 @@ test('super admin can manage identity and internal user screens', function () {
     ]);
 
     lifecycleLogin($sa, 'sa-secret');
-
-    $this->get(route('admin.identities.index'))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page->component('admin/identities/index'));
 
     $this->get(route('admin.identities.show', $customer))
         ->assertOk()

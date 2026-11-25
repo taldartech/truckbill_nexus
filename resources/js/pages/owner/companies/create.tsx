@@ -1,4 +1,4 @@
-import { Form, Head, Link } from '@inertiajs/react';
+import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { Save } from 'lucide-react';
 import { FormSection } from '@/components/form-section';
 import { StateCityFields } from '@/components/geography/state-city-fields';
@@ -9,6 +9,7 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { readCanManageGeography } from '@/lib/geography-permissions';
 
 type Option = { value: string; label: string };
 type GstRateOption = {
@@ -45,6 +46,7 @@ export default function OwnerCompanyCreate({
     options,
     links,
 }: CreateCompanyProps) {
+    const canQuickCreateGeography = readCanManageGeography(usePage().props);
     const [gstType, setGstType] = useState(defaults.gst_registration_type);
     const [createBranch, setCreateBranch] = useState(
         defaults.create_initial_branch,
@@ -111,6 +113,9 @@ export default function OwnerCompanyCreate({
                                         <div className="md:col-span-2">
                                             <StateCityFields
                                                 required
+                                                canQuickCreate={
+                                                    canQuickCreateGeography
+                                                }
                                                 stateId={stateId}
                                                 cityId={cityId}
                                                 stateName={stateName}

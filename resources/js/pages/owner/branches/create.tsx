@@ -13,6 +13,7 @@ import {
 import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
 import type { FieldReview } from '@/components/form-confirmation/types';
 import { StateCityFields } from '@/components/geography/state-city-fields';
+import { readCanManageGeography } from '@/lib/geography-permissions';
 import { WorkspaceContextAction } from '@/components/workspace-context-action';
 import { CreditCard } from 'lucide-react';
 
@@ -99,7 +100,9 @@ export default function OwnerBranchesCreate({
     customerRoles,
     links,
 }: OwnerBranchesCreateProps) {
-    const { errors } = usePage<PageErrors>().props;
+    const page = usePage<PageErrors>();
+    const { errors } = page.props;
+    const canQuickCreateGeography = readCanManageGeography(page.props);
     const [assignments, setAssignments] = useState<AssignmentDraft[]>([]);
     const [branchName, setBranchName] = useState('');
     const [contactNumber, setContactNumber] = useState('');
@@ -422,6 +425,9 @@ export default function OwnerBranchesCreate({
                                     </div>
                                     <div className="sm:col-span-2">
                                         <StateCityFields
+                                            canQuickCreate={
+                                                canQuickCreateGeography
+                                            }
                                             stateId={stateId}
                                             cityId={cityId}
                                             stateName={state}

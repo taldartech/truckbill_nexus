@@ -1,4 +1,4 @@
-import { Form, Head, Link, useHttp } from '@inertiajs/react';
+import { Form, Head, Link, useHttp, usePage } from '@inertiajs/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
     diffScalarFields,
@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
+import { readCanManageGeography } from '@/lib/geography-permissions';
 
 type RolePayload = {
     id?: string;
@@ -630,6 +631,7 @@ function TransporterTdsPanel({
 }
 
 export default function PartyForm({ mode, party, roleOptions, links }: Props) {
+    const canQuickCreateGeography = readCanManageGeography(usePage().props);
     const submitAllowed = useRef(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [reviewFields, setReviewFields] = useState<FieldReview[]>([]);
@@ -882,6 +884,9 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
                                 <div className="grid gap-3 md:grid-cols-2">
                                     <div className="md:col-span-2">
                                         <StateCityFields
+                                            canQuickCreate={
+                                                canQuickCreateGeography
+                                            }
                                             stateId={stateId}
                                             cityId={cityId}
                                             stateName={state}

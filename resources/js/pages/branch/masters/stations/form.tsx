@@ -1,4 +1,4 @@
-import { Form, Head, Link } from '@inertiajs/react';
+import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import { StateCityFields } from '@/components/geography/state-city-fields';
 import InputError from '@/components/input-error';
@@ -9,6 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { readCanManageGeography } from '@/lib/geography-permissions';
 
 type Station = {
     id: string;
@@ -34,6 +35,7 @@ type Props = {
     };
 };
 export default function StationForm({ mode, station, links }: Props) {
+    const canQuickCreateGeography = readCanManageGeography(usePage().props);
     const action = mode === 'create' ? links.store! : links.update!;
     const [stateId, setStateId] = useState(station?.state_id ?? '');
     const [cityId, setCityId] = useState(station?.city_id ?? '');
@@ -99,6 +101,9 @@ export default function StationForm({ mode, station, links }: Props) {
                                     </div>
                                     <div className="md:col-span-2">
                                         <StateCityFields
+                                            canQuickCreate={
+                                                canQuickCreateGeography
+                                            }
                                             stateId={stateId}
                                             cityId={cityId}
                                             stateName={state}

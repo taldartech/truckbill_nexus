@@ -11,9 +11,11 @@ use App\Support\Audit\AuditWriter;
 use App\Support\Database\CaseInsensitiveLike;
 use App\Support\Tenant\TenantContext;
 use App\Support\Tenant\TenantContextHolder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -89,7 +91,7 @@ class LocationController extends Controller
         ]);
     }
 
-    public function storeState(Request $request): RedirectResponse
+    public function storeState(Request $request): RedirectResponse|JsonResponse
     {
         $this->assertPlatformOperator($request);
 
@@ -121,6 +123,17 @@ class LocationController extends Controller
 
             return $created;
         });
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'data' => [
+                    'id' => $state->id,
+                    'name' => $state->name,
+                    'code' => $state->code,
+                    'gst_code' => $state->gst_code,
+                ],
+            ], 201);
+        }
 
         return back()->with('success', 'State “'.$state->name.'” created.');
     }
@@ -227,7 +240,7 @@ class LocationController extends Controller
         ]);
     }
 
-    public function storeCity(Request $request): RedirectResponse
+    public function storeCity(Request $request): RedirectResponse|JsonResponse
     {
         $this->assertPlatformOperator($request);
 
@@ -242,7 +255,12 @@ class LocationController extends Controller
             ->where('name_normalized', $normalized)
             ->exists();
         if ($exists) {
-            return back()->withErrors(['name' => 'A city with this name already exists in the selected State.']);
+            $message = 'A city with this name already exists in the selected State.';
+            if ($request->expectsJson()) {
+                throw ValidationException::withMessages(['name' => $message]);
+            }
+
+            return back()->withErrors(['name' => $message]);
         }
 
         $city = $this->withPlatformTenant(function () use ($validated, $normalized): City {
@@ -264,6 +282,19 @@ class LocationController extends Controller
 
             return $created;
         });
+
+        $city->load('state:id,name');
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'data' => [
+                    'id' => $city->id,
+                    'name' => $city->name,
+                    'state_id' => $city->state_id,
+                    'state_name' => $city->state?->name,
+                ],
+            ], 201);
+        }
 
         return back()->with('success', 'City “'.$city->name.'” added to the State master.');
     }

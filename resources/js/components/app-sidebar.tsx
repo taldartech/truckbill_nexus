@@ -351,11 +351,6 @@ export function AppSidebar() {
                               icon: Building2,
                           },
                           {
-                              title: 'Customer identities',
-                              href: admin.identities.index.url(),
-                              icon: Users,
-                          },
-                          {
                               title: 'Users',
                               href: admin.internalUsers.index.url(),
                               icon: UserCog,

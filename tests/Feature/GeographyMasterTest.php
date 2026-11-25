@@ -118,3 +118,34 @@ test('internal operator can create state and city without remark on create', fun
 
     expect(City::query()->where('state_id', $state->id)->where('name', 'Testville '.$suffix)->exists())->toBeTrue();
 });
+
+test('internal operator quick create returns json for state and city', function (): void {
+    $user = User::factory()->superAdmin()->create();
+    $suffix = substr(str_replace('.', '', uniqid('', true)), -6);
+    $gstCode = str_pad((string) random_int(90, 98), 2, '0', STR_PAD_LEFT);
+    while (State::query()->where('gst_code', $gstCode)->exists()) {
+        $gstCode = str_pad((string) random_int(90, 98), 2, '0', STR_PAD_LEFT);
+    }
+
+    $stateResponse = $this->actingAs($user)
+        ->postJson(route('admin.states.store'), [
+            'name' => 'JSON Territory '.$suffix,
+            'code' => 'J'.$suffix,
+            'gst_code' => $gstCode,
+            'country_code' => 'IN',
+            'is_active' => true,
+        ])
+        ->assertCreated()
+        ->assertJsonPath('data.code', 'J'.$suffix);
+
+    $stateId = (string) $stateResponse->json('data.id');
+
+    $this->actingAs($user)
+        ->postJson(route('admin.cities.store'), [
+            'state_id' => $stateId,
+            'name' => 'Jsonville '.$suffix,
+        ])
+        ->assertCreated()
+        ->assertJsonPath('data.state_id', $stateId)
+        ->assertJsonPath('data.name', 'Jsonville '.$suffix);
+});

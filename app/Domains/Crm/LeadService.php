@@ -260,6 +260,37 @@ final class LeadService
         });
     }
 
+    public function addNote(User $actor, Lead $lead, string $body): LeadActivity
+    {
+        $this->assertInternalActor($actor);
+        $this->assertCanMutateLead($actor, $lead);
+
+        $note = trim($body);
+        if ($note === '') {
+            throw new CrmDomainException('Note content is required.');
+        }
+
+        return $this->withPlatformTenant(function () use ($actor, $lead, $note): LeadActivity {
+            return $this->auditedTransaction->run(function () use ($actor, $lead, $note): LeadActivity {
+                $activity = $this->recordActivity($lead, $actor, 'note', $note);
+
+                $this->auditWriter->write(
+                    AuditAction::Created,
+                    LeadActivity::class,
+                    $activity->id,
+                    remark: 'CRM lead note added',
+                    before: null,
+                    after: [
+                        'lead_id' => $lead->id,
+                        'activity_type' => 'note',
+                    ],
+                );
+
+                return $activity;
+            });
+        });
+    }
+
     /**
      * @return Collection<int, User>
      */
@@ -338,9 +369,9 @@ final class LeadService
     /**
      * @param  array<string, mixed>|null  $meta
      */
-    private function recordActivity(Lead $lead, User $actor, string $type, ?string $body, ?array $meta = null): void
+    private function recordActivity(Lead $lead, User $actor, string $type, ?string $body, ?array $meta = null): LeadActivity
     {
-        LeadActivity::query()->create([
+        return LeadActivity::query()->create([
             'lead_id' => $lead->id,
             'actor_user_id' => $actor->id,
             'activity_type' => $type,

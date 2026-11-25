@@ -1,5 +1,6 @@
+import { QuickCreateStateSheet } from '@/components/geography/quick-create-state-sheet';
 import { Form, Head, router, usePage } from '@inertiajs/react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
     PortalErrorList,
     PortalFlashBanner,
@@ -72,6 +73,8 @@ export default function AdminStates({
         flash?: { success?: string | null };
         errors?: Record<string, string>;
     }>().props;
+
+    const [createOpen, setCreateOpen] = useState(false);
 
     const { rows, meta } = useMemo(
         () => resolveStates(states, pagination),
@@ -195,77 +198,26 @@ export default function AdminStates({
                     </FormSection>
                 </form>
 
-                <Form action={urls.store} method="post">
-                    <FormSection title="Create state" columns={2}>
-                        <div className="space-y-2">
-                            <Label htmlFor="name" required>
-                                State name
-                            </Label>
-                            <Input
-                                id="name"
-                                name="name"
-                                required
-                                maxLength={120}
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="code" required>
-                                State code
-                            </Label>
-                            <Input
-                                id="code"
-                                name="code"
-                                required
-                                maxLength={16}
-                                className="font-mono uppercase"
-                                placeholder="GJ"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="gst_code" required>
-                                GST state code
-                            </Label>
-                            <Input
-                                id="gst_code"
-                                name="gst_code"
-                                required
-                                maxLength={8}
-                                className="font-mono"
-                                placeholder="24"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="country_code">Country</Label>
-                            <Input
-                                id="country_code"
-                                name="country_code"
-                                defaultValue="IN"
-                                maxLength={2}
-                                className="font-mono uppercase"
-                            />
-                        </div>
-                        <div className="flex items-end">
-                            <label className="flex items-center gap-2 text-sm">
-                                <input
-                                    type="checkbox"
-                                    name="is_active"
-                                    value="1"
-                                    defaultChecked
-                                    className="size-4 rounded border border-input"
-                                />
-                                Active
-                            </label>
-                        </div>
-                        <div className="md:col-span-2">
-                            <Button
-                                type="submit"
-                                className="bg-[#2FB36F] text-white hover:bg-[#279960]"
-                            >
-                                Create state
-                            </Button>
-                        </div>
-                    </FormSection>
-                </Form>
+                <FormSection title="Create state" columns={1}>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <Button
+                            type="button"
+                            className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                            onClick={() => setCreateOpen(true)}
+                        >
+                            Add State
+                        </Button>
+                    </div>
+                </FormSection>
+
+                <QuickCreateStateSheet
+                    open={createOpen}
+                    onOpenChange={setCreateOpen}
+                    storeUrl={urls.store}
+                    onCreated={() => {
+                        router.reload({ only: ['states', 'pagination'] });
+                    }}
+                />
 
                 <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
                     <ResponsiveDataTable
@@ -274,7 +226,7 @@ export default function AdminStates({
                         rows={rows}
                         rowKey={(row) => row.id}
                         emptyTitle="No states match these filters"
-                        emptyDescription="Adjust filters or create a state above."
+                        emptyDescription="Adjust filters or add a new state."
                         actions={(row) => (
                             <div className="flex flex-wrap items-center justify-end gap-2">
                                 {row.edit_url ? (

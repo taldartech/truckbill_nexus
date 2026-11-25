@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\OwnershipTransferController;
 use App\Http\Controllers\Admin\SubscriptionInvoiceController;
 use App\Http\Controllers\Admin\TdsRuleController;
 use App\Http\Controllers\Api\GeographyController;
+use App\Http\Controllers\Api\PublicLeadOnboardingController;
 use App\Http\Controllers\Branch\BankCashAccountController;
 use App\Http\Controllers\Branch\BranchDashboardController;
 use App\Http\Controllers\Branch\BranchSettingsController;
@@ -59,6 +60,7 @@ use App\Http\Controllers\Workspace\SelectCompanyController;
 use App\Http\Controllers\Workspace\WorkspaceContextController;
 use App\Http\Controllers\Workspace\WorkspaceLandingController;
 use App\Http\Controllers\Workspace\WorkspaceNoAccessController;
+use App\Http\Middleware\LeadOnboardingCors;
 use Illuminate\Support\Facades\Route;
 
 Route::inertia('/', 'welcome')->name('home');
@@ -72,6 +74,26 @@ Route::get('/invitations/accept/{token}', [InvitationAcceptanceController::class
     ->name('invitations.accept');
 Route::post('/invitations/accept/{token}', [InvitationAcceptanceController::class, 'store'])
     ->name('invitations.accept.store');
+
+Route::middleware([LeadOnboardingCors::class])->prefix('api/v1/public/onboarding/{token}')->group(function () {
+    Route::match(['GET', 'OPTIONS'], '/', [PublicLeadOnboardingController::class, 'show'])
+        ->name('api.public.onboarding.show');
+    Route::match(['POST', 'OPTIONS'], '/otp/send', [PublicLeadOnboardingController::class, 'sendOtp'])
+        ->middleware('throttle:5,1')
+        ->name('api.public.onboarding.otp.send');
+    Route::match(['POST', 'OPTIONS'], '/otp/verify', [PublicLeadOnboardingController::class, 'verifyOtp'])
+        ->middleware('throttle:10,1')
+        ->name('api.public.onboarding.otp.verify');
+    Route::match(['POST', 'OPTIONS'], '/policy/accept', [PublicLeadOnboardingController::class, 'acceptPolicies'])
+        ->middleware('throttle:10,1')
+        ->name('api.public.onboarding.policy');
+    Route::match(['POST', 'OPTIONS'], '/password', [PublicLeadOnboardingController::class, 'setPassword'])
+        ->middleware('throttle:10,1')
+        ->name('api.public.onboarding.password');
+    Route::match(['POST', 'OPTIONS'], '/complete', [PublicLeadOnboardingController::class, 'complete'])
+        ->middleware('throttle:10,1')
+        ->name('api.public.onboarding.complete');
+});
 
 Route::middleware(['auth', 'verified'])->group(function () {
     // Technical shell for Internal Team (Customer workspace is under /workspace).
@@ -449,8 +471,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/admin/companies/{company}/ownership-transfers', [OwnershipTransferController::class, 'store'])
         ->name('admin.companies.ownership-transfers.store');
 
-    Route::get('/admin/identities', [IdentityLifecycleController::class, 'index'])
-        ->name('admin.identities.index');
+    // Customer Identities register removed (PO 25 Nov 2026). Lifecycle show/deactivate
+    // remains for deep links from Users / company administration.
     Route::get('/admin/identities/{user}', [IdentityLifecycleController::class, 'show'])
         ->name('admin.identities.show');
     Route::post('/admin/identities/{user}/deactivate', [IdentityLifecycleController::class, 'deactivate'])
@@ -481,8 +503,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('admin.crm.leads.follow-ups.store');
     Route::post('/admin/crm/leads/{lead}/follow-ups/{followUp}/complete', [CrmLeadController::class, 'completeFollowUp'])
         ->name('admin.crm.leads.follow-ups.complete');
-    Route::post('/admin/crm/leads/{lead}/convert', [CrmLeadController::class, 'convert'])
-        ->name('admin.crm.leads.convert');
+    Route::post('/admin/crm/leads/{lead}/notes', [CrmLeadController::class, 'storeNote'])
+        ->name('admin.crm.leads.notes.store');
+    Route::post('/admin/crm/leads/{lead}/invite', [CrmLeadController::class, 'invite'])
+        ->name('admin.crm.leads.invite');
+    Route::post('/admin/crm/leads/{lead}/invite/resend', [CrmLeadController::class, 'resendInvite'])
+        ->name('admin.crm.leads.invite.resend');
+    Route::post('/admin/crm/leads/{lead}/invite/revoke', [CrmLeadController::class, 'revokeInvite'])
+        ->name('admin.crm.leads.invite.revoke');
 
     Route::get('/admin/crm/tickets', [CrmSupportTicketController::class, 'index'])
         ->name('admin.crm.tickets.index');

@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { FormSection } from '@/components/form-section';
 import { StateCityFields } from '@/components/geography/state-city-fields';
+import { readCanManageGeography } from '@/lib/geography-permissions';
 import { CompanyOwnerPageShell } from '@/components/owner/owner-page-header';
 
 type DeferredSection = {
@@ -75,7 +76,9 @@ export default function OwnerSettings({
     deferredSections,
     links,
 }: OwnerSettingsProps) {
-    const { flash } = usePage<FlashPageProps>().props;
+    const page = usePage<FlashPageProps>();
+    const { flash } = page.props;
+    const canQuickCreateGeography = readCanManageGeography(page.props);
     const [gstType, setGstType] = useState(
         company.gst_registration_type ?? 'regular',
     );
@@ -164,6 +167,7 @@ export default function OwnerSettings({
                                     </div>
                                     <StateCityFields
                                         required
+                                        canQuickCreate={canQuickCreateGeography}
                                         stateId={stateId}
                                         cityId={cityId}
                                         stateName={stateName}

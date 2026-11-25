@@ -1,5 +1,15 @@
 import { Form, Head, usePage } from '@inertiajs/react';
-import { ArrowLeft, Check, Save, UserPlus } from 'lucide-react';
+import {
+    ArrowLeft,
+    Check,
+    Copy,
+    Mail,
+    Plus,
+    RotateCcw,
+    Save,
+    UserPlus,
+    XCircle,
+} from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { DetailTabPanel, DetailTabs } from '@/components/detail-tabs';
 import {
@@ -15,11 +25,33 @@ import {
     type WorkflowStep,
 } from '@/components/workflow-progress';
 import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
+import { useClipboard } from '@/hooks/use-clipboard';
 
 type AssignableUser = { id: number; name: string; email: string };
+
+type OnboardingSummary = {
+    status: string;
+    recipient: string | null;
+    sent_at: string | null;
+    expires_at: string | null;
+    completed_at: string | null;
+    delivery_status: string | null;
+    can_send: boolean;
+    can_resend: boolean;
+    can_revoke: boolean;
+    accept_url: string | null;
+};
 
 type Props = {
     lead: {
@@ -34,7 +66,7 @@ type Props = {
         remarks: string | null;
         assignee: { id: number; name: string; email: string } | null;
         allowed_transitions: string[];
-        can_convert: boolean;
+        can_invite: boolean;
         converted_company: { id: string; name: string } | null;
     };
     follow_ups: {
@@ -51,20 +83,22 @@ type Props = {
         id: string;
         activity_type: string;
         body: string | null;
+        is_note: boolean;
+        actor: string | null;
         created_at: string | null;
     }[];
     assignable_users: AssignableUser[];
     can_assign: boolean;
-    gst_rates: { id: string; label: string }[];
-    gst_registration_types: string[];
-    tax_liabilities: string[];
-    data_visibilities: string[];
+    onboarding: OnboardingSummary;
     urls: {
         index: string;
         transition: string;
         assign: string;
         follow_up: string;
-        convert: string;
+        note: string;
+        invite: string;
+        invite_resend: string;
+        invite_revoke: string;
     };
 };
 
@@ -74,7 +108,21 @@ const selectClass =
 const textareaClass =
     'min-h-20 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
 
-const PIPELINE_ORDER = ['new', 'contacted', 'qualified', 'converted'] as const;
+const PIPELINE_ORDER = [
+    'new',
+    'contacted',
+    'qualified',
+    'onboarding_invite_sent',
+    'onboarded',
+    'converted',
+] as const;
+
+function formatPipelineLabel(id: string): string {
+    return id
+        .split('_')
+        .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+        .join(' ');
+}
 
 function buildLeadWorkflowSteps(status: string): WorkflowStep[] {
     const normalized = status.toLowerCase();
@@ -82,7 +130,7 @@ function buildLeadWorkflowSteps(status: string): WorkflowStep[] {
     if (normalized === 'disqualified' || normalized === 'lost') {
         return PIPELINE_ORDER.map((id, position) => ({
             id,
-            label: id.charAt(0).toUpperCase() + id.slice(1),
+            label: formatPipelineLabel(id),
             status: position === 0 ? 'blocked' : 'upcoming',
         }));
     }
@@ -93,7 +141,7 @@ function buildLeadWorkflowSteps(status: string): WorkflowStep[] {
     );
 
     return PIPELINE_ORDER.map((id, position) => {
-        const label = id.charAt(0).toUpperCase() + id.slice(1);
+        const label = formatPipelineLabel(id);
         if (position < idx) {
             return { id, label, status: 'complete' as const };
         }
@@ -110,16 +158,22 @@ export default function CrmLeadShow({
     activities,
     assignable_users,
     can_assign,
-    gst_rates,
-    gst_registration_types,
-    tax_liabilities,
-    data_visibilities,
+    onboarding,
     urls,
 }: Props) {
     const { flash, errors } = usePage<{
-        flash?: { success?: string | null };
+        flash?: {
+            success?: string | null;
+            onboarding_accept_url?: string | null;
+        };
         errors?: Record<string, string>;
     }>().props;
+
+    const [, copyToClipboard] = useClipboard();
+    const [noteDialogOpen, setNoteDialogOpen] = useState(false);
+    const [copiedAcceptUrl, setCopiedAcceptUrl] = useState(false);
+
+    const acceptUrl = flash?.onboarding_accept_url ?? null;
 
     const overdueFollowUps = follow_ups.filter(
         (followUp) => followUp.is_overdue && !followUp.completed_at,
@@ -131,6 +185,16 @@ export default function CrmLeadShow({
         () => buildLeadWorkflowSteps(lead.status),
         [lead.status],
     );
+
+    const canSendInvite = onboarding.can_send;
+
+    async function handleCopyAcceptUrl() {
+        if (!acceptUrl) {
+            return;
+        }
+        const ok = await copyToClipboard(acceptUrl);
+        setCopiedAcceptUrl(ok);
+    }
 
     return (
         <>
@@ -152,6 +216,33 @@ export default function CrmLeadShow({
             >
                 <PortalFlashBanner message={flash?.success} />
                 <PortalErrorList errors={errors} />
+
+                {acceptUrl ? (
+                    <div className="rounded-lg border border-border bg-muted/20 px-3 py-3 text-sm">
+                        <p className="font-medium">Onboarding test link</p>
+                        <p className="mt-1 text-muted-foreground">
+                            Copy the accept URL for local or staging QA (not
+                            customer-facing email).
+                        </p>
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <Input
+                                readOnly
+                                value={acceptUrl}
+                                className="max-w-xl font-mono text-xs"
+                            />
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="gap-1.5"
+                                onClick={() => void handleCopyAcceptUrl()}
+                            >
+                                <Copy className="size-4" aria-hidden />
+                                {copiedAcceptUrl ? 'Copied' : 'Copy link'}
+                            </Button>
+                        </div>
+                    </div>
+                ) : null}
 
                 <WorkflowProgress
                     aria-label="Lead lifecycle"
@@ -175,14 +266,19 @@ export default function CrmLeadShow({
                             label: 'Assignment',
                         },
                         {
-                            id: 'conversion',
-                            label: 'Conversion',
-                            tone: lead.can_convert ? 'warning' : undefined,
+                            id: 'notes-activity',
+                            label: 'Notes & activity',
+                            count: activities.length,
                         },
                         {
-                            id: 'activity',
-                            label: 'Activity',
-                            count: activities.length,
+                            id: 'onboarding',
+                            label: 'Onboarding',
+                            tone:
+                                canSendInvite ||
+                                onboarding.can_resend ||
+                                onboarding.can_revoke
+                                    ? 'warning'
+                                    : undefined,
                         },
                     ]}
                 >
@@ -260,7 +356,10 @@ export default function CrmLeadShow({
                                                         key={status}
                                                         value={status}
                                                     >
-                                                        {status}
+                                                        {status.replace(
+                                                            /_/g,
+                                                            ' ',
+                                                        )}
                                                     </option>
                                                 ),
                                             )}
@@ -507,254 +606,25 @@ export default function CrmLeadShow({
                         )}
                     </DetailTabPanel>
 
-                    <DetailTabPanel id="conversion" activeId={tab}>
-                        {lead.can_convert ? (
-                            <Form
-                                action={urls.convert}
-                                method="post"
-                                className="space-y-0"
-                            >
-                                <FormSection
-                                    title="Convert to customer company"
-                                    description="Creates or reuses the Customer identity and company profile. Existing passwords are never overwritten."
-                                    columns={2}
+                    <DetailTabPanel id="notes-activity" activeId={tab}>
+                        <FormSection
+                            title="Notes & activity"
+                            description="Newest first. Notes are visually distinct from system events."
+                            columns={1}
+                        >
+                            <div className="mb-4">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="gap-1.5"
+                                    onClick={() => setNoteDialogOpen(true)}
                                 >
-                                    <div className="space-y-2">
-                                        <Label htmlFor="name">
-                                            Company name
-                                        </Label>
-                                        <Input
-                                            id="name"
-                                            name="name"
-                                            required
-                                            defaultValue={
-                                                lead.company_name ?? ''
-                                            }
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="pan">PAN</Label>
-                                        <Input
-                                            id="pan"
-                                            name="pan"
-                                            required
-                                            maxLength={10}
-                                            className="uppercase"
-                                        />
-                                    </div>
-                                    <div className="space-y-2 md:col-span-2">
-                                        <Label htmlFor="registered_address">
-                                            Registered address
-                                        </Label>
-                                        <Input
-                                            id="registered_address"
-                                            name="registered_address"
-                                            required
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="state">State</Label>
-                                        <Input
-                                            id="state"
-                                            name="state"
-                                            required
-                                            defaultValue="Maharashtra"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="city">City</Label>
-                                        <Input id="city" name="city" required />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="pin">PIN</Label>
-                                        <Input
-                                            id="pin"
-                                            name="pin"
-                                            required
-                                            maxLength={6}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="mobile-convert">
-                                            Mobile
-                                        </Label>
-                                        <Input
-                                            id="mobile-convert"
-                                            name="mobile"
-                                            required
-                                            defaultValue={lead.mobile ?? ''}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="email-convert">
-                                            Email
-                                        </Label>
-                                        <Input
-                                            id="email-convert"
-                                            type="email"
-                                            name="email"
-                                            defaultValue={lead.email ?? ''}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="gst_registration_type">
-                                            GST registration
-                                        </Label>
-                                        <select
-                                            id="gst_registration_type"
-                                            name="gst_registration_type"
-                                            required
-                                            className={selectClass}
-                                            defaultValue={
-                                                gst_registration_types[0]
-                                            }
-                                        >
-                                            {gst_registration_types.map(
-                                                (value) => (
-                                                    <option
-                                                        key={value}
-                                                        value={value}
-                                                    >
-                                                        {value}
-                                                    </option>
-                                                ),
-                                            )}
-                                        </select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="tax_liability">
-                                            Tax liability
-                                        </Label>
-                                        <select
-                                            id="tax_liability"
-                                            name="tax_liability"
-                                            required
-                                            className={selectClass}
-                                            defaultValue={tax_liabilities[0]}
-                                        >
-                                            {tax_liabilities.map((value) => (
-                                                <option
-                                                    key={value}
-                                                    value={value}
-                                                >
-                                                    {value}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="gstin">GSTIN</Label>
-                                        <Input
-                                            id="gstin"
-                                            name="gstin"
-                                            maxLength={15}
-                                            className="uppercase"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="gst_rate_id">
-                                            GST rate
-                                        </Label>
-                                        <select
-                                            id="gst_rate_id"
-                                            name="gst_rate_id"
-                                            className={selectClass}
-                                            defaultValue={
-                                                gst_rates[0]?.id ?? ''
-                                            }
-                                        >
-                                            <option value="">None</option>
-                                            {gst_rates.map((rate) => (
-                                                <option
-                                                    key={rate.id}
-                                                    value={rate.id}
-                                                >
-                                                    {rate.label}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="data_visibility">
-                                            Data visibility
-                                        </Label>
-                                        <select
-                                            id="data_visibility"
-                                            name="data_visibility"
-                                            required
-                                            className={selectClass}
-                                            defaultValue={data_visibilities[0]}
-                                        >
-                                            {data_visibilities.map((value) => (
-                                                <option
-                                                    key={value}
-                                                    value={value}
-                                                >
-                                                    {value}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="timezone">
-                                            Timezone
-                                        </Label>
-                                        <Input
-                                            id="timezone"
-                                            name="timezone"
-                                            defaultValue="Asia/Kolkata"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="initial_branch_name">
-                                            Initial branch
-                                        </Label>
-                                        <Input
-                                            id="initial_branch_name"
-                                            name="initial_branch_name"
-                                            defaultValue="Head Office"
-                                        />
-                                    </div>
-                                    <div className="space-y-2 md:col-span-2">
-                                        <Label htmlFor="new_password">
-                                            New password (only when creating a
-                                            new identity)
-                                        </Label>
-                                        <Input
-                                            id="new_password"
-                                            type="password"
-                                            name="new_password"
-                                            minLength={12}
-                                            autoComplete="new-password"
-                                        />
-                                    </div>
-                                    <div className="md:col-span-2">
-                                        <Button type="submit" variant="default">
-                                            Convert lead
-                                        </Button>
-                                    </div>
-                                </FormSection>
-                            </Form>
-                        ) : lead.converted_company ? (
-                            <FormSection title="Conversion result" columns={1}>
-                                <p className="text-sm">
-                                    Converted to{' '}
-                                    <span className="font-medium">
-                                        {lead.converted_company.name}
-                                    </span>
-                                    .
-                                </p>
-                            </FormSection>
-                        ) : (
-                            <p className="rounded-lg border border-border bg-muted/20 px-3 py-4 text-sm text-muted-foreground">
-                                Conversion unlocks when the lead reaches
-                                Qualified status.
-                            </p>
-                        )}
-                    </DetailTabPanel>
+                                    <Plus className="size-4" aria-hidden />
+                                    Add note
+                                </Button>
+                            </div>
 
-                    <DetailTabPanel id="activity" activeId={tab}>
-                        <FormSection title="Activity" columns={1}>
                             {activities.length === 0 ? (
                                 <p className="text-sm text-muted-foreground">
                                     No activity yet.
@@ -773,26 +643,216 @@ export default function CrmLeadShow({
                                                 />
                                             ) : null}
                                             <span
-                                                className="relative z-1 mt-1 size-[22px] shrink-0 rounded-full bg-[var(--brand-green)] ring-2 ring-card"
+                                                className={
+                                                    activity.is_note
+                                                        ? 'relative z-1 mt-1 size-[22px] shrink-0 rounded-full bg-[#2D8CFF] ring-2 ring-card'
+                                                        : 'relative z-1 mt-1 size-[22px] shrink-0 rounded-full bg-[var(--brand-green)] ring-2 ring-card'
+                                                }
                                                 aria-hidden
                                             />
-                                            <div className="min-w-0 flex-1 rounded-md border border-border bg-muted/20 px-3 py-2 text-sm">
+                                            <div
+                                                className={
+                                                    activity.is_note
+                                                        ? 'min-w-0 flex-1 rounded-md border border-[#2D8CFF]/30 bg-[#2D8CFF]/5 px-3 py-2 text-sm'
+                                                        : 'min-w-0 flex-1 rounded-md border border-border bg-muted/20 px-3 py-2 text-sm'
+                                                }
+                                            >
                                                 <span className="font-medium">
-                                                    {activity.activity_type}
+                                                    {activity.is_note
+                                                        ? 'Note'
+                                                        : activity.activity_type}
                                                 </span>
-                                                {activity.body
-                                                    ? ` — ${activity.body}`
-                                                    : ''}
-                                                {activity.created_at ? (
-                                                    <p className="mt-1 text-xs text-muted-foreground">
-                                                        {activity.created_at}
+                                                {activity.body ? (
+                                                    <p className="mt-1 whitespace-pre-wrap">
+                                                        {activity.body}
                                                     </p>
                                                 ) : null}
+                                                <p className="mt-1 text-xs text-muted-foreground">
+                                                    {activity.actor ?? 'System'}
+                                                    {activity.created_at
+                                                        ? ` · ${activity.created_at}`
+                                                        : ''}
+                                                </p>
                                             </div>
                                         </li>
                                     ))}
                                 </ul>
                             )}
+                        </FormSection>
+
+                        <Dialog
+                            open={noteDialogOpen}
+                            onOpenChange={setNoteDialogOpen}
+                        >
+                            <DialogContent className="sm:max-w-md">
+                                <DialogHeader>
+                                    <DialogTitle>Add note</DialogTitle>
+                                    <DialogDescription>
+                                        Record an internal note on this lead.
+                                        Notes appear in the activity timeline.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <Form
+                                    action={urls.note}
+                                    method="post"
+                                    onSuccess={() => setNoteDialogOpen(false)}
+                                    className="space-y-4"
+                                >
+                                    <div className="space-y-2">
+                                        <Label htmlFor="note-body">Body</Label>
+                                        <textarea
+                                            id="note-body"
+                                            name="body"
+                                            required
+                                            rows={5}
+                                            className={textareaClass}
+                                            placeholder="What did you learn or agree with the prospect?"
+                                        />
+                                    </div>
+                                    <DialogFooter>
+                                        <Button
+                                            type="button"
+                                            variant="outline"
+                                            onClick={() =>
+                                                setNoteDialogOpen(false)
+                                            }
+                                        >
+                                            Cancel
+                                        </Button>
+                                        <Button type="submit">Save note</Button>
+                                    </DialogFooter>
+                                </Form>
+                            </DialogContent>
+                        </Dialog>
+                    </DetailTabPanel>
+
+                    <DetailTabPanel id="onboarding" activeId={tab}>
+                        <FormSection
+                            title="Onboarding invitation"
+                            description="Customer completes account setup via the public website flow."
+                            columns={2}
+                        >
+                            <dl className="contents">
+                                <DetailItem
+                                    label="Status"
+                                    value={
+                                        <WorkspaceStatusBadge
+                                            status={onboarding.status}
+                                        />
+                                    }
+                                />
+                                <DetailItem
+                                    label="Recipient"
+                                    value={onboarding.recipient ?? '—'}
+                                />
+                                <DetailItem
+                                    label="Sent at"
+                                    value={onboarding.sent_at ?? '—'}
+                                />
+                                <DetailItem
+                                    label="Expires at"
+                                    value={onboarding.expires_at ?? '—'}
+                                />
+                                <DetailItem
+                                    label="Completed at"
+                                    value={onboarding.completed_at ?? '—'}
+                                />
+                                <DetailItem
+                                    label="Delivery"
+                                    value={
+                                        onboarding.delivery_status ? (
+                                            <WorkspaceStatusBadge
+                                                status={
+                                                    onboarding.delivery_status
+                                                }
+                                            />
+                                        ) : (
+                                            '—'
+                                        )
+                                    }
+                                />
+                            </dl>
+
+                            <div className="flex flex-wrap gap-2 md:col-span-2">
+                                {canSendInvite ? (
+                                    <Form
+                                        action={urls.invite}
+                                        method="post"
+                                        className="inline"
+                                    >
+                                        <Button
+                                            type="submit"
+                                            variant="default"
+                                            className="gap-1.5"
+                                        >
+                                            <Mail
+                                                className="size-4"
+                                                aria-hidden
+                                            />
+                                            Send onboarding invite
+                                        </Button>
+                                    </Form>
+                                ) : null}
+                                {onboarding.can_resend ? (
+                                    <Form
+                                        action={urls.invite_resend}
+                                        method="post"
+                                        className="inline"
+                                    >
+                                        <Button
+                                            type="submit"
+                                            variant="outline"
+                                            className="gap-1.5"
+                                        >
+                                            <RotateCcw
+                                                className="size-4"
+                                                aria-hidden
+                                            />
+                                            Resend invite
+                                        </Button>
+                                    </Form>
+                                ) : null}
+                            </div>
+
+                            {onboarding.can_revoke ? (
+                                <Form
+                                    action={urls.invite_revoke}
+                                    method="post"
+                                    className="space-y-0 md:col-span-2"
+                                >
+                                    <div className="space-y-2">
+                                        <Label htmlFor="revoke-remark">
+                                            Revoke remark
+                                        </Label>
+                                        <textarea
+                                            id="revoke-remark"
+                                            name="remark"
+                                            required
+                                            rows={2}
+                                            className={textareaClass}
+                                            placeholder="Reason for revoking this invitation"
+                                        />
+                                    </div>
+                                    <Button
+                                        type="submit"
+                                        variant="destructive"
+                                        className="mt-3 gap-1.5"
+                                    >
+                                        <XCircle
+                                            className="size-4"
+                                            aria-hidden
+                                        />
+                                        Revoke invitation
+                                    </Button>
+                                </Form>
+                            ) : null}
+
+                            {!lead.email ? (
+                                <p className="text-sm text-muted-foreground md:col-span-2">
+                                    Add an email on this lead before sending an
+                                    onboarding invite.
+                                </p>
+                            ) : null}
                         </FormSection>
                     </DetailTabPanel>
                 </DetailTabs>

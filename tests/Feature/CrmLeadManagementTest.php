@@ -1,18 +1,17 @@
 <?php
 
-use App\Domains\Company\Enums\DataVisibility;
-use App\Domains\Company\Enums\GstRegistrationType;
-use App\Domains\Company\Enums\TaxLiability;
 use App\Domains\Crm\Enums\InterestedProduct;
 use App\Domains\Crm\Enums\LeadSource;
 use App\Domains\Crm\Enums\LeadStatus;
 use App\Domains\Crm\Exceptions\CrmDomainException;
 use App\Domains\Crm\LeadService;
+use App\Domains\Crm\Onboarding\LeadOnboardingService;
+use App\Models\Company;
 use App\Models\Crm\Lead;
-use App\Models\GstRate;
 use App\Models\User;
 use App\Support\Tenant\TenantContextHolder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Testing\TestResponse;
 
 beforeEach(function () {
@@ -130,7 +129,7 @@ test('disqualified transition requires remark and customer cannot access crm', f
     $this->get(route('admin.crm.leads.index'))->assertForbidden();
 });
 
-test('admin can assign schedule and complete follow-up then convert qualified lead via http', function () {
+test('admin can assign schedule follow-up add note and invite lead without creating company', function () {
     $sa = User::factory()->superAdmin()->create([
         'password' => Hash::make('sa-secret'),
     ]);
@@ -145,15 +144,15 @@ test('admin can assign schedule and complete follow-up then convert qualified le
         ->assertInertia(fn ($page) => $page->component('admin/crm/dashboard'));
 
     $this->post(route('admin.crm.leads.store'), [
-        'contact_name' => 'Convert Me',
-        'email' => 'convert.http@example.com',
+        'contact_name' => 'Invite Me',
+        'email' => 'invite.http@example.com',
         'mobile' => '9876543210',
-        'company_name' => 'Convert Logistics',
+        'company_name' => 'Invite Logistics',
         'source' => LeadSource::Website->value,
         'interested_product' => InterestedProduct::OwnFleet->value,
     ])->assertRedirect();
 
-    $lead = Lead::query()->where('email', 'convert.http@example.com')->firstOrFail();
+    $lead = Lead::query()->where('email', 'invite.http@example.com')->firstOrFail();
 
     $this->post(route('admin.crm.leads.assign', $lead), [
         'assigned_to_user_id' => $sales->id,
@@ -177,6 +176,12 @@ test('admin can assign schedule and complete follow-up then convert qualified le
 
     expect($followUp->fresh()->completed_at)->not->toBeNull();
 
+    $this->post(route('admin.crm.leads.notes.store', $lead), [
+        'body' => 'Spoke with decision maker; ready for onboarding.',
+    ])->assertRedirect(route('admin.crm.leads.show', $lead));
+
+    expect($lead->fresh()->activities()->where('activity_type', 'note')->count())->toBe(1);
+
     $this->post(route('admin.crm.leads.transition', $lead), [
         'status' => LeadStatus::Contacted->value,
         'remark' => 'Contacted',
@@ -186,36 +191,13 @@ test('admin can assign schedule and complete follow-up then convert qualified le
         'remark' => 'Qualified',
     ])->assertRedirect();
 
-    $rate = GstRate::query()->firstOrCreate(
-        ['code' => 'GST18', 'version' => 1],
-        [
-            'name' => 'GST 18%',
-            'rate_percent' => '18.000',
-            'effective_from' => now()->toDateString(),
-            'is_active' => true,
-        ],
-    );
+    $this->post(route('admin.crm.leads.invite', $lead))
+        ->assertRedirect(route('admin.crm.leads.show', $lead));
 
-    $this->post(route('admin.crm.leads.convert', $lead), [
-        'name' => 'Convert Logistics Pvt Ltd',
-        'pan' => 'ABCDE1234F',
-        'registered_address' => '12 Harbour Road',
-        'state' => 'Maharashtra',
-        'city' => 'Mumbai',
-        'pin' => '400001',
-        'mobile' => '9876543210',
-        'email' => 'convert.http@example.com',
-        'gst_registration_type' => GstRegistrationType::Regular->value,
-        'tax_liability' => TaxLiability::Fcm->value,
-        'gstin' => '27ABCDE1234F1Z5',
-        'gst_rate_id' => $rate->id,
-        'data_visibility' => DataVisibility::SharedData->value,
-        'timezone' => 'Asia/Kolkata',
-        'new_password' => 'CustomerPass!234',
-    ])->assertRedirect(route('admin.crm.leads.show', $lead));
+    expect($lead->fresh()->status)->toBe(LeadStatus::OnboardingInviteSent)
+        ->and($lead->fresh()->converted_company_id)->toBeNull();
 
-    expect($lead->fresh()->status)->toBe(LeadStatus::Converted)
-        ->and($lead->fresh()->converted_company_id)->not->toBeNull();
+    expect(Route::has('admin.crm.leads.convert'))->toBeFalse();
 });
 
 test('lead create form loads assignable internal users without users.is_active column', function () {
@@ -264,4 +246,74 @@ test('lead create form loads assignable internal users without users.is_active c
 
     $lead = Lead::query()->where('email', 'assignee.lead@example.com')->firstOrFail();
     expect($lead->assigned_to_user_id)->toBe($activeInternal->id);
+});
+
+test('public lead onboarding completes owner without creating company', function () {
+    config(['mail.default' => 'array']);
+
+    $sa = User::factory()->superAdmin()->create();
+    $lead = app(LeadService::class)->create($sa, [
+        'contact_name' => 'Onboard Owner',
+        'email' => 'onboard.owner@example.com',
+        'company_name' => 'Future Co',
+        'source' => LeadSource::Website->value,
+        'interested_product' => InterestedProduct::Broker->value,
+    ]);
+
+    $invite = app(LeadOnboardingService::class)->sendInvite($sa, $lead);
+    $token = $invite['plain_token'];
+
+    $this->getJson(route('api.public.onboarding.show', ['token' => $token]))
+        ->assertOk()
+        ->assertJsonPath('recipient.email', 'onboard.owner@example.com');
+
+    $otpResponse = $this->postJson(route('api.public.onboarding.otp.send', ['token' => $token]))
+        ->assertOk();
+    $otp = $otpResponse->json('debug_otp');
+    expect($otp)->toBeString()->toHaveLength(6);
+
+    $this->postJson(route('api.public.onboarding.otp.verify', ['token' => $token]), [
+        'otp' => $otp,
+    ])->assertOk();
+
+    $this->postJson(route('api.public.onboarding.policy', ['token' => $token]), [
+        'policies' => array_keys(config('lead_onboarding.policies')),
+    ])->assertOk();
+
+    $this->postJson(route('api.public.onboarding.password', ['token' => $token]), [
+        'password' => 'Owner-Pass!23456',
+        'password_confirmation' => 'Owner-Pass!23456',
+    ])->assertOk();
+
+    $this->postJson(route('api.public.onboarding.complete', ['token' => $token]))
+        ->assertOk()
+        ->assertJsonStructure(['login_url']);
+
+    $owner = User::query()->where('email', 'onboard.owner@example.com')->firstOrFail();
+    expect($owner->isCustomer())->toBeTrue()
+        ->and($owner->email_verified_at)->not->toBeNull()
+        ->and(Company::query()->where('owner_user_id', $owner->id)->count())->toBe(0)
+        ->and($lead->fresh()->status)->toBe(LeadStatus::Onboarded);
+
+    $this->postJson(route('api.public.onboarding.complete', ['token' => $token]))
+        ->assertStatus(422);
+});
+
+test('lead notes are append-only and require body', function () {
+    $sa = User::factory()->superAdmin()->create();
+    $lead = app(LeadService::class)->create($sa, [
+        'contact_name' => 'Note Lead',
+        'email' => 'note.lead@example.com',
+        'source' => LeadSource::Other->value,
+        'interested_product' => InterestedProduct::Undecided->value,
+    ]);
+
+    $first = app(LeadService::class)->addNote($sa, $lead, 'First note');
+    $second = app(LeadService::class)->addNote($sa, $lead, 'Second note');
+
+    expect($first->activity_type)->toBe('note')
+        ->and($second->id)->not->toBe($first->id);
+
+    expect(fn () => app(LeadService::class)->addNote($sa, $lead, '   '))
+        ->toThrow(CrmDomainException::class);
 });
