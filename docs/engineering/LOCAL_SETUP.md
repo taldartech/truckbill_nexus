@@ -60,6 +60,51 @@ npm run types:check
 npm run build
 ```
 
+## Database seeding
+
+### Production / fresh install (default)
+
+```bash
+# Set Internal Super Admin bootstrap credentials in .env first (never commit real values):
+# INTERNAL_SUPER_ADMIN_NAME="Super Admin"
+# INTERNAL_SUPER_ADMIN_EMAIL=you@example.com
+# INTERNAL_SUPER_ADMIN_PASSWORD='a-strong-unique-secret'
+
+php artisan migrate --seed
+# Equivalent:
+php artisan migrate
+php artisan db:seed
+```
+
+`DatabaseSeeder` order (idempotent, production-safe):
+
+1. `RbacSeeder` — permissions, Internal/Customer roles, default customer matrix
+2. `IndiaGeographySeeder` — 36 States/UTs + cities + GST state codes
+3. `PaymentModeSeeder` — Cash, Bank Transfer, UPI, Cheque, NEFT, RTGS, IMPS, Other
+4. `GstRateSeeder` — GST 0/5/12/18/28%
+5. `TdsReferenceRulesSeeder` — transporter TDS reference rules
+6. `SubscriptionCatalogueSeeder` — plans and add-ons (Rules §15)
+7. `InternalSuperAdminSeeder` — exactly one initial Internal Super Admin when none exists
+
+Re-running `php artisan db:seed` does **not** reset Super Admin passwords, duplicate masters, or create demo companies.
+
+Owner-specific catalogues (Goods Type, Truck Type, Tyre Layout, Package Type, Expense Categories, Document Type) are **not** global seeds — they belong to an Owner and are created through Owner/Company workflows (or the opt-in demo seeder).
+
+### Demo workspace (local/testing only)
+
+```bash
+LOCAL_DEMO_PASSWORD='your-local-secret' \
+php artisan db:seed --class=LocalDemoWorkspaceSeeder
+```
+
+Never wired into `DatabaseSeeder`. See `docs/engineering/LOCAL_DEMO_DATA_SETUP.md`.
+
+### Secure credential management
+
+- Keep `INTERNAL_SUPER_ADMIN_*` and `LOCAL_DEMO_PASSWORD` out of git.
+- Rotate the initial Super Admin password after first login in shared environments.
+- Do not print passwords in seeder output or logs.
+
 ## Notes
 
 - Registration remains disabled (Fortify features).

@@ -42,5 +42,9 @@
         <env name="PULSE_ENABLED" value="false" force="true"/>
         <env name="TELESCOPE_ENABLED" value="false" force="true"/>
         <env name="NIGHTWATCH_ENABLED" value="false" force="true"/>
+        <!-- Testing-only bootstrap for DatabaseSeeder → InternalSuperAdminSeeder (never production). -->
+        <env name="INTERNAL_SUPER_ADMIN_NAME" value="Test Super Admin" force="true"/>
+        <env name="INTERNAL_SUPER_ADMIN_EMAIL" value="super.admin@testing.truckbill.local" force="true"/>
+        <env name="INTERNAL_SUPER_ADMIN_PASSWORD" value="testing-super-admin-secret" force="true"/>
     </php>
 </phpunit>

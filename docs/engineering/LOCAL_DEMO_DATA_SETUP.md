@@ -95,3 +95,7 @@ php artisan test --compact tests/Feature/LocalDemoWorkspaceSeederTest.php
 ```
 
 Covers production refusal, password requirement, isolation, idempotency, no mail/HTTP outbound, and no default-role enquiry blanket grants.
+
+## Relation to default `DatabaseSeeder`
+
+`DatabaseSeeder` seeds RBAC, geography, payment modes, GST rates, TDS rules, subscription catalogue, and the initial Internal Super Admin only. It never calls this demo seeder. Run demo seeding explicitly as shown above after `migrate --seed` when local demo personas are required.

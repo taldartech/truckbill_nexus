@@ -9,9 +9,8 @@ use Illuminate\Support\Str;
 /**
  * Idempotent reference TDS rules for transporter calculation.
  *
- * Standalone seeder — not invoked from {@see DatabaseSeeder} (which seeds RBAC only).
- * Invoke explicitly: `php artisan db:seed --class=TdsReferenceRulesSeeder`
- * Tests seed via `(new TdsReferenceRulesSeeder)->run()`.
+ * Invoked from {@see DatabaseSeeder} after GST rates. Safe to run standalone:
+ * `php artisan db:seed --class=TdsReferenceRulesSeeder`
  *
  * Rules mirror TaxMasterTest priorities plus entity 2% for PAN 4th char C/F/A/B/J/L/T.
  */
