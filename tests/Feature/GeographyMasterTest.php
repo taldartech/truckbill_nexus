@@ -12,8 +12,12 @@ beforeEach(function (): void {
 });
 
 test('india geography seeder creates states with gst codes and cities', function (): void {
-    expect(State::query()->where('country_code', 'IN')->count())->toBeGreaterThan(30)
+    expect(State::query()->where('country_code', 'IN')->count())->toBe(36)
         ->and(City::query()->count())->toBeGreaterThan(100);
+
+    foreach (['AN', 'CH', 'CG', 'DH', 'DL', 'LA', 'LD', 'PY', 'MH', 'TG', 'UK'] as $code) {
+        expect(State::query()->where('code', $code)->exists())->toBeTrue("Missing state code {$code}");
+    }
 
     $mh = State::query()->where('code', 'MH')->first();
     expect($mh)->not->toBeNull()

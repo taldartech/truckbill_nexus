@@ -28,12 +28,15 @@ final class GeographyLookupService
             CaseInsensitiveLike::whereAnyContains($query, ['name', 'code'], $search);
         }
 
-        return $query->limit($limit)->get()->map(fn (State $state): array => [
+        /** @var list<array{id: string, name: string, code: string, gst_code: string}> $states */
+        $states = array_values($query->limit($limit)->get()->map(fn (State $state): array => [
             'id' => $state->id,
             'name' => $state->name,
             'code' => $state->code,
             'gst_code' => $state->gst_code,
-        ])->values()->all();
+        ])->all());
+
+        return $states;
     }
 
     /**
@@ -56,11 +59,14 @@ final class GeographyLookupService
             CaseInsensitiveLike::whereAnyContains($query, ['name'], $search);
         }
 
-        return $query->limit($limit)->get()->map(fn (City $city): array => [
+        /** @var list<array{id: string, name: string, state_id: string}> $cities */
+        $cities = array_values($query->limit($limit)->get()->map(fn (City $city): array => [
             'id' => $city->id,
             'name' => $city->name,
             'state_id' => $city->state_id,
-        ])->values()->all();
+        ])->all());
+
+        return $cities;
     }
 
     /**
@@ -98,8 +104,10 @@ final class GeographyLookupService
         return [
             'state_id' => $state?->id,
             'city_id' => $city?->id,
-            'state' => $state?->name ?? (filled($fallbackState) ? trim((string) $fallbackState) : null),
-            'city' => $city?->name ?? (filled($fallbackCity) ? trim((string) $fallbackCity) : null),
+            'state' => ($state !== null ? $state->name : null)
+                ?? (filled($fallbackState) ? trim((string) $fallbackState) : null),
+            'city' => ($city !== null ? $city->name : null)
+                ?? (filled($fallbackCity) ? trim((string) $fallbackCity) : null),
         ];
     }
 

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { FormSection } from '@/components/form-section';
+import { StateCityFields } from '@/components/geography/state-city-fields';
 import { CompanyOwnerPageShell } from '@/components/owner/owner-page-header';
 
 type DeferredSection = {
@@ -31,6 +32,8 @@ type OwnerSettingsProps = {
         registered_address: string | null;
         state: string | null;
         city: string | null;
+        state_id?: string | null;
+        city_id?: string | null;
         pin: string | null;
         contact_person: string | null;
         mobile: string | null;
@@ -76,6 +79,10 @@ export default function OwnerSettings({
     const [gstType, setGstType] = useState(
         company.gst_registration_type ?? 'regular',
     );
+    const [stateId, setStateId] = useState(company.state_id ?? '');
+    const [cityId, setCityId] = useState(company.city_id ?? '');
+    const [stateName, setStateName] = useState(company.state ?? '');
+    const [cityName, setCityName] = useState(company.city ?? '');
     const needsGstin = gstType !== 'unregistered';
 
     return (
@@ -155,33 +162,34 @@ export default function OwnerSettings({
                                             message={errors.registered_address}
                                         />
                                     </div>
-                                    <div className="grid gap-4 sm:grid-cols-3">
-                                        <Field
-                                            id="state"
-                                            label="State"
-                                            name="state"
-                                            defaultValue={company.state ?? ''}
-                                            error={errors.state}
-                                            required
-                                        />
-                                        <Field
-                                            id="city"
-                                            label="City"
-                                            name="city"
-                                            defaultValue={company.city ?? ''}
-                                            error={errors.city}
-                                            required
-                                        />
-                                        <Field
-                                            id="pin"
-                                            label="PIN"
-                                            name="pin"
-                                            defaultValue={company.pin ?? ''}
-                                            error={errors.pin}
-                                            required
-                                            maxLength={6}
-                                        />
-                                    </div>
+                                    <StateCityFields
+                                        required
+                                        stateId={stateId}
+                                        cityId={cityId}
+                                        stateName={stateName}
+                                        cityName={cityName}
+                                        stateError={
+                                            errors.state_id ?? errors.state
+                                        }
+                                        cityError={
+                                            errors.city_id ?? errors.city
+                                        }
+                                        onChange={(next) => {
+                                            setStateId(next.state_id);
+                                            setCityId(next.city_id);
+                                            setStateName(next.state);
+                                            setCityName(next.city);
+                                        }}
+                                    />
+                                    <Field
+                                        id="pin"
+                                        label="PIN"
+                                        name="pin"
+                                        defaultValue={company.pin ?? ''}
+                                        error={errors.pin}
+                                        required
+                                        maxLength={6}
+                                    />
                                     <Field
                                         id="contact_person"
                                         label="Contact person"

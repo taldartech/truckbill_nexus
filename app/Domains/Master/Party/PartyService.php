@@ -87,7 +87,9 @@ final class PartyService
                         : null,
                     'is_gst_applicable' => $attributes['is_gst_applicable'] ?? true,
                     'state' => $attributes['state'] ?? null,
+                    'state_id' => $attributes['state_id'] ?? null,
                     'city' => $attributes['city'] ?? null,
+                    'city_id' => $attributes['city_id'] ?? null,
                     'address' => $attributes['address'] ?? null,
                 ]);
 
@@ -142,7 +144,9 @@ final class PartyService
             'pan',
             'is_gst_applicable',
             'state',
+            'state_id',
             'city',
+            'city_id',
             'address',
         ]), collect($attributes)->only([
             'name',
@@ -153,7 +157,9 @@ final class PartyService
             'pan',
             'is_gst_applicable',
             'state',
+            'state_id',
             'city',
+            'city_id',
             'address',
         ])->all());
 
@@ -183,7 +189,9 @@ final class PartyService
                     'pan',
                     'is_gst_applicable',
                     'state',
+                    'state_id',
                     'city',
+                    'city_id',
                     'address',
                 ])->all();
 

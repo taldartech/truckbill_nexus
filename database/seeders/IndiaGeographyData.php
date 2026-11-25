@@ -99,19 +99,32 @@ final class IndiaGeographyData
         self::mergeDadraDamanDiu($byName);
         self::splitLadakhFromJammuKashmir($byName);
         self::renameUtLabels($byName);
-        $byName['Andaman and Nicobar Islands'] = ['Nicobar', 'North and Middle Andaman', 'South Andaman'];
+        $byName['Andaman and Nicobar Islands'] = array_values(array_unique(array_merge(
+            $byName['Andaman and Nicobar Islands'] ?? [],
+            ['Nicobar', 'North and Middle Andaman', 'South Andaman'],
+        )));
+        $byName['Chandigarh'] = array_values(array_unique(array_merge(
+            $byName['Chandigarh'] ?? [],
+            ['Chandigarh'],
+        )));
+        $byName['Lakshadweep'] = array_values(array_unique(array_merge(
+            $byName['Lakshadweep'] ?? [],
+            ['Kavaratti', 'Agatti', 'Amini', 'Andrott', 'Minicoy'],
+        )));
+        $byName['Ladakh'] = array_values(array_unique(array_merge(
+            $byName['Ladakh'] ?? [],
+            ['Kargil', 'Leh'],
+        )));
 
         $out = [];
         foreach (self::STATES as $code => $meta) {
             $name = $meta['name'];
-            if (! isset($byName[$name])) {
-                continue;
-            }
+            // Always emit every official State/UT even when the district JSON lacks rows.
             $out[] = [
                 'name' => $name,
                 'code' => $code,
                 'gst_code' => $meta['gst_code'],
-                'cities' => $byName[$name],
+                'cities' => $byName[$name] ?? [],
             ];
         }
 
@@ -168,8 +181,16 @@ final class IndiaGeographyData
         $renames = [
             'Orissa' => 'Odisha',
             'Pondicherry' => 'Puducherry',
+            'Puducherry (UT)' => 'Puducherry',
             'Uttaranchal' => 'Uttarakhand',
             'NCT of Delhi' => 'Delhi',
+            'Delhi (NCT)' => 'Delhi',
+            'Chandigarh (UT)' => 'Chandigarh',
+            'Dadra and Nagar Haveli (UT)' => 'Dadra and Nagar Haveli and Daman and Diu',
+            'Daman and Diu (UT)' => 'Dadra and Nagar Haveli and Daman and Diu',
+            'Lakshadweep (UT)' => 'Lakshadweep',
+            'Andaman and Nicobar Islands (UT)' => 'Andaman and Nicobar Islands',
+            'Andaman & Nicobar Islands' => 'Andaman and Nicobar Islands',
         ];
         foreach ($renames as $from => $to) {
             if (! isset($byName[$from])) {

@@ -10,6 +10,7 @@ import type {
     FieldReview,
 } from '@/components/form-confirmation/types';
 import { FormSection } from '@/components/form-section';
+import { StateCityFields } from '@/components/geography/state-city-fields';
 import InputError from '@/components/input-error';
 import {
     LrfPage,
@@ -38,6 +39,8 @@ type Party = {
     is_gst_applicable: boolean;
     state: string | null;
     city: string | null;
+    state_id?: string | null;
+    city_id?: string | null;
     address: string | null;
     scope: string;
     roles: RolePayload[];
@@ -648,6 +651,10 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
         initialDriver(party?.roles),
     );
     const [pan, setPan] = useState(party?.pan ?? '');
+    const [stateId, setStateId] = useState(party?.state_id ?? '');
+    const [cityId, setCityId] = useState(party?.city_id ?? '');
+    const [state, setState] = useState(party?.state ?? '');
+    const [city, setCity] = useState(party?.city ?? '');
 
     const roleIndex = useMemo(() => {
         const map: Record<string, number> = {};
@@ -684,13 +691,15 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
     const buildDraft = (
         form: HTMLFormElement,
         panValue: string,
+        stateValue: string,
+        cityValue: string,
     ): PartyDraft => ({
         name: readFormControlValue(form, 'name'),
         contact_person: readFormControlValue(form, 'contact_person'),
         contact_number: readFormControlValue(form, 'contact_number'),
         email: readFormControlValue(form, 'email'),
-        state: readFormControlValue(form, 'state'),
-        city: readFormControlValue(form, 'city'),
+        state: stateValue,
+        city: cityValue,
         address: readFormControlValue(form, 'address'),
         gstin: readFormControlValue(form, 'gstin'),
         pan: panValue.trim(),
@@ -726,7 +735,7 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
     };
 
     const openConfirmation = (form: HTMLFormElement) => {
-        const draft = buildDraft(form, pan);
+        const draft = buildDraft(form, pan, state, city);
         if (mode === 'create') {
             setReviewFields(
                 PARTY_FIELD_DEFS.filter((field) => draft[field.key] !== '').map(
@@ -871,31 +880,26 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
                                 tone="goods"
                             >
                                 <div className="grid gap-3 md:grid-cols-2">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="state">
-                                            State
-                                            {stateCityRequired ? ' *' : ''}
-                                        </Label>
-                                        <Input
-                                            id="state"
-                                            name="state"
+                                    <div className="md:col-span-2">
+                                        <StateCityFields
+                                            stateId={stateId}
+                                            cityId={cityId}
+                                            stateName={state}
+                                            cityName={city}
                                             required={stateCityRequired}
-                                            defaultValue={party?.state ?? ''}
+                                            stateError={
+                                                errors.state_id ?? errors.state
+                                            }
+                                            cityError={
+                                                errors.city_id ?? errors.city
+                                            }
+                                            onChange={(next) => {
+                                                setStateId(next.state_id);
+                                                setCityId(next.city_id);
+                                                setState(next.state);
+                                                setCity(next.city);
+                                            }}
                                         />
-                                        <InputError message={errors.state} />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="city">
-                                            City
-                                            {stateCityRequired ? ' *' : ''}
-                                        </Label>
-                                        <Input
-                                            id="city"
-                                            name="city"
-                                            required={stateCityRequired}
-                                            defaultValue={party?.city ?? ''}
-                                        />
-                                        <InputError message={errors.city} />
                                     </div>
                                     <div className="space-y-2 md:col-span-2">
                                         <Label htmlFor="address">Address</Label>

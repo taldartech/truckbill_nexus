@@ -7,6 +7,7 @@ use App\Domains\Company\CompanyAccessService;
 use App\Domains\Company\CompanyProfileValidator;
 use App\Domains\Company\MasterDataVisibilityResolver;
 use App\Domains\Document\DocumentAttachmentService;
+use App\Domains\Geography\Concerns\ResolvesAddressGeography;
 use App\Domains\Master\Exceptions\MasterDomainException;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Party\Exceptions\PartyDomainException;
@@ -42,6 +43,7 @@ class PartyController extends Controller
 {
     use AuthorizesBranchPanel;
     use PresentsDocumentDrawer;
+    use ResolvesAddressGeography;
 
     public function __construct(
         private readonly CompanyAccessService $access,
@@ -334,8 +336,7 @@ class PartyController extends Controller
             'gstin' => ['nullable', 'string', 'max:20'],
             'pan' => ['nullable', 'string', 'max:20'],
             'is_gst_applicable' => ['sometimes', 'boolean'],
-            'state' => ['nullable', 'string', 'max:100'],
-            'city' => ['nullable', 'string', 'max:100'],
+            ...$this->geographyValidationRules(false),
             'address' => ['nullable', 'string', 'max:2000'],
             'roles' => ['required', 'array', 'min:1'],
             'roles.*.role' => ['required', Rule::enum(PartyRoleType::class)],
@@ -502,8 +503,7 @@ class PartyController extends Controller
             'gstin' => ['nullable', 'string', 'max:20'],
             'pan' => ['nullable', 'string', 'max:20'],
             'is_gst_applicable' => ['sometimes', 'boolean'],
-            'state' => ['nullable', 'string', 'max:100'],
-            'city' => ['nullable', 'string', 'max:100'],
+            ...$this->geographyValidationRules(false),
             'address' => ['nullable', 'string', 'max:2000'],
             'roles' => ['sometimes', 'array', 'min:1'],
             'roles.*.role' => ['required_with:roles', Rule::enum(PartyRoleType::class)],
@@ -662,7 +662,9 @@ class PartyController extends Controller
             'pan' => $party->pan,
             'is_gst_applicable' => (bool) $party->is_gst_applicable,
             'state' => $party->state,
+            'state_id' => $party->state_id,
             'city' => $party->city,
+            'city_id' => $party->city_id,
             'address' => $party->address,
             'scope' => $party->branch_id === null ? 'shared' : 'branch',
             'branch_id' => $party->branch_id,
@@ -708,7 +710,7 @@ class PartyController extends Controller
             ) ?? (bool) $attributes['is_gst_applicable'];
         }
 
-        return $attributes;
+        return $this->withResolvedGeography($attributes);
     }
 
     /**

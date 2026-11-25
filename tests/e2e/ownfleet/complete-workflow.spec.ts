@@ -148,17 +148,13 @@ test.describe('OwnFleet complete workflow', () => {
 
         await loginAndEnterOwnFleetBranch(page);
         await createOwnFleetLrViaUi(page, `E2E vehicle lock ${runId}`);
+        // Unified OwnFleet: Bilty submission creates the Trip and continues on expenses.
         await openLrCreateTrip(page);
 
+        await expect(page).toHaveURL(/\/trips\/[0-9a-f-]+\/expenses/);
         await expect(page.locator('select#vehicle_id')).toHaveCount(0);
         await expect(
-            page.locator('input[name="vehicle_id"][type="hidden"]'),
-        ).toHaveCount(1);
-        await expect(page.locator('#vehicle_display')).toHaveAttribute(
-            'readonly',
-        );
-        await expect(
-            page.getByText(/Trip must use the Own vehicle already assigned/i),
+            page.getByRole('heading', { name: /Expenses|Trip/i }).first(),
         ).toBeVisible();
     });
 });

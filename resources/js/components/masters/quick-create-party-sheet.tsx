@@ -1,5 +1,6 @@
 import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
 import type { FieldReview } from '@/components/form-confirmation/types';
+import { StateCityFields } from '@/components/geography/state-city-fields';
 import InputError from '@/components/input-error';
 import type { PartyOption } from '@/components/searchable-party-select';
 import { Button } from '@/components/ui/button';
@@ -43,6 +44,8 @@ type Draft = {
     email: string;
     state: string;
     city: string;
+    state_id: string;
+    city_id: string;
     address: string;
     gstin: string;
     pan: string;
@@ -57,6 +60,8 @@ const EMPTY: Draft = {
     email: '',
     state: '',
     city: '',
+    state_id: '',
+    city_id: '',
     address: '',
     gstin: '',
     pan: '',
@@ -175,6 +180,8 @@ export function QuickCreatePartySheet({
             email: draft.email.trim() || null,
             state: draft.state.trim(),
             city: draft.city.trim(),
+            state_id: draft.state_id.trim() || null,
+            city_id: draft.city_id.trim() || null,
             address: draft.address.trim() || null,
             gstin: draft.gstin.trim() || null,
             pan: draft.pan.trim() || null,
@@ -320,34 +327,30 @@ export function QuickCreatePartySheet({
                                     message={firstError(errors, 'email')}
                                 />
                             </div>
-                            <div className="space-y-1.5">
-                                <Label htmlFor="quick-party-state">
-                                    State *
-                                </Label>
-                                <Input
-                                    id="quick-party-state"
-                                    value={draft.state}
-                                    onChange={(event) =>
-                                        update('state', event.target.value)
-                                    }
+                            <div className="sm:col-span-2">
+                                <StateCityFields
                                     required
-                                />
-                                <InputError
-                                    message={firstError(errors, 'state')}
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label htmlFor="quick-party-city">City *</Label>
-                                <Input
-                                    id="quick-party-city"
-                                    value={draft.city}
-                                    onChange={(event) =>
-                                        update('city', event.target.value)
+                                    stateId={draft.state_id}
+                                    cityId={draft.city_id}
+                                    stateName={draft.state}
+                                    cityName={draft.city}
+                                    stateError={
+                                        firstError(errors, 'state_id') ??
+                                        firstError(errors, 'state')
                                     }
-                                    required
-                                />
-                                <InputError
-                                    message={firstError(errors, 'city')}
+                                    cityError={
+                                        firstError(errors, 'city_id') ??
+                                        firstError(errors, 'city')
+                                    }
+                                    onChange={(next) => {
+                                        setDraft((current) => ({
+                                            ...current,
+                                            state_id: next.state_id,
+                                            city_id: next.city_id,
+                                            state: next.state,
+                                            city: next.city,
+                                        }));
+                                    }}
                                 />
                             </div>
                             <div className="space-y-1.5 sm:col-span-2">

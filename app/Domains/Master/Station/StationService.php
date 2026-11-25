@@ -62,7 +62,9 @@ final class StationService
                     'code' => $code,
                     'name' => $name,
                     'state' => $attributes['state'] ?? null,
+                    'state_id' => $attributes['state_id'] ?? null,
                     'city' => $attributes['city'] ?? null,
+                    'city_id' => $attributes['city_id'] ?? null,
                     'is_active' => $attributes['is_active'] ?? true,
                 ]);
 
@@ -93,7 +95,14 @@ final class StationService
         return $this->auditedTransaction->run(function () use ($actor, $company, $branch, $station, $attributes, $remark): Station {
             return $this->access->withTenant($actor, $company, $branch, function () use ($station, $attributes, $remark): Station {
                 $before = $station->toArray();
-                $station->fill(collect($attributes)->only(['name', 'state', 'city', 'is_active'])->all());
+                $station->fill(collect($attributes)->only([
+                    'name',
+                    'state',
+                    'state_id',
+                    'city',
+                    'city_id',
+                    'is_active',
+                ])->all());
                 $station->save();
 
                 $this->audit->write(

@@ -1,8 +1,11 @@
 <?php
 
 use App\Models\Branch;
+use App\Models\City;
 use App\Models\Company;
+use App\Models\State;
 use App\Support\Workspace\WorkspaceSession;
+use Database\Seeders\IndiaGeographySeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
@@ -45,6 +48,44 @@ expect()->extend('toBeOne', function () {
 function internalRoute(string $name, array $parameters = []): string
 {
     return route($name, $parameters, absolute: false);
+}
+
+/**
+ * Ensure India geography is seeded and resolve State/City master IDs for address forms.
+ *
+ * @return array{state_id: string, city_id: string, state: string, city: string}
+ */
+function geographyIdsFor(string $stateName = 'Maharashtra', string $cityName = 'Mumbai City'): array
+{
+    if (State::query()->where('country_code', 'IN')->count() < 36) {
+        test()->seed(IndiaGeographySeeder::class);
+    }
+
+    $state = State::query()
+        ->where('country_code', 'IN')
+        ->where('name', $stateName)
+        ->where('is_active', true)
+        ->firstOrFail();
+
+    $normalized = City::normalizeName($cityName);
+    $city = City::query()
+        ->where('state_id', $state->id)
+        ->where('is_active', true)
+        ->where(function ($query) use ($cityName, $normalized): void {
+            $query->where('name', $cityName)
+                ->orWhere('name_normalized', $normalized)
+                ->orWhere('name_normalized', 'like', $normalized.'%');
+        })
+        ->orderByRaw('case when name_normalized = ? then 0 when name_normalized like ? then 1 else 2 end', [$normalized, $normalized.'%'])
+        ->orderBy('name')
+        ->firstOrFail();
+
+    return [
+        'state_id' => $state->id,
+        'city_id' => $city->id,
+        'state' => $state->name,
+        'city' => $city->name,
+    ];
 }
 
 /**

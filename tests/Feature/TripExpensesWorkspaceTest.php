@@ -116,6 +116,6 @@ test('bilty register manage expenses points at dedicated expenses route', functi
     $this->get(route('branch.lorry-receipts.index'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->where('lorryReceipts.data.0.primary_operation.kind', 'trip_operations')
+            ->where('lorryReceipts.data.0.primary_operation.kind', 'manage_expenses')
             ->where('lorryReceipts.data.0.primary_operation.expenses_url', $expected));
 });

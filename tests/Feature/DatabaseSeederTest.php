@@ -147,6 +147,8 @@ test('only one comprehensive demo workspace seeder class remains', function () {
 
     expect($seeders)->toBe([
         'DatabaseSeeder.php',
+        'IndiaGeographyData.php',
+        'IndiaGeographySeeder.php',
         'LocalDemoWorkspaceSeeder.php',
         'RbacSeeder.php',
         'SubscriptionCatalogueSeeder.php',

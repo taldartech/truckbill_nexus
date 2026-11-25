@@ -36,7 +36,7 @@ test.describe('company creation accessibility', () => {
         await expect(createLink.first()).toBeVisible({ timeout: 15_000 });
         await createLink.first().click();
 
-        await expect(page).toHaveURL(/\/owner\/companies\/create/);
+        await expect(page).toHaveURL(/\/(management|owner)\/companies\/create/);
         const ids = uniqueCompanyIds('E2E Dash Co');
         await fillCompanyCreateForm(page, ids);
         await expectOwnerDashboard(page);
@@ -68,7 +68,7 @@ test.describe('company creation accessibility', () => {
             await createCta.click();
         }
 
-        await expect(page).toHaveURL(/\/owner\/companies\/create/);
+        await expect(page).toHaveURL(/\/(management|owner)\/companies\/create/);
         const ids = uniqueCompanyIds('E2E First Co');
         await fillCompanyCreateForm(page, ids);
         await expectOwnerDashboard(page);
@@ -84,7 +84,7 @@ test.describe('company creation accessibility', () => {
         await loginAs(page, e2eEmails.owner, password);
 
         await page.goto('/workspace');
-        await page.waitForURL(/\/owner\//);
+        await page.waitForURL(/\/(management|owner)\//);
 
         await companySwitcherTrigger(page).click();
         const switcherCreate = page
@@ -94,12 +94,12 @@ test.describe('company creation accessibility', () => {
             .first();
         await expect(switcherCreate).toBeAttached({ timeout: 10_000 });
         const createHref = await switcherCreate.getAttribute('href');
-        expect(createHref).toMatch(/\/owner\/companies\/create/);
+        expect(createHref).toMatch(/\/(management|owner)\/companies\/create/);
         // Long company lists can push the menu item outside the viewport; navigate
         // via the switcher-exposed href after proving the menu item is present.
         await page.goto(createHref!);
 
-        await expect(page).toHaveURL(/\/owner\/companies\/create/);
+        await expect(page).toHaveURL(/\/(management|owner)\/companies\/create/);
         const ids = uniqueCompanyIds('E2E Switcher Co');
         await fillCompanyCreateForm(page, ids);
         await expectOwnerDashboard(page);

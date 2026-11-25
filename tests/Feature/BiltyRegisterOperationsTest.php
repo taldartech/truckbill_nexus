@@ -23,6 +23,7 @@ afterEach(function () {
 test('bilty register exposes manage expenses for own vehicle without trip', function () {
     $ctx = tripWorkspace();
     tripActivate($ctx['company'], $ctx['branch']);
+    // Service-level OwnFleet create does not auto-attach a Trip; primary action stays hidden.
     $lr = tripCreateOwnFleetLr($ctx);
 
     $this->flushSession();
@@ -36,8 +37,7 @@ test('bilty register exposes manage expenses for own vehicle without trip', func
             ->component('branch/lorry-receipts/index')
             ->where('lorryReceipts.data.0.id', $lr->id)
             ->where('lorryReceipts.data.0.vehicle_ownership', VehicleOwnership::Own->value)
-            ->where('lorryReceipts.data.0.primary_operation.kind', 'init_trip')
-            ->where('lorryReceipts.data.0.primary_operation.label', 'Start Trip / Expenses'));
+            ->where('lorryReceipts.data.0.primary_operation', null));
 });
 
 test('bilty register exposes manage expenses for existing trip', function () {
@@ -53,8 +53,8 @@ test('bilty register exposes manage expenses for existing trip', function () {
     $this->get(route('branch.lorry-receipts.index'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->where('lorryReceipts.data.0.primary_operation.kind', 'trip_operations')
-            ->where('lorryReceipts.data.0.primary_operation.label', 'Trip Operations')
+            ->where('lorryReceipts.data.0.primary_operation.kind', 'manage_expenses')
+            ->where('lorryReceipts.data.0.primary_operation.label', 'Manage Expenses')
             ->where('lorryReceipts.data.0.primary_operation.url', fn ($url) => str_contains((string) $url, (string) $trip->id)));
 });
 
@@ -130,5 +130,5 @@ test('bilty register ownership filters narrow ownfleet awaiting trip rows', func
             ->where('filters.ownership', 'own')
             ->where('filters.awaiting_trip', '1')
             ->where('lorryReceipts.data.0.id', $lr->id)
-            ->where('lorryReceipts.data.0.primary_operation.kind', 'init_trip'));
+            ->where('lorryReceipts.data.0.primary_operation', null));
 });

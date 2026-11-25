@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Branch;
 
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Document\DocumentAttachmentService;
+use App\Domains\Geography\Concerns\ResolvesAddressGeography;
 use App\Domains\Master\Exceptions\MasterDomainException;
 use App\Domains\Master\Station\StationService;
 use App\Domains\Rbac\PermissionAuthorizer;
@@ -25,6 +26,7 @@ class StationController extends Controller
 {
     use AuthorizesBranchPanel;
     use PresentsDocumentDrawer;
+    use ResolvesAddressGeography;
 
     public function __construct(
         private readonly CompanyAccessService $access,
@@ -123,11 +125,11 @@ class StationController extends Controller
         $validated = $request->validate([
             'code' => ['required', 'string', 'max:32'],
             'name' => ['required', 'string', 'max:255'],
-            'state' => ['nullable', 'string', 'max:100'],
-            'city' => ['nullable', 'string', 'max:100'],
+            ...$this->geographyValidationRules(false),
             'is_active' => ['sometimes', 'boolean'],
             'remark' => ['nullable', 'string', 'max:1000'],
         ]);
+        $validated = $this->withResolvedGeography($validated);
 
         try {
             $station = $this->stations->create($actor, $company, $validated, $validated['remark'] ?? 'Create station');
@@ -171,7 +173,9 @@ class StationController extends Controller
                 'code' => $station->code,
                 'name' => $station->name,
                 'state' => $station->state,
+                'state_id' => $station->state_id,
                 'city' => $station->city,
+                'city_id' => $station->city_id,
                 'is_active' => (bool) $station->is_active,
                 'default_transporter_party_id' => $default?->default_transporter_party_id,
             ],
@@ -221,7 +225,9 @@ class StationController extends Controller
                 'code' => $station->code,
                 'name' => $station->name,
                 'state' => $station->state,
+                'state_id' => $station->state_id,
                 'city' => $station->city,
+                'city_id' => $station->city_id,
                 'is_active' => (bool) $station->is_active,
             ],
             'links' => [
@@ -240,11 +246,11 @@ class StationController extends Controller
 
         $validated = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
-            'state' => ['nullable', 'string', 'max:100'],
-            'city' => ['nullable', 'string', 'max:100'],
+            ...$this->geographyValidationRules(false),
             'is_active' => ['sometimes', 'boolean'],
             'remark' => ['required', 'string', 'max:1000'],
         ]);
+        $validated = $this->withResolvedGeography($validated);
 
         try {
             $this->stations->update($actor, $station, $company, $validated, $validated['remark']);

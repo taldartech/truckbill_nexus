@@ -72,11 +72,15 @@ function accessPrd7Profile(array $overrides = []): array
         ],
     );
 
+    $geography = geographyIdsFor('Maharashtra', 'Mumbai');
+
     return array_merge([
         'pan' => 'ABCDE1234F',
         'registered_address' => '12 Logistics Park, Mumbai',
-        'state' => 'Maharashtra',
-        'city' => 'Mumbai',
+        'state_id' => $geography['state_id'],
+        'city_id' => $geography['city_id'],
+        'state' => $geography['state'],
+        'city' => $geography['city'],
         'pin' => '400001',
         'contact_person' => 'Owner Name',
         'mobile' => '9876543210',

@@ -273,7 +273,7 @@ test('http create trip from ownfleet lr persists and lists', function () {
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('linkedTrip.id', $trip->id)
-            ->where('permissions.can_create_trip', false));
+            ->where('permissions.can_create_trip', true));
 });
 
 test('trip creation rejects a different own vehicle than the lr', function () {
@@ -385,5 +385,6 @@ test('own fleet bilty store can redirect to create trip', function () {
 
     expect($lr)->not->toBeNull()
         ->and($lr->workflow_context)->toBe(LrWorkflowContext::OwnFleet);
-    $response->assertRedirect(route('branch.trips.create-from-lr', [$lr]));
+    $trip = Trip::query()->where('lorry_receipt_id', $lr->id)->whereNull('deleted_at')->firstOrFail();
+    $response->assertRedirect(route('branch.trips.expenses', [$trip]));
 });

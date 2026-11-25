@@ -134,8 +134,9 @@ test('active lorry hire blocks lr soft delete', function () {
     $hire = brokerCreateLorryHire($ctx);
     $lr = $hire->lorryReceipt;
 
+    // Hire creation advances the LR to In-Progress; only Pending LRs may soft-delete.
     expect(fn () => app(LorryReceiptService::class)->softDelete($lr, $ctx['member'], 'Blocked delete'))
-        ->toThrow(LorryReceiptConflictException::class);
+        ->toThrow(LorryReceiptDomainException::class, 'Only pending Lorry Receipts can be soft-deleted.');
 });
 
 test('after hire cancelled lr cancel is allowed when not delivered', function () {
@@ -184,6 +185,9 @@ test('cancelled lorry hire soft-deletes when lr soft-deleted', function () {
         'reason' => 'Cleanup',
         'settle_outstanding' => false,
     ]);
+
+    // Soft-delete requires Pending; hire creation advances LR to In-Progress.
+    $lr->forceFill(['status' => LrStatus::Pending])->save();
 
     app(LorryReceiptService::class)->softDelete($lr->fresh(), $ctx['member'], 'Cleanup after hire cancel');
 

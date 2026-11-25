@@ -97,7 +97,17 @@ test('create form presents broker free-text route labels', function () {
 test('store endpoint validates loading_weight and persists independent transporter rate', function () {
     $ctx = brokerWorkspace();
     tripActivate($ctx['company'], $ctx['branch']);
-    $lr = brokerCreateBrokerLr($ctx);
+    // Hire loading weight inherits Bilty charged weight (not client-editable).
+    $lr = brokerCreateBrokerLr($ctx, [[
+        'goods_type_id' => $ctx['goodsType']->id,
+        'package_type_id' => $ctx['packageType']->id,
+        'goods_description' => 'Broker cartons',
+        'package_count' => 10,
+        'actual_weight' => 2500,
+        'charged_weight' => 2500,
+        'freight_rate_type' => FreightRateType::FixedAmount->value,
+        'freight_rate' => 7500,
+    ]]);
     $lr->loadMissing('vehicle');
     $rowId = $lr->goodsRows->first()->id;
 
@@ -111,7 +121,7 @@ test('store endpoint validates loading_weight and persists independent transport
                 // PO-LGC-018: Per Charged Weight × MT (2500 KG = 2.5 MT × ₹5000 = ₹12500).
                 'rate_type' => FreightRateType::PerChargedWeight->value,
                 'rate' => '5000',
-                'loading_weight' => '2500',
+                'loading_weight' => '9999',
                 'is_fixed_amount' => false,
             ]],
             'remarks' => 'Independent transporter freight',

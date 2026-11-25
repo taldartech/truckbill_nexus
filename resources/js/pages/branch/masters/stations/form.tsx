@@ -1,4 +1,6 @@
 import { Form, Head, Link } from '@inertiajs/react';
+import { useState } from 'react';
+import { StateCityFields } from '@/components/geography/state-city-fields';
 import InputError from '@/components/input-error';
 import {
     LrfPage,
@@ -14,6 +16,8 @@ type Station = {
     name: string;
     state: string | null;
     city: string | null;
+    state_id?: string | null;
+    city_id?: string | null;
     is_active: boolean;
 };
 type Props = {
@@ -31,6 +35,10 @@ type Props = {
 };
 export default function StationForm({ mode, station, links }: Props) {
     const action = mode === 'create' ? links.store! : links.update!;
+    const [stateId, setStateId] = useState(station?.state_id ?? '');
+    const [cityId, setCityId] = useState(station?.city_id ?? '');
+    const [state, setState] = useState(station?.state ?? '');
+    const [city, setCity] = useState(station?.city ?? '');
     return (
         <>
             <Head
@@ -89,20 +97,20 @@ export default function StationForm({ mode, station, links }: Props) {
                                         />
                                         <InputError message={errors.name} />
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="state">State</Label>
-                                        <Input
-                                            id="state"
-                                            name="state"
-                                            defaultValue={station?.state ?? ''}
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="city">City</Label>
-                                        <Input
-                                            id="city"
-                                            name="city"
-                                            defaultValue={station?.city ?? ''}
+                                    <div className="md:col-span-2">
+                                        <StateCityFields
+                                            stateId={stateId}
+                                            cityId={cityId}
+                                            stateName={state}
+                                            cityName={city}
+                                            stateError={errors.state_id}
+                                            cityError={errors.city_id}
+                                            onChange={(next) => {
+                                                setStateId(next.state_id);
+                                                setCityId(next.city_id);
+                                                setState(next.state);
+                                                setCity(next.city);
+                                            }}
                                         />
                                     </div>
                                     <label className="flex items-center gap-2 text-sm md:col-span-2">

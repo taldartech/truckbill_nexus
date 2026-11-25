@@ -61,11 +61,15 @@ function prd7Profile(array $overrides = []): array
         ],
     );
 
+    $geography = geographyIdsFor('Maharashtra', 'Mumbai');
+
     return array_merge([
         'pan' => 'ABCDE1234F',
         'registered_address' => '12 Logistics Park, Mumbai',
-        'state' => 'Maharashtra',
-        'city' => 'Mumbai',
+        'state_id' => $geography['state_id'],
+        'city_id' => $geography['city_id'],
+        'state' => $geography['state'],
+        'city' => $geography['city'],
         'pin' => '400001',
         'contact_person' => 'Owner Name',
         'mobile' => '9876543210',
@@ -210,13 +214,17 @@ test('owner can update complete company profile from settings', function () {
         ],
     );
 
+    $geography = geographyIdsFor('Gujarat', 'Ahmedabad');
+
     $this->post(route('owner.settings.update'), [
         'name' => 'Editable Co Renamed',
         'remark' => 'Profile correction',
         'pan' => 'BBBBB1234C',
         'registered_address' => 'New address',
-        'state' => 'Gujarat',
-        'city' => 'Ahmedabad',
+        'state_id' => $geography['state_id'],
+        'city_id' => $geography['city_id'],
+        'state' => $geography['state'],
+        'city' => $geography['city'],
         'pin' => '380001',
         'contact_person' => $owner->name,
         'mobile' => '9988776655',

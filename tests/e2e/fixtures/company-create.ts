@@ -9,6 +9,24 @@ export const e2eEmails = {
     internal: 'e2e.internal@truckbill.test',
 } as const;
 
+async function selectGeography(
+    page: Page,
+    fieldId: string,
+    search: string,
+    optionLabel: RegExp,
+): Promise<void> {
+    await page.locator(`#${fieldId}-trigger`).click();
+    const searchBox = page.getByPlaceholder(new RegExp(`Search`, 'i')).last();
+    await searchBox.fill(search);
+    const option = page
+        .getByRole('listbox')
+        .getByRole('option')
+        .filter({ hasText: optionLabel })
+        .first();
+    await expect(option).toBeVisible({ timeout: 10_000 });
+    await option.click();
+}
+
 export async function fillCompanyCreateForm(
     page: Page,
     opts: { name: string; pan: string; gstin: string },
@@ -18,8 +36,8 @@ export async function fillCompanyCreateForm(
     await page
         .locator('#registered_address')
         .fill('12 E2E Logistics Park, Mumbai');
-    await page.locator('#state').fill('Maharashtra');
-    await page.locator('#city').fill('Mumbai');
+    await selectGeography(page, 'state_id', 'Maharashtra', /^Maharashtra$/i);
+    await selectGeography(page, 'city_id', 'Mumbai', /Mumbai/i);
     await page.locator('#pin').fill('400001');
     await page.locator('#mobile').fill('9876543210');
     await page.locator('#gstin').fill(opts.gstin);
@@ -33,9 +51,12 @@ export async function fillCompanyCreateForm(
 }
 
 export async function expectOwnerDashboard(page: Page): Promise<void> {
-    await expect(page).toHaveURL(/\/owner\/companies\/(?!create)[^/]+\/?$/, {
-        timeout: 20_000,
-    });
+    await expect(page).toHaveURL(
+        /\/(management|owner)\/companies\/(?!create)[^/]+\/?$/,
+        {
+            timeout: 20_000,
+        },
+    );
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible({
         timeout: 15_000,
     });
