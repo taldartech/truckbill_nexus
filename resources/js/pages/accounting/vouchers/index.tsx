@@ -41,6 +41,7 @@ type Props = {
         cash_book: string;
         bank_book: string;
         outstanding: string;
+        tax_summary?: string;
         fund_transfer: string;
         opening_balances?: string;
     };
@@ -97,6 +98,17 @@ export default function AccountingVouchersIndex({
                                             Outstanding
                                         </Link>
                                     </Button>
+                                    {urls.tax_summary ? (
+                                        <Button
+                                            asChild
+                                            variant="outline"
+                                            size="sm"
+                                        >
+                                            <Link href={urls.tax_summary}>
+                                                Tax Summary
+                                            </Link>
+                                        </Button>
+                                    ) : null}
                                 </>
                             ) : null}
                             {permissions.can_create ? (
