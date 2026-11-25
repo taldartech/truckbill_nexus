@@ -2,7 +2,7 @@
 
 **Date:** 26 November 2026  
 **Status:** **PARTIAL — CORE REGRESSION GREEN** (PO-ERP-001 autonomous continuation)  
-**Local HEAD:** `70895d3` (ahead of origin ~51; no push)
+**Local HEAD:** `c1d5be3` (ahead of origin ~52; no push)
 
 ## Verdict
 
