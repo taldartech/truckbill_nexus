@@ -1,11 +1,8 @@
 import { Form, Head, Link } from '@inertiajs/react';
-import { ArrowLeft } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
 import type { FieldReview } from '@/components/form-confirmation/types';
 import InputError from '@/components/input-error';
-import { FormSection } from '@/components/form-section';
-import { PageShell } from '@/components/page-shell';
 import { SearchablePartySelect } from '@/components/searchable-party-select';
 import { formatDisplayDate } from '@/lib/dates';
 import {
@@ -14,6 +11,13 @@ import {
     mtToKg,
     parseNumeric,
 } from '@/lib/operational-weight';
+import {
+    LrfActions,
+    LrfLinkedHero,
+    LrfPage,
+    LrfSection,
+    LrfSummaryMetrics,
+} from '@/pages/branch/lorry-receipts/lr-form-sections';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -441,29 +445,106 @@ export default function LorryHireCreate({
                         : 'Create Lorry Hire'
                 }
             />
-            <PageShell
-                width="form"
-                chrome="compact"
+            <LrfPage
                 title="Create Lorry Hire"
-                description={
+                subtitle={
                     lorryReceipt.lr_number
-                        ? `From bilty ${lorryReceipt.lr_number}`
-                        : 'From linked bilty'
+                        ? `Freight booking from bilty ${lorryReceipt.lr_number}`
+                        : 'Freight booking from linked bilty'
                 }
-                actions={
-                    <Button asChild variant="outline" size="sm">
-                        <Link href={urls.lr_show} className="inline-flex gap-2">
-                            <ArrowLeft className="h-4 w-4" />
-                            Back to bilty
-                        </Link>
-                    </Button>
-                }
+                backHref={urls.lr_show}
+                backLabel="Back to bilty"
             >
+                <LrfLinkedHero
+                    biltyNumber={lorryReceipt.lr_number ?? '—'}
+                    routeFrom={
+                        lorryReceipt.loading_station ??
+                        routeLabel.split('→')[0]?.trim() ??
+                        '—'
+                    }
+                    routeTo={
+                        lorryReceipt.unloading_station ??
+                        routeLabel.split('→')[1]?.trim() ??
+                        '—'
+                    }
+                    payeeChip={payee?.role_label ?? null}
+                    kpis={[
+                        {
+                            label: 'Goods lines',
+                            value: String(goodsRows.length),
+                        },
+                        {
+                            label: 'Weight',
+                            value:
+                                goodsRows.length === 1
+                                    ? formatWeightMt(
+                                          goodsRows[0]?.charged_weight ??
+                                              goodsRows[0]
+                                                  ?.suggested_loading_weight,
+                                      )
+                                    : `${goodsRows.length} lines`,
+                        },
+                        {
+                            label: 'Bilty date',
+                            value: lorryReceipt.lr_date
+                                ? formatDisplayDate(lorryReceipt.lr_date)
+                                : '—',
+                        },
+                        {
+                            label: 'LR Amount',
+                            value:
+                                permissions.can_view_freight &&
+                                customerFreightTotal !== null
+                                    ? `₹${formatMoney(customerFreightTotal)}`
+                                    : '—',
+                            accent: true,
+                        },
+                    ]}
+                    parties={[
+                        {
+                            label: 'Customer',
+                            value: lorryReceipt.billing_customer_name ?? '—',
+                        },
+                        {
+                            label: 'Payee',
+                            value: payee?.name ?? 'Confirm below',
+                        },
+                        {
+                            label: 'Consignor',
+                            value: lorryReceipt.consignor_name ?? '—',
+                        },
+                        {
+                            label: 'Consignee',
+                            value: lorryReceipt.consignee_name ?? '—',
+                        },
+                    ]}
+                    vehicleRoute={[
+                        {
+                            label: 'Truck',
+                            value: lorryReceipt.vehicle_registration ?? '—',
+                        },
+                        {
+                            label: 'TDS',
+                            value: tdsPreview?.applicable_percent
+                                ? `${tdsPreview.applicable_percent}%`
+                                : '—',
+                        },
+                        {
+                            label: 'From',
+                            value: lorryReceipt.loading_station ?? '—',
+                        },
+                        {
+                            label: 'To',
+                            value: lorryReceipt.unloading_station ?? '—',
+                        },
+                    ]}
+                />
+
                 <Form
                     id="lorry-hire-create-form"
                     action={urls.store}
                     method="post"
-                    className="grid w-full gap-4"
+                    className="grid w-full gap-3"
                     onSubmit={handleSubmit}
                 >
                     {({ processing, errors }) => (
@@ -474,57 +555,12 @@ export default function LorryHireCreate({
                                 name="redirect_to_voucher"
                                 value={redirectToVoucher.current ? '1' : '0'}
                             />
-                            <FormSection
-                                title="1. Linked bilty"
-                                description="Customer freight stays independent of transporter hire charges."
-                                columns={2}
-                            >
-                                <p className="font-medium text-foreground md:col-span-2">
-                                    {lorryReceipt.lr_number ?? '—'}
-                                    {lorryReceipt.lr_date
-                                        ? ` · ${formatDisplayDate(lorryReceipt.lr_date)}`
-                                        : null}
-                                </p>
-                                <ReadOnlyMetric
-                                    label="Billing customer"
-                                    value={
-                                        lorryReceipt.billing_customer_name ??
-                                        '—'
-                                    }
-                                />
-                                <ReadOnlyMetric
-                                    label="Market vehicle"
-                                    value={
-                                        lorryReceipt.vehicle_registration ?? '—'
-                                    }
-                                />
-                                <ReadOnlyMetric
-                                    label="Consignor"
-                                    value={lorryReceipt.consignor_name ?? '—'}
-                                />
-                                <ReadOnlyMetric
-                                    label="Consignee"
-                                    value={lorryReceipt.consignee_name ?? '—'}
-                                />
-                                <p className="text-sm text-muted-foreground md:col-span-2">
-                                    {routeLabel || 'Route not set'}
-                                </p>
-                                {permissions.can_view_freight ? (
-                                    <ReadOnlyMetric
-                                        label="Customer freight total"
-                                        value={
-                                            customerFreightTotal !== null
-                                                ? `₹${formatMoney(customerFreightTotal)}`
-                                                : '—'
-                                        }
-                                    />
-                                ) : null}
-                            </FormSection>
 
-                            <FormSection
-                                title="2. Confirmed payee"
-                                description="Confirm the transporter who will receive hire payment."
-                                columns={2}
+                            <LrfSection
+                                step={1}
+                                title="Confirmed payee"
+                                description="Confirm the transporter who will receive hire payment"
+                                tone="receipt"
                             >
                                 <div className="space-y-1 md:col-span-2">
                                     <SearchablePartySelect
@@ -562,12 +598,13 @@ export default function LorryHireCreate({
                                         </p>
                                     ) : null}
                                 </div>
-                            </FormSection>
+                            </LrfSection>
 
-                            <FormSection
-                                title="3. Hire charges"
-                                description="Enter transporter rates per goods line. Customer freight is shown for reference only."
-                                columns={1}
+                            <LrfSection
+                                step={2}
+                                title="Hire Charges"
+                                description="TR rate, amount, TDS and balance — customer freight stays independent"
+                                tone="goods"
                             >
                                 <div className="space-y-3">
                                     {goodsRows.map((row, index) => {
@@ -843,33 +880,66 @@ export default function LorryHireCreate({
                                     })}
                                 </div>
                                 <InputError message={errors.goods_lines} />
-                            </FormSection>
-
-                            <FormSection title="Financial summary" columns={1}>
-                                <FinancialSummaryPanel
-                                    canViewFreight={
-                                        permissions.can_view_freight
-                                    }
-                                    customerFreightTotal={customerFreightTotal}
-                                    transporterFreightTotal={
-                                        transporterFreightTotal
-                                    }
-                                    tdsPercentLabel={
-                                        tdsPreview?.applicable_percent ?? null
-                                    }
-                                    tdsAmount={tdsAmount}
-                                    netPayable={netPayable}
-                                    freightMargin={freightMargin}
-                                    tdsExplanation={
-                                        tdsPreview?.explanation ?? null
-                                    }
+                                <LrfSummaryMetrics
+                                    items={[
+                                        {
+                                            name: 'TR Freight',
+                                            value:
+                                                transporterFreightTotal !== null
+                                                    ? `₹${formatMoney(transporterFreightTotal)}`
+                                                    : '—',
+                                        },
+                                        {
+                                            name: 'TDS',
+                                            value:
+                                                tdsAmount !== null
+                                                    ? `₹${formatMoney(tdsAmount)}`
+                                                    : '—',
+                                        },
+                                        {
+                                            name: 'Balance',
+                                            value:
+                                                netPayable !== null
+                                                    ? `₹${formatMoney(netPayable)}`
+                                                    : '—',
+                                            hero: true,
+                                        },
+                                    ]}
                                 />
-                            </FormSection>
+                                {permissions.can_view_freight ? (
+                                    <FinancialSummaryPanel
+                                        canViewFreight={
+                                            permissions.can_view_freight
+                                        }
+                                        customerFreightTotal={
+                                            customerFreightTotal
+                                        }
+                                        transporterFreightTotal={
+                                            transporterFreightTotal
+                                        }
+                                        tdsPercentLabel={
+                                            tdsPreview?.applicable_percent ??
+                                            null
+                                        }
+                                        tdsAmount={tdsAmount}
+                                        netPayable={netPayable}
+                                        freightMargin={freightMargin}
+                                        tdsExplanation={
+                                            tdsPreview?.explanation ?? null
+                                        }
+                                    />
+                                ) : null}
+                            </LrfSection>
 
-                            <FormSection
-                                title="E-Way Bills (from Bilty)"
-                                description="Managed on the linked Bilty. Open the GST portal for verification when needed."
-                                columns={1}
+                            <LrfSection
+                                step={3}
+                                title="Optional Details"
+                                description="E-way bill and remarks"
+                                tone="optional"
+                                collapsible
+                                defaultOpen={
+                                    (lorryReceipt.eway_bills ?? []).length > 0
+                                }
                             >
                                 {(lorryReceipt.eway_bills ?? []).length ===
                                 0 ? (
@@ -877,7 +947,7 @@ export default function LorryHireCreate({
                                         No E-Way Bills on this Bilty.
                                     </p>
                                 ) : (
-                                    <ul className="space-y-2 text-sm">
+                                    <ul className="mb-3 space-y-2 text-sm">
                                         {(lorryReceipt.eway_bills ?? []).map(
                                             (row) => (
                                                 <li
@@ -896,17 +966,6 @@ export default function LorryHireCreate({
                                         )}
                                     </ul>
                                 )}
-                                <a
-                                    href="https://ewaybillgst.gov.in/"
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="text-xs font-medium text-primary underline-offset-4 hover:underline"
-                                >
-                                    Open E-Way Bill GST portal
-                                </a>
-                            </FormSection>
-
-                            <FormSection title="Remarks" columns={1}>
                                 <div className="space-y-1">
                                     <Label htmlFor="remarks">Remarks</Label>
                                     <Input
@@ -916,28 +975,29 @@ export default function LorryHireCreate({
                                     />
                                     <InputError message={errors.remarks} />
                                 </div>
-                            </FormSection>
+                            </LrfSection>
 
-                            <div className="flex flex-wrap items-center gap-3">
+                            <LrfActions>
+                                <Button
+                                    asChild
+                                    type="button"
+                                    variant="outline"
+                                    disabled={processing}
+                                    className="lrf-btn lrf-btn--outline"
+                                >
+                                    <Link href={urls.lr_show}>Cancel</Link>
+                                </Button>
                                 <Button
                                     type="submit"
                                     disabled={processing}
-                                    className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                                    className="lrf-btn lrf-btn--brand"
                                     onClick={handleCreateClick}
                                 >
                                     {processing
                                         ? 'Creating…'
                                         : 'Create Lorry Hire'}
                                 </Button>
-                                <Button
-                                    asChild
-                                    type="button"
-                                    variant="outline"
-                                    disabled={processing}
-                                >
-                                    <Link href={urls.lr_show}>Cancel</Link>
-                                </Button>
-                            </div>
+                            </LrfActions>
                         </>
                     )}
                 </Form>
@@ -954,7 +1014,7 @@ export default function LorryHireCreate({
                     onSecondaryConfirm={handleConfirmAndRecordVoucher}
                     secondaryConfirmLabel="Create & Record Voucher"
                 />
-            </PageShell>
+            </LrfPage>
         </>
     );
 }

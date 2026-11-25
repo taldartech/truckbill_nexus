@@ -123,7 +123,9 @@ test.describe('Bilty UI + Lorry Hire financial workflow', () => {
         // Loading weight UI is MT (8.000 MT ≡ 8000 KG).
         await page.locator('#loading_weight_0').fill('8');
         await page.locator('#rate_0').fill('7500');
-        await expect(page.getByText('Financial summary')).toBeVisible();
+        await expect(
+            page.getByText(/TR Freight|Balance|Hire Charges/i).first(),
+        ).toBeVisible();
         await expect(page.getByText(/60000\.00|₹60000/).first()).toBeVisible({
             timeout: 5_000,
         });

@@ -1,24 +1,67 @@
-import { ArrowRight, Package } from 'lucide-react';
+import { Package } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
-export const lrfSectionShell =
-    'overflow-hidden rounded-xl border border-border bg-card shadow-xs';
+type StepTone = 'receipt' | 'route' | 'goods' | 'optional';
 
-type StepTone = 'receipt' | 'route' | 'goods';
+const headToneClass: Record<StepTone, string> = {
+    receipt: '',
+    route: 'lrf-section__head--green',
+    goods: 'lrf-section__head--summary',
+    optional: 'lrf-section__head--plain',
+};
 
 const stepToneClass: Record<StepTone, string> = {
-    receipt:
-        'border-b border-border bg-gradient-to-br from-sky-100/80 via-background to-muted/30',
-    route: 'border-b border-[#badbcc]/60 bg-gradient-to-br from-[#2FB36F]/15 via-background to-muted/30',
-    goods: 'border-b border-amber-200/60 bg-gradient-to-br from-amber-100/60 via-background to-muted/30',
+    receipt: '',
+    route: 'lrf-step-num--green',
+    goods: 'lrf-step-num--summary',
+    optional: 'lrf-step-num--gray',
 };
 
-const stepBadgeClass: Record<StepTone, string> = {
-    receipt: 'bg-[#2D8CFF] shadow-[0_1px_2px_rgba(45,140,255,0.25)]',
-    route: 'bg-[#2FB36F] shadow-[0_1px_2px_rgba(47,179,111,0.25)]',
-    goods: 'bg-amber-500 shadow-[0_1px_2px_rgba(245,158,11,0.25)]',
-};
+export function LrfPage({
+    title,
+    subtitle,
+    backHref,
+    backLabel = 'Back',
+    actions,
+    children,
+    className,
+}: {
+    title: string;
+    subtitle?: string;
+    backHref?: string;
+    backLabel?: string;
+    actions?: ReactNode;
+    children: ReactNode;
+    className?: string;
+}) {
+    return (
+        <div className={cn('lrf-page', className)}>
+            <div className="lrf-page__toolbar">
+                <div className="lrf-page__toolbar-left">
+                    <div className="flex flex-wrap items-center gap-2">
+                        <h1 className="lrf-page__toolbar-title">{title}</h1>
+                        {backHref ? (
+                            <a
+                                href={backHref}
+                                className="lrf-toolbar-back-btn inline-flex items-center rounded-md border border-slate-300 bg-white px-2.5 text-slate-700 hover:bg-slate-50"
+                            >
+                                ← {backLabel}
+                            </a>
+                        ) : null}
+                    </div>
+                    {subtitle ? (
+                        <p className="lrf-page__toolbar-sub">{subtitle}</p>
+                    ) : null}
+                </div>
+                {actions ? (
+                    <div className="lrf-page__toolbar-actions">{actions}</div>
+                ) : null}
+            </div>
+            {children}
+        </div>
+    );
+}
 
 export function LrfSection({
     step,
@@ -28,6 +71,8 @@ export function LrfSection({
     headRight,
     children,
     className,
+    collapsible,
+    defaultOpen = true,
 }: {
     step: number;
     title: string;
@@ -36,41 +81,67 @@ export function LrfSection({
     headRight?: ReactNode;
     children: ReactNode;
     className?: string;
+    collapsible?: boolean;
+    defaultOpen?: boolean;
 }) {
-    return (
-        <section className={cn(lrfSectionShell, className)}>
-            <header
+    if (collapsible) {
+        return (
+            <details
                 className={cn(
-                    'flex flex-wrap items-center justify-between gap-3 px-4 py-3',
-                    stepToneClass[tone],
+                    'lrf-section lrf-section--collapsible',
+                    className,
                 )}
+                open={defaultOpen}
             >
-                <div className="flex min-w-0 items-center gap-3">
+                <summary
+                    className={cn(
+                        'lrf-section__head lrf-section__head--toggle',
+                        headToneClass[tone],
+                    )}
+                >
+                    <div className="lrf-section__head-left">
+                        <div
+                            className={cn('lrf-step-num', stepToneClass[tone])}
+                            aria-hidden
+                        >
+                            {step}
+                        </div>
+                        <div>
+                            <h2 className="lrf-section__title">{title}</h2>
+                            <p className="lrf-section__desc">{description}</p>
+                        </div>
+                    </div>
+                    {headRight ? (
+                        <div className="lrf-section__head-right">
+                            {headRight}
+                        </div>
+                    ) : null}
+                </summary>
+                <div className="lrf-section__body">{children}</div>
+            </details>
+        );
+    }
+
+    return (
+        <section className={cn('lrf-section', className)}>
+            <div className={cn('lrf-section__head', headToneClass[tone])}>
+                <div className="lrf-section__head-left">
                     <div
-                        className={cn(
-                            'flex size-[30px] shrink-0 items-center justify-center rounded-full text-[0.78rem] font-extrabold text-white',
-                            stepBadgeClass[tone],
-                        )}
+                        className={cn('lrf-step-num', stepToneClass[tone])}
                         aria-hidden
                     >
                         {step}
                     </div>
-                    <div className="min-w-0">
-                        <h2 className="text-[0.9rem] leading-tight font-bold text-slate-800">
-                            {title}
-                        </h2>
-                        <p className="mt-0.5 text-[0.72rem] text-muted-foreground">
-                            {description}
-                        </p>
+                    <div>
+                        <h2 className="lrf-section__title">{title}</h2>
+                        <p className="lrf-section__desc">{description}</p>
                     </div>
                 </div>
                 {headRight ? (
-                    <div className="flex flex-wrap items-center gap-2">
-                        {headRight}
-                    </div>
+                    <div className="lrf-section__head-right">{headRight}</div>
                 ) : null}
-            </header>
-            <div className="px-4 py-3.5 md:px-4 md:py-4">{children}</div>
+            </div>
+            <div className="lrf-section__body">{children}</div>
         </section>
     );
 }
@@ -79,21 +150,22 @@ export function LrfReceiptCard({
     title,
     children,
     className,
+    vehicle,
 }: {
     title: string;
     children: ReactNode;
     className?: string;
+    vehicle?: boolean;
 }) {
     return (
         <div
             className={cn(
-                'space-y-3 rounded-lg border border-border/80 bg-muted/20 p-3',
+                'lrf-receipt-card',
+                vehicle && 'lrf-receipt-card--vehicle',
                 className,
             )}
         >
-            <p className="text-xs font-semibold tracking-wide text-slate-700 uppercase">
-                {title}
-            </p>
+            <div className="lrf-receipt-card__title">{title}</div>
             {children}
         </div>
     );
@@ -105,47 +177,54 @@ export function LrfPartyMetaGrid({
     items: Array<{ label: string; value: string }>;
 }) {
     return (
-        <div className="grid gap-1.5 text-xs">
-            {items.map((item) => (
-                <div
-                    key={item.label}
-                    className="flex items-baseline justify-between gap-3 border-b border-border/40 pb-1 last:border-0"
-                >
-                    <span className="shrink-0 text-muted-foreground">
-                        {item.label}
-                    </span>
-                    <span className="min-w-0 truncate text-right font-medium text-foreground">
-                        {item.value || '—'}
-                    </span>
-                </div>
-            ))}
+        <div className="lrf-party-meta">
+            {items.map((item) => {
+                const empty = !item.value || item.value === '—';
+                return (
+                    <div key={item.label} className="lrf-party-meta__item">
+                        <span className="lrf-party-meta__label">
+                            {item.label}
+                        </span>
+                        <span
+                            className={cn(
+                                'lrf-party-meta__value',
+                                empty && 'is-empty',
+                            )}
+                        >
+                            {item.value || '—'}
+                        </span>
+                    </div>
+                );
+            })}
         </div>
     );
 }
 
-export function LrfRouteConnector({ routeHint }: { routeHint: string }) {
+export function LrfRouteConnector({
+    routeHint,
+    ready,
+}: {
+    routeHint: string;
+    ready?: boolean;
+}) {
     return (
-        <div className="hidden flex-col items-center justify-center gap-2 px-2 text-center md:flex">
-            <div className="relative flex w-full max-w-[7rem] flex-col items-center py-2">
-                <span
-                    className="size-2 rounded-full bg-[#2FB36F]"
-                    aria-hidden
-                />
-                <span className="my-1 h-10 w-px bg-border" aria-hidden />
-                <span className="flex size-7 items-center justify-center rounded-full border border-[#2FB36F]/40 bg-[#2FB36F]/10 text-[#2FB36F]">
+        <div
+            className={cn('lrf-goods-lane', ready ? 'is-ready' : 'is-partial')}
+            aria-hidden={false}
+        >
+            <div className="lrf-goods-lane__track">
+                <span className="lrf-goods-lane__dot lrf-goods-lane__dot--start" />
+                <span className="lrf-goods-lane__line" />
+                <span className="lrf-goods-lane__cargo">
                     <Package className="size-3.5" aria-hidden />
                 </span>
-                <span className="my-1 h-10 w-px bg-border" aria-hidden />
-                <span
-                    className="size-2 rounded-full bg-[#2D8CFF]"
-                    aria-hidden
-                />
-                <ArrowRight
-                    className="absolute top-1/2 -right-3 size-4 -translate-y-1/2 text-muted-foreground"
-                    aria-hidden
-                />
+                <span className="lrf-goods-lane__line" />
+                <span className="lrf-goods-lane__dot lrf-goods-lane__dot--end" />
             </div>
-            <p className="max-w-[8rem] text-[0.7rem] leading-snug text-muted-foreground">
+            <p className="lrf-goods-lane__label" id="lrRouteFlowLabel">
+                Route
+            </p>
+            <p className="lrf-goods-lane__sub" id="lrRouteFlowSub">
                 {routeHint}
             </p>
         </div>
@@ -166,18 +245,16 @@ export function LrfPartyCard({
     footer?: ReactNode;
 }) {
     return (
-        <div className="flex min-w-0 flex-1 flex-col gap-3 rounded-lg border border-border/80 bg-card p-3 shadow-xs">
-            <span
-                className={cn(
-                    'inline-flex w-fit rounded px-1.5 py-0.5 text-[0.65rem] font-bold tracking-wider uppercase',
-                    badgeTone === 'from'
-                        ? 'bg-[#2D8CFF]/15 text-[#2D8CFF]'
-                        : 'bg-[#2FB36F]/15 text-[#2FB36F]',
-                )}
-            >
-                {badge}
-            </span>
-            <div className="text-sm font-semibold text-foreground">{title}</div>
+        <div
+            className={cn(
+                'lrf-party-card',
+                badgeTone === 'from'
+                    ? 'lrf-party-card--from'
+                    : 'lrf-party-card--to',
+            )}
+        >
+            <div className="lrf-party-card__badge">{badge}</div>
+            <div className="lrf-party-card__title">{title}</div>
             {children}
             {footer}
         </div>
@@ -194,11 +271,7 @@ export function LrfPayPills({
     disabled?: boolean;
 }) {
     return (
-        <div
-            className="flex gap-1 rounded-md border border-border bg-muted/30 p-0.5"
-            role="group"
-            aria-label="Pay to"
-        >
+        <div className="lrf-pay-pills" role="group" aria-label="Pay to">
             {(
                 [
                     { id: 'owner' as const, label: 'Truck Owner' },
@@ -211,11 +284,8 @@ export function LrfPayPills({
                     disabled={disabled}
                     onClick={() => onChange(pill.id)}
                     className={cn(
-                        'min-h-9 flex-1 rounded px-2 text-xs font-semibold whitespace-nowrap transition-colors',
-                        value === pill.id
-                            ? 'bg-[#2FB36F] text-white shadow-xs'
-                            : 'text-muted-foreground hover:bg-background',
-                        disabled && 'cursor-not-allowed opacity-60',
+                        'lrf-pay-pill w-1/2',
+                        value === pill.id && 'is-active',
                     )}
                 >
                     {pill.label}
@@ -235,11 +305,9 @@ export function LrfInnerPanel({
     children: ReactNode;
 }) {
     return (
-        <div className="rounded-lg border border-border/70 bg-background/50 p-3">
-            <div className="mb-3 flex items-center justify-between gap-2">
-                <h3 className="text-xs font-semibold tracking-tight text-foreground uppercase">
-                    {title}
-                </h3>
+        <div className="lrf-inner-panel">
+            <div className="lrf-inner-panel__head">
+                <h3 className="lrf-inner-panel__title">{title}</h3>
                 {action}
             </div>
             {children}
@@ -256,20 +324,159 @@ export function LrfDriverTdsSummary({
 }) {
     return (
         <div
-            className="flex min-h-9 flex-wrap items-center gap-x-2 gap-y-1 rounded-md border border-input bg-muted/20 px-3 py-2 text-sm"
+            className="lrf-truck-summary lrf-truck-summary--field"
             role="status"
         >
             {driverName ? (
                 <>
-                    <span className="text-muted-foreground">Driver</span>
-                    <span className="font-medium">{driverName}</span>
-                    <span className="text-muted-foreground" aria-hidden>
+                    <span className="lrf-truck-summary__item">
+                        <span className="lrf-truck-summary__k">Driver</span>
+                        <span className="lrf-truck-summary__v">
+                            {driverName}
+                        </span>
+                    </span>
+                    <span className="lrf-truck-summary__sep" aria-hidden>
                         ·
                     </span>
                 </>
             ) : null}
-            <span className="text-muted-foreground">TDS</span>
-            <span className="font-medium tabular-nums">{tdsLabel}</span>
+            <span className="lrf-truck-summary__item">
+                <span className="lrf-truck-summary__k">TDS</span>
+                <span className="lrf-truck-summary__v">{tdsLabel}</span>
+            </span>
         </div>
     );
 }
+
+export function LrfSummaryMetrics({
+    items,
+}: {
+    items: Array<{ name: string; value: string; hero?: boolean }>;
+}) {
+    return (
+        <div className="lrf-summary-metrics">
+            {items.map((item) => (
+                <div
+                    key={item.name}
+                    className={cn(
+                        'lrf-metric',
+                        item.hero && 'lrf-metric--hero',
+                    )}
+                >
+                    <div>
+                        <span className="lrf-metric__name">{item.name}</span>
+                        <span className="lrf-metric__val">{item.value}</span>
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}
+
+export function LrfActions({ children }: { children: ReactNode }) {
+    return <div className="lrf-actions">{children}</div>;
+}
+
+export function LrfLinkedHero({
+    biltyNumber,
+    routeFrom,
+    routeTo,
+    payeeChip,
+    kpis,
+    parties,
+    vehicleRoute,
+}: {
+    biltyNumber: string;
+    routeFrom: string;
+    routeTo: string;
+    payeeChip?: string | null;
+    kpis: Array<{ label: string; value: ReactNode; accent?: boolean }>;
+    parties: Array<{ label: string; value: ReactNode }>;
+    vehicleRoute: Array<{ label: string; value: ReactNode }>;
+}) {
+    return (
+        <div className="lrf-section lrf-linked">
+            <div className="lrf-linked__head">
+                <div className="lrf-linked__head-main">
+                    <div className="lrf-linked__eyebrow">Linked Bilty</div>
+                    <div className="lrf-linked__title-row">
+                        <span className="lrf-linked__lr">{biltyNumber}</span>
+                        {payeeChip ? (
+                            <span className="lrf-chip lrf-chip--info">
+                                {payeeChip}
+                            </span>
+                        ) : null}
+                    </div>
+                </div>
+                <div className="lrf-linked__route-pill" title="Route">
+                    <span>{routeFrom}</span>
+                    <span aria-hidden>→</span>
+                    <span>{routeTo}</span>
+                </div>
+            </div>
+            <div className="lrf-section__body">
+                <div className="lrf-linked__kpis">
+                    {kpis.map((kpi) => (
+                        <div
+                            key={kpi.label}
+                            className={cn(
+                                'lrf-linked__kpi',
+                                kpi.accent && 'lrf-linked__kpi--accent',
+                            )}
+                        >
+                            <span className="lrf-linked__kpi-label">
+                                {kpi.label}
+                            </span>
+                            <span className="lrf-linked__kpi-value">
+                                {kpi.value}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+                <div className="lrf-linked__panels">
+                    <div className="lrf-linked__panel">
+                        <div className="lrf-linked__panel-title">Parties</div>
+                        <div className="lrf-linked__facts">
+                            {parties.map((fact) => (
+                                <div
+                                    key={fact.label}
+                                    className="lrf-linked__fact"
+                                >
+                                    <span className="lrf-linked__fact-label">
+                                        {fact.label}
+                                    </span>
+                                    <span className="lrf-linked__fact-value">
+                                        {fact.value}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                    <div className="lrf-linked__panel">
+                        <div className="lrf-linked__panel-title">
+                            Vehicle &amp; Route
+                        </div>
+                        <div className="lrf-linked__facts">
+                            {vehicleRoute.map((fact) => (
+                                <div
+                                    key={fact.label}
+                                    className="lrf-linked__fact"
+                                >
+                                    <span className="lrf-linked__fact-label">
+                                        {fact.label}
+                                    </span>
+                                    <span className="lrf-linked__fact-value">
+                                        {fact.value}
+                                    </span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/** @deprecated Prefer structural lrf classes; kept for gradual migration. */
+export const lrfSectionShell = 'lrf-section';

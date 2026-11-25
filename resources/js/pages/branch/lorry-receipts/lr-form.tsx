@@ -1,7 +1,6 @@
 import { Form, Head, Link } from '@inertiajs/react';
-import { ArrowLeft, Trash2 } from 'lucide-react';
+import { Trash2 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AppIconAction } from '@/components/app-icon-action';
 import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
 import { normalizeComparable } from '@/components/form-confirmation/diff';
 import type {
@@ -9,7 +8,6 @@ import type {
     FieldReview,
 } from '@/components/form-confirmation/types';
 import InputError from '@/components/input-error';
-import { PageShell } from '@/components/page-shell';
 import {
     QuickCreatePartySheet,
     type QuickCreatePartyRole,
@@ -35,15 +33,17 @@ import {
     wpuKgFromActualMt,
 } from '@/lib/operational-weight';
 import {
+    LrfActions,
     LrfDriverTdsSummary,
     LrfInnerPanel,
+    LrfPage,
     LrfPartyCard,
     LrfPartyMetaGrid,
     LrfPayPills,
     LrfReceiptCard,
     LrfRouteConnector,
     LrfSection,
-    lrfSectionShell,
+    LrfSummaryMetrics,
 } from '@/pages/branch/lorry-receipts/lr-form-sections';
 
 type Option = { value: string; label: string };
@@ -1130,27 +1130,17 @@ export default function LrForm({
     return (
         <>
             <Head title={title} />
-            <PageShell
-                width="full"
-                chrome="compact"
+            <LrfPage
                 title={title}
-                description={subtitle}
-                titleAddon={
-                    <AppIconAction
-                        icon={ArrowLeft}
-                        label="Back"
-                        href={urls.show ?? urls.index}
-                        variant="outline"
-                        size="sm"
-                        className="h-[30px] px-2.5 text-xs font-semibold"
-                    />
-                }
+                subtitle={subtitle}
+                backHref={urls.show ?? urls.index}
                 actions={
                     urls.parties_store || urls.parties_create ? (
                         <Button
                             type="button"
                             variant="outline"
                             size="sm"
+                            className="lrf-btn lrf-btn--outline"
                             onClick={() => {
                                 if (urls.parties_store) {
                                     setHeaderQuickCreate('customer');
@@ -1165,7 +1155,7 @@ export default function LrForm({
                                 }
                             }}
                         >
-                            Add Customer
+                            + Add Customer
                         </Button>
                     ) : undefined
                 }
@@ -1215,20 +1205,13 @@ export default function LrForm({
                                 title="Receipt Details"
                                 description={
                                     isOwnVehicle
-                                        ? 'Who is shipping, which own truck, and who drives.'
-                                        : 'Who is shipping, which truck, and who gets paid.'
+                                        ? 'Who is shipping, which own truck, and who drives'
+                                        : 'Who is shipping, which truck, and who gets paid'
                                 }
                                 tone="receipt"
                             >
-                                <div className="grid gap-3 md:grid-cols-2">
-                                    <LrfReceiptCard
-                                        title="Document"
-                                        className={
-                                            showVehicle
-                                                ? undefined
-                                                : 'md:col-span-2'
-                                        }
-                                    >
+                                <div className="lrf-receipt-grid">
+                                    <LrfReceiptCard title="Document">
                                         <div className="grid gap-3 sm:grid-cols-2">
                                             {mode === 'create' ? (
                                                 <div className="space-y-1.5">
@@ -1309,8 +1292,15 @@ export default function LrForm({
                                     </LrfReceiptCard>
 
                                     {showVehicle ? (
-                                        <LrfReceiptCard title="Vehicle & Payee">
-                                            <div className="grid gap-3 sm:grid-cols-2">
+                                        <LrfReceiptCard
+                                            title={
+                                                isOwnVehicle
+                                                    ? 'Vehicle & Driver'
+                                                    : 'Vehicle & Payee'
+                                            }
+                                            vehicle
+                                        >
+                                            <div className="lrf-receipt-card__row lrf-grid lrf-grid--2">
                                                 <div className="space-y-1.5">
                                                     <SearchableVehicleSelect
                                                         id="vehicle_id"
@@ -1551,7 +1541,10 @@ export default function LrForm({
                                     description="Goods travel from consignor to consignee."
                                     tone="route"
                                 >
-                                    <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] md:items-stretch">
+                                    <div
+                                        className="lrf-party-flow"
+                                        id="lrPartyFlow"
+                                    >
                                         <LrfPartyCard
                                             badge="FROM"
                                             badgeTone="from"
@@ -1689,6 +1682,12 @@ export default function LrForm({
 
                                         <LrfRouteConnector
                                             routeHint={routeFlowHint}
+                                            ready={Boolean(
+                                                (consignorPartyId ||
+                                                    consignorParty) &&
+                                                (consigneePartyId ||
+                                                    consigneeParty),
+                                            )}
                                         />
 
                                         <LrfPartyCard
@@ -2629,99 +2628,59 @@ export default function LrForm({
                                         )}
                                     </LrfInnerPanel>
 
-                                    <section
-                                        className={`${lrfSectionShell} px-4 py-3`}
-                                    >
-                                        <h2 className="mb-3 text-sm font-semibold tracking-tight">
-                                            Summary
-                                        </h2>
-                                        <dl className="grid gap-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
-                                            <div className="flex justify-between gap-3 sm:block">
-                                                <dt className="text-muted-foreground">
-                                                    Total Units
-                                                </dt>
-                                                <dd className="font-medium tabular-nums">
-                                                    {summary.totalUnits}
-                                                </dd>
-                                            </div>
-                                            <div className="flex justify-between gap-3 sm:block">
-                                                <dt className="text-muted-foreground">
-                                                    Actual Wt (MT)
-                                                </dt>
-                                                <dd className="font-medium tabular-nums">
-                                                    {summary.totalActual}
-                                                </dd>
-                                            </div>
-                                            <div className="flex justify-between gap-3 sm:block">
-                                                <dt className="text-muted-foreground">
-                                                    Charged Wt (MT)
-                                                </dt>
-                                                <dd className="font-medium tabular-nums">
-                                                    {summary.totalCharged}
-                                                </dd>
-                                            </div>
-                                            {mayViewFreight ? (
-                                                <>
-                                                    <div className="flex justify-between gap-3 sm:block">
-                                                        <dt className="text-muted-foreground">
-                                                            Freight
-                                                        </dt>
-                                                        <dd className="font-medium tabular-nums">
-                                                            {
-                                                                summary.totalFreight
-                                                            }
-                                                        </dd>
-                                                    </div>
-                                                    <div className="flex justify-between gap-3 sm:block">
-                                                        <dt className="text-muted-foreground">
-                                                            Additional Charges
-                                                        </dt>
-                                                        <dd className="font-medium tabular-nums">
-                                                            {
-                                                                summary.totalAdditional
-                                                            }
-                                                        </dd>
-                                                    </div>
-                                                    <div className="flex justify-between gap-3 sm:block">
-                                                        <dt className="text-muted-foreground">
-                                                            Total Amount
-                                                        </dt>
-                                                        <dd className="font-medium tabular-nums">
-                                                            {
-                                                                summary.totalAmount
-                                                            }
-                                                        </dd>
-                                                    </div>
-                                                </>
-                                            ) : null}
-                                            <div className="flex justify-between gap-3 sm:block">
-                                                <dt className="text-muted-foreground">
-                                                    Goods Value
-                                                </dt>
-                                                <dd className="font-medium tabular-nums">
-                                                    {summary.totalGoodsValue}
-                                                </dd>
-                                            </div>
-                                        </dl>
-                                    </section>
+                                    <LrfSummaryMetrics
+                                        items={[
+                                            {
+                                                name: 'Weight (MT)',
+                                                value: summary.totalCharged,
+                                            },
+                                            {
+                                                name: 'Units',
+                                                value: summary.totalUnits,
+                                            },
+                                            ...(mayViewFreight
+                                                ? [
+                                                      {
+                                                          name: 'Freight',
+                                                          value: `₹${summary.totalFreight}`,
+                                                      },
+                                                      {
+                                                          name: 'Total Amount',
+                                                          value: `₹${summary.totalAmount}`,
+                                                          hero: true,
+                                                      },
+                                                  ]
+                                                : [
+                                                      {
+                                                          name: 'Goods Value',
+                                                          value: `₹${summary.totalGoodsValue}`,
+                                                          hero: true,
+                                                      },
+                                                  ]),
+                                        ]}
+                                    />
                                 </div>
                             </LrfSection>
 
-                            <div className="flex items-center justify-end gap-3 border-t border-border/60 pt-3">
-                                <Button variant="outline" asChild>
+                            <LrfActions>
+                                <Button
+                                    variant="outline"
+                                    asChild
+                                    className="lrf-btn lrf-btn--outline"
+                                >
                                     <Link href={urls.show ?? urls.index}>
                                         Cancel
                                     </Link>
                                 </Button>
                                 <Button
                                     type="submit"
-                                    variant="primary"
+                                    className="lrf-btn lrf-btn--brand"
                                     disabled={processing}
                                     onClick={handleSaveClick}
                                 >
                                     Save Bilty
                                 </Button>
-                            </div>
+                            </LrfActions>
                         </>
                     )}
                 </Form>
@@ -2782,7 +2741,7 @@ export default function LrForm({
                         }}
                     />
                 ) : null}
-            </PageShell>
+            </LrfPage>
         </>
     );
 }
