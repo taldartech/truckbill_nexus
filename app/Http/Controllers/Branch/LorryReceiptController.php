@@ -830,6 +830,8 @@ class LorryReceiptController extends Controller
                 'id' => (string) $driver['id'],
                 'name' => (string) $driver['name'],
             ])->values()->all(),
+            'truckTypesStoreUrl' => route('branch.truck-types.store', absolute: false),
+            'tyreLayoutsStoreUrl' => route('branch.tyre-layouts.store', absolute: false),
         ];
     }
 

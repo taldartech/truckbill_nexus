@@ -2,6 +2,10 @@ import { FormConfirmationDialog } from '@/components/form-confirmation/form-conf
 import type { FieldReview } from '@/components/form-confirmation/types';
 import InputError from '@/components/input-error';
 import {
+    QuickCreateCatalogueSheet,
+    type QuickCreatedCatalogueItem,
+} from '@/components/masters/quick-create-catalogue-sheet';
+import {
     SearchablePartySelect,
     type PartyOption,
 } from '@/components/searchable-party-select';
@@ -24,6 +28,8 @@ export type VehicleQuickCreateCatalogues = {
     truckTypes: Array<{ id: string; name: string }>;
     tyreLayouts: Array<{ id: string; name: string }>;
     drivers: Array<{ id: string; name: string }>;
+    truckTypesStoreUrl?: string;
+    tyreLayoutsStoreUrl?: string;
 };
 
 type Props = {
@@ -104,9 +110,18 @@ export function QuickCreateVehicleSheet({
     const [processing, setProcessing] = useState(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
 
-    const truckTypes = catalogues?.truckTypes ?? [];
-    const tyreLayouts = catalogues?.tyreLayouts ?? [];
+    const [truckTypes, setTruckTypes] = useState(
+        () => catalogues?.truckTypes ?? [],
+    );
+    const [tyreLayouts, setTyreLayouts] = useState(
+        () => catalogues?.tyreLayouts ?? [],
+    );
     const drivers = catalogues?.drivers ?? [];
+    const truckTypesStoreUrl = catalogues?.truckTypesStoreUrl;
+    const tyreLayoutsStoreUrl = catalogues?.tyreLayoutsStoreUrl;
+    const [catalogueQuickCreate, setCatalogueQuickCreate] = useState<
+        'truck' | 'tyre' | null
+    >(null);
     const isOwn = draft.ownership === 'own';
     const isMarket = draft.ownership === 'market';
 
@@ -398,9 +413,24 @@ export function QuickCreateVehicleSheet({
                             {isOwn ? (
                                 <>
                                     <div className="space-y-1.5">
-                                        <Label htmlFor="quick-truck-type">
-                                            Truck type *
-                                        </Label>
+                                        <div className="flex items-center justify-between gap-2">
+                                            <Label htmlFor="quick-truck-type">
+                                                Truck type *
+                                            </Label>
+                                            {truckTypesStoreUrl ? (
+                                                <button
+                                                    type="button"
+                                                    className="text-xs font-medium text-[#2D8CFF] hover:underline"
+                                                    onClick={() =>
+                                                        setCatalogueQuickCreate(
+                                                            'truck',
+                                                        )
+                                                    }
+                                                >
+                                                    + Add
+                                                </button>
+                                            ) : null}
+                                        </div>
                                         <select
                                             id="quick-truck-type"
                                             className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
@@ -431,9 +461,24 @@ export function QuickCreateVehicleSheet({
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label htmlFor="quick-tyre-layout">
-                                            Tyre layout *
-                                        </Label>
+                                        <div className="flex items-center justify-between gap-2">
+                                            <Label htmlFor="quick-tyre-layout">
+                                                Tyre layout *
+                                            </Label>
+                                            {tyreLayoutsStoreUrl ? (
+                                                <button
+                                                    type="button"
+                                                    className="text-xs font-medium text-[#2D8CFF] hover:underline"
+                                                    onClick={() =>
+                                                        setCatalogueQuickCreate(
+                                                            'tyre',
+                                                        )
+                                                    }
+                                                >
+                                                    + Add
+                                                </button>
+                                            ) : null}
+                                        </div>
                                         <select
                                             id="quick-tyre-layout"
                                             className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
@@ -563,6 +608,46 @@ export function QuickCreateVehicleSheet({
                     void submit();
                 }}
             />
+
+            {catalogueQuickCreate ? (
+                <QuickCreateCatalogueSheet
+                    open={catalogueQuickCreate !== null}
+                    onOpenChange={(next) => {
+                        if (!next) {
+                            setCatalogueQuickCreate(null);
+                        }
+                    }}
+                    title={
+                        catalogueQuickCreate === 'truck'
+                            ? 'Truck Type'
+                            : 'Tyre Layout'
+                    }
+                    storeUrl={
+                        catalogueQuickCreate === 'truck'
+                            ? (truckTypesStoreUrl ?? '')
+                            : (tyreLayoutsStoreUrl ?? '')
+                    }
+                    onCreated={(item: QuickCreatedCatalogueItem) => {
+                        const option = { id: item.id, name: item.name };
+                        if (catalogueQuickCreate === 'truck') {
+                            setTruckTypes((current) =>
+                                current.some((entry) => entry.id === item.id)
+                                    ? current
+                                    : [...current, option],
+                            );
+                            update('truck_type_id', item.id);
+                        } else {
+                            setTyreLayouts((current) =>
+                                current.some((entry) => entry.id === item.id)
+                                    ? current
+                                    : [...current, option],
+                            );
+                            update('tyre_layout_id', item.id);
+                        }
+                        setCatalogueQuickCreate(null);
+                    }}
+                />
+            ) : null}
         </>
     );
 }
