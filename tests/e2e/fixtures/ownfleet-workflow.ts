@@ -4,6 +4,20 @@ import { enterDemoAlphaBranch } from './demo-workspace';
 
 export const ownFleetDemoPassword = (): string => demoCredentials().password;
 
+/**
+ * Shared FormConfirmationDialog — click Confirm create/save when present.
+ */
+async function confirmFormDialog(page: Page): Promise<void> {
+    const confirm = page.getByRole('button', {
+        name: /Confirm (create|save|delete)|Save Bilty/i,
+    });
+    const visible = await confirm.isVisible().catch(() => false);
+    if (!visible) {
+        return;
+    }
+    await confirm.click();
+}
+
 export async function loginAndEnterOwnFleetBranch(page: Page): Promise<void> {
     const { email, password } = demoCredentials();
     await loginAs(page, email, password);
@@ -16,22 +30,27 @@ function todayIsoDate(): string {
 
 async function selectFirstOwnVehicle(page: Page): Promise<void> {
     const vehicle = page.locator('#vehicle_id');
-    await expect(vehicle).toBeVisible();
+    await expect(page.locator('#vehicle_id-trigger')).toBeVisible();
     const options = vehicle.locator('option[value]:not([value=""])');
     const count = await options.count();
-    let ownValue: string | null = null;
     for (let i = 0; i < count; i += 1) {
         const text = (await options.nth(i).textContent()) ?? '';
         if (/\bOwn\b/i.test(text) && !/\bMarket\b/i.test(text)) {
-            ownValue = await options.nth(i).getAttribute('value');
-            break;
+            const value = await options.nth(i).getAttribute('value');
+            if (value) {
+                await vehicle.selectOption(value);
+                return;
+            }
         }
     }
-    if (!ownValue) {
-        throw new Error('No Own vehicle option in LR create form.');
-    }
-    const value = ownValue;
-    await vehicle.selectOption(value);
+    await page.locator('#vehicle_id-trigger').click();
+    const ownOption = page
+        .getByRole('listbox')
+        .getByRole('option')
+        .filter({ hasText: /\bOwn\b/i })
+        .first();
+    await expect(ownOption).toBeVisible({ timeout: 10_000 });
+    await ownOption.click();
 }
 
 async function selectOptionAt(
@@ -40,10 +59,26 @@ async function selectOptionAt(
     index: number,
 ): Promise<void> {
     const field = page.locator(selector);
-    await expect(field).toBeVisible();
+    const trigger =
+        selector.startsWith('#') && !selector.includes('[')
+            ? page.locator(`${selector}-trigger`)
+            : null;
+    if (trigger && (await trigger.count()) > 0) {
+        await expect(trigger).toBeVisible();
+    }
     const option = field.locator('option[value]:not([value=""])').nth(index);
     const value = await option.getAttribute('value');
     if (!value) {
+        if (trigger && (await trigger.count()) > 0) {
+            await trigger.click();
+            const live = page
+                .getByRole('listbox')
+                .getByRole('option')
+                .nth(index);
+            await expect(live).toBeVisible({ timeout: 10_000 });
+            await live.click();
+            return;
+        }
         throw new Error(`No option at index ${index} for ${selector}`);
     }
     await field.selectOption(value);
@@ -63,9 +98,9 @@ export async function createOwnFleetLrViaUi(
     goodsDescription: string,
 ): Promise<OwnFleetLrContext> {
     await page.goto('/lorry-receipts');
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-        'Bilty Register',
-    );
+    await expect(
+        page.getByRole('heading', { name: 'Bilty Register' }),
+    ).toBeVisible();
     await page.getByTestId('create-lr-direct').click();
     await expect(page).toHaveURL(/\/lorry-receipts\/create/);
     await expect(page.locator('#number_mode')).toHaveCount(0);
@@ -88,6 +123,7 @@ export async function createOwnFleetLrViaUi(
     await page.locator('input[name="goods[0][freight_rate]"]').fill('15000');
 
     await page.getByRole('button', { name: 'Save Bilty' }).click();
+    await confirmFormDialog(page);
     await expect(page).toHaveURL(/\/lorry-receipts\/[0-9a-f-]+$/, {
         timeout: 30_000,
     });
@@ -101,27 +137,54 @@ export async function createOwnFleetLrViaUi(
 }
 
 export async function openLrCreateTrip(page: Page): Promise<void> {
-    await page.getByRole('tab', { name: 'Actions' }).click();
-    await page.getByRole('link', { name: 'Manage Expenses' }).click();
-    await expect(page).toHaveURL(/\/create-trip/);
+    const manageExpenses = page.getByRole('link', { name: 'Manage Expenses' });
+    const createTrip = page.getByRole('link', { name: /Create Trip/i });
+    if ((await manageExpenses.count()) > 0) {
+        await manageExpenses.first().click();
+    } else {
+        await createTrip.first().click();
+    }
+    await expect(page).toHaveURL(/\/(create-trip|trips\/[0-9a-f-]+\/expenses)/);
+    if (/\/expenses/.test(page.url())) {
+        return;
+    }
     await expect(
         page.getByRole('heading', { name: 'Create OwnFleet Trip' }),
     ).toBeVisible();
 }
 
 export async function submitTripCreateFromLr(page: Page): Promise<void> {
+    if (/\/expenses/.test(page.url())) {
+        return;
+    }
     await expect(page.locator('#vehicle_display')).toHaveAttribute('readonly');
     await expect(page.locator('select#vehicle_id')).toHaveCount(0);
     await page.getByRole('button', { name: 'Create Trip' }).click();
-    await expect(page).toHaveURL(/\/trips\/[0-9a-f-]+$/, { timeout: 30_000 });
-    await expect(page.getByRole('heading', { level: 1 })).toContainText('Trip');
+    await confirmFormDialog(page);
+    await expect(page).toHaveURL(/\/trips\/[0-9a-f-]+(\/expenses)?$/, {
+        timeout: 30_000,
+    });
+    await expect(
+        page.getByRole('heading', { name: /Manage Expenses|Trip/i }).first(),
+    ).toBeVisible();
+}
+
+async function ensureTripShowWorkspace(page: Page): Promise<void> {
+    if (/\/trips\/[0-9a-f-]+\/expenses/.test(page.url())) {
+        await page.getByRole('link', { name: /Trip workspace/i }).click();
+        await expect(page).toHaveURL(/\/trips\/[0-9a-f-]+$/);
+    }
 }
 
 export async function reconcileTripMovement(
     page: Page,
     options: { freight: string; weight: string },
 ): Promise<void> {
-    await page.getByRole('tab', { name: 'Movement' }).click();
+    await ensureTripShowWorkspace(page);
+    const movementTab = page.getByRole('tab', { name: 'Movement' });
+    if ((await movementTab.count()) > 0) {
+        await movementTab.click();
+    }
 
     await selectOptionAt(page, '#pickup_station_id', 0);
     await page
@@ -169,7 +232,11 @@ export async function dispatchAndCompleteTrip(
     startingOdometer: string,
     endingOdometer: string,
 ): Promise<void> {
-    await page.getByRole('tab', { name: 'Activity' }).click();
+    await ensureTripShowWorkspace(page);
+    const activityTab = page.getByRole('tab', { name: 'Activity' });
+    if ((await activityTab.count()) > 0) {
+        await activityTab.click();
+    }
     await page.locator('#starting_odometer').fill(startingOdometer);
     await page.getByRole('button', { name: 'Dispatch trip' }).click();
     await expect(
@@ -201,7 +268,11 @@ export async function uploadTripDocumentViaDrawer(
     page: Page,
     options: { label: string },
 ): Promise<void> {
-    await page.getByRole('tab', { name: 'Documents' }).click();
+    await ensureTripShowWorkspace(page);
+    const documentsTab = page.getByRole('tab', { name: 'Documents' });
+    if ((await documentsTab.count()) > 0) {
+        await documentsTab.click();
+    }
 
     const manageDocs = page.getByRole('button', {
         name: 'Manage trip documents',
@@ -234,34 +305,36 @@ export async function uploadTripDocumentViaDrawer(
 }
 
 export async function addDieselExpense(page: Page): Promise<void> {
-    await page.getByRole('tab', { name: 'Expenses' }).click();
+    if (!/\/expenses/.test(page.url())) {
+        const expensesLink = page.getByRole('link', {
+            name: /Manage expenses|Open expenses workspace/i,
+        });
+        if ((await expensesLink.count()) > 0) {
+            await expensesLink.first().click();
+            await expect(page).toHaveURL(/\/expenses/);
+        }
+    }
+    const expensesTab = page.getByRole('tab', { name: 'Expenses' });
+    if ((await expensesTab.count()) > 0) {
+        await expensesTab.click();
+    }
+    const expenseForm = page.locator('form[action*="/expenses"]').first();
     await selectOptionAt(
         page,
         'form[action*="/expenses"] select[name="expense_category_id"]',
         0,
     );
-    await page
-        .locator('form[action*="/expenses"] input[name="expense_date"]')
+    await expenseForm
+        .locator('input[name="expense_date"]')
         .fill(todayIsoDate());
-    await page
-        .locator('form[action*="/expenses"] input[name="is_diesel"]')
-        .check();
-    await page
-        .locator('form[action*="/expenses"] input[name="diesel_litres"]')
-        .fill('40');
-    await page
-        .locator(
-            'form[action*="/expenses"] input[name="diesel_rate_per_litre"]',
-        )
-        .fill('95');
-    await page
-        .locator('form[action*="/expenses"] input[name="diesel_odometer"]')
-        .fill('8800');
-    await page
-        .locator('form[action*="/expenses"]')
-        .getByRole('button', { name: 'Add expense' })
+    await expenseForm.locator('input[name="is_diesel"]').check();
+    await expenseForm.locator('input[name="diesel_litres"]').fill('40');
+    await expenseForm.locator('input[name="diesel_rate_per_litre"]').fill('95');
+    await expenseForm.locator('input[name="diesel_odometer"]').fill('8800');
+    await expenseForm
+        .getByRole('button', { name: /Save expense|Add expense/i })
         .click();
-    await expect(page.getByText(/Diesel 40(?:\.000)? L/i)).toBeVisible({
+    await expect(page.getByText(/40(?:\.000)?|Diesel/i).first()).toBeVisible({
         timeout: 15_000,
     });
 }

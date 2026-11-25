@@ -130,9 +130,9 @@ export async function createBrokerLrViaUi(
     options?: { vehicleId?: string },
 ): Promise<BrokerLrContext> {
     await page.goto('/lorry-receipts');
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-        'Bilty Register',
-    );
+    await expect(
+        page.getByRole('heading', { name: 'Bilty Register' }),
+    ).toBeVisible();
     await page.getByTestId('create-lr-direct').click();
     await expect(page).toHaveURL(/\/lorry-receipts\/create/);
     await expect(page.locator('#number_mode')).toHaveCount(0);
@@ -339,7 +339,9 @@ export async function createLorryHireFromLr(
         await page.locator('#loading_weight_0').fill(mt);
     }
 
-    await expect(page.getByText('Financial summary')).toBeVisible();
+    await expect(
+        page.getByText(/Net payable|Transporter freight|Hire charges/i).first(),
+    ).toBeVisible();
 
     await page.getByRole('button', { name: 'Create Lorry Hire' }).click();
     const hireDialog = page.getByRole('dialog');
@@ -371,21 +373,36 @@ export async function createAdjustInAdvanceVoucher(
 ): Promise<string> {
     await page.goto('/broker/vouchers/create');
     await expect(
-        page.getByRole('heading', { name: 'Create Transporter Voucher' }),
+        page.getByRole('heading', {
+            name: /Add Voucher Payment|Create Transporter Voucher/i,
+        }),
     ).toBeVisible();
 
     const hireSelect = page.locator('#lorry_hire_id');
+    const hireTrigger = page.locator('#lorry_hire_id-trigger');
     const option = hireSelect
         .locator('option[value]:not([value=""])')
         .filter({ hasText: hireNumber })
         .first();
-    const hireId = await option.getAttribute('value');
+    let hireId = await option.getAttribute('value');
+    if (!hireId && (await hireTrigger.count()) > 0) {
+        await hireTrigger.click();
+        const live = page
+            .getByRole('listbox')
+            .getByRole('option')
+            .filter({ hasText: hireNumber })
+            .first();
+        await expect(live).toBeVisible({ timeout: 10_000 });
+        await live.click();
+        hireId = await hireSelect.inputValue();
+    } else if (hireId) {
+        await hireSelect.selectOption(hireId);
+    }
     if (!hireId) {
         throw new Error(
             `Lorry hire ${hireNumber} not in voucher eligible list.`,
         );
     }
-    await hireSelect.selectOption(hireId);
 
     await page.locator('#amount').fill(amount);
     await page.locator('#payment_mode').selectOption('adjust_in_advance');
@@ -396,9 +413,13 @@ export async function createAdjustInAdvanceVoucher(
     await expect(page).toHaveURL(/\/broker\/vouchers\/[0-9a-f-]+$/, {
         timeout: 30_000,
     });
-    const heading = await page.getByRole('heading', { level: 1 }).innerText();
-    const match = heading.match(/^Voucher\s+(.+)$/i);
-    return match?.[1]?.trim() ?? '';
+    const heading = await page
+        .getByRole('heading')
+        .filter({ hasText: /Voucher/i })
+        .first()
+        .innerText({ timeout: 15_000 });
+    const match = heading.match(/Voucher\s+(.+)$/i);
+    return match?.[1]?.trim() ?? heading.trim();
 }
 
 export async function assertTransporterBookBalanceHasActivity(

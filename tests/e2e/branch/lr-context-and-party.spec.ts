@@ -35,9 +35,9 @@ test.describe('LR context resolution and Party Master', () => {
         await expect(page).toHaveURL(/\/operations\/?$/);
 
         await page.goto('/lorry-receipts');
-        await expect(page.getByRole('heading', { level: 1 })).toHaveText(
-            'Bilty Register',
-        );
+        await expect(
+            page.getByRole('heading', { name: 'Bilty Register' }),
+        ).toBeVisible();
         // Never a full-page chooser.
         await expect(
             page.getByRole('heading', { name: /choose workflow context/i }),
