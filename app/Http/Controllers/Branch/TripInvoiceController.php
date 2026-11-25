@@ -203,11 +203,14 @@ class TripInvoiceController extends Controller
 
         $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
 
+        $snapshotGstin = data_get($tripInvoice->gst_rate_snapshot, 'supplier_gstin');
+
         return Inertia::render('branch/trip-invoices/print', [
             'invoice' => $this->presentInvoiceDetail($tripInvoice, $maySeeFreight),
             'company' => [
                 'name' => $company->name,
-                'gstin' => $company->gstin,
+                // Prefer issued snapshot GSTIN so later Branch GST changes never rewrite prints.
+                'gstin' => filled($snapshotGstin) ? (string) $snapshotGstin : $company->gstin,
             ],
             'sampleBanner' => 'SAMPLE / NON-PRODUCTION — Not a legally operative tax invoice.',
         ]);
