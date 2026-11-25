@@ -220,6 +220,11 @@ export function AppSidebar() {
             icon: Truck,
         },
         {
+            title: 'Pending Delivery',
+            href: '/partload/pending-delivery',
+            icon: ClipboardList,
+        },
+        {
             title: 'Partload Challans',
             href: '/partload/challans',
             icon: Truck,

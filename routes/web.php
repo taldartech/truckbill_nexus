@@ -45,6 +45,7 @@ use App\Http\Controllers\Branch\PartloadDeliveryReceiptController;
 use App\Http\Controllers\Branch\PartloadInTransitController;
 use App\Http\Controllers\Branch\PartloadInwardController;
 use App\Http\Controllers\Branch\PartloadMainChallanController;
+use App\Http\Controllers\Branch\PartloadPendingDeliveryController;
 use App\Http\Controllers\Branch\PartloadPendingLoadingController;
 use App\Http\Controllers\Branch\PartyController;
 use App\Http\Controllers\Branch\StationController;
@@ -324,6 +325,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('/partload/pending-loading', [PartloadPendingLoadingController::class, 'index'])->name('branch.partload.pending-loading.index');
         Route::get('/partload/in-transit', [PartloadInTransitController::class, 'index'])->name('branch.partload.in-transit.index');
+        Route::get('/partload/pending-delivery', [PartloadPendingDeliveryController::class, 'index'])->name('branch.partload.pending-delivery.index');
 
         Route::get('/partload/main-challans', [PartloadMainChallanController::class, 'index'])->name('branch.partload.main-challans.index');
         Route::get('/partload/main-challans/create', [PartloadMainChallanController::class, 'create'])->name('branch.partload.main-challans.create');
