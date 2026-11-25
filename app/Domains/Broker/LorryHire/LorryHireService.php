@@ -2,6 +2,7 @@
 
 namespace App\Domains\Broker\LorryHire;
 
+use App\Domains\Accounting\OperationalAccountingPoster;
 use App\Domains\Broker\Enums\LorryHireStatus;
 use App\Domains\Broker\Exceptions\BrokerAuthorizationException;
 use App\Domains\Broker\Exceptions\BrokerConflictException;
@@ -57,6 +58,7 @@ final class LorryHireService
         private readonly DocumentNumberAllocator $numbers = new DocumentNumberAllocator,
         private readonly TransporterTdsCalculationService $tds = new TransporterTdsCalculationService,
         private readonly LorryHireCalculationService $calculations = new LorryHireCalculationService,
+        private readonly OperationalAccountingPoster $accounting = new OperationalAccountingPoster,
     ) {}
 
     /**
@@ -363,6 +365,8 @@ final class LorryHireService
                             'status' => LrStatus::InProgress,
                         ])->save();
                     }
+
+                    $this->accounting->postLorryHireRecognized($hire, $actor);
 
                     $this->audit->write(
                         AuditAction::Created,

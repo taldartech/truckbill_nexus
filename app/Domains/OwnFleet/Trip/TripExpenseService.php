@@ -2,6 +2,7 @@
 
 namespace App\Domains\OwnFleet\Trip;
 
+use App\Domains\Accounting\OperationalAccountingPoster;
 use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\OwnFleet\Enums\TripStatus;
 use App\Domains\OwnFleet\Trip\Exceptions\TripAuthorizationException;
@@ -33,6 +34,7 @@ final class TripExpenseService
         private readonly AuditedTransaction $auditedTransaction = new AuditedTransaction,
         private readonly AuditWriter $audit = new AuditWriter,
         private readonly PermissionAuthorizer $authorizer = new PermissionAuthorizer,
+        private readonly OperationalAccountingPoster $accounting = new OperationalAccountingPoster,
     ) {}
 
     /**
@@ -66,6 +68,8 @@ final class TripExpenseService
                     before: null,
                     after: $expense->toArray(),
                 );
+
+                $this->accounting->postTripExpense($expense->fresh(['trip', 'category', 'paymentMode']) ?? $expense, $actor);
 
                 return $expense;
             });

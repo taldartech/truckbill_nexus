@@ -2,6 +2,7 @@
 
 namespace App\Domains\Broker\Invoice;
 
+use App\Domains\Accounting\OperationalAccountingPoster;
 use App\Domains\Broker\Enums\BrokerAdjustmentType;
 use App\Domains\Broker\Enums\BrokerInvoiceStatus;
 use App\Domains\Broker\Enums\LorryHireStatus;
@@ -59,6 +60,7 @@ final class BrokerInvoiceService
         private readonly SubscriptionEntitlementGate $entitlementGate = new SubscriptionEntitlementGate,
         private readonly DocumentNumberAllocator $numbers = new DocumentNumberAllocator,
         private readonly EffectiveGstConfigurationResolver $gstResolver = new EffectiveGstConfigurationResolver,
+        private readonly OperationalAccountingPoster $accounting = new OperationalAccountingPoster,
     ) {}
 
     /**
@@ -307,6 +309,8 @@ final class BrokerInvoiceService
                     after: $invoice->fresh(['lines', 'billingCustomer'])?->toArray(),
                 );
 
+                $this->accounting->postBrokerInvoiceIssued($invoice->fresh() ?? $invoice, $actor);
+
                 return $invoice->fresh(['lines', 'payments', 'billingCustomer']) ?? $invoice;
             });
         });
@@ -417,6 +421,8 @@ final class BrokerInvoiceService
                     before: $before,
                     after: $locked->fresh(['payments'])?->toArray(),
                 );
+
+                $this->accounting->postBrokerInvoicePayment($payment, $locked->fresh() ?? $locked, $actor);
 
                 return $payment;
             });

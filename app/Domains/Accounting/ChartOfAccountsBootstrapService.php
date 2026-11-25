@@ -111,7 +111,7 @@ final class ChartOfAccountsBootstrapService
                 'name' => 'Duties & Taxes',
                 'nature' => AccountNature::Liability,
                 'sort_order' => 50,
-                'ledgers' => ['Output CGST', 'Output SGST', 'Output IGST', 'Input CGST', 'Input SGST', 'Input IGST', 'TDS Payable'],
+                'ledgers' => ['Output CGST', 'Output SGST', 'Output IGST', 'Input CGST', 'Input SGST', 'Input IGST', 'TDS Payable', 'TDS Receivable'],
             ],
             [
                 'name' => 'Sundry Creditors',
