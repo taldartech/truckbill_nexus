@@ -39,19 +39,48 @@ final class GstRateService
     {
         $this->assertPlatformMutate($actor);
 
-        $code = strtoupper(trim((string) ($attributes['code'] ?? '')));
-        $name = trim((string) ($attributes['name'] ?? ''));
         $rate = $attributes['rate_percent'] ?? null;
-        $effectiveFrom = $attributes['effective_from'] ?? null;
+        if ($rate === null || $rate === '') {
+            throw ValidationException::withMessages(['rate_percent' => 'GST rate (%) is required.']);
+        }
 
-        if ($code === '' || $name === '' || $rate === null || $effectiveFrom === null) {
-            throw ValidationException::withMessages(['code' => 'code, name, rate_percent and effective_from are required.']);
+        $rateNormalized = $this->normalizeRatePercent($rate);
+        $code = strtoupper(trim((string) ($attributes['code'] ?? '')));
+        if ($code === '') {
+            $code = $this->codeFromRatePercent($rateNormalized);
+        }
+
+        $name = trim((string) ($attributes['name'] ?? ''));
+        if ($name === '') {
+            $displayRate = rtrim(rtrim($rateNormalized, '0'), '.');
+            if ($displayRate === '' || $displayRate === '-') {
+                $displayRate = '0';
+            }
+            $name = 'GST '.$displayRate.'%';
+        }
+
+        $effectiveFrom = $attributes['effective_from'] ?? null;
+        if ($effectiveFrom === null || $effectiveFrom === '') {
+            $effectiveFrom = Carbon::now('Asia/Kolkata')->toDateString();
+        }
+
+        // One active open version per rate code — successors close the prior open version.
+        $duplicateActiveSameRate = GstRate::query()
+            ->where('is_active', true)
+            ->whereNull('effective_to')
+            ->where('code', '!=', $code)
+            ->where('rate_percent', $rateNormalized)
+            ->exists();
+        if ($duplicateActiveSameRate) {
+            throw ValidationException::withMessages([
+                'rate_percent' => 'An active GST rate with this percentage already exists under a different code.',
+            ]);
         }
 
         $nextVersion = ((int) GstRate::query()->where('code', $code)->max('version')) + 1;
 
-        return $this->withPlatformTenant(function () use ($code, $name, $rate, $effectiveFrom, $attributes, $remark, $nextVersion): GstRate {
-            return $this->auditedTransaction->run(function () use ($code, $name, $rate, $effectiveFrom, $attributes, $remark, $nextVersion): GstRate {
+        return $this->withPlatformTenant(function () use ($code, $name, $rateNormalized, $effectiveFrom, $attributes, $remark, $nextVersion): GstRate {
+            return $this->auditedTransaction->run(function () use ($code, $name, $rateNormalized, $effectiveFrom, $attributes, $remark, $nextVersion): GstRate {
                 // Close previous active version for this code when a successor starts.
                 $previous = GstRate::query()
                     ->where('code', $code)
@@ -70,7 +99,7 @@ final class GstRateService
                     'id' => (string) Str::uuid(),
                     'code' => $code,
                     'name' => $name,
-                    'rate_percent' => $rate,
+                    'rate_percent' => $rateNormalized,
                     'effective_from' => $effectiveFrom,
                     'effective_to' => $attributes['effective_to'] ?? null,
                     'version' => $nextVersion,
@@ -158,6 +187,33 @@ final class GstRateService
     public function snapshot(GstRate $rate): array
     {
         return $rate->toSnapshot();
+    }
+
+    /**
+     * Operator-facing creates may omit code; derive a stable internal identifier from the rate.
+     */
+    public function codeFromRatePercent(string $rateNormalized): string
+    {
+        $trimmed = rtrim(rtrim($rateNormalized, '0'), '.');
+        if ($trimmed === '' || $trimmed === '-') {
+            $trimmed = '0';
+        }
+
+        return 'GST'.str_replace('.', '_', $trimmed);
+    }
+
+    private function normalizeRatePercent(mixed $rate): string
+    {
+        if (! is_numeric($rate)) {
+            throw ValidationException::withMessages(['rate_percent' => 'GST rate (%) must be numeric.']);
+        }
+
+        $value = (float) $rate;
+        if ($value < 0 || $value > 100) {
+            throw ValidationException::withMessages(['rate_percent' => 'GST rate (%) must be between 0 and 100.']);
+        }
+
+        return number_format($value, 3, '.', '');
     }
 
     private function assertPlatformMutate(User $actor): void

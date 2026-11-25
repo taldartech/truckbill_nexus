@@ -14,7 +14,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
-import { formatDisplayDateSmart } from '@/lib/dates';
 
 type GstRateRow = {
     id: string;
@@ -47,43 +46,23 @@ export default function AdminGstRates({
     const columns = useMemo<DataTableColumn<GstRateRow>[]>(
         () => [
             {
-                id: 'code',
-                header: 'Code',
-                priority: 0,
-                className: 'font-mono text-xs',
-                cell: (row) => row.code,
-            },
-            {
-                id: 'name',
-                header: 'Name',
-                priority: 2,
-                cell: (row) => row.name,
-            },
-            {
                 id: 'rate',
-                header: 'Rate',
-                priority: 2,
-                cell: (row) => `${row.rate_percent}%`,
+                header: 'GST rate',
+                priority: 0,
+                cell: (row) => (
+                    <>
+                        <div className="font-medium">{row.rate_percent}%</div>
+                        {row.version > 1 ? (
+                            <div className="text-xs text-muted-foreground">
+                                v{row.version}
+                            </div>
+                        ) : null}
+                    </>
+                ),
             },
             {
-                id: 'version',
-                header: 'Ver',
-                priority: 3,
-                cell: (row) => row.version,
-            },
-            {
-                id: 'effective',
-                header: 'Effective',
-                priority: 2,
-                className: 'text-xs',
-                cell: (row) =>
-                    row.effective_from
-                        ? `${formatDisplayDateSmart(row.effective_from)}${row.effective_to ? ` → ${formatDisplayDateSmart(row.effective_to)}` : ''}`
-                        : '—',
-            },
-            {
-                id: 'active',
-                header: 'Active',
+                id: 'status',
+                header: 'Status',
                 priority: 1,
                 cell: (row) => (
                     <WorkspaceStatusBadge
@@ -98,33 +77,19 @@ export default function AdminGstRates({
     return (
         <>
             <Head title="GST rate master" />
-            <PageShell title="GST rate versions" description={compliance_note}>
+            <PageShell title="GST rates" description={compliance_note}>
                 <PortalFlashBanner message={flash?.success} />
-                <PortalErrorList errors={errors} keys={['code', 'remark']} />
+                <PortalErrorList
+                    errors={errors}
+                    keys={['rate_percent', 'remark']}
+                />
 
                 <Form action={store_url} method="post">
-                    <FormSection title="Create version" columns={2}>
+                    <FormSection title="Create GST rate" columns={2}>
                         <div className="space-y-2">
-                            <Label htmlFor="code">Code</Label>
-                            <Input
-                                id="code"
-                                name="code"
-                                required
-                                className="font-mono"
-                                placeholder="GST18"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="name">Name</Label>
-                            <Input
-                                id="name"
-                                name="name"
-                                required
-                                placeholder="GST 18%"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="rate_percent">Rate percent</Label>
+                            <Label htmlFor="rate_percent" required>
+                                GST rate (%)
+                            </Label>
                             <Input
                                 id="rate_percent"
                                 name="rate_percent"
@@ -133,19 +98,20 @@ export default function AdminGstRates({
                                 min="0"
                                 max="100"
                                 required
-                                placeholder="18.000"
+                                placeholder="18"
                             />
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="effective_from">
-                                Effective from
-                            </Label>
-                            <Input
-                                id="effective_from"
-                                name="effective_from"
-                                type="date"
-                                required
-                            />
+                        <div className="flex items-end">
+                            <label className="flex items-center gap-2 text-sm">
+                                <input
+                                    type="checkbox"
+                                    name="is_active"
+                                    value="1"
+                                    defaultChecked
+                                    className="size-4 rounded border border-input"
+                                />
+                                Active
+                            </label>
                         </div>
                         <div className="space-y-2 md:col-span-2">
                             <Label htmlFor="remark">Remark</Label>
@@ -157,7 +123,7 @@ export default function AdminGstRates({
                         </div>
                         <div className="md:col-span-2">
                             <Button type="submit" variant="default">
-                                Create GST version
+                                Create GST rate
                             </Button>
                         </div>
                     </FormSection>
@@ -165,12 +131,12 @@ export default function AdminGstRates({
 
                 <div className="overflow-hidden rounded-xl border border-border bg-card shadow-xs">
                     <ResponsiveDataTable
-                        caption="GST rate versions"
+                        caption="GST rates"
                         columns={columns}
                         rows={rates}
                         rowKey={(row) => row.id}
-                        emptyTitle="No GST rate versions yet"
-                        emptyDescription="Create a version using the form above."
+                        emptyTitle="No GST rates yet"
+                        emptyDescription="Create a rate using the form above."
                         actions={(rate) =>
                             rate.is_active ? (
                                 <Form
@@ -182,7 +148,7 @@ export default function AdminGstRates({
                                         name="remark"
                                         required
                                         placeholder="Deactivate remark"
-                                        aria-label={`Deactivate remark for ${rate.code} v${rate.version}`}
+                                        aria-label={`Deactivate remark for ${rate.rate_percent}%`}
                                         className="h-8 max-w-[10rem] text-xs"
                                     />
                                     <Button

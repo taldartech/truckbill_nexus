@@ -64,7 +64,9 @@ class HandleInertiaRequests extends Middleware
                 'error' => $request->session()->get('error'),
                 'info' => $request->session()->get('info'),
                 'toast' => $request->session()->get('toast'),
+                'tds_preview' => $request->session()->get('tds_preview'),
             ],
+            'tds_preview' => $request->session()->get('tds_preview'),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'workspace' => $this->workspaceShare($request, $user),
         ];

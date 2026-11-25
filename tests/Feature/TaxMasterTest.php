@@ -9,6 +9,8 @@ use App\Models\GstRate;
 use App\Models\User;
 use App\Support\Tenant\TenantContextHolder;
 use Database\Seeders\RbacSeeder;
+use Database\Seeders\TdsReferenceRulesSeeder;
+use Illuminate\Support\Facades\Hash;
 
 beforeEach(function () {
     TenantContextHolder::clear();
@@ -168,4 +170,45 @@ test('customer cannot mutate tds rules', function () {
         'conditions' => [['field' => 'a', 'operator' => 'eq', 'value' => 'b']],
         'rate_percent' => '1',
     ]))->toThrow(TaxDomainException::class);
+});
+
+test('gst rate can be created from rate percent only without operator code or name', function () {
+    $admin = User::factory()->internal()->superAdmin()->create();
+    $this->actingAs($admin);
+
+    $rate = app(GstRateService::class)->createVersion($admin, [
+        'rate_percent' => '7.5',
+    ], 'Operator create by percent');
+
+    expect($rate->code)->toBe('GST7_5')
+        ->and($rate->name)->toBe('GST 7.5%')
+        ->and((string) $rate->rate_percent)->toBe('7.500')
+        ->and($rate->is_active)->toBeTrue()
+        ->and($rate->effective_from)->not->toBeNull();
+});
+
+test('tds admin evaluate endpoint returns matching rule without writing financial data', function () {
+    $admin = User::factory()->internal()->superAdmin()->create([
+        'password' => Hash::make('admin-secret'),
+    ]);
+    (new TdsReferenceRulesSeeder)->run();
+
+    $this->actingAs($admin)
+        ->post(route('admin.tds-rules.evaluate'), [
+            'pan_status' => 'invalid',
+        ])
+        ->assertRedirect();
+
+    $preview = session('tds_preview');
+    expect($preview)->toBeArray()
+        ->and($preview['matched'] ?? false)->toBeTrue()
+        ->and($preview['rate_percent'])->toBe('20.000');
+
+    $this->actingAs($admin)
+        ->post(route('admin.tds-rules.evaluate'), [
+            'pan_status' => 'active',
+            'pan_fourth_char' => 'Z',
+        ])
+        ->assertRedirect()
+        ->assertSessionHasErrors('evaluate');
 });

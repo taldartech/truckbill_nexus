@@ -266,8 +266,9 @@ final class LeadService
     public function assignableInternalUsers(): Collection
     {
         return User::query()
-            ->where('is_active', true)
             ->where('identity_type', IdentityType::Internal->value)
+            ->whereNull('deactivated_at')
+            ->whereNull('deleted_at')
             ->orderBy('name')
             ->get(['id', 'name', 'email']);
     }

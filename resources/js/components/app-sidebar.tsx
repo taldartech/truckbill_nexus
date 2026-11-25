@@ -329,8 +329,13 @@ export function AppSidebar() {
                     icon: Receipt,
                 },
                 {
-                    title: 'Locations',
-                    href: '/admin/locations',
+                    title: 'State Master',
+                    href: '/admin/states',
+                    icon: MapPin,
+                },
+                {
+                    title: 'City Master',
+                    href: '/admin/cities',
                     icon: MapPin,
                 },
             ] as NavItem[],
@@ -346,12 +351,12 @@ export function AppSidebar() {
                               icon: Building2,
                           },
                           {
-                              title: 'Identities',
+                              title: 'Customer identities',
                               href: admin.identities.index.url(),
                               icon: Users,
                           },
                           {
-                              title: 'Internal users',
+                              title: 'Users',
                               href: admin.internalUsers.index.url(),
                               icon: UserCog,
                           },

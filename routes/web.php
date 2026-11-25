@@ -516,12 +516,28 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/admin/locations/cities/{city}/toggle', [LocationController::class, 'toggleCity'])
         ->name('admin.locations.cities.toggle');
 
+    Route::get('/admin/states', [LocationController::class, 'statesIndex'])
+        ->name('admin.states.index');
+    Route::post('/admin/states', [LocationController::class, 'storeState'])
+        ->name('admin.states.store');
+    Route::post('/admin/states/{state}/toggle', [LocationController::class, 'toggleState'])
+        ->name('admin.states.toggle');
+
+    Route::get('/admin/cities', [LocationController::class, 'citiesIndex'])
+        ->name('admin.cities.index');
+    Route::post('/admin/cities', [LocationController::class, 'storeCity'])
+        ->name('admin.cities.store');
+    Route::post('/admin/cities/{city}/toggle', [LocationController::class, 'toggleCity'])
+        ->name('admin.cities.toggle');
+
     Route::get('/admin/tds-rules', [TdsRuleController::class, 'index'])
         ->name('admin.tds-rules');
     Route::post('/admin/tds-rules', [TdsRuleController::class, 'store'])
         ->name('admin.tds-rules.store');
     Route::put('/admin/tds-rules/{rule}', [TdsRuleController::class, 'update'])
         ->name('admin.tds-rules.update');
+    Route::post('/admin/tds-rules/evaluate', [TdsRuleController::class, 'evaluate'])
+        ->name('admin.tds-rules.evaluate');
 });
 
 require __DIR__.'/settings.php';

@@ -28,7 +28,7 @@ class GstRateController extends Controller
         $this->assertPlatformOperator($request);
 
         $rates = GstRate::query()
-            ->orderBy('code')
+            ->orderBy('rate_percent')
             ->orderByDesc('version')
             ->limit(200)
             ->get();
@@ -55,22 +55,23 @@ class GstRateController extends Controller
         $actor = $this->assertPlatformOperator($request);
 
         $validated = $request->validate([
-            'code' => ['required', 'string', 'max:32'],
-            'name' => ['required', 'string', 'max:120'],
             'rate_percent' => ['required', 'numeric', 'min:0', 'max:100'],
-            'effective_from' => ['required', 'date'],
+            'is_active' => ['sometimes', 'boolean'],
             'remark' => ['nullable', 'string', 'max:255'],
         ]);
 
         try {
-            $this->gst->createVersion($actor, $validated, $validated['remark'] ?? 'Create GST rate version via admin UI');
+            $this->gst->createVersion($actor, [
+                'rate_percent' => $validated['rate_percent'],
+                'is_active' => $validated['is_active'] ?? true,
+            ], $validated['remark'] ?? 'Create GST rate via admin UI');
         } catch (TaxDomainException $e) {
-            return back()->withErrors(['code' => $e->getMessage()]);
+            return back()->withErrors(['rate_percent' => $e->getMessage()]);
         } catch (ValidationException $e) {
             throw $e;
         }
 
-        return back()->with('success', 'GST rate version created. Prior active version closed when applicable.');
+        return back()->with('success', 'GST rate created. Prior active version closed when applicable.');
     }
 
     public function deactivate(Request $request, GstRate $rate): RedirectResponse

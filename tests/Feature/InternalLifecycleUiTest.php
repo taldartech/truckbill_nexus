@@ -1,8 +1,10 @@
 <?php
 
 use App\Domains\Company\CompanyWorkspaceService;
+use App\Models\Role;
 use App\Models\User;
 use App\Support\Tenant\TenantContextHolder;
+use Database\Seeders\RbacSeeder;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Testing\TestResponse;
 
@@ -108,6 +110,9 @@ test('super admin can manage identity and internal user screens', function () {
 
     expect($customer->fresh()->isDeactivated())->toBeTrue();
 
+    (new RbacSeeder)->run();
+    $salesRole = Role::query()->where('slug', 'internal.sales_executive')->firstOrFail();
+
     $this->get(route('admin.internal-users.index'))
         ->assertOk()
         ->assertInertia(fn ($page) => $page->component('admin/internal-users/index'));
@@ -117,6 +122,7 @@ test('super admin can manage identity and internal user screens', function () {
         'email' => 'ops.analyst@example.com',
         'password' => 'Ops-secret-123!',
         'password_confirmation' => 'Ops-secret-123!',
+        'role_id' => $salesRole->id,
     ])->assertRedirect(route('admin.internal-users.index'));
 
     expect(User::query()->where('email', 'ops.analyst@example.com')->exists())->toBeTrue();

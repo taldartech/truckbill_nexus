@@ -217,3 +217,51 @@ test('admin can assign schedule and complete follow-up then convert qualified le
     expect($lead->fresh()->status)->toBe(LeadStatus::Converted)
         ->and($lead->fresh()->converted_company_id)->not->toBeNull();
 });
+
+test('lead create form loads assignable internal users without users.is_active column', function () {
+    $sa = User::factory()->superAdmin()->create([
+        'password' => Hash::make('sa-secret'),
+    ]);
+    $activeInternal = User::factory()->internal()->create([
+        'name' => 'Active Sales',
+        'email' => 'active.sales@example.com',
+    ]);
+    $deactivatedInternal = User::factory()->internal()->create([
+        'name' => 'Inactive Sales',
+        'email' => 'inactive.sales@example.com',
+        'deactivated_at' => now(),
+    ]);
+    $customer = User::factory()->customer()->create([
+        'email' => 'customer.not.assignable@example.com',
+    ]);
+
+    $assignable = app(LeadService::class)->assignableInternalUsers();
+    $ids = $assignable->pluck('id')->all();
+    expect($ids)->toContain($activeInternal->id)
+        ->and($ids)->not->toContain($deactivatedInternal->id)
+        ->and($ids)->not->toContain($customer->id);
+
+    crmLogin($sa, 'sa-secret');
+
+    // Regression: previously queried users.is_active (undefined column).
+    $this->get(route('admin.crm.leads.create'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('admin/crm/leads/create')
+            ->has('assignable_users')
+            ->where('assignable_users', fn ($users) => collect($users)->contains(
+                fn (array $row): bool => (int) $row['id'] === (int) $activeInternal->id
+            )));
+
+    $this->post(route('admin.crm.leads.store'), [
+        'contact_name' => 'Assignee Lead',
+        'email' => 'assignee.lead@example.com',
+        'company_name' => 'Assignee Co',
+        'source' => LeadSource::Website->value,
+        'interested_product' => InterestedProduct::Broker->value,
+        'assigned_to_user_id' => $activeInternal->id,
+    ])->assertRedirect();
+
+    $lead = Lead::query()->where('email', 'assignee.lead@example.com')->firstOrFail();
+    expect($lead->assigned_to_user_id)->toBe($activeInternal->id);
+});

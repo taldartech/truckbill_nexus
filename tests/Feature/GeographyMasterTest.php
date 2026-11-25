@@ -76,5 +76,45 @@ test('internal operator can view platform locations', function (): void {
 
     $this->actingAs($user)
         ->get(route('admin.locations.index'))
-        ->assertOk();
+        ->assertRedirect(route('admin.states.index'));
+
+    $this->actingAs($user)
+        ->get(route('admin.states.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->component('admin/states'));
+
+    $this->actingAs($user)
+        ->get(route('admin.cities.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->component('admin/cities'));
+});
+
+test('internal operator can create state and city without remark on create', function (): void {
+    $user = User::factory()->superAdmin()->create();
+    $suffix = substr(str_replace('.', '', uniqid('', true)), -6);
+    $gstCode = str_pad((string) random_int(90, 98), 2, '0', STR_PAD_LEFT);
+    while (State::query()->where('gst_code', $gstCode)->exists()) {
+        $gstCode = str_pad((string) random_int(90, 98), 2, '0', STR_PAD_LEFT);
+    }
+
+    $this->actingAs($user)
+        ->post(route('admin.states.store'), [
+            'name' => 'Test Territory '.$suffix,
+            'code' => 'X'.$suffix,
+            'gst_code' => $gstCode,
+            'country_code' => 'IN',
+            'is_active' => true,
+        ])
+        ->assertRedirect();
+
+    $state = State::query()->where('code', 'X'.$suffix)->firstOrFail();
+
+    $this->actingAs($user)
+        ->post(route('admin.cities.store'), [
+            'state_id' => $state->id,
+            'name' => 'Testville '.$suffix,
+        ])
+        ->assertRedirect();
+
+    expect(City::query()->where('state_id', $state->id)->where('name', 'Testville '.$suffix)->exists())->toBeTrue();
 });

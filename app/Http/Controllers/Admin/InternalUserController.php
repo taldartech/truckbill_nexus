@@ -7,8 +7,10 @@ use App\Domains\Rbac\Exceptions\RbacAuthorizationException;
 use App\Domains\Rbac\Exceptions\RbacDomainException;
 use App\Domains\Rbac\RoleAssignmentService;
 use App\Http\Controllers\Controller;
+use App\Models\InternalRoleAssignment;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\Database\CaseInsensitiveLike;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rules\Password;
@@ -17,7 +19,8 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Super Admin Internal user administration (non-CRM).
+ * Super Admin Internal Team user administration (Users module).
+ * Customer identities are managed under Customer identities / company lifecycle — not here.
  */
 class InternalUserController extends Controller
 {
@@ -25,12 +28,46 @@ class InternalUserController extends Controller
     {
         $this->assertSuperAdmin($request);
 
-        $users = User::query()
+        $search = trim($request->string('q')->toString());
+        $status = trim($request->string('status')->toString());
+        $roleFilter = trim($request->string('role')->toString());
+        if ($status === '') {
+            $status = 'all';
+        }
+        if ($roleFilter === '') {
+            $roleFilter = 'all';
+        }
+
+        $query = User::query()
             ->internal()
             ->orderByDesc('is_super_admin')
-            ->orderBy('email')
-            ->limit(200)
-            ->get();
+            ->orderBy('email');
+
+        if ($search !== '') {
+            CaseInsensitiveLike::whereAnyContains($query, ['name', 'email'], $search);
+        }
+
+        if ($status === 'active') {
+            $query->active();
+        } elseif ($status === 'inactive' || $status === 'deactivated') {
+            $query->deactivated();
+        }
+
+        if ($roleFilter === 'super_admin') {
+            $query->where('is_super_admin', true);
+        } elseif ($roleFilter !== 'all') {
+            $query->where('is_super_admin', false)
+                ->whereIn('id', InternalRoleAssignment::query()
+                    ->whereNull('deactivated_at')
+                    ->where('role_id', $roleFilter)
+                    ->select('user_id'));
+        }
+
+        $users = $query->paginate(25)->withQueryString();
+
+        $roleNamesByUserId = $this->activeRoleNamesForUsers(
+            $users->getCollection()->map(fn (User $user): int => (int) $user->id)->all()
+        );
 
         $roles = Role::query()
             ->where('domain', PermissionDomain::Internal)
@@ -38,10 +75,13 @@ class InternalUserController extends Controller
             ->get(['id', 'name', 'slug']);
 
         return Inertia::render('admin/internal-users/index', [
-            'users' => $users->map(fn (User $user): array => [
+            'users' => $users->getCollection()->map(fn (User $user): array => [
                 'id' => $user->id,
                 'name' => $user->name,
                 'email' => $user->email,
+                'role_name' => $user->is_super_admin
+                    ? 'Super Admin'
+                    : ($roleNamesByUserId[$user->id] ?? '—'),
                 'is_super_admin' => $user->is_super_admin,
                 'is_active' => $user->isActive(),
                 'deactivated_at' => $user->deactivated_at?->toIso8601String(),
@@ -52,17 +92,28 @@ class InternalUserController extends Controller
                 'name' => $role->name,
                 'slug' => $role->slug,
             ])->values()->all(),
+            'filters' => [
+                'q' => $search,
+                'status' => $status,
+                'role' => $roleFilter,
+            ],
             'store_url' => route('admin.internal-users.store'),
-            'note' => 'Internal user management only. Sales CRM is a separate Phase 2A surface.',
+            'urls' => [
+                'index' => route('admin.internal-users.index'),
+            ],
+            'pagination' => [
+                'current_page' => $users->currentPage(),
+                'last_page' => $users->lastPage(),
+                'total' => $users->total(),
+                'per_page' => $users->perPage(),
+            ],
+            'note' => 'Internal Team users only. Customer Owners and Customer Users are managed under Customer identities and company administration.',
         ]);
     }
 
     public function store(Request $request, RoleAssignmentService $roles): RedirectResponse
     {
-        $this->assertSuperAdmin($request);
-
-        /** @var User $actor */
-        $actor = $request->user();
+        $actor = $this->assertSuperAdmin($request);
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -72,10 +123,22 @@ class InternalUserController extends Controller
             'is_super_admin' => ['sometimes', 'boolean'],
         ]);
 
+        $isSuperAdmin = (bool) ($validated['is_super_admin'] ?? false);
         $role = null;
-        if (isset($validated['role_id'])) {
+
+        if (! $isSuperAdmin) {
+            if (! isset($validated['role_id'])) {
+                throw ValidationException::withMessages([
+                    'role_id' => 'Select an Internal Team role, or grant Super Admin.',
+                ]);
+            }
             /** @var Role $role */
             $role = Role::query()->whereKey($validated['role_id'])->firstOrFail();
+            if ($role->domain !== PermissionDomain::Internal) {
+                throw ValidationException::withMessages([
+                    'role_id' => 'Only approved Internal Team roles may be assigned here.',
+                ]);
+            }
         }
 
         try {
@@ -83,15 +146,46 @@ class InternalUserController extends Controller
                 'name' => $validated['name'],
                 'email' => $validated['email'],
                 'password' => $validated['password'],
-                'is_super_admin' => (bool) ($validated['is_super_admin'] ?? false),
-            ], $role);
+                'is_super_admin' => $isSuperAdmin,
+            ], $isSuperAdmin ? null : $role);
         } catch (RbacAuthorizationException|RbacDomainException $e) {
             throw ValidationException::withMessages(['email' => $e->getMessage()]);
         }
 
         return redirect()
             ->route('admin.internal-users.index')
-            ->with('success', 'Internal user created.');
+            ->with('success', 'Internal Team user created.');
+    }
+
+    /**
+     * @param  array<int, int>  $userIds
+     * @return array<int, string>
+     */
+    private function activeRoleNamesForUsers(array $userIds): array
+    {
+        if ($userIds === []) {
+            return [];
+        }
+
+        $assignments = InternalRoleAssignment::query()
+            ->whereIn('user_id', $userIds)
+            ->whereNull('deactivated_at')
+            ->with('role:id,name')
+            ->get();
+
+        $map = [];
+        foreach ($assignments as $assignment) {
+            $name = $assignment->role?->name;
+            if ($name === null) {
+                continue;
+            }
+            $userId = $assignment->user_id;
+            $map[$userId] = isset($map[$userId])
+                ? $map[$userId].', '.$name
+                : $name;
+        }
+
+        return $map;
     }
 
     private function assertSuperAdmin(Request $request): User

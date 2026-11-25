@@ -212,11 +212,11 @@ class LeadController extends Controller
             'can_assign' => $this->isAdmin($actor) && ! $lead->status->isTerminal(),
             'gst_rates' => GstRate::query()
                 ->where('is_active', true)
-                ->orderBy('code')
+                ->orderBy('rate_percent')
                 ->get(['id', 'code', 'name', 'rate_percent'])
                 ->map(fn (GstRate $rate): array => [
                     'id' => $rate->id,
-                    'label' => $rate->code.' — '.$rate->name.' ('.$rate->rate_percent.'%)',
+                    'label' => rtrim(rtrim((string) $rate->rate_percent, '0'), '.').'% GST',
                 ])
                 ->values()
                 ->all(),
