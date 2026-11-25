@@ -134,6 +134,22 @@ final class PermissionCodes
 
     public const BROKER_BOOK_BALANCE_VIEW = 'broker.book_balance.view';
 
+    public const PARTLOAD_CHALLAN_VIEW = 'partload.challan.view';
+
+    public const PARTLOAD_CHALLAN_CREATE = 'partload.challan.create';
+
+    public const PARTLOAD_CHALLAN_DISPATCH = 'partload.challan.dispatch';
+
+    public const PARTLOAD_CHALLAN_CANCEL = 'partload.challan.cancel';
+
+    public const PARTLOAD_INWARD_VIEW = 'partload.inward.view';
+
+    public const PARTLOAD_INWARD_CREATE = 'partload.inward.create';
+
+    public const PARTLOAD_DR_VIEW = 'partload.delivery_receipt.view';
+
+    public const PARTLOAD_DR_CREATE = 'partload.delivery_receipt.create';
+
     /**
      * @return list<string>
      */
@@ -235,6 +251,25 @@ final class PermissionCodes
             self::BROKER_LINKED_BILTY_CREATE,
             self::BROKER_LINKED_BILTY_PAY,
             self::BROKER_BOOK_BALANCE_VIEW,
+        ];
+    }
+
+    /**
+     * Partload catalogue (registered; assigned explicitly — no blanket grants).
+     *
+     * @return list<string>
+     */
+    public static function customerPartloadCatalogue(): array
+    {
+        return [
+            self::PARTLOAD_CHALLAN_VIEW,
+            self::PARTLOAD_CHALLAN_CREATE,
+            self::PARTLOAD_CHALLAN_DISPATCH,
+            self::PARTLOAD_CHALLAN_CANCEL,
+            self::PARTLOAD_INWARD_VIEW,
+            self::PARTLOAD_INWARD_CREATE,
+            self::PARTLOAD_DR_VIEW,
+            self::PARTLOAD_DR_CREATE,
         ];
     }
 }

@@ -210,6 +210,11 @@ export function AppSidebar() {
             icon: Receipt,
         },
         {
+            title: 'Partload Challans',
+            href: '/partload/challans',
+            icon: Truck,
+        },
+        {
             title: 'Broker Registers',
             href: '/broker/registers',
             icon: ClipboardList,

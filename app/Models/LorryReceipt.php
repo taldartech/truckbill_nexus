@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Domains\Consignment\Enums\LrStatus;
 use App\Domains\Consignment\Enums\LrWorkflowContext;
+use App\Domains\Partload\Enums\PartloadFreightPaymentTerm;
 use Database\Factories\LorryReceiptFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -39,7 +40,7 @@ class LorryReceipt extends Model
         'intended_payee_type', 'intended_payee_party_id',
         'billing_customer_party_id',
         'status', 'goods_value',
-        'freight_total', 'additional_charges_total', 'created_by_user_id',
+        'freight_total', 'additional_charges_total', 'freight_payment_term', 'created_by_user_id',
         'delivered_at', 'cancelled_at', 'cancellation_remark',
     ];
 
@@ -48,6 +49,7 @@ class LorryReceipt extends Model
         return [
             'workflow_context' => LrWorkflowContext::class,
             'status' => LrStatus::class,
+            'freight_payment_term' => PartloadFreightPaymentTerm::class,
             'lr_date' => 'date',
             'goods_value' => 'decimal:2',
             'freight_total' => 'decimal:2',

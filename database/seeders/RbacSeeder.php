@@ -27,6 +27,7 @@ class RbacSeeder extends Seeder
             $this->seedCustomerPhase5Permissions();
             $this->seedCustomerPhase5InvoicePermissions();
             $this->seedCustomerPhase6Permissions();
+            $this->seedCustomerPartloadPermissions();
             $this->seedInternalRoles();
             $this->seedCustomerDefaultRoles();
             $this->seedCustomerDefaultMatrix();
@@ -154,6 +155,31 @@ class RbacSeeder extends Seeder
             [PermissionCodes::BROKER_LINKED_BILTY_CREATE, 'broker', 'linked_bilty', 'Create Linked Bilties', 'Create linked bilty groups'],
             [PermissionCodes::BROKER_LINKED_BILTY_PAY, 'broker', 'linked_bilty', 'Pay Linked Bilties', 'Record linked bilty payments'],
             [PermissionCodes::BROKER_BOOK_BALANCE_VIEW, 'broker', 'book_balance', 'View Book Balance', 'View transporter book balance'],
+        ];
+
+        foreach ($definitions as [$code, $module, $submodule, $name, $description]) {
+            $this->upsertPermission(
+                domain: PermissionDomain::Customer,
+                module: $module,
+                submodule: $submodule,
+                name: $name,
+                code: $code,
+                description: $description,
+            );
+        }
+    }
+
+    private function seedCustomerPartloadPermissions(): void
+    {
+        $definitions = [
+            [PermissionCodes::PARTLOAD_CHALLAN_VIEW, 'partload', 'challan', 'View Challans', 'View Partload Challans'],
+            [PermissionCodes::PARTLOAD_CHALLAN_CREATE, 'partload', 'challan', 'Create Challans', 'Create Partload Challans'],
+            [PermissionCodes::PARTLOAD_CHALLAN_DISPATCH, 'partload', 'challan', 'Dispatch Challans', 'Dispatch Partload Challans'],
+            [PermissionCodes::PARTLOAD_CHALLAN_CANCEL, 'partload', 'challan', 'Cancel Challans', 'Cancel Partload Challans'],
+            [PermissionCodes::PARTLOAD_INWARD_VIEW, 'partload', 'inward', 'View Inward Registers', 'View Partload Inward Registers'],
+            [PermissionCodes::PARTLOAD_INWARD_CREATE, 'partload', 'inward', 'Create Inward Registers', 'Create Partload Inward Registers'],
+            [PermissionCodes::PARTLOAD_DR_VIEW, 'partload', 'delivery_receipt', 'View Delivery Receipts', 'View Partload Delivery Receipts'],
+            [PermissionCodes::PARTLOAD_DR_CREATE, 'partload', 'delivery_receipt', 'Create Delivery Receipts', 'Create Partload Delivery Receipts'],
         ];
 
         foreach ($definitions as [$code, $module, $submodule, $name, $description]) {

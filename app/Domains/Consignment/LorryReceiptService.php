@@ -21,6 +21,7 @@ use App\Domains\Numbering\Enums\DocumentNumberScopeType;
 use App\Domains\Numbering\Enums\DocumentNumberType;
 use App\Domains\Numbering\Exceptions\DocumentNumberConflictException;
 use App\Domains\OwnFleet\Enums\TripStatus;
+use App\Domains\Partload\Enums\PartloadFreightPaymentTerm;
 use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
 use App\Domains\Subscription\Entitlement\SubscriptionEntitlementGate;
 use App\Models\Branch;
@@ -194,6 +195,7 @@ final class LorryReceiptService
                     'reference_by_party_id' => $normalized['reference_by_party_id'],
                     'freight_total' => $normalized['freight_total'],
                     'additional_charges_total' => $normalized['additional_charges_total'],
+                    'freight_payment_term' => $normalized['freight_payment_term'],
                     'created_by_user_id' => $actor->id,
                 ]);
                 $lr->save();
@@ -286,6 +288,7 @@ final class LorryReceiptService
                     'reference_by_party_id' => $normalized['reference_by_party_id'],
                     'freight_total' => $normalized['freight_total'],
                     'additional_charges_total' => $normalized['additional_charges_total'],
+                    'freight_payment_term' => $normalized['freight_payment_term'],
                 ])->save();
 
                 $this->replaceGoodsRows($lorryReceipt, $normalized['goods']);
@@ -595,6 +598,7 @@ final class LorryReceiptService
             'additional_charges' => $charges,
             'freight_total' => number_format((float) $freightTotal, 2, '.', ''),
             'additional_charges_total' => number_format((float) $chargesTotal, 2, '.', ''),
+            'freight_payment_term' => $this->normalizeFreightPaymentTerm($payload['freight_payment_term'] ?? null, $context),
             'goods_value' => $resolvedGoodsValue,
             'external_gr_number' => $this->optionalTrimmedString($payload['external_gr_number'] ?? null, 100),
             'client_invoice_number' => $this->optionalTrimmedString($payload['client_invoice_number'] ?? null, 100),
@@ -1445,6 +1449,26 @@ final class LorryReceiptService
         }
 
         return mb_substr($trimmed, 0, $maxLength);
+    }
+
+    private function normalizeFreightPaymentTerm(mixed $value, LrWorkflowContext $context): ?string
+    {
+        if ($context !== LrWorkflowContext::Partload) {
+            return null;
+        }
+
+        if ($value === null || $value === '') {
+            return PartloadFreightPaymentTerm::ToPay->value;
+        }
+
+        $term = PartloadFreightPaymentTerm::tryFrom((string) $value);
+        if ($term === null) {
+            throw ValidationException::withMessages([
+                'freight_payment_term' => 'Freight payment term must be Paid, To Pay, TBB, or FOC.',
+            ]);
+        }
+
+        return $term->value;
     }
 
     private function ensureTenantMatches(Company $company, Branch $branch): void

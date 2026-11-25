@@ -49,6 +49,9 @@
 | U23-HIRE-MULTI-PAY     | Hire register multi-select → bulk voucher                    | Market            | Aligned (26 Nov 2026 ERP directive)                        |
 | U23-PAYOUT-EXPORT      | Bank payout CSV export from voucher register                 | Market            | Aligned (26 Nov 2026 ERP directive)                        |
 | U23-HIRE-VOUCHER-CTA   | Hire index Record voucher CTA for outstanding hires          | Market            | Aligned (was missing from listPayload)                     |
+| U23-PARTLOAD-CHALLAN   | Partload Challan consolidation + dispatch                    | Partload          | Aligned foundation (26 Nov 2026 ERP)                       |
+| U23-PARTLOAD-INWARD-DR | Partload Inward Register + Delivery Receipt                  | Partload          | Aligned foundation (26 Nov 2026 ERP)                       |
+| U23-ACC-F0             | Accounting COA/periods/posting engine                        | Accounting        | Aligned foundation (`1b48769`)                             |
 
 ## PO directive (25 Nov 2026) — superseding earlier OwnFleet navigation
 

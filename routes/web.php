@@ -33,6 +33,9 @@ use App\Http\Controllers\Branch\LinkedBiltyGroupController;
 use App\Http\Controllers\Branch\LorryHireController;
 use App\Http\Controllers\Branch\LorryReceiptController;
 use App\Http\Controllers\Branch\MastersHubController;
+use App\Http\Controllers\Branch\PartloadChallanController;
+use App\Http\Controllers\Branch\PartloadDeliveryReceiptController;
+use App\Http\Controllers\Branch\PartloadInwardController;
 use App\Http\Controllers\Branch\PartyController;
 use App\Http\Controllers\Branch\StationController;
 use App\Http\Controllers\Branch\TransporterBookBalanceController;
@@ -301,6 +304,17 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/broker/linked-bilties/{linkedBiltyGroup}', [LinkedBiltyGroupController::class, 'show'])->name('branch.broker.linked-bilties.show');
         Route::post('/broker/linked-bilties/{linkedBiltyGroup}/pay/preview', [LinkedBiltyGroupController::class, 'payPreview'])->name('branch.broker.linked-bilties.pay.preview');
         Route::post('/broker/linked-bilties/{linkedBiltyGroup}/pay', [LinkedBiltyGroupController::class, 'payStore'])->name('branch.broker.linked-bilties.pay.store');
+
+        Route::get('/partload/challans', [PartloadChallanController::class, 'index'])->name('branch.partload.challans.index');
+        Route::get('/partload/challans/create', [PartloadChallanController::class, 'create'])->name('branch.partload.challans.create');
+        Route::post('/partload/challans', [PartloadChallanController::class, 'store'])->name('branch.partload.challans.store');
+        Route::get('/partload/challans/{partloadChallan}', [PartloadChallanController::class, 'show'])->name('branch.partload.challans.show');
+        Route::post('/partload/challans/{partloadChallan}/dispatch', [PartloadChallanController::class, 'dispatch'])->name('branch.partload.challans.dispatch');
+        Route::post('/partload/challans/{partloadChallan}/cancel', [PartloadChallanController::class, 'cancel'])->name('branch.partload.challans.cancel');
+        Route::post('/partload/inwards', [PartloadInwardController::class, 'store'])->name('branch.partload.inwards.store');
+        Route::get('/partload/inwards/{partloadInward}', [PartloadInwardController::class, 'show'])->name('branch.partload.inwards.show');
+        Route::get('/partload/delivery-receipts/create', [PartloadDeliveryReceiptController::class, 'create'])->name('branch.partload.delivery-receipts.create');
+        Route::post('/partload/delivery-receipts', [PartloadDeliveryReceiptController::class, 'store'])->name('branch.partload.delivery-receipts.store');
 
         Route::get('/trips', [TripController::class, 'index'])->name('branch.trips.index');
         Route::get('/trips/{trip}', [TripController::class, 'show'])->name('branch.trips.show');
