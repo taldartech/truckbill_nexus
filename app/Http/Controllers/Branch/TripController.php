@@ -659,6 +659,7 @@ class TripController extends Controller
             'can_cancel' => $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_CANCEL, $company, $branch),
             'can_delete' => $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_DELETE, $company, $branch),
             'can_view_freight' => $maySeeFreight,
+            'can_quick_create_catalogues' => (int) $actor->id === (int) $company->owner_user_id,
         ];
     }
 
@@ -1006,6 +1007,7 @@ class TripController extends Controller
                 'index' => route('branch.lorry-receipts.index', absolute: false),
                 'add_expense' => route('branch.trips.expenses.store', [$trip], absolute: false),
                 'remove_expense' => route('branch.trips.expenses.destroy', [$trip, 'EXPENSE_ID'], absolute: false),
+                'expense_categories_store' => route('branch.expense-categories.store', absolute: false),
                 'documents' => route('branch.documents.index', [
                     'parentType' => 'trip',
                     'parentId' => $trip->id,

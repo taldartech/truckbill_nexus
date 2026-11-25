@@ -3,6 +3,10 @@ import { FileText, Fuel, Route, Wallet } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { AppIconAction } from '@/components/app-icon-action';
 import {
+    QuickCreateCatalogueSheet,
+    type QuickCreatedCatalogueItem,
+} from '@/components/masters/quick-create-catalogue-sheet';
+import {
     DocumentDrawer,
     type DocumentDrawerProps,
 } from '@/components/masters/document-drawer';
@@ -72,6 +76,7 @@ type Props = {
     permissions: {
         can_edit: boolean;
         can_view_freight: boolean;
+        can_quick_create_catalogues?: boolean;
     };
     urls: {
         show: string;
@@ -80,6 +85,7 @@ type Props = {
         index: string;
         add_expense: string;
         remove_expense: string;
+        expense_categories_store?: string;
         documents: string;
     };
     documentDrawer?: DocumentDrawerProps | null;
@@ -133,6 +139,14 @@ export default function TripExpensesWorkspace({
     const errors = page.props.errors;
     const [docsOpen, setDocsOpen] = useState(false);
     const [isDiesel, setIsDiesel] = useState(false);
+    const [expenseCategories, setExpenseCategories] = useState(
+        () => formOptions.expense_categories,
+    );
+    const [expenseCategoryId, setExpenseCategoryId] = useState('');
+    const [expenseCategoryQuickCreateOpen, setExpenseCategoryQuickCreateOpen] =
+        useState(false);
+    const canQuickCreateCatalogues =
+        permissions.can_quick_create_catalogues === true;
 
     const mutable = permissions.can_edit && trip.status !== 'cancelled';
     const dieselLitres = useMemo(
@@ -363,15 +377,39 @@ export default function TripExpensesWorkspace({
                                             {({ processing }) => (
                                                 <>
                                                     <div className="space-y-1.5">
-                                                        <Label htmlFor="expense_category_id">
-                                                            Expense category
-                                                        </Label>
+                                                        <div className="flex items-center justify-between gap-2">
+                                                            <Label htmlFor="expense_category_id">
+                                                                Expense category
+                                                            </Label>
+                                                            {canQuickCreateCatalogues &&
+                                                            urls.expense_categories_store ? (
+                                                                <button
+                                                                    type="button"
+                                                                    className="text-xs font-medium text-[#2D8CFF] hover:underline"
+                                                                    onClick={() =>
+                                                                        setExpenseCategoryQuickCreateOpen(
+                                                                            true,
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    + Add
+                                                                </button>
+                                                            ) : null}
+                                                        </div>
                                                         <select
                                                             id="expense_category_id"
                                                             name="expense_category_id"
                                                             required
                                                             className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                                            defaultValue=""
+                                                            value={
+                                                                expenseCategoryId
+                                                            }
+                                                            onChange={(event) =>
+                                                                setExpenseCategoryId(
+                                                                    event.target
+                                                                        .value,
+                                                                )
+                                                            }
                                                         >
                                                             <option
                                                                 value=""
@@ -379,7 +417,7 @@ export default function TripExpensesWorkspace({
                                                             >
                                                                 Select category
                                                             </option>
-                                                            {formOptions.expense_categories.map(
+                                                            {expenseCategories.map(
                                                                 (category) => (
                                                                     <option
                                                                         key={
@@ -671,6 +709,28 @@ export default function TripExpensesWorkspace({
                     {...documentDrawer}
                     open={docsOpen}
                     onOpenChange={setDocsOpen}
+                />
+            ) : null}
+
+            {expenseCategoryQuickCreateOpen && urls.expense_categories_store ? (
+                <QuickCreateCatalogueSheet
+                    open={expenseCategoryQuickCreateOpen}
+                    onOpenChange={setExpenseCategoryQuickCreateOpen}
+                    title="Expense Category"
+                    storeUrl={urls.expense_categories_store}
+                    onCreated={(item: QuickCreatedCatalogueItem) => {
+                        setExpenseCategories((current) => {
+                            if (current.some((entry) => entry.id === item.id)) {
+                                return current;
+                            }
+                            return [
+                                ...current,
+                                { id: item.id, name: item.name },
+                            ];
+                        });
+                        setExpenseCategoryId(item.id);
+                        setExpenseCategoryQuickCreateOpen(false);
+                    }}
                 />
             ) : null}
         </>

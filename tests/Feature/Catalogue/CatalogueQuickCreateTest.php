@@ -85,3 +85,24 @@ it('creates package type via json with explicit code', function (): void {
         ->assertJsonPath('data.code', 'WCRATE')
         ->assertJsonPath('data.name', 'Wooden Crate');
 });
+
+it('creates expense category via json quick-create', function (): void {
+    ['owner' => $owner, 'company' => $company, 'branch' => $branch] = catalogueQuickCreateWorkspace();
+
+    $this->flushSession();
+    $this->actingAs($owner);
+    session()->forget(WebSessionService::SESSION_VERSION_KEY);
+    seedBranchSession($company, $branch);
+
+    $response = $this->postJson(route('branch.expense-categories.store'), [
+        'name' => 'Parking Fee',
+        'remark' => 'Quick create',
+    ]);
+
+    $response->assertCreated()
+        ->assertJsonPath('data.name', 'Parking Fee');
+
+    $item = OwnerCatalogueItem::query()->findOrFail($response->json('data.id'));
+    expect($item->catalogue_type)->toBe(OwnerCatalogueType::ExpenseCategory->value)
+        ->and($item->code)->toBe('PARKING-FEE');
+});
