@@ -18,6 +18,7 @@
         </include>
     </source>
     <php>
+        <ini name="memory_limit" value="2G"/>
         <!--
           force=true only for process isolation (SESSION_DRIVER=array etc.).
           Do NOT force DB_* — CI MySQL and local disposable Postgres (NEXUS_TEST_DB_PORT)
@@ -33,6 +34,8 @@
         <env name="DB_HOST" value="127.0.0.1"/>
         <env name="DB_PORT" value="5432"/>
         <env name="DB_DATABASE" value="nexus_test"/>
+        <env name="DB_USERNAME" value="nexus_user"/>
+        <env name="DB_PASSWORD" value=""/>
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array" force="true"/>
         <env name="QUEUE_CONNECTION" value="sync" force="true"/>
