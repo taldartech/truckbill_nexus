@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 type Props = {
+    title?: string;
     filters: { as_of: string | null };
     rows: Array<{
         ledger_id: string;
@@ -18,18 +19,43 @@ type Props = {
         net: string;
         side: string;
     }>;
-    urls: { index: string; trial_balance: string; vouchers: string };
+    urls: {
+        index: string;
+        outstanding?: string;
+        tax_summary?: string;
+        trial_balance: string;
+        vouchers: string;
+    };
 };
 
-export default function AccountingOutstanding({ filters, rows, urls }: Props) {
+export default function AccountingOutstanding({
+    title = 'Outstanding Control Accounts',
+    filters,
+    rows,
+    urls,
+}: Props) {
     return (
         <>
-            <Head title="Outstanding Control Accounts" />
+            <Head title={title} />
             <AppIndexPage>
                 <AppIndexListCard
-                    title="Outstanding Control Accounts"
+                    title={title}
                     toolbar={
                         <div className="flex flex-wrap gap-2">
+                            {urls.outstanding ? (
+                                <Button asChild variant="outline" size="sm">
+                                    <Link href={urls.outstanding}>
+                                        Outstanding
+                                    </Link>
+                                </Button>
+                            ) : null}
+                            {urls.tax_summary ? (
+                                <Button asChild variant="outline" size="sm">
+                                    <Link href={urls.tax_summary}>
+                                        GST / TDS
+                                    </Link>
+                                </Button>
+                            ) : null}
                             <Button asChild variant="outline" size="sm">
                                 <Link href={urls.trial_balance}>
                                     Trial Balance
@@ -117,7 +143,7 @@ export default function AccountingOutstanding({ filters, rows, urls }: Props) {
                                             className="px-3 py-6 text-muted-foreground"
                                             colSpan={4}
                                         >
-                                            No outstanding control balances.
+                                            No balances for this enquiry.
                                         </td>
                                     </tr>
                                 ) : null}
