@@ -38,6 +38,8 @@ type Props = {
         trial_balance: string;
         profit_and_loss: string;
         balance_sheet: string;
+        cash_book: string;
+        bank_book: string;
     };
 };
 
@@ -75,6 +77,16 @@ export default function AccountingVouchersIndex({
                                     <Button asChild variant="outline" size="sm">
                                         <Link href={urls.balance_sheet}>
                                             Balance Sheet
+                                        </Link>
+                                    </Button>
+                                    <Button asChild variant="outline" size="sm">
+                                        <Link href={urls.cash_book}>
+                                            Cash Book
+                                        </Link>
+                                    </Button>
+                                    <Button asChild variant="outline" size="sm">
+                                        <Link href={urls.bank_book}>
+                                            Bank Book
                                         </Link>
                                     </Button>
                                 </>

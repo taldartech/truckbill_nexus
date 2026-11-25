@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\GeographyController;
 use App\Http\Controllers\Api\GeographyQuickCreateController;
 use App\Http\Controllers\Api\PublicLeadController;
 use App\Http\Controllers\Api\PublicLeadOnboardingController;
+use App\Http\Controllers\Branch\Accounting\AccountingCashBankBookController;
 use App\Http\Controllers\Branch\Accounting\AccountingLedgerController;
 use App\Http\Controllers\Branch\Accounting\AccountingLedgerQuickCreateController;
 use App\Http\Controllers\Branch\Accounting\AccountingReportController;
@@ -338,6 +339,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/accounting/reports/trial-balance', [AccountingReportController::class, 'trialBalance'])->name('branch.accounting.reports.trial-balance');
         Route::get('/accounting/reports/profit-and-loss', [AccountingReportController::class, 'profitAndLoss'])->name('branch.accounting.reports.profit-and-loss');
         Route::get('/accounting/reports/balance-sheet', [AccountingReportController::class, 'balanceSheet'])->name('branch.accounting.reports.balance-sheet');
+        Route::get('/accounting/reports/cash-book', [AccountingCashBankBookController::class, 'cash'])->name('branch.accounting.reports.cash-book');
+        Route::get('/accounting/reports/bank-book', [AccountingCashBankBookController::class, 'bank'])->name('branch.accounting.reports.bank-book');
 
         Route::get('/trips', [TripController::class, 'index'])->name('branch.trips.index');
         Route::get('/trips/{trip}', [TripController::class, 'show'])->name('branch.trips.show');
