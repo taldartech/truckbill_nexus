@@ -34,7 +34,14 @@ return [
     */
 
     'frontend_url' => rtrim((string) env('LEAD_ONBOARDING_FRONTEND_URL', env('WEBSITE_URL', 'http://127.0.0.1:8080')), '/'),
-    'login_url' => rtrim((string) env('NEXUS_LOGIN_URL', env('APP_URL', 'http://localhost:8000')), '/').'/login',
+
+    /*
+    | NEXUS_LOGIN_URL is the full login URL when set (e.g. "${APP_URL}/login").
+    | Do not append /login again — that produced /login/login.
+    */
+    'login_url' => filled(env('NEXUS_LOGIN_URL'))
+        ? rtrim((string) env('NEXUS_LOGIN_URL'), '/')
+        : rtrim((string) env('APP_URL', 'http://localhost:8000'), '/').'/login',
 
     /*
     |--------------------------------------------------------------------------
@@ -59,7 +66,7 @@ return [
         static fn (string $origin): string => trim($origin),
         explode(',', (string) env(
             'LEAD_ONBOARDING_ALLOWED_ORIGINS',
-            'http://127.0.0.1:8080,http://localhost:8080,https://truckbill.in,https://www.truckbill.in'
+            'http://127.0.0.1:8080,http://localhost:8080,http://truckbill.test,https://truckbill.test,https://truckbill.in,https://www.truckbill.in'
         ))
     ))),
 

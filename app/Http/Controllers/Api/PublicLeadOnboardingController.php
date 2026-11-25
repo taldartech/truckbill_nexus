@@ -44,7 +44,7 @@ class PublicLeadOnboardingController extends Controller
                 'password_set' => filled($session?->password_hash),
                 'completed' => $session?->completed_at !== null,
             ],
-            'policies' => config('lead_onboarding.policies', []),
+            'policies' => $this->policyList(),
             'login_url' => config('lead_onboarding.login_url'),
         ]);
     }
@@ -133,5 +133,39 @@ class PublicLeadOnboardingController extends Controller
             'message' => 'Onboarding completed.',
             'login_url' => $result['login_url'],
         ]);
+    }
+
+    /**
+     * Website onboarding UI expects a list of {key, label, url}.
+     *
+     * @return list<array{key: string, label: string, url: string}>
+     */
+    private function policyList(): array
+    {
+        $configured = config('lead_onboarding.policies', []);
+        if (! is_array($configured)) {
+            return [];
+        }
+
+        $labels = [
+            'terms' => 'Terms of Service',
+            'privacy' => 'Privacy Policy',
+            'refund' => 'Refund Policy',
+            'acceptable_use' => 'Acceptable Use Policy',
+        ];
+
+        $policies = [];
+        foreach ($configured as $key => $url) {
+            if (! is_string($key) || ! is_string($url) || $url === '') {
+                continue;
+            }
+            $policies[] = [
+                'key' => $key,
+                'label' => $labels[$key] ?? ucwords(str_replace('_', ' ', $key)),
+                'url' => $url,
+            ];
+        }
+
+        return $policies;
     }
 }

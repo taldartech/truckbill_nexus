@@ -263,9 +263,14 @@ test('public lead onboarding completes owner without creating company', function
     $invite = app(LeadOnboardingService::class)->sendInvite($sa, $lead);
     $token = $invite['plain_token'];
 
-    $this->getJson(route('api.public.onboarding.show', ['token' => $token]))
+    $show = $this->getJson(route('api.public.onboarding.show', ['token' => $token]))
         ->assertOk()
         ->assertJsonPath('recipient.email', 'onboard.owner@example.com');
+
+    $policies = $show->json('policies');
+    expect($policies)->toBeArray()->not->toBeEmpty();
+    expect($policies[0])->toHaveKeys(['key', 'label', 'url']);
+    expect(array_column($policies, 'key'))->toEqual(array_keys(config('lead_onboarding.policies')));
 
     $otpResponse = $this->postJson(route('api.public.onboarding.otp.send', ['token' => $token]))
         ->assertOk();
@@ -285,9 +290,13 @@ test('public lead onboarding completes owner without creating company', function
         'password_confirmation' => 'Owner-Pass!23456',
     ])->assertOk();
 
-    $this->postJson(route('api.public.onboarding.complete', ['token' => $token]))
+    $complete = $this->postJson(route('api.public.onboarding.complete', ['token' => $token]))
         ->assertOk()
         ->assertJsonStructure(['login_url']);
+
+    $loginUrl = (string) $complete->json('login_url');
+    expect($loginUrl)->toContain('/login')
+        ->and($loginUrl)->not->toContain('/login/login');
 
     $owner = User::query()->where('email', 'onboard.owner@example.com')->firstOrFail();
     expect($owner->isCustomer())->toBeTrue()
