@@ -40,6 +40,8 @@ type Props = {
         balance_sheet: string;
         cash_book: string;
         bank_book: string;
+        outstanding: string;
+        fund_transfer: string;
     };
 };
 
@@ -89,16 +91,30 @@ export default function AccountingVouchersIndex({
                                             Bank Book
                                         </Link>
                                     </Button>
+                                    <Button asChild variant="outline" size="sm">
+                                        <Link href={urls.outstanding}>
+                                            Outstanding
+                                        </Link>
+                                    </Button>
                                 </>
                             ) : null}
                             {permissions.can_create ? (
-                                <Button
-                                    asChild
-                                    size="sm"
-                                    className="bg-[#2FB36F] text-white hover:bg-[#279960]"
-                                >
-                                    <Link href={urls.create}>New Voucher</Link>
-                                </Button>
+                                <>
+                                    <Button asChild variant="outline" size="sm">
+                                        <Link href={urls.fund_transfer}>
+                                            Fund Transfer
+                                        </Link>
+                                    </Button>
+                                    <Button
+                                        asChild
+                                        size="sm"
+                                        className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                                    >
+                                        <Link href={urls.create}>
+                                            New Voucher
+                                        </Link>
+                                    </Button>
+                                </>
                             ) : null}
                         </div>
                     }

@@ -89,6 +89,8 @@ class AccountingVoucherController extends Controller
                 'balance_sheet' => route('branch.accounting.reports.balance-sheet', absolute: false),
                 'cash_book' => route('branch.accounting.reports.cash-book', absolute: false),
                 'bank_book' => route('branch.accounting.reports.bank-book', absolute: false),
+                'outstanding' => route('branch.accounting.reports.outstanding', absolute: false),
+                'fund_transfer' => route('branch.accounting.fund-transfers.create', absolute: false),
             ],
         ]);
     }
