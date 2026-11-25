@@ -1,5 +1,6 @@
 import { QuickCreateCitySheet } from '@/components/geography/quick-create-city-sheet';
 import { Form, Head, router, usePage } from '@inertiajs/react';
+import { Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import {
     PortalErrorList,
@@ -9,7 +10,6 @@ import {
     ResponsiveDataTable,
     type DataTableColumn,
 } from '@/components/data-table';
-import { FormSection } from '@/components/form-section';
 import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -114,6 +114,10 @@ export default function AdminCities({
         [],
     );
 
+    const resetFilters = () => {
+        router.get(urls.index, {}, { preserveState: true, replace: true });
+    };
+
     const applyFilters = (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
         const form = event.currentTarget;
@@ -145,8 +149,21 @@ export default function AdminCities({
 
     return (
         <>
-            <Head title="City master" />
-            <PageShell title="City master" description={note}>
+            <Head title="Cities" />
+            <PageShell
+                title="Cities"
+                description={note}
+                actions={
+                    <Button
+                        type="button"
+                        className="gap-1.5 bg-[#2FB36F] text-white hover:bg-[#279960]"
+                        onClick={() => setCreateOpen(true)}
+                    >
+                        <Plus className="size-4" aria-hidden />
+                        Add City
+                    </Button>
+                }
+            >
                 <PortalFlashBanner message={flash?.success} />
                 <PortalErrorList
                     errors={errors}
@@ -154,8 +171,8 @@ export default function AdminCities({
                 />
 
                 <form onSubmit={applyFilters}>
-                    <FormSection title="Search & filters" columns={2}>
-                        <div className="space-y-2">
+                    <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-card p-4 shadow-xs">
+                        <div className="min-w-[12rem] flex-1 space-y-2">
                             <Label htmlFor="city_q">Search</Label>
                             <Input
                                 id="city_q"
@@ -164,7 +181,7 @@ export default function AdminCities({
                                 placeholder="City name"
                             />
                         </div>
-                        <div className="space-y-2">
+                        <div className="w-full min-w-[10rem] space-y-2 sm:w-auto sm:min-w-[12rem]">
                             <Label htmlFor="filter_state_id">State</Label>
                             <select
                                 id="filter_state_id"
@@ -180,7 +197,7 @@ export default function AdminCities({
                                 ))}
                             </select>
                         </div>
-                        <div className="space-y-2">
+                        <div className="w-full min-w-[10rem] space-y-2 sm:w-auto">
                             <Label htmlFor="city_status">Status</Label>
                             <select
                                 id="city_status"
@@ -193,25 +210,20 @@ export default function AdminCities({
                                 <option value="deactivated">Deactivated</option>
                             </select>
                         </div>
-                        <div className="flex items-end">
+                        <div className="flex flex-wrap gap-2">
                             <Button type="submit" variant="secondary">
-                                Apply filters
+                                Apply
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={resetFilters}
+                            >
+                                Reset
                             </Button>
                         </div>
-                    </FormSection>
-                </form>
-
-                <FormSection title="Create city" columns={1}>
-                    <div className="flex flex-wrap items-center gap-3">
-                        <Button
-                            type="button"
-                            className="bg-[#2FB36F] text-white hover:bg-[#279960]"
-                            onClick={() => setCreateOpen(true)}
-                        >
-                            Add City
-                        </Button>
                     </div>
-                </FormSection>
+                </form>
 
                 <QuickCreateCitySheet
                     open={createOpen}

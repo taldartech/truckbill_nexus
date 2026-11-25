@@ -239,13 +239,17 @@ test('lead create form loads assignable internal users without users.is_active c
         'contact_name' => 'Assignee Lead',
         'email' => 'assignee.lead@example.com',
         'company_name' => 'Assignee Co',
+        'state' => 'Rajasthan',
+        'city' => 'Custom Locality',
         'source' => LeadSource::Website->value,
         'interested_product' => InterestedProduct::Broker->value,
         'assigned_to_user_id' => $activeInternal->id,
     ])->assertRedirect();
 
     $lead = Lead::query()->where('email', 'assignee.lead@example.com')->firstOrFail();
-    expect($lead->assigned_to_user_id)->toBe($activeInternal->id);
+    expect($lead->assigned_to_user_id)->toBe($activeInternal->id)
+        ->and($lead->state)->toBe('Rajasthan')
+        ->and($lead->city)->toBe('Custom Locality');
 });
 
 test('public lead onboarding completes owner without creating company', function () {

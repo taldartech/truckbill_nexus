@@ -19,6 +19,7 @@ use App\Support\Tenant\TenantContext;
 use App\Support\Tenant\TenantContextHolder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 
 final class LeadService
@@ -36,6 +37,8 @@ final class LeadService
      *     email?: string|null,
      *     mobile?: string|null,
      *     company_name?: string|null,
+     *     state?: string|null,
+     *     city?: string|null,
      *     source: string|LeadSource,
      *     interested_product: string|InterestedProduct,
      *     remarks?: string|null,
@@ -79,13 +82,18 @@ final class LeadService
             $this->assertCanAssign($actor);
         }
 
-        return $this->withPlatformTenant(function () use ($actor, $attributes, $source, $product, $normalized, $override, $overrideRemark, $assigneeId, $email): Lead {
-            return $this->auditedTransaction->run(function () use ($actor, $attributes, $source, $product, $normalized, $override, $overrideRemark, $assigneeId, $email): Lead {
+        $state = $this->normalizeGeoText($attributes['state'] ?? null);
+        $city = $this->normalizeGeoText($attributes['city'] ?? null);
+
+        return $this->withPlatformTenant(function () use ($actor, $attributes, $source, $product, $normalized, $override, $overrideRemark, $assigneeId, $email, $state, $city): Lead {
+            return $this->auditedTransaction->run(function () use ($actor, $attributes, $source, $product, $normalized, $override, $overrideRemark, $assigneeId, $email, $state, $city): Lead {
                 $lead = Lead::query()->create([
                     'contact_name' => trim((string) $attributes['contact_name']),
                     'email' => $email !== '' ? $email : null,
                     'mobile' => isset($attributes['mobile']) ? trim((string) $attributes['mobile']) : null,
                     'company_name' => isset($attributes['company_name']) ? trim((string) $attributes['company_name']) : null,
+                    'state' => $state,
+                    'city' => $city,
                     'source' => $source,
                     'interested_product' => $product,
                     'status' => LeadStatus::New,
@@ -108,6 +116,272 @@ final class LeadService
                 );
 
                 return $lead->refresh();
+            });
+        });
+    }
+
+    /**
+     * @param  array{
+     *     contact_name?: string,
+     *     email?: string|null,
+     *     mobile?: string|null,
+     *     company_name?: string|null,
+     *     state?: string|null,
+     *     city?: string|null,
+     *     source?: string|LeadSource,
+     *     interested_product?: string|InterestedProduct,
+     *     remarks?: string|null,
+     *     assigned_to_user_id?: int|null
+     * }  $attributes
+     */
+    public function update(User $actor, Lead $lead, array $attributes): Lead
+    {
+        $this->assertCanMutateLead($actor, $lead);
+
+        if ($lead->status->isTerminal()) {
+            throw new CrmDomainException('Terminal leads cannot be edited.');
+        }
+
+        $source = array_key_exists('source', $attributes)
+            ? ($attributes['source'] instanceof LeadSource
+                ? $attributes['source']
+                : LeadSource::from((string) $attributes['source']))
+            : $lead->source;
+        $product = array_key_exists('interested_product', $attributes)
+            ? ($attributes['interested_product'] instanceof InterestedProduct
+                ? $attributes['interested_product']
+                : InterestedProduct::from((string) $attributes['interested_product']))
+            : $lead->interested_product;
+
+        $email = array_key_exists('email', $attributes)
+            ? trim((string) ($attributes['email'] ?? ''))
+            : (string) ($lead->email ?? '');
+        $normalized = $email !== '' ? Str::lower($email) : null;
+
+        $assigneeId = array_key_exists('assigned_to_user_id', $attributes)
+            ? $attributes['assigned_to_user_id']
+            : $lead->assigned_to_user_id;
+        if ($assigneeId !== null && (int) $assigneeId !== (int) $lead->assigned_to_user_id) {
+            $this->assertAssignableSalesUser((int) $assigneeId);
+            $this->assertCanAssign($actor);
+        }
+
+        $state = array_key_exists('state', $attributes)
+            ? $this->normalizeGeoText($attributes['state'])
+            : $lead->state;
+        $city = array_key_exists('city', $attributes)
+            ? $this->normalizeGeoText($attributes['city'])
+            : $lead->city;
+
+        return $this->withPlatformTenant(function () use ($actor, $lead, $attributes, $source, $product, $normalized, $assigneeId, $email, $state, $city): Lead {
+            return $this->auditedTransaction->run(function () use ($actor, $lead, $attributes, $source, $product, $normalized, $assigneeId, $email, $state, $city): Lead {
+                $before = $this->snapshot($lead);
+                $lead->forceFill([
+                    'contact_name' => array_key_exists('contact_name', $attributes)
+                        ? trim((string) $attributes['contact_name'])
+                        : $lead->contact_name,
+                    'email' => $email !== '' ? $email : null,
+                    'mobile' => array_key_exists('mobile', $attributes)
+                        ? (trim((string) ($attributes['mobile'] ?? '')) ?: null)
+                        : $lead->mobile,
+                    'company_name' => array_key_exists('company_name', $attributes)
+                        ? (trim((string) ($attributes['company_name'] ?? '')) ?: null)
+                        : $lead->company_name,
+                    'state' => $state,
+                    'city' => $city,
+                    'source' => $source,
+                    'interested_product' => $product,
+                    'assigned_to_user_id' => $assigneeId,
+                    'remarks' => array_key_exists('remarks', $attributes)
+                        ? (trim((string) ($attributes['remarks'] ?? '')) ?: null)
+                        : $lead->remarks,
+                    'email_normalized' => $normalized,
+                ])->save();
+
+                $this->recordActivity($lead, $actor, 'updated', 'Lead details updated');
+                $this->auditWriter->write(
+                    AuditAction::Updated,
+                    Lead::class,
+                    $lead->id,
+                    remark: 'CRM lead updated',
+                    before: $before,
+                    after: $this->snapshot($lead->refresh()),
+                );
+
+                return $lead->refresh();
+            });
+        });
+    }
+
+    /**
+     * Public website lead intake (no Internal CRM actor).
+     * Always forces Source=Website and Status=New; never trusts privileged fields.
+     *
+     * @param  array<string, mixed>  $attributes
+     * @return array{lead: Lead, created: bool, replayed: bool, appended: bool, receipt: string}
+     */
+    public function captureFromWebsite(array $attributes): array
+    {
+        $contactName = trim((string) ($attributes['contact_name'] ?? $attributes['name'] ?? ''));
+        $email = trim((string) ($attributes['email'] ?? ''));
+        $normalized = $email !== '' ? Str::lower($email) : null;
+        $product = $this->mapPublicProduct($attributes['interested_product'] ?? $attributes['product_interested_in'] ?? null);
+        $channel = $this->normalizeSourceChannel($attributes['source'] ?? null);
+        $remarks = isset($attributes['remarks']) ? trim((string) $attributes['remarks']) : null;
+        $state = $this->normalizeGeoText($attributes['state'] ?? null);
+        $city = $this->normalizeGeoText($attributes['city'] ?? null);
+        $idempotencyKey = $this->resolveIdempotencyKey($attributes, $normalized, $product, $channel, $remarks);
+
+        $cacheKey = 'public-lead:idem:'.$idempotencyKey;
+        $ttl = max(60, (int) config('public_leads.idempotency_ttl_seconds', 600));
+
+        $cached = Cache::get($cacheKey);
+        if (is_array($cached) && isset($cached['lead_id'], $cached['receipt'])) {
+            $existing = Lead::query()->find($cached['lead_id']);
+            if ($existing instanceof Lead) {
+                return [
+                    'lead' => $existing,
+                    'created' => false,
+                    'replayed' => true,
+                    'appended' => false,
+                    'receipt' => (string) $cached['receipt'],
+                ];
+            }
+        }
+
+        $byKey = Lead::query()->where('idempotency_key', $idempotencyKey)->first();
+        if ($byKey instanceof Lead) {
+            $receipt = $this->receiptFor($byKey);
+            Cache::put($cacheKey, ['lead_id' => $byKey->id, 'receipt' => $receipt], $ttl);
+
+            return [
+                'lead' => $byKey,
+                'created' => false,
+                'replayed' => true,
+                'appended' => false,
+                'receipt' => $receipt,
+            ];
+        }
+
+        if (
+            $normalized !== null
+            && (bool) config('public_leads.append_enquiry_on_open_duplicate', true)
+        ) {
+            $openDuplicate = $this->findPotentialDuplicates($normalized, $product)->first();
+            if ($openDuplicate instanceof Lead) {
+                return $this->withPlatformTenant(function () use ($openDuplicate, $remarks, $attributes, $channel, $cacheKey, $ttl, $idempotencyKey): array {
+                    return $this->auditedTransaction->run(function () use ($openDuplicate, $remarks, $attributes, $channel, $cacheKey, $ttl, $idempotencyKey): array {
+                        $body = $remarks !== null && $remarks !== ''
+                            ? $remarks
+                            : 'Additional website enquiry received.';
+                        $this->recordSystemActivity($openDuplicate, 'website_enquiry', $body, [
+                            'source_channel' => $channel,
+                            'utm_source' => $attributes['utm_source'] ?? null,
+                            'utm_medium' => $attributes['utm_medium'] ?? null,
+                            'utm_campaign' => $attributes['utm_campaign'] ?? null,
+                            'landing_url' => $attributes['landing_url'] ?? null,
+                        ]);
+
+                        if ($openDuplicate->idempotency_key === null) {
+                            $openDuplicate->forceFill(['idempotency_key' => $idempotencyKey])->save();
+                        }
+
+                        $receipt = $this->receiptFor($openDuplicate);
+                        Cache::put($cacheKey, ['lead_id' => $openDuplicate->id, 'receipt' => $receipt], $ttl);
+
+                        return [
+                            'lead' => $openDuplicate->refresh(),
+                            'created' => false,
+                            'replayed' => false,
+                            'appended' => true,
+                            'receipt' => $receipt,
+                        ];
+                    });
+                });
+            }
+        }
+
+        return $this->withPlatformTenant(function () use (
+            $contactName,
+            $email,
+            $normalized,
+            $product,
+            $channel,
+            $remarks,
+            $state,
+            $city,
+            $attributes,
+            $idempotencyKey,
+            $cacheKey,
+            $ttl,
+        ): array {
+            return $this->auditedTransaction->run(function () use (
+                $contactName,
+                $email,
+                $normalized,
+                $product,
+                $channel,
+                $remarks,
+                $state,
+                $city,
+                $attributes,
+                $idempotencyKey,
+                $cacheKey,
+                $ttl,
+            ): array {
+                $lead = Lead::query()->create([
+                    'contact_name' => $contactName,
+                    'email' => $email !== '' ? $email : null,
+                    'mobile' => isset($attributes['mobile']) ? trim((string) $attributes['mobile']) : null,
+                    'company_name' => isset($attributes['company_name']) ? trim((string) $attributes['company_name']) : null,
+                    'state' => $state,
+                    'city' => $city,
+                    'source' => LeadSource::Website,
+                    'source_channel' => $channel,
+                    'interested_product' => $product,
+                    'status' => LeadStatus::New,
+                    'assigned_to_user_id' => null,
+                    'created_by_user_id' => null,
+                    'remarks' => $remarks,
+                    'email_normalized' => $normalized,
+                    'utm_source' => $this->clip((string) ($attributes['utm_source'] ?? ''), 255),
+                    'utm_medium' => $this->clip((string) ($attributes['utm_medium'] ?? ''), 255),
+                    'utm_campaign' => $this->clip((string) ($attributes['utm_campaign'] ?? ''), 255),
+                    'landing_url' => $this->clip((string) ($attributes['landing_url'] ?? ''), 2000),
+                    'referrer' => $this->clip((string) ($attributes['referrer'] ?? ''), 2000),
+                    'ip_address' => isset($attributes['ip_address']) ? trim((string) $attributes['ip_address']) : null,
+                    'idempotency_key' => $idempotencyKey,
+                    'duplicate_override' => false,
+                ]);
+
+                $this->recordSystemActivity($lead, 'created', 'Lead captured from public website', [
+                    'source_channel' => $channel,
+                ]);
+                if ($remarks !== null && $remarks !== '') {
+                    $this->recordSystemActivity($lead, 'website_enquiry', $remarks, [
+                        'source_channel' => $channel,
+                    ]);
+                }
+
+                $this->auditWriter->write(
+                    AuditAction::Created,
+                    Lead::class,
+                    $lead->id,
+                    remark: 'CRM lead captured from website',
+                    before: null,
+                    after: $this->snapshot($lead),
+                );
+
+                $receipt = $this->receiptFor($lead);
+                Cache::put($cacheKey, ['lead_id' => $lead->id, 'receipt' => $receipt], $ttl);
+
+                return [
+                    'lead' => $lead->refresh(),
+                    'created' => true,
+                    'replayed' => false,
+                    'appended' => false,
+                    'receipt' => $receipt,
+                ];
             });
         });
     }
@@ -383,6 +657,102 @@ final class LeadService
     }
 
     /**
+     * @param  array<string, mixed>|null  $meta
+     */
+    private function recordSystemActivity(Lead $lead, string $type, ?string $body, ?array $meta = null): LeadActivity
+    {
+        return LeadActivity::query()->create([
+            'lead_id' => $lead->id,
+            'actor_user_id' => null,
+            'activity_type' => $type,
+            'body' => $body,
+            'meta' => $meta,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    private function normalizeGeoText(mixed $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $text = trim(strip_tags((string) $value));
+        if ($text === '') {
+            return null;
+        }
+
+        return mb_substr($text, 0, 100);
+    }
+
+    private function mapPublicProduct(mixed $raw): InterestedProduct
+    {
+        $value = Str::lower(trim((string) ($raw ?? '')));
+
+        return match ($value) {
+            'broker' => InterestedProduct::Broker,
+            'ownfleet', 'own_fleet', 'fleet' => InterestedProduct::OwnFleet,
+            'partload', 'parchun' => InterestedProduct::Partload,
+            'combined', 'all' => InterestedProduct::Combined,
+            default => InterestedProduct::Undecided,
+        };
+    }
+
+    private function normalizeSourceChannel(mixed $raw): string
+    {
+        $channel = Str::lower(trim((string) ($raw ?? 'website')));
+        $channel = preg_replace('/[^a-z0-9_\-]/', '', $channel) ?? 'website';
+
+        if ($channel === '' || ! str_starts_with($channel, 'website')) {
+            $channel = 'website';
+        }
+
+        return mb_substr($channel, 0, 100);
+    }
+
+    /**
+     * @param  array<string, mixed>  $attributes
+     */
+    private function resolveIdempotencyKey(
+        array $attributes,
+        ?string $normalizedEmail,
+        InterestedProduct $product,
+        string $channel,
+        ?string $remarks,
+    ): string {
+        $provided = trim((string) ($attributes['idempotency_key'] ?? ''));
+        if ($provided !== '') {
+            return mb_substr($provided, 0, 128);
+        }
+
+        return hash('sha256', implode('|', [
+            $normalizedEmail ?? '',
+            (string) ($attributes['mobile'] ?? ''),
+            $product->value,
+            $channel,
+            mb_substr((string) ($remarks ?? ''), 0, 500),
+            // Bucket retries within the same minute without blocking genuine re-enquiries later.
+            now()->format('Y-m-d-H-i'),
+        ]));
+    }
+
+    private function receiptFor(Lead $lead): string
+    {
+        return 'tb_'.substr(hash('sha256', $lead->id.'|'.$lead->created_at?->timestamp), 0, 16);
+    }
+
+    private function clip(string $value, int $max): ?string
+    {
+        $trimmed = trim(strip_tags($value));
+        if ($trimmed === '') {
+            return null;
+        }
+
+        return mb_substr($trimmed, 0, $max);
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function snapshot(Lead $lead): array
@@ -393,6 +763,8 @@ final class LeadService
             'assigned_to_user_id' => $lead->assigned_to_user_id,
             'email_normalized' => $lead->email_normalized,
             'interested_product' => $lead->interested_product->value,
+            'state' => $lead->state,
+            'city' => $lead->city,
         ];
     }
 

@@ -18,6 +18,8 @@ type LeadRow = {
     contact_name: string;
     email: string | null;
     company_name: string | null;
+    city: string | null;
+    state: string | null;
     status: string;
     source: string;
     interested_product: string;
@@ -54,15 +56,30 @@ export default function CrmLeadsIndex({
                 id: 'contact',
                 header: 'Contact',
                 priority: 0,
-                cell: (lead) => (
-                    <>
-                        <div className="font-medium">{lead.contact_name}</div>
-                        <div className="text-xs text-muted-foreground">
-                            {lead.email ?? '—'}
-                            {lead.company_name ? ` · ${lead.company_name}` : ''}
-                        </div>
-                    </>
-                ),
+                cell: (lead) => {
+                    const location = [lead.city, lead.state]
+                        .filter((part) => part && part.trim() !== '')
+                        .join(', ');
+
+                    return (
+                        <>
+                            <div className="font-medium">
+                                {lead.contact_name}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                                {lead.email ?? '—'}
+                                {lead.company_name
+                                    ? ` · ${lead.company_name}`
+                                    : ''}
+                            </div>
+                            {location ? (
+                                <div className="text-xs text-muted-foreground">
+                                    {location}
+                                </div>
+                            ) : null}
+                        </>
+                    );
+                },
             },
             {
                 id: 'product',

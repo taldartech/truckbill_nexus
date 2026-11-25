@@ -1,5 +1,6 @@
 import { QuickCreateStateSheet } from '@/components/geography/quick-create-state-sheet';
 import { Form, Head, router, usePage } from '@inertiajs/react';
+import { Plus } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import {
     PortalErrorList,
@@ -9,7 +10,6 @@ import {
     ResponsiveDataTable,
     type DataTableColumn,
 } from '@/components/data-table';
-import { FormSection } from '@/components/form-section';
 import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -144,6 +144,10 @@ export default function AdminStates({
         );
     };
 
+    const resetFilters = () => {
+        router.get(urls.index, {}, { preserveState: true, replace: true });
+    };
+
     const goToPage = (page: number) => {
         router.get(
             urls.index,
@@ -158,8 +162,21 @@ export default function AdminStates({
 
     return (
         <>
-            <Head title="State master" />
-            <PageShell title="State master" description={note}>
+            <Head title="States" />
+            <PageShell
+                title="States"
+                description={note}
+                actions={
+                    <Button
+                        type="button"
+                        className="gap-1.5 bg-[#2FB36F] text-white hover:bg-[#279960]"
+                        onClick={() => setCreateOpen(true)}
+                    >
+                        <Plus className="size-4" aria-hidden />
+                        Add State
+                    </Button>
+                }
+            >
                 <PortalFlashBanner message={flash?.success} />
                 <PortalErrorList
                     errors={errors}
@@ -167,8 +184,8 @@ export default function AdminStates({
                 />
 
                 <form onSubmit={applyFilters}>
-                    <FormSection title="Search & filters" columns={2}>
-                        <div className="space-y-2">
+                    <div className="flex flex-wrap items-end gap-3 rounded-xl border border-border bg-card p-4 shadow-xs">
+                        <div className="min-w-[12rem] flex-1 space-y-2">
                             <Label htmlFor="q">Search</Label>
                             <Input
                                 id="q"
@@ -177,7 +194,7 @@ export default function AdminStates({
                                 placeholder="State name or code"
                             />
                         </div>
-                        <div className="space-y-2">
+                        <div className="w-full min-w-[10rem] space-y-2 sm:w-auto">
                             <Label htmlFor="status">Status</Label>
                             <select
                                 id="status"
@@ -190,25 +207,20 @@ export default function AdminStates({
                                 <option value="deactivated">Deactivated</option>
                             </select>
                         </div>
-                        <div className="md:col-span-2">
+                        <div className="flex flex-wrap gap-2">
                             <Button type="submit" variant="secondary">
-                                Apply filters
+                                Apply
+                            </Button>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={resetFilters}
+                            >
+                                Reset
                             </Button>
                         </div>
-                    </FormSection>
-                </form>
-
-                <FormSection title="Create state" columns={1}>
-                    <div className="flex flex-wrap items-center gap-3">
-                        <Button
-                            type="button"
-                            className="bg-[#2FB36F] text-white hover:bg-[#279960]"
-                            onClick={() => setCreateOpen(true)}
-                        >
-                            Add State
-                        </Button>
                     </div>
-                </FormSection>
+                </form>
 
                 <QuickCreateStateSheet
                     open={createOpen}

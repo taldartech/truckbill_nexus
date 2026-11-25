@@ -4,6 +4,7 @@ import {
     Check,
     Copy,
     Mail,
+    Pencil,
     Plus,
     RotateCcw,
     Save,
@@ -60,9 +61,18 @@ type Props = {
         email: string | null;
         mobile: string | null;
         company_name: string | null;
+        state: string | null;
+        city: string | null;
         status: string;
         source: string;
+        source_channel: string | null;
         interested_product: string;
+        utm_source: string | null;
+        utm_medium: string | null;
+        utm_campaign: string | null;
+        landing_url: string | null;
+        referrer: string | null;
+        edit_url?: string | null;
         remarks: string | null;
         assignee: { id: number; name: string; email: string } | null;
         allowed_transitions: string[];
@@ -122,6 +132,40 @@ function formatPipelineLabel(id: string): string {
         .split('_')
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
         .join(' ');
+}
+
+function formatActivityType(activity_type: string, is_note: boolean): string {
+    if (is_note) {
+        return 'Note';
+    }
+    if (activity_type === 'website_enquiry') {
+        return 'Website enquiry';
+    }
+    return activity_type.replace(/_/g, ' ');
+}
+
+function resolveActivityActor(
+    activity_type: string,
+    actor: string | null,
+): string {
+    if (actor) {
+        return actor;
+    }
+    if (activity_type === 'website_enquiry') {
+        return 'Website';
+    }
+    return 'System';
+}
+
+function hasCampaignAttribution(lead: Props['lead']): boolean {
+    return (
+        Boolean(lead.utm_source) ||
+        Boolean(lead.utm_medium) ||
+        Boolean(lead.utm_campaign) ||
+        Boolean(lead.landing_url) ||
+        Boolean(lead.referrer) ||
+        Boolean(lead.source_channel)
+    );
 }
 
 function buildLeadWorkflowSteps(status: string): WorkflowStep[] {
@@ -205,6 +249,17 @@ export default function CrmLeadShow({
                 actions={
                     <div className="flex flex-wrap items-center gap-2">
                         <WorkspaceStatusBadge status={lead.status} />
+                        {lead.edit_url ? (
+                            <Button asChild variant="outline" size="sm">
+                                <a
+                                    href={lead.edit_url}
+                                    className="inline-flex items-center gap-1.5"
+                                >
+                                    <Pencil className="size-4" aria-hidden />
+                                    Edit
+                                </a>
+                            </Button>
+                        ) : null}
                         <AppIconAction
                             icon={ArrowLeft}
                             label="Back to leads"
@@ -298,6 +353,14 @@ export default function CrmLeadShow({
                                     value={lead.company_name ?? '—'}
                                 />
                                 <DetailItem
+                                    label="State"
+                                    value={lead.state ?? '—'}
+                                />
+                                <DetailItem
+                                    label="City"
+                                    value={lead.city ?? '—'}
+                                />
+                                <DetailItem
                                     label="Assignee"
                                     value={
                                         lead.assignee
@@ -325,6 +388,64 @@ export default function CrmLeadShow({
                                 ) : null}
                             </dl>
                         </FormSection>
+
+                        {hasCampaignAttribution(lead) ? (
+                            <FormSection
+                                title="Campaign attribution"
+                                description="Values captured at lead intake."
+                                columns={2}
+                            >
+                                <dl className="contents">
+                                    {lead.source_channel ? (
+                                        <DetailItem
+                                            label="Source channel"
+                                            value={lead.source_channel}
+                                        />
+                                    ) : null}
+                                    {lead.utm_source ? (
+                                        <DetailItem
+                                            label="UTM source"
+                                            value={lead.utm_source}
+                                        />
+                                    ) : null}
+                                    {lead.utm_medium ? (
+                                        <DetailItem
+                                            label="UTM medium"
+                                            value={lead.utm_medium}
+                                        />
+                                    ) : null}
+                                    {lead.utm_campaign ? (
+                                        <DetailItem
+                                            label="UTM campaign"
+                                            value={lead.utm_campaign}
+                                        />
+                                    ) : null}
+                                    {lead.landing_url ? (
+                                        <DetailItem
+                                            className="md:col-span-2"
+                                            label="Landing URL"
+                                            value={
+                                                <a
+                                                    href={lead.landing_url}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="break-all text-[var(--brand-blue)] underline-offset-4 hover:underline"
+                                                >
+                                                    {lead.landing_url}
+                                                </a>
+                                            }
+                                        />
+                                    ) : null}
+                                    {lead.referrer ? (
+                                        <DetailItem
+                                            className="md:col-span-2"
+                                            label="Referrer"
+                                            value={lead.referrer}
+                                        />
+                                    ) : null}
+                                </dl>
+                            </FormSection>
+                        ) : null}
 
                         {lead.allowed_transitions.length > 0 ? (
                             <Form
@@ -646,7 +767,10 @@ export default function CrmLeadShow({
                                                 className={
                                                     activity.is_note
                                                         ? 'relative z-1 mt-1 size-[22px] shrink-0 rounded-full bg-[#2D8CFF] ring-2 ring-card'
-                                                        : 'relative z-1 mt-1 size-[22px] shrink-0 rounded-full bg-[var(--brand-green)] ring-2 ring-card'
+                                                        : activity.activity_type ===
+                                                            'website_enquiry'
+                                                          ? 'relative z-1 mt-1 size-[22px] shrink-0 rounded-full bg-[var(--brand-blue)] ring-2 ring-card'
+                                                          : 'relative z-1 mt-1 size-[22px] shrink-0 rounded-full bg-[var(--brand-green)] ring-2 ring-card'
                                                 }
                                                 aria-hidden
                                             />
@@ -654,21 +778,35 @@ export default function CrmLeadShow({
                                                 className={
                                                     activity.is_note
                                                         ? 'min-w-0 flex-1 rounded-md border border-[#2D8CFF]/30 bg-[#2D8CFF]/5 px-3 py-2 text-sm'
-                                                        : 'min-w-0 flex-1 rounded-md border border-border bg-muted/20 px-3 py-2 text-sm'
+                                                        : activity.activity_type ===
+                                                            'website_enquiry'
+                                                          ? 'min-w-0 flex-1 rounded-md border border-[var(--brand-blue)]/30 bg-[var(--brand-blue)]/5 px-3 py-2 text-sm'
+                                                          : 'min-w-0 flex-1 rounded-md border border-border bg-muted/20 px-3 py-2 text-sm'
                                                 }
                                             >
-                                                <span className="font-medium">
-                                                    {activity.is_note
-                                                        ? 'Note'
-                                                        : activity.activity_type}
-                                                </span>
+                                                {activity.activity_type ===
+                                                'website_enquiry' ? (
+                                                    <span className="inline-flex items-center rounded-full bg-[var(--brand-blue)]/15 px-2 py-0.5 text-xs font-semibold text-[var(--brand-blue)]">
+                                                        Website enquiry
+                                                    </span>
+                                                ) : (
+                                                    <span className="font-medium">
+                                                        {formatActivityType(
+                                                            activity.activity_type,
+                                                            activity.is_note,
+                                                        )}
+                                                    </span>
+                                                )}
                                                 {activity.body ? (
                                                     <p className="mt-1 whitespace-pre-wrap">
                                                         {activity.body}
                                                     </p>
                                                 ) : null}
                                                 <p className="mt-1 text-xs text-muted-foreground">
-                                                    {activity.actor ?? 'System'}
+                                                    {resolveActivityActor(
+                                                        activity.activity_type,
+                                                        activity.actor,
+                                                    )}
                                                     {activity.created_at
                                                         ? ` · ${activity.created_at}`
                                                         : ''}

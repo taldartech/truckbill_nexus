@@ -13,11 +13,14 @@ type GeographyOption = {
     name: string;
 };
 
+type ValueMode = 'ids' | 'names';
+
 type Props = {
     stateId?: string | null;
     cityId?: string | null;
     stateName?: string | null;
     cityName?: string | null;
+    valueMode?: ValueMode;
     required?: boolean;
     disabled?: boolean;
     stateError?: string;
@@ -32,6 +35,32 @@ type Props = {
         city: string;
     }) => void;
 };
+
+const CUSTOM_ID_PREFIX = 'custom:';
+
+function isCustomGeographyId(id: string): boolean {
+    return id.startsWith(CUSTOM_ID_PREFIX);
+}
+
+function isRealUuid(id: string): boolean {
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+        id,
+    );
+}
+
+function resolveSelectedId(
+    id: string,
+    name: string,
+    valueMode: ValueMode,
+): string {
+    if (id !== '') {
+        return id;
+    }
+    if (valueMode === 'names' && name !== '') {
+        return `${CUSTOM_ID_PREFIX}${name}`;
+    }
+    return '';
+}
 
 function mapStates(json: unknown): ComboboxOption[] {
     const data = (json as { data?: GeographyOption[] })?.data ?? [];
@@ -63,6 +92,7 @@ export function StateCityFields({
     cityId = '',
     stateName = '',
     cityName = '',
+    valueMode = 'ids',
     required = false,
     disabled = false,
     stateError,
@@ -75,8 +105,12 @@ export function StateCityFields({
     const page = usePage();
     const canManage = canQuickCreate ?? readCanManageGeography(page.props);
 
-    const [selectedStateId, setSelectedStateId] = useState(stateId ?? '');
-    const [selectedCityId, setSelectedCityId] = useState(cityId ?? '');
+    const [selectedStateId, setSelectedStateId] = useState(() =>
+        resolveSelectedId(stateId ?? '', stateName ?? '', valueMode),
+    );
+    const [selectedCityId, setSelectedCityId] = useState(() =>
+        resolveSelectedId(cityId ?? '', cityName ?? '', valueMode),
+    );
     const [selectedStateName, setSelectedStateName] = useState(stateName ?? '');
     const [selectedCityName, setSelectedCityName] = useState(cityName ?? '');
     const [extraStateOptions, setExtraStateOptions] = useState<
@@ -89,14 +123,28 @@ export function StateCityFields({
     const [cityQuickCreateOpen, setCityQuickCreateOpen] = useState(false);
 
     useEffect(() => {
-        setSelectedStateId(stateId ?? '');
+        setSelectedStateId(
+            resolveSelectedId(stateId ?? '', stateName ?? '', valueMode),
+        );
         setSelectedStateName(stateName ?? '');
-    }, [stateId, stateName]);
+    }, [stateId, stateName, valueMode]);
 
     useEffect(() => {
-        setSelectedCityId(cityId ?? '');
+        setSelectedCityId(
+            resolveSelectedId(cityId ?? '', cityName ?? '', valueMode),
+        );
         setSelectedCityName(cityName ?? '');
-    }, [cityId, cityName]);
+    }, [cityId, cityName, valueMode]);
+
+    const useNamesMode = valueMode === 'names';
+    const stateHasSelection =
+        selectedStateId !== '' || selectedStateName !== '';
+    const cityFieldDisabled =
+        disabled ||
+        (useNamesMode ? !stateHasSelection : selectedStateId === '');
+
+    const submittedStateId = isRealUuid(selectedStateId) ? selectedStateId : '';
+    const submittedCityId = isRealUuid(selectedCityId) ? selectedCityId : '';
 
     const emit = useCallback(
         (next: {
@@ -151,7 +199,7 @@ export function StateCityFields({
             <div className="grid gap-4 md:grid-cols-2">
                 <SearchableCombobox
                     id="state_id"
-                    name="state_id"
+                    name={useNamesMode ? 'state_lookup' : 'state_id'}
                     label="State"
                     options={stateOptions}
                     value={selectedStateId}
@@ -163,6 +211,7 @@ export function StateCityFields({
                     emptyMessage="No states found."
                     placeholder="Search state…"
                     addAction={stateAddAction}
+                    allowCustomValue={useNamesMode}
                     onValueChange={(id, option) => {
                         const nextState = id;
                         const nextStateName = option?.label ?? '';
@@ -179,19 +228,31 @@ export function StateCityFields({
                     }}
                 />
                 <input type="hidden" name="state" value={selectedStateName} />
+                {useNamesMode ? (
+                    <input
+                        type="hidden"
+                        name="state_id"
+                        value={submittedStateId}
+                    />
+                ) : null}
                 <SearchableCombobox
                     id="city_id"
-                    name="city_id"
+                    name={useNamesMode ? 'city_lookup' : 'city_id'}
                     label="City"
                     options={cityOptions}
                     value={selectedCityId}
                     required={required}
-                    disabled={disabled || !selectedStateId}
+                    disabled={cityFieldDisabled}
                     error={cityError}
                     searchUrl="/api/geography/cities"
                     buildSearchParams={(query) => {
                         const params = new URLSearchParams();
-                        params.set('state_id', selectedStateId);
+                        if (
+                            selectedStateId !== '' &&
+                            !isCustomGeographyId(selectedStateId)
+                        ) {
+                            params.set('state_id', selectedStateId);
+                        }
                         if (query.trim() !== '') {
                             params.set('q', query.trim());
                         }
@@ -199,12 +260,13 @@ export function StateCityFields({
                     }}
                     mapResponse={mapCities}
                     emptyMessage={
-                        selectedStateId
+                        stateHasSelection
                             ? 'No cities in this state.'
                             : 'Select a state first.'
                     }
                     placeholder="Search city…"
                     addAction={cityAddAction}
+                    allowCustomValue={useNamesMode}
                     onValueChange={(id, option) => {
                         const nextCity = id;
                         const nextCityName = option?.label ?? '';
@@ -219,6 +281,13 @@ export function StateCityFields({
                     }}
                 />
                 <input type="hidden" name="city" value={selectedCityName} />
+                {useNamesMode ? (
+                    <input
+                        type="hidden"
+                        name="city_id"
+                        value={submittedCityId}
+                    />
+                ) : null}
             </div>
 
             {canManage ? (

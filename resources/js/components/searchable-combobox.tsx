@@ -46,6 +46,8 @@ type Props = {
     addAction?: AddAction;
     /** When true, render only the empty dashed panel (no combobox). */
     showEmptyState?: boolean;
+    /** Prepend a synthetic option when the search query has no exact label match. */
+    allowCustomValue?: boolean;
 };
 
 function findOption(
@@ -75,6 +77,7 @@ export function SearchableCombobox({
     className,
     addAction,
     showEmptyState = false,
+    allowCustomValue = false,
 }: Props) {
     const listboxId = useId();
     const panelSearchId = useId();
@@ -99,17 +102,45 @@ export function SearchableCombobox({
     const sourceOptions = remoteOptions ?? options;
 
     const filtered = useMemo(() => {
+        let list: ComboboxOption[];
         if (searchUrl) {
-            return sourceOptions;
+            list = sourceOptions;
+        } else {
+            const q = query.trim().toLowerCase();
+            if (q === '') {
+                list = sourceOptions;
+            } else {
+                list = sourceOptions.filter((option) =>
+                    option.label.toLowerCase().includes(q),
+                );
+            }
         }
-        const q = query.trim().toLowerCase();
-        if (q === '') {
-            return sourceOptions;
+
+        if (allowCustomValue) {
+            const trimmed = query.trim();
+            if (trimmed.length >= 2) {
+                const hasExact = list.some(
+                    (option) =>
+                        option.label.localeCompare(trimmed, undefined, {
+                            sensitivity: 'accent',
+                        }) === 0 ||
+                        option.label.toLowerCase() === trimmed.toLowerCase(),
+                );
+                if (!hasExact) {
+                    list = [
+                        {
+                            id: `custom:${trimmed}`,
+                            label: trimmed,
+                            description: 'Use custom value',
+                        },
+                        ...list,
+                    ];
+                }
+            }
         }
-        return sourceOptions.filter((option) =>
-            option.label.toLowerCase().includes(q),
-        );
-    }, [query, searchUrl, sourceOptions]);
+
+        return list;
+    }, [allowCustomValue, query, searchUrl, sourceOptions]);
 
     const selectedOption = useMemo(() => {
         const fromLists =

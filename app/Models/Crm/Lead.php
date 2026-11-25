@@ -24,12 +24,22 @@ use Illuminate\Support\Carbon;
  * @property string|null $email
  * @property string|null $mobile
  * @property string|null $company_name
+ * @property string|null $state
+ * @property string|null $city
  * @property LeadSource $source
+ * @property string|null $source_channel
  * @property InterestedProduct $interested_product
  * @property LeadStatus $status
  * @property int|null $assigned_to_user_id
- * @property int $created_by_user_id
+ * @property int|null $created_by_user_id
  * @property string|null $remarks
+ * @property string|null $utm_source
+ * @property string|null $utm_medium
+ * @property string|null $utm_campaign
+ * @property string|null $landing_url
+ * @property string|null $referrer
+ * @property string|null $ip_address
+ * @property string|null $idempotency_key
  * @property string|null $email_normalized
  * @property bool $duplicate_override
  * @property string|null $duplicate_override_remark
@@ -53,12 +63,22 @@ class Lead extends Model
         'email',
         'mobile',
         'company_name',
+        'state',
+        'city',
         'source',
+        'source_channel',
         'interested_product',
         'status',
         'assigned_to_user_id',
         'created_by_user_id',
         'remarks',
+        'utm_source',
+        'utm_medium',
+        'utm_campaign',
+        'landing_url',
+        'referrer',
+        'ip_address',
+        'idempotency_key',
         'email_normalized',
         'duplicate_override',
         'duplicate_override_remark',

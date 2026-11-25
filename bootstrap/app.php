@@ -8,6 +8,7 @@ use App\Http\Middleware\ManageTenantContextLifecycle;
 use App\Http\Middleware\RejectClientTenantIdentifiers;
 use App\Http\Middleware\ResolveBranchWorkspace;
 use App\Http\Middleware\ResolveManagementCompany;
+use App\Http\Middleware\VerifyWebsiteLeadApiKey;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -29,11 +30,13 @@ return Application::configure(basePath: dirname(__DIR__))
             'webhooks/razorpay',
             'webhooks/enquiries',
             'api/v1/public/onboarding/*',
+            'api/v1/public/leads',
         ]);
 
         $middleware->alias([
             'branch.workspace' => ResolveBranchWorkspace::class,
             'management.company' => ResolveManagementCompany::class,
+            'website.lead.key' => VerifyWebsiteLeadApiKey::class,
         ]);
 
         // Global: Lifecycle must wrap Reject so context is cleared even on abort.

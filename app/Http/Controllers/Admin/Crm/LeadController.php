@@ -9,10 +9,12 @@ use App\Domains\Crm\Exceptions\CrmDomainException;
 use App\Domains\Crm\LeadService;
 use App\Domains\Crm\Onboarding\LeadOnboardingService;
 use App\Http\Controllers\Controller;
+use App\Models\City;
 use App\Models\Crm\Lead;
 use App\Models\Crm\LeadActivity;
 use App\Models\Crm\LeadFollowUp;
 use App\Models\InternalRoleAssignment;
+use App\Models\State;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -47,7 +49,9 @@ class LeadController extends Controller
             $query->where(function ($builder) use ($search): void {
                 $builder->where('contact_name', 'ilike', '%'.$search.'%')
                     ->orWhere('email', 'ilike', '%'.$search.'%')
-                    ->orWhere('company_name', 'ilike', '%'.$search.'%');
+                    ->orWhere('company_name', 'ilike', '%'.$search.'%')
+                    ->orWhere('city', 'ilike', '%'.$search.'%')
+                    ->orWhere('state', 'ilike', '%'.$search.'%');
             });
         }
 
@@ -69,6 +73,8 @@ class LeadController extends Controller
                     'contact_name' => $lead->contact_name,
                     'email' => $lead->email,
                     'company_name' => $lead->company_name,
+                    'city' => $lead->city,
+                    'state' => $lead->state,
                     'status' => $lead->status->value,
                     'source' => $lead->source->value,
                     'interested_product' => $lead->interested_product->value,
@@ -113,18 +119,7 @@ class LeadController extends Controller
     {
         $actor = $this->assertInternal($request);
 
-        $validated = $request->validate([
-            'contact_name' => ['required', 'string', 'max:255'],
-            'email' => ['nullable', 'email', 'max:255'],
-            'mobile' => ['nullable', 'string', 'max:20'],
-            'company_name' => ['nullable', 'string', 'max:255'],
-            'source' => ['required', Rule::enum(LeadSource::class)],
-            'interested_product' => ['required', Rule::enum(InterestedProduct::class)],
-            'remarks' => ['nullable', 'string', 'max:2000'],
-            'assigned_to_user_id' => ['nullable', 'integer', 'exists:users,id'],
-            'duplicate_override' => ['sometimes', 'boolean'],
-            'duplicate_override_remark' => ['nullable', 'string', 'max:1000'],
-        ]);
+        $validated = $request->validate($this->leadFormRules());
 
         try {
             $lead = $this->leads->create($actor, $validated);
@@ -135,6 +130,62 @@ class LeadController extends Controller
         return redirect()
             ->route('admin.crm.leads.show', $lead)
             ->with('success', 'Lead created.');
+    }
+
+    public function edit(Request $request, Lead $lead): Response
+    {
+        $actor = $this->assertInternal($request);
+        $this->assertCanView($actor, $lead);
+
+        $matched = $this->matchGeography($lead->state, $lead->city);
+
+        return Inertia::render('admin/crm/leads/edit', [
+            'lead' => [
+                'id' => $lead->id,
+                'contact_name' => $lead->contact_name,
+                'email' => $lead->email,
+                'mobile' => $lead->mobile,
+                'company_name' => $lead->company_name,
+                'state' => $lead->state,
+                'city' => $lead->city,
+                'state_id' => $matched['state_id'],
+                'city_id' => $matched['city_id'],
+                'source' => $lead->source->value,
+                'interested_product' => $lead->interested_product->value,
+                'remarks' => $lead->remarks,
+                'assigned_to_user_id' => $lead->assigned_to_user_id,
+            ],
+            'sources' => array_map(fn (LeadSource $s): string => $s->value, LeadSource::cases()),
+            'products' => array_map(fn (InterestedProduct $p): string => $p->value, InterestedProduct::cases()),
+            'assignable_users' => $this->isAdmin($actor)
+                ? $this->leads->assignableInternalUsers()->map(fn (User $user): array => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                ])->values()->all()
+                : [],
+            'can_assign' => $this->isAdmin($actor),
+            'update_url' => route('admin.crm.leads.update', $lead),
+            'show_url' => route('admin.crm.leads.show', $lead),
+            'index_url' => route('admin.crm.leads.index'),
+        ]);
+    }
+
+    public function update(Request $request, Lead $lead): RedirectResponse
+    {
+        $actor = $this->assertInternal($request);
+
+        $validated = $request->validate($this->leadFormRules(forUpdate: true));
+
+        try {
+            $this->leads->update($actor, $lead, $validated);
+        } catch (CrmDomainException $e) {
+            throw ValidationException::withMessages(['email' => $e->getMessage()]);
+        }
+
+        return redirect()
+            ->route('admin.crm.leads.show', $lead)
+            ->with('success', 'Lead updated.');
     }
 
     public function show(Request $request, Lead $lead): Response
@@ -160,10 +211,18 @@ class LeadController extends Controller
                 'email' => $lead->email,
                 'mobile' => $lead->mobile,
                 'company_name' => $lead->company_name,
+                'state' => $lead->state,
+                'city' => $lead->city,
                 'status' => $lead->status->value,
                 'source' => $lead->source->value,
+                'source_channel' => $lead->source_channel,
                 'interested_product' => $lead->interested_product->value,
                 'remarks' => $lead->remarks,
+                'utm_source' => $lead->utm_source,
+                'utm_medium' => $lead->utm_medium,
+                'utm_campaign' => $lead->utm_campaign,
+                'landing_url' => $lead->landing_url,
+                'referrer' => $lead->referrer,
                 'assignee' => $lead->assignee === null ? null : [
                     'id' => $lead->assignee->id,
                     'name' => $lead->assignee->name,
@@ -178,6 +237,7 @@ class LeadController extends Controller
                     'name' => $lead->convertedCompany->name,
                 ],
                 'can_invite' => $lead->status->canReceiveOnboardingInvite() && filled($lead->email),
+                'edit_url' => route('admin.crm.leads.edit', $lead),
             ],
             'follow_ups' => $lead->followUps->map(fn (LeadFollowUp $followUp): array => [
                 'id' => $followUp->id,
@@ -442,5 +502,73 @@ class LeadController extends Controller
             ->whereNull('deactivated_at')
             ->whereHas('role', fn ($q) => $q->where('slug', 'internal.admin'))
             ->exists();
+    }
+
+    private function assertCanView(User $actor, Lead $lead): void
+    {
+        if ($this->isAdmin($actor)) {
+            return;
+        }
+
+        if ((int) $lead->assigned_to_user_id !== (int) $actor->id) {
+            abort(403, 'You may only view leads assigned to you.');
+        }
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function leadFormRules(bool $forUpdate = false): array
+    {
+        return [
+            'contact_name' => ['required', 'string', 'max:255'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'mobile' => ['nullable', 'string', 'max:20'],
+            'company_name' => ['nullable', 'string', 'max:255'],
+            'state' => ['nullable', 'string', 'max:100'],
+            'city' => ['nullable', 'string', 'max:100'],
+            'state_id' => ['nullable', 'uuid'],
+            'city_id' => ['nullable', 'uuid'],
+            'source' => ['required', Rule::enum(LeadSource::class)],
+            'interested_product' => ['required', Rule::enum(InterestedProduct::class)],
+            'remarks' => ['nullable', 'string', 'max:2000'],
+            'assigned_to_user_id' => ['nullable', 'integer', 'exists:users,id'],
+            'duplicate_override' => $forUpdate ? ['prohibited'] : ['sometimes', 'boolean'],
+            'duplicate_override_remark' => $forUpdate ? ['prohibited'] : ['nullable', 'string', 'max:1000'],
+        ];
+    }
+
+    /**
+     * Exact-name hydrate against geographic masters for edit UX only.
+     * Lead storage remains text; unmatched custom values keep empty IDs.
+     *
+     * @return array{state_id: string|null, city_id: string|null}
+     */
+    private function matchGeography(?string $stateName, ?string $cityName): array
+    {
+        $stateId = null;
+        $cityId = null;
+
+        if (filled($stateName)) {
+            $state = State::query()
+                ->whereRaw('lower(name) = ?', [mb_strtolower(trim($stateName))])
+                ->where('is_active', true)
+                ->first();
+            $stateId = $state?->id;
+        }
+
+        if (filled($cityName) && $stateId !== null) {
+            $city = City::query()
+                ->where('state_id', $stateId)
+                ->whereRaw('lower(name) = ?', [mb_strtolower(trim($cityName))])
+                ->where('is_active', true)
+                ->first();
+            $cityId = $city?->id;
+        }
+
+        return [
+            'state_id' => $stateId,
+            'city_id' => $cityId,
+        ];
     }
 }

@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\OwnershipTransferController;
 use App\Http\Controllers\Admin\SubscriptionInvoiceController;
 use App\Http\Controllers\Admin\TdsRuleController;
 use App\Http\Controllers\Api\GeographyController;
+use App\Http\Controllers\Api\PublicLeadController;
 use App\Http\Controllers\Api\PublicLeadOnboardingController;
 use App\Http\Controllers\Branch\BankCashAccountController;
 use App\Http\Controllers\Branch\BranchDashboardController;
@@ -39,6 +40,7 @@ use App\Http\Controllers\Branch\TripController;
 use App\Http\Controllers\Branch\TripInvoiceController;
 use App\Http\Controllers\Branch\VehicleController;
 use App\Http\Controllers\HealthController;
+use App\Http\Controllers\HomeController;
 use App\Http\Controllers\InvitationAcceptanceController;
 use App\Http\Controllers\Owner\OwnerAuditController;
 use App\Http\Controllers\Owner\OwnerBranchesController;
@@ -63,12 +65,16 @@ use App\Http\Controllers\Workspace\WorkspaceNoAccessController;
 use App\Http\Middleware\LeadOnboardingCors;
 use Illuminate\Support\Facades\Route;
 
-Route::inertia('/', 'welcome')->name('home');
+Route::get('/', HomeController::class)->name('home');
 
 Route::get('/health/ready', [HealthController::class, 'ready'])->name('health.ready');
 
 Route::post('/webhooks/razorpay', RazorpayWebhookController::class)->name('webhooks.razorpay');
 Route::post('/webhooks/enquiries', EnquiryWebhookController::class)->name('webhooks.enquiries');
+
+Route::post('/api/v1/public/leads', [PublicLeadController::class, 'store'])
+    ->middleware(['website.lead.key', 'throttle:30,1'])
+    ->name('api.public.leads.store');
 
 Route::get('/invitations/accept/{token}', [InvitationAcceptanceController::class, 'show'])
     ->name('invitations.accept');
@@ -493,6 +499,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('admin.crm.leads.create');
     Route::post('/admin/crm/leads', [CrmLeadController::class, 'store'])
         ->name('admin.crm.leads.store');
+    Route::get('/admin/crm/leads/{lead}/edit', [CrmLeadController::class, 'edit'])
+        ->name('admin.crm.leads.edit');
+    Route::put('/admin/crm/leads/{lead}', [CrmLeadController::class, 'update'])
+        ->name('admin.crm.leads.update');
     Route::get('/admin/crm/leads/{lead}', [CrmLeadController::class, 'show'])
         ->name('admin.crm.leads.show');
     Route::post('/admin/crm/leads/{lead}/transition', [CrmLeadController::class, 'transition'])

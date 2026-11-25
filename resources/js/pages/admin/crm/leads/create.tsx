@@ -1,5 +1,6 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { ArrowLeft, Save } from 'lucide-react';
+import { StateCityFields } from '@/components/geography/state-city-fields';
 import { PortalErrorList } from '@/components/admin/portal-feedback';
 import { AppIconAction } from '@/components/app-icon-action';
 import { FormSection } from '@/components/form-section';
@@ -76,6 +77,10 @@ export default function CrmLeadCreate({
                             <Label htmlFor="company_name">Company name</Label>
                             <Input id="company_name" name="company_name" />
                         </div>
+                    </FormSection>
+
+                    <FormSection title="Geography" columns={1}>
+                        <StateCityFields valueMode="names" required={false} />
                     </FormSection>
 
                     <FormSection title="Pipeline" columns={2}>
