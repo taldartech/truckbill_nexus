@@ -61,6 +61,8 @@
 | U23-MYSQL-FK           | MySQL composite FK SET NULL / identifier length              | Infra             | Aligned for ACC/Partload migrations (`b9a4708`)            |
 | U23-ACC-CASH-BANK      | Cash Book / Bank Book reports                                | Accounting        | Aligned (`ada76d5`)                                        |
 | U23-ACC-PERIOD-REOPEN  | Controlled reopen of closed accounting periods               | Accounting        | Aligned (`22d1428`)                                        |
+| U23-ACC-CONTRA-UI      | Cash/Bank Contra fund transfer UI                            | Accounting        | Aligned (`1e891d6`)                                        |
+| U23-ACC-OUTSTANDING    | Outstanding control-account enquiry                          | Accounting        | Aligned (`df5ee79`)                                        |
 
 ## PO directive (25 Nov 2026) — superseding earlier OwnFleet navigation
 
