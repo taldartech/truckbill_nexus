@@ -1,19 +1,25 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, useForm } from '@inertiajs/react';
 import { AppIconAction } from '@/components/app-icon-action';
+import {
+    FbDetailCard,
+    FbDetailLayout,
+    FbDetailPage,
+    FbFinancialSummary,
+    FbInfoGrid,
+    FbInfoItem,
+    FbRouteCard,
+} from '@/components/fb-detail';
 import { ArrowLeft, ExternalLink, FileText, Wallet } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
 import type {
     FieldReview,
     FormConfirmationMode,
 } from '@/components/form-confirmation/types';
-import { DetailTabPanel, DetailTabs } from '@/components/detail-tabs';
-import { PageShell } from '@/components/page-shell';
-import { MetricCard } from '@/components/ui/metric-card';
-import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 
 type GoodsLine = {
     id: string;
@@ -47,11 +53,16 @@ type Props = {
         status: string;
         hire_date: string | null;
         lr_number: string | null;
+        lr_date?: string | null;
         from_station_name: string | null;
         to_station_name: string | null;
+        billing_customer_name?: string | null;
+        consignor_name?: string | null;
+        consignee_name?: string | null;
         vehicle_registration: string | null;
         transporter_name: string | null;
         declaration_type: string;
+        customer_freight_total?: string | null;
         remarks: string | null;
         freight_total: string | null;
         tds_percent: string | null;
@@ -125,8 +136,6 @@ export default function LorryHireShow({
     permissions,
     urls,
 }: Props) {
-    const [tab, setTab] = useState('overview');
-
     const adjustmentSubmitAllowed = useRef(false);
     const cancelSubmitAllowed = useRef(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
@@ -285,620 +294,704 @@ export default function LorryHireShow({
             ? adjustmentForm.processing
             : cancelForm.processing;
 
+    const goodsLabel = useMemo(() => {
+        const first = lorryHire.goods_lines[0];
+        if (!first) {
+            return '—';
+        }
+        if (lorryHire.goods_lines.length > 1) {
+            return `${first.goods_label ?? first.goods_type_name ?? 'Goods'} +${lorryHire.goods_lines.length - 1}`;
+        }
+        return first.goods_label ?? first.goods_type_name ?? '—';
+    }, [lorryHire.goods_lines]);
+
+    const totalWeightMt = useMemo(() => {
+        const kg = lorryHire.goods_lines.reduce(
+            (sum, line) => sum + Number(line.loading_weight ?? 0),
+            0,
+        );
+        return kg > 0 ? `${(kg / 1000).toFixed(3)} MT` : '—';
+    }, [lorryHire.goods_lines]);
+
+    const outstandingNumber = Number(lorryHire.outstanding_amount ?? NaN);
+    const balanceDue =
+        Number.isFinite(outstandingNumber) && outstandingNumber > 0;
+    const cleared =
+        Number.isFinite(outstandingNumber) && outstandingNumber <= 0;
+
     return (
         <>
             <Head title={`Lorry Hire ${lorryHire.hire_number}`} />
-            <PageShell
-                chrome="compact"
-                title={`Lorry Hire ${lorryHire.hire_number}`}
-                description={[
-                    lorryHire.lr_number
-                        ? `Linked bilty ${lorryHire.lr_number}`
-                        : null,
-                    lorryHire.transporter_name,
-                    lorryHire.vehicle_registration,
-                ]
-                    .filter(Boolean)
-                    .join(' · ')}
-                actions={
-                    <div className="flex flex-wrap items-center gap-2">
-                        <WorkspaceStatusBadge status={lorryHire.status} />
-                        <AppIconAction
-                            icon={FileText}
-                            label={
-                                lorryHire.lr_number
-                                    ? `Open bilty ${lorryHire.lr_number}`
-                                    : 'Open bilty'
-                            }
-                            href={urls.lr_show}
-                            variant="info"
-                            size="sm"
-                        />
-                        {urls.voucher_create ? (
-                            <AppIconAction
-                                icon={Wallet}
-                                label="Record voucher"
-                                href={urls.voucher_create}
-                                variant="default"
-                                size="sm"
-                            />
-                        ) : null}
-                        <Link
-                            href={urls.index}
-                            className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground"
-                        >
-                            <ArrowLeft className="h-4 w-4" />
-                            All Lorry Hires
-                        </Link>
+            <FbDetailPage>
+                {lorryHire.status === 'cancelled' ? (
+                    <div
+                        className="mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"
+                        role="alert"
+                    >
+                        <strong>Cancelled good hire</strong>
+                        <div className="text-xs">
+                            {lorryHire.cancellation_remark ??
+                                'This booking cannot be modified.'}
+                        </div>
                     </div>
-                }
-            >
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    <MetricCard
-                        label="Transporter freight"
-                        value={lorryHire.freight_total ?? '—'}
-                    />
-                    <MetricCard
-                        label="TDS"
-                        value={lorryHire.tds_amount ?? '—'}
-                        hint={
-                            lorryHire.tds_percent
-                                ? `${lorryHire.tds_percent}%`
-                                : undefined
-                        }
-                    />
-                    <MetricCard
-                        label="Net payable"
-                        value={lorryHire.net_payable ?? '—'}
-                    />
-                    <MetricCard
-                        label="Outstanding"
-                        value={lorryHire.outstanding_amount ?? '—'}
-                    />
-                </div>
+                ) : null}
 
-                <DetailTabs
-                    className="mt-6"
-                    aria-label="Lorry hire detail sections"
-                    tabs={[
-                        { id: 'overview', label: 'Overview' },
-                        { id: 'freight', label: 'Freight lines' },
-                        { id: 'tds', label: 'TDS snapshot' },
-                        { id: 'adjustments', label: 'Adjustments' },
-                        { id: 'delivery', label: 'Delivery' },
-                        ...(permissions.can_cancel &&
-                        lorryHire.status !== 'cancelled' &&
-                        cancelPreview &&
-                        urls.cancel
-                            ? [{ id: 'cancel', label: 'Cancel' }]
-                            : []),
-                    ]}
-                    activeId={tab}
-                    onChange={setTab}
-                >
-                    <DetailTabPanel id="overview" activeId={tab}>
-                        <dl className="grid gap-4 sm:grid-cols-2">
-                            <Field
-                                label="Hire date"
-                                value={lorryHire.hire_date}
-                            />
-                            <Field
-                                label="Route"
-                                value={`${lorryHire.from_station_name ?? '—'} → ${lorryHire.to_station_name ?? '—'}`}
-                            />
-                            <Field
-                                label="Vehicle"
-                                value={lorryHire.vehicle_registration}
-                            />
-                            <Field
-                                label="Transporter"
-                                value={lorryHire.transporter_name}
-                            />
-                            <Field
-                                label="Declaration"
-                                value={lorryHire.declaration_type}
-                            />
-                            <Field
-                                label="Created"
-                                value={lorryHire.created_at}
-                            />
-                            {lorryHire.status === 'cancelled' ? (
-                                <>
-                                    <Field
-                                        label="Cancelled"
-                                        value={lorryHire.cancelled_at}
+                <FbDetailLayout
+                    main={
+                        <>
+                            <FbDetailCard
+                                title={`Good Hire Information (${lorryHire.hire_number})`}
+                                badges={
+                                    <>
+                                        <span
+                                            className={cn(
+                                                'rounded px-1.5 py-0.5 text-[10px] font-bold uppercase',
+                                                lorryHire.status === 'cancelled'
+                                                    ? 'bg-red-100 text-red-700'
+                                                    : 'bg-emerald-100 text-emerald-800',
+                                            )}
+                                        >
+                                            {lorryHire.status}
+                                        </span>
+                                    </>
+                                }
+                                actions={
+                                    <>
+                                        <AppIconAction
+                                            icon={ArrowLeft}
+                                            label="Back to list"
+                                            href={urls.index}
+                                            variant="outline"
+                                            size="sm"
+                                        />
+                                        <AppIconAction
+                                            icon={FileText}
+                                            label="Open bilty"
+                                            href={urls.lr_show}
+                                            variant="info"
+                                            size="sm"
+                                        />
+                                        {urls.voucher_create &&
+                                        lorryHire.status !== 'cancelled' ? (
+                                            <AppIconAction
+                                                icon={Wallet}
+                                                label="Record voucher"
+                                                href={urls.voucher_create}
+                                                variant="default"
+                                                size="sm"
+                                            />
+                                        ) : null}
+                                    </>
+                                }
+                            >
+                                <FbInfoGrid>
+                                    <FbInfoItem
+                                        label="LR Number"
+                                        value={lorryHire.lr_number}
+                                        accent
                                     />
-                                    <Field
-                                        label="Cancellation reason"
-                                        value={lorryHire.cancellation_remark}
-                                    />
-                                    <Field
-                                        label="Settled outstanding"
+                                    <FbInfoItem
+                                        label="GR Date"
                                         value={
-                                            lorryHire.settle_outstanding ===
-                                            null
-                                                ? '—'
-                                                : lorryHire.settle_outstanding
-                                                  ? 'Yes'
-                                                  : 'No'
+                                            lorryHire.lr_date ??
+                                            lorryHire.hire_date
                                         }
                                     />
-                                </>
-                            ) : null}
-                        </dl>
-                        {lorryHire.remarks ? (
-                            <p className="mt-4 text-sm text-muted-foreground">
-                                {lorryHire.remarks}
-                            </p>
-                        ) : null}
-                    </DetailTabPanel>
-                    <DetailTabPanel id="freight" activeId={tab}>
-                        <div className="overflow-hidden rounded-lg border border-border">
-                            <table className="min-w-full text-sm">
-                                <thead className="bg-muted/40 text-left">
-                                    <tr>
-                                        <th className="px-4 py-3">
-                                            Description
-                                        </th>
-                                        <th className="px-4 py-3">Rate type</th>
-                                        <th className="px-4 py-3">Weight</th>
-                                        <th className="px-4 py-3">Freight</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {lorryHire.goods_lines.map((line) => (
-                                        <tr
-                                            key={line.id}
-                                            className="border-t border-border"
-                                        >
-                                            <td className="px-4 py-3">
-                                                {line.goods_label ??
-                                                    line.goods_description ??
-                                                    line.goods_type_name ??
+                                    <FbInfoItem
+                                        label="Goods"
+                                        value={goodsLabel}
+                                    />
+                                    <FbInfoItem
+                                        label="Weight"
+                                        value={totalWeightMt}
+                                    />
+                                    <FbInfoItem
+                                        label="Truck"
+                                        value={lorryHire.vehicle_registration}
+                                        accent
+                                    />
+                                    <FbInfoItem
+                                        label="Payee"
+                                        value={lorryHire.transporter_name}
+                                        sub={
+                                            <>
+                                                {lorryHire.declaration_type ||
                                                     '—'}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                {line.rate_type_label ??
-                                                    line.rate_type.replaceAll(
-                                                        '_',
-                                                        ' ',
-                                                    )}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                {line.loading_weight
-                                                    ? `${(Number(line.loading_weight) / 1000).toFixed(3)} MT`
-                                                    : '—'}
-                                            </td>
-                                            <td className="px-4 py-3 font-medium">
-                                                {line.freight_amount ?? '—'}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </DetailTabPanel>
-                    <DetailTabPanel id="tds" activeId={tab}>
-                        {lorryHire.tds_snapshot ? (
-                            <dl className="grid gap-3 text-sm">
-                                <Field
-                                    label="Applicable rate"
-                                    value={`${lorryHire.tds_snapshot.applicable_rate}%`}
-                                />
-                                <Field
-                                    label="Rule"
-                                    value={
-                                        lorryHire.tds_snapshot.rule_code ?? '—'
-                                    }
-                                />
-                                <Field
-                                    label="Declaration"
-                                    value={
-                                        lorryHire.tds_snapshot
-                                            .declaration_status
-                                    }
-                                />
-                                <div>
-                                    <dt className="text-muted-foreground">
-                                        Explanation
-                                    </dt>
-                                    <dd className="mt-1">
-                                        {lorryHire.tds_snapshot.explanation}
-                                    </dd>
-                                </div>
-                            </dl>
-                        ) : (
-                            <p className="text-sm text-muted-foreground">
-                                No TDS snapshot recorded.
-                            </p>
-                        )}
-                    </DetailTabPanel>
-                    <DetailTabPanel id="adjustments" activeId={tab}>
-                        {permissions.can_create_adjustment ? (
-                            <form
-                                id="lorry-hire-adjustment-form"
-                                className="mb-6 rounded-lg border border-border p-4"
-                                onSubmit={(event) => {
-                                    event.preventDefault();
-                                    if (!adjustmentSubmitAllowed.current) {
-                                        openAdjustmentConfirmation();
-                                        return;
-                                    }
-                                    adjustmentSubmitAllowed.current = false;
-                                    adjustmentForm.post(urls.adjustment_store, {
-                                        preserveScroll: true,
-                                    });
-                                }}
-                            >
-                                <h3 className="text-sm font-semibold">
-                                    New adjustment
-                                </h3>
-                                <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                                    <div>
-                                        <Label htmlFor="adj_type">Type</Label>
-                                        <select
-                                            id="adj_type"
-                                            className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                            value={adjustmentForm.data.type}
-                                            onChange={(e) =>
-                                                adjustmentForm.setData(
-                                                    'type',
-                                                    e.target.value,
-                                                )
-                                            }
-                                        >
-                                            {adjustmentTypeOptions.map(
-                                                (opt) => (
-                                                    <option
-                                                        key={opt.value}
-                                                        value={opt.value}
+                                                {lorryHire.tds_percent
+                                                    ? ` · TDS ${lorryHire.tds_percent}%`
+                                                    : null}
+                                            </>
+                                        }
+                                    />
+                                    <FbInfoItem
+                                        label="Customer"
+                                        value={lorryHire.billing_customer_name}
+                                    />
+                                    <FbInfoItem
+                                        label="Delivery"
+                                        value={
+                                            delivery.status ??
+                                            delivery.lr_status ??
+                                            'Pending'
+                                        }
+                                    />
+                                    <FbInfoItem
+                                        label="Consignor"
+                                        value={lorryHire.consignor_name}
+                                    />
+                                    <FbInfoItem
+                                        label="Consignee"
+                                        value={lorryHire.consignee_name}
+                                    />
+                                    <FbInfoItem
+                                        label="Memo"
+                                        value={delivery.memo_number}
+                                    />
+                                    <FbInfoItem
+                                        label="POD"
+                                        value={delivery.pod_number}
+                                    />
+                                    {lorryHire.remarks ? (
+                                        <FbInfoItem
+                                            label="Remark"
+                                            value={lorryHire.remarks}
+                                            full
+                                        />
+                                    ) : null}
+                                </FbInfoGrid>
+                            </FbDetailCard>
+
+                            <FbRouteCard
+                                from={lorryHire.from_station_name ?? '—'}
+                                to={lorryHire.to_station_name ?? '—'}
+                                customer={
+                                    lorryHire.billing_customer_name ?? '—'
+                                }
+                                payee={lorryHire.transporter_name ?? '—'}
+                                lrAmount={lorryHire.customer_freight_total}
+                            />
+
+                            <FbDetailCard title="Hire Charges">
+                                <div className="overflow-x-auto px-4 py-3">
+                                    <table className="min-w-full text-sm">
+                                        <thead>
+                                            <tr className="text-left text-xs text-slate-500">
+                                                <th className="px-2 py-2">
+                                                    Description
+                                                </th>
+                                                <th className="px-2 py-2">
+                                                    Rate type
+                                                </th>
+                                                <th className="px-2 py-2">
+                                                    Weight
+                                                </th>
+                                                <th className="px-2 py-2">
+                                                    Freight
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {lorryHire.goods_lines.map(
+                                                (line) => (
+                                                    <tr
+                                                        key={line.id}
+                                                        className="border-t border-slate-100"
                                                     >
-                                                        {opt.label}
-                                                    </option>
+                                                        <td className="px-2 py-2">
+                                                            {line.goods_label ??
+                                                                line.goods_description ??
+                                                                line.goods_type_name ??
+                                                                '—'}
+                                                        </td>
+                                                        <td className="px-2 py-2">
+                                                            {line.rate_type_label ??
+                                                                line.rate_type}
+                                                        </td>
+                                                        <td className="px-2 py-2">
+                                                            {line.loading_weight
+                                                                ? `${(Number(line.loading_weight) / 1000).toFixed(3)} MT`
+                                                                : '—'}
+                                                        </td>
+                                                        <td className="px-2 py-2 font-medium">
+                                                            {line.freight_amount ??
+                                                                '—'}
+                                                        </td>
+                                                    </tr>
                                                 ),
                                             )}
-                                        </select>
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {lorryHire.tds_snapshot ? (
+                                    <div className="border-t border-slate-100 px-4 py-3 text-xs text-slate-600">
+                                        TDS{' '}
+                                        {lorryHire.tds_snapshot.applicable_rate}
+                                        % · {lorryHire.tds_snapshot.explanation}
                                     </div>
-                                    {[
-                                        'detention',
-                                        'deviation',
-                                        'misc_expense',
-                                    ].includes(adjustmentForm.data.type) ? (
-                                        <div>
-                                            <Label htmlFor="adj_amount">
-                                                Amount
-                                            </Label>
-                                            <Input
-                                                id="adj_amount"
-                                                type="number"
-                                                step="0.01"
-                                                value={
-                                                    adjustmentForm.data.amount
-                                                }
-                                                onChange={(e) =>
-                                                    adjustmentForm.setData(
-                                                        'amount',
-                                                        e.target.value,
-                                                    )
-                                                }
-                                                required
-                                            />
-                                        </div>
-                                    ) : null}
-                                    {adjustmentForm.data.type ===
-                                    'unloading_weight' ? (
-                                        <div>
-                                            <Label htmlFor="adj_weight">
-                                                New unloading weight (MT)
-                                            </Label>
-                                            <Input
-                                                id="adj_weight"
-                                                type="number"
-                                                step="0.001"
-                                                value={
-                                                    adjustmentForm.data
-                                                        .new_weight
-                                                }
-                                                onChange={(e) =>
-                                                    adjustmentForm.setData(
-                                                        'new_weight',
-                                                        e.target.value,
-                                                    )
-                                                }
-                                                required
-                                            />
-                                        </div>
-                                    ) : null}
-                                    {['shortage', 'damage'].includes(
-                                        adjustmentForm.data.type,
-                                    ) ? (
-                                        <>
+                                ) : null}
+                            </FbDetailCard>
+
+                            <FbDetailCard title="Freight Adjustments">
+                                {permissions.can_create_adjustment ? (
+                                    <form
+                                        id="lorry-hire-adjustment-form"
+                                        className="mb-4 border-b border-slate-100 px-4 py-3"
+                                        onSubmit={(event) => {
+                                            event.preventDefault();
+                                            if (
+                                                !adjustmentSubmitAllowed.current
+                                            ) {
+                                                openAdjustmentConfirmation();
+                                                return;
+                                            }
+                                            adjustmentSubmitAllowed.current = false;
+                                            adjustmentForm.post(
+                                                urls.adjustment_store,
+                                                {
+                                                    preserveScroll: true,
+                                                },
+                                            );
+                                        }}
+                                    >
+                                        <h3 className="text-sm font-semibold">
+                                            New adjustment
+                                        </h3>
+                                        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                                             <div>
-                                                <Label htmlFor="adj_qty">
-                                                    Quantity
+                                                <Label htmlFor="adj_type">
+                                                    Type
+                                                </Label>
+                                                <select
+                                                    id="adj_type"
+                                                    className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                                                    value={
+                                                        adjustmentForm.data.type
+                                                    }
+                                                    onChange={(e) =>
+                                                        adjustmentForm.setData(
+                                                            'type',
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                >
+                                                    {adjustmentTypeOptions.map(
+                                                        (opt) => (
+                                                            <option
+                                                                key={opt.value}
+                                                                value={
+                                                                    opt.value
+                                                                }
+                                                            >
+                                                                {opt.label}
+                                                            </option>
+                                                        ),
+                                                    )}
+                                                </select>
+                                            </div>
+                                            {[
+                                                'detention',
+                                                'deviation',
+                                                'misc_expense',
+                                            ].includes(
+                                                adjustmentForm.data.type,
+                                            ) ? (
+                                                <div>
+                                                    <Label htmlFor="adj_amount">
+                                                        Amount
+                                                    </Label>
+                                                    <Input
+                                                        id="adj_amount"
+                                                        type="number"
+                                                        step="0.01"
+                                                        value={
+                                                            adjustmentForm.data
+                                                                .amount
+                                                        }
+                                                        onChange={(e) =>
+                                                            adjustmentForm.setData(
+                                                                'amount',
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                        required
+                                                    />
+                                                </div>
+                                            ) : null}
+                                            {adjustmentForm.data.type ===
+                                            'unloading_weight' ? (
+                                                <div>
+                                                    <Label htmlFor="adj_weight">
+                                                        New unloading weight
+                                                        (MT)
+                                                    </Label>
+                                                    <Input
+                                                        id="adj_weight"
+                                                        type="number"
+                                                        step="0.001"
+                                                        value={
+                                                            adjustmentForm.data
+                                                                .new_weight
+                                                        }
+                                                        onChange={(e) =>
+                                                            adjustmentForm.setData(
+                                                                'new_weight',
+                                                                e.target.value,
+                                                            )
+                                                        }
+                                                        required
+                                                    />
+                                                </div>
+                                            ) : null}
+                                            {['shortage', 'damage'].includes(
+                                                adjustmentForm.data.type,
+                                            ) ? (
+                                                <>
+                                                    <div>
+                                                        <Label htmlFor="adj_qty">
+                                                            Quantity
+                                                        </Label>
+                                                        <Input
+                                                            id="adj_qty"
+                                                            type="number"
+                                                            step="0.001"
+                                                            value={
+                                                                adjustmentForm
+                                                                    .data
+                                                                    .quantity
+                                                            }
+                                                            onChange={(e) =>
+                                                                adjustmentForm.setData(
+                                                                    'quantity',
+                                                                    e.target
+                                                                        .value,
+                                                                )
+                                                            }
+                                                            required
+                                                        />
+                                                    </div>
+                                                    <div>
+                                                        <Label htmlFor="adj_rate">
+                                                            Rate
+                                                        </Label>
+                                                        <Input
+                                                            id="adj_rate"
+                                                            type="number"
+                                                            step="0.0001"
+                                                            value={
+                                                                adjustmentForm
+                                                                    .data.rate
+                                                            }
+                                                            onChange={(e) =>
+                                                                adjustmentForm.setData(
+                                                                    'rate',
+                                                                    e.target
+                                                                        .value,
+                                                                )
+                                                            }
+                                                            required
+                                                        />
+                                                    </div>
+                                                </>
+                                            ) : null}
+                                            <div className="sm:col-span-2">
+                                                <Label htmlFor="adj_reason">
+                                                    Reason
                                                 </Label>
                                                 <Input
-                                                    id="adj_qty"
-                                                    type="number"
-                                                    step="0.001"
+                                                    id="adj_reason"
                                                     value={
                                                         adjustmentForm.data
-                                                            .quantity
+                                                            .reason
                                                     }
                                                     onChange={(e) =>
                                                         adjustmentForm.setData(
-                                                            'quantity',
+                                                            'reason',
                                                             e.target.value,
                                                         )
                                                     }
-                                                    required
                                                 />
                                             </div>
-                                            <div>
-                                                <Label htmlFor="adj_rate">
-                                                    Rate
-                                                </Label>
-                                                <Input
-                                                    id="adj_rate"
-                                                    type="number"
-                                                    step="0.0001"
-                                                    value={
-                                                        adjustmentForm.data.rate
-                                                    }
-                                                    onChange={(e) =>
-                                                        adjustmentForm.setData(
-                                                            'rate',
-                                                            e.target.value,
-                                                        )
-                                                    }
-                                                    required
-                                                />
-                                            </div>
-                                        </>
+                                        </div>
+                                        <Button
+                                            type="submit"
+                                            className="mt-4 bg-[#2FB36F] text-white hover:bg-[#279960]"
+                                            disabled={adjustmentForm.processing}
+                                        >
+                                            Save adjustment
+                                        </Button>
+                                    </form>
+                                ) : null}
+                                <div className="overflow-x-auto px-4 pb-3">
+                                    <table className="min-w-full text-sm">
+                                        <thead>
+                                            <tr className="text-left text-xs text-slate-500">
+                                                <th className="px-2 py-2">
+                                                    Type
+                                                </th>
+                                                <th className="px-2 py-2">
+                                                    Amount
+                                                </th>
+                                                <th className="px-2 py-2">
+                                                    Weights
+                                                </th>
+                                                <th className="px-2 py-2">
+                                                    When
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {adjustments.map((row) => (
+                                                <tr
+                                                    key={row.id}
+                                                    className="border-t border-slate-100"
+                                                >
+                                                    <td className="px-2 py-2">
+                                                        {row.type}
+                                                    </td>
+                                                    <td className="px-2 py-2">
+                                                        {row.amount ?? '—'}
+                                                    </td>
+                                                    <td className="px-2 py-2 text-xs text-muted-foreground">
+                                                        {row.previous_weight
+                                                            ? `${row.previous_weight} → ${row.new_weight}`
+                                                            : row.quantity
+                                                              ? `Qty ${row.quantity} @ ${row.rate}`
+                                                              : '—'}
+                                                    </td>
+                                                    <td className="px-2 py-2">
+                                                        {row.created_at ?? '—'}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                    {adjustments.length === 0 ? (
+                                        <p className="px-2 py-3 text-sm text-muted-foreground">
+                                            No adjustments yet.
+                                        </p>
                                     ) : null}
-                                    <div className="sm:col-span-2">
-                                        <Label htmlFor="adj_reason">
-                                            Reason
-                                        </Label>
-                                        <Input
-                                            id="adj_reason"
-                                            value={adjustmentForm.data.reason}
-                                            onChange={(e) =>
-                                                adjustmentForm.setData(
-                                                    'reason',
-                                                    e.target.value,
-                                                )
-                                            }
+                                </div>
+                            </FbDetailCard>
+
+                            <FbDetailCard title="Delivery / Memo / POD">
+                                <FbInfoGrid>
+                                    <FbInfoItem
+                                        label="LR status"
+                                        value={delivery.lr_status}
+                                    />
+                                    <FbInfoItem
+                                        label="Delivered"
+                                        value={delivery.lr_delivered_at}
+                                    />
+                                    <FbInfoItem
+                                        label="Memo"
+                                        value={delivery.memo_number}
+                                    />
+                                    <FbInfoItem
+                                        label="POD"
+                                        value={delivery.pod_number}
+                                    />
+                                </FbInfoGrid>
+                                {permissions.can_manage_delivery ? (
+                                    <div className="border-t border-slate-100 px-4 py-3">
+                                        <AppIconAction
+                                            icon={ExternalLink}
+                                            label="Open Delivery / Memo workspace"
+                                            href={urls.deliveries}
+                                            variant="secondary"
+                                            size="sm"
                                         />
                                     </div>
-                                </div>
-                                <Button
-                                    type="submit"
-                                    className="mt-4 bg-[#2FB36F] text-white hover:bg-[#279960]"
-                                    disabled={adjustmentForm.processing}
-                                >
-                                    Save adjustment
-                                </Button>
-                            </form>
-                        ) : null}
-                        <div className="overflow-hidden rounded-lg border border-border">
-                            <table className="min-w-full text-sm">
-                                <thead className="bg-muted/40 text-left">
-                                    <tr>
-                                        <th className="px-4 py-3">Type</th>
-                                        <th className="px-4 py-3">Amount</th>
-                                        <th className="px-4 py-3">Weights</th>
-                                        <th className="px-4 py-3">When</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {adjustments.map((row) => (
-                                        <tr
-                                            key={row.id}
-                                            className="border-t border-border"
+                                ) : null}
+                            </FbDetailCard>
+
+                            {permissions.can_cancel &&
+                            lorryHire.status !== 'cancelled' &&
+                            cancelPreview &&
+                            urls.cancel ? (
+                                <FbDetailCard title="Cancel Lorry Hire">
+                                    <form
+                                        id="lorry-hire-cancel-form"
+                                        className="space-y-4 px-4 py-3"
+                                        onSubmit={(event) => {
+                                            event.preventDefault();
+                                            const cancelUrl = urls.cancel;
+                                            if (!cancelUrl) {
+                                                return;
+                                            }
+                                            if (!cancelSubmitAllowed.current) {
+                                                openCancelConfirmation();
+                                                return;
+                                            }
+                                            cancelSubmitAllowed.current = false;
+                                            cancelForm.post(cancelUrl, {
+                                                preserveScroll: true,
+                                            });
+                                        }}
+                                    >
+                                        <p className="text-sm text-muted-foreground">
+                                            Review amounts before confirming.
+                                            This action cannot be undone.
+                                        </p>
+                                        <dl className="grid gap-2 rounded-md border border-border bg-background p-3 text-sm sm:grid-cols-2">
+                                            <PreviewField
+                                                label="Transporter freight"
+                                                value={lorryHire.freight_total}
+                                            />
+                                            <PreviewField
+                                                label="TDS"
+                                                value={lorryHire.tds_amount}
+                                            />
+                                            <PreviewField
+                                                label="Net payable"
+                                                value={lorryHire.net_payable}
+                                            />
+                                            <PreviewField
+                                                label="Outstanding"
+                                                value={
+                                                    lorryHire.outstanding_amount
+                                                }
+                                            />
+                                        </dl>
+                                        <fieldset className="space-y-2">
+                                            <legend className="text-sm font-medium">
+                                                Settle outstanding to
+                                                transporter book?
+                                            </legend>
+                                            <label className="flex cursor-pointer items-start gap-2 text-sm">
+                                                <input
+                                                    type="radio"
+                                                    name="settle_outstanding"
+                                                    className="mt-1"
+                                                    checked={
+                                                        cancelForm.data
+                                                            .settle_outstanding ===
+                                                        true
+                                                    }
+                                                    onChange={() =>
+                                                        cancelForm.setData(
+                                                            'settle_outstanding',
+                                                            true,
+                                                        )
+                                                    }
+                                                />
+                                                <span>
+                                                    {
+                                                        cancelPreview.settle_yes_description
+                                                    }
+                                                </span>
+                                            </label>
+                                            <label className="flex cursor-pointer items-start gap-2 text-sm">
+                                                <input
+                                                    type="radio"
+                                                    name="settle_outstanding"
+                                                    className="mt-1"
+                                                    checked={
+                                                        cancelForm.data
+                                                            .settle_outstanding ===
+                                                        false
+                                                    }
+                                                    onChange={() =>
+                                                        cancelForm.setData(
+                                                            'settle_outstanding',
+                                                            false,
+                                                        )
+                                                    }
+                                                />
+                                                <span>
+                                                    {
+                                                        cancelPreview.settle_no_description
+                                                    }
+                                                </span>
+                                            </label>
+                                        </fieldset>
+                                        <div>
+                                            <Label htmlFor="cancel_reason">
+                                                Reason (required)
+                                            </Label>
+                                            <Input
+                                                id="cancel_reason"
+                                                className="mt-1"
+                                                value={cancelForm.data.reason}
+                                                onChange={(e) =>
+                                                    cancelForm.setData(
+                                                        'reason',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                required
+                                                maxLength={2000}
+                                            />
+                                        </div>
+                                        <Button
+                                            type="submit"
+                                            variant="destructive"
+                                            disabled={cancelForm.processing}
                                         >
-                                            <td className="px-4 py-3">
-                                                {row.type}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                {row.amount ?? '—'}
-                                            </td>
-                                            <td className="px-4 py-3 text-xs text-muted-foreground">
-                                                {row.previous_weight
-                                                    ? `${row.previous_weight} → ${row.new_weight}`
-                                                    : row.quantity
-                                                      ? `Qty ${row.quantity} @ ${row.rate}`
-                                                      : '—'}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                {row.created_at ?? '—'}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                            {adjustments.length === 0 ? (
-                                <p className="px-4 py-3 text-sm text-muted-foreground">
-                                    No adjustments yet.
-                                </p>
+                                            Confirm cancellation
+                                        </Button>
+                                    </form>
+                                </FbDetailCard>
                             ) : null}
-                        </div>
-                    </DetailTabPanel>
-                    <DetailTabPanel id="delivery" activeId={tab}>
-                        <dl className="grid gap-3 text-sm sm:grid-cols-2">
-                            <Field
-                                label="LR status"
-                                value={delivery.lr_status}
+                        </>
+                    }
+                    side={
+                        <>
+                            <FbFinancialSummary
+                                balanceDue={balanceDue}
+                                cleared={cleared}
+                                trAmount={lorryHire.freight_total ?? '—'}
+                                deductions={lorryHire.tds_amount ?? '—'}
+                                balance={lorryHire.outstanding_amount ?? '—'}
+                                rows={[
+                                    {
+                                        label: 'TR Freight',
+                                        value: lorryHire.freight_total ?? '—',
+                                    },
+                                    {
+                                        label: 'TDS',
+                                        value: lorryHire.tds_amount ?? '—',
+                                    },
+                                    {
+                                        label: 'Net payable',
+                                        value: lorryHire.net_payable ?? '—',
+                                    },
+                                    {
+                                        label: 'Outstanding',
+                                        value:
+                                            lorryHire.outstanding_amount ?? '—',
+                                    },
+                                    {
+                                        label: 'Customer freight',
+                                        value:
+                                            lorryHire.customer_freight_total ??
+                                            '—',
+                                    },
+                                ]}
                             />
-                            <Field
-                                label="LR delivered"
-                                value={delivery.lr_delivered_at}
-                            />
-                            <Field label="Memo" value={delivery.memo_number} />
-                            <Field label="POD" value={delivery.pod_number} />
-                            <Field
-                                label="Delivery record"
-                                value={delivery.delivery_date}
-                            />
-                            <Field
-                                label="Delivery status"
-                                value={delivery.status}
-                            />
-                        </dl>
-                        {permissions.can_manage_delivery ? (
-                            <div className="mt-3">
-                                <AppIconAction
-                                    icon={ExternalLink}
-                                    label="Open Delivery / Memo workspace"
-                                    href={urls.deliveries}
-                                    variant="secondary"
-                                    size="sm"
-                                />
-                            </div>
-                        ) : null}
-                    </DetailTabPanel>
-                    <DetailTabPanel id="cancel" activeId={tab}>
-                        {cancelPreview && urls.cancel ? (
-                            <form
-                                id="lorry-hire-cancel-form"
-                                className="max-w-2xl space-y-4 rounded-lg border border-destructive/30 bg-destructive/5 p-4"
-                                onSubmit={(event) => {
-                                    event.preventDefault();
-                                    const cancelUrl = urls.cancel;
-                                    if (!cancelUrl) {
-                                        return;
-                                    }
-                                    if (!cancelSubmitAllowed.current) {
-                                        openCancelConfirmation();
-                                        return;
-                                    }
-                                    cancelSubmitAllowed.current = false;
-                                    cancelForm.post(cancelUrl, {
-                                        preserveScroll: true,
-                                    });
-                                }}
-                            >
-                                <h3 className="text-sm font-semibold text-destructive">
-                                    Cancel Lorry Hire
-                                </h3>
-                                <p className="text-sm text-muted-foreground">
-                                    Review amounts before confirming. This
-                                    action cannot be undone.
-                                </p>
-                                <dl className="grid gap-2 rounded-md border border-border bg-background p-3 text-sm sm:grid-cols-2">
-                                    <PreviewField
-                                        label="Transporter freight"
-                                        value={lorryHire.freight_total}
+                            <FbDetailCard title="Record Info">
+                                <FbInfoGrid>
+                                    <FbInfoItem
+                                        label="Created"
+                                        value={lorryHire.created_at}
                                     />
-                                    <PreviewField
-                                        label="TDS"
-                                        value={lorryHire.tds_amount}
+                                    <FbInfoItem
+                                        label="Hire date"
+                                        value={lorryHire.hire_date}
                                     />
-                                    <PreviewField
-                                        label="Net payable"
-                                        value={lorryHire.net_payable}
+                                    <FbInfoItem
+                                        label="Hire #"
+                                        value={lorryHire.hire_number}
                                     />
-                                    <PreviewField
-                                        label="Outstanding"
-                                        value={lorryHire.outstanding_amount}
+                                    <FbInfoItem
+                                        label="Status"
+                                        value={lorryHire.status}
                                     />
-                                    <PreviewField
-                                        label="Adjustments"
-                                        value={String(
-                                            cancelPreview.adjustments.length,
-                                        )}
-                                    />
-                                    <PreviewField
-                                        label="Vouchers"
-                                        value={String(
-                                            cancelPreview.vouchers.length,
-                                        )}
-                                    />
-                                </dl>
-                                <fieldset className="space-y-2">
-                                    <legend className="text-sm font-medium">
-                                        Settle outstanding to transporter book?
-                                    </legend>
-                                    <label className="flex cursor-pointer items-start gap-2 text-sm">
-                                        <input
-                                            type="radio"
-                                            name="settle_outstanding"
-                                            className="mt-1"
-                                            checked={
-                                                cancelForm.data
-                                                    .settle_outstanding === true
-                                            }
-                                            onChange={() =>
-                                                cancelForm.setData(
-                                                    'settle_outstanding',
-                                                    true,
-                                                )
-                                            }
-                                        />
-                                        <span>
-                                            {
-                                                cancelPreview.settle_yes_description
-                                            }
-                                        </span>
-                                    </label>
-                                    <label className="flex cursor-pointer items-start gap-2 text-sm">
-                                        <input
-                                            type="radio"
-                                            name="settle_outstanding"
-                                            className="mt-1"
-                                            checked={
-                                                cancelForm.data
-                                                    .settle_outstanding ===
-                                                false
-                                            }
-                                            onChange={() =>
-                                                cancelForm.setData(
-                                                    'settle_outstanding',
-                                                    false,
-                                                )
-                                            }
-                                        />
-                                        <span>
-                                            {
-                                                cancelPreview.settle_no_description
-                                            }
-                                        </span>
-                                    </label>
-                                </fieldset>
-                                <div>
-                                    <Label htmlFor="cancel_reason">
-                                        Reason (required)
-                                    </Label>
-                                    <Input
-                                        id="cancel_reason"
-                                        className="mt-1"
-                                        value={cancelForm.data.reason}
-                                        onChange={(e) =>
-                                            cancelForm.setData(
-                                                'reason',
-                                                e.target.value,
-                                            )
-                                        }
-                                        required
-                                        maxLength={2000}
-                                    />
-                                </div>
-                                <Button
-                                    type="submit"
-                                    variant="destructive"
-                                    disabled={cancelForm.processing}
-                                >
-                                    Confirm cancellation
-                                </Button>
-                            </form>
-                        ) : (
-                            <p className="text-sm text-muted-foreground">
-                                Cancellation is not available for this Lorry
-                                Hire.
-                            </p>
-                        )}
-                    </DetailTabPanel>
-                </DetailTabs>
+                                </FbInfoGrid>
+                            </FbDetailCard>
+                        </>
+                    }
+                />
 
                 <FormConfirmationDialog
                     open={confirmOpen}
@@ -911,7 +1004,7 @@ export default function LorryHireShow({
                     confirmLabel={confirmLabel}
                     onConfirm={handleConfirmDialog}
                 />
-            </PageShell>
+            </FbDetailPage>
         </>
     );
 }
@@ -927,21 +1020,6 @@ function PreviewField({
         <div>
             <dt className="text-xs text-muted-foreground">{label}</dt>
             <dd className="font-medium">{value ?? '—'}</dd>
-        </div>
-    );
-}
-
-function Field({
-    label,
-    value,
-}: {
-    label: string;
-    value: string | null | undefined;
-}) {
-    return (
-        <div>
-            <dt className="text-xs text-muted-foreground">{label}</dt>
-            <dd className="text-sm font-medium">{value ?? '—'}</dd>
         </div>
     );
 }

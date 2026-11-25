@@ -73,7 +73,14 @@ final class LorryHireService
             ->where('company_id', $company->id)
             ->where('branch_id', $branch->id)
             ->whereNull('deleted_at')
-            ->with(['lorryReceipt', 'vehicle', 'transporter'])
+            ->with([
+                'lorryReceipt.billingCustomer',
+                'lorryReceipt.fromStation',
+                'lorryReceipt.toStation',
+                'vehicle',
+                'transporter',
+                'goodsLines',
+            ])
             ->orderByDesc('created_at');
 
         if (filled($status)) {
@@ -94,6 +101,11 @@ final class LorryHireService
             ->whereNull('deleted_at')
             ->with([
                 'lorryReceipt.goodsRows',
+                'lorryReceipt.billingCustomer',
+                'lorryReceipt.consignor',
+                'lorryReceipt.consignee',
+                'lorryReceipt.fromStation',
+                'lorryReceipt.toStation',
                 'vehicle',
                 'transporter',
                 'goodsLines.lrGoodsRow.goodsType',

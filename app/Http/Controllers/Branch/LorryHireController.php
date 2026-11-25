@@ -489,10 +489,14 @@ class LorryHireController extends Controller
             'status' => $hire->status->value,
             'hire_date' => $hire->hire_date?->format('d-m-Y'),
             'lr_number' => $lr?->lr_number,
+            'lr_date' => $lr?->lr_date?->format('d-m-Y'),
             'from_station_name' => $lr !== null ? $this->loadingStationLabel($lr) : null,
             'to_station_name' => $lr !== null ? $this->unloadingStationLabel($lr) : null,
             'loading_station' => $lr !== null ? $this->loadingStationLabel($lr) : null,
             'unloading_station' => $lr !== null ? $this->unloadingStationLabel($lr) : null,
+            'billing_customer_name' => $lr?->billingCustomer?->name,
+            'consignor_name' => $lr?->consignor?->name,
+            'consignee_name' => $lr?->consignee?->name,
             'vehicle_registration' => $hire->vehicle?->registration_number,
             'transporter_name' => $hire->transporter?->name,
             'declaration_type' => $hire->declaration_type,
@@ -559,11 +563,16 @@ class LorryHireController extends Controller
      *     id: string,
      *     hire_number: string,
      *     status: string,
+     *     hire_date: string|null,
+     *     lr_date: string|null,
      *     lr_number: string|null,
+     *     billing_customer_name: string|null,
      *     vehicle_registration: string|null,
      *     transporter_name: string|null,
      *     from_station_name: string|null,
      *     to_station_name: string|null,
+     *     weight_mt: string|null,
+     *     rate: string|null,
      *     freight_total: string|null,
      *     outstanding_amount: string|null,
      *     created_at: string|null,
@@ -572,11 +581,17 @@ class LorryHireController extends Controller
      */
     private function listPayload(LorryHire $hire, bool $maySeeFreight): array
     {
+        $weightKg = $hire->goodsLines->sum(fn ($line): float => (float) ($line->loading_weight ?? 0));
+        $primaryLine = $hire->goodsLines->first();
+
         return [
             'id' => $hire->id,
             'hire_number' => $hire->hire_number,
             'status' => $hire->status->value,
+            'hire_date' => $hire->hire_date?->format('d-m-Y'),
+            'lr_date' => $hire->lorryReceipt?->lr_date?->format('d-m-Y'),
             'lr_number' => $hire->lorryReceipt?->lr_number,
+            'billing_customer_name' => $hire->lorryReceipt?->billingCustomer?->name,
             'vehicle_registration' => $hire->vehicle?->registration_number,
             'transporter_name' => $hire->transporter?->name,
             'from_station_name' => $hire->lorryReceipt !== null
@@ -584,6 +599,12 @@ class LorryHireController extends Controller
                 : null,
             'to_station_name' => $hire->lorryReceipt !== null
                 ? $this->unloadingStationLabel($hire->lorryReceipt)
+                : null,
+            'weight_mt' => $weightKg > 0
+                ? number_format($weightKg / 1000, 3, '.', '')
+                : null,
+            'rate' => $primaryLine !== null
+                ? $this->freightPresentation->presentAmount($primaryLine->rate, $maySeeFreight)
                 : null,
             'freight_total' => $this->freightPresentation->presentAmount($hire->freight_total, $maySeeFreight),
             'outstanding_amount' => $this->freightPresentation->presentAmount($hire->outstanding_amount, $maySeeFreight),
