@@ -116,9 +116,24 @@ class PartloadChallanController extends Controller
                 ])->values()->all(),
             'vehicleOptions' => $this->vehicleOptions->forBranch($company, $branch),
             'driverOptions' => $this->partyOptions->forRoles($company, $branch, PartyRoleType::Driver),
+            'permissions' => array_merge($this->permissions($actor, $company, $branch), [
+                'can_create_masters' => $this->masterPermissions(
+                    $actor,
+                    $company,
+                    $branch,
+                    $this->access,
+                    $this->authorizer,
+                )['can_create'],
+                'can_quick_create_stations' => (int) $actor->id === (int) $company->owner_user_id,
+            ]),
             'urls' => [
                 'store' => route('branch.partload.challans.store', absolute: false),
                 'index' => route('branch.partload.challans.index', absolute: false),
+                'stations_store' => route('branch.stations.store', absolute: false),
+                'vehicles_store' => route('branch.vehicles.store', absolute: false),
+                'vehicles_options' => route('branch.vehicles.options', absolute: false),
+                'parties_store' => route('branch.parties.store', absolute: false),
+                'parties_options' => route('branch.parties.options', absolute: false),
             ],
             'filters' => [
                 'from_station_id' => $fromStationId,

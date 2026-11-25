@@ -1,16 +1,33 @@
 import { Form, Head, Link } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 import { AppIndexListCard, AppIndexPage } from '@/components/app-index-page';
+import {
+    QuickCreateStationSheet,
+    type QuickCreatedStation,
+} from '@/components/masters/quick-create-station-sheet';
+import { SearchablePartySelect } from '@/components/searchable-party-select';
+import {
+    SearchableVehicleSelect,
+    type VehicleSelectOption,
+} from '@/components/searchable-vehicle-select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
-type Option = {
+type StationOption = {
     id: string;
     name?: string | null;
-    registration_number?: string | null;
     code?: string | null;
 };
+
+type PartyOption = {
+    id: string;
+    name: string;
+    city?: string | null;
+    state?: string | null;
+    contact_number?: string | null;
+};
+
 type Eligible = {
     id: string;
     challan_number: string;
@@ -25,20 +42,46 @@ type Eligible = {
 
 type Props = {
     eligibleChallans: Eligible[];
-    stationOptions: Option[];
-    vehicleOptions: Option[];
-    driverOptions: Option[];
-    urls: { store: string; index: string };
+    stationOptions: StationOption[];
+    vehicleOptions: VehicleSelectOption[];
+    driverOptions: PartyOption[];
+    permissions?: {
+        can_create_masters?: boolean;
+        can_quick_create_stations?: boolean;
+    };
+    urls: {
+        store: string;
+        index: string;
+        stations_store?: string;
+        vehicles_store?: string;
+        vehicles_options?: string;
+        parties_store?: string;
+        parties_options?: string;
+    };
 };
 
 export default function PartloadMainChallanCreate({
     eligibleChallans,
-    stationOptions,
+    stationOptions: initialStations,
     vehicleOptions,
     driverOptions,
+    permissions,
     urls,
 }: Props) {
     const [selected, setSelected] = useState<string[]>([]);
+    const [stations, setStations] = useState(initialStations);
+    const [fromStationId, setFromStationId] = useState('');
+    const [toStationId, setToStationId] = useState('');
+    const [vehicleId, setVehicleId] = useState('');
+    const [driverPartyId, setDriverPartyId] = useState('');
+    const [stationQuickCreateTarget, setStationQuickCreateTarget] = useState<
+        'from' | 'to' | null
+    >(null);
+
+    const canQuickCreateStations =
+        permissions?.can_quick_create_stations === true &&
+        Boolean(urls.stations_store);
+    const canCreateMasters = permissions?.can_create_masters === true;
 
     const selectedRows = useMemo(
         () => eligibleChallans.filter((row) => selected.includes(row.id)),
@@ -84,21 +127,41 @@ export default function PartloadMainChallanCreate({
                                         />
                                     </div>
                                     <div className="space-y-1">
-                                        <Label
-                                            htmlFor="from_station_id"
-                                            required
-                                        >
-                                            From Station
-                                        </Label>
+                                        <div className="flex items-center justify-between gap-2">
+                                            <Label
+                                                htmlFor="from_station_id"
+                                                required
+                                            >
+                                                From Station
+                                            </Label>
+                                            {canQuickCreateStations ? (
+                                                <button
+                                                    type="button"
+                                                    className="text-xs font-medium text-[#2D8CFF] hover:underline"
+                                                    onClick={() =>
+                                                        setStationQuickCreateTarget(
+                                                            'from',
+                                                        )
+                                                    }
+                                                >
+                                                    + Add
+                                                </button>
+                                            ) : null}
+                                        </div>
                                         <select
                                             id="from_station_id"
                                             name="from_station_id"
                                             required
                                             className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-                                            defaultValue=""
+                                            value={fromStationId}
+                                            onChange={(event) =>
+                                                setFromStationId(
+                                                    event.target.value,
+                                                )
+                                            }
                                         >
                                             <option value="">Select</option>
-                                            {stationOptions.map((option) => (
+                                            {stations.map((option) => (
                                                 <option
                                                     key={option.id}
                                                     value={option.id}
@@ -109,18 +172,41 @@ export default function PartloadMainChallanCreate({
                                         </select>
                                     </div>
                                     <div className="space-y-1">
-                                        <Label htmlFor="to_station_id" required>
-                                            To Station
-                                        </Label>
+                                        <div className="flex items-center justify-between gap-2">
+                                            <Label
+                                                htmlFor="to_station_id"
+                                                required
+                                            >
+                                                To Station
+                                            </Label>
+                                            {canQuickCreateStations ? (
+                                                <button
+                                                    type="button"
+                                                    className="text-xs font-medium text-[#2D8CFF] hover:underline"
+                                                    onClick={() =>
+                                                        setStationQuickCreateTarget(
+                                                            'to',
+                                                        )
+                                                    }
+                                                >
+                                                    + Add
+                                                </button>
+                                            ) : null}
+                                        </div>
                                         <select
                                             id="to_station_id"
                                             name="to_station_id"
                                             required
                                             className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-                                            defaultValue=""
+                                            value={toStationId}
+                                            onChange={(event) =>
+                                                setToStationId(
+                                                    event.target.value,
+                                                )
+                                            }
                                         >
                                             <option value="">Select</option>
-                                            {stationOptions.map((option) => (
+                                            {stations.map((option) => (
                                                 <option
                                                     key={option.id}
                                                     value={option.id}
@@ -130,53 +216,69 @@ export default function PartloadMainChallanCreate({
                                             ))}
                                         </select>
                                     </div>
-                                    <div className="space-y-1">
-                                        <Label htmlFor="vehicle_id" required>
-                                            Vehicle
-                                        </Label>
-                                        <select
+                                    <div className="space-y-1 lg:col-span-2">
+                                        <SearchableVehicleSelect
                                             id="vehicle_id"
                                             name="vehicle_id"
+                                            label="Vehicle"
+                                            options={vehicleOptions}
+                                            searchUrl={urls.vehicles_options}
+                                            value={vehicleId}
+                                            onValueChange={(next, option) => {
+                                                setVehicleId(next);
+                                                if (
+                                                    option?.primary_driver_party_id &&
+                                                    driverPartyId === ''
+                                                ) {
+                                                    setDriverPartyId(
+                                                        option.primary_driver_party_id,
+                                                    );
+                                                }
+                                            }}
                                             required
-                                            className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-                                            defaultValue=""
-                                        >
-                                            <option value="">Select</option>
-                                            {vehicleOptions.map((option) => (
-                                                <option
-                                                    key={option.id}
-                                                    value={option.id}
-                                                >
-                                                    {option.registration_number ??
-                                                        option.name}
-                                                </option>
-                                            ))}
-                                        </select>
+                                            createStoreUrl={
+                                                canCreateMasters
+                                                    ? urls.vehicles_store
+                                                    : undefined
+                                            }
+                                            partiesOptionsUrl={
+                                                urls.parties_options
+                                            }
+                                            partiesStoreUrl={
+                                                canCreateMasters
+                                                    ? urls.parties_store
+                                                    : undefined
+                                            }
+                                            allowOwnQuickCreate={
+                                                canCreateMasters
+                                            }
+                                            allowMarketQuickCreate={
+                                                canCreateMasters
+                                            }
+                                            emptyMessage="No vehicles in this branch."
+                                            error={errors.vehicle_id}
+                                        />
                                     </div>
-                                    <div className="space-y-1">
-                                        <Label
-                                            htmlFor="driver_party_id"
-                                            required
-                                        >
-                                            Driver
-                                        </Label>
-                                        <select
+                                    <div className="space-y-1 lg:col-span-2">
+                                        <SearchablePartySelect
                                             id="driver_party_id"
                                             name="driver_party_id"
+                                            label="Driver"
+                                            options={driverOptions}
+                                            searchUrl={urls.parties_options}
+                                            role="driver"
+                                            value={driverPartyId}
+                                            onValueChange={setDriverPartyId}
                                             required
-                                            className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-                                            defaultValue=""
-                                        >
-                                            <option value="">Select</option>
-                                            {driverOptions.map((option) => (
-                                                <option
-                                                    key={option.id}
-                                                    value={option.id}
-                                                >
-                                                    {option.name}
-                                                </option>
-                                            ))}
-                                        </select>
+                                            createStoreUrl={
+                                                canCreateMasters
+                                                    ? urls.parties_store
+                                                    : undefined
+                                            }
+                                            createRole="driver"
+                                            emptyMessage="No drivers found."
+                                            error={errors.driver_party_id}
+                                        />
                                     </div>
                                     <div className="space-y-1">
                                         <Label htmlFor="truck_freight">
@@ -321,6 +423,38 @@ export default function PartloadMainChallanCreate({
                     </Form>
                 </AppIndexListCard>
             </AppIndexPage>
+
+            {stationQuickCreateTarget && urls.stations_store ? (
+                <QuickCreateStationSheet
+                    open={stationQuickCreateTarget !== null}
+                    onOpenChange={(next) => {
+                        if (!next) {
+                            setStationQuickCreateTarget(null);
+                        }
+                    }}
+                    storeUrl={urls.stations_store}
+                    onCreated={(station: QuickCreatedStation) => {
+                        setStations((current) =>
+                            current.some((row) => row.id === station.id)
+                                ? current
+                                : [
+                                      ...current,
+                                      {
+                                          id: station.id,
+                                          name: station.name,
+                                          code: station.code,
+                                      },
+                                  ],
+                        );
+                        if (stationQuickCreateTarget === 'from') {
+                            setFromStationId(station.id);
+                        } else {
+                            setToStationId(station.id);
+                        }
+                        setStationQuickCreateTarget(null);
+                    }}
+                />
+            ) : null}
         </>
     );
 }
