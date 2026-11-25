@@ -116,7 +116,10 @@ export function SearchablePartySelect({
         (role === 'customer' ||
         role === 'consignor' ||
         role === 'consignee' ||
-        role === 'transporter'
+        role === 'transporter' ||
+        role === 'driver' ||
+        role === 'pump_vendor' ||
+        role === 'general_vendor'
             ? role
             : undefined);
     const canQuickCreate = Boolean(

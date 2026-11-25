@@ -23,7 +23,10 @@ export type QuickCreatePartyRole =
     | 'customer'
     | 'consignor'
     | 'consignee'
-    | 'transporter';
+    | 'transporter'
+    | 'driver'
+    | 'pump_vendor'
+    | 'general_vendor';
 
 type Props = {
     open: boolean;
@@ -38,6 +41,9 @@ const ROLE_TITLES: Record<QuickCreatePartyRole, string> = {
     consignor: 'Consignor',
     consignee: 'Consignee',
     transporter: 'Agency / Transporter',
+    driver: 'Driver',
+    pump_vendor: 'Pump Vendor',
+    general_vendor: 'General Vendor',
 };
 
 type Draft = {

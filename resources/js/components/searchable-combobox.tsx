@@ -90,8 +90,8 @@ function rankOptions(
     }
 
     return [...options].sort((a, b) => {
-        const score = (label: string): number => {
-            const value = label.toLowerCase();
+        const score = (label: string | undefined): number => {
+            const value = (label ?? '').toLowerCase();
             if (value === q) {
                 return 0;
             }
@@ -108,7 +108,7 @@ function rankOptions(
         if (delta !== 0) {
             return delta;
         }
-        return a.label.localeCompare(b.label);
+        return (a.label ?? '').localeCompare(b.label ?? '');
     });
 }
 
@@ -121,7 +121,9 @@ function filterOptionsLocally(
         return options;
     }
 
-    return options.filter((option) => option.label.toLowerCase().includes(q));
+    return options.filter((option) =>
+        (option.label ?? '').toLowerCase().includes(q),
+    );
 }
 
 function computePanelPosition(
@@ -204,7 +206,8 @@ export function SearchableCombobox({
     );
 
     const selected = value ?? internalValue;
-    const resolvedPlaceholder = placeholder ?? `Select ${label.toLowerCase()}…`;
+    const resolvedPlaceholder =
+        placeholder ?? `Select ${(label ?? 'option').toLowerCase()}…`;
 
     const sourceOptions = remoteOptions ?? options;
 
@@ -615,7 +618,7 @@ export function SearchableCombobox({
                               type="search"
                               value={query}
                               onChange={(event) => setQuery(event.target.value)}
-                              placeholder={`Search ${label.toLowerCase()}…`}
+                              placeholder={`Search ${(label ?? 'option').toLowerCase()}…`}
                               autoComplete="off"
                               disabled={disabled}
                               aria-controls={listboxId}

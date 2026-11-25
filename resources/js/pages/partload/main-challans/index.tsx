@@ -178,17 +178,9 @@ export default function PartloadMainChallansIndex({
                         </table>
                     </div>
                     <TablePagination
-                        currentPage={mainChallans.meta.current_page}
-                        lastPage={mainChallans.meta.last_page}
-                        total={mainChallans.meta.total}
-                        perPage={mainChallans.meta.per_page}
-                        onPageChange={(page) =>
-                            router.get(
-                                urls.index,
-                                { ...filters, page },
-                                { preserveState: true },
-                            )
-                        }
+                        baseUrl={urls.index}
+                        meta={mainChallans.meta}
+                        query={{ status: filters.status || undefined }}
                     />
                 </AppIndexListCard>
             </AppIndexPage>
