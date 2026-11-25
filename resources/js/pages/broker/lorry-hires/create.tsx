@@ -1,9 +1,8 @@
 import { Form, Head, Link } from '@inertiajs/react';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
 import type { FieldReview } from '@/components/form-confirmation/types';
 import InputError from '@/components/input-error';
-import { SearchablePartySelect } from '@/components/searchable-party-select';
 import { formatDisplayDate } from '@/lib/dates';
 import {
     formatMtLabel,
@@ -145,12 +144,16 @@ function computeTransporterFreightPreview(
             }
             return rate * packages;
         case 'per_kg':
-        case 'per_actual_weight':
-        case 'per_charged_weight':
             if (loadingKg === null) {
                 return null;
             }
             return rate * loadingKg;
+        case 'per_actual_weight':
+        case 'per_charged_weight':
+            if (loadingMt === null) {
+                return null;
+            }
+            return rate * loadingMt;
         case 'per_mt':
             if (loadingMt === null) {
                 return null;
@@ -212,6 +215,19 @@ function ReadOnlyMetric({ label, value }: { label: string; value: string }) {
     );
 }
 
+function FormProcessingBridge({
+    processing,
+    onChange,
+}: {
+    processing: boolean;
+    onChange: (value: boolean) => void;
+}) {
+    useEffect(() => {
+        onChange(processing);
+    }, [onChange, processing]);
+    return null;
+}
+
 function initialTransporterPartyId(
     payee: Props['payee'],
     transporterOptions: Array<{ id: string; name: string }>,
@@ -248,15 +264,22 @@ export default function LorryHireCreate({
     const submitAllowed = useRef(false);
     const redirectToVoucher = useRef(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
+    const [formProcessing, setFormProcessing] = useState(false);
     const [reviewFields, setReviewFields] = useState<FieldReview[]>([]);
-    const [transporterPartyId, setTransporterPartyId] = useState(() =>
-        initialTransporterPartyId(payee, transporterOptions, suggestedPayeeId),
+    const transporterPartyId = useMemo(
+        () =>
+            initialTransporterPartyId(
+                payee,
+                transporterOptions,
+                suggestedPayeeId,
+            ),
+        [payee, suggestedPayeeId, transporterOptions],
     );
 
     const [lineDrafts, setLineDrafts] = useState<LineDraft[]>(() =>
         goodsRows.map((row) => ({
             loading_weight: kgToMt(row.suggested_loading_weight),
-            rate_type: 'per_mt',
+            rate_type: 'per_charged_weight',
             rate: '',
             is_fixed_amount: false,
         })),
@@ -338,11 +361,24 @@ export default function LorryHireCreate({
         .filter(Boolean)
         .join(' → ');
 
-    const selectedPayeeName =
-        transporterOptions.find((option) => option.id === transporterPartyId)
-            ?.name ??
-        payee?.name ??
-        '—';
+    const inheritedPayeeName = payee?.name ?? '—';
+    const primaryGoods = goodsRows[0] ?? null;
+    const goodsSummaryLabel = primaryGoods ? goodsRowLabel(primaryGoods) : '—';
+    const actualWeightSummary =
+        goodsRows.length === 1
+            ? formatWeightMt(primaryGoods?.actual_weight ?? null)
+            : `${goodsRows.length} lines`;
+    const chargedWeightSummary =
+        goodsRows.length === 1
+            ? formatWeightMt(primaryGoods?.charged_weight ?? null)
+            : `${goodsRows.length} lines`;
+    const customerRateSummary = primaryGoods
+        ? `${primaryGoods.customer_rate_type_label}${primaryGoods.customer_freight_rate ? ` @ ${primaryGoods.customer_freight_rate}` : ''}`
+        : '—';
+    const customerFreightSummary =
+        permissions.can_view_freight && primaryGoods?.customer_freight_amount
+            ? `₹${primaryGoods.customer_freight_amount}`
+            : '—';
 
     const openConfirmation = () => {
         const fields: FieldReview[] = [
@@ -352,7 +388,20 @@ export default function LorryHireCreate({
             },
             {
                 label: 'Payee / Transporter',
-                value: selectedPayeeName,
+                value: inheritedPayeeName,
+                group: 'Parties',
+            },
+            {
+                label: 'Bilty No.',
+                value: lorryReceipt.lr_number ?? '—',
+                group: 'Bilty',
+            },
+            {
+                label: 'Bilty date',
+                value: lorryReceipt.lr_date
+                    ? formatDisplayDate(lorryReceipt.lr_date)
+                    : '—',
+                group: 'Bilty',
             },
             {
                 label: 'Goods lines',
@@ -470,19 +519,8 @@ export default function LorryHireCreate({
                     payeeChip={payee?.role_label ?? null}
                     kpis={[
                         {
-                            label: 'Goods lines',
-                            value: String(goodsRows.length),
-                        },
-                        {
-                            label: 'Weight',
-                            value:
-                                goodsRows.length === 1
-                                    ? formatWeightMt(
-                                          goodsRows[0]?.charged_weight ??
-                                              goodsRows[0]
-                                                  ?.suggested_loading_weight,
-                                      )
-                                    : `${goodsRows.length} lines`,
+                            label: 'Bilty No.',
+                            value: lorryReceipt.lr_number ?? '—',
                         },
                         {
                             label: 'Bilty date',
@@ -491,7 +529,19 @@ export default function LorryHireCreate({
                                 : '—',
                         },
                         {
-                            label: 'LR Amount',
+                            label: 'Goods',
+                            value: goodsSummaryLabel,
+                        },
+                        {
+                            label: 'Actual weight',
+                            value: actualWeightSummary,
+                        },
+                        {
+                            label: 'Charged weight',
+                            value: chargedWeightSummary,
+                        },
+                        {
+                            label: 'Customer freight',
                             value:
                                 permissions.can_view_freight &&
                                 customerFreightTotal !== null
@@ -507,7 +557,7 @@ export default function LorryHireCreate({
                         },
                         {
                             label: 'Payee',
-                            value: payee?.name ?? 'Confirm below',
+                            value: inheritedPayeeName,
                         },
                         {
                             label: 'Consignor',
@@ -517,6 +567,14 @@ export default function LorryHireCreate({
                             label: 'Consignee',
                             value: lorryReceipt.consignee_name ?? '—',
                         },
+                        {
+                            label: 'Customer rate',
+                            value: customerRateSummary,
+                        },
+                        {
+                            label: 'Customer freight',
+                            value: customerFreightSummary,
+                        },
                     ]}
                     vehicleRoute={[
                         {
@@ -524,7 +582,7 @@ export default function LorryHireCreate({
                             value: lorryReceipt.vehicle_registration ?? '—',
                         },
                         {
-                            label: 'TDS',
+                            label: 'TDS %',
                             value: tdsPreview?.applicable_percent
                                 ? `${tdsPreview.applicable_percent}%`
                                 : '—',
@@ -549,54 +607,67 @@ export default function LorryHireCreate({
                 >
                     {({ processing, errors }) => (
                         <>
+                            <FormProcessingBridge
+                                processing={processing}
+                                onChange={setFormProcessing}
+                            />
                             <input
                                 type="hidden"
                                 id="redirect_to_voucher"
                                 name="redirect_to_voucher"
                                 value={redirectToVoucher.current ? '1' : '0'}
                             />
+                            <input
+                                type="hidden"
+                                id="transporter_party_id"
+                                name="transporter_party_id"
+                                value={transporterPartyId}
+                            />
 
                             <LrfSection
                                 step={1}
-                                title="Confirmed payee"
-                                description="Confirm the transporter who will receive hire payment"
+                                title="Payee"
+                                description="Inherited from the linked Bilty — not reselected here"
                                 tone="receipt"
                             >
-                                <div className="space-y-1 md:col-span-2">
-                                    <SearchablePartySelect
-                                        id="transporter_party_id"
-                                        name="transporter_party_id"
-                                        label="Payee / Transporter"
-                                        options={transporterOptions}
-                                        searchUrl={urls.parties_options}
-                                        role="transporter"
-                                        createStoreUrl={urls.parties_store}
-                                        createHref={urls.parties_create}
-                                        createLabel="Add"
-                                        createRole="transporter"
-                                        required={payeeRequired}
-                                        value={transporterPartyId}
-                                        onValueChange={setTransporterPartyId}
-                                        emptyMessage="No active transporters are available. Add a transporter party before creating a Lorry Hire."
-                                    />
+                                <div className="space-y-2 md:col-span-2">
+                                    <div className="grid gap-3 sm:grid-cols-2">
+                                        <div className="space-y-1">
+                                            <Label>Payee</Label>
+                                            <div className="flex min-h-9 items-center rounded-md border border-input bg-muted/20 px-3 text-sm font-medium">
+                                                {inheritedPayeeName}
+                                            </div>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label>TDS %</Label>
+                                            <div className="flex min-h-9 items-center rounded-md border border-input bg-muted/20 px-3 text-sm font-medium tabular-nums">
+                                                {tdsPreview?.applicable_percent
+                                                    ? `${tdsPreview.applicable_percent}%`
+                                                    : '—'}
+                                            </div>
+                                        </div>
+                                    </div>
                                     {payee?.role_label ? (
-                                        <p className="text-xs">
-                                            <span className="rounded-md border border-border bg-muted/40 px-2 py-0.5 font-medium text-foreground">
-                                                {payee.role_label}
-                                            </span>
-                                            <span className="ml-2 text-muted-foreground">
-                                                Suggested classification from
-                                                linked Bilty vehicle owner
-                                                context
-                                            </span>
-                                        </p>
-                                    ) : null}
-                                    {payee?.pan_status_label ? (
                                         <p className="text-xs text-muted-foreground">
-                                            Suggested payee PAN status:{' '}
-                                            {payee.pan_status_label}
+                                            {payee.role_label}
+                                            {payee.pan_status_label
+                                                ? ` · ${payee.pan_status_label}`
+                                                : ''}
                                         </p>
                                     ) : null}
+                                    {!transporterPartyId && payeeRequired ? (
+                                        <p
+                                            className="text-xs text-destructive"
+                                            role="alert"
+                                        >
+                                            No inherited payee is available for
+                                            this bilty. Update the bilty payee
+                                            before creating hire.
+                                        </p>
+                                    ) : null}
+                                    <InputError
+                                        message={errors.transporter_party_id}
+                                    />
                                 </div>
                             </LrfSection>
 
@@ -839,41 +910,6 @@ export default function LorryHireCreate({
                                                                 : `₹${formatMoney(preview)}`}
                                                         </p>
                                                     </div>
-
-                                                    {!isFixedRateType ? (
-                                                        <label
-                                                            htmlFor={`is_fixed_amount_${index}`}
-                                                            className="flex cursor-pointer items-center gap-2 md:col-span-2 xl:col-span-4"
-                                                        >
-                                                            <input
-                                                                id={`is_fixed_amount_${index}`}
-                                                                type="checkbox"
-                                                                name={`goods_lines[${index}][is_fixed_amount]`}
-                                                                value="1"
-                                                                checked={
-                                                                    draft.is_fixed_amount
-                                                                }
-                                                                onChange={(
-                                                                    event,
-                                                                ) =>
-                                                                    updateLine(
-                                                                        index,
-                                                                        {
-                                                                            is_fixed_amount:
-                                                                                event
-                                                                                    .target
-                                                                                    .checked,
-                                                                        },
-                                                                    )
-                                                                }
-                                                                className="size-4 rounded border border-input"
-                                                            />
-                                                            <span className="text-sm">
-                                                                Treat as fixed
-                                                                freight amount
-                                                            </span>
-                                                        </label>
-                                                    ) : null}
                                                 </div>
                                             </div>
                                         );
@@ -1005,6 +1041,7 @@ export default function LorryHireCreate({
                 <FormConfirmationDialog
                     open={confirmOpen}
                     onOpenChange={setConfirmOpen}
+                    processing={formProcessing}
                     mode="create"
                     title="Create this Lorry Hire?"
                     description="Review vehicle, payee, rates, TDS, and net payable before submitting."

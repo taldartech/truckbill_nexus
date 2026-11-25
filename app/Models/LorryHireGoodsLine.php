@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Domains\Consignment\Enums\FreightRateSemantics;
 use App\Domains\Consignment\Enums\FreightRateType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,6 +11,7 @@ use Illuminate\Support\Str;
 
 /**
  * @property FreightRateType $rate_type
+ * @property FreightRateSemantics|null $rate_semantics
  * @property string $rate
  * @property bool $is_fixed_amount
  * @property string $freight_amount
@@ -26,13 +28,14 @@ class LorryHireGoodsLine extends Model
 
     protected $fillable = [
         'id', 'company_id', 'lorry_hire_id', 'lr_goods_row_id',
-        'rate_type', 'rate', 'is_fixed_amount', 'freight_amount', 'loading_weight',
+        'rate_type', 'rate_semantics', 'rate', 'is_fixed_amount', 'freight_amount', 'loading_weight',
     ];
 
     protected function casts(): array
     {
         return [
             'rate_type' => FreightRateType::class,
+            'rate_semantics' => FreightRateSemantics::class,
             'rate' => 'decimal:4',
             'is_fixed_amount' => 'boolean',
             'freight_amount' => 'decimal:2',

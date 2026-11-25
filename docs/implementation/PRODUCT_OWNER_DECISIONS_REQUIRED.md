@@ -125,14 +125,34 @@ Unchanged: exact trial/grace/restricted matrices. Engineering **must not** inven
 
 Explicit Product Owner authorization in the Bilty UI remediation assignment:
 
-| ID         | Decision                                                                 | Status   |
-| ---------- | ------------------------------------------------------------------------ | -------- |
-| PO-LGC-011 | Optional Bilty No. (blank = auto); no Number Mode UI                     | Accepted |
-| PO-LGC-012 | Loading Station / Unloading Station terminology                          | Accepted |
-| PO-LGC-013 | Default freight rate type **Per MT** for new goods rows                  | Accepted |
-| PO-LGC-014 | Wt./Unit client calculation assistance (Charged Weight independent)      | Accepted |
-| PO-LGC-015 | Bilty Register is primary OwnFleet/Broker ops workspace                  | Accepted |
-| PO-LGC-016 | Remove standalone OwnFleet Trips nav; keep Trip domain + historical URLs | Accepted |
+| ID         | Decision                                                                 | Status                                        |
+| ---------- | ------------------------------------------------------------------------ | --------------------------------------------- |
+| PO-LGC-011 | Optional Bilty No. (blank = auto); no Number Mode UI                     | Accepted                                      |
+| PO-LGC-012 | Loading Station / Unloading Station terminology                          | Accepted                                      |
+| PO-LGC-013 | Default freight rate type **Per MT** for new goods rows                  | Accepted _(superseded by PO-LGC-018)_         |
+| PO-LGC-014 | Wt./Unit client calculation assistance (Charged Weight independent)      | Accepted _(superseded in part by PO-LGC-018)_ |
+| PO-LGC-015 | Bilty Register is primary OwnFleet/Broker ops workspace                  | Accepted                                      |
+| PO-LGC-016 | Remove standalone OwnFleet Trips nav; keep Trip domain + historical URLs | Accepted                                      |
+
+---
+
+## PO-LGC-018 — Critical bilty / hire business-rule corrections (**ACCEPTED** 25 Nov 2026)
+
+Latest Product Owner directive supersedes conflicting earlier cells (including PO-LGC-013 default Per MT):
+
+| Topic               | Decision                                                                                             |
+| ------------------- | ---------------------------------------------------------------------------------------------------- |
+| Billing Customer    | Mandatory for new Bilty create (all pathways); company + branch-visible + active Customer role       |
+| Broker From/To      | Derived from Consignor / Consignee location; optional loading/unloading details do not erase route   |
+| OwnFleet route      | Continues to use Station Master selection                                                            |
+| Payee               | Established on Bilty (`intended_payee_*`); Lorry Hire inherits — no redundant Hire selector          |
+| Units               | Positive integers only                                                                               |
+| Weights (UI)        | Wt./Unit, Actual, Charged, Loading/Unloading/Allocated/Total in **MT**; canonical storage remains KG |
+| Charged Weight      | Initially equals Actual; operator may override; do not overwrite deliberate edits                    |
+| New rate types      | Fixed Amount, Per Unit, Per Charged Weight, Per Actual Weight; default **Per Charged Weight**        |
+| Historical rates    | Preserve via `rate_semantics` (`weight_kg` vs `weight_mt`); do not rewrite financial history         |
+| Confirmations       | Structured multi-column operational review dialogs                                                   |
+| Financial summaries | Bilty = customer freight; Hire = transporter payable; no fabricated cleared/TR without Hire          |
 
 ---
 

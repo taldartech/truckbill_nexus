@@ -4,6 +4,7 @@ namespace App\Domains\Broker\LorryHire;
 
 use App\Domains\Broker\Enums\BrokerAdjustmentType;
 use App\Domains\Broker\Enums\VoucherStatus;
+use App\Domains\Consignment\Enums\FreightRateSemantics;
 use App\Domains\Consignment\Enums\FreightRateType;
 use App\Domains\Consignment\Freight\FreightCalculator;
 use App\Models\BrokerAdjustment;
@@ -30,7 +31,8 @@ final class LorryHireCalculationService
      *     package_count?: string|float|int|null,
      *     actual_weight?: string|float|int|null,
      *     charged_weight?: string|float|int|null,
-     *     is_fixed_amount?: bool
+     *     is_fixed_amount?: bool,
+     *     rate_semantics?: FreightRateSemantics|string|null
      * }  $line
      * @return numeric-string
      */
@@ -40,20 +42,42 @@ final class LorryHireCalculationService
             ? $line['rate_type']
             : FreightRateType::from((string) $line['rate_type']);
 
+        $semantics = $this->resolveSemantics($line['rate_semantics'] ?? null);
+
         if (($line['is_fixed_amount'] ?? false) === true || $rateType === FreightRateType::FixedAmount) {
             return $this->money($this->freightCalculator->compute(
                 FreightRateType::FixedAmount,
                 $this->money($line['rate']),
+                semantics: $semantics,
             ));
+        }
+
+        $packageCount = $line['package_count'] ?? null;
+        if ($packageCount !== null && $packageCount !== '') {
+            $packageCount = $this->nullableDecimal($packageCount, 0);
         }
 
         return $this->money($this->freightCalculator->compute(
             $rateType,
             $this->money($line['rate'], 4),
-            packageCount: $this->nullableDecimal($line['package_count'] ?? null, 3),
+            packageCount: is_string($packageCount) ? $packageCount : null,
             actualWeight: $this->nullableDecimal($line['actual_weight'] ?? null, 3),
             chargedWeight: $this->nullableDecimal($line['charged_weight'] ?? null, 3),
+            semantics: $semantics,
         ));
+    }
+
+    private function resolveSemantics(FreightRateSemantics|string|null $value): FreightRateSemantics
+    {
+        if ($value instanceof FreightRateSemantics) {
+            return $value;
+        }
+
+        if (is_string($value) && $value !== '') {
+            return FreightRateSemantics::tryFrom($value) ?? FreightRateSemantics::forNewRows();
+        }
+
+        return FreightRateSemantics::forNewRows();
     }
 
     /**
@@ -85,6 +109,9 @@ final class LorryHireCalculationService
                 'actual_weight' => $applicable,
                 'charged_weight' => $applicable,
                 'package_count' => $line->lrGoodsRow?->package_count,
+                'rate_semantics' => $line->rate_semantics
+                    ?? $line->lrGoodsRow?->rate_semantics
+                    ?? FreightRateSemantics::WeightKg,
             ]);
 
             $line->forceFill(['freight_amount' => $freight])->save();

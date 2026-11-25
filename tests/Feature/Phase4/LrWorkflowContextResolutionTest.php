@@ -194,6 +194,20 @@ function lrContextWorkspace(): array
         'code' => 'L62',
         'is_active' => true,
     ]);
+    $billingCustomer = $parties->create(
+        actor: $owner,
+        company: $company,
+        branch: null,
+        attributes: [
+            'name' => 'Context Billing Customer',
+            'contact_number' => '9800010004',
+            'state' => 'MH',
+            'city' => 'Mumbai',
+            'is_gst_applicable' => false,
+        ],
+        roles: [['role' => PartyRoleType::Customer->value]],
+        remark: 'Create billing customer',
+    );
     $transporter = $parties->create(
         actor: $owner,
         company: $company,
@@ -242,6 +256,8 @@ function lrContextWorkspace(): array
         'member' => $member,
         'consignor' => $consignor,
         'consignee' => $consignee,
+        'billingCustomer' => $billingCustomer,
+        'transporter' => $transporter,
         'goodsType' => $goodsType,
         'packageType' => $packageType,
         'fromStation' => $fromStation,
@@ -314,7 +330,7 @@ function lrContextPayload(array $ctx, array $overrides = []): array
         default => $ctx['marketVehicle']->id,
     };
 
-    return array_merge([
+    $base = [
         'workflow_context' => 'broker',
         'vehicle_id' => $vehicleId,
         'number_mode' => 'auto',
@@ -323,6 +339,7 @@ function lrContextPayload(array $ctx, array $overrides = []): array
         'to_text' => 'Pune',
         'consignor_party_id' => $ctx['consignor']->id,
         'consignee_party_id' => $ctx['consignee']->id,
+        'billing_customer_party_id' => $ctx['billingCustomer']->id,
         'goods' => [
             [
                 'goods_type_id' => $ctx['goodsType']->id,
@@ -336,7 +353,14 @@ function lrContextPayload(array $ctx, array $overrides = []): array
                 'goods_value' => 5000,
             ],
         ],
-    ], $overrides);
+    ];
+
+    if ($context === 'broker') {
+        $base['intended_payee_type'] = 'owner';
+        $base['intended_payee_party_id'] = $ctx['transporter']->id;
+    }
+
+    return array_merge($base, $overrides);
 }
 
 function lrContextLoginAs(User $user, string $password): void
@@ -507,11 +531,13 @@ test('edit cannot change workflow context', function () {
     ])))->toThrow(ValidationException::class);
 
     $updated = $service->update($lr->fresh(), $ws['member'], lrContextPayload($ws, [
+        // Broker primary route is derived from parties — free-text cannot override it.
         'from_text' => 'Updated origin',
     ]));
 
     expect($updated->workflow_context)->toBe(LrWorkflowContext::Broker)
-        ->and($updated->from_text)->toBe('Updated origin');
+        ->and($updated->from_text)->toBe('Mumbai, MH')
+        ->and($updated->to_text)->toBe('Pune, MH');
 });
 
 test('broker validation requires parties and own_fleet requires stations', function () {

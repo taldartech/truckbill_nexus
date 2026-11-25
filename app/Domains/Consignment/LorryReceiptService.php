@@ -5,6 +5,7 @@ namespace App\Domains\Consignment;
 use App\Domains\Broker\Enums\LorryHireStatus;
 use App\Domains\Company\MasterDataVisibilityResolver;
 use App\Domains\Consignment\Dependency\CompositeLrDependencyGuard;
+use App\Domains\Consignment\Enums\FreightRateSemantics;
 use App\Domains\Consignment\Enums\FreightRateType;
 use App\Domains\Consignment\Enums\LrStatus;
 use App\Domains\Consignment\Enums\LrWorkflowContext;
@@ -137,7 +138,7 @@ final class LorryReceiptService
         $this->ensureTenantMatches($company, $branch);
         $this->assertLifecycleAllowsMutation($company);
 
-        $normalized = $this->normalizePayload($company, $payload, forUpdate: false, lockedContext: null);
+        $normalized = $this->normalizePayload($company, $branch, $payload, forUpdate: false, lockedContext: null);
         $this->assertContextEntitled($company, $normalized['workflow_context']);
 
         return $this->auditedTransaction->run(function () use ($company, $branch, $actor, $normalized): LorryReceipt {
@@ -227,7 +228,7 @@ final class LorryReceiptService
         }
 
         $payload['workflow_context'] = $lockedContext->value;
-        $normalized = $this->normalizePayload($company, $payload, forUpdate: true, lockedContext: $lockedContext);
+        $normalized = $this->normalizePayload($company, $branch, $payload, forUpdate: true, lockedContext: $lockedContext);
         $this->financialImmutability->assertFinancialMutationAllowed($lorryReceipt, $normalized);
 
         return $this->auditedTransaction->run(function () use ($company, $branch, $lorryReceipt, $normalized): LorryReceipt {
@@ -388,6 +389,7 @@ final class LorryReceiptService
      */
     private function normalizePayload(
         Company $company,
+        Branch $branch,
         array $payload,
         bool $forUpdate = false,
         ?LrWorkflowContext $lockedContext = null,
@@ -438,8 +440,19 @@ final class LorryReceiptService
             $consigneeId,
         );
 
+        if ($context === LrWorkflowContext::Broker) {
+            [$derivedFrom, $derivedTo] = $this->deriveBrokerRouteFromParties($consignorId, $consigneeId);
+            // Authoritative Broker route: Consignor/Consignee location (do not leave blank).
+            if ($derivedFrom !== null) {
+                $fromText = $derivedFrom;
+            }
+            if ($derivedTo !== null) {
+                $toText = $derivedTo;
+            }
+        }
+
         $this->assertVehicleForContext($company, $context, $vehicleId, $forUpdate);
-        $this->assertBillingCustomer($company, $billingCustomerId);
+        $this->assertBillingCustomer($company, $branch, $billingCustomerId);
 
         $this->assertWorkflowContextFields(
             $company,
@@ -561,21 +574,23 @@ final class LorryReceiptService
         }
     }
 
-    private function assertBillingCustomer(Company $company, ?string $partyId): void
+    private function assertBillingCustomer(Company $company, Branch $branch, ?string $partyId): void
     {
-        if ($partyId === null) {
-            return;
+        if ($partyId === null || $partyId === '') {
+            throw ValidationException::withMessages([
+                'billing_customer_party_id' => 'Billing Customer is required.',
+            ]);
         }
 
         $party = Party::query()
-            ->where('company_id', $company->id)
+            ->visibleInBranch($company->id, $branch->id)
             ->whereKey($partyId)
             ->whereNull('deleted_at')
             ->first();
 
         if ($party === null) {
             throw ValidationException::withMessages([
-                'billing_customer_party_id' => 'Billing Customer is invalid for this company.',
+                'billing_customer_party_id' => 'Billing Customer must belong to this company and be visible in the active branch.',
             ]);
         }
 
@@ -594,6 +609,53 @@ final class LorryReceiptService
         }
     }
 
+    /**
+     * Broker From/To are derived from Consignor/Consignee location (city[, state]).
+     *
+     * @return array{0: ?string, 1: ?string}
+     */
+    private function deriveBrokerRouteFromParties(?string $consignorId, ?string $consigneeId): array
+    {
+        $fromText = null;
+        $toText = null;
+
+        if ($consignorId !== null) {
+            $consignor = Party::query()->whereKey($consignorId)->first();
+            $fromText = $this->partyLocationLabel($consignor);
+        }
+
+        if ($consigneeId !== null) {
+            $consignee = Party::query()->whereKey($consigneeId)->first();
+            $toText = $this->partyLocationLabel($consignee);
+        }
+
+        return [$fromText, $toText];
+    }
+
+    private function partyLocationLabel(?Party $party): ?string
+    {
+        if ($party === null) {
+            return null;
+        }
+
+        $city = trim((string) ($party->city ?? ''));
+        $state = trim((string) ($party->state ?? ''));
+
+        if ($city !== '' && $state !== '') {
+            return "{$city}, {$state}";
+        }
+
+        if ($city !== '') {
+            return $city;
+        }
+
+        if ($state !== '') {
+            return $state;
+        }
+
+        return null;
+    }
+
     private function normalizeIntendedPayeeType(mixed $value): ?string
     {
         $type = strtolower(trim((string) $value));
@@ -610,9 +672,7 @@ final class LorryReceiptService
     }
 
     /**
-     * Validate operator Pay To intent when provided on Broker market Bilties.
-     * Does not create a Lorry Hire or payable — hire create confirms the payee.
-     * UI requires Pay To for market vehicles; API may omit during transitional tests.
+     * Broker market Bilties require explicit Pay To + Payee (inherited by Lorry Hire).
      */
     private function assertIntendedPayee(
         Company $company,
@@ -620,13 +680,9 @@ final class LorryReceiptService
         ?string $payeeType,
         ?string $payeePartyId,
     ): void {
-        if ($payeeType === null && $payeePartyId === null) {
-            return;
-        }
-
         if ($payeeType === null || $payeePartyId === null) {
             throw ValidationException::withMessages([
-                'intended_payee_party_id' => 'Pay To type and Payee must be provided together.',
+                'intended_payee_party_id' => 'Pay To and Payee are required for Broker market Bilties.',
             ]);
         }
 
@@ -903,10 +959,14 @@ final class LorryReceiptService
                 $this->assertCatalogueItem($company, $packageTypeId, OwnerCatalogueType::PackageType, "goods.{$index}.package_type_id");
             }
 
-            $packageCount = $this->optionalDecimal($row['package_count'] ?? null, "goods.{$index}.package_count", 3);
+            $packageCount = $this->optionalPositiveInteger(
+                $row['package_count'] ?? null,
+                "goods.{$index}.package_count",
+            );
             $actualWeight = $this->optionalDecimal($row['actual_weight'] ?? null, "goods.{$index}.actual_weight", 3);
             $chargedWeight = $this->optionalDecimal($row['charged_weight'] ?? null, "goods.{$index}.charged_weight", 3);
             $rate = $this->requireDecimal($row['freight_rate'] ?? null, "goods.{$index}.freight_rate", 4);
+            $semantics = $this->resolveRateSemantics($row['rate_semantics'] ?? null);
 
             try {
                 $freightAmount = $this->freight->compute(
@@ -915,6 +975,7 @@ final class LorryReceiptService
                     $packageCount,
                     $actualWeight,
                     $chargedWeight,
+                    $semantics,
                 );
             } catch (LorryReceiptDomainException $e) {
                 throw ValidationException::withMessages([
@@ -930,6 +991,7 @@ final class LorryReceiptService
                 'actual_weight' => $actualWeight,
                 'charged_weight' => $chargedWeight,
                 'freight_rate_type' => $rateType,
+                'rate_semantics' => $semantics,
                 'freight_rate' => $rate,
                 'freight_amount' => $freightAmount,
                 'goods_value' => $this->optionalMoney($row['goods_value'] ?? null, "goods.{$index}.goods_value"),
@@ -1038,6 +1100,9 @@ final class LorryReceiptService
                 'actual_weight' => $row['actual_weight'],
                 'charged_weight' => $row['charged_weight'],
                 'freight_rate_type' => $row['freight_rate_type'],
+                'rate_semantics' => $row['rate_semantics'] instanceof FreightRateSemantics
+                    ? $row['rate_semantics']->value
+                    : (string) $row['rate_semantics'],
                 'freight_rate' => $row['freight_rate'],
                 'freight_amount' => $row['freight_amount'],
                 'goods_value' => $row['goods_value'],
@@ -1199,6 +1264,45 @@ final class LorryReceiptService
         }
 
         return $this->requireDecimal($value, $field, $scale);
+    }
+
+    /**
+     * Positive whole-number package / unit counts (PO: integer units only).
+     *
+     * @return numeric-string|null
+     */
+    private function optionalPositiveInteger(mixed $value, string $field): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        $trimmed = trim((string) $value);
+        if (! preg_match('/^\d+$/', $trimmed) || (int) $trimmed < 1) {
+            throw ValidationException::withMessages([
+                $field => 'Number of Units must be a positive whole number.',
+            ]);
+        }
+
+        return $trimmed;
+    }
+
+    private function resolveRateSemantics(mixed $value): FreightRateSemantics
+    {
+        if ($value instanceof FreightRateSemantics) {
+            return $value;
+        }
+
+        $raw = is_string($value) ? trim($value) : '';
+        if ($raw !== '') {
+            $parsed = FreightRateSemantics::tryFrom($raw);
+            if ($parsed !== null) {
+                return $parsed;
+            }
+        }
+
+        // New goods rows default to MT-based Actual/Charged Weight rates.
+        return FreightRateSemantics::forNewRows();
     }
 
     /**

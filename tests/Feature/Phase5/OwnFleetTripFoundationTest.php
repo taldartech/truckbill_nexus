@@ -162,6 +162,8 @@ test('broker lr cannot create ownfleet trip', function () {
         'owner_party_id' => $transporter->id,
     ]);
 
+    $billingCustomer = tripCreateBillingCustomer($ctx, 'AACCP1234F');
+
     $lr = app(LorryReceiptService::class)->create($ctx['company'], $ctx['branch'], $ctx['member'], [
         'workflow_context' => LrWorkflowContext::Broker->value,
         'vehicle_id' => $marketVehicle->id,
@@ -171,6 +173,9 @@ test('broker lr cannot create ownfleet trip', function () {
         'to_text' => 'Pune',
         'consignor_party_id' => $consignor->id,
         'consignee_party_id' => $consignee->id,
+        'billing_customer_party_id' => $billingCustomer->id,
+        'intended_payee_type' => 'owner',
+        'intended_payee_party_id' => $transporter->id,
         'goods' => [
             [
                 'goods_type_id' => $ctx['goodsType']->id,
@@ -332,6 +337,7 @@ test('http create trip form locks vehicle to the lr truck', function () {
 test('own fleet bilty store can redirect to create trip', function () {
     $ctx = tripWorkspace();
     tripActivate($ctx['company'], $ctx['branch']);
+    $billingCustomer = tripCreateBillingCustomer($ctx, 'AACCP9999Z');
 
     $this->flushSession();
     CustomerWebSession::query()->where('user_id', $ctx['member']->id)->delete();
@@ -346,6 +352,7 @@ test('own fleet bilty store can redirect to create trip', function () {
         'lr_date' => now()->toDateString(),
         'from_station_id' => $ctx['fromStation']->id,
         'to_station_id' => $ctx['toStation']->id,
+        'billing_customer_party_id' => $billingCustomer->id,
         'goods' => [[
             'goods_type_id' => $ctx['goodsType']->id,
             'package_type_id' => $ctx['packageType']->id,

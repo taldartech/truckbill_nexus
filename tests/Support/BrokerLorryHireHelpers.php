@@ -154,6 +154,26 @@ if (! function_exists('brokerCreateBrokerLrOnVehicle')) {
             remark: 'Broker consignee',
         );
 
+        $customer = app(PartyService::class)->create(
+            actor: $ctx['owner'],
+            company: $ctx['company'],
+            branch: null,
+            attributes: [
+                'name' => 'Broker Billing Customer '.Str::uuid(),
+                'contact_number' => '9800055011',
+                'state' => 'MH',
+                'city' => 'Mumbai',
+                'is_gst_applicable' => false,
+            ],
+            roles: [['role' => PartyRoleType::Customer->value]],
+            remark: 'Broker billing customer',
+        );
+
+        $intendedPayeeId = $vehicle->owner_party_id;
+        if ($intendedPayeeId === null || $intendedPayeeId === '') {
+            throw new RuntimeException('Market vehicle must have an owner party for Broker LR tests.');
+        }
+
         return app(LorryReceiptService::class)->create($ctx['company'], $ctx['branch'], $ctx['member'], [
             'workflow_context' => LrWorkflowContext::Broker->value,
             'vehicle_id' => $vehicle->id,
@@ -163,6 +183,9 @@ if (! function_exists('brokerCreateBrokerLrOnVehicle')) {
             'to_text' => 'Pune',
             'consignor_party_id' => $consignor->id,
             'consignee_party_id' => $consignee->id,
+            'billing_customer_party_id' => $customer->id,
+            'intended_payee_type' => 'owner',
+            'intended_payee_party_id' => $intendedPayeeId,
             'goods' => $goods,
         ]);
     }
@@ -193,8 +216,10 @@ if (! function_exists('brokerHirePayloadFromLr')) {
     {
         $lr->loadMissing('vehicle');
 
+        $payeeId = $lr->intended_payee_party_id ?: $lr->vehicle?->owner_party_id;
+
         return array_merge([
-            'transporter_party_id' => $lr->vehicle?->owner_party_id,
+            'transporter_party_id' => $payeeId,
             'goods_lines' => brokerGoodsPayloadFromLr($lr),
         ], $extra);
     }
@@ -330,6 +355,21 @@ if (! function_exists('brokerCreateBrokerLr')) {
             remark: 'Broker consignee',
         );
 
+        $customer = app(PartyService::class)->create(
+            actor: $ctx['owner'],
+            company: $ctx['company'],
+            branch: null,
+            attributes: [
+                'name' => 'Broker Billing Customer',
+                'contact_number' => '9800055010',
+                'state' => 'MH',
+                'city' => 'Mumbai',
+                'is_gst_applicable' => false,
+            ],
+            roles: [['role' => PartyRoleType::Customer->value]],
+            remark: 'Broker billing customer',
+        );
+
         return app(LorryReceiptService::class)->create($ctx['company'], $ctx['branch'], $ctx['member'], [
             'workflow_context' => LrWorkflowContext::Broker->value,
             'vehicle_id' => $market['vehicle']->id,
@@ -339,6 +379,9 @@ if (! function_exists('brokerCreateBrokerLr')) {
             'to_text' => 'Pune',
             'consignor_party_id' => $consignor->id,
             'consignee_party_id' => $consignee->id,
+            'billing_customer_party_id' => $customer->id,
+            'intended_payee_type' => 'owner',
+            'intended_payee_party_id' => $market['transporter']->id,
             'goods' => $goods,
         ]);
     }

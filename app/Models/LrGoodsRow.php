@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Domains\Consignment\Enums\FreightRateSemantics;
 use App\Domains\Consignment\Enums\FreightRateType;
 use Database\Factories\LrGoodsRowFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -12,6 +13,7 @@ use Illuminate\Support\Str;
 
 /**
  * @property FreightRateType $freight_rate_type
+ * @property FreightRateSemantics|null $rate_semantics
  */
 class LrGoodsRow extends Model
 {
@@ -25,17 +27,18 @@ class LrGoodsRow extends Model
     protected $fillable = [
         'id', 'company_id', 'lorry_receipt_id', 'position', 'goods_type_id', 'package_type_id',
         'goods_description', 'package_count', 'actual_weight', 'charged_weight',
-        'freight_rate_type', 'freight_rate', 'freight_amount', 'goods_value',
+        'freight_rate_type', 'rate_semantics', 'freight_rate', 'freight_amount', 'goods_value',
     ];
 
     protected function casts(): array
     {
         return [
             'position' => 'integer',
-            'package_count' => 'decimal:3',
+            'package_count' => 'decimal:0',
             'actual_weight' => 'decimal:3',
             'charged_weight' => 'decimal:3',
             'freight_rate_type' => FreightRateType::class,
+            'rate_semantics' => FreightRateSemantics::class,
             'freight_rate' => 'decimal:4',
             'freight_amount' => 'decimal:2',
             'goods_value' => 'decimal:2',

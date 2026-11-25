@@ -13,7 +13,7 @@
     --fs-label: 0.78rem;
     --fs-input: 0.875rem;
     --input-h: 40px;
-    max-width: 1180px;
+    max-width: 1200px;
     margin: 0 auto;
     padding: 20px 16px 40px;
     color: var(--text);
@@ -496,14 +496,12 @@
 .lrf-truck-summary--field {
     margin-top: 0 !important;
     width: 100%;
-    min-height: var(--input-h) !important;
-    height: var(--input-h) !important;
-    max-height: var(--input-h) !important;
+    min-height: var(--input-h);
     box-sizing: border-box;
     display: flex !important;
-    flex-wrap: nowrap !important;
+    flex-wrap: wrap !important;
     align-items: center !important;
-    overflow: hidden !important;
+    overflow: visible !important;
     gap: 0.35rem 0.55rem;
     padding: 0 0.75rem !important;
     border-radius: 8px;

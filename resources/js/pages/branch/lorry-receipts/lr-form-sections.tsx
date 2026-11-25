@@ -240,7 +240,7 @@ export function LrfPartyCard({
 }: {
     badge: string;
     badgeTone: 'from' | 'to';
-    title: ReactNode;
+    title?: ReactNode;
     children: ReactNode;
     footer?: ReactNode;
 }) {
@@ -254,7 +254,9 @@ export function LrfPartyCard({
             )}
         >
             <div className="lrf-party-card__badge">{badge}</div>
-            <div className="lrf-party-card__title">{title}</div>
+            {title ? (
+                <div className="lrf-party-card__title">{title}</div>
+            ) : null}
             {children}
             {footer}
         </div>

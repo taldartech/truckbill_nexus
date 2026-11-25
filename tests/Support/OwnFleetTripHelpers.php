@@ -316,6 +316,8 @@ if (! function_exists('tripActivate')) {
 if (! function_exists('tripCreateOwnFleetLr')) {
     function tripCreateOwnFleetLr(array $ctx): LorryReceipt
     {
+        $customer = $ctx['billingCustomer'] ?? tripCreateBillingCustomer($ctx);
+
         return app(LorryReceiptService::class)->create($ctx['company'], $ctx['branch'], $ctx['member'], [
             'workflow_context' => LrWorkflowContext::OwnFleet->value,
             'vehicle_id' => $ctx['vehicle']->id,
@@ -323,6 +325,7 @@ if (! function_exists('tripCreateOwnFleetLr')) {
             'lr_date' => now()->toDateString(),
             'from_station_id' => $ctx['fromStation']->id,
             'to_station_id' => $ctx['toStation']->id,
+            'billing_customer_party_id' => $customer->id,
             'goods' => [
                 [
                     'goods_type_id' => $ctx['goodsType']->id,

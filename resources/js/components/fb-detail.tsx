@@ -253,6 +253,85 @@ export function FbFinancialSummary({
     );
 }
 
+/** Customer-side bilty financial summary (not hire TR/cleared semantics). */
+export function FbLrFinancialSummary({
+    billingCustomerName,
+    customerFreight,
+    additionalCharges,
+    totalBillable,
+    goodsValue,
+    transporterSummary,
+    hirePending,
+}: {
+    billingCustomerName?: string | null;
+    customerFreight: string;
+    additionalCharges: string;
+    totalBillable: string;
+    goodsValue: string;
+    transporterSummary?: ReactNode;
+    hirePending?: boolean;
+}) {
+    return (
+        <div className="card overflow-hidden rounded-xl border border-[#e2e8f0] bg-white shadow-xs">
+            <div className="border-b border-[#e2e8f0] px-4 py-3">
+                <div className="text-[0.95rem] font-bold text-slate-800">
+                    Financial Summary
+                </div>
+                <div className="text-xs text-slate-500">
+                    Customer billing on this bilty
+                </div>
+            </div>
+            <div className="space-y-3 px-4 py-3">
+                {billingCustomerName ? (
+                    <div className="flex items-center justify-between gap-2 text-xs">
+                        <span className="text-slate-500">Billing customer</span>
+                        <span className="font-semibold text-slate-800">
+                            {billingCustomerName}
+                        </span>
+                    </div>
+                ) : null}
+                <div className="space-y-1.5">
+                    {[
+                        { label: 'Customer freight', value: customerFreight },
+                        {
+                            label: 'Additional charges',
+                            value: additionalCharges,
+                        },
+                        { label: 'Total billable', value: totalBillable },
+                        { label: 'Goods value', value: goodsValue },
+                    ].map((row) => (
+                        <div
+                            key={row.label}
+                            className="flex items-center justify-between gap-2 text-xs"
+                        >
+                            <span className="text-slate-500">{row.label}</span>
+                            <span className="font-semibold text-slate-800 tabular-nums">
+                                {row.value}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+                <div className="border-t border-[#e2e8f0] pt-3">
+                    <div className="mb-1 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+                        Transporter / hire
+                    </div>
+                    {transporterSummary ? (
+                        <div className="text-sm text-slate-800">
+                            {transporterSummary}
+                        </div>
+                    ) : hirePending ? (
+                        <p className="text-sm text-amber-800">
+                            Lorry Hire Pending
+                        </p>
+                    ) : (
+                        <p className="text-sm text-muted-foreground">—</p>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export function FbCompactTable({
     title,
     count,

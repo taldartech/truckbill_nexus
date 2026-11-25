@@ -165,6 +165,9 @@ test('bulk vouchers reject mixed transporter and vehicle', function () {
         'to_text' => 'Pune',
         'consignor_party_id' => $hireA->lorryReceipt->consignor_party_id,
         'consignee_party_id' => $hireA->lorryReceipt->consignee_party_id,
+        'billing_customer_party_id' => $hireA->lorryReceipt->billing_customer_party_id,
+        'intended_payee_type' => 'owner',
+        'intended_payee_party_id' => $otherMarket['transporter']->id,
         'goods' => [[
             'goods_type_id' => $ctx['goodsType']->id,
             'package_type_id' => $ctx['packageType']->id,
@@ -178,9 +181,8 @@ test('bulk vouchers reject mixed transporter and vehicle', function () {
     ]);
 
     $hireB = app(LorryHireService::class)->createFromLorryReceipt($lrB, $ctx['member'], [
-        'transporter_party_id' => $lrB->vehicle?->owner_party_id,
-        'goods_lines' => brokerGoodsPayloadFromLr($lrB),
         'transporter_party_id' => $otherMarket['transporter']->id,
+        'goods_lines' => brokerGoodsPayloadFromLr($lrB),
     ]);
 
     $bulk = app(BulkVoucherService::class);
@@ -218,6 +220,9 @@ test('bulk vouchers create separate voucher per hire for same transporter and ve
         'to_text' => 'Nashik',
         'consignor_party_id' => $lrA->consignor_party_id,
         'consignee_party_id' => $lrA->consignee_party_id,
+        'billing_customer_party_id' => $lrA->billing_customer_party_id,
+        'intended_payee_type' => 'owner',
+        'intended_payee_party_id' => $lrA->intended_payee_party_id,
         'goods' => [[
             'goods_type_id' => $ctx['goodsType']->id,
             'package_type_id' => $ctx['packageType']->id,
@@ -231,7 +236,7 @@ test('bulk vouchers create separate voucher per hire for same transporter and ve
     ]);
 
     $hireB = app(LorryHireService::class)->createFromLorryReceipt($lrB, $ctx['member'], [
-        'transporter_party_id' => $lrB->vehicle?->owner_party_id,
+        'transporter_party_id' => $lrB->intended_payee_party_id,
         'goods_lines' => brokerGoodsPayloadFromLr($lrB),
     ]);
 

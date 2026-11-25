@@ -25,12 +25,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
-    actualMtFromUnitsAndWpuKg,
+    actualMtFromUnitsAndWpuMt,
     formatFixed,
+    formatPackageCount,
     kgToMt,
     mtToKg,
+    normalizeWpuMtFromFormState,
     parseNumeric,
-    wpuKgFromActualMt,
+    wpuMtFromActualMt,
 } from '@/lib/operational-weight';
 import {
     LrfActions,
@@ -59,6 +61,7 @@ type GoodsRow = {
     actual_weight: string;
     charged_weight: string;
     freight_rate_type: string;
+    rate_semantics: string;
     freight_rate: string;
     goods_value: string;
 };
@@ -94,6 +97,7 @@ type LorryReceiptDetail = {
         actual_weight: string | null;
         charged_weight: string | null;
         freight_rate_type: string;
+        rate_semantics?: string | null;
         freight_rate: string;
         goods_value: string | null;
     }>;
@@ -153,7 +157,15 @@ type GoodsFieldSource =
     | 'weight_per_unit'
     | 'actual_weight'
     | 'package_count'
+    | 'charged_weight'
     | 'other';
+
+const NEW_ROW_RATE_TYPE_VALUES = new Set([
+    'fixed_amount',
+    'per_package_unit',
+    'per_charged_weight',
+    'per_actual_weight',
+]);
 
 const fieldClass =
     'flex h-9 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm';
@@ -180,7 +192,6 @@ function computeFreightPreview(row: GoodsRow): number | null {
     const actualMt = parseNumeric(row.actual_weight);
     const chargedMt = parseNumeric(row.charged_weight);
     const actualKg = actualMt === null ? null : actualMt * 1000;
-    const chargedKg = chargedMt === null ? null : chargedMt * 1000;
 
     switch (row.freight_rate_type) {
         case 'fixed_amount':
@@ -191,21 +202,25 @@ function computeFreightPreview(row: GoodsRow): number | null {
             }
             return rate * units;
         case 'per_kg':
-        case 'per_actual_weight':
             if (actualKg === null) {
                 return null;
             }
             return rate * actualKg;
+        case 'per_actual_weight':
+            if (actualMt === null) {
+                return null;
+            }
+            return rate * actualMt;
         case 'per_mt':
             if (actualMt === null) {
                 return null;
             }
             return rate * actualMt;
         case 'per_charged_weight':
-            if (chargedKg === null) {
+            if (chargedMt === null) {
                 return null;
             }
-            return rate * chargedKg;
+            return rate * chargedMt;
         default:
             return null;
     }
@@ -233,7 +248,8 @@ const emptyGoods = (): GoodsRow => ({
     weight_per_unit: '',
     actual_weight: '',
     charged_weight: '',
-    freight_rate_type: 'per_mt',
+    freight_rate_type: 'per_charged_weight',
+    rate_semantics: 'weight_mt',
     freight_rate: '0',
     goods_value: '',
 });
@@ -280,7 +296,7 @@ function formatGoodsRowReview(
         goodsLabel,
         `Pkg ${packageLabel}`,
         `Units ${row.package_count || '—'}`,
-        `Wt/Unit ${row.weight_per_unit || '—'} KG`,
+        `Wt/Unit ${row.weight_per_unit || '—'} MT`,
         `Actual ${row.actual_weight || '—'} MT`,
         `Charged ${row.charged_weight || '—'} MT`,
         mayViewFreight
@@ -352,6 +368,48 @@ function pushScalarChange(
     });
 }
 
+function partyLocationText(party: PartyOption | null | undefined): string {
+    if (!party?.city) {
+        return '';
+    }
+    const city = party.city.trim();
+    if (city === '') {
+        return '';
+    }
+    const state = party.state?.trim();
+    return state ? `${city}, ${state}` : city;
+}
+
+function rateTypeOptionsForRow(
+    row: GoodsRow,
+    allOptions: Option[],
+    isNewRow: boolean,
+): Option[] {
+    if (isNewRow) {
+        return allOptions.filter((option) =>
+            NEW_ROW_RATE_TYPE_VALUES.has(option.value),
+        );
+    }
+    const filtered = allOptions.filter(
+        (option) =>
+            NEW_ROW_RATE_TYPE_VALUES.has(option.value) ||
+            option.value === row.freight_rate_type,
+    );
+    if (
+        row.freight_rate_type &&
+        !filtered.some((option) => option.value === row.freight_rate_type)
+    ) {
+        return [
+            ...filtered,
+            {
+                value: row.freight_rate_type,
+                label: row.freight_rate_type,
+            },
+        ];
+    }
+    return filtered.length > 0 ? filtered : allOptions;
+}
+
 function resolveLocationDisplay(
     text: string | null | undefined,
     stationId: string | null | undefined,
@@ -379,11 +437,18 @@ function mapGoodsFromReceipt(goods: LorryReceiptDetail['goods']): GoodsRow[] {
             goods_type_id: row.goods_type_id ?? '',
             package_type_id: row.package_type_id ?? '',
             goods_description: row.goods_description ?? '',
-            package_count: packageCount,
-            weight_per_unit: wpuKgFromActualMt(actualMt, packageCount),
+            package_count: formatPackageCount(packageCount),
+            weight_per_unit: normalizeWpuMtFromFormState(
+                wpuMtFromActualMt(actualMt, packageCount),
+                actualMt,
+                packageCount,
+            ),
             actual_weight: actualMt,
             charged_weight: chargedMt,
             freight_rate_type: row.freight_rate_type,
+            rate_semantics:
+                (row as { rate_semantics?: string | null }).rate_semantics ??
+                'weight_kg',
             freight_rate: row.freight_rate ?? '0',
             goods_value: row.goods_value ?? '',
         };
@@ -398,6 +463,19 @@ function findPartyOption(
         return null;
     }
     return parties.find((party) => party.id === id) ?? null;
+}
+
+function FormProcessingBridge({
+    processing,
+    onChange,
+}: {
+    processing: boolean;
+    onChange: (value: boolean) => void;
+}) {
+    useEffect(() => {
+        onChange(processing);
+    }, [onChange, processing]);
+    return null;
 }
 
 export default function LrForm({
@@ -419,8 +497,12 @@ export default function LrForm({
     const redirectToHire = useRef(false);
     const redirectToTrip = useRef(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
+    const [formProcessing, setFormProcessing] = useState(false);
     const [reviewFields, setReviewFields] = useState<FieldReview[]>([]);
     const [reviewChanges, setReviewChanges] = useState<ChangeReview[]>([]);
+    const initialGoodsRowCount = useRef(
+        lorryReceipt?.goods?.length ? lorryReceipt.goods.length : 1,
+    );
 
     const [vehicleId, setVehicleId] = useState(
         (lorryReceipt as { vehicle_id?: string | null } | null)?.vehicle_id ??
@@ -503,6 +585,9 @@ export default function LrForm({
     );
 
     const goodsSyncGuard = useRef<Record<number, GoodsFieldSource | null>>({});
+    const chargedWeightTouched = useRef<Record<number, boolean>>({});
+    const [fromText, setFromText] = useState(lorryReceipt?.from_text ?? '');
+    const [toText, setToText] = useState(lorryReceipt?.to_text ?? '');
 
     const selectedVehicle =
         selectedVehicleMeta ??
@@ -549,10 +634,34 @@ export default function LrForm({
         showPayTo &&
         (intendedPayeeType === 'owner' || intendedPayeeType === 'agency');
     const [tdsPreviewLabel, setTdsPreviewLabel] = useState('—');
+    const routeFromLabel =
+        partyLocationText(consignorParty) || fromText.trim() || '—';
+    const routeToLabel =
+        partyLocationText(consigneeParty) || toText.trim() || '—';
     const routeFlowHint =
-        consignorParty && consigneeParty
-            ? `${consignorParty.name}${consignorParty.city ? ` (${consignorParty.city})` : ''} → ${consigneeParty.name}${consigneeParty.city ? ` (${consigneeParty.city})` : ''}`
+        routeFromLabel !== '—' && routeToLabel !== '—'
+            ? `${routeFromLabel} → ${routeToLabel}`
             : 'Goods move from consignor → consignee';
+
+    useEffect(() => {
+        if (!needsTextLocations) {
+            return;
+        }
+        const next = partyLocationText(consignorParty);
+        if (next !== '') {
+            setFromText(next);
+        }
+    }, [consignorParty, needsTextLocations]);
+
+    useEffect(() => {
+        if (!needsTextLocations) {
+            return;
+        }
+        const next = partyLocationText(consigneeParty);
+        if (next !== '') {
+            setToText(next);
+        }
+    }, [consigneeParty, needsTextLocations]);
 
     useEffect(() => {
         if (!isMarketVehicle) {
@@ -661,19 +770,50 @@ export default function LrForm({
 
                     const next: GoodsRow = { ...row, ...patch };
 
+                    if (source === 'package_count') {
+                        next.package_count = formatPackageCount(
+                            next.package_count,
+                        );
+                    }
+
                     if (source === 'weight_per_unit') {
-                        next.actual_weight = actualMtFromUnitsAndWpuKg(
+                        next.actual_weight = actualMtFromUnitsAndWpuMt(
                             next.package_count,
                             next.weight_per_unit,
                         );
-                    } else if (
-                        source === 'actual_weight' ||
-                        source === 'package_count'
-                    ) {
-                        next.weight_per_unit = wpuKgFromActualMt(
+                    } else if (source === 'package_count') {
+                        if (next.weight_per_unit !== '') {
+                            next.actual_weight = actualMtFromUnitsAndWpuMt(
+                                next.package_count,
+                                next.weight_per_unit,
+                            );
+                        } else {
+                            next.weight_per_unit = wpuMtFromActualMt(
+                                next.actual_weight,
+                                next.package_count,
+                            );
+                        }
+                    } else if (source === 'actual_weight') {
+                        next.weight_per_unit = wpuMtFromActualMt(
                             next.actual_weight,
                             next.package_count,
                         );
+                    } else if (source === 'charged_weight') {
+                        chargedWeightTouched.current[index] = true;
+                    }
+
+                    if (
+                        source !== 'charged_weight' &&
+                        !chargedWeightTouched.current[index] &&
+                        next.actual_weight !== ''
+                    ) {
+                        if (
+                            source === 'actual_weight' ||
+                            source === 'weight_per_unit' ||
+                            source === 'package_count'
+                        ) {
+                            next.charged_weight = next.actual_weight;
+                        }
                     }
 
                     return next;
@@ -694,7 +834,7 @@ export default function LrForm({
         const freightTotals = computeLrSummary(goods, charges);
 
         return {
-            totalUnits: formatFixed(totalUnits, 3),
+            totalUnits: formatPackageCount(String(totalUnits)),
             totalGoodsValue: formatFixed(totalGoodsValue, 2),
             ...freightTotals,
         };
@@ -996,23 +1136,57 @@ export default function LrForm({
                 value:
                     (typeof lrNumber === 'string' ? lrNumber.trim() : '') ||
                     'Auto',
+                group: 'Document & Customer',
             },
             {
                 label: 'Bilty Date',
                 value: (typeof lrDate === 'string' ? lrDate.trim() : '') || '—',
+                group: 'Document & Customer',
             },
-            { label: 'Vehicle', value: vehicleLabel },
-            { label: 'Customer', value: customerName },
+            {
+                label: 'Customer',
+                value: customerName,
+                group: 'Document & Customer',
+            },
+            {
+                label: 'Vehicle',
+                value: vehicleLabel,
+                group: 'Vehicle & Operations',
+            },
             ...(showPayTo
                 ? [
-                      { label: 'Pay To', value: payeeTypeLabel },
-                      { label: 'Intended Payee', value: payeePartyLabel },
+                      {
+                          label: 'Pay To',
+                          value: payeeTypeLabel,
+                          group: 'Vehicle & Operations',
+                      },
+                      {
+                          label: 'Payee',
+                          value: payeePartyLabel,
+                          group: 'Vehicle & Operations',
+                      },
                   ]
                 : []),
-            { label: 'Consignor', value: consignorName },
-            { label: 'Consignee', value: consigneeName },
-            { label: 'Loading Station', value: loadingStation },
-            { label: 'Unloading Station', value: unloadingStation },
+            {
+                label: 'Consignor',
+                value: consignorName,
+                group: 'Parties & Route',
+            },
+            {
+                label: 'Consignee',
+                value: consigneeName,
+                group: 'Parties & Route',
+            },
+            {
+                label: 'From',
+                value: loadingStation,
+                group: 'Parties & Route',
+            },
+            {
+                label: 'To',
+                value: unloadingStation,
+                group: 'Parties & Route',
+            },
         ];
 
         const goodsTypeOptions = formOptions.goodsTypes ?? [];
@@ -1027,6 +1201,7 @@ export default function LrForm({
                     packageTypeOptions,
                     mayViewFreight,
                 ),
+                group: 'Goods',
             });
         });
 
@@ -1034,6 +1209,7 @@ export default function LrForm({
             fields.push({
                 label: 'E-Way Bills',
                 value: formatEwbReview(ewbs),
+                group: 'Optional',
             });
         }
 
@@ -1041,21 +1217,39 @@ export default function LrForm({
             fields.push({
                 label: 'Additional Charges',
                 value: formatChargesReview(charges),
+                group: 'Optional',
             });
         }
 
         fields.push(
-            { label: 'Actual Wt (MT)', value: summary.totalActual },
-            { label: 'Charged Wt (MT)', value: summary.totalCharged },
+            {
+                label: 'Actual Wt (MT)',
+                value: summary.totalActual,
+                group: 'Totals',
+            },
+            {
+                label: 'Charged Wt (MT)',
+                value: summary.totalCharged,
+                group: 'Totals',
+            },
         );
         if (mayViewFreight) {
             fields.push(
-                { label: 'Freight', value: summary.totalFreight },
+                {
+                    label: 'Freight',
+                    value: summary.totalFreight,
+                    group: 'Totals',
+                },
                 {
                     label: 'Additional Charges Total',
                     value: summary.totalAdditional,
+                    group: 'Totals',
                 },
-                { label: 'Total Amount', value: summary.totalAmount },
+                {
+                    label: 'Total Billable',
+                    value: summary.totalAmount,
+                    group: 'Totals',
+                },
             );
         }
         setReviewFields(fields);
@@ -1175,6 +1369,10 @@ export default function LrForm({
                 >
                     {({ errors, processing }) => (
                         <>
+                            <FormProcessingBridge
+                                processing={processing}
+                                onChange={setFormProcessing}
+                            />
                             <input
                                 type="hidden"
                                 name="form_mode"
@@ -1271,7 +1469,8 @@ export default function LrForm({
                                         <SearchablePartySelect
                                             id="billing_customer_party_id"
                                             name="billing_customer_party_id"
-                                            label="Customer"
+                                            label="Billing Customer"
+                                            required
                                             options={
                                                 formOptions.billingCustomers ??
                                                 []
@@ -1548,7 +1747,6 @@ export default function LrForm({
                                         <LrfPartyCard
                                             badge="FROM"
                                             badgeTone="from"
-                                            title="Consignor"
                                             footer={
                                                 needsTextLocations ? (
                                                     <div className="space-y-1.5">
@@ -1561,9 +1759,12 @@ export default function LrForm({
                                                             className="h-9"
                                                             list="stations-list"
                                                             placeholder="Optional"
-                                                            defaultValue={
-                                                                lorryReceipt?.from_text ??
-                                                                ''
+                                                            value={fromText}
+                                                            onChange={(event) =>
+                                                                setFromText(
+                                                                    event.target
+                                                                        .value,
+                                                                )
                                                             }
                                                         />
                                                         <InputError
@@ -1693,7 +1894,6 @@ export default function LrForm({
                                         <LrfPartyCard
                                             badge="TO"
                                             badgeTone="to"
-                                            title="Consignee"
                                             footer={
                                                 needsTextLocations ? (
                                                     <div className="space-y-1.5">
@@ -1706,9 +1906,12 @@ export default function LrForm({
                                                             className="h-9"
                                                             list="stations-list"
                                                             placeholder="Optional"
-                                                            defaultValue={
-                                                                lorryReceipt?.to_text ??
-                                                                ''
+                                                            value={toText}
+                                                            onChange={(event) =>
+                                                                setToText(
+                                                                    event.target
+                                                                        .value,
+                                                                )
                                                             }
                                                         />
                                                         <InputError
@@ -1961,8 +2164,8 @@ export default function LrForm({
                                                             <Input
                                                                 name={`goods[${index}][package_count]`}
                                                                 type="number"
-                                                                min="0"
-                                                                step="0.001"
+                                                                min="1"
+                                                                step="1"
                                                                 className="h-9"
                                                                 value={
                                                                     row.package_count
@@ -1983,7 +2186,7 @@ export default function LrForm({
                                                         </div>
                                                         <div className="space-y-1">
                                                             <Label className="text-xs">
-                                                                Wt./Unit (KG)
+                                                                Wt./Unit (MT)
                                                             </Label>
                                                             <Input
                                                                 type="number"
@@ -2005,7 +2208,7 @@ export default function LrForm({
                                                                         'weight_per_unit',
                                                                     )
                                                                 }
-                                                                aria-label={`Weight per unit KG row ${index + 1}`}
+                                                                aria-label={`Weight per unit MT row ${index + 1}`}
                                                             />
                                                         </div>
                                                         <div className="space-y-1">
@@ -2072,7 +2275,7 @@ export default function LrForm({
                                                                                     .target
                                                                                     .value,
                                                                         },
-                                                                        'other',
+                                                                        'charged_weight',
                                                                     )
                                                                 }
                                                                 aria-label={`Charged weight MT row ${index + 1}`}
@@ -2087,6 +2290,13 @@ export default function LrForm({
                                                                         Rate
                                                                         Type
                                                                     </Label>
+                                                                    <input
+                                                                        type="hidden"
+                                                                        name={`goods[${index}][rate_semantics]`}
+                                                                        value={
+                                                                            row.rate_semantics
+                                                                        }
+                                                                    />
                                                                     <select
                                                                         name={`goods[${index}][freight_rate_type]`}
                                                                         className={
@@ -2111,7 +2321,14 @@ export default function LrForm({
                                                                         }
                                                                         required
                                                                     >
-                                                                        {formOptions.rateTypeOptions.map(
+                                                                        {rateTypeOptionsForRow(
+                                                                            row,
+                                                                            formOptions.rateTypeOptions,
+                                                                            mode ===
+                                                                                'create' ||
+                                                                                index >=
+                                                                                    initialGoodsRowCount.current,
+                                                                        ).map(
                                                                             (
                                                                                 option,
                                                                             ) => (
@@ -2203,12 +2420,13 @@ export default function LrForm({
                                                                 }
                                                             />
                                                         </div>
-                                                        <div className="space-y-1 md:col-span-2 xl:col-span-1">
-                                                            <Label className="text-xs">
-                                                                Goods
-                                                                Description
+                                                        <div className="space-y-1 md:col-span-2 xl:col-span-2">
+                                                            <Label className="flex items-center gap-1 text-xs">
+                                                                <span>
+                                                                    Goods
+                                                                    Description
+                                                                </span>
                                                                 <span className="font-normal text-muted-foreground">
-                                                                    {' '}
                                                                     (optional)
                                                                 </span>
                                                             </Label>
@@ -2232,38 +2450,37 @@ export default function LrForm({
                                                                 }
                                                             />
                                                         </div>
-                                                        <div className="flex items-end justify-end">
-                                                            {goods.length >
-                                                            1 ? (
-                                                                <Button
-                                                                    type="button"
-                                                                    variant="destructive"
-                                                                    size="sm"
-                                                                    className="gap-1.5"
-                                                                    onClick={() =>
-                                                                        setGoods(
-                                                                            (
-                                                                                current,
-                                                                            ) =>
-                                                                                current.filter(
-                                                                                    (
-                                                                                        _,
-                                                                                        i,
-                                                                                    ) =>
-                                                                                        i !==
-                                                                                        index,
-                                                                                ),
-                                                                        )
-                                                                    }
-                                                                >
-                                                                    <Trash2
-                                                                        className="size-3.5"
-                                                                        aria-hidden
-                                                                    />
-                                                                    Remove
-                                                                </Button>
-                                                            ) : null}
-                                                        </div>
+                                                    </div>
+                                                    <div className="flex justify-end">
+                                                        {goods.length > 1 ? (
+                                                            <Button
+                                                                type="button"
+                                                                variant="destructive"
+                                                                size="sm"
+                                                                className="gap-1.5"
+                                                                onClick={() =>
+                                                                    setGoods(
+                                                                        (
+                                                                            current,
+                                                                        ) =>
+                                                                            current.filter(
+                                                                                (
+                                                                                    _,
+                                                                                    i,
+                                                                                ) =>
+                                                                                    i !==
+                                                                                    index,
+                                                                            ),
+                                                                    )
+                                                                }
+                                                            >
+                                                                <Trash2
+                                                                    className="size-3.5"
+                                                                    aria-hidden
+                                                                />
+                                                                Remove
+                                                            </Button>
+                                                        ) : null}
                                                     </div>
                                                 </div>
                                             ))}
@@ -2688,6 +2905,7 @@ export default function LrForm({
                 <FormConfirmationDialog
                     open={confirmOpen}
                     onOpenChange={setConfirmOpen}
+                    processing={formProcessing}
                     mode={mode === 'create' ? 'create' : 'edit'}
                     title={
                         mode === 'create'

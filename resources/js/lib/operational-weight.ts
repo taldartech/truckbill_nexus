@@ -78,6 +78,71 @@ export function wpuKgFromActualMt(
     return formatFixed((a * KG_PER_MT) / u, 3);
 }
 
+/** Actual Weight (MT) = Units × Wt./Unit (MT) */
+export function actualMtFromUnitsAndWpuMt(
+    units: string | number | null | undefined,
+    wpuMt: string | number | null | undefined,
+): string {
+    const u = parseNumeric(units);
+    const w = parseNumeric(wpuMt);
+    if (u === null || w === null) {
+        return '';
+    }
+    return formatFixed(u * w, 3);
+}
+
+/** Wt./Unit (MT) = Actual Weight (MT) ÷ Units */
+export function wpuMtFromActualMt(
+    actualMt: string | number | null | undefined,
+    units: string | number | null | undefined,
+): string {
+    const a = parseNumeric(actualMt);
+    const u = parseNumeric(units);
+    if (a === null || u === null || u === 0) {
+        return '';
+    }
+    return formatFixed(a / u, 3);
+}
+
+/** If WPU was stored as KG in legacy form state, convert to MT for display. */
+export function normalizeWpuMtFromFormState(
+    wpuRaw: string | number | null | undefined,
+    actualMt: string | number | null | undefined,
+    units: string | number | null | undefined,
+): string {
+    const wpu = parseNumeric(wpuRaw);
+    if (wpu === null) {
+        return '';
+    }
+    const actual = parseNumeric(actualMt);
+    const u = parseNumeric(units);
+    if (actual !== null && u !== null && u > 0) {
+        const asMt = actual / u;
+        const asKgDerivedMt = (u * wpu) / KG_PER_MT;
+        if (Math.abs(asKgDerivedMt - actual) < 0.0005) {
+            return formatFixed(asKgDerivedMt / u, 3);
+        }
+        if (Math.abs(wpu - asMt) < 0.0005) {
+            return formatFixed(wpu, 3);
+        }
+    }
+    if (wpu > 50) {
+        return formatFixed(wpu / KG_PER_MT, 3);
+    }
+    return formatFixed(wpu, 3);
+}
+
+export function formatPackageCount(
+    value: string | number | null | undefined,
+): string {
+    const n = parseNumeric(value);
+    if (n === null) {
+        return '';
+    }
+    const rounded = Math.max(1, Math.round(n));
+    return String(rounded);
+}
+
 export function formatMtLabel(mt: string | number | null | undefined): string {
     const n = parseNumeric(mt);
     if (n === null) {

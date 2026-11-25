@@ -2,11 +2,15 @@
 
 namespace App\Domains\Consignment\Freight;
 
+use App\Domains\Consignment\Enums\FreightRateSemantics;
 use App\Domains\Consignment\Enums\FreightRateType;
 use App\Domains\Consignment\Exceptions\LorryReceiptDomainException;
 
 /**
  * Computes goods-row freight_amount from rate type + inputs (Rules §8).
+ *
+ * Weights are always passed as canonical kilograms. Rate semantics decide whether
+ * Per Actual / Per Charged Weight treat the rate as ₹/KG (weight_kg) or ₹/MT (weight_mt).
  */
 final class FreightCalculator
 {
@@ -16,22 +20,56 @@ final class FreightCalculator
         ?string $packageCount = null,
         ?string $actualWeight = null,
         ?string $chargedWeight = null,
+        FreightRateSemantics $semantics = FreightRateSemantics::WeightKg,
     ): string {
         $rate = $this->normalizeDecimal($rate, 'freight_rate', 4);
 
         $amount = match ($rateType) {
             FreightRateType::FixedAmount => $rate,
-            FreightRateType::PerPackageUnit => $this->multiply($rate, $this->requirePositive($packageCount, 'package_count')),
-            FreightRateType::PerKg,
-            FreightRateType::PerActualWeight => $this->multiply($rate, $this->requirePositive($actualWeight, 'actual_weight')),
+            FreightRateType::PerPackageUnit => $this->multiply(
+                $rate,
+                $this->requirePositiveInteger($packageCount, 'package_count'),
+            ),
+            FreightRateType::PerKg => $this->multiply(
+                $rate,
+                $this->requirePositive($actualWeight, 'actual_weight'),
+            ),
+            FreightRateType::PerActualWeight => $this->multiply(
+                $rate,
+                $this->weightBasis($this->requirePositive($actualWeight, 'actual_weight'), $semantics),
+            ),
             FreightRateType::PerMt => $this->multiply(
                 $rate,
-                $this->numericString(bcdiv($this->requirePositive($actualWeight, 'actual_weight'), '1000', 6)),
+                $this->kgToMt($this->requirePositive($actualWeight, 'actual_weight')),
             ),
-            FreightRateType::PerChargedWeight => $this->multiply($rate, $this->requirePositive($chargedWeight, 'charged_weight')),
+            FreightRateType::PerChargedWeight => $this->multiply(
+                $rate,
+                $this->weightBasis($this->requirePositive($chargedWeight, 'charged_weight'), $semantics),
+            ),
         };
 
         return $this->roundMoney($amount);
+    }
+
+    /**
+     * @param  numeric-string  $weightKg
+     * @return numeric-string
+     */
+    private function weightBasis(string $weightKg, FreightRateSemantics $semantics): string
+    {
+        return match ($semantics) {
+            FreightRateSemantics::WeightKg => $weightKg,
+            FreightRateSemantics::WeightMt => $this->kgToMt($weightKg),
+        };
+    }
+
+    /**
+     * @param  numeric-string  $weightKg
+     * @return numeric-string
+     */
+    private function kgToMt(string $weightKg): string
+    {
+        return $this->numericString(bcdiv($weightKg, '1000', 6));
     }
 
     /**
@@ -51,6 +89,23 @@ final class FreightCalculator
     private function roundMoney(string $amount): string
     {
         return $this->numericString(number_format((float) $amount, 2, '.', ''));
+    }
+
+    /**
+     * @return numeric-string
+     */
+    private function requirePositiveInteger(?string $value, string $field): string
+    {
+        if ($value === null || $value === '') {
+            throw new LorryReceiptDomainException("{$field} is required for the selected freight rate type.");
+        }
+
+        $trimmed = trim($value);
+        if (! preg_match('/^\d+$/', $trimmed) || (int) $trimmed < 1) {
+            throw new LorryReceiptDomainException("{$field} must be a positive whole number.");
+        }
+
+        return $trimmed;
     }
 
     /**

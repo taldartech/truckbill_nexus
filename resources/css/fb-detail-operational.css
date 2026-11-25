@@ -1,7 +1,7 @@
 /* Good Hire (freight booking) show — ownfleet trip-detail aligned */
 
 .fb-detail-page {
-    max-width: 1200px;
+    max-width: min(1600px, 100%);
     margin: 0 auto;
     padding: 1rem 0.75rem 2rem;
 }

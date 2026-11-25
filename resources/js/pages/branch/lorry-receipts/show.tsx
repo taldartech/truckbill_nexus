@@ -15,7 +15,7 @@ import {
     FbDetailCard,
     FbDetailLayout,
     FbDetailPage,
-    FbFinancialSummary,
+    FbLrFinancialSummary,
     FbInfoGrid,
     FbInfoItem,
 } from '@/components/fb-detail';
@@ -43,6 +43,7 @@ type LorryReceipt = {
     to_station_name: string | null;
     consignor_name: string | null;
     consignee_name: string | null;
+    billing_customer_name?: string | null;
     goods_value: string | null;
     freight_total: string;
     additional_charges_total: string;
@@ -618,32 +619,31 @@ export default function LorryReceiptShow({
                     }
                     side={
                         <>
-                            <FbFinancialSummary
-                                balanceDue={false}
-                                cleared
-                                trAmount={lorryReceipt.freight_total}
-                                deductions={
+                            <FbLrFinancialSummary
+                                billingCustomerName={
+                                    lorryReceipt.billing_customer_name
+                                }
+                                customerFreight={lorryReceipt.freight_total}
+                                additionalCharges={
                                     lorryReceipt.additional_charges_total
                                 }
-                                balance={freightGrandTotal}
-                                rows={[
-                                    {
-                                        label: 'Customer freight',
-                                        value: lorryReceipt.freight_total,
-                                    },
-                                    {
-                                        label: 'Additional charges',
-                                        value: lorryReceipt.additional_charges_total,
-                                    },
-                                    {
-                                        label: 'Declared goods value',
-                                        value: lorryReceipt.goods_value ?? '—',
-                                    },
-                                    {
-                                        label: 'Total billable',
-                                        value: freightGrandTotal,
-                                    },
-                                ]}
+                                totalBillable={freightGrandTotal}
+                                goodsValue={lorryReceipt.goods_value ?? '—'}
+                                hirePending={
+                                    lorryReceipt.workflow_context ===
+                                        'broker' && linkedLorryHire === null
+                                }
+                                transporterSummary={
+                                    linkedLorryHire ? (
+                                        <Link
+                                            href={linkedLorryHire.show_url}
+                                            className="font-medium text-[#2A6FDB] underline"
+                                        >
+                                            Lorry Hire{' '}
+                                            {linkedLorryHire.hire_number}
+                                        </Link>
+                                    ) : undefined
+                                }
                             />
                             <FbDetailCard title="Record Info">
                                 <FbInfoGrid>

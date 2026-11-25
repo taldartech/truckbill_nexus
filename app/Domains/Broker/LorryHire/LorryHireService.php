@@ -6,6 +6,7 @@ use App\Domains\Broker\Enums\LorryHireStatus;
 use App\Domains\Broker\Exceptions\BrokerAuthorizationException;
 use App\Domains\Broker\Exceptions\BrokerConflictException;
 use App\Domains\Broker\Exceptions\BrokerDomainException;
+use App\Domains\Consignment\Enums\FreightRateSemantics;
 use App\Domains\Consignment\Enums\FreightRateType;
 use App\Domains\Consignment\Enums\LrStatus;
 use App\Domains\Consignment\Enums\LrWorkflowContext;
@@ -169,10 +170,10 @@ final class LorryHireService
         $this->assertLorryReceiptEligible($lorryReceipt);
 
         $vehicle = $this->resolveMarketVehicle($lorryReceipt, $company, $branch);
-        $transporter = $this->resolveTransporter(
+        $transporter = $this->resolveInheritedPayee(
+            $lorryReceipt,
             $company,
             $branch,
-            $vehicle,
             filled($payload['transporter_party_id'] ?? null)
                 ? (string) $payload['transporter_party_id']
                 : null,
@@ -327,6 +328,9 @@ final class LorryHireService
                             'lorry_hire_id' => $hire->id,
                             'lr_goods_row_id' => $line['lr_goods_row_id'],
                             'rate_type' => $line['rate_type']->value,
+                            'rate_semantics' => $line['rate_semantics'] instanceof FreightRateSemantics
+                                ? $line['rate_semantics']->value
+                                : (string) $line['rate_semantics'],
                             'rate' => $line['rate'],
                             'is_fixed_amount' => $line['is_fixed_amount'],
                             'freight_amount' => $line['freight_amount'],
@@ -379,7 +383,16 @@ final class LorryHireService
                 });
             });
         } catch (UniqueConstraintViolationException $e) {
-            throw new BrokerConflictException('This Broker LR already has an active Lorry Hire.', previous: $e);
+            $message = $e->getMessage();
+            if (str_contains($message, 'lorry_hires_company_lr_active_unique')
+                || str_contains($message, 'lorry_receipt_id')) {
+                throw new BrokerConflictException('This Broker LR already has an active Lorry Hire.', previous: $e);
+            }
+
+            throw new BrokerConflictException(
+                'Could not create Lorry Hire due to a unique constraint conflict.',
+                previous: $e,
+            );
         }
     }
 
@@ -446,6 +459,11 @@ final class LorryHireService
                 ? $this->formattedWeight((string) $input['loading_weight'])
                 : $this->loadingWeightFromGoodsRow($row);
 
+            $semantics = $row->rate_semantics ?? FreightRateSemantics::forNewRows();
+            if (isset($input['rate_semantics']) && is_string($input['rate_semantics'])) {
+                $semantics = FreightRateSemantics::tryFrom($input['rate_semantics']) ?? $semantics;
+            }
+
             $freightAmount = $this->calculations->goodsLineFreight([
                 'rate_type' => $rateType,
                 'rate' => $rate,
@@ -453,6 +471,7 @@ final class LorryHireService
                 'package_count' => $row->package_count,
                 'actual_weight' => $loadingWeight,
                 'charged_weight' => $loadingWeight,
+                'rate_semantics' => $semantics,
             ]);
 
             $computed[] = [
@@ -462,6 +481,7 @@ final class LorryHireService
                 'is_fixed_amount' => $isFixed,
                 'freight_amount' => $freightAmount,
                 'loading_weight' => $loadingWeight,
+                'rate_semantics' => $semantics,
             ];
         }
 
@@ -537,28 +557,43 @@ final class LorryHireService
         return $vehicle;
     }
 
-    private function resolveTransporter(
+    /**
+     * Hire Payee is inherited from the Bilty intended payee — not re-selected on Hire create.
+     * Client-submitted transporter_party_id may only match the inherited payee (forgery rejected).
+     */
+    private function resolveInheritedPayee(
+        LorryReceipt $lorryReceipt,
         Company $company,
         Branch $branch,
-        Vehicle $vehicle,
-        ?string $transporterPartyId,
+        ?string $submittedTransporterPartyId,
     ): Party {
-        // Payee must be explicitly confirmed — never silently substitute Vehicle Owner.
-        if ($transporterPartyId === null || $transporterPartyId === '') {
+        $intendedId = filled($lorryReceipt->intended_payee_party_id)
+            ? (string) $lorryReceipt->intended_payee_party_id
+            : null;
+
+        if ($intendedId === null) {
             throw ValidationException::withMessages([
-                'transporter_party_id' => 'Select a Payee / Transporter before creating the Lorry Hire.',
+                'transporter_party_id' => 'This Bilty has no intended Payee. Correct the Bilty Payee before creating Lorry Hire.',
+            ]);
+        }
+
+        if ($submittedTransporterPartyId !== null
+            && $submittedTransporterPartyId !== ''
+            && $submittedTransporterPartyId !== $intendedId) {
+            throw ValidationException::withMessages([
+                'transporter_party_id' => 'Lorry Hire Payee must match the Bilty intended Payee. Edit the Bilty to correct the Payee.',
             ]);
         }
 
         $party = Party::query()
             ->visibleInBranch($company->id, $branch->id)
-            ->whereKey($transporterPartyId)
+            ->whereKey($intendedId)
             ->whereNull('deleted_at')
             ->first();
 
         if ($party === null) {
             throw ValidationException::withMessages([
-                'transporter_party_id' => 'The registered vehicle owner is not available for transactions in this branch. Please contact an authorized administrator to review the vehicle details.',
+                'transporter_party_id' => 'The Bilty intended Payee is not available for transactions in this branch. Correct the Bilty Payee before creating Lorry Hire.',
             ]);
         }
 
@@ -572,7 +607,7 @@ final class LorryHireService
 
         if (! $hasRole) {
             throw ValidationException::withMessages([
-                'transporter_party_id' => 'Selected party must have an active Transporter role.',
+                'transporter_party_id' => 'The Bilty intended Payee must have an active Transporter role. Correct the Bilty before creating Lorry Hire.',
             ]);
         }
 

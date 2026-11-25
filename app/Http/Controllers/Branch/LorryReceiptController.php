@@ -286,7 +286,17 @@ class LorryReceiptController extends Controller
         $this->assertPermission($actor, $company, $branch, PermissionCodes::LR_VIEW);
         $this->assertLr($lorryReceipt, $company, $branch);
 
-        $lorryReceipt->load(['goodsRows.goodsType', 'ewayBills', 'additionalCharges', 'consignor', 'consignee', 'fromStation', 'toStation', 'vehicle']);
+        $lorryReceipt->load([
+            'goodsRows.goodsType',
+            'ewayBills',
+            'additionalCharges',
+            'consignor',
+            'consignee',
+            'billingCustomer',
+            'fromStation',
+            'toStation',
+            'vehicle',
+        ]);
 
         $linkedTrip = $this->trips->tripForLorryReceipt($lorryReceipt);
         $canCreateTrip = $lorryReceipt->workflow_context === LrWorkflowContext::OwnFleet
@@ -549,7 +559,7 @@ class LorryReceiptController extends Controller
             'vehicle_id' => ['nullable', 'uuid'],
             'intended_payee_type' => ['nullable', Rule::in(['owner', 'agency'])],
             'intended_payee_party_id' => ['nullable', 'uuid'],
-            'billing_customer_party_id' => ['nullable', 'uuid'],
+            'billing_customer_party_id' => ['required', 'uuid'],
             'lr_date' => ['nullable', 'date'],
             'from_text' => ['nullable', 'string', 'max:255'],
             'to_text' => ['nullable', 'string', 'max:255'],
@@ -562,10 +572,12 @@ class LorryReceiptController extends Controller
             'goods.*.goods_type_id' => ['nullable', 'uuid'],
             'goods.*.package_type_id' => ['nullable', 'uuid'],
             'goods.*.goods_description' => ['nullable', 'string', 'max:255'],
-            'goods.*.package_count' => ['nullable', 'numeric', 'min:0'],
+            'goods.*.package_count' => ['nullable', 'integer', 'min:1'],
             'goods.*.actual_weight' => ['nullable', 'numeric', 'min:0'],
             'goods.*.charged_weight' => ['nullable', 'numeric', 'min:0'],
+            // Historical rows may still carry per_kg / per_mt; UI options expose only the four new types.
             'goods.*.freight_rate_type' => ['required', Rule::enum(FreightRateType::class)],
+            'goods.*.rate_semantics' => ['nullable', 'string', Rule::in(['weight_kg', 'weight_mt'])],
             'goods.*.freight_rate' => ['required', 'numeric', 'min:0'],
             'goods.*.goods_value' => ['nullable', 'numeric', 'min:0'],
             'eway_bills' => ['nullable', 'array'],
@@ -645,15 +657,19 @@ class LorryReceiptController extends Controller
         }
 
         return [
-            'rateTypeOptions' => collect(FreightRateType::cases())->map(fn (FreightRateType $type): array => [
+            'rateTypeOptions' => collect([
+                FreightRateType::FixedAmount,
+                FreightRateType::PerPackageUnit,
+                FreightRateType::PerChargedWeight,
+                FreightRateType::PerActualWeight,
+            ])->map(fn (FreightRateType $type): array => [
                 'value' => $type->value,
                 'label' => match ($type) {
                     FreightRateType::FixedAmount => 'Fixed Amount',
                     FreightRateType::PerPackageUnit => 'Per Unit',
-                    FreightRateType::PerKg => 'Per KG',
-                    FreightRateType::PerMt => 'Per MT',
                     FreightRateType::PerActualWeight => 'Per Actual Weight',
                     FreightRateType::PerChargedWeight => 'Per Charged Weight',
+                    default => $type->value,
                 },
             ])->values()->all(),
             'consignors' => $consignors,
@@ -921,8 +937,10 @@ class LorryReceiptController extends Controller
             'intended_payee_type' => $lr->intended_payee_type,
             'intended_payee_party_id' => $lr->intended_payee_party_id,
             'billing_customer_party_id' => $lr->billing_customer_party_id,
+            'billing_customer_name' => $lr->billingCustomer?->name,
             'consignor_name' => $lr->consignor?->name,
             'consignee_name' => $lr->consignee?->name,
+            'vehicle_registration' => $lr->vehicle?->registration_number,
             'goods_value' => $lr->goods_value,
             'freight_total' => $this->freightPresentation->presentAmount($lr->freight_total, $maySeeFreight),
             'additional_charges_total' => $this->freightPresentation->presentAmount($lr->additional_charges_total, $maySeeFreight),
@@ -947,6 +965,7 @@ class LorryReceiptController extends Controller
                     'actual_weight' => $row->actual_weight,
                     'charged_weight' => $row->charged_weight,
                     'freight_rate_type' => $row->freight_rate_type->value,
+                    'rate_semantics' => $row->rate_semantics?->value ?? 'weight_kg',
                     'freight_rate' => $this->freightPresentation->presentAmount($row->freight_rate, $maySeeFreight),
                     'freight_amount' => $this->freightPresentation->presentAmount($row->freight_amount, $maySeeFreight),
                     'goods_value' => $row->goods_value,

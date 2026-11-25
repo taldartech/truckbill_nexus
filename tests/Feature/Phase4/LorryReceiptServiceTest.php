@@ -2,6 +2,7 @@
 
 use App\Domains\Auth\WebSessionService;
 use App\Domains\Company\CompanyWorkspaceService;
+use App\Domains\Consignment\Enums\FreightRateSemantics;
 use App\Domains\Consignment\Enums\FreightRateType;
 use App\Domains\Consignment\Enums\LrStatus;
 use App\Domains\Consignment\Exceptions\LorryReceiptAuthorizationException;
@@ -177,6 +178,20 @@ function lrWorkspace(bool $withPermissions = true): array
         roles: [['role' => PartyRoleType::Consignee->value]],
         remark: 'Create consignee',
     );
+    $billingCustomer = $parties->create(
+        actor: $owner,
+        company: $company,
+        branch: null,
+        attributes: [
+            'name' => 'Billing Customer Mills',
+            'contact_number' => '9800020004',
+            'state' => 'MH',
+            'city' => 'Mumbai',
+            'is_gst_applicable' => false,
+        ],
+        roles: [['role' => PartyRoleType::Customer->value]],
+        remark: 'Create billing customer',
+    );
     $transporter = $parties->create(
         actor: $owner,
         company: $company,
@@ -223,6 +238,7 @@ function lrWorkspace(bool $withPermissions = true): array
         'viewer' => $viewer,
         'consignor' => $consignor,
         'consignee' => $consignee,
+        'billingCustomer' => $billingCustomer,
         'transporter' => $transporter,
         'vehicle' => $marketVehicle,
         'goodsType' => $goodsType,
@@ -252,6 +268,9 @@ function lrPayload(array $ctx, array $overrides = []): array
         'to_text' => 'Pune',
         'consignor_party_id' => $ctx['consignor']->id,
         'consignee_party_id' => $ctx['consignee']->id,
+        'billing_customer_party_id' => $ctx['billingCustomer']->id,
+        'intended_payee_type' => 'owner',
+        'intended_payee_party_id' => $ctx['transporter']->id,
         'goods' => [
             [
                 'goods_type_id' => $ctx['goodsType']->id,
@@ -287,9 +306,27 @@ test('freight calculator covers all rate types', function () {
     expect($calc->compute(FreightRateType::FixedAmount, '1250.5'))->toBe('1250.50')
         ->and($calc->compute(FreightRateType::PerPackageUnit, '10', '12'))->toBe('120.00')
         ->and($calc->compute(FreightRateType::PerKg, '2.5', null, '40'))->toBe('100.00')
+        // Historical weight_kg semantics: rate × KG.
         ->and($calc->compute(FreightRateType::PerActualWeight, '3', null, '20'))->toBe('60.00')
         ->and($calc->compute(FreightRateType::PerMt, '1000', null, '2500'))->toBe('2500.00')
-        ->and($calc->compute(FreightRateType::PerChargedWeight, '4', null, null, '15'))->toBe('60.00');
+        ->and($calc->compute(FreightRateType::PerChargedWeight, '4', null, null, '15'))->toBe('60.00')
+        // New weight_mt semantics: rate × (KG/1000).
+        ->and($calc->compute(
+            FreightRateType::PerActualWeight,
+            '2500',
+            null,
+            '25000',
+            null,
+            FreightRateSemantics::WeightMt,
+        ))->toBe('62500.00')
+        ->and($calc->compute(
+            FreightRateType::PerChargedWeight,
+            '2500',
+            null,
+            null,
+            '26000',
+            FreightRateSemantics::WeightMt,
+        ))->toBe('65000.00');
 });
 
 test('create computes goods freight totals and persists ewb charges', function () {
