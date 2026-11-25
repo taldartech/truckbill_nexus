@@ -54,12 +54,18 @@ export default function AccountingTrialBalance({
                             router.get(
                                 urls.index,
                                 {
-                                    from_date: (
-                                        form.elements.namedItem('from_date') as HTMLInputElement
-                                    ).value || undefined,
-                                    to_date: (
-                                        form.elements.namedItem('to_date') as HTMLInputElement
-                                    ).value || undefined,
+                                    from_date:
+                                        (
+                                            form.elements.namedItem(
+                                                'from_date',
+                                            ) as HTMLInputElement
+                                        ).value || undefined,
+                                    to_date:
+                                        (
+                                            form.elements.namedItem(
+                                                'to_date',
+                                            ) as HTMLInputElement
+                                        ).value || undefined,
                                 },
                                 { preserveState: true },
                             );
@@ -91,27 +97,62 @@ export default function AccountingTrialBalance({
                         <table className="w-full min-w-[960px] text-left text-sm">
                             <thead className="border-b text-muted-foreground">
                                 <tr>
-                                    <th className="px-3 py-2 font-medium">Ledger</th>
-                                    <th className="px-3 py-2 font-medium">Group</th>
-                                    <th className="px-3 py-2 font-medium">Opening Dr</th>
-                                    <th className="px-3 py-2 font-medium">Opening Cr</th>
-                                    <th className="px-3 py-2 font-medium">Period Dr</th>
-                                    <th className="px-3 py-2 font-medium">Period Cr</th>
-                                    <th className="px-3 py-2 font-medium">Closing Dr</th>
-                                    <th className="px-3 py-2 font-medium">Closing Cr</th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Ledger
+                                    </th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Group
+                                    </th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Opening Dr
+                                    </th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Opening Cr
+                                    </th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Period Dr
+                                    </th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Period Cr
+                                    </th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Closing Dr
+                                    </th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Closing Cr
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {rows.map((row) => (
-                                    <tr key={row.ledger_id} className="border-b last:border-0">
-                                        <td className="px-3 py-2 font-medium">{row.ledger_name}</td>
-                                        <td className="px-3 py-2">{row.group_name}</td>
-                                        <td className="px-3 py-2">{row.opening_debit}</td>
-                                        <td className="px-3 py-2">{row.opening_credit}</td>
-                                        <td className="px-3 py-2">{row.period_debit}</td>
-                                        <td className="px-3 py-2">{row.period_credit}</td>
-                                        <td className="px-3 py-2">{row.closing_debit}</td>
-                                        <td className="px-3 py-2">{row.closing_credit}</td>
+                                    <tr
+                                        key={row.ledger_id}
+                                        className="border-b last:border-0"
+                                    >
+                                        <td className="px-3 py-2 font-medium">
+                                            {row.ledger_name}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            {row.group_name}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            {row.opening_debit}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            {row.opening_credit}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            {row.period_debit}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            {row.period_credit}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            {row.closing_debit}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            {row.closing_credit}
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -120,13 +161,21 @@ export default function AccountingTrialBalance({
                                     <td className="px-3 py-2" colSpan={6}>
                                         Totals{' '}
                                         {totals.balanced ? (
-                                            <span className="text-emerald-700">(balanced)</span>
+                                            <span className="text-emerald-700">
+                                                (balanced)
+                                            </span>
                                         ) : (
-                                            <span className="text-destructive">(out of balance)</span>
+                                            <span className="text-destructive">
+                                                (out of balance)
+                                            </span>
                                         )}
                                     </td>
-                                    <td className="px-3 py-2">{totals.closing_debit}</td>
-                                    <td className="px-3 py-2">{totals.closing_credit}</td>
+                                    <td className="px-3 py-2">
+                                        {totals.closing_debit}
+                                    </td>
+                                    <td className="px-3 py-2">
+                                        {totals.closing_credit}
+                                    </td>
                                 </tr>
                             </tfoot>
                         </table>

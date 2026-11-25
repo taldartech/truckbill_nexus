@@ -62,7 +62,11 @@ function Section({
     );
 }
 
-export default function AccountingBalanceSheet({ filters, report, urls }: Props) {
+export default function AccountingBalanceSheet({
+    filters,
+    report,
+    urls,
+}: Props) {
     return (
         <>
             <Head title="Balance Sheet" />
@@ -72,10 +76,14 @@ export default function AccountingBalanceSheet({ filters, report, urls }: Props)
                     toolbar={
                         <div className="flex flex-wrap gap-2">
                             <Button asChild variant="outline" size="sm">
-                                <Link href={urls.trial_balance}>Trial Balance</Link>
+                                <Link href={urls.trial_balance}>
+                                    Trial Balance
+                                </Link>
                             </Button>
                             <Button asChild variant="outline" size="sm">
-                                <Link href={urls.profit_and_loss}>Profit & Loss</Link>
+                                <Link href={urls.profit_and_loss}>
+                                    Profit & Loss
+                                </Link>
                             </Button>
                             <Button asChild variant="outline" size="sm">
                                 <Link href={urls.vouchers}>Day Book</Link>
@@ -90,9 +98,12 @@ export default function AccountingBalanceSheet({ filters, report, urls }: Props)
                             router.get(
                                 urls.index,
                                 {
-                                    as_of: (
-                                        form.elements.namedItem('as_of') as HTMLInputElement
-                                    ).value || undefined,
+                                    as_of:
+                                        (
+                                            form.elements.namedItem(
+                                                'as_of',
+                                            ) as HTMLInputElement
+                                        ).value || undefined,
                                 },
                                 { preserveState: true },
                             );
@@ -139,7 +150,9 @@ export default function AccountingBalanceSheet({ filters, report, urls }: Props)
                         {report.balanced ? (
                             <span className="text-emerald-700">(balanced)</span>
                         ) : (
-                            <span className="text-destructive">(out of balance)</span>
+                            <span className="text-destructive">
+                                (out of balance)
+                            </span>
                         )}
                     </div>
                 </AppIndexListCard>

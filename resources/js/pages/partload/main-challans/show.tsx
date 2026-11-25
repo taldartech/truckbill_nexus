@@ -1,8 +1,5 @@
 import { Form, Head, Link, router } from '@inertiajs/react';
-import {
-    AppIndexListCard,
-    AppIndexPage,
-} from '@/components/app-index-page';
+import { AppIndexListCard, AppIndexPage } from '@/components/app-index-page';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -66,29 +63,40 @@ export default function PartloadMainChallanShow({
                     <div className="grid gap-3 p-4 text-sm md:grid-cols-3">
                         <div>
                             <div className="text-muted-foreground">Date</div>
-                            <div className="font-medium">{mainChallan.main_challan_date}</div>
+                            <div className="font-medium">
+                                {mainChallan.main_challan_date}
+                            </div>
                         </div>
                         <div>
                             <div className="text-muted-foreground">Status</div>
-                            <div className="font-medium">{mainChallan.status_label}</div>
+                            <div className="font-medium">
+                                {mainChallan.status_label}
+                            </div>
                         </div>
                         <div>
                             <div className="text-muted-foreground">Route</div>
                             <div className="font-medium">
-                                {mainChallan.from_station_name} → {mainChallan.to_station_name}
+                                {mainChallan.from_station_name} →{' '}
+                                {mainChallan.to_station_name}
                             </div>
                         </div>
                         <div>
                             <div className="text-muted-foreground">Vehicle</div>
-                            <div className="font-medium">{mainChallan.vehicle_registration}</div>
+                            <div className="font-medium">
+                                {mainChallan.vehicle_registration}
+                            </div>
                         </div>
                         <div>
                             <div className="text-muted-foreground">Driver</div>
-                            <div className="font-medium">{mainChallan.driver_name}</div>
+                            <div className="font-medium">
+                                {mainChallan.driver_name}
+                            </div>
                         </div>
                         <div>
                             <div className="text-muted-foreground">Total</div>
-                            <div className="font-medium">{mainChallan.total_amount}</div>
+                            <div className="font-medium">
+                                {mainChallan.total_amount}
+                            </div>
                         </div>
                     </div>
 
@@ -96,18 +104,32 @@ export default function PartloadMainChallanShow({
                         <table className="w-full min-w-[720px] text-left text-sm">
                             <thead className="border-b text-muted-foreground">
                                 <tr>
-                                    <th className="px-3 py-2 font-medium">Challan</th>
-                                    <th className="px-3 py-2 font-medium">Route</th>
-                                    <th className="px-3 py-2 font-medium">Vehicle</th>
-                                    <th className="px-3 py-2 font-medium">Status</th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Challan
+                                    </th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Route
+                                    </th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Vehicle
+                                    </th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Status
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {mainChallan.lines.map((line) => (
-                                    <tr key={line.id} className="border-b last:border-0">
+                                    <tr
+                                        key={line.id}
+                                        className="border-b last:border-0"
+                                    >
                                         <td className="px-3 py-2">
                                             {line.urls.show ? (
-                                                <Link href={line.urls.show} className="text-primary hover:underline">
+                                                <Link
+                                                    href={line.urls.show}
+                                                    className="text-primary hover:underline"
+                                                >
                                                     {line.challan_number}
                                                 </Link>
                                             ) : (
@@ -115,10 +137,15 @@ export default function PartloadMainChallanShow({
                                             )}
                                         </td>
                                         <td className="px-3 py-2">
-                                            {line.from_station_name} → {line.to_station_name}
+                                            {line.from_station_name} →{' '}
+                                            {line.to_station_name}
                                         </td>
-                                        <td className="px-3 py-2">{line.vehicle_registration}</td>
-                                        <td className="px-3 py-2">{line.challan_status}</td>
+                                        <td className="px-3 py-2">
+                                            {line.vehicle_registration}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            {line.challan_status}
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -126,16 +153,31 @@ export default function PartloadMainChallanShow({
                     </div>
 
                     {urls.cancel && permissions.can_cancel ? (
-                        <Form action={urls.cancel} method="post" className="space-y-3 border-t p-4">
+                        <Form
+                            action={urls.cancel}
+                            method="post"
+                            className="space-y-3 border-t p-4"
+                        >
                             {({ processing }) => (
                                 <>
                                     <div className="space-y-1">
-                                        <Label htmlFor="cancellation_remark" required>
+                                        <Label
+                                            htmlFor="cancellation_remark"
+                                            required
+                                        >
                                             Cancel Remark
                                         </Label>
-                                        <Input id="cancellation_remark" name="cancellation_remark" required />
+                                        <Input
+                                            id="cancellation_remark"
+                                            name="cancellation_remark"
+                                            required
+                                        />
                                     </div>
-                                    <Button type="submit" variant="destructive" disabled={processing}>
+                                    <Button
+                                        type="submit"
+                                        variant="destructive"
+                                        disabled={processing}
+                                    >
                                         Cancel Main Challan
                                     </Button>
                                 </>

@@ -50,7 +50,11 @@ export default function PartloadMainChallansIndex({
                     title="Main Challans"
                     toolbar={
                         permissions.can_create ? (
-                            <Button asChild size="sm" className="bg-[#2FB36F] text-white hover:bg-[#279960]">
+                            <Button
+                                asChild
+                                size="sm"
+                                className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                            >
                                 <Link href={urls.create}>Add Main Challan</Link>
                             </Button>
                         ) : null
@@ -63,9 +67,12 @@ export default function PartloadMainChallansIndex({
                             router.get(
                                 urls.index,
                                 {
-                                    status: (
-                                        form.elements.namedItem('status') as HTMLSelectElement
-                                    ).value || undefined,
+                                    status:
+                                        (
+                                            form.elements.namedItem(
+                                                'status',
+                                            ) as HTMLSelectElement
+                                        ).value || undefined,
                                 },
                                 { preserveState: true },
                             );
@@ -76,12 +83,15 @@ export default function PartloadMainChallansIndex({
                             <select
                                 id="status"
                                 name="status"
-                                className="border-input bg-background h-9 rounded-md border px-2 text-sm"
+                                className="h-9 rounded-md border border-input bg-background px-2 text-sm"
                                 defaultValue={filters.status}
                             >
                                 <option value="">All</option>
                                 {statusOptions.map((option) => (
-                                    <option key={option.value} value={option.value}>
+                                    <option
+                                        key={option.value}
+                                        value={option.value}
+                                    >
                                         {option.label}
                                     </option>
                                 ))}
@@ -96,36 +106,70 @@ export default function PartloadMainChallansIndex({
                         <table className="w-full min-w-[840px] text-left text-sm">
                             <thead className="border-b text-muted-foreground">
                                 <tr>
-                                    <th className="px-3 py-2 font-medium">Number</th>
-                                    <th className="px-3 py-2 font-medium">Date</th>
-                                    <th className="px-3 py-2 font-medium">Route</th>
-                                    <th className="px-3 py-2 font-medium">Vehicle</th>
-                                    <th className="px-3 py-2 font-medium">Challans</th>
-                                    <th className="px-3 py-2 font-medium">Status</th>
-                                    <th className="px-3 py-2 font-medium">Total</th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Number
+                                    </th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Date
+                                    </th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Route
+                                    </th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Vehicle
+                                    </th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Challans
+                                    </th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Status
+                                    </th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Total
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {mainChallans.data.map((row) => (
-                                    <tr key={row.id} className="border-b last:border-0">
+                                    <tr
+                                        key={row.id}
+                                        className="border-b last:border-0"
+                                    >
                                         <td className="px-3 py-2">
-                                            <Link href={row.urls.show} className="font-medium text-primary hover:underline">
+                                            <Link
+                                                href={row.urls.show}
+                                                className="font-medium text-primary hover:underline"
+                                            >
                                                 {row.main_challan_number}
                                             </Link>
                                         </td>
-                                        <td className="px-3 py-2">{row.main_challan_date}</td>
                                         <td className="px-3 py-2">
-                                            {row.from_station_name} → {row.to_station_name}
+                                            {row.main_challan_date}
                                         </td>
-                                        <td className="px-3 py-2">{row.vehicle_registration}</td>
-                                        <td className="px-3 py-2">{row.challan_count}</td>
-                                        <td className="px-3 py-2">{row.status_label}</td>
-                                        <td className="px-3 py-2">{row.total_amount}</td>
+                                        <td className="px-3 py-2">
+                                            {row.from_station_name} →{' '}
+                                            {row.to_station_name}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            {row.vehicle_registration}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            {row.challan_count}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            {row.status_label}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            {row.total_amount}
+                                        </td>
                                     </tr>
                                 ))}
                                 {mainChallans.data.length === 0 ? (
                                     <tr>
-                                        <td className="px-3 py-6 text-muted-foreground" colSpan={7}>
+                                        <td
+                                            className="px-3 py-6 text-muted-foreground"
+                                            colSpan={7}
+                                        >
                                             No Main Challans found.
                                         </td>
                                     </tr>
@@ -139,7 +183,11 @@ export default function PartloadMainChallansIndex({
                         total={mainChallans.meta.total}
                         perPage={mainChallans.meta.per_page}
                         onPageChange={(page) =>
-                            router.get(urls.index, { ...filters, page }, { preserveState: true })
+                            router.get(
+                                urls.index,
+                                { ...filters, page },
+                                { preserveState: true },
+                            )
                         }
                     />
                 </AppIndexListCard>

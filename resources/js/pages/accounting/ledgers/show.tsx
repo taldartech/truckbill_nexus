@@ -57,12 +57,18 @@ export default function AccountingLedgerShow({
                             router.get(
                                 urls.show,
                                 {
-                                    from_date: (
-                                        form.elements.namedItem('from_date') as HTMLInputElement
-                                    ).value || undefined,
-                                    to_date: (
-                                        form.elements.namedItem('to_date') as HTMLInputElement
-                                    ).value || undefined,
+                                    from_date:
+                                        (
+                                            form.elements.namedItem(
+                                                'from_date',
+                                            ) as HTMLInputElement
+                                        ).value || undefined,
+                                    to_date:
+                                        (
+                                            form.elements.namedItem(
+                                                'to_date',
+                                            ) as HTMLInputElement
+                                        ).value || undefined,
                                 },
                                 { preserveState: true },
                             );
@@ -102,31 +108,58 @@ export default function AccountingLedgerShow({
                         <table className="w-full min-w-[900px] text-left text-sm">
                             <thead className="border-b text-muted-foreground">
                                 <tr>
-                                    <th className="px-3 py-2 font-medium">Date</th>
-                                    <th className="px-3 py-2 font-medium">Voucher</th>
-                                    <th className="px-3 py-2 font-medium">Particulars</th>
-                                    <th className="px-3 py-2 font-medium">Debit</th>
-                                    <th className="px-3 py-2 font-medium">Credit</th>
-                                    <th className="px-3 py-2 font-medium">Balance</th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Date
+                                    </th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Voucher
+                                    </th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Particulars
+                                    </th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Debit
+                                    </th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Credit
+                                    </th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Balance
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {rows.length === 0 ? (
                                     <tr>
-                                        <td colSpan={6} className="px-3 py-8 text-center text-muted-foreground">
+                                        <td
+                                            colSpan={6}
+                                            className="px-3 py-8 text-center text-muted-foreground"
+                                        >
                                             No movements in this period.
                                         </td>
                                     </tr>
                                 ) : (
                                     rows.map((row, index) => (
-                                        <tr key={index} className="border-b last:border-0">
-                                            <td className="px-3 py-2">{row.date}</td>
+                                        <tr
+                                            key={index}
+                                            className="border-b last:border-0"
+                                        >
                                             <td className="px-3 py-2">
-                                                {row.voucher_type} {row.voucher_number}
+                                                {row.date}
                                             </td>
-                                            <td className="px-3 py-2">{row.particulars}</td>
-                                            <td className="px-3 py-2">{row.debit}</td>
-                                            <td className="px-3 py-2">{row.credit}</td>
+                                            <td className="px-3 py-2">
+                                                {row.voucher_type}{' '}
+                                                {row.voucher_number}
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                {row.particulars}
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                {row.debit}
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                {row.credit}
+                                            </td>
                                             <td className="px-3 py-2">
                                                 {row.balance} {row.balance_side}
                                             </td>

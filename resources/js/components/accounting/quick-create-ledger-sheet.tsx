@@ -46,7 +46,9 @@ export function QuickCreateLedgerSheet({
         setError(null);
         try {
             const token = (
-                document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null
+                document.querySelector(
+                    'meta[name="csrf-token"]',
+                ) as HTMLMetaElement | null
             )?.content;
             const response = await fetch(storeUrl, {
                 method: 'POST',
@@ -122,9 +124,11 @@ export function QuickCreateLedgerSheet({
                         </Label>
                         <select
                             id="quick-ledger-group"
-                            className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+                            className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
                             value={accountGroupId}
-                            onChange={(event) => setAccountGroupId(event.target.value)}
+                            onChange={(event) =>
+                                setAccountGroupId(event.target.value)
+                            }
                         >
                             {accountGroups.map((group) => (
                                 <option key={group.id} value={group.id}>
@@ -133,15 +137,25 @@ export function QuickCreateLedgerSheet({
                             ))}
                         </select>
                     </div>
-                    {error ? <p className="text-sm text-destructive">{error}</p> : null}
+                    {error ? (
+                        <p className="text-sm text-destructive">{error}</p>
+                    ) : null}
                 </div>
                 <SheetFooter>
-                    <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => onOpenChange(false)}
+                    >
                         Cancel
                     </Button>
                     <Button
                         type="button"
-                        disabled={processing || name.trim() === '' || accountGroupId === ''}
+                        disabled={
+                            processing ||
+                            name.trim() === '' ||
+                            accountGroupId === ''
+                        }
                         onClick={() => void submit()}
                     >
                         Create

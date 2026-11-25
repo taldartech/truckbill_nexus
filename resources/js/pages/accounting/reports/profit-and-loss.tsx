@@ -27,7 +27,11 @@ type Props = {
     };
 };
 
-export default function AccountingProfitAndLoss({ filters, report, urls }: Props) {
+export default function AccountingProfitAndLoss({
+    filters,
+    report,
+    urls,
+}: Props) {
     return (
         <>
             <Head title="Profit and Loss" />
@@ -37,10 +41,14 @@ export default function AccountingProfitAndLoss({ filters, report, urls }: Props
                     toolbar={
                         <div className="flex flex-wrap gap-2">
                             <Button asChild variant="outline" size="sm">
-                                <Link href={urls.trial_balance}>Trial Balance</Link>
+                                <Link href={urls.trial_balance}>
+                                    Trial Balance
+                                </Link>
                             </Button>
                             <Button asChild variant="outline" size="sm">
-                                <Link href={urls.balance_sheet}>Balance Sheet</Link>
+                                <Link href={urls.balance_sheet}>
+                                    Balance Sheet
+                                </Link>
                             </Button>
                             <Button asChild variant="outline" size="sm">
                                 <Link href={urls.vouchers}>Day Book</Link>
@@ -55,12 +63,18 @@ export default function AccountingProfitAndLoss({ filters, report, urls }: Props
                             router.get(
                                 urls.index,
                                 {
-                                    from_date: (
-                                        form.elements.namedItem('from_date') as HTMLInputElement
-                                    ).value || undefined,
-                                    to_date: (
-                                        form.elements.namedItem('to_date') as HTMLInputElement
-                                    ).value || undefined,
+                                    from_date:
+                                        (
+                                            form.elements.namedItem(
+                                                'from_date',
+                                            ) as HTMLInputElement
+                                        ).value || undefined,
+                                    to_date:
+                                        (
+                                            form.elements.namedItem(
+                                                'to_date',
+                                            ) as HTMLInputElement
+                                        ).value || undefined,
                                 },
                                 { preserveState: true },
                             );
@@ -91,35 +105,57 @@ export default function AccountingProfitAndLoss({ filters, report, urls }: Props
 
                     <div className="grid gap-6 p-4 md:grid-cols-2">
                         <section>
-                            <h2 className="mb-2 text-sm font-semibold">Income</h2>
+                            <h2 className="mb-2 text-sm font-semibold">
+                                Income
+                            </h2>
                             <table className="w-full text-left text-sm">
                                 <tbody>
                                     {report.income.map((row) => (
-                                        <tr key={row.ledger_id} className="border-b">
-                                            <td className="py-1.5">{row.ledger_name}</td>
-                                            <td className="py-1.5 text-right">{row.amount}</td>
+                                        <tr
+                                            key={row.ledger_id}
+                                            className="border-b"
+                                        >
+                                            <td className="py-1.5">
+                                                {row.ledger_name}
+                                            </td>
+                                            <td className="py-1.5 text-right">
+                                                {row.amount}
+                                            </td>
                                         </tr>
                                     ))}
                                     <tr className="font-medium">
                                         <td className="py-2">Total Income</td>
-                                        <td className="py-2 text-right">{report.total_income}</td>
+                                        <td className="py-2 text-right">
+                                            {report.total_income}
+                                        </td>
                                     </tr>
                                 </tbody>
                             </table>
                         </section>
                         <section>
-                            <h2 className="mb-2 text-sm font-semibold">Expenses</h2>
+                            <h2 className="mb-2 text-sm font-semibold">
+                                Expenses
+                            </h2>
                             <table className="w-full text-left text-sm">
                                 <tbody>
                                     {report.expenses.map((row) => (
-                                        <tr key={row.ledger_id} className="border-b">
-                                            <td className="py-1.5">{row.ledger_name}</td>
-                                            <td className="py-1.5 text-right">{row.amount}</td>
+                                        <tr
+                                            key={row.ledger_id}
+                                            className="border-b"
+                                        >
+                                            <td className="py-1.5">
+                                                {row.ledger_name}
+                                            </td>
+                                            <td className="py-1.5 text-right">
+                                                {row.amount}
+                                            </td>
                                         </tr>
                                     ))}
                                     <tr className="font-medium">
                                         <td className="py-2">Total Expenses</td>
-                                        <td className="py-2 text-right">{report.total_expenses}</td>
+                                        <td className="py-2 text-right">
+                                            {report.total_expenses}
+                                        </td>
                                     </tr>
                                 </tbody>
                             </table>
