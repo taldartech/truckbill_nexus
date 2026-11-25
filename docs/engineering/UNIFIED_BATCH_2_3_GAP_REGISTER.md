@@ -53,6 +53,10 @@
 | U23-PARTLOAD-INWARD-DR | Partload Inward Register + Delivery Receipt                  | Partload          | Aligned foundation (26 Nov 2026 ERP)                       |
 | U23-ACC-F0             | Accounting COA/periods/posting engine                        | Accounting        | Aligned foundation (`1b48769`)                             |
 | U23-ACC-UI             | Day Book / Ledger / Trial Balance / manual voucher UI        | Accounting        | Aligned foundation (26 Nov 2026 ERP)                       |
+| U23-ACC-PNL-BS         | Profit & Loss + Balance Sheet reports                        | Accounting        | Aligned (`5811d66`)                                        |
+| U23-ACC-VOUCHER-POST   | Transporter voucher Paid → GL Payment posting                | Accounting        | Aligned (`5811d66`)                                        |
+| U23-ACC-LEDGER-QA      | Accounting ledger quick-add on voucher create                | Accounting        | Aligned (`5811d66`)                                        |
+| U23-PARTLOAD-MAIN      | Partload Main Challan consolidation + cascade dispatch       | Partload          | Aligned (`0c59683`)                                        |
 
 ## PO directive (25 Nov 2026) — superseding earlier OwnFleet navigation
 
