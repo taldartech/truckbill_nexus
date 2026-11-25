@@ -20,6 +20,7 @@ use App\Http\Controllers\Api\PublicLeadOnboardingController;
 use App\Http\Controllers\Branch\Accounting\AccountingCashBankBookController;
 use App\Http\Controllers\Branch\Accounting\AccountingLedgerController;
 use App\Http\Controllers\Branch\Accounting\AccountingLedgerQuickCreateController;
+use App\Http\Controllers\Branch\Accounting\AccountingOutstandingController;
 use App\Http\Controllers\Branch\Accounting\AccountingReportController;
 use App\Http\Controllers\Branch\Accounting\AccountingVoucherController;
 use App\Http\Controllers\Branch\BankCashAccountController;
@@ -341,6 +342,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/accounting/reports/balance-sheet', [AccountingReportController::class, 'balanceSheet'])->name('branch.accounting.reports.balance-sheet');
         Route::get('/accounting/reports/cash-book', [AccountingCashBankBookController::class, 'cash'])->name('branch.accounting.reports.cash-book');
         Route::get('/accounting/reports/bank-book', [AccountingCashBankBookController::class, 'bank'])->name('branch.accounting.reports.bank-book');
+        Route::get('/accounting/reports/outstanding', [AccountingOutstandingController::class, 'index'])->name('branch.accounting.reports.outstanding');
 
         Route::get('/trips', [TripController::class, 'index'])->name('branch.trips.index');
         Route::get('/trips/{trip}', [TripController::class, 'show'])->name('branch.trips.show');

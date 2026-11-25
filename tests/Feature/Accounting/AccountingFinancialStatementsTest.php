@@ -91,4 +91,7 @@ test('profit and loss and balance sheet reconcile from posted vouchers', functio
     expect($sheet['balanced'])->toBeTrue()
         ->and($sheet['total_assets'])->toBe('13800.00')
         ->and($sheet['net_profit'])->toBe('3800.00');
+
+    $outstanding = $workspace->outstandingControlAccounts($ctx['company'], null, $ctx['branch']);
+    expect($outstanding)->toBeArray();
 });

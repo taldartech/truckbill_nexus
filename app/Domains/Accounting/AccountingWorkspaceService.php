@@ -451,6 +451,70 @@ final class AccountingWorkspaceService
     }
 
     /**
+     * Control-account outstanding snapshot from posted GL balances.
+     *
+     * @return list<array{ledger_id: string, ledger_name: string, debit: string, credit: string, net: string, side: string}>
+     */
+    public function outstandingControlAccounts(
+        Company $company,
+        ?string $asOfDate = null,
+        ?Branch $branch = null,
+    ): array {
+        $asOf = filled($asOfDate)
+            ? CarbonImmutable::parse($asOfDate)->toDateString()
+            : CarbonImmutable::now('Asia/Kolkata')->toDateString();
+        $fyStart = $this->periods->ensureCurrentFinancialYear($company)->starts_on->toDateString();
+
+        $names = [
+            'Customer Receivables',
+            'Customer Advances',
+            'Transporter Payables',
+            'Transporter Advances',
+            'Vendor Payables',
+            'Vendor Advances',
+            'Driver Payables',
+            'Driver Advances',
+            'TDS Payable',
+            'TDS Receivable',
+        ];
+
+        $rows = [];
+        foreach ($names as $name) {
+            $ledger = GlLedger::query()
+                ->where('company_id', $company->id)
+                ->where('name', $name)
+                ->whereNull('deleted_at')
+                ->first();
+            if ($ledger === null) {
+                continue;
+            }
+
+            $statement = $this->ledgerStatement($company, $ledger, $fyStart, $asOf, $branch);
+            $debit = $statement['closing_debit'];
+            $credit = $statement['closing_credit'];
+            if (bccomp($debit, '0', 2) === 0 && bccomp($credit, '0', 2) === 0) {
+                continue;
+            }
+
+            $net = bccomp($debit, $credit, 2) >= 0
+                ? bcsub($debit, $credit, 2)
+                : bcsub($credit, $debit, 2);
+            $side = bccomp($debit, $credit, 2) >= 0 ? 'Dr' : 'Cr';
+
+            $rows[] = [
+                'ledger_id' => $ledger->id,
+                'ledger_name' => $ledger->name,
+                'debit' => $debit,
+                'credit' => $credit,
+                'net' => $net,
+                'side' => $side,
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
      * @return Collection<int, GlLedger>
      */
     public function activeLedgers(Company $company): Collection
