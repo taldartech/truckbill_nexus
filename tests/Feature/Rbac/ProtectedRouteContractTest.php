@@ -90,6 +90,7 @@ test('critical operational route names remain registered for RBAC HTTP coverage'
         'branch.dashboard',
         'branch.trips.index',
         'branch.trips.show',
+        'branch.trips.expenses',
         'branch.trips.dispatch',
         'branch.trips.complete',
         'branch.lorry-receipts.index',

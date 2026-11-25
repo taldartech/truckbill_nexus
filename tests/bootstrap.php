@@ -31,19 +31,35 @@ $forced = [
 // Optional disposable Postgres: NEXUS_TEST_DB_PORT (e.g. Docker mapped to 5433) when
 // the host cannot create `nexus_test` on the developer's Postgres instance.
 $configuredDatabase = (string) ($_SERVER['DB_DATABASE'] ?? $_ENV['DB_DATABASE'] ?? getenv('DB_DATABASE') ?: '');
+$disposablePort = (string) (getenv('NEXUS_TEST_DB_PORT') ?: ($_SERVER['NEXUS_TEST_DB_PORT'] ?? ''));
+
 if ($configuredDatabase === '' || $configuredDatabase === 'nexus') {
     $forced['DB_CONNECTION'] = 'pgsql';
     $forced['DB_HOST'] = '127.0.0.1';
     $forced['DB_DATABASE'] = 'nexus_test';
     $forced['DB_URL'] = '';
+    $forced['DB_PORT'] = $disposablePort !== '' ? $disposablePort : '5432';
+}
 
-    $disposablePort = (string) (getenv('NEXUS_TEST_DB_PORT') ?: ($_SERVER['NEXUS_TEST_DB_PORT'] ?? ''));
-    if ($disposablePort !== '') {
-        $forced['DB_PORT'] = $disposablePort;
-        $forced['DB_USERNAME'] = (string) (getenv('NEXUS_TEST_DB_USERNAME') ?: ($_SERVER['NEXUS_TEST_DB_USERNAME'] ?? 'nexus_user'));
-        $forced['DB_PASSWORD'] = (string) (getenv('NEXUS_TEST_DB_PASSWORD') ?: ($_SERVER['NEXUS_TEST_DB_PASSWORD'] ?? 'secret'));
-    } else {
-        $forced['DB_PORT'] = '5432';
+// Always honour disposable Postgres port when provided (phpunit.xml may already set
+// DB_DATABASE=nexus_test while the host instance has no CREATEDB / no nexus_test).
+// Skip when the invocation explicitly targets MySQL (or another engine).
+$resolvedConnection = (string) ($forced['DB_CONNECTION']
+    ?? $_SERVER['DB_CONNECTION']
+    ?? $_ENV['DB_CONNECTION']
+    ?? getenv('DB_CONNECTION')
+    ?: 'pgsql');
+
+if ($disposablePort !== '' && $resolvedConnection === 'pgsql') {
+    $forced['DB_CONNECTION'] = 'pgsql';
+    $forced['DB_HOST'] = (string) (getenv('NEXUS_TEST_DB_HOST') ?: ($_SERVER['NEXUS_TEST_DB_HOST'] ?? '127.0.0.1'));
+    $forced['DB_PORT'] = $disposablePort;
+    $forced['DB_USERNAME'] = (string) (getenv('NEXUS_TEST_DB_USERNAME') ?: ($_SERVER['NEXUS_TEST_DB_USERNAME'] ?? 'nexus_user'));
+    $forced['DB_PASSWORD'] = (string) (getenv('NEXUS_TEST_DB_PASSWORD') ?: ($_SERVER['NEXUS_TEST_DB_PASSWORD'] ?? 'secret'));
+    $forced['DB_URL'] = '';
+    $databaseName = (string) ($forced['DB_DATABASE'] ?? $configuredDatabase);
+    if ($databaseName === '' || $databaseName === 'nexus') {
+        $forced['DB_DATABASE'] = 'nexus_test';
     }
 }
 

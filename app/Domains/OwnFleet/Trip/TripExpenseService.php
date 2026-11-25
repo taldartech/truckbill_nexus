@@ -117,7 +117,18 @@ final class TripExpenseService
      *     total_expenses: string,
      *     trip_profit: string,
      *     trip_mileage: string|null,
-     *     trip_mileage_label: string
+     *     trip_mileage_label: string,
+     *     total_revenue: string,
+     *     trip_distance: string|null,
+     *     diesel_litres_total: string,
+     *     planned_diesel_litres: string|null,
+     *     planned_diesel_amount: string|null,
+     *     diesel_litres_variance: string|null,
+     *     diesel_amount_variance: string|null,
+     *     revenue_per_km: string|null,
+     *     expense_per_km: string|null,
+     *     profit_per_km: string|null,
+     *     diesel_expected_vs_actual_available: bool
      * }
      */
     public function profitSummary(Trip $trip): array
@@ -134,12 +145,31 @@ final class TripExpenseService
         $diesel = bcadd('0', '0', 2);
         $other = bcadd('0', '0', 2);
         $dieselLitres = bcadd('0', '0', 3);
+        $plannedLitres = bcadd('0', '0', 3);
+        $plannedAmount = bcadd('0', '0', 2);
+        $hasPlannedDiesel = false;
 
         foreach ($expenses as $expense) {
             if ($expense->is_diesel) {
                 $diesel = bcadd($diesel, $this->storedDecimal($expense->amount), 2);
                 if ($expense->diesel_litres !== null) {
                     $dieselLitres = bcadd($dieselLitres, $this->storedDecimal($expense->diesel_litres, 3), 3);
+                }
+                if ($expense->planned_diesel_quantity !== null) {
+                    $hasPlannedDiesel = true;
+                    $plannedLitres = bcadd(
+                        $plannedLitres,
+                        $this->storedDecimal($expense->planned_diesel_quantity, 3),
+                        3,
+                    );
+                }
+                if ($expense->planned_diesel_amount !== null) {
+                    $hasPlannedDiesel = true;
+                    $plannedAmount = bcadd(
+                        $plannedAmount,
+                        $this->storedDecimal($expense->planned_diesel_amount),
+                        2,
+                    );
                 }
             } else {
                 $other = bcadd($other, $this->storedDecimal($expense->amount), 2);
@@ -150,15 +180,35 @@ final class TripExpenseService
         $revenue = bcadd($agreed, $charges, 2);
         $profit = bcsub($revenue, $totalExpenses, 2);
 
+        $distance = $trip->trip_distance !== null
+            ? $this->storedDecimal($trip->trip_distance, 1)
+            : null;
+
         $mileage = null;
         $mileageLabel = 'Not Available';
         if (
             $trip->status === TripStatus::Completed
-            && $trip->trip_distance !== null
+            && $distance !== null
             && bccomp($dieselLitres, '0.000', 3) === 1
         ) {
-            $mileage = bcdiv((string) $trip->trip_distance, $dieselLitres, 3);
+            $mileage = bcdiv($distance, $dieselLitres, 3);
             $mileageLabel = $mileage.' km/L';
+        }
+
+        $revenuePerKm = null;
+        $expensePerKm = null;
+        $profitPerKm = null;
+        if ($distance !== null && bccomp($distance, '0.0', 1) === 1) {
+            $revenuePerKm = bcdiv($revenue, $distance, 2);
+            $expensePerKm = bcdiv($totalExpenses, $distance, 2);
+            $profitPerKm = bcdiv($profit, $distance, 2);
+        }
+
+        $litresVariance = null;
+        $amountVariance = null;
+        if ($hasPlannedDiesel) {
+            $litresVariance = bcsub($dieselLitres, $plannedLitres, 3);
+            $amountVariance = bcsub($diesel, $plannedAmount, 2);
         }
 
         return [
@@ -170,6 +220,17 @@ final class TripExpenseService
             'trip_profit' => $profit,
             'trip_mileage' => $mileage,
             'trip_mileage_label' => $mileageLabel,
+            'total_revenue' => $revenue,
+            'trip_distance' => $distance,
+            'diesel_litres_total' => $dieselLitres,
+            'planned_diesel_litres' => $hasPlannedDiesel ? $plannedLitres : null,
+            'planned_diesel_amount' => $hasPlannedDiesel ? $plannedAmount : null,
+            'diesel_litres_variance' => $litresVariance,
+            'diesel_amount_variance' => $amountVariance,
+            'revenue_per_km' => $revenuePerKm,
+            'expense_per_km' => $expensePerKm,
+            'profit_per_km' => $profitPerKm,
+            'diesel_expected_vs_actual_available' => $hasPlannedDiesel,
         ];
     }
 

@@ -222,6 +222,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('/broker/vouchers', [TransporterVoucherController::class, 'index'])->name('branch.broker.vouchers.index');
         Route::get('/broker/vouchers/create', [TransporterVoucherController::class, 'create'])->name('branch.broker.vouchers.create');
+        Route::get('/broker/vouchers/bulk', [TransporterVoucherController::class, 'bulkCreate'])->name('branch.broker.vouchers.bulk.create');
         Route::post('/broker/vouchers', [TransporterVoucherController::class, 'store'])->name('branch.broker.vouchers.store');
         Route::post('/broker/vouchers/bulk/preview', [TransporterVoucherController::class, 'bulkPreview'])->name('branch.broker.vouchers.bulk.preview');
         Route::post('/broker/vouchers/bulk', [TransporterVoucherController::class, 'bulkStore'])->name('branch.broker.vouchers.bulk.store');
@@ -251,6 +252,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('/trips', [TripController::class, 'index'])->name('branch.trips.index');
         Route::get('/trips/{trip}', [TripController::class, 'show'])->name('branch.trips.show');
+        Route::get('/trips/{trip}/expenses', [TripController::class, 'expenses'])->name('branch.trips.expenses');
         Route::post('/trips/{trip}/dispatch', [TripController::class, 'dispatch'])->name('branch.trips.dispatch');
         Route::post('/trips/{trip}/complete', [TripController::class, 'complete'])->name('branch.trips.complete');
         Route::post('/trips/{trip}/cancel', [TripController::class, 'cancel'])->name('branch.trips.cancel');

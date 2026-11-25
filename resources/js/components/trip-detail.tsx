@@ -119,6 +119,17 @@ export type TripProfitProps = {
     total_expenses: string;
     trip_profit: string;
     trip_mileage_label: string;
+    total_revenue?: string | null;
+    trip_distance?: string | null;
+    diesel_litres_total?: string | null;
+    planned_diesel_litres?: string | null;
+    planned_diesel_amount?: string | null;
+    diesel_litres_variance?: string | null;
+    diesel_amount_variance?: string | null;
+    revenue_per_km?: string | null;
+    expense_per_km?: string | null;
+    profit_per_km?: string | null;
+    diesel_expected_vs_actual_available?: boolean;
 };
 
 function formatInr(value: string): string {
@@ -298,7 +309,12 @@ export function TripDieselCard({
     distanceKm?: string | null;
 }) {
     const litres = Number(dieselLitres);
-    const distance = distanceKm ? Number(distanceKm) : 0;
+    const distance = distanceKm
+        ? Number(distanceKm)
+        : Number(profit.trip_distance ?? 0);
+    const expectedAvailable = Boolean(
+        profit.diesel_expected_vs_actual_available,
+    );
 
     return (
         <div className="card trip-performance-card overflow-hidden rounded-xl border bg-white shadow-xs">
@@ -331,7 +347,7 @@ export function TripDieselCard({
                     </div>
                     <div className="trip-performance-metrics__item">
                         <span className="trip-performance-metrics__label">
-                            Diesel litres
+                            Actual litres
                         </span>
                         <span className="trip-performance-metrics__value">
                             {litres > 0 ? `${litres.toFixed(3)} L` : '—'}
@@ -346,11 +362,55 @@ export function TripDieselCard({
                         </span>
                     </div>
                 </div>
-                <p className="mt-3 text-xs leading-relaxed text-slate-500">
-                    Full expected-vs-actual diesel performance metrics are not
-                    available on this screen yet; values reflect recorded
-                    expenses and completion mileage.
-                </p>
+
+                {expectedAvailable ? (
+                    <div className="mt-3 space-y-1.5 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+                        <p className="font-medium text-slate-700">
+                            Expected vs actual
+                        </p>
+                        <div className="flex justify-between gap-2 text-slate-600">
+                            <span>Expected litres</span>
+                            <span className="font-medium text-slate-800 tabular-nums">
+                                {profit.planned_diesel_litres
+                                    ? `${Number(profit.planned_diesel_litres).toFixed(3)} L`
+                                    : '—'}
+                            </span>
+                        </div>
+                        <div className="flex justify-between gap-2 text-slate-600">
+                            <span>Litre variance</span>
+                            <span className="font-medium text-slate-800 tabular-nums">
+                                {profit.diesel_litres_variance !== null &&
+                                profit.diesel_litres_variance !== undefined
+                                    ? `${Number(profit.diesel_litres_variance) >= 0 ? '+' : ''}${Number(profit.diesel_litres_variance).toFixed(3)} L`
+                                    : '—'}
+                            </span>
+                        </div>
+                        <div className="flex justify-between gap-2 text-slate-600">
+                            <span>Expected amount</span>
+                            <span className="font-medium text-slate-800 tabular-nums">
+                                {profit.planned_diesel_amount
+                                    ? `₹${formatInr(profit.planned_diesel_amount)}`
+                                    : '—'}
+                            </span>
+                        </div>
+                        <div className="flex justify-between gap-2 text-slate-600">
+                            <span>Amount variance</span>
+                            <span className="font-medium text-slate-800 tabular-nums">
+                                {profit.diesel_amount_variance !== null &&
+                                profit.diesel_amount_variance !== undefined
+                                    ? `₹${formatInr(profit.diesel_amount_variance)}`
+                                    : '—'}
+                            </span>
+                        </div>
+                    </div>
+                ) : (
+                    <p className="mt-3 text-xs leading-relaxed text-slate-500">
+                        Expected-vs-actual diesel is unavailable until planned
+                        quantity or amount is recorded on a diesel expense.
+                        Values above reflect recorded fills and completion
+                        mileage.
+                    </p>
+                )}
             </div>
         </div>
     );

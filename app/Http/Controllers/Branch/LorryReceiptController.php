@@ -324,6 +324,7 @@ class LorryReceiptController extends Controller
                 'id' => $linkedTrip->id,
                 'status' => $linkedTrip->status->value,
                 'show_url' => route('branch.trips.show', [$linkedTrip], absolute: false),
+                'expenses_url' => route('branch.trips.expenses', [$linkedTrip], absolute: false),
             ],
             'linkedLorryHire' => $linkedLorryHire === null ? null : [
                 'id' => $linkedLorryHire->id,
@@ -862,7 +863,7 @@ class LorryReceiptController extends Controller
                 return [
                     'kind' => 'manage_expenses',
                     'label' => 'Manage Expenses',
-                    'url' => route('branch.trips.show', [$trip], absolute: false).'#expenses',
+                    'url' => route('branch.trips.expenses', [$trip], absolute: false),
                 ];
             }
 

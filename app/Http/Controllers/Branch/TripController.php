@@ -93,8 +93,8 @@ class TripController extends Controller
         $existing = $this->trips->tripForLorryReceipt($lorryReceipt);
         if ($existing !== null) {
             return redirect()
-                ->route('branch.trips.show', [$existing])
-                ->with('info', 'This OwnFleet LR already has a Trip.');
+                ->route('branch.trips.expenses', [$existing])
+                ->with('info', 'This OwnFleet LR already has a Trip. Continue with expenses.');
         }
 
         $lorryReceipt->load(['fromStation', 'toStation', 'consignor', 'consignee', 'vehicle.primaryDriver']);
@@ -169,8 +169,8 @@ class TripController extends Controller
         }
 
         return redirect()
-            ->route('branch.trips.show', [$trip])
-            ->with('success', 'OwnFleet Trip created.');
+            ->route('branch.trips.expenses', [$trip])
+            ->with('success', 'OwnFleet Trip created. Continue with expenses, diesel and trip operations.');
     }
 
     public function show(Request $request, Trip $trip, Company $company, Branch $branch): Response
@@ -197,91 +197,49 @@ class TripController extends Controller
         ]);
 
         $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
-        $profit = $this->freightPresentation->redactKeys(
-            $this->expenses->profitSummary($trip),
-            ['agreed_freight', 'additional_charges', 'trip_profit'],
-            $maySeeFreight,
-        );
 
-        return Inertia::render('branch/trips/show', [
-            'trip' => $this->detailPayload($trip, $maySeeFreight),
-            'movements' => $this->movementsPayload($trip, $maySeeFreight),
-            'reconciliation' => $this->freightPresentation->redactKeys(
-                $this->movements->reconciliationSummary($trip),
-                ['total_freight'],
-                $maySeeFreight,
-            ),
-            'expenses' => $trip->expenses->map(fn (TripExpense $expense): array => [
-                'id' => $expense->id,
-                'expense_date' => $expense->expense_date->format('d-m-Y'),
-                'category_name' => $expense->category?->name,
-                'amount' => $this->freightPresentation->presentAmount($expense->amount, $maySeeFreight),
-                'is_diesel' => (bool) $expense->is_diesel,
-                'diesel_litres' => $expense->diesel_litres,
-                'diesel_rate_per_litre' => $this->freightPresentation->presentAmount($expense->diesel_rate_per_litre, $maySeeFreight),
-                'diesel_odometer' => $expense->diesel_odometer,
-                'remarks' => $expense->remarks,
-                'payment_mode' => $expense->paymentMode?->name,
-            ])->values()->all(),
-            'profit' => $profit,
-            'formOptions' => [
-                'stations' => $this->stationOptions($company),
-                'consignors' => $this->partyRoleOptions($company, $branch, PartyRoleType::Consignor),
-                'consignees' => $this->partyRoleOptions($company, $branch, PartyRoleType::Consignee),
-                'expense_categories' => $this->expenseCategoryOptions($company),
-                'payment_modes' => PaymentMode::query()->orderBy('sort_order')->get(['id', 'name'])
-                    ->map(fn (PaymentMode $mode): array => ['id' => $mode->id, 'name' => $mode->name])
-                    ->values()->all(),
-                'bank_cash_accounts' => BankCashAccount::query()
-                    ->where('company_id', $company->id)
-                    ->whereNull('deleted_at')
-                    ->where(function ($query) use ($branch): void {
-                        $query->whereNull('branch_id')->orWhere('branch_id', $branch->id);
-                    })
-                    ->orderBy('name')
-                    ->get(['id', 'name'])
-                    ->map(fn (BankCashAccount $account): array => ['id' => $account->id, 'name' => $account->name])
-                    ->values()->all(),
-            ],
-            'permissions' => $this->tripPermissions($actor, $company, $branch, $maySeeFreight),
-            'urls' => [
-                'index' => route('branch.trips.index', absolute: false),
-                'lr_show' => route('branch.lorry-receipts.show', [$trip->lorry_receipt_id], absolute: false),
-                'add_pickup' => route('branch.trips.pickups.store', [$trip], absolute: false),
-                'remove_pickup' => route('branch.trips.pickups.destroy', [$trip, 'PICKUP_ID'], absolute: false),
-                'add_drop' => route('branch.trips.drops.store', [$trip], absolute: false),
-                'remove_drop' => route('branch.trips.drops.destroy', [$trip, 'DROP_ID'], absolute: false),
-                'upsert_allocation' => route('branch.trips.allocations.store', [$trip], absolute: false),
-                'remove_allocation' => route('branch.trips.allocations.destroy', [$trip, 'ALLOCATION_ID'], absolute: false),
-                'dispatch' => route('branch.trips.dispatch', [$trip], absolute: false),
-                'complete' => route('branch.trips.complete', [$trip], absolute: false),
-                'add_expense' => route('branch.trips.expenses.store', [$trip], absolute: false),
-                'remove_expense' => route('branch.trips.expenses.destroy', [$trip, 'EXPENSE_ID'], absolute: false),
-                'cancel' => route('branch.trips.cancel', [$trip], absolute: false),
-                'destroy' => route('branch.trips.destroy', [$trip], absolute: false),
-                'documents' => route('branch.documents.index', [
-                    'parentType' => 'trip',
-                    'parentId' => $trip->id,
-                ], absolute: false),
-                'lr_documents' => route('branch.documents.index', [
-                    'parentType' => 'lorry_receipt',
-                    'parentId' => $trip->lorry_receipt_id,
-                ], absolute: false),
-            ],
-            'documentDrawer' => $this->documentDrawerPayload(
-                $actor,
-                $company,
-                $branch,
-                'trip',
-                $trip->id,
-                $this->documents,
-                [
-                    'can_create' => $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_EDIT, $company, $branch),
-                    'can_edit' => $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_EDIT, $company, $branch),
-                    'can_delete' => $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_EDIT, $company, $branch),
-                ],
-            ),
+        return Inertia::render('branch/trips/show', $this->tripWorkspaceProps(
+            $actor,
+            $company,
+            $branch,
+            $trip,
+            $maySeeFreight,
+        ));
+    }
+
+    /**
+     * Dedicated Trip Expenses / Diesel / Profitability workspace (legacy OwnFleet Manage Expenses).
+     */
+    public function expenses(Request $request, Trip $trip, Company $company, Branch $branch): Response
+    {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertPermission($actor, $company, $branch, PermissionCodes::TRIP_VIEW);
+
+        try {
+            $trip = $this->trips->findForBranch($company, $branch, $trip->id);
+        } catch (TripDomainException $e) {
+            abort(404, $e->getMessage());
+        }
+
+        $trip->load([
+            'expenses.category',
+            'expenses.paymentMode',
+            'lorryReceipt.fromStation',
+            'lorryReceipt.toStation',
+            'lorryReceipt.billingCustomer',
+            'vehicle',
+            'driver',
         ]);
+
+        $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
+
+        return Inertia::render('branch/trips/expenses', $this->tripExpenseWorkspaceProps(
+            $actor,
+            $company,
+            $branch,
+            $trip,
+            $maySeeFreight,
+        ));
     }
 
     public function cancel(Request $request, Trip $trip, Company $company, Branch $branch): RedirectResponse
@@ -361,7 +319,7 @@ class TripController extends Controller
         }
 
         return redirect()
-            ->route('branch.trips.show', [$trip])
+            ->route('branch.trips.expenses', [$trip])
             ->with('success', 'Expense saved.');
     }
 
@@ -385,7 +343,7 @@ class TripController extends Controller
         }
 
         return redirect()
-            ->route('branch.trips.show', [$trip])
+            ->route('branch.trips.expenses', [$trip])
             ->with('success', 'Expense removed.');
     }
 
@@ -808,5 +766,219 @@ class TripController extends Controller
     private function partyRoleOptions(Company $company, Branch $branch, PartyRoleType $role): array
     {
         return app(PartyOptionQuery::class)->forRoles($company, $branch, $role);
+    }
+
+    /**
+     * @return array{
+     *     agreed_freight: string|null,
+     *     additional_charges: string|null,
+     *     diesel_cost: string,
+     *     other_expenses: string,
+     *     total_expenses: string,
+     *     trip_profit: string|null,
+     *     trip_mileage: string|null,
+     *     trip_mileage_label: string,
+     *     total_revenue: string|null,
+     *     trip_distance: string|null,
+     *     diesel_litres_total: string,
+     *     planned_diesel_litres: string|null,
+     *     planned_diesel_amount: string|null,
+     *     diesel_litres_variance: string|null,
+     *     diesel_amount_variance: string|null,
+     *     revenue_per_km: string|null,
+     *     expense_per_km: string|null,
+     *     profit_per_km: string|null,
+     *     diesel_expected_vs_actual_available: bool
+     * }
+     */
+    private function profitPayload(Trip $trip, bool $maySeeFreight): array
+    {
+        return $this->freightPresentation->redactKeys(
+            $this->expenses->profitSummary($trip),
+            [
+                'agreed_freight',
+                'additional_charges',
+                'trip_profit',
+                'total_revenue',
+                'revenue_per_km',
+                'expense_per_km',
+                'profit_per_km',
+                'planned_diesel_amount',
+                'diesel_amount_variance',
+            ],
+            $maySeeFreight,
+        );
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function expenseRows(Trip $trip, bool $maySeeFreight): array
+    {
+        return $trip->expenses->map(fn (TripExpense $expense): array => [
+            'id' => $expense->id,
+            'expense_date' => $expense->expense_date->format('d-m-Y'),
+            'category_name' => $expense->category?->name,
+            'amount' => $this->freightPresentation->presentAmount($expense->amount, $maySeeFreight),
+            'is_diesel' => (bool) $expense->is_diesel,
+            'diesel_litres' => $expense->diesel_litres,
+            'diesel_rate_per_litre' => $this->freightPresentation->presentAmount($expense->diesel_rate_per_litre, $maySeeFreight),
+            'diesel_odometer' => $expense->diesel_odometer,
+            'planned_diesel_quantity' => $expense->planned_diesel_quantity,
+            'planned_diesel_rate' => $this->freightPresentation->presentAmount($expense->planned_diesel_rate, $maySeeFreight),
+            'planned_diesel_amount' => $this->freightPresentation->presentAmount($expense->planned_diesel_amount, $maySeeFreight),
+            'remarks' => $expense->remarks,
+            'payment_mode' => $expense->paymentMode?->name,
+        ])->values()->all();
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function expenseFormOptions(Company $company, Branch $branch): array
+    {
+        return [
+            'expense_categories' => $this->expenseCategoryOptions($company),
+            'payment_modes' => PaymentMode::query()->orderBy('sort_order')->get(['id', 'name'])
+                ->map(fn (PaymentMode $mode): array => ['id' => $mode->id, 'name' => $mode->name])
+                ->values()->all(),
+            'bank_cash_accounts' => BankCashAccount::query()
+                ->where('company_id', $company->id)
+                ->whereNull('deleted_at')
+                ->where(function ($query) use ($branch): void {
+                    $query->whereNull('branch_id')->orWhere('branch_id', $branch->id);
+                })
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->map(fn (BankCashAccount $account): array => ['id' => $account->id, 'name' => $account->name])
+                ->values()->all(),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function tripWorkspaceProps(
+        User $actor,
+        Company $company,
+        Branch $branch,
+        Trip $trip,
+        bool $maySeeFreight,
+    ): array {
+        return [
+            'trip' => $this->detailPayload($trip, $maySeeFreight),
+            'movements' => $this->movementsPayload($trip, $maySeeFreight),
+            'reconciliation' => $this->freightPresentation->redactKeys(
+                $this->movements->reconciliationSummary($trip),
+                ['total_freight'],
+                $maySeeFreight,
+            ),
+            'expenses' => $this->expenseRows($trip, $maySeeFreight),
+            'profit' => $this->profitPayload($trip, $maySeeFreight),
+            'formOptions' => [
+                'stations' => $this->stationOptions($company),
+                'consignors' => $this->partyRoleOptions($company, $branch, PartyRoleType::Consignor),
+                'consignees' => $this->partyRoleOptions($company, $branch, PartyRoleType::Consignee),
+                ...$this->expenseFormOptions($company, $branch),
+            ],
+            'permissions' => $this->tripPermissions($actor, $company, $branch, $maySeeFreight),
+            'urls' => [
+                'index' => route('branch.trips.index', absolute: false),
+                'lr_show' => route('branch.lorry-receipts.show', [$trip->lorry_receipt_id], absolute: false),
+                'expenses' => route('branch.trips.expenses', [$trip], absolute: false),
+                'add_pickup' => route('branch.trips.pickups.store', [$trip], absolute: false),
+                'remove_pickup' => route('branch.trips.pickups.destroy', [$trip, 'PICKUP_ID'], absolute: false),
+                'add_drop' => route('branch.trips.drops.store', [$trip], absolute: false),
+                'remove_drop' => route('branch.trips.drops.destroy', [$trip, 'DROP_ID'], absolute: false),
+                'upsert_allocation' => route('branch.trips.allocations.store', [$trip], absolute: false),
+                'remove_allocation' => route('branch.trips.allocations.destroy', [$trip, 'ALLOCATION_ID'], absolute: false),
+                'dispatch' => route('branch.trips.dispatch', [$trip], absolute: false),
+                'complete' => route('branch.trips.complete', [$trip], absolute: false),
+                'add_expense' => route('branch.trips.expenses.store', [$trip], absolute: false),
+                'remove_expense' => route('branch.trips.expenses.destroy', [$trip, 'EXPENSE_ID'], absolute: false),
+                'cancel' => route('branch.trips.cancel', [$trip], absolute: false),
+                'destroy' => route('branch.trips.destroy', [$trip], absolute: false),
+                'documents' => route('branch.documents.index', [
+                    'parentType' => 'trip',
+                    'parentId' => $trip->id,
+                ], absolute: false),
+                'lr_documents' => route('branch.documents.index', [
+                    'parentType' => 'lorry_receipt',
+                    'parentId' => $trip->lorry_receipt_id,
+                ], absolute: false),
+            ],
+            'documentDrawer' => $this->documentDrawerPayload(
+                $actor,
+                $company,
+                $branch,
+                'trip',
+                $trip->id,
+                $this->documents,
+                [
+                    'can_create' => $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_EDIT, $company, $branch),
+                    'can_edit' => $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_EDIT, $company, $branch),
+                    'can_delete' => $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_EDIT, $company, $branch),
+                ],
+            ),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function tripExpenseWorkspaceProps(
+        User $actor,
+        Company $company,
+        Branch $branch,
+        Trip $trip,
+        bool $maySeeFreight,
+    ): array {
+        $lr = $trip->lorryReceipt;
+
+        return [
+            'trip' => [
+                'id' => $trip->id,
+                'status' => $trip->status->value,
+                'lorry_receipt_id' => $trip->lorry_receipt_id,
+                'lr_number' => $lr?->lr_number,
+                'customer_name' => $lr?->billingCustomer?->name,
+                'from_station_name' => $lr?->fromStation?->name,
+                'to_station_name' => $lr?->toStation?->name,
+                'vehicle_registration' => $trip->vehicle?->registration_number,
+                'driver_name' => $trip->driver?->name,
+                'starting_odometer' => $trip->starting_odometer,
+                'ending_odometer' => $trip->ending_odometer,
+                'trip_distance' => $trip->trip_distance,
+                'lr_freight_total' => $this->freightPresentation->presentAmount($lr?->freight_total, $maySeeFreight),
+            ],
+            'expenses' => $this->expenseRows($trip, $maySeeFreight),
+            'profit' => $this->profitPayload($trip, $maySeeFreight),
+            'formOptions' => $this->expenseFormOptions($company, $branch),
+            'permissions' => $this->tripPermissions($actor, $company, $branch, $maySeeFreight),
+            'urls' => [
+                'show' => route('branch.trips.show', [$trip], absolute: false),
+                'lr_show' => route('branch.lorry-receipts.show', [$trip->lorry_receipt_id], absolute: false),
+                'index' => route('branch.lorry-receipts.index', absolute: false),
+                'add_expense' => route('branch.trips.expenses.store', [$trip], absolute: false),
+                'remove_expense' => route('branch.trips.expenses.destroy', [$trip, 'EXPENSE_ID'], absolute: false),
+                'documents' => route('branch.documents.index', [
+                    'parentType' => 'trip',
+                    'parentId' => $trip->id,
+                ], absolute: false),
+            ],
+            'documentDrawer' => $this->documentDrawerPayload(
+                $actor,
+                $company,
+                $branch,
+                'trip',
+                $trip->id,
+                $this->documents,
+                [
+                    'can_create' => $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_EDIT, $company, $branch),
+                    'can_edit' => $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_EDIT, $company, $branch),
+                    'can_delete' => $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_EDIT, $company, $branch),
+                ],
+            ),
+        ];
     }
 }

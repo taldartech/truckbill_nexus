@@ -27,7 +27,7 @@ type VoucherRow = {
 
 type Props = {
     filters: { status: string; payment_mode: string };
-    permissions: { can_create: boolean };
+    permissions: { can_create: boolean; can_bulk?: boolean };
     statusOptions: Array<{ value: string; label: string }>;
     paymentModeOptions: Array<{ value: string; label: string }>;
     vouchers: {
@@ -39,7 +39,7 @@ type Props = {
             per_page: number;
         };
     };
-    urls: { index: string; create: string };
+    urls: { index: string; create: string; bulk?: string };
 };
 
 export default function VouchersIndex({
@@ -57,15 +57,26 @@ export default function VouchersIndex({
                 <AppIndexListCard
                     title="Voucher Payments"
                     toolbar={
-                        permissions.can_create ? (
-                            <Link
-                                href={urls.create}
-                                className="app-index-header-btn"
-                            >
-                                <Plus className="h-3.5 w-3.5" />
-                                Create voucher
-                            </Link>
-                        ) : null
+                        <div className="flex flex-wrap items-center gap-2">
+                            {permissions.can_bulk && urls.bulk ? (
+                                <Link
+                                    href={urls.bulk}
+                                    className="app-index-header-btn"
+                                >
+                                    <Plus className="h-3.5 w-3.5" />
+                                    Bulk payment
+                                </Link>
+                            ) : null}
+                            {permissions.can_create ? (
+                                <Link
+                                    href={urls.create}
+                                    className="app-index-header-btn"
+                                >
+                                    <Plus className="h-3.5 w-3.5" />
+                                    Create voucher
+                                </Link>
+                            ) : null}
+                        </div>
                     }
                 >
                     <AppIndexFilters

@@ -65,6 +65,9 @@ test('diesel amount is litres times rate and profit excludes gst using lr freigh
         ->and($summary['diesel_cost'])->toBe('3820.00')
         ->and($summary['other_expenses'])->toBe('500.00')
         ->and($summary['trip_profit'])->toBe('7680.00')
+        ->and($summary['total_revenue'])->toBe('12000.00')
+        ->and($summary['diesel_litres_total'])->toBe('40.000')
+        ->and($summary['diesel_expected_vs_actual_available'])->toBeFalse()
         ->and($summary['trip_mileage_label'])->toBe('Not Available');
 
     $dispatched = app(TripService::class)->dispatch($trip, $ctx['member'], [

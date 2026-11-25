@@ -244,7 +244,7 @@ test('http create trip from ownfleet lr persists and lists', function () {
 
     $claim();
     $this->get(route('branch.trips.create-from-lr', [$lr]))
-        ->assertRedirect(route('branch.trips.show', [$trip]));
+        ->assertRedirect(route('branch.trips.expenses', [$trip]));
 
     $claim();
     $this->get(route('branch.trips.show', [$trip]))
@@ -252,7 +252,17 @@ test('http create trip from ownfleet lr persists and lists', function () {
         ->assertInertia(fn ($page) => $page
             ->component('branch/trips/show')
             ->where('trip.status', TripStatus::Pending->value)
-            ->where('trip.lr_number', $lr->lr_number));
+            ->where('trip.lr_number', $lr->lr_number)
+            ->has('urls.expenses'));
+
+    $claim();
+    $this->get(route('branch.trips.expenses', [$trip]))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('branch/trips/expenses')
+            ->where('trip.lr_number', $lr->lr_number)
+            ->has('profit.diesel_expected_vs_actual_available')
+            ->has('urls.add_expense'));
 
     $claim();
     $this->get(route('branch.trips.index'))

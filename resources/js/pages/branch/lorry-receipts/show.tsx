@@ -89,6 +89,7 @@ type Props = {
         id: string;
         status: string;
         show_url: string;
+        expenses_url?: string;
     } | null;
     linkedLorryHire?: {
         id: string;
@@ -159,7 +160,9 @@ export default function LorryReceiptShow({
         [lorryReceipt.freight_total, lorryReceipt.additional_charges_total],
     );
 
-    const tripManageUrl = linkedTrip ? `${linkedTrip.show_url}#expenses` : null;
+    const tripManageUrl = linkedTrip
+        ? (linkedTrip.expenses_url ?? `${linkedTrip.show_url}#expenses`)
+        : null;
 
     return (
         <>

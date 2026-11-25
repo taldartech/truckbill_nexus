@@ -82,6 +82,7 @@ class TransporterVoucherController extends Controller
             'urls' => [
                 'index' => route('branch.broker.vouchers.index', absolute: false),
                 'create' => route('branch.broker.vouchers.create', absolute: false),
+                'bulk' => route('branch.broker.vouchers.bulk.create', absolute: false),
             ],
         ]);
     }
@@ -92,88 +93,31 @@ class TransporterVoucherController extends Controller
         $this->assertPermission($actor, $company, $branch, PermissionCodes::BROKER_VOUCHER_CREATE);
 
         $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
-
         $selectedHireId = $request->string('lorry_hire_id')->toString() ?: null;
 
-        $hires = LorryHire::query()
-            ->where('company_id', $company->id)
-            ->where('branch_id', $branch->id)
-            ->whereNull('deleted_at')
-            ->with([
-                'lorryReceipt.billingCustomer',
-                'lorryReceipt.consignor',
-                'lorryReceipt.consignee',
-                'vehicle',
-                'transporter',
-            ])
-            ->orderByDesc('created_at')
-            ->limit(100)
-            ->get();
+        return Inertia::render('broker/vouchers/create', $this->voucherFormProps(
+            $actor,
+            $company,
+            $branch,
+            $maySeeFreight,
+            $selectedHireId,
+        ));
+    }
 
-        if ($selectedHireId !== null && ! $hires->contains(fn (LorryHire $hire): bool => $hire->id === $selectedHireId)) {
-            $selectedHire = LorryHire::query()
-                ->where('company_id', $company->id)
-                ->where('branch_id', $branch->id)
-                ->whereNull('deleted_at')
-                ->whereKey($selectedHireId)
-                ->with([
-                    'lorryReceipt.billingCustomer',
-                    'lorryReceipt.consignor',
-                    'lorryReceipt.consignee',
-                    'vehicle',
-                    'transporter',
-                ])
-                ->first();
-            if ($selectedHire !== null) {
-                $hires = $hires->prepend($selectedHire)->unique('id')->values();
-            } else {
-                $selectedHireId = null;
-            }
-        }
+    public function bulkCreate(Request $request, Company $company, Branch $branch): Response
+    {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertPermission($actor, $company, $branch, PermissionCodes::BROKER_VOUCHER_BULK);
 
-        return Inertia::render('broker/vouchers/create', [
-            'selectedLorryHireId' => $selectedHireId,
-            'eligibleLorryHires' => $hires->map(function (LorryHire $hire) use ($maySeeFreight): array {
-                $allocatable = $this->vouchers->allocatableAmount($hire);
-                $summary = $this->hireCalculations->summarize($hire);
+        $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
 
-                return [
-                    'id' => $hire->id,
-                    'hire_number' => $hire->hire_number,
-                    'lr_number' => $hire->lorryReceipt?->lr_number,
-                    'transporter_name' => $hire->transporter?->name,
-                    'vehicle_registration' => $hire->vehicle?->registration_number,
-                    'billing_customer_name' => $hire->lorryReceipt?->billingCustomer?->name,
-                    'consignor_name' => $hire->lorryReceipt?->consignor?->name,
-                    'consignee_name' => $hire->lorryReceipt?->consignee?->name,
-                    'outstanding_amount' => $this->freightPresentation->presentAmount($summary['outstanding_amount'], $maySeeFreight),
-                    'allocatable_amount' => $this->freightPresentation->presentAmount($allocatable, $maySeeFreight),
-                    'net_payable' => $this->freightPresentation->presentAmount($summary['net_payable'], $maySeeFreight),
-                    'freight_total' => $this->freightPresentation->presentAmount($summary['freight_total'], $maySeeFreight),
-                    'tds_amount' => $this->freightPresentation->presentAmount($summary['tds_amount'], $maySeeFreight),
-                ];
-            })->values()->all(),
-            'paymentTypeOptions' => $this->paymentTypeOptions(),
-            'paymentModeOptions' => $this->paymentModeOptions(),
-            'bankCashAccounts' => BankCashAccount::query()
-                ->where('company_id', $company->id)
-                ->where(function ($query) use ($branch): void {
-                    $query->whereNull('branch_id')->orWhere('branch_id', $branch->id);
-                })
-                ->whereNull('deleted_at')
-                ->orderBy('name')
-                ->get(['id', 'name'])
-                ->map(fn (BankCashAccount $account): array => ['id' => $account->id, 'name' => $account->name])
-                ->values()
-                ->all(),
-            'permissions' => $this->voucherPermissions($actor, $company, $branch, $maySeeFreight),
-            'urls' => [
-                'store' => route('branch.broker.vouchers.store', absolute: false),
-                'index' => route('branch.broker.vouchers.index', absolute: false),
-                'bulk_preview' => route('branch.broker.vouchers.bulk.preview', absolute: false),
-                'bulk_store' => route('branch.broker.vouchers.bulk.store', absolute: false),
-            ],
-        ]);
+        return Inertia::render('broker/vouchers/bulk', $this->voucherFormProps(
+            $actor,
+            $company,
+            $branch,
+            $maySeeFreight,
+            null,
+        ));
     }
 
     public function store(Request $request, Company $company, Branch $branch): RedirectResponse
@@ -435,6 +379,99 @@ class TransporterVoucherController extends Controller
             'created_at' => $voucher->created_at?->format('d-m-Y H:i'),
             'urls' => [
                 'show' => route('branch.broker.vouchers.show', [$voucher], absolute: false),
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function voucherFormProps(
+        User $actor,
+        Company $company,
+        Branch $branch,
+        bool $maySeeFreight,
+        ?string $selectedHireId,
+    ): array {
+        $hires = LorryHire::query()
+            ->where('company_id', $company->id)
+            ->where('branch_id', $branch->id)
+            ->whereNull('deleted_at')
+            ->with([
+                'lorryReceipt.billingCustomer',
+                'lorryReceipt.consignor',
+                'lorryReceipt.consignee',
+                'vehicle',
+                'transporter',
+            ])
+            ->orderByDesc('created_at')
+            ->limit(100)
+            ->get();
+
+        if ($selectedHireId !== null && ! $hires->contains(fn (LorryHire $hire): bool => $hire->id === $selectedHireId)) {
+            $selectedHire = LorryHire::query()
+                ->where('company_id', $company->id)
+                ->where('branch_id', $branch->id)
+                ->whereNull('deleted_at')
+                ->whereKey($selectedHireId)
+                ->with([
+                    'lorryReceipt.billingCustomer',
+                    'lorryReceipt.consignor',
+                    'lorryReceipt.consignee',
+                    'vehicle',
+                    'transporter',
+                ])
+                ->first();
+            if ($selectedHire !== null) {
+                $hires = $hires->prepend($selectedHire)->unique('id')->values();
+            } else {
+                $selectedHireId = null;
+            }
+        }
+
+        return [
+            'selectedLorryHireId' => $selectedHireId,
+            'eligibleLorryHires' => $hires->map(function (LorryHire $hire) use ($maySeeFreight): array {
+                $allocatable = $this->vouchers->allocatableAmount($hire);
+                $summary = $this->hireCalculations->summarize($hire);
+
+                return [
+                    'id' => $hire->id,
+                    'hire_number' => $hire->hire_number,
+                    'lr_number' => $hire->lorryReceipt?->lr_number,
+                    'transporter_name' => $hire->transporter?->name,
+                    'vehicle_registration' => $hire->vehicle?->registration_number,
+                    'billing_customer_name' => $hire->lorryReceipt?->billingCustomer?->name,
+                    'consignor_name' => $hire->lorryReceipt?->consignor?->name,
+                    'consignee_name' => $hire->lorryReceipt?->consignee?->name,
+                    'outstanding_amount' => $this->freightPresentation->presentAmount($summary['outstanding_amount'], $maySeeFreight),
+                    'allocatable_amount' => $this->freightPresentation->presentAmount($allocatable, $maySeeFreight),
+                    'net_payable' => $this->freightPresentation->presentAmount($summary['net_payable'], $maySeeFreight),
+                    'freight_total' => $this->freightPresentation->presentAmount($summary['freight_total'], $maySeeFreight),
+                    'tds_amount' => $this->freightPresentation->presentAmount($summary['tds_amount'], $maySeeFreight),
+                ];
+            })->values()->all(),
+            'paymentTypeOptions' => $this->paymentTypeOptions(),
+            'paymentModeOptions' => $this->paymentModeOptions(),
+            'bankCashAccounts' => BankCashAccount::query()
+                ->where('company_id', $company->id)
+                ->where(function ($query) use ($branch): void {
+                    $query->whereNull('branch_id')->orWhere('branch_id', $branch->id);
+                })
+                ->whereNull('deleted_at')
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->map(fn (BankCashAccount $account): array => ['id' => $account->id, 'name' => $account->name])
+                ->values()
+                ->all(),
+            'permissions' => $this->voucherPermissions($actor, $company, $branch, $maySeeFreight),
+            'urls' => [
+                'store' => route('branch.broker.vouchers.store', absolute: false),
+                'index' => route('branch.broker.vouchers.index', absolute: false),
+                'create' => route('branch.broker.vouchers.create', absolute: false),
+                'bulk' => route('branch.broker.vouchers.bulk.create', absolute: false),
+                'bulk_preview' => route('branch.broker.vouchers.bulk.preview', absolute: false),
+                'bulk_store' => route('branch.broker.vouchers.bulk.store', absolute: false),
             ],
         ];
     }

@@ -128,6 +128,7 @@ type Props = {
     urls: {
         index: string;
         lr_show: string;
+        expenses?: string;
         add_pickup: string;
         remove_pickup?: string;
         add_drop: string;
@@ -153,6 +154,13 @@ type Props = {
         total_expenses: string;
         trip_profit: string;
         trip_mileage_label: string;
+        trip_distance?: string | null;
+        diesel_litres_total?: string | null;
+        diesel_expected_vs_actual_available?: boolean;
+        planned_diesel_litres?: string | null;
+        planned_diesel_amount?: string | null;
+        diesel_litres_variance?: string | null;
+        diesel_amount_variance?: string | null;
     };
 };
 
@@ -207,13 +215,6 @@ export default function TripShow({
         (trip.status === 'pending' || trip.status === 'in_progress');
     const [docsOpen, setDocsOpen] = useState(false);
     const expensesSectionRef = useRef<HTMLDivElement>(null);
-
-    const scrollToExpenses = () => {
-        expensesSectionRef.current?.scrollIntoView({
-            behavior: 'smooth',
-            block: 'start',
-        });
-    };
 
     const dieselLitresTotal = useMemo(() => {
         return expenses.reduce((sum, expense) => {
@@ -306,8 +307,11 @@ export default function TripShow({
                                         <AppIconAction
                                             icon={Wallet}
                                             label="Manage expenses"
+                                            href={
+                                                urls.expenses ??
+                                                '#manage-expenses'
+                                            }
                                             variant="outline"
-                                            onClick={scrollToExpenses}
                                         />
                                         {documentDrawer ? (
                                             <AppIconAction
@@ -458,7 +462,7 @@ export default function TripShow({
                                 }
                             />
 
-                            <TripDetailCard title="Route · Pickups & drops">
+                            <TripDetailCard title="Multi-point route · Pickups & drops">
                                 <div className="grid gap-6 p-4 lg:grid-cols-2">
                                     <div className="space-y-3">
                                         <h3 className="text-sm font-semibold text-slate-800">
@@ -1092,8 +1096,35 @@ export default function TripShow({
                                 id="manage-expenses"
                                 className="trip-workspace-section"
                             >
-                                <TripDetailCard title="Manage Expenses">
+                                <TripDetailCard
+                                    title="Manage Expenses"
+                                    actions={
+                                        urls.expenses ? (
+                                            <AppIconAction
+                                                icon={Wallet}
+                                                label="Open expenses workspace"
+                                                href={urls.expenses}
+                                                variant="outline"
+                                                size="sm"
+                                            />
+                                        ) : null
+                                    }
+                                >
                                     <div className="space-y-4 p-4">
+                                        {urls.expenses ? (
+                                            <p className="rounded-md border border-[#bae6fd] bg-[#f0f9ff] px-3 py-2 text-sm text-slate-700">
+                                                Use the dedicated{' '}
+                                                <Link
+                                                    href={urls.expenses}
+                                                    className="font-semibold text-[#2D8CFF] underline-offset-2 hover:underline"
+                                                >
+                                                    Manage Expenses workspace
+                                                </Link>{' '}
+                                                for diesel expected-vs-actual,
+                                                expense history and
+                                                profitability.
+                                            </p>
+                                        ) : null}
                                         <TripExpensesTable
                                             headers={expenseTableHeaders(
                                                 mutable,
