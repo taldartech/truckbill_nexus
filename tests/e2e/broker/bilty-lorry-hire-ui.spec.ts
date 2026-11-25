@@ -127,8 +127,12 @@ test.describe('Bilty UI + Lorry Hire financial workflow', () => {
             page.getByRole('heading', { name: 'Create Lorry Hire' }),
         ).toBeVisible({ timeout: 15_000 });
         await page.locator('#rate_type_0').selectOption('per_charged_weight');
-        // Loading weight UI is MT (8.000 MT ≡ 8000 KG); ₹7500/MT × 8 MT = ₹60000.
-        await page.locator('#loading_weight_0').fill('8');
+        // Loading/charged weight is inherited read-only from Bilty (8.000 MT).
+        await expect(
+            page.getByText('Charged weight (MT)', { exact: true }).first(),
+        ).toBeVisible();
+        await expect(page.locator('#loading_weight_0')).toHaveCount(0);
+        // ₹7500/MT × inherited 8 MT charged weight = ₹60000.
         await page.locator('#rate_0').fill('7500');
         await expect(
             page.getByText(/TR Freight|Balance|Hire Charges/i).first(),

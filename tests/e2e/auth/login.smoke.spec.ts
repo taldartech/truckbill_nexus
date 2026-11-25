@@ -28,6 +28,8 @@ test.describe('authentication smoke', () => {
 
         const { email, password } = demoCredentials();
         await loginAs(page, email, password);
-        await expect(page).toHaveURL(/\/(workspace|owner|dashboard)/);
+        await expect(page).toHaveURL(
+            /\/(management|operations|workspace|owner|dashboard)/,
+        );
     });
 });
