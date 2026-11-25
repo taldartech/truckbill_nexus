@@ -12,8 +12,10 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\OwnerCatalogueItem;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -66,32 +68,32 @@ class CatalogueController extends Controller
         return $this->renderTypeIndex($request, $company, $branch, OwnerCatalogueType::PackageType);
     }
 
-    public function storeGoodsTypes(Request $request, Company $company, Branch $branch): RedirectResponse
+    public function storeGoodsTypes(Request $request, Company $company, Branch $branch): RedirectResponse|JsonResponse
     {
         return $this->storeTyped($request, $company, $branch, OwnerCatalogueType::GoodsType);
     }
 
-    public function storeTruckTypes(Request $request, Company $company, Branch $branch): RedirectResponse
+    public function storeTruckTypes(Request $request, Company $company, Branch $branch): RedirectResponse|JsonResponse
     {
         return $this->storeTyped($request, $company, $branch, OwnerCatalogueType::TruckType);
     }
 
-    public function storeTyreLayouts(Request $request, Company $company, Branch $branch): RedirectResponse
+    public function storeTyreLayouts(Request $request, Company $company, Branch $branch): RedirectResponse|JsonResponse
     {
         return $this->storeTyped($request, $company, $branch, OwnerCatalogueType::TyreLayout);
     }
 
-    public function storeDocumentTypes(Request $request, Company $company, Branch $branch): RedirectResponse
+    public function storeDocumentTypes(Request $request, Company $company, Branch $branch): RedirectResponse|JsonResponse
     {
         return $this->storeTyped($request, $company, $branch, OwnerCatalogueType::DocumentType);
     }
 
-    public function storeExpenseCategories(Request $request, Company $company, Branch $branch): RedirectResponse
+    public function storeExpenseCategories(Request $request, Company $company, Branch $branch): RedirectResponse|JsonResponse
     {
         return $this->storeTyped($request, $company, $branch, OwnerCatalogueType::ExpenseCategory);
     }
 
-    public function storePackageTypes(Request $request, Company $company, Branch $branch): RedirectResponse
+    public function storePackageTypes(Request $request, Company $company, Branch $branch): RedirectResponse|JsonResponse
     {
         return $this->storeTyped($request, $company, $branch, OwnerCatalogueType::PackageType);
     }
@@ -197,12 +199,12 @@ class CatalogueController extends Controller
         Company $company,
         Branch $branch,
         OwnerCatalogueType $boundType,
-    ): RedirectResponse {
+    ): RedirectResponse|JsonResponse {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
 
         $validated = $request->validate([
             'catalogue_type' => ['sometimes', Rule::enum(OwnerCatalogueType::class)],
-            'code' => ['required', 'string', 'max:64'],
+            'code' => ['nullable', 'string', 'max:64'],
             'name' => ['required', 'string', 'max:255'],
             'is_active' => ['sometimes', 'boolean'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
@@ -216,8 +218,14 @@ class CatalogueController extends Controller
             ]);
         }
 
+        $code = strtoupper(trim((string) ($validated['code'] ?? '')));
+        if ($code === '') {
+            $code = $this->deriveCatalogueCode((string) $validated['name']);
+        }
+        $validated['code'] = $code;
+
         try {
-            $this->catalogues->create(
+            $item = $this->catalogues->create(
                 $actor,
                 $company,
                 $boundType,
@@ -228,9 +236,30 @@ class CatalogueController extends Controller
             abort(403, $e->getMessage());
         }
 
+        if ($request->expectsJson()) {
+            return response()->json([
+                'data' => [
+                    'id' => $item->id,
+                    'name' => $item->name,
+                    'code' => $item->code,
+                ],
+            ], 201);
+        }
+
         return redirect()
             ->route('branch.'.$boundType->routeSlug().'.index')
             ->with('success', 'Catalogue item created.');
+    }
+
+    private function deriveCatalogueCode(string $name): string
+    {
+        $slug = strtoupper((string) preg_replace('/[^A-Za-z0-9]+/', '-', Str::ascii(trim($name))));
+        $slug = trim($slug, '-');
+        if ($slug === '') {
+            $slug = 'ITEM';
+        }
+
+        return Str::limit($slug, 64, '');
     }
 
     private function assertItem(Company $company, OwnerCatalogueItem $item): void

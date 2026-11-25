@@ -179,6 +179,8 @@ class LorryReceiptController extends Controller
                 'vehicles_options' => route('branch.vehicles.options', absolute: false),
                 'vehicles_create' => route('branch.vehicles.create', absolute: false),
                 'vehicles_store' => route('branch.vehicles.store', absolute: false),
+                'goods_types_store' => route('branch.goods-types.store', absolute: false),
+                'package_types_store' => route('branch.package-types.store', absolute: false),
             ],
         ]);
     }
@@ -460,6 +462,8 @@ class LorryReceiptController extends Controller
                 'vehicles_options' => route('branch.vehicles.options', absolute: false),
                 'vehicles_create' => route('branch.vehicles.create', absolute: false),
                 'vehicles_store' => route('branch.vehicles.store', absolute: false),
+                'goods_types_store' => route('branch.goods-types.store', absolute: false),
+                'package_types_store' => route('branch.package-types.store', absolute: false),
             ],
         ]);
     }
@@ -622,6 +626,7 @@ class LorryReceiptController extends Controller
                 $branch,
                 PermissionCodes::TRIP_CREATE,
             ),
+            'can_quick_create_catalogues' => (int) $actor->id === (int) $company->owner_user_id,
         ];
     }
 

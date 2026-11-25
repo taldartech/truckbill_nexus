@@ -9,6 +9,10 @@ import type {
 } from '@/components/form-confirmation/types';
 import InputError from '@/components/input-error';
 import {
+    QuickCreateCatalogueSheet,
+    type QuickCreatedCatalogueItem,
+} from '@/components/masters/quick-create-catalogue-sheet';
+import {
     QuickCreatePartySheet,
     type QuickCreatePartyRole,
 } from '@/components/masters/quick-create-party-sheet';
@@ -150,11 +154,14 @@ type Props = {
         vehicles_options?: string;
         vehicles_create?: string;
         vehicles_store?: string;
+        goods_types_store?: string;
+        package_types_store?: string;
     };
     permissions?: {
         can_view_freight?: boolean;
         can_create_lorry_hire?: boolean;
         can_create_trip?: boolean;
+        can_quick_create_catalogues?: boolean;
     };
 };
 
@@ -503,6 +510,8 @@ export default function LrForm({
     const mayViewFreight = permissions?.can_view_freight !== false;
     const canCreateLorryHire = permissions?.can_create_lorry_hire === true;
     const canCreateTrip = permissions?.can_create_trip === true;
+    const canQuickCreateCatalogues =
+        permissions?.can_quick_create_catalogues === true;
     const formMode =
         formModeProp ?? (workflowContext === 'partload' ? 'partload' : 'truck');
     const submitAllowed = useRef(false);
@@ -573,6 +582,16 @@ export default function LrForm({
         useState<PartyOption | null>(null);
     const [headerQuickCreate, setHeaderQuickCreate] =
         useState<QuickCreatePartyRole | null>(null);
+    const [goodsTypes, setGoodsTypes] = useState<NamedOption[]>(
+        () => formOptions.goodsTypes,
+    );
+    const [packageTypes, setPackageTypes] = useState<NamedOption[]>(
+        () => formOptions.packageTypes,
+    );
+    const [catalogueQuickCreate, setCatalogueQuickCreate] = useState<{
+        kind: 'goods' | 'package';
+        rowIndex: number;
+    } | null>(null);
     const [goods, setGoods] = useState<GoodsRow[]>(() =>
         lorryReceipt?.goods?.length
             ? mapGoodsFromReceipt(lorryReceipt.goods)
@@ -1046,8 +1065,8 @@ export default function LrForm({
             );
 
             const originalGoods = mapGoodsFromReceipt(lorryReceipt.goods);
-            const goodsTypeOptions = formOptions.goodsTypes ?? [];
-            const packageTypeOptions = formOptions.packageTypes ?? [];
+            const goodsTypeOptions = goodsTypes;
+            const packageTypeOptions = packageTypes;
             const maxGoodsRows = Math.max(originalGoods.length, goods.length);
             for (let index = 0; index < maxGoodsRows; index += 1) {
                 const originalRow = originalGoods[index];
@@ -1239,8 +1258,8 @@ export default function LrForm({
             },
         ];
 
-        const goodsTypeOptions = formOptions.goodsTypes ?? [];
-        const packageTypeOptions = formOptions.packageTypes ?? [];
+        const goodsTypeOptions = goodsTypes;
+        const packageTypeOptions = packageTypes;
         goods.forEach((row, index) => {
             fields.push({
                 label: `Goods ${index + 1}`,
@@ -2139,9 +2158,29 @@ export default function LrForm({
                                                 >
                                                     <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-6">
                                                         <div className="space-y-1">
-                                                            <Label className="text-xs">
-                                                                Goods Type
-                                                            </Label>
+                                                            <div className="flex items-center justify-between gap-2">
+                                                                <Label className="text-xs">
+                                                                    Goods Type
+                                                                </Label>
+                                                                {canQuickCreateCatalogues &&
+                                                                urls.goods_types_store ? (
+                                                                    <button
+                                                                        type="button"
+                                                                        className="text-xs font-medium text-[#2D8CFF] hover:underline"
+                                                                        onClick={() =>
+                                                                            setCatalogueQuickCreate(
+                                                                                {
+                                                                                    kind: 'goods',
+                                                                                    rowIndex:
+                                                                                        index,
+                                                                                },
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        + Add
+                                                                    </button>
+                                                                ) : null}
+                                                            </div>
                                                             <select
                                                                 name={`goods[${index}][goods_type_id]`}
                                                                 className={
@@ -2166,7 +2205,7 @@ export default function LrForm({
                                                                 <option value="">
                                                                     Select
                                                                 </option>
-                                                                {formOptions.goodsTypes.map(
+                                                                {goodsTypes.map(
                                                                     (item) => (
                                                                         <option
                                                                             key={
@@ -2185,9 +2224,29 @@ export default function LrForm({
                                                             </select>
                                                         </div>
                                                         <div className="space-y-1">
-                                                            <Label className="text-xs">
-                                                                Package Type
-                                                            </Label>
+                                                            <div className="flex items-center justify-between gap-2">
+                                                                <Label className="text-xs">
+                                                                    Package Type
+                                                                </Label>
+                                                                {canQuickCreateCatalogues &&
+                                                                urls.package_types_store ? (
+                                                                    <button
+                                                                        type="button"
+                                                                        className="text-xs font-medium text-[#2D8CFF] hover:underline"
+                                                                        onClick={() =>
+                                                                            setCatalogueQuickCreate(
+                                                                                {
+                                                                                    kind: 'package',
+                                                                                    rowIndex:
+                                                                                        index,
+                                                                                },
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        + Add
+                                                                    </button>
+                                                                ) : null}
+                                                            </div>
                                                             <select
                                                                 name={`goods[${index}][package_type_id]`}
                                                                 className={
@@ -2212,7 +2271,7 @@ export default function LrForm({
                                                                 <option value="">
                                                                     Select
                                                                 </option>
-                                                                {formOptions.packageTypes.map(
+                                                                {packageTypes.map(
                                                                     (item) => (
                                                                         <option
                                                                             key={
@@ -3166,6 +3225,67 @@ export default function LrForm({
                         onCreated={(party) => {
                             setBillingCustomerId(party.id);
                             setHeaderQuickCreate(null);
+                        }}
+                    />
+                ) : null}
+
+                {catalogueQuickCreate ? (
+                    <QuickCreateCatalogueSheet
+                        open={catalogueQuickCreate !== null}
+                        onOpenChange={(open) => {
+                            if (!open) {
+                                setCatalogueQuickCreate(null);
+                            }
+                        }}
+                        title={
+                            catalogueQuickCreate.kind === 'goods'
+                                ? 'Goods Type'
+                                : 'Package Type'
+                        }
+                        storeUrl={
+                            catalogueQuickCreate.kind === 'goods'
+                                ? (urls.goods_types_store ?? '')
+                                : (urls.package_types_store ?? '')
+                        }
+                        onCreated={(item: QuickCreatedCatalogueItem) => {
+                            const option = {
+                                id: item.id,
+                                name: item.name,
+                            };
+                            if (catalogueQuickCreate.kind === 'goods') {
+                                setGoodsTypes((current) => {
+                                    if (
+                                        current.some(
+                                            (entry) => entry.id === item.id,
+                                        )
+                                    ) {
+                                        return current;
+                                    }
+                                    return [...current, option];
+                                });
+                                applyGoodsField(
+                                    catalogueQuickCreate.rowIndex,
+                                    { goods_type_id: item.id },
+                                    'other',
+                                );
+                            } else {
+                                setPackageTypes((current) => {
+                                    if (
+                                        current.some(
+                                            (entry) => entry.id === item.id,
+                                        )
+                                    ) {
+                                        return current;
+                                    }
+                                    return [...current, option];
+                                });
+                                applyGoodsField(
+                                    catalogueQuickCreate.rowIndex,
+                                    { package_type_id: item.id },
+                                    'other',
+                                );
+                            }
+                            setCatalogueQuickCreate(null);
                         }}
                     />
                 ) : null}

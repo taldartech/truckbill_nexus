@@ -64,7 +64,8 @@
 | U23-ACC-CONTRA-UI      | Cash/Bank Contra fund transfer UI                            | Accounting        | Aligned (`1e891d6`)                                        |
 | U23-ACC-OUTSTANDING    | Outstanding control-account enquiry                          | Accounting        | Aligned (`df5ee79`)                                        |
 | U23-ACC-TAX-SUMMARY    | GST/TDS tax control-account summary                          | Accounting        | Aligned (`d00af8b` / `6de1b87`)                            |
-| U23-PARTLOAD-PENDING   | Partload Pending Loading register                            | Partload          | Aligned (26 Nov 2026 ERP)                                  |
+| U23-PARTLOAD-PENDING   | Partload Pending Loading register                            | Partload          | Aligned (`2eeb9f1`)                                        |
+| U23-QA-CATALOGUE       | Bilty Goods/Package Type quick-add (owner catalogues)        | Shared            | Aligned (26 Nov 2026 ERP)                                  |
 
 ## PO directive (25 Nov 2026) — superseding earlier OwnFleet navigation
 
