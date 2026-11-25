@@ -40,6 +40,7 @@ use App\Http\Controllers\Branch\MastersHubController;
 use App\Http\Controllers\Branch\PartloadChallanController;
 use App\Http\Controllers\Branch\PartloadDeliveryReceiptController;
 use App\Http\Controllers\Branch\PartloadInwardController;
+use App\Http\Controllers\Branch\PartloadMainChallanController;
 use App\Http\Controllers\Branch\PartyController;
 use App\Http\Controllers\Branch\StationController;
 use App\Http\Controllers\Branch\TransporterBookBalanceController;
@@ -315,6 +316,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/partload/challans/{partloadChallan}', [PartloadChallanController::class, 'show'])->name('branch.partload.challans.show');
         Route::post('/partload/challans/{partloadChallan}/dispatch', [PartloadChallanController::class, 'dispatch'])->name('branch.partload.challans.dispatch');
         Route::post('/partload/challans/{partloadChallan}/cancel', [PartloadChallanController::class, 'cancel'])->name('branch.partload.challans.cancel');
+
+        Route::get('/partload/main-challans', [PartloadMainChallanController::class, 'index'])->name('branch.partload.main-challans.index');
+        Route::get('/partload/main-challans/create', [PartloadMainChallanController::class, 'create'])->name('branch.partload.main-challans.create');
+        Route::post('/partload/main-challans', [PartloadMainChallanController::class, 'store'])->name('branch.partload.main-challans.store');
+        Route::get('/partload/main-challans/{partloadMainChallan}', [PartloadMainChallanController::class, 'show'])->name('branch.partload.main-challans.show');
+        Route::post('/partload/main-challans/{partloadMainChallan}/dispatch', [PartloadMainChallanController::class, 'dispatch'])->name('branch.partload.main-challans.dispatch');
+        Route::post('/partload/main-challans/{partloadMainChallan}/cancel', [PartloadMainChallanController::class, 'cancel'])->name('branch.partload.main-challans.cancel');
         Route::post('/partload/inwards', [PartloadInwardController::class, 'store'])->name('branch.partload.inwards.store');
         Route::get('/partload/inwards/{partloadInward}', [PartloadInwardController::class, 'show'])->name('branch.partload.inwards.show');
         Route::get('/partload/delivery-receipts/create', [PartloadDeliveryReceiptController::class, 'create'])->name('branch.partload.delivery-receipts.create');

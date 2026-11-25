@@ -215,6 +215,11 @@ export function AppSidebar() {
             icon: Truck,
         },
         {
+            title: 'Main Challans',
+            href: '/partload/main-challans',
+            icon: Truck,
+        },
+        {
             title: 'Accounting',
             href: '/accounting/vouchers',
             icon: Landmark,

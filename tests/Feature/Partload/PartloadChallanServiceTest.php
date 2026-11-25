@@ -1,12 +1,6 @@
 <?php
 
-use App\Domains\Consignment\Enums\FreightRateType;
 use App\Domains\Consignment\Enums\LrStatus;
-use App\Domains\Consignment\Enums\LrWorkflowContext;
-use App\Domains\Consignment\LorryReceiptService;
-use App\Domains\Master\Party\Enums\PartyRoleType;
-use App\Domains\Master\Party\PartyService;
-use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
 use App\Domains\Partload\Challan\PartloadChallanService;
 use App\Domains\Partload\Challan\PartloadChallanTotals;
 use App\Domains\Partload\Delivery\PartloadDeliveryReceiptService;
@@ -15,101 +9,18 @@ use App\Domains\Partload\Enums\PartloadDeliveryPaymentMode;
 use App\Domains\Partload\Enums\PartloadFreightPaymentTerm;
 use App\Domains\Partload\Exceptions\PartloadConflictException;
 use App\Domains\Partload\Inward\PartloadInwardService;
-use App\Domains\Rbac\PermissionCodes;
-use App\Domains\Subscription\Enums\SubscriptionModule;
 use App\Models\LorryReceipt;
 use App\Models\PartloadChallanLine;
 use Database\Seeders\RbacSeeder;
 use Database\Seeders\SubscriptionCatalogueSeeder;
-use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
-require_once dirname(__DIR__, 2).'/Support/OwnFleetTripHelpers.php';
+require_once dirname(__DIR__, 2).'/Support/PartloadHelpers.php';
 
 beforeEach(function (): void {
     $this->seed(RbacSeeder::class);
     (new SubscriptionCatalogueSeeder)->run();
 });
-
-function partloadGrantPermissions(): void
-{
-    foreach ([
-        PermissionCodes::LR_VIEW,
-        PermissionCodes::LR_CREATE,
-        PermissionCodes::PARTLOAD_CHALLAN_VIEW,
-        PermissionCodes::PARTLOAD_CHALLAN_CREATE,
-        PermissionCodes::PARTLOAD_CHALLAN_DISPATCH,
-        PermissionCodes::PARTLOAD_CHALLAN_CANCEL,
-        PermissionCodes::PARTLOAD_INWARD_VIEW,
-        PermissionCodes::PARTLOAD_INWARD_CREATE,
-        PermissionCodes::PARTLOAD_DR_VIEW,
-        PermissionCodes::PARTLOAD_DR_CREATE,
-    ] as $code) {
-        tripGrant('customer.admin', $code);
-    }
-}
-
-/**
- * @return array<string, mixed>
- */
-function partloadWorkspace(): array
-{
-    $ctx = tripWorkspace([SubscriptionModule::Partload->value]);
-    partloadGrantPermissions();
-
-    $customer = app(PartyService::class)->create(
-        actor: $ctx['owner'],
-        company: $ctx['company'],
-        branch: null,
-        attributes: [
-            'name' => 'Partload Customer '.Str::lower(Str::random(4)),
-            'contact_number' => '9800099001',
-            'state' => 'MH',
-            'city' => 'Mumbai',
-            'is_gst_applicable' => false,
-        ],
-        roles: [
-            ['role' => PartyRoleType::Customer->value],
-            ['role' => PartyRoleType::Consignor->value],
-            ['role' => PartyRoleType::Consignee->value],
-        ],
-        remark: 'Partload customer',
-    );
-
-    $ctx['vehicle']->forceFill([
-        'ownership' => VehicleOwnership::Own,
-        'primary_driver_party_id' => $ctx['primaryDriver']->id,
-    ])->save();
-
-    $ctx['customer'] = $customer;
-
-    return $ctx;
-}
-
-function partloadCreateBilty(array $ctx, PartloadFreightPaymentTerm $term = PartloadFreightPaymentTerm::ToPay): LorryReceipt
-{
-    return app(LorryReceiptService::class)->create($ctx['company'], $ctx['branch'], $ctx['member'], [
-        'workflow_context' => LrWorkflowContext::Partload->value,
-        'lr_date' => now()->toDateString(),
-        'from_station_id' => $ctx['fromStation']->id,
-        'to_station_id' => $ctx['toStation']->id,
-        'billing_customer_party_id' => $ctx['customer']->id,
-        'consignor_party_id' => $ctx['customer']->id,
-        'consignee_party_id' => $ctx['customer']->id,
-        'freight_payment_term' => $term->value,
-        'goods' => [[
-            'goods_type_id' => $ctx['goodsType']->id,
-            'package_type_id' => $ctx['packageType']->id,
-            'goods_description' => 'Partload cartons',
-            'package_count' => 5,
-            'actual_weight' => 1000,
-            'charged_weight' => 1000,
-            'freight_rate_type' => FreightRateType::FixedAmount->value,
-            'freight_rate' => 1500,
-            'freight_amount' => 1500,
-        ]],
-    ]);
-}
 
 it('computes challan TOTAL using Rules §12 formula', function (): void {
     expect(PartloadChallanTotals::computeTotal([

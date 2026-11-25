@@ -183,6 +183,7 @@ class PartloadChallanController extends Controller
             'urls' => [
                 'index' => route('branch.partload.challans.index', absolute: false),
                 'dispatch' => $challan->status === PartloadChallanStatus::Draft
+                    && blank($challan->partload_main_challan_id)
                     ? route('branch.partload.challans.dispatch', $challan, absolute: false)
                     : null,
                 'cancel' => in_array($challan->status, [PartloadChallanStatus::Draft, PartloadChallanStatus::Dispatched], true)

@@ -351,9 +351,17 @@ final class PartloadChallanService
 
         return $this->auditedTransaction->run(function () use ($challan, $actor, $company, $branch): PartloadChallan {
             return $this->withTenant($company, $branch, function () use ($challan, $actor): PartloadChallan {
-                return $this->dispatchWithinTenant($challan->fresh(['lines']) ?? $challan, $actor);
+                return $this->dispatchWithinTenant($challan->fresh(['lines']) ?? $challan, $actor, false);
             });
         });
+    }
+
+    /**
+     * Dispatch a child Challan while its Main Challan is being dispatched (tenant already active).
+     */
+    public function dispatchFromMain(PartloadChallan $challan, User $actor): PartloadChallan
+    {
+        return $this->dispatchWithinTenant($challan->fresh(['lines']) ?? $challan, $actor, true);
     }
 
     public function cancel(PartloadChallan $challan, User $actor, string $remark): PartloadChallan
@@ -431,7 +439,7 @@ final class PartloadChallanService
         });
     }
 
-    private function dispatchWithinTenant(PartloadChallan $challan, User $actor): PartloadChallan
+    private function dispatchWithinTenant(PartloadChallan $challan, User $actor, bool $fromMain = false): PartloadChallan
     {
         $locked = PartloadChallan::query()
             ->whereKey($challan->id)
@@ -446,6 +454,10 @@ final class PartloadChallanService
 
         if ($locked->status !== PartloadChallanStatus::Draft) {
             throw new PartloadConflictException('Only Draft Challans can be dispatched.');
+        }
+
+        if (filled($locked->partload_main_challan_id) && ! $fromMain) {
+            throw new PartloadConflictException('Challan is on a Main Challan; dispatch the Main Challan instead.');
         }
 
         if ($locked->lines->whereNull('deleted_at')->isEmpty()) {

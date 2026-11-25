@@ -12,6 +12,7 @@ enum DocumentNumberType: string
     case BrokerInvoice = 'broker_invoice';
     case LinkedBiltyGroup = 'linked_bilty_group';
     case PartloadChallan = 'partload_challan';
+    case PartloadMainChallan = 'partload_main_challan';
     case PartloadInward = 'partload_inward';
     case PartloadDeliveryReceipt = 'partload_delivery_receipt';
 }

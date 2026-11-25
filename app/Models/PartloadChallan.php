@@ -36,7 +36,7 @@ class PartloadChallan extends Model
         'cash_received', 'cash_payment',
         'total_packages', 'total_weight_kg', 'to_pay_amount', 'paid_amount',
         'crossing_freight', 'cartage_dalali_pf', 'gst_amount', 'total_amount',
-        'to_account_party_id', 'remark',
+        'to_account_party_id', 'partload_main_challan_id', 'remark',
         'dispatched_at', 'cancelled_at', 'cancellation_remark', 'created_by_user_id',
     ];
 
@@ -120,6 +120,12 @@ class PartloadChallan extends Model
     public function lines(): HasMany
     {
         return $this->hasMany(PartloadChallanLine::class, 'partload_challan_id')->orderBy('position');
+    }
+
+    /** @return BelongsTo<PartloadMainChallan, $this> */
+    public function mainChallan(): BelongsTo
+    {
+        return $this->belongsTo(PartloadMainChallan::class, 'partload_main_challan_id');
     }
 
     /** @return HasOne<PartloadInwardRegister, $this> */
