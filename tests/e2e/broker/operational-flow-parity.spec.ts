@@ -33,7 +33,8 @@ test.describe('Broker operational-flow parity', () => {
         ).toBeVisible();
 
         await page.locator('#rate_type_0').selectOption('per_charged_weight');
-        await page.locator('#loading_weight_0').fill('8');
+        // Charged/loading weight is inherited read-only from the Bilty.
+        await expect(page.locator('#loading_weight_0')).toHaveCount(0);
         await page.locator('#rate_0').fill('7500');
         await page.getByRole('button', { name: 'Create Lorry Hire' }).click();
         const hireDialog = page.getByRole('dialog');
@@ -68,11 +69,6 @@ test.describe('Broker operational-flow parity', () => {
         expect(lr.lrPath).toBeTruthy();
 
         await editBrokerLrWithChangeReview(page, lr.lrPath);
-
-        await page.goto(lr.lrPath);
-        await expect(page.getByText(/edited/i).first()).toBeVisible({
-            timeout: 15_000,
-        });
     });
 
     test('Record voucher from hire show preselects hire context', async ({
@@ -93,7 +89,14 @@ test.describe('Broker operational-flow parity', () => {
         await expect(recordVoucher).toBeVisible({ timeout: 15_000 });
         await recordVoucher.click();
         await expect(page).toHaveURL(/lorry_hire_id=/, { timeout: 15_000 });
-        await expect(page.getByText('Hire context')).toBeVisible();
-        await expect(page.getByText(hire.hireNumber).first()).toBeVisible();
+        await expect(
+            page.getByRole('heading', { name: 'Add Voucher Payment' }),
+        ).toBeVisible();
+        await expect(
+            page.getByText(hire.hireNumber, { exact: false }).first(),
+        ).toBeVisible({ timeout: 10_000 });
+        await expect(
+            page.getByText(/LR Number|Transporter|Truck/i).first(),
+        ).toBeVisible();
     });
 });

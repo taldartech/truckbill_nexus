@@ -10,19 +10,19 @@
 
 ### Readiness
 
-| Area                       | Status                                                                                                                                      |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| Batch 2 Broker             | Pest Broker green; hire multi-pay + payout export; voucher Bank/Cash quick-add                                                              |
-| Batch 3 OwnFleet           | Pest Phase5 + Unified Bilty green; Manage Expenses expense-category + Bank/Cash quick-add                                                   |
-| Partload                   | Challan / Main Challan / Inward / DR + Pending Loading / In Transit / Pending Delivery; DR/Challan master selectors                         |
-| Accounting                 | COA, vouchers, Day Book, Ledger, TB, P&L, BS, Cash/Bank, Contra, Outstanding, Tax, Opening Balances UI                                      |
-| Master quick-add           | Party/Vehicle(+nested Truck/Tyre)/Geography/Ledger/Goods/Package/Expense/Station/Bank-Cash; Partload Challan station/vehicle/driver         |
-| Unified operational UI     | Ownership-driven Bilty; Partload context entry; shared registers                                                                            |
-| Dual-DB focused regression | PG Broker+Phase5+Unified **111/111**; PG ACC+Partload+QA **29/29**; MySQL Broker+Phase5+Unified+ACC+Partload+BankCash **136/136** (`:3307`) |
-| Full PG + MySQL Pest suite | Open (full tree not yet re-run this continuation)                                                                                           |
-| Playwright journeys        | Partial — login smoke + bilty/hire UI **5/5** after demo seed; hire test aligned to inherited weight (no `#loading_weight_0`)               |
-| Legacy visual alignment    | Incomplete — live legacy capture still blocked                                                                                              |
-| Production                 | Not ready                                                                                                                                   |
+| Area                       | Status                                                                                                                                        |
+| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| Batch 2 Broker             | Pest Broker green; hire multi-pay + payout export; voucher Bank/Cash quick-add                                                                |
+| Batch 3 OwnFleet           | Pest Phase5 + Unified Bilty green; Manage Expenses expense-category + Bank/Cash quick-add                                                     |
+| Partload                   | Challan / Main Challan / Inward / DR + Pending Loading / In Transit / Pending Delivery; DR/Challan master selectors                           |
+| Accounting                 | COA, vouchers, Day Book, Ledger, TB, P&L, BS, Cash/Bank, Contra, Outstanding, Tax, Opening Balances UI                                        |
+| Master quick-add           | Party/Vehicle(+nested Truck/Tyre)/Geography/Ledger/Goods/Package/Expense/Station/Bank-Cash; Partload Challan station/vehicle/driver           |
+| Unified operational UI     | Ownership-driven Bilty; Partload context entry; shared registers                                                                              |
+| Dual-DB focused regression | PG Broker+Phase5+Unified **111/111**; PG ACC+Partload+QA **29/29**; MySQL Broker+Phase5+Unified+ACC+Partload+BankCash **136/136** (`:3307`)   |
+| Full PG + MySQL Pest suite | Open (full tree not yet re-run this continuation)                                                                                             |
+| Playwright journeys        | Partial — login+bilty/hire **5/5**; OwnFleet **3/3**; Broker complete **1/1**; operational-flow parity **3/3**; hire inherited-weight aligned |
+| Legacy visual alignment    | Incomplete — live legacy capture still blocked                                                                                                |
+| Production                 | Not ready                                                                                                                                     |
 
 ## Remaining before A/B / ERP final acceptance
 
