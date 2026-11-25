@@ -250,11 +250,11 @@ class LorryReceiptController extends Controller
         }
 
         $createTrip = ($payload['workflow_context'] ?? null) === LrWorkflowContext::OwnFleet->value
-            && $this->authorizer->allowsCustomer(
+            && $this->customerAllows(
                 $actor,
-                PermissionCodes::TRIP_CREATE,
                 $company,
                 $branch,
+                PermissionCodes::TRIP_CREATE,
             );
 
         try {
@@ -278,11 +278,11 @@ class LorryReceiptController extends Controller
 
         $redirectToHire = $request->boolean('redirect_to_hire')
             && $lr->workflow_context === LrWorkflowContext::Broker
-            && $this->authorizer->allowsCustomer(
+            && $this->customerAllows(
                 $actor,
-                PermissionCodes::BROKER_LORRY_HIRE_CREATE,
                 $company,
                 $branch,
+                PermissionCodes::BROKER_LORRY_HIRE_CREATE,
             );
 
         if ($redirectToHire) {
@@ -293,11 +293,11 @@ class LorryReceiptController extends Controller
 
         $openExpenses = $request->boolean('redirect_to_trip')
             && $trip !== null
-            && $this->authorizer->allowsCustomer(
+            && $this->customerAllows(
                 $actor,
-                PermissionCodes::TRIP_VIEW,
                 $company,
                 $branch,
+                PermissionCodes::TRIP_VIEW,
             );
 
         if ($openExpenses) {
@@ -414,9 +414,9 @@ class LorryReceiptController extends Controller
                 $lorryReceipt->id,
                 $this->documents,
                 [
-                    'can_create' => $this->authorizer->allowsCustomer($actor, PermissionCodes::LR_EDIT, $company, $branch),
-                    'can_edit' => $this->authorizer->allowsCustomer($actor, PermissionCodes::LR_EDIT, $company, $branch),
-                    'can_delete' => $this->authorizer->allowsCustomer($actor, PermissionCodes::LR_DELETE, $company, $branch),
+                    'can_create' => $this->customerAllows($actor, $company, $branch, PermissionCodes::LR_EDIT),
+                    'can_edit' => $this->customerAllows($actor, $company, $branch, PermissionCodes::LR_EDIT),
+                    'can_delete' => $this->customerAllows($actor, $company, $branch, PermissionCodes::LR_DELETE),
                 ],
             ),
         ]);
@@ -570,9 +570,19 @@ class LorryReceiptController extends Controller
 
     private function assertPermission(User $actor, Company $company, Branch $branch, string $code): void
     {
-        if (! $this->authorizer->allowsCustomer($actor, $code, $company, $branch)) {
+        if (! $this->customerAllows($actor, $company, $branch, $code)) {
             abort(403, 'Not authorized for Lorry Receipt operation.');
         }
+    }
+
+    private function customerAllows(User $actor, Company $company, Branch $branch, string $code): bool
+    {
+        // Company Owner retains operational authority without depending on a branch role matrix row.
+        if ($this->access->isCompanyOwner($actor, $company)) {
+            return true;
+        }
+
+        return $this->authorizer->allowsCustomer($actor, $code, $company, $branch);
     }
 
     private function assertLr(LorryReceipt $lorryReceipt, Company $company, Branch $branch): void
@@ -594,23 +604,23 @@ class LorryReceiptController extends Controller
     private function lrPermissions(User $actor, Company $company, Branch $branch, bool $maySeeFreight): array
     {
         return [
-            'can_view' => $this->authorizer->allowsCustomer($actor, PermissionCodes::LR_VIEW, $company, $branch),
-            'can_create' => $this->authorizer->allowsCustomer($actor, PermissionCodes::LR_CREATE, $company, $branch),
-            'can_edit' => $this->authorizer->allowsCustomer($actor, PermissionCodes::LR_EDIT, $company, $branch),
-            'can_cancel' => $this->authorizer->allowsCustomer($actor, PermissionCodes::LR_CANCEL, $company, $branch),
-            'can_delete' => $this->authorizer->allowsCustomer($actor, PermissionCodes::LR_DELETE, $company, $branch),
+            'can_view' => $this->customerAllows($actor, $company, $branch, PermissionCodes::LR_VIEW),
+            'can_create' => $this->customerAllows($actor, $company, $branch, PermissionCodes::LR_CREATE),
+            'can_edit' => $this->customerAllows($actor, $company, $branch, PermissionCodes::LR_EDIT),
+            'can_cancel' => $this->customerAllows($actor, $company, $branch, PermissionCodes::LR_CANCEL),
+            'can_delete' => $this->customerAllows($actor, $company, $branch, PermissionCodes::LR_DELETE),
             'can_view_freight' => $maySeeFreight,
-            'can_create_lorry_hire' => $this->authorizer->allowsCustomer(
+            'can_create_lorry_hire' => $this->customerAllows(
                 $actor,
+                $company,
+                $branch,
                 PermissionCodes::BROKER_LORRY_HIRE_CREATE,
-                $company,
-                $branch,
             ),
-            'can_create_trip' => $this->authorizer->allowsCustomer(
+            'can_create_trip' => $this->customerAllows(
                 $actor,
-                PermissionCodes::TRIP_CREATE,
                 $company,
                 $branch,
+                PermissionCodes::TRIP_CREATE,
             ),
         ];
     }
@@ -915,7 +925,7 @@ class LorryReceiptController extends Controller
                 : null,
             'print_url' => route('branch.lorry-receipts.print', [$lr], absolute: false),
             'destroy_url' => $lr->status === LrStatus::Pending
-                && $this->authorizer->allowsCustomer($actor, PermissionCodes::LR_DELETE, $company, $branch)
+                && $this->customerAllows($actor, $company, $branch, PermissionCodes::LR_DELETE)
                 ? route('branch.lorry-receipts.destroy', [$lr], absolute: false)
                 : null,
         ];
@@ -944,7 +954,7 @@ class LorryReceiptController extends Controller
                 return null;
             }
 
-            if (! $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_VIEW, $company, $branch)) {
+            if (! $this->customerAllows($actor, $company, $branch, PermissionCodes::TRIP_VIEW)) {
                 return null;
             }
 
@@ -973,7 +983,7 @@ class LorryReceiptController extends Controller
 
             $hire = $lr->lorryHire;
             if ($hire !== null) {
-                if (! $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_LORRY_HIRE_VIEW, $company, $branch)) {
+                if (! $this->customerAllows($actor, $company, $branch, PermissionCodes::BROKER_LORRY_HIRE_VIEW)) {
                     return null;
                 }
 
@@ -987,7 +997,7 @@ class LorryReceiptController extends Controller
             if (
                 in_array($lr->status, [LrStatus::Pending, LrStatus::InProgress], true)
                 && $lr->vehicle?->ownership === VehicleOwnership::Market
-                && $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_LORRY_HIRE_CREATE, $company, $branch)
+                && $this->customerAllows($actor, $company, $branch, PermissionCodes::BROKER_LORRY_HIRE_CREATE)
             ) {
                 return [
                     'kind' => 'create_lorry_hire',

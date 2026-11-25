@@ -6,8 +6,10 @@ use App\Domains\Company\Enums\DataVisibility;
 use App\Domains\Company\Enums\GstRegistrationType;
 use App\Domains\Company\Enums\TaxLiability;
 use App\Domains\Company\Exceptions\CompanyDomainException;
+use App\Domains\Geography\GeographyLookupService;
 use App\Models\GstRate;
 use Illuminate\Support\Carbon;
+use Illuminate\Validation\ValidationException;
 
 /**
  * PRD §7 company profile validation (D1 / PO-P1-P5-FULLSTACK-AUTH).
@@ -22,17 +24,39 @@ final class CompanyProfileValidator
 
     public const MOBILE_PATTERN = '/^[6-9][0-9]{9}$/';
 
+    public function __construct(
+        private readonly GeographyLookupService $geography = new GeographyLookupService,
+    ) {}
+
     /**
      * @param  array<string, mixed>  $profile
      * @return array<string, mixed>
      */
     public function normalizeAndValidate(array $profile, bool $requireComplete): array
     {
+        $stateId = filled($profile['state_id'] ?? null) ? (string) $profile['state_id'] : null;
+        $cityId = filled($profile['city_id'] ?? null) ? (string) $profile['city_id'] : null;
+
+        try {
+            $resolvedGeography = $this->geography->resolveAddressFields(
+                $stateId,
+                $cityId,
+                isset($profile['state']) ? (string) $profile['state'] : null,
+                isset($profile['city']) ? (string) $profile['city'] : null,
+            );
+        } catch (ValidationException $e) {
+            $messages = $e->errors();
+            $first = collect($messages)->flatten()->first();
+            throw new CompanyDomainException(is_string($first) ? $first : 'State and city selection is invalid.');
+        }
+
         $normalized = [
             'pan' => strtoupper(trim((string) ($profile['pan'] ?? ''))),
             'registered_address' => trim((string) ($profile['registered_address'] ?? '')),
-            'state' => trim((string) ($profile['state'] ?? '')),
-            'city' => trim((string) ($profile['city'] ?? '')),
+            'state' => (string) ($resolvedGeography['state'] ?? ''),
+            'state_id' => $resolvedGeography['state_id'],
+            'city' => (string) ($resolvedGeography['city'] ?? ''),
+            'city_id' => $resolvedGeography['city_id'],
             'pin' => trim((string) ($profile['pin'] ?? '')),
             'contact_person' => trim((string) ($profile['contact_person'] ?? '')),
             'mobile' => preg_replace('/\D+/', '', (string) ($profile['mobile'] ?? '')) ?? '',

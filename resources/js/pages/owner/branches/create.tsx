@@ -12,6 +12,7 @@ import {
 } from '@/components/searchable-combobox';
 import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
 import type { FieldReview } from '@/components/form-confirmation/types';
+import { StateCityFields } from '@/components/geography/state-city-fields';
 import { WorkspaceContextAction } from '@/components/workspace-context-action';
 import { CreditCard } from 'lucide-react';
 
@@ -104,6 +105,8 @@ export default function OwnerBranchesCreate({
     const [contactNumber, setContactNumber] = useState('');
     const [isHeadOffice, setIsHeadOffice] = useState('0');
     const [address, setAddress] = useState('');
+    const [stateId, setStateId] = useState('');
+    const [cityId, setCityId] = useState('');
     const [state, setState] = useState('');
     const [city, setCity] = useState('');
     const [pin, setPin] = useState('');
@@ -417,26 +420,26 @@ export default function OwnerBranchesCreate({
                                             placeholder="Branch address"
                                         />
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="state">State</Label>
-                                        <Input
-                                            id="state"
-                                            name="state"
-                                            value={state}
-                                            onChange={(e) =>
-                                                setState(e.target.value)
+                                    <div className="sm:col-span-2">
+                                        <StateCityFields
+                                            stateId={stateId}
+                                            cityId={cityId}
+                                            stateName={state}
+                                            cityName={city}
+                                            stateError={
+                                                formErrors.state_id ??
+                                                errors?.state_id
                                             }
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="city">City</Label>
-                                        <Input
-                                            id="city"
-                                            name="city"
-                                            value={city}
-                                            onChange={(e) =>
-                                                setCity(e.target.value)
+                                            cityError={
+                                                formErrors.city_id ??
+                                                errors?.city_id
                                             }
+                                            onChange={(next) => {
+                                                setStateId(next.state_id);
+                                                setCityId(next.city_id);
+                                                setState(next.state);
+                                                setCity(next.city);
+                                            }}
                                         />
                                     </div>
                                     <div className="space-y-2">

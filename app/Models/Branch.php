@@ -23,7 +23,9 @@ use Illuminate\Support\Str;
  * @property bool $is_head_office
  * @property string|null $address
  * @property string|null $state
+ * @property string|null $state_id
  * @property string|null $city
+ * @property string|null $city_id
  * @property string|null $pin
  * @property BranchGstMode $gst_mode
  * @property GstRegistrationType|null $gst_registration_type
@@ -53,7 +55,9 @@ class Branch extends Model
         'is_head_office',
         'address',
         'state',
+        'state_id',
         'city',
+        'city_id',
         'pin',
         'gst_mode',
         'gst_registration_type',
@@ -112,6 +116,22 @@ class Branch extends Model
     public function gstRate(): BelongsTo
     {
         return $this->belongsTo(GstRate::class, 'gst_rate_id');
+    }
+
+    /**
+     * @return BelongsTo<State, $this>
+     */
+    public function stateRecord(): BelongsTo
+    {
+        return $this->belongsTo(State::class, 'state_id');
+    }
+
+    /**
+     * @return BelongsTo<City, $this>
+     */
+    public function cityRecord(): BelongsTo
+    {
+        return $this->belongsTo(City::class, 'city_id');
     }
 
     /**

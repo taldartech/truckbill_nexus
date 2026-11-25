@@ -78,7 +78,7 @@ export default function OwnerHome({
             <Head title="Owner · Dashboard" />
             <OwnerPageHeader
                 title={`${greeting}, ${owner_name}`}
-                description="Health of your owned companies — open any company for settings, users, or billing."
+                description="Owner control panel — company register, branch footprint, subscriptions, and audit at a glance. Select a company card to manage settings or enter operations."
                 actions={
                     <>
                         <Button asChild variant="outline">
@@ -135,7 +135,7 @@ export default function OwnerHome({
                     >
                         <div className="flex items-center justify-between gap-3">
                             <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-                                Your companies
+                                Company register
                             </h2>
                             <Button asChild variant="link" size="sm">
                                 <Link href={links.companies}>Manage all</Link>
@@ -224,7 +224,7 @@ export default function OwnerHome({
                     >
                         <div className="flex items-center justify-between gap-3">
                             <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-                                Attention
+                                Subscription alerts
                             </h2>
                             <Button asChild variant="link" size="sm">
                                 <Link href={links.subscriptions}>

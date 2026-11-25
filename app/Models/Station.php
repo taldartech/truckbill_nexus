@@ -25,7 +25,9 @@ class Station extends Model
         'code',
         'name',
         'state',
+        'state_id',
         'city',
+        'city_id',
         'is_active',
     ];
 

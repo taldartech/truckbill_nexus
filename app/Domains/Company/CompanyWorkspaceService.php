@@ -5,6 +5,7 @@ namespace App\Domains\Company;
 use App\Domains\Company\Enums\BranchGstMode;
 use App\Domains\Company\Enums\DataVisibility;
 use App\Domains\Company\Exceptions\CompanyDomainException;
+use App\Domains\Geography\GeographyLookupService;
 use App\Domains\Master\BankCash\BankCashAccountService;
 use App\Domains\Subscription\Lifecycle\SubscriptionTrialService;
 use App\Models\Branch;
@@ -34,6 +35,7 @@ final class CompanyWorkspaceService
         private readonly CompanyProfileValidator $profiles = new CompanyProfileValidator,
         private readonly BankCashAccountService $bankCash = new BankCashAccountService,
         private readonly MasterDataVisibilityResolver $masterVisibility = new MasterDataVisibilityResolver,
+        private readonly GeographyLookupService $geography = new GeographyLookupService,
     ) {}
 
     /**
@@ -580,11 +582,25 @@ final class CompanyWorkspaceService
             $normalized['is_head_office'] = (bool) $attributes['is_head_office'];
         }
 
-        foreach (['address', 'state', 'city', 'pin'] as $field) {
+        foreach (['address', 'pin'] as $field) {
             if (array_key_exists($field, $attributes)) {
                 $value = trim((string) ($attributes[$field] ?? ''));
                 $normalized[$field] = $value !== '' ? $value : null;
             }
+        }
+
+        if (array_key_exists('state_id', $attributes) || array_key_exists('city_id', $attributes)
+            || array_key_exists('state', $attributes) || array_key_exists('city', $attributes)) {
+            $resolved = $this->geography->resolveAddressFields(
+                isset($attributes['state_id']) ? ($attributes['state_id'] !== null && $attributes['state_id'] !== '' ? (string) $attributes['state_id'] : null) : null,
+                isset($attributes['city_id']) ? ($attributes['city_id'] !== null && $attributes['city_id'] !== '' ? (string) $attributes['city_id'] : null) : null,
+                isset($attributes['state']) ? (string) $attributes['state'] : null,
+                isset($attributes['city']) ? (string) $attributes['city'] : null,
+            );
+            $normalized['state_id'] = $resolved['state_id'];
+            $normalized['city_id'] = $resolved['city_id'];
+            $normalized['state'] = $resolved['state'];
+            $normalized['city'] = $resolved['city'];
         }
 
         if (array_key_exists('gst_mode', $attributes)) {
@@ -768,7 +784,9 @@ final class CompanyWorkspaceService
             'is_head_office' => (bool) $branch->is_head_office,
             'address' => $branch->address,
             'state' => $branch->state,
+            'state_id' => $branch->state_id,
             'city' => $branch->city,
+            'city_id' => $branch->city_id,
             'pin' => $branch->pin,
             'gst_mode' => $branch->gst_mode instanceof BranchGstMode
                 ? $branch->gst_mode->value

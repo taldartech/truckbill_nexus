@@ -8,6 +8,7 @@ use App\Domains\Company\Enums\TaxLiability;
 use App\Domains\Company\Exceptions\CompanyDomainException;
 use App\Models\Branch;
 use App\Models\Company;
+use App\Models\State;
 
 /**
  * Central resolver for Branch-effective GST (inherit company vs independent).
@@ -25,6 +26,11 @@ final class EffectiveGstConfigurationResolver
             : BranchGstMode::tryFrom((string) ($branch->gst_mode ?? '')) ?? BranchGstMode::InheritCompany;
 
         if ($mode === BranchGstMode::Independent) {
+            [$stateName, $gstCode] = $this->resolveStateMeta(
+                $branch->state_id ?? null,
+                $branch->state ?? null,
+            );
+
             return new EffectiveGstConfiguration(
                 companyId: $company->id,
                 branchId: $branch->id,
@@ -36,8 +42,15 @@ final class EffectiveGstConfigurationResolver
                 gstRateId: $branch->gst_rate_id,
                 gstRateSnapshot: is_array($branch->gst_rate_snapshot) ? $branch->gst_rate_snapshot : null,
                 sourceCompanyId: null,
+                supplierState: $stateName,
+                supplierStateGstCode: $gstCode,
             );
         }
+
+        [$stateName, $gstCode] = $this->resolveStateMeta(
+            $company->state_id ?? null,
+            $company->state ?? null,
+        );
 
         return new EffectiveGstConfiguration(
             companyId: $company->id,
@@ -50,6 +63,8 @@ final class EffectiveGstConfigurationResolver
             gstRateId: $company->gst_rate_id,
             gstRateSnapshot: is_array($company->gst_rate_snapshot) ? $company->gst_rate_snapshot : null,
             sourceCompanyId: $company->id,
+            supplierState: $stateName,
+            supplierStateGstCode: $gstCode,
         );
     }
 
@@ -65,5 +80,22 @@ final class EffectiveGstConfigurationResolver
             'gst_rate_id' => $company->gst_rate_id,
             'gst_rate_snapshot' => is_array($company->gst_rate_snapshot) ? $company->gst_rate_snapshot : null,
         ];
+    }
+
+    /**
+     * @return array{0: ?string, 1: ?string}
+     */
+    private function resolveStateMeta(?string $stateId, ?string $fallbackName): array
+    {
+        if (filled($stateId)) {
+            $state = State::query()->whereKey($stateId)->first();
+            if ($state !== null) {
+                return [$state->name, $state->gst_code];
+            }
+        }
+
+        $name = filled($fallbackName) ? trim((string) $fallbackName) : null;
+
+        return [$name !== '' ? $name : null, null];
     }
 }

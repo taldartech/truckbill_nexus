@@ -186,11 +186,14 @@ class BrokerInvoiceController extends Controller
         $brokerInvoice->load(['lines.lorryReceipt', 'payments', 'billingCustomer']);
         $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
 
+        $snapshotGstin = data_get($brokerInvoice->gst_rate_snapshot, 'supplier_gstin');
+
         return Inertia::render('broker/invoices/print', [
             'invoice' => $this->detailPayload($brokerInvoice, $maySeeFreight),
             'company' => [
                 'name' => $company->name,
-                'gstin' => $company->gstin,
+                // Prefer issued snapshot GSTIN so later Branch GST changes never rewrite prints.
+                'gstin' => filled($snapshotGstin) ? (string) $snapshotGstin : $company->gstin,
             ],
             'sampleBanner' => 'SAMPLE / NON-PRODUCTION — Not a legally operative tax invoice.',
         ]);

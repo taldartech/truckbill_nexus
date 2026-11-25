@@ -22,6 +22,7 @@ use App\Domains\Rbac\PermissionCodes;
 use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
 use App\Domains\Subscription\Entitlement\SubscriptionEntitlementGate;
 use App\Domains\Subscription\Enums\SubscriptionModule;
+use App\Domains\Tax\EffectiveGstConfigurationResolver;
 use App\Models\Branch;
 use App\Models\BrokerAdjustment;
 use App\Models\BrokerInvoice;
@@ -57,6 +58,7 @@ final class BrokerInvoiceService
         private readonly CoreModuleEntitlementResolver $entitlements = new CoreModuleEntitlementResolver,
         private readonly SubscriptionEntitlementGate $entitlementGate = new SubscriptionEntitlementGate,
         private readonly DocumentNumberAllocator $numbers = new DocumentNumberAllocator,
+        private readonly EffectiveGstConfigurationResolver $gstResolver = new EffectiveGstConfigurationResolver,
     ) {}
 
     /**
@@ -158,6 +160,7 @@ final class BrokerInvoiceService
         $billingCustomer = $receipts->first()?->billingCustomer;
         [$taxable, $gstAmount, $invoiceTotal, $snapshot] = $this->computeTaxTotals(
             $company,
+            $branch,
             $taxableBase,
             '0.00',
             $billingCustomer,
@@ -224,6 +227,7 @@ final class BrokerInvoiceService
                     ->first();
                 [$taxable, $gstAmount, $invoiceTotal, $gstSnapshot] = $this->computeTaxTotals(
                     $company,
+                    $branch,
                     $taxableBase,
                     '0.00',
                     $billingCustomer,
@@ -700,26 +704,28 @@ final class BrokerInvoiceService
      */
     private function computeTaxTotals(
         Company $company,
+        Branch $branch,
         string $baseFreight,
         string $additional,
         ?Party $billingCustomer = null,
     ): array {
         $taxable = bcadd($this->storedDecimal($baseFreight), $this->storedDecimal($additional), 2);
-        $snapshot = is_array($company->gst_rate_snapshot) ? $company->gst_rate_snapshot : [];
+        $effective = $this->gstResolver->resolve($company, $branch);
+        $snapshot = is_array($effective->gstRateSnapshot) ? $effective->gstRateSnapshot : [];
         $ratePercent = '0';
 
         if (filled($snapshot['rate_percent'] ?? null)) {
             $ratePercent = (string) $snapshot['rate_percent'];
-        } elseif (filled($company->gst_rate_id)) {
-            $rate = GstRate::query()->find($company->gst_rate_id);
+        } elseif (filled($effective->gstRateId)) {
+            $rate = GstRate::query()->find($effective->gstRateId);
             if ($rate !== null) {
                 $snapshot = $rate->toSnapshot();
                 $ratePercent = (string) $rate->rate_percent;
             }
         }
 
-        $registration = $company->gst_registration_type;
-        $taxLiability = $company->tax_liability ?? TaxLiability::Fcm;
+        $registration = $effective->registrationType;
+        $taxLiability = $effective->taxLiability ?? TaxLiability::Fcm;
 
         $cgst = '0.00';
         $sgst = '0.00';
@@ -730,7 +736,7 @@ final class BrokerInvoiceService
         $sgstRate = null;
         $igstRate = null;
 
-        // Company registration gates taxability. Customer GST flags do not blank Forward Charge.
+        // Effective Branch/Company registration gates taxability.
         $taxableForGst = $registration === GstRegistrationType::Unregistered
             || $registration === GstRegistrationType::Composition
             || bccomp($ratePercent, '0', 4) <= 0
@@ -738,11 +744,11 @@ final class BrokerInvoiceService
             : true;
 
         if ($taxableForGst) {
-            $companyState = strtoupper(trim((string) ($company->state ?? '')));
+            $supplierState = strtoupper(trim((string) ($effective->supplierState ?? '')));
             $customerState = strtoupper(trim((string) ($billingCustomer?->state ?? '')));
-            $intraState = $companyState !== ''
+            $intraState = $supplierState !== ''
                 && $customerState !== ''
-                && $companyState === $customerState;
+                && $supplierState === $customerState;
 
             $supplyType = $intraState ? 'intra_state' : 'inter_state';
             $halfRate = bcdiv($ratePercent, '2', 4);
@@ -768,6 +774,11 @@ final class BrokerInvoiceService
         $snapshot = array_merge($snapshot, [
             'rate_percent' => $ratePercent,
             'tax_liability' => $taxLiability->value,
+            'gst_registration_type' => $registration?->value,
+            'supplier_gstin' => $effective->gstin,
+            'supplier_state' => $effective->supplierState,
+            'supplier_state_gst_code' => $effective->supplierStateGstCode,
+            'gst_mode' => $effective->mode->value,
             'supply_type' => $supplyType,
             'cgst_rate' => $cgstRate,
             'sgst_rate' => $sgstRate,

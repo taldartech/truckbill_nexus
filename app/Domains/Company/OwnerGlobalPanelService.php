@@ -419,6 +419,9 @@ final class OwnerGlobalPanelService
             'state' => $branch->state,
             'address' => $branch->address,
             'gst_mode' => $branch->gst_mode?->value ?? 'inherit_company',
+            'gstin' => $branch->gst_mode?->value === 'independent'
+                ? $branch->gstin
+                : $company?->gstin,
             'status' => $branch->isActive() ? 'Active' : 'Deactivated',
             'assigned_users_count' => (int) ($branch->assigned_users_count ?? 0),
             'created_at' => $branch->created_at?->toIso8601String(),

@@ -27,6 +27,8 @@ final readonly class EffectiveGstConfiguration
         public ?string $gstRateId,
         public ?array $gstRateSnapshot,
         public ?string $sourceCompanyId,
+        public ?string $supplierState = null,
+        public ?string $supplierStateGstCode = null,
     ) {}
 
     /**
@@ -45,6 +47,8 @@ final readonly class EffectiveGstConfiguration
             'gst_rate_id' => $this->gstRateId,
             'gst_rate_snapshot' => $this->gstRateSnapshot,
             'source_company_id' => $this->sourceCompanyId,
+            'supplier_state' => $this->supplierState,
+            'supplier_state_gst_code' => $this->supplierStateGstCode,
         ];
     }
 }

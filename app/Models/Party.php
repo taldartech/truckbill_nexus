@@ -32,7 +32,9 @@ class Party extends Model
         'pan',
         'is_gst_applicable',
         'state',
+        'state_id',
         'city',
+        'city_id',
         'address',
     ];
 

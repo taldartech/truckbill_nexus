@@ -17,6 +17,12 @@ import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 type BranchRow = {
     id: string;
     name: string;
+    contact_number: string | null;
+    is_head_office: boolean;
+    city: string | null;
+    state: string | null;
+    gst_mode: string;
+    gstin: string | null;
     status: string;
     assigned_users_count: number;
     created_at: string | null;
@@ -87,6 +93,50 @@ export default function OwnerBranchesAll({
                 header: 'Status',
                 priority: 1,
                 cell: (row) => <WorkspaceStatusBadge status={row.status} />,
+            },
+            {
+                id: 'contact',
+                header: 'Contact',
+                priority: 2,
+                className: 'text-xs font-mono',
+                cell: (row) => row.contact_number ?? '—',
+            },
+            {
+                id: 'head_office',
+                header: 'HO',
+                priority: 3,
+                cell: (row) => (row.is_head_office ? 'Yes' : 'No'),
+            },
+            {
+                id: 'location',
+                header: 'City / State',
+                priority: 2,
+                className: 'text-xs',
+                cell: (row) => {
+                    const city = row.city?.trim() ?? '';
+                    const state = row.state?.trim() ?? '';
+                    if (!city && !state) {
+                        return '—';
+                    }
+                    return [city, state].filter(Boolean).join(', ');
+                },
+            },
+            {
+                id: 'gst_mode',
+                header: 'GST mode',
+                priority: 3,
+                className: 'text-xs capitalize',
+                cell: (row) =>
+                    row.gst_mode === 'independent'
+                        ? 'Independent'
+                        : 'Inherit company',
+            },
+            {
+                id: 'gstin',
+                header: 'GSTIN',
+                priority: 2,
+                className: 'font-mono text-xs',
+                cell: (row) => row.gstin ?? '—',
             },
             {
                 id: 'company',

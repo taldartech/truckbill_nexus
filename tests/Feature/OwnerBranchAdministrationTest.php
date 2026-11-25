@@ -110,6 +110,10 @@ test('owner can list create edit and enter branch management screens', function 
     $this->post(route('owner.branches.update', ['branch' => $warehouse]), [
         'name' => 'Warehouse West Renamed',
         'remark' => 'Rename for clarity',
+        'is_head_office' => false,
+        'gst_mode' => 'inherit_company',
+        'contact_number' => '9123456780',
+        'address' => 'West yard',
     ])->assertRedirect(route('owner.branches.show', ['branch' => $warehouse]));
 
     expect($warehouse->fresh()->name)->toBe('Warehouse West Renamed');

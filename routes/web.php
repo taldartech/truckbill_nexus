@@ -9,9 +9,11 @@ use App\Http\Controllers\Admin\GstRateController;
 use App\Http\Controllers\Admin\IdentityLifecycleController;
 use App\Http\Controllers\Admin\InternalUserController;
 use App\Http\Controllers\Admin\InvitationController;
+use App\Http\Controllers\Admin\LocationController;
 use App\Http\Controllers\Admin\OwnershipTransferController;
 use App\Http\Controllers\Admin\SubscriptionInvoiceController;
 use App\Http\Controllers\Admin\TdsRuleController;
+use App\Http\Controllers\Api\GeographyController;
 use App\Http\Controllers\Branch\BankCashAccountController;
 use App\Http\Controllers\Branch\BranchDashboardController;
 use App\Http\Controllers\Branch\BranchSettingsController;
@@ -74,6 +76,11 @@ Route::post('/invitations/accept/{token}', [InvitationAcceptanceController::clas
 Route::middleware(['auth', 'verified'])->group(function () {
     // Technical shell for Internal Team (Customer workspace is under /workspace).
     Route::inertia('dashboard', 'dashboard')->name('dashboard');
+
+    Route::get('/api/geography/states', [GeographyController::class, 'states'])
+        ->name('geography.states');
+    Route::get('/api/geography/cities', [GeographyController::class, 'cities'])
+        ->name('geography.cities');
 
     // P2-WS-8 Customer workspace — company/branch from route model binding only.
     Route::get('/workspace', WorkspaceLandingController::class)->name('workspace.landing');
@@ -501,6 +508,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('admin.gst-rates.store');
     Route::post('/admin/gst-rates/{rate}/deactivate', [GstRateController::class, 'deactivate'])
         ->name('admin.gst-rates.deactivate');
+
+    Route::get('/admin/locations', [LocationController::class, 'index'])
+        ->name('admin.locations.index');
+    Route::post('/admin/locations/cities', [LocationController::class, 'storeCity'])
+        ->name('admin.locations.cities.store');
+    Route::post('/admin/locations/cities/{city}/toggle', [LocationController::class, 'toggleCity'])
+        ->name('admin.locations.cities.toggle');
 
     Route::get('/admin/tds-rules', [TdsRuleController::class, 'index'])
         ->name('admin.tds-rules');

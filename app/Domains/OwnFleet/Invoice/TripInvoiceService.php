@@ -24,6 +24,7 @@ use App\Domains\Rbac\PermissionCodes;
 use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
 use App\Domains\Subscription\Entitlement\SubscriptionEntitlementGate;
 use App\Domains\Subscription\Enums\SubscriptionModule;
+use App\Domains\Tax\EffectiveGstConfigurationResolver;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\GstRate;
@@ -58,6 +59,7 @@ final class TripInvoiceService
         private readonly CoreModuleEntitlementResolver $entitlements = new CoreModuleEntitlementResolver,
         private readonly SubscriptionEntitlementGate $entitlementGate = new SubscriptionEntitlementGate,
         private readonly DocumentNumberAllocator $numbers = new DocumentNumberAllocator,
+        private readonly EffectiveGstConfigurationResolver $gstResolver = new EffectiveGstConfigurationResolver,
         private readonly MasterDataVisibilityResolver $visibility = new MasterDataVisibilityResolver,
         private readonly TripInvoiceTdsResolver $tdsResolver = new TripInvoiceTdsResolver,
     ) {}
@@ -278,8 +280,11 @@ final class TripInvoiceService
                     $additional = bcadd($additional, $charge['amount'], 2);
                 }
 
+                $invoiceCompany = Company::query()->findOrFail($locked->company_id);
+                $invoiceBranch = Branch::query()->findOrFail($locked->branch_id);
                 [$taxable, $gstAmount, $invoiceTotal, $gstSnapshot] = $this->computeTaxTotals(
-                    Company::query()->findOrFail($locked->company_id),
+                    $invoiceCompany,
+                    $invoiceBranch,
                     $baseFreight,
                     $additional,
                 );
@@ -462,7 +467,7 @@ final class TripInvoiceService
                     $additional = bcadd($additional, $charge['amount'], 2);
                 }
 
-                [$taxable, $gstAmount, $invoiceTotal, $gstSnapshot] = $this->computeTaxTotals($company, $baseFreight, $additional);
+                [$taxable, $gstAmount, $invoiceTotal, $gstSnapshot] = $this->computeTaxTotals($company, $branch, $baseFreight, $additional);
                 $tdsRate = $this->tdsResolver->resolvePercent($billingCustomer);
 
                 $invoice = TripInvoice::query()->create([
@@ -646,16 +651,17 @@ final class TripInvoiceService
      * @param  numeric-string  $additional
      * @return array{numeric-string, numeric-string, numeric-string, array<string, mixed>|null}
      */
-    private function computeTaxTotals(Company $company, string $baseFreight, string $additional): array
+    private function computeTaxTotals(Company $company, Branch $branch, string $baseFreight, string $additional): array
     {
         $taxable = bcadd($baseFreight, $additional, 2);
-        $snapshot = $company->gst_rate_snapshot;
+        $effective = $this->gstResolver->resolve($company, $branch);
+        $snapshot = is_array($effective->gstRateSnapshot) ? $effective->gstRateSnapshot : null;
         $gstAmount = '0.00';
 
         if (is_array($snapshot) && filled($snapshot['rate_percent'] ?? null)) {
             $gstAmount = bcmul($taxable, bcdiv((string) $snapshot['rate_percent'], '100', 6), 2);
-        } elseif (filled($company->gst_rate_id)) {
-            $rate = GstRate::query()->find($company->gst_rate_id);
+        } elseif (filled($effective->gstRateId)) {
+            $rate = GstRate::query()->find($effective->gstRateId);
             if ($rate !== null) {
                 $snapshot = $rate->toSnapshot();
                 $gstAmount = bcmul($taxable, bcdiv((string) $rate->rate_percent, '100', 6), 2);
@@ -663,6 +669,18 @@ final class TripInvoiceService
         }
 
         $invoiceTotal = bcadd($taxable, $gstAmount, 2);
+        $snapshot = is_array($snapshot) ? array_merge($snapshot, [
+            'supplier_gstin' => $effective->gstin,
+            'supplier_state' => $effective->supplierState,
+            'supplier_state_gst_code' => $effective->supplierStateGstCode,
+            'gst_mode' => $effective->mode->value,
+            'gst_amount' => $gstAmount,
+        ]) : [
+            'supplier_gstin' => $effective->gstin,
+            'supplier_state' => $effective->supplierState,
+            'gst_mode' => $effective->mode->value,
+            'gst_amount' => $gstAmount,
+        ];
 
         return [$taxable, $gstAmount, $invoiceTotal, $snapshot];
     }

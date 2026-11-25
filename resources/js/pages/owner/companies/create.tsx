@@ -1,6 +1,7 @@
 import { Form, Head, Link } from '@inertiajs/react';
 import { Save } from 'lucide-react';
 import { FormSection } from '@/components/form-section';
+import { StateCityFields } from '@/components/geography/state-city-fields';
 import { PageShell } from '@/components/page-shell';
 import { useState } from 'react';
 import OwnerCompaniesController from '@/actions/App/Http/Controllers/Owner/OwnerCompaniesController';
@@ -48,6 +49,10 @@ export default function OwnerCompanyCreate({
     const [createBranch, setCreateBranch] = useState(
         defaults.create_initial_branch,
     );
+    const [stateId, setStateId] = useState('');
+    const [cityId, setCityId] = useState('');
+    const [stateName, setStateName] = useState('');
+    const [cityName, setCityName] = useState('');
     const needsGstin = gstType !== 'unregistered';
 
     return (
@@ -103,30 +108,35 @@ export default function OwnerCompanyCreate({
                                                 }
                                             />
                                         </div>
-                                        <div className="grid gap-4 md:col-span-2 md:grid-cols-3">
-                                            <Field
-                                                id="state"
-                                                label="State"
-                                                name="state"
+                                        <div className="md:col-span-2">
+                                            <StateCityFields
                                                 required
-                                                error={errors.state}
+                                                stateId={stateId}
+                                                cityId={cityId}
+                                                stateName={stateName}
+                                                cityName={cityName}
+                                                stateError={errors.state_id}
+                                                cityError={errors.city_id}
+                                                onChange={(next) => {
+                                                    setStateId(next.state_id);
+                                                    setCityId(next.city_id);
+                                                    setStateName(next.state);
+                                                    setCityName(next.city);
+                                                }}
                                             />
-                                            <Field
-                                                id="city"
-                                                label="City"
-                                                name="city"
-                                                required
-                                                error={errors.city}
+                                            <InputError
+                                                message={errors.state}
                                             />
-                                            <Field
-                                                id="pin"
-                                                label="PIN"
-                                                name="pin"
-                                                required
-                                                maxLength={6}
-                                                error={errors.pin}
-                                            />
+                                            <InputError message={errors.city} />
                                         </div>
+                                        <Field
+                                            id="pin"
+                                            label="PIN"
+                                            name="pin"
+                                            required
+                                            maxLength={6}
+                                            error={errors.pin}
+                                        />
                                     </FormSection>
 
                                     <FormSection

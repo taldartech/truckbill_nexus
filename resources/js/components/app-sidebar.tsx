@@ -133,6 +133,11 @@ export function AppSidebar() {
                   icon: CreditCard,
               },
               {
+                  title: 'Payment History',
+                  href: '/management/subscription/payments',
+                  icon: Receipt,
+              },
+              {
                   title: 'Audit',
                   href: '/management/audit',
                   icon: FileSearch,
@@ -322,6 +327,11 @@ export function AppSidebar() {
                     title: 'TDS rules',
                     href: tdsRules.url(),
                     icon: Receipt,
+                },
+                {
+                    title: 'Locations',
+                    href: '/admin/locations',
+                    icon: MapPin,
                 },
             ] as NavItem[],
         },
