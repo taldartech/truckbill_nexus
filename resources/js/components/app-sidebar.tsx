@@ -210,6 +210,11 @@ export function AppSidebar() {
             icon: Receipt,
         },
         {
+            title: 'Pending Loading',
+            href: '/partload/pending-loading',
+            icon: ClipboardList,
+        },
+        {
             title: 'Partload Challans',
             href: '/partload/challans',
             icon: Truck,
