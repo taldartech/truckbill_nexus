@@ -215,6 +215,11 @@ export function AppSidebar() {
             icon: ClipboardList,
         },
         {
+            title: 'In Transit',
+            href: '/partload/in-transit',
+            icon: Truck,
+        },
+        {
             title: 'Partload Challans',
             href: '/partload/challans',
             icon: Truck,

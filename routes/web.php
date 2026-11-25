@@ -42,6 +42,7 @@ use App\Http\Controllers\Branch\LorryReceiptController;
 use App\Http\Controllers\Branch\MastersHubController;
 use App\Http\Controllers\Branch\PartloadChallanController;
 use App\Http\Controllers\Branch\PartloadDeliveryReceiptController;
+use App\Http\Controllers\Branch\PartloadInTransitController;
 use App\Http\Controllers\Branch\PartloadInwardController;
 use App\Http\Controllers\Branch\PartloadMainChallanController;
 use App\Http\Controllers\Branch\PartloadPendingLoadingController;
@@ -322,6 +323,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/partload/challans/{partloadChallan}/cancel', [PartloadChallanController::class, 'cancel'])->name('branch.partload.challans.cancel');
 
         Route::get('/partload/pending-loading', [PartloadPendingLoadingController::class, 'index'])->name('branch.partload.pending-loading.index');
+        Route::get('/partload/in-transit', [PartloadInTransitController::class, 'index'])->name('branch.partload.in-transit.index');
 
         Route::get('/partload/main-challans', [PartloadMainChallanController::class, 'index'])->name('branch.partload.main-challans.index');
         Route::get('/partload/main-challans/create', [PartloadMainChallanController::class, 'create'])->name('branch.partload.main-challans.create');
