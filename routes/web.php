@@ -21,6 +21,7 @@ use App\Http\Controllers\Branch\Accounting\AccountingCashBankBookController;
 use App\Http\Controllers\Branch\Accounting\AccountingFundTransferController;
 use App\Http\Controllers\Branch\Accounting\AccountingLedgerController;
 use App\Http\Controllers\Branch\Accounting\AccountingLedgerQuickCreateController;
+use App\Http\Controllers\Branch\Accounting\AccountingOpeningBalanceController;
 use App\Http\Controllers\Branch\Accounting\AccountingOutstandingController;
 use App\Http\Controllers\Branch\Accounting\AccountingReportController;
 use App\Http\Controllers\Branch\Accounting\AccountingVoucherController;
@@ -354,6 +355,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/accounting/reports/tax-summary', [AccountingOutstandingController::class, 'tax'])->name('branch.accounting.reports.tax-summary');
         Route::get('/accounting/fund-transfers/create', [AccountingFundTransferController::class, 'create'])->name('branch.accounting.fund-transfers.create');
         Route::post('/accounting/fund-transfers', [AccountingFundTransferController::class, 'store'])->name('branch.accounting.fund-transfers.store');
+        Route::get('/accounting/opening-balances/create', [AccountingOpeningBalanceController::class, 'create'])->name('branch.accounting.opening-balances.create');
+        Route::post('/accounting/opening-balances', [AccountingOpeningBalanceController::class, 'store'])->name('branch.accounting.opening-balances.store');
 
         Route::get('/trips', [TripController::class, 'index'])->name('branch.trips.index');
         Route::get('/trips/{trip}', [TripController::class, 'show'])->name('branch.trips.show');

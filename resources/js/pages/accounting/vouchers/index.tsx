@@ -42,6 +42,7 @@ type Props = {
         bank_book: string;
         outstanding: string;
         fund_transfer: string;
+        opening_balances?: string;
     };
 };
 
@@ -105,6 +106,17 @@ export default function AccountingVouchersIndex({
                                             Fund Transfer
                                         </Link>
                                     </Button>
+                                    {urls.opening_balances ? (
+                                        <Button
+                                            asChild
+                                            variant="outline"
+                                            size="sm"
+                                        >
+                                            <Link href={urls.opening_balances}>
+                                                Opening Balances
+                                            </Link>
+                                        </Button>
+                                    ) : null}
                                     <Button
                                         asChild
                                         size="sm"
