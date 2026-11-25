@@ -673,6 +673,7 @@ final class LorryReceiptService
 
     /**
      * Broker market Bilties require explicit Pay To + Payee (inherited by Lorry Hire).
+     * Own / non-market vehicles must not carry Pay To.
      */
     private function assertIntendedPayee(
         Company $company,
@@ -680,27 +681,30 @@ final class LorryReceiptService
         ?string $payeeType,
         ?string $payeePartyId,
     ): void {
+        $vehicle = null;
+        if ($vehicleId !== null && $vehicleId !== '') {
+            $vehicle = Vehicle::query()
+                ->where('company_id', $company->id)
+                ->whereKey($vehicleId)
+                ->whereNull('deleted_at')
+                ->first();
+        }
+
+        $isMarket = $vehicle !== null && $vehicle->ownership === VehicleOwnership::Market;
+
+        if (! $isMarket) {
+            if ($payeeType !== null || $payeePartyId !== null) {
+                throw ValidationException::withMessages([
+                    'intended_payee_type' => 'Pay To applies only to market vehicles.',
+                ]);
+            }
+
+            return;
+        }
+
         if ($payeeType === null || $payeePartyId === null) {
             throw ValidationException::withMessages([
                 'intended_payee_party_id' => 'Pay To and Payee are required for Broker market Bilties.',
-            ]);
-        }
-
-        if ($vehicleId === null) {
-            throw ValidationException::withMessages([
-                'intended_payee_type' => 'Select a market vehicle before choosing Pay To.',
-            ]);
-        }
-
-        $vehicle = Vehicle::query()
-            ->where('company_id', $company->id)
-            ->whereKey($vehicleId)
-            ->whereNull('deleted_at')
-            ->first();
-
-        if ($vehicle === null || $vehicle->ownership !== VehicleOwnership::Market) {
-            throw ValidationException::withMessages([
-                'intended_payee_type' => 'Pay To applies only to market vehicles.',
             ]);
         }
 
@@ -966,7 +970,15 @@ final class LorryReceiptService
             $actualWeight = $this->optionalDecimal($row['actual_weight'] ?? null, "goods.{$index}.actual_weight", 3);
             $chargedWeight = $this->optionalDecimal($row['charged_weight'] ?? null, "goods.{$index}.charged_weight", 3);
             $rate = $this->requireDecimal($row['freight_rate'] ?? null, "goods.{$index}.freight_rate", 4);
-            $semantics = $this->resolveRateSemantics($row['rate_semantics'] ?? null);
+            $existingSemantics = null;
+            if (isset($row['id']) && is_string($row['id']) && $row['id'] !== '') {
+                $existing = LrGoodsRow::query()->whereKey($row['id'])->first();
+                $existingSemantics = $existing?->rate_semantics;
+            }
+            $semantics = $this->resolveRateSemantics(
+                $row['rate_semantics'] ?? null,
+                $existingSemantics,
+            );
 
             try {
                 $freightAmount = $this->freight->compute(
@@ -1278,17 +1290,30 @@ final class LorryReceiptService
         }
 
         $trimmed = trim((string) $value);
-        if (! preg_match('/^\d+$/', $trimmed) || (int) $trimmed < 1) {
+        // Accept integer strings and whole-number decimals from allocation math (e.g. "12.000").
+        if (preg_match('/^\d+$/', $trimmed) === 1) {
+            $normalized = $trimmed;
+        } elseif (preg_match('/^\d+\.0+$/', $trimmed) === 1) {
+            $normalized = (string) (int) $trimmed;
+        } else {
             throw ValidationException::withMessages([
                 $field => 'Number of Units must be a positive whole number.',
             ]);
         }
 
-        return $trimmed;
+        if ((int) $normalized < 1) {
+            throw ValidationException::withMessages([
+                $field => 'Number of Units must be a positive whole number.',
+            ]);
+        }
+
+        return $normalized;
     }
 
-    private function resolveRateSemantics(mixed $value): FreightRateSemantics
-    {
+    private function resolveRateSemantics(
+        mixed $value,
+        ?FreightRateSemantics $existing = null,
+    ): FreightRateSemantics {
         if ($value instanceof FreightRateSemantics) {
             return $value;
         }
@@ -1297,8 +1322,17 @@ final class LorryReceiptService
         if ($raw !== '') {
             $parsed = FreightRateSemantics::tryFrom($raw);
             if ($parsed !== null) {
+                // Editing must not silently switch historical weight_kg → weight_mt.
+                if ($existing !== null && $existing !== $parsed) {
+                    return $existing;
+                }
+
                 return $parsed;
             }
+        }
+
+        if ($existing !== null) {
+            return $existing;
         }
 
         // New goods rows default to MT-based Actual/Charged Weight rates.

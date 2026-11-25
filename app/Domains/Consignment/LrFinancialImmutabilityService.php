@@ -141,6 +141,11 @@ final class LrFinancialImmutabilityService
                 : (string) ($incoming['freight_rate_type'] ?? '');
             $existingRateType = $row->freight_rate_type->value;
 
+            $incomingSemantics = $incoming['rate_semantics'] instanceof \BackedEnum
+                ? $incoming['rate_semantics']->value
+                : (string) ($incoming['rate_semantics'] ?? '');
+            $existingSemantics = $row->rate_semantics?->value ?? '';
+
             if (
                 (string) ($incoming['goods_description'] ?? '') !== (string) $row->goods_description
                 || $this->decimalChanged((string) ($incoming['freight_amount'] ?? '0'), (string) $row->freight_amount)
@@ -149,6 +154,7 @@ final class LrFinancialImmutabilityService
                 || (string) ($incoming['package_count'] ?? '') !== (string) ($row->package_count ?? '')
                 || (string) ($incoming['freight_rate'] ?? '') !== (string) ($row->freight_rate ?? '')
                 || $incomingRateType !== $existingRateType
+                || ($incomingSemantics !== '' && $incomingSemantics !== $existingSemantics)
             ) {
                 return true;
             }

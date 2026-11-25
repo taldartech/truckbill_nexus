@@ -59,15 +59,15 @@
 
 ## Regression (continuation pass)
 
-| Check                                                                      | Result                                                                                  |
-| -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
-| `npm run check` / `types:check` / production build / Pint                  | Pass @ `946f743`                                                                        |
-| Focused Pest (`LorryHire\|TransporterVoucher\|LinkedBilty\|BrokerInvoice`) | **40 passed**                                                                           |
-| Full PostgreSQL Pest                                                       | Incomplete locally — memory/419 CSRF noise on shared env; not treated as UI regressions |
-| Disposable MySQL 8.4 Pest                                                  | Not executed this pass                                                                  |
-| Playwright journey A (Bilty Register)                                      | **Pass**                                                                                |
-| Playwright journey B/C                                                     | Needs re-run after Bilty show `h1` fix                                                  |
-| Live legacy apps                                                           | Not launched (read-only source + Nexus screenshots only)                                |
+| Check                                                                      | Result                                                                                                                   |
+| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `npm run check` / `types:check` / production build / Pint                  | Pass @ `946f743`                                                                                                         |
+| Focused Pest (`LorryHire\|TransporterVoucher\|LinkedBilty\|BrokerInvoice`) | **40 passed**                                                                                                            |
+| Full PostgreSQL Pest                                                       | Incomplete locally this pass — disposable Docker PG used for focused slices; full suite still open (U23-FULL-REGRESSION) |
+| Disposable MySQL 8.4 Pest                                                  | PO-LGC-018 + dialect/seeder slices **Pass** on port 3307                                                                 |
+| Playwright journey A (Bilty Register)                                      | **Pass**                                                                                                                 |
+| Playwright journey B/C                                                     | **Pass** (MT rates + Create Lorry Hire CTA)                                                                              |
+| Live legacy apps                                                           | Not launched (read-only source + Nexus screenshots only)                                                                 |
 
 ## Intentional approved differences (preserve)
 

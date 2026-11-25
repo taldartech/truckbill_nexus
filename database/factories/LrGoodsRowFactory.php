@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Domains\Consignment\Enums\FreightRateSemantics;
 use App\Domains\Consignment\Enums\FreightRateType;
 use App\Models\LorryReceipt;
 use App\Models\LrGoodsRow;
@@ -22,10 +23,12 @@ class LrGoodsRowFactory extends Factory
             'goods_type_id' => null,
             'package_type_id' => null,
             'goods_description' => 'Goods',
-            'package_count' => '5.000',
+            'package_count' => '5',
             'actual_weight' => '10.000',
             'charged_weight' => '10.000',
             'freight_rate_type' => FreightRateType::FixedAmount,
+            // Factories create new-style rows unless a test stamps historical weight_kg.
+            'rate_semantics' => FreightRateSemantics::WeightMt,
             'freight_rate' => '1000.0000',
             'freight_amount' => '1000.00',
             'goods_value' => null,

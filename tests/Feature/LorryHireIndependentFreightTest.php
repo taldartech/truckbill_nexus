@@ -85,8 +85,9 @@ test('create form presents broker free-text route labels', function () {
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('broker/lorry-hires/create')
-            ->where('lorryReceipt.loading_station', 'Mumbai')
-            ->where('lorryReceipt.unloading_station', 'Pune')
+            // Broker route is derived from party city/state (PO-LGC-018).
+            ->where('lorryReceipt.loading_station', 'Mumbai, MH')
+            ->where('lorryReceipt.unloading_station', 'Pune, MH')
             ->has('goodsRows.0.id')
             ->has('rateTypeOptions')
             ->has('transporterOptions')
@@ -107,7 +108,8 @@ test('store endpoint validates loading_weight and persists independent transport
             'transporter_party_id' => $lr->vehicle?->owner_party_id,
             'goods_lines' => [[
                 'lr_goods_row_id' => $rowId,
-                'rate_type' => FreightRateType::PerMt->value,
+                // PO-LGC-018: Per Charged Weight × MT (2500 KG = 2.5 MT × ₹5000 = ₹12500).
+                'rate_type' => FreightRateType::PerChargedWeight->value,
                 'rate' => '5000',
                 'loading_weight' => '2500',
                 'is_fixed_amount' => false,

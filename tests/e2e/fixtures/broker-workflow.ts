@@ -175,11 +175,11 @@ export async function createBrokerLrViaUi(
     await page.getByLabel('Charged weight MT row 1').fill('8');
     await page
         .locator('select[name="goods[0][freight_rate_type]"]')
-        .selectOption('per_mt')
+        .selectOption('per_charged_weight')
         .catch(async () => {
             await page
                 .locator('select[name="goods[0][freight_rate_type]"]')
-                .selectOption({ label: /Per MT/i });
+                .selectOption({ label: 'Per Charged Weight' });
         });
     await page.locator('input[name="goods[0][freight_rate]"]').fill('9000');
 
@@ -237,7 +237,7 @@ export async function createBrokerLrAndContinueToHire(
     await page.getByLabel('Charged weight MT row 1').fill('8');
     await page
         .locator('select[name="goods[0][freight_rate_type]"]')
-        .selectOption('per_mt');
+        .selectOption('per_charged_weight');
     await page.locator('input[name="goods[0][freight_rate]"]').fill('9000');
 
     await page.getByRole('button', { name: 'Save Bilty' }).click();
@@ -313,14 +313,16 @@ export async function createLorryHireFromLr(
         rateType?: string;
     },
 ): Promise<LorryHireContext> {
-    await page.getByRole('tab', { name: 'Actions' }).click();
-    await page.getByRole('link', { name: 'Manage Lorry Hire' }).click();
+    await page
+        .getByRole('link', { name: /Create Lorry Hire|Manage Lorry Hire/i })
+        .first()
+        .click();
     await expect(page).toHaveURL(/\/create-lorry-hire/);
     await expect(
         page.getByRole('heading', { name: 'Create Lorry Hire' }),
     ).toBeVisible();
 
-    const rateType = options?.rateType ?? 'per_mt';
+    const rateType = options?.rateType ?? 'per_charged_weight';
     const rateInput = page.locator('#rate_0');
     await expect(rateInput).toBeVisible();
     await page.locator('#rate_type_0').selectOption(rateType);

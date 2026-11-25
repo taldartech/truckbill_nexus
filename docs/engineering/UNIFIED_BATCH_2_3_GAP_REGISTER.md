@@ -23,8 +23,8 @@
 | U23-HIRE-HERO          | Legacy Freight Booking linked-bilty hero / hire charges grid | Market visual     | Aligned (hero payload + inherit payee)    |
 | U23-CUSTOMER-MANDATORY | Blank Billing Customer blocked; detail shows name            | Shared critical   | Aligned (PO-LGC-018)                      |
 | U23-BROKER-ROUTE       | Broker From/To from Consignor/Consignee                      | Market critical   | Aligned (PO-LGC-018)                      |
-| U23-RATE-MT            | Four new rate types; MT UI; historical `rate_semantics`      | Shared critical   | Aligned (PO-LGC-018)                      |
-| U23-DUP-HIRE           | False active Hire → redirect to existing / uniqueness kept   | Market critical   | Aligned (PO-LGC-018)                      |
+| U23-RATE-MT            | Four new rate types; MT UI; historical `rate_semantics`      | Shared critical   | Aligned + certified (PO-LGC-018 pass)     |
+| U23-DUP-HIRE           | False active Hire → redirect to existing / uniqueness kept   | Market critical   | Aligned; frontend lock + conflict recover |
 | U23-CONFIRM-UI         | Structured multi-column confirmation dialogs                 | Shared visual     | Aligned (partial; continue polish)        |
 | U23-TRIP-ODO           | Odometer on trip create (legacy Vue) vs dispatch on show     | Own intentional   | Retain Nexus (dispatch)                   |
 | U23-MULTI-POINT        | Multi-point pickup/drop UI polish                            | Own               | Open / verify existing domain             |

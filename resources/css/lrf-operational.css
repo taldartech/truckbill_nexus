@@ -13,11 +13,17 @@
     --fs-label: 0.78rem;
     --fs-input: 0.875rem;
     --input-h: 40px;
-    max-width: 1200px;
+    width: 100%;
+    max-width: min(1400px, 100%);
     margin: 0 auto;
     padding: 20px 16px 40px;
     color: var(--text);
     font-size: var(--fs-input);
+}
+
+/* Large operational create/edit forms (Bilty, Hire, Linked, Invoice). */
+.lrf-page--wide {
+    max-width: min(1600px, 100%);
 }
 
 .lrf-page__toolbar {

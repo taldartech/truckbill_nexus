@@ -222,7 +222,15 @@ function FormProcessingBridge({
     processing: boolean;
     onChange: (value: boolean) => void;
 }) {
+    // Only notify on actual processing transitions. Inline onChange identities
+    // change every render; re-firing onChange(false) was clearing submissionLock
+    // between confirm and Inertia start (duplicate Hire POSTs).
+    const previous = useRef<boolean | null>(null);
     useEffect(() => {
+        if (previous.current === processing) {
+            return;
+        }
+        previous.current = processing;
         onChange(processing);
     }, [onChange, processing]);
     return null;
@@ -262,9 +270,11 @@ export default function LorryHireCreate({
     urls,
 }: Props) {
     const submitAllowed = useRef(false);
+    const submissionLock = useRef(false);
     const redirectToVoucher = useRef(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [formProcessing, setFormProcessing] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
     const [reviewFields, setReviewFields] = useState<FieldReview[]>([]);
     const transporterPartyId = useMemo(
         () =>
@@ -435,13 +445,23 @@ export default function LorryHireCreate({
     const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
         if (!submitAllowed.current) {
             event.preventDefault();
-            openConfirmation();
+            if (!submissionLock.current && !formProcessing && !submitting) {
+                openConfirmation();
+            }
             return;
         }
+        // One deliberate confirmation → one native submit; keep lock until response.
         submitAllowed.current = false;
+        submissionLock.current = true;
+        setSubmitting(true);
     };
 
     const submitAfterConfirm = (continueToVoucher: boolean) => {
+        if (submissionLock.current || formProcessing || submitting) {
+            return;
+        }
+        submissionLock.current = true;
+        setSubmitting(true);
         redirectToVoucher.current = continueToVoucher;
         submitAllowed.current = true;
         setConfirmOpen(false);
@@ -455,7 +475,12 @@ export default function LorryHireCreate({
             if (voucherInput) {
                 voucherInput.value = continueToVoucher ? '1' : '0';
             }
-            form?.requestSubmit();
+            if (form === null) {
+                submissionLock.current = false;
+                setSubmitting(false);
+                return;
+            }
+            form.requestSubmit();
         }, 0);
     };
 
@@ -466,7 +491,13 @@ export default function LorryHireCreate({
     const handleCreateClick = (
         event: React.MouseEvent<HTMLButtonElement>,
     ): void => {
-        if (submitAllowed.current) {
+        if (
+            submitAllowed.current ||
+            submissionLock.current ||
+            formProcessing ||
+            submitting
+        ) {
+            event.preventDefault();
             return;
         }
         event.preventDefault();
@@ -609,7 +640,16 @@ export default function LorryHireCreate({
                         <>
                             <FormProcessingBridge
                                 processing={processing}
-                                onChange={setFormProcessing}
+                                onChange={(next) => {
+                                    setFormProcessing((was) => {
+                                        // Unlock only after a real Inertia round-trip ends.
+                                        if (was && !next) {
+                                            submissionLock.current = false;
+                                            setSubmitting(false);
+                                        }
+                                        return next;
+                                    });
+                                }}
                             />
                             <input
                                 type="hidden"
@@ -1040,8 +1080,13 @@ export default function LorryHireCreate({
 
                 <FormConfirmationDialog
                     open={confirmOpen}
-                    onOpenChange={setConfirmOpen}
-                    processing={formProcessing}
+                    onOpenChange={(open) => {
+                        if (!open && (submitting || formProcessing)) {
+                            return;
+                        }
+                        setConfirmOpen(open);
+                    }}
+                    processing={formProcessing || submitting}
                     mode="create"
                     title="Create this Lorry Hire?"
                     description="Review vehicle, payee, rates, TDS, and net payable before submitting."

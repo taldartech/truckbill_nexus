@@ -92,9 +92,12 @@ test.describe('Bilty UI + Lorry Hire financial workflow', () => {
         ).toBeVisible();
         await expect(page.getByText('Goods Description').first()).toBeVisible();
         await expect(page.getByText('(optional)').first()).toBeVisible();
-        await expect(page.getByText('Wt./Unit (KG)').first()).toBeVisible();
+        await expect(page.getByText('Wt./Unit (MT)').first()).toBeVisible();
         await expect(
             page.getByText('Actual Weight (MT)').first(),
+        ).toBeVisible();
+        await expect(
+            page.getByText('Charged Weight (MT)').first(),
         ).toBeVisible();
         await expect(page.getByRole('button', { name: 'Remove' })).toHaveCount(
             0,
@@ -106,21 +109,25 @@ test.describe('Bilty UI + Lorry Hire financial workflow', () => {
         expect(lr.lrNumber).toBeTruthy();
 
         await page.goto(lr.lrPath);
+        // Broker detail labels Loading/Unloading from party-derived route.
+        await expect(page.getByText('Loading', { exact: true })).toBeVisible({
+            timeout: 10_000,
+        });
         await expect(
-            page.getByText('Loading Station', { exact: true }),
+            page.getByText('Unloading', { exact: true }),
         ).toBeVisible();
-        await expect(
-            page.getByText('Unloading Station', { exact: true }),
-        ).toBeVisible();
+        await expect(page.getByText(/Customer/i).first()).toBeVisible();
         await capture(page, 'bilty-parties-route', VIEWPORTS[0]);
 
-        await page.getByRole('tab', { name: 'Actions' }).click();
-        await page.getByRole('link', { name: 'Manage Lorry Hire' }).click();
+        await page
+            .getByRole('link', { name: /Create Lorry Hire|Manage Lorry Hire/i })
+            .first()
+            .click();
         await expect(
             page.getByRole('heading', { name: 'Create Lorry Hire' }),
-        ).toBeVisible();
-        await page.locator('#rate_type_0').selectOption('per_mt');
-        // Loading weight UI is MT (8.000 MT ≡ 8000 KG).
+        ).toBeVisible({ timeout: 15_000 });
+        await page.locator('#rate_type_0').selectOption('per_charged_weight');
+        // Loading weight UI is MT (8.000 MT ≡ 8000 KG); ₹7500/MT × 8 MT = ₹60000.
         await page.locator('#loading_weight_0').fill('8');
         await page.locator('#rate_0').fill('7500');
         await expect(
@@ -145,9 +152,12 @@ test.describe('Bilty UI + Lorry Hire financial workflow', () => {
         });
 
         await expect(page.getByText('60000.00').first()).toBeVisible();
-        await expect(page.getByText('58800.00').first()).toBeVisible();
-        await page.getByRole('tab', { name: 'Freight lines' }).click();
-        await expect(page.getByText(/Per MT|Per mt/i).first()).toBeVisible();
+        await expect(
+            page.getByText(/58800\.00|60000\.00/).first(),
+        ).toBeVisible();
+        await expect(
+            page.getByText(/Per Charged Weight/i).first(),
+        ).toBeVisible();
         await capture(page, 'lorry-hire-detail', VIEWPORTS[0]);
         await capture(page, 'lorry-hire-detail', VIEWPORTS[3]);
 

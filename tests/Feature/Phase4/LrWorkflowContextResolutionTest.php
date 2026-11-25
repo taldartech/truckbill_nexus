@@ -23,6 +23,7 @@ use App\Domains\Subscription\Support\SubscriptionClock;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\CompanySubscriptionTrial;
+use App\Models\CustomerWebSession;
 use App\Models\OwnerCatalogueItem;
 use App\Models\Party;
 use App\Models\Permission;
@@ -365,16 +366,20 @@ function lrContextPayload(array $ctx, array $overrides = []): array
 
 function lrContextLoginAs(User $user, string $password): void
 {
+    // Clear leftover actingAs() from workspace seeders, then Fortify-login like SessionPolicyTest.
+    // Intermittent 419 root cause was shell SESSION_DRIVER=redis leaking into Pest (see tests/bootstrap.php).
     if (auth()->check()) {
-        test()->post(route('logout'));
+        auth()->logout();
     }
-
     test()->flushSession();
+    CustomerWebSession::query()->where('user_id', $user->id)->delete();
+
     $response = test()->post(route('login.store'), [
         'email' => $user->email,
         'password' => $password,
     ]);
     $response->assertRedirect();
+    test()->assertAuthenticatedAs($user);
     foreach ($response->headers->getCookies() as $cookie) {
         test()->withUnencryptedCookie($cookie->getName(), $cookie->getValue());
     }

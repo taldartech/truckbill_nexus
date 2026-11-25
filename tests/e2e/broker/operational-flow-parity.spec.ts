@@ -32,7 +32,7 @@ test.describe('Broker operational-flow parity', () => {
             page.getByRole('button', { name: 'Create Lorry Hire' }),
         ).toBeVisible();
 
-        await page.locator('#rate_type_0').selectOption('per_mt');
+        await page.locator('#rate_type_0').selectOption('per_charged_weight');
         await page.locator('#loading_weight_0').fill('8');
         await page.locator('#rate_0').fill('7500');
         await page.getByRole('button', { name: 'Create Lorry Hire' }).click();

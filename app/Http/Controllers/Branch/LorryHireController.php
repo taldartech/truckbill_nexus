@@ -230,27 +230,6 @@ class LorryHireController extends Controller
             'redirect_to_voucher' => ['sometimes', 'boolean'],
         ]);
 
-        try {
-            $hire = $this->lorryHires->createFromLorryReceipt($lorryReceipt, $actor, $validated);
-        } catch (ValidationException $e) {
-            throw $e;
-        } catch (BrokerAuthorizationException $e) {
-            abort(403, $e->getMessage());
-        } catch (BrokerConflictException $e) {
-            // Idempotent recovery: first concurrent/duplicate submit often already created the hire.
-            $existing = $this->lorryHires->lorryHireForLorryReceipt($lorryReceipt);
-            if ($existing !== null
-                && str_contains($e->getMessage(), 'already has an active Lorry Hire')) {
-                return redirect()
-                    ->route('branch.broker.lorry-hires.show', [$existing])
-                    ->with('success', 'Lorry Hire already exists for this Bilty.');
-            }
-
-            throw ValidationException::withMessages(['goods_lines' => $e->getMessage()]);
-        } catch (BrokerDomainException $e) {
-            throw ValidationException::withMessages(['goods_lines' => $e->getMessage()]);
-        }
-
         $redirectToVoucher = $request->boolean('redirect_to_voucher')
             && $this->authorizer->allowsCustomer(
                 $actor,
@@ -259,15 +238,56 @@ class LorryHireController extends Controller
                 $branch,
             );
 
+        try {
+            $hire = $this->lorryHires->createFromLorryReceipt($lorryReceipt, $actor, $validated);
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (BrokerAuthorizationException $e) {
+            abort(403, $e->getMessage());
+        } catch (BrokerConflictException $e) {
+            // Idempotent recovery for duplicate/concurrent submit of the same LR.
+            $existing = $this->lorryHires->lorryHireForLorryReceipt($lorryReceipt);
+            if ($existing !== null
+                && str_contains($e->getMessage(), 'already has an active Lorry Hire')) {
+                return $this->redirectAfterHireCreate(
+                    $existing,
+                    $redirectToVoucher,
+                    existing: true,
+                );
+            }
+
+            throw ValidationException::withMessages(['goods_lines' => $e->getMessage()]);
+        } catch (BrokerDomainException $e) {
+            throw ValidationException::withMessages(['goods_lines' => $e->getMessage()]);
+        }
+
+        return $this->redirectAfterHireCreate($hire, $redirectToVoucher, existing: false);
+    }
+
+    private function redirectAfterHireCreate(
+        LorryHire $hire,
+        bool $redirectToVoucher,
+        bool $existing,
+    ): RedirectResponse {
         if ($redirectToVoucher) {
             return redirect()
                 ->route('branch.broker.vouchers.create', ['lorry_hire_id' => $hire->id])
-                ->with('success', 'Lorry Hire created. Continue with voucher payment.');
+                ->with(
+                    'success',
+                    $existing
+                        ? 'Lorry Hire already exists. Continue with voucher payment.'
+                        : 'Lorry Hire created. Continue with voucher payment.',
+                );
         }
 
         return redirect()
             ->route('branch.broker.lorry-hires.show', [$hire])
-            ->with('success', 'Broker Lorry Hire created.');
+            ->with(
+                'success',
+                $existing
+                    ? 'Lorry Hire already exists for this Bilty.'
+                    : 'Broker Lorry Hire created.',
+            );
     }
 
     public function show(Request $request, LorryHire $lorryHire, Company $company, Branch $branch): Response

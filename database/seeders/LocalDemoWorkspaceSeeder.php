@@ -536,6 +536,8 @@ class LocalDemoWorkspaceSeeder extends Seeder
                 $owner,
                 $consignorParty,
                 $consigneeParty,
+                $customerParty,
+                $transporterParty,
                 $catalogues,
                 $marketVehicle,
                 'demo-lr:'.$company->id.':'.$branch->id.':'.$i,
@@ -567,6 +569,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
             $vehiclePendingTrip,
             $fromStation,
             $toStation,
+            $customerParty,
             $catalogues,
             'demo-ownfleet:'.$company->id.':pending',
         );
@@ -1438,6 +1441,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
         Vehicle $vehicle,
         Station $fromStation,
         Station $toStation,
+        Party $billingCustomer,
         array $catalogues,
         string $fixtureKey,
     ): void {
@@ -1455,6 +1459,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
             $existingLr = $lorryReceipts->create($company, $branch, $actor, [
                 'workflow_context' => LrWorkflowContext::OwnFleet->value,
                 'vehicle_id' => $vehicle->id,
+                'billing_customer_party_id' => $billingCustomer->id,
                 'number_mode' => 'auto',
                 'lr_date' => CarbonImmutable::now()->subDay()->toDateString(),
                 'from_station_id' => $fromStation->id,
@@ -1651,6 +1656,8 @@ class LocalDemoWorkspaceSeeder extends Seeder
         User $actor,
         Party $consignor,
         Party $consignee,
+        Party $billingCustomer,
+        Party $marketPayee,
         array $catalogues,
         Vehicle $vehicle,
         string $fixtureKey,
@@ -1670,6 +1677,9 @@ class LocalDemoWorkspaceSeeder extends Seeder
         $lorryReceipts->create($company, $branch, $actor, [
             'workflow_context' => 'broker',
             'vehicle_id' => $vehicle->id,
+            'billing_customer_party_id' => $billingCustomer->id,
+            'intended_payee_type' => 'owner',
+            'intended_payee_party_id' => $marketPayee->id,
             'number_mode' => 'auto',
             'lr_date' => CarbonImmutable::now()->subDays($index)->toDateString(),
             'from_text' => 'Demo From '.$fixtureKey,
@@ -2041,6 +2051,9 @@ class LocalDemoWorkspaceSeeder extends Seeder
             $pendingLr = $lorryReceipts->create($company, $branch, $owner, [
                 'workflow_context' => LrWorkflowContext::Broker->value,
                 'vehicle_id' => $ownerVehicle->id,
+                'billing_customer_party_id' => $billingCustomer->id,
+                'intended_payee_type' => 'owner',
+                'intended_payee_party_id' => $ownerTransporter->id,
                 'number_mode' => 'auto',
                 'lr_date' => CarbonImmutable::now()->subDays(3)->toDateString(),
                 'from_text' => $pendingFrom,
@@ -2074,7 +2087,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
 
         if ($pendingLr->lorryHire()->whereNull('deleted_at')->doesntExist()) {
             $lorryHires->createFromLorryReceipt($pendingLr, $owner, [
-                'transporter_party_id' => $pendingLr->vehicle?->owner_party_id,
+                'transporter_party_id' => $pendingLr->intended_payee_party_id ?? $pendingLr->vehicle?->owner_party_id,
                 'goods_lines' => $this->brokerGoodsLinesFromLorryReceipt($pendingLr),
             ]);
         }
@@ -2092,6 +2105,8 @@ class LocalDemoWorkspaceSeeder extends Seeder
                 'workflow_context' => LrWorkflowContext::Broker->value,
                 'vehicle_id' => $agencyVehicle->id,
                 'billing_customer_party_id' => $billingCustomer->id,
+                'intended_payee_type' => 'agency',
+                'intended_payee_party_id' => $agencyTransporter->id,
                 'number_mode' => 'auto',
                 'lr_date' => CarbonImmutable::now()->subDays(2)->toDateString(),
                 'from_text' => $activeFrom,
@@ -2111,14 +2126,18 @@ class LocalDemoWorkspaceSeeder extends Seeder
                     ],
                 ],
             ]);
-        } elseif ($activeLr->billing_customer_party_id === null) {
-            $activeLr->forceFill(['billing_customer_party_id' => $billingCustomer->id])->save();
+        } elseif ($activeLr->billing_customer_party_id === null || $activeLr->intended_payee_party_id === null) {
+            $activeLr->forceFill([
+                'billing_customer_party_id' => $billingCustomer->id,
+                'intended_payee_type' => 'agency',
+                'intended_payee_party_id' => $agencyTransporter->id,
+            ])->save();
         }
 
         $activeHire = $activeLr->lorryHire()->whereNull('deleted_at')->first();
         if ($activeHire === null) {
             $activeHire = $lorryHires->createFromLorryReceipt($activeLr, $owner, [
-                'transporter_party_id' => $activeLr->vehicle?->owner_party_id,
+                'transporter_party_id' => $activeLr->intended_payee_party_id ?? $activeLr->vehicle?->owner_party_id,
                 'goods_lines' => $this->brokerGoodsLinesFromLorryReceipt($activeLr),
             ]);
         }
@@ -2215,6 +2234,9 @@ class LocalDemoWorkspaceSeeder extends Seeder
             $linkedOne = $lorryReceipts->create($company, $branch, $owner, [
                 'workflow_context' => LrWorkflowContext::Broker->value,
                 'vehicle_id' => $ownerVehicle->id,
+                'billing_customer_party_id' => $billingCustomer->id,
+                'intended_payee_type' => 'owner',
+                'intended_payee_party_id' => $ownerTransporter->id,
                 'number_mode' => 'auto',
                 'lr_date' => CarbonImmutable::now()->subDay()->toDateString(),
                 'from_text' => $linkedMarker.':a',
@@ -2235,6 +2257,9 @@ class LocalDemoWorkspaceSeeder extends Seeder
             $linkedTwo = $lorryReceipts->create($company, $branch, $owner, [
                 'workflow_context' => LrWorkflowContext::Broker->value,
                 'vehicle_id' => $ownerVehicle->id,
+                'billing_customer_party_id' => $billingCustomer->id,
+                'intended_payee_type' => 'owner',
+                'intended_payee_party_id' => $ownerTransporter->id,
                 'number_mode' => 'auto',
                 'lr_date' => CarbonImmutable::now()->subDay()->toDateString(),
                 'from_text' => $linkedMarker.':b',
@@ -2254,11 +2279,11 @@ class LocalDemoWorkspaceSeeder extends Seeder
             ]);
 
             $linkedHireA = $lorryHires->createFromLorryReceipt($linkedOne, $owner, [
-                'transporter_party_id' => $linkedOne->vehicle?->owner_party_id,
+                'transporter_party_id' => $linkedOne->intended_payee_party_id ?? $linkedOne->vehicle?->owner_party_id,
                 'goods_lines' => $this->brokerGoodsLinesFromLorryReceipt($linkedOne),
             ]);
             $lorryHires->createFromLorryReceipt($linkedTwo, $owner, [
-                'transporter_party_id' => $linkedTwo->vehicle?->owner_party_id,
+                'transporter_party_id' => $linkedTwo->intended_payee_party_id ?? $linkedTwo->vehicle?->owner_party_id,
                 'goods_lines' => $this->brokerGoodsLinesFromLorryReceipt($linkedTwo),
             ]);
 

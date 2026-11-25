@@ -459,10 +459,8 @@ final class LorryHireService
                 ? $this->formattedWeight((string) $input['loading_weight'])
                 : $this->loadingWeightFromGoodsRow($row);
 
-            $semantics = $row->rate_semantics ?? FreightRateSemantics::forNewRows();
-            if (isset($input['rate_semantics']) && is_string($input['rate_semantics'])) {
-                $semantics = FreightRateSemantics::tryFrom($input['rate_semantics']) ?? $semantics;
-            }
+            // Authoritative semantics come from the linked Bilty goods row — never trust client overrides.
+            $semantics = $row->rate_semantics ?? FreightRateSemantics::WeightKg;
 
             $freightAmount = $this->calculations->goodsLineFreight([
                 'rate_type' => $rateType,

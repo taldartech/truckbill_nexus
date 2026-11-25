@@ -36,7 +36,7 @@ export function LrfPage({
     className?: string;
 }) {
     return (
-        <div className={cn('lrf-page', className)}>
+        <div className={cn('lrf-page lrf-page--wide', className)}>
             <div className="lrf-page__toolbar">
                 <div className="lrf-page__toolbar-left">
                     <div className="flex flex-wrap items-center gap-2">

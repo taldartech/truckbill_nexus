@@ -53,6 +53,7 @@ type NamedOption = { id: string; name: string; code?: string };
 type VehicleOption = VehicleSelectOption;
 
 type GoodsRow = {
+    id?: string;
     goods_type_id: string;
     package_type_id: string;
     goods_description: string;
@@ -90,6 +91,7 @@ type LorryReceiptDetail = {
     consignee_party_id: string | null;
     goods_value: string | null;
     goods: Array<{
+        id?: string | null;
         goods_type_id: string | null;
         package_type_id: string | null;
         goods_description: string | null;
@@ -158,6 +160,7 @@ type GoodsFieldSource =
     | 'actual_weight'
     | 'package_count'
     | 'charged_weight'
+    | 'match_actual'
     | 'other';
 
 const NEW_ROW_RATE_TYPE_VALUES = new Set([
@@ -434,6 +437,7 @@ function mapGoodsFromReceipt(goods: LorryReceiptDetail['goods']): GoodsRow[] {
         const actualMt = kgToMt(row.actual_weight);
         const chargedMt = kgToMt(row.charged_weight);
         return {
+            id: row.id ?? undefined,
             goods_type_id: row.goods_type_id ?? '',
             package_type_id: row.package_type_id ?? '',
             goods_description: row.goods_description ?? '',
@@ -446,9 +450,7 @@ function mapGoodsFromReceipt(goods: LorryReceiptDetail['goods']): GoodsRow[] {
             actual_weight: actualMt,
             charged_weight: chargedMt,
             freight_rate_type: row.freight_rate_type,
-            rate_semantics:
-                (row as { rate_semantics?: string | null }).rate_semantics ??
-                'weight_kg',
+            rate_semantics: row.rate_semantics ?? 'weight_kg',
             freight_rate: row.freight_rate ?? '0',
             goods_value: row.goods_value ?? '',
         };
@@ -472,7 +474,14 @@ function FormProcessingBridge({
     processing: boolean;
     onChange: (value: boolean) => void;
 }) {
+    // Only notify on actual processing transitions — avoid re-firing when the
+    // parent passes a new onChange identity while processing is unchanged.
+    const previous = useRef<boolean | null>(null);
     useEffect(() => {
+        if (previous.current === processing) {
+            return;
+        }
+        previous.current = processing;
         onChange(processing);
     }, [onChange, processing]);
     return null;
@@ -585,7 +594,25 @@ export default function LrForm({
     );
 
     const goodsSyncGuard = useRef<Record<number, GoodsFieldSource | null>>({});
-    const chargedWeightTouched = useRef<Record<number, boolean>>({});
+    const chargedWeightTouched = useRef<Record<number, boolean>>(
+        (() => {
+            const initial: Record<number, boolean> = {};
+            if (lorryReceipt?.goods?.length) {
+                mapGoodsFromReceipt(lorryReceipt.goods).forEach(
+                    (row, index) => {
+                        if (
+                            row.charged_weight !== '' &&
+                            row.actual_weight !== '' &&
+                            row.charged_weight !== row.actual_weight
+                        ) {
+                            initial[index] = true;
+                        }
+                    },
+                );
+            }
+            return initial;
+        })(),
+    );
     const [fromText, setFromText] = useState(lorryReceipt?.from_text ?? '');
     const [toText, setToText] = useState(lorryReceipt?.to_text ?? '');
 
@@ -800,10 +827,14 @@ export default function LrForm({
                         );
                     } else if (source === 'charged_weight') {
                         chargedWeightTouched.current[index] = true;
+                    } else if (source === 'match_actual') {
+                        chargedWeightTouched.current[index] = false;
+                        next.charged_weight = next.actual_weight;
                     }
 
                     if (
                         source !== 'charged_weight' &&
+                        source !== 'match_actual' &&
                         !chargedWeightTouched.current[index] &&
                         next.actual_weight !== ''
                     ) {
@@ -2247,10 +2278,40 @@ export default function LrForm({
                                                             />
                                                         </div>
                                                         <div className="space-y-1">
-                                                            <Label className="text-xs">
-                                                                Charged Weight
-                                                                (MT)
-                                                            </Label>
+                                                            <div className="flex items-center justify-between gap-2">
+                                                                <Label className="text-xs">
+                                                                    Charged
+                                                                    Weight (MT)
+                                                                </Label>
+                                                                {row.charged_weight !==
+                                                                    row.actual_weight &&
+                                                                row.actual_weight !==
+                                                                    '' ? (
+                                                                    <button
+                                                                        type="button"
+                                                                        className="text-[11px] font-medium text-[#2A6FDB] underline"
+                                                                        onClick={() =>
+                                                                            applyGoodsField(
+                                                                                index,
+                                                                                {},
+                                                                                'match_actual',
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        Match
+                                                                        Actual
+                                                                    </button>
+                                                                ) : null}
+                                                            </div>
+                                                            {row.id ? (
+                                                                <input
+                                                                    type="hidden"
+                                                                    name={`goods[${index}][id]`}
+                                                                    value={
+                                                                        row.id
+                                                                    }
+                                                                />
+                                                            ) : null}
                                                             <input
                                                                 type="hidden"
                                                                 name={`goods[${index}][charged_weight]`}

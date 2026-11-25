@@ -10,7 +10,10 @@ export function AppIndexPage({
 }) {
     return (
         <div
-            className={cn('app-index-page app-index-page--standard', className)}
+            className={cn(
+                'app-index-page app-index-page--standard app-index-page--register',
+                className,
+            )}
         >
             {children}
         </div>

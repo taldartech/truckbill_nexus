@@ -22,6 +22,7 @@ use App\Domains\Rbac\PermissionCodes;
 use App\Domains\Rbac\RoleAssignmentService;
 use App\Models\Branch;
 use App\Models\Company;
+use App\Models\CustomerWebSession;
 use App\Models\LorryReceipt;
 use App\Models\OwnerCatalogueItem;
 use App\Models\Party;
@@ -506,15 +507,17 @@ test('update is rejected when delivered', function () {
 function lrLoginAs(User $user, string $password): void
 {
     if (auth()->check()) {
-        test()->post(route('logout'));
+        auth()->logout();
     }
-
     test()->flushSession();
+    CustomerWebSession::query()->where('user_id', $user->id)->delete();
+
     $response = test()->post(route('login.store'), [
         'email' => $user->email,
         'password' => $password,
     ]);
     $response->assertRedirect();
+    test()->assertAuthenticatedAs($user);
     foreach ($response->headers->getCookies() as $cookie) {
         test()->withUnencryptedCookie($cookie->getName(), $cookie->getValue());
     }

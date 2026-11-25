@@ -2,6 +2,7 @@
 
 namespace App\Domains\Enquiry;
 
+use App\Domains\Consignment\Enums\FreightRateSemantics;
 use App\Domains\Consignment\Enums\FreightRateType;
 use App\Domains\Consignment\Enums\LrWorkflowContext;
 use App\Domains\Consignment\LorryReceiptService;
@@ -447,6 +448,7 @@ final class EnquiryConversionService
                 'actual_weight' => $alloc['actual_weight'] ?? null,
                 'charged_weight' => $alloc['charged_weight'] ?? null,
                 'freight_rate_type' => FreightRateType::FixedAmount->value,
+                'rate_semantics' => FreightRateSemantics::forNewRows()->value,
                 'freight_rate' => $allocIndex === 0 ? $freightAmount : '0',
             ];
         }
@@ -492,6 +494,16 @@ final class EnquiryConversionService
                 throw ValidationException::withMessages(['vehicle_id' => 'Vehicle was not found.']);
             }
             $data['vehicle_id'] = $vehicle->id;
+
+            // Market conversion requires Pay To / Payee (PO-LGC-018). Prefer explicit
+            // payload; otherwise default to Truck Owner = vehicle registered owner.
+            $payeeType = strtolower(trim((string) ($payload['intended_payee_type'] ?? 'owner')));
+            $payeePartyId = $payload['intended_payee_party_id'] ?? null;
+            if ($payeePartyId === null || $payeePartyId === '') {
+                $payeePartyId = $vehicle->owner_party_id;
+            }
+            $data['intended_payee_type'] = $payeeType !== '' ? $payeeType : 'owner';
+            $data['intended_payee_party_id'] = $payeePartyId;
         }
 
         if ($context === LrWorkflowContext::OwnFleet) {
