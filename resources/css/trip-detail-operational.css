@@ -1,0 +1,433 @@
+/* OwnFleet trip show — legacy trip-detail aligned */
+
+.trip-detail-page {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem 0.75rem 2rem;
+}
+
+.trip-detail-page .card {
+    border: 1px solid var(--brand-border, #e5e7eb);
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+    overflow: hidden;
+}
+
+.trip-detail-page > .card > .card-header,
+.trip-detail-page .trip-detail-main > .card > .card-header,
+.trip-detail-page .trip-detail-side > .card > .card-header,
+.trip-detail-page .trip-compact-card > .card-header {
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.65rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid rgba(47, 179, 111, 0.18);
+    background: linear-gradient(
+        135deg,
+        rgba(47, 179, 111, 0.16) 0%,
+        rgba(45, 140, 255, 0.08) 52%,
+        #f8fafc 100%
+    );
+}
+
+.trip-detail-page .card-header::before,
+.trip-detail-page .card-header::after {
+    display: none !important;
+    content: none !important;
+}
+
+.trip-detail-page .card-header.trip-detail-card-header {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 0.5rem 0.65rem !important;
+    flex-wrap: wrap !important;
+}
+
+.trip-detail-page .card-header strong,
+.trip-detail-page .card-header .trip-detail-card-title {
+    flex: 0 0 auto;
+    min-width: 0;
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.trip-detail-actions {
+    display: inline-flex !important;
+    align-items: center;
+    gap: 0.375rem;
+    flex-wrap: wrap;
+    flex: 0 0 auto;
+    margin-left: auto !important;
+}
+
+.trip-info-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.65rem 1rem;
+    padding: 0.75rem 1rem 1rem;
+    font-size: 0.8125rem;
+}
+
+.trip-info-grid__item {
+    min-width: 0;
+}
+
+.trip-info-grid__item--full {
+    grid-column: 1 / -1;
+}
+
+.trip-info-grid__item--span-2 {
+    grid-column: span 2;
+}
+
+.trip-info-grid__label {
+    display: block;
+    margin-bottom: 0.15rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #64748b;
+}
+
+.trip-info-grid__value {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #0f172a;
+    word-break: break-word;
+}
+
+.trip-info-grid__value--accent {
+    color: #15803d;
+    font-weight: 800;
+}
+
+.trip-info-grid__sub {
+    margin-top: 0.15rem;
+    font-size: 0.72rem;
+    color: #64748b;
+}
+
+.trip-detail-km-bar {
+    padding: 0.75rem 1rem 1rem;
+}
+
+.trip-detail-km-bar__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(7rem, 1fr));
+    gap: 0.65rem;
+}
+
+.trip-detail-km-bar__item {
+    padding: 0.5rem 0.65rem;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    background: #f8fafc;
+    min-width: 0;
+}
+
+.trip-detail-km-bar__label {
+    display: block;
+    margin-bottom: 0.2rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    color: #64748b;
+}
+
+.trip-detail-km-bar__item strong {
+    font-size: 0.875rem;
+    color: #0f172a;
+}
+
+.trip-financial-summary {
+    overflow: hidden;
+    border-color: #d8e9df !important;
+}
+
+.trip-financial-summary--loss {
+    border-color: #fecaca !important;
+}
+
+.trip-financial-summary__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid #d8e9df;
+    background: linear-gradient(135deg, #d1e7dd 0%, #f0fdf4 55%, #f8f9fa 100%);
+}
+
+.trip-financial-summary--loss .trip-financial-summary__header {
+    border-bottom-color: #fecaca;
+    background: linear-gradient(135deg, #fee2e2 0%, #fff7ed 55%, #f8f9fa 100%);
+}
+
+.trip-financial-summary__title {
+    display: block;
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.trip-financial-summary__subtitle {
+    display: block;
+    margin-top: 0.1rem;
+    font-size: 0.72rem;
+    color: #64748b;
+}
+
+.trip-financial-summary__badge {
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    padding: 0.35rem 0.7rem;
+    border-radius: 99px;
+    font-size: 0.75rem;
+    font-weight: 800;
+    border: 1px solid transparent;
+    white-space: nowrap;
+}
+
+.trip-financial-summary__badge.is-profit {
+    color: #166534;
+    background: #dcfce7;
+    border-color: #86efac;
+}
+
+.trip-financial-summary__badge.is-loss {
+    color: #991b1b;
+    background: #fee2e2;
+    border-color: #fca5a5;
+}
+
+.trip-financial-summary__body {
+    padding: 0.9rem 1rem 1rem;
+    background: #f6fbf8;
+}
+
+.trip-financial-summary--loss .trip-financial-summary__body {
+    background: #fffaf8;
+}
+
+.trip-financial-summary__stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(5.5rem, 1fr));
+    gap: 0.55rem;
+    margin-bottom: 0.85rem;
+}
+
+.trip-financial-summary__stat {
+    min-width: 0;
+    padding: 0.35rem 0.4rem;
+    border-radius: 10px;
+    border: 1px solid #d8e9df;
+    background: #fff;
+}
+
+.trip-financial-summary__stat--result {
+    border-color: #86efac;
+    background: linear-gradient(180deg, #ecfdf5 0%, #fff 100%);
+}
+
+.trip-financial-summary--loss .trip-financial-summary__stat--result {
+    border-color: #fca5a5;
+    background: linear-gradient(180deg, #fef2f2 0%, #fff 100%);
+}
+
+.trip-financial-summary__stat-label {
+    display: block;
+    margin-bottom: 0.2rem;
+    font-size: 0.66rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    color: #64748b;
+}
+
+.trip-financial-summary__stat-value {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: #0f172a;
+    line-height: 1.2;
+    word-break: break-word;
+}
+
+.trip-financial-summary__stat-value--expense {
+    color: #b45309;
+}
+
+.trip-financial-summary__stat-value.is-profit {
+    color: #15803d;
+}
+
+.trip-financial-summary__stat-value.is-loss {
+    color: #b91c1c;
+}
+
+.trip-financial-summary__bar {
+    position: relative;
+    height: 10px;
+    margin-bottom: 0.5rem;
+    border-radius: 99px;
+    background: #e9ecef;
+    overflow: hidden;
+}
+
+.trip-financial-summary__bar-freight,
+.trip-financial-summary__bar-expense {
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    border-radius: 99px;
+}
+
+.trip-financial-summary__bar-freight {
+    background: #86efac;
+    z-index: 1;
+}
+
+.trip-financial-summary__bar-expense {
+    background: #fdba74;
+    z-index: 2;
+}
+
+.trip-financial-summary__legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    align-items: center;
+    font-size: 0.68rem;
+    color: #64748b;
+    margin-bottom: 0.65rem;
+}
+
+.trip-financial-summary__margin {
+    margin-left: auto;
+    font-weight: 700;
+    color: #475569;
+}
+
+.trip-financial-summary__rows {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.trip-financial-summary__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+}
+
+.trip-performance-card {
+    overflow: hidden;
+    border-color: #d8e9df !important;
+}
+
+.trip-performance-card__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid #d8e9df;
+    background: linear-gradient(135deg, #e0f2fe 0%, #f0fdf4 60%, #f8fafc 100%);
+}
+
+.trip-performance-card__title {
+    margin: 0;
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.trip-performance-card__body {
+    padding: 0.85rem 1rem 1rem;
+    background: #f8fafc;
+}
+
+.trip-performance-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.55rem;
+}
+
+.trip-performance-metrics__item {
+    padding: 0.45rem 0.55rem;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    min-width: 0;
+}
+
+.trip-performance-metrics__label {
+    display: block;
+    margin-bottom: 0.15rem;
+    font-size: 0.66rem;
+    font-weight: 700;
+    color: #64748b;
+}
+
+.trip-performance-metrics__value {
+    font-size: 0.8rem;
+    font-weight: 800;
+    color: #0f172a;
+}
+
+.trip-compact-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.8125rem;
+}
+
+.trip-compact-table thead th {
+    padding: 0.5rem 0.65rem;
+    text-align: left;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: #64748b;
+    background: #f1f5f9;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.trip-compact-table tbody td {
+    padding: 0.5rem 0.65rem;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+}
+
+.trip-compact-table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.trip-compact-empty {
+    padding: 1.25rem 1rem;
+    text-align: center;
+    font-size: 0.875rem;
+    color: #64748b;
+}
+
+.trip-workspace-section {
+    scroll-margin-top: 1rem;
+}
+
+@media (max-width: 767px) {
+    .trip-info-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .trip-info-grid__item--span-2 {
+        grid-column: span 1;
+    }
+}

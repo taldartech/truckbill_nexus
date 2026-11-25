@@ -1,15 +1,28 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
-import { useState } from 'react';
-import { ArrowLeft, Pencil } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import {
+    ArrowLeft,
+    FileText,
+    FolderOpen,
+    Pencil,
+    Printer,
+    Truck,
+    Wallet,
+} from 'lucide-react';
 import { AppIconAction } from '@/components/app-icon-action';
-import { DetailTabPanel, DetailTabs } from '@/components/detail-tabs';
+import {
+    FbCompactTable,
+    FbDetailCard,
+    FbDetailLayout,
+    FbDetailPage,
+    FbFinancialSummary,
+    FbInfoGrid,
+    FbInfoItem,
+} from '@/components/fb-detail';
 import {
     DocumentDrawer,
     type DocumentDrawerProps,
 } from '@/components/masters/document-drawer';
-import { FormSection } from '@/components/form-section';
-import { MetricCard } from '@/components/ui/metric-card';
-import { PageShell } from '@/components/page-shell';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { formatDisplayDate } from '@/lib/dates';
 import { formatMtLabel, kgToMt } from '@/lib/operational-weight';
@@ -34,6 +47,8 @@ type LorryReceipt = {
     freight_total: string;
     additional_charges_total: string;
     cancellation_remark: string | null;
+    delivered_at?: string | null;
+    cancelled_at?: string | null;
     goods: Array<{
         id: string;
         goods_type_name?: string | null;
@@ -92,6 +107,28 @@ type Props = {
     documentDrawer?: Omit<DocumentDrawerProps, 'open' | 'onOpenChange'> | null;
 };
 
+function parseAmount(value: string | null | undefined): number | null {
+    if (value == null || value === '' || value === '—') {
+        return null;
+    }
+
+    const normalized = String(value).replace(/[₹,\s]/g, '');
+    const parsed = Number(normalized);
+
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
+function formatTotal(freight: string, additional: string): string {
+    const freightAmount = parseAmount(freight);
+    const additionalAmount = parseAmount(additional);
+
+    if (freightAmount === null && additionalAmount === null) {
+        return '—';
+    }
+
+    return ((freightAmount ?? 0) + (additionalAmount ?? 0)).toFixed(2);
+}
+
 export default function LorryReceiptShow({
     lorryReceipt,
     permissions,
@@ -105,499 +142,583 @@ export default function LorryReceiptShow({
         errors?: Record<string, string>;
     }>().props;
     const [confirmDelete, setConfirmDelete] = useState(false);
-    const [tab, setTab] = useState('overview');
     const [docsOpen, setDocsOpen] = useState(false);
     const isPending = lorryReceipt.status === 'pending';
+
+    const fromLabel =
+        lorryReceipt.from_station_name || lorryReceipt.from_text || '—';
+    const toLabel = lorryReceipt.to_station_name || lorryReceipt.to_text || '—';
+
+    const freightGrandTotal = useMemo(
+        () =>
+            formatTotal(
+                lorryReceipt.freight_total,
+                lorryReceipt.additional_charges_total,
+            ),
+        [lorryReceipt.freight_total, lorryReceipt.additional_charges_total],
+    );
+
+    const tripManageUrl = linkedTrip ? `${linkedTrip.show_url}#expenses` : null;
 
     return (
         <>
             <Head title={`Bilty ${lorryReceipt.lr_number}`} />
-            <PageShell
-                title={`Bilty ${lorryReceipt.lr_number}`}
-                description={workflowContextLabel(
-                    lorryReceipt.workflow_context,
-                )}
-                actions={
-                    <>
-                        <AppIconAction
-                            icon={ArrowLeft}
-                            label="Back to list"
-                            href={urls.index}
-                            variant="outline"
-                        />
-                        <AppIconAction
-                            icon={Pencil}
-                            label="Edit LR"
-                            href={urls.edit}
-                            variant="warning"
-                            visible={permissions.can_edit && isPending}
-                        />
-                    </>
-                }
-            >
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    <MetricCard
-                        label="Status"
-                        value={
-                            <WorkspaceStatusBadge
-                                status={lorryReceipt.status}
-                            />
-                        }
-                        tone="blue"
-                    />
-                    <MetricCard
-                        label="Route"
-                        value={`${lorryReceipt.from_station_name || lorryReceipt.from_text || '—'} → ${lorryReceipt.to_station_name || lorryReceipt.to_text || '—'}`}
-                        tone="neutral"
-                    />
-                    <MetricCard
-                        label="Freight"
-                        value={`₹${lorryReceipt.freight_total}`}
-                        tone="green"
-                    />
-                    <MetricCard
-                        label="Goods lines"
-                        value={lorryReceipt.goods.length}
-                        tone="amber"
-                    />
-                </div>
+            <FbDetailPage>
+                {lorryReceipt.status === 'cancelled' ? (
+                    <div
+                        className="mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"
+                        role="alert"
+                    >
+                        <strong>Cancelled bilty</strong>
+                        <div className="text-xs">
+                            {lorryReceipt.cancellation_remark ??
+                                'This consignment note cannot be modified.'}
+                        </div>
+                    </div>
+                ) : null}
 
                 {flash?.success ? (
                     <p
                         role="status"
-                        className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm"
+                        className="mb-3 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm"
                     >
                         {flash.success}
                     </p>
                 ) : null}
 
-                <DetailTabs
-                    aria-label="Lorry receipt sections"
-                    tabs={[
-                        { id: 'overview', label: 'Overview' },
-                        {
-                            id: 'goods',
-                            label: 'Goods',
-                            count: lorryReceipt.goods.length,
-                        },
-                        {
-                            id: 'documents',
-                            label: 'E-Way / Charges',
-                            count:
-                                lorryReceipt.eway_bills.length +
-                                lorryReceipt.additional_charges.length,
-                        },
-                        {
-                            id: 'files',
-                            label: 'Files / POD',
-                            count: documentDrawer?.attachments.length ?? 0,
-                        },
-                        { id: 'activity', label: 'Actions' },
-                    ]}
-                    activeId={tab}
-                    onChange={setTab}
-                >
-                    <DetailTabPanel id="activity" activeId={tab}>
-                        <div className="flex flex-wrap gap-2">
-                            {permissions.can_edit && isPending ? (
-                                <Button asChild variant="secondary">
-                                    <Link href={urls.edit}>Edit</Link>
-                                </Button>
-                            ) : null}
-                            {permissions.can_create_trip && urls.create_trip ? (
-                                <Button
-                                    asChild
-                                    className="bg-[#2FB36F] text-white hover:bg-[#279960]"
-                                >
-                                    <Link href={urls.create_trip}>
-                                        Manage Expenses
-                                    </Link>
-                                </Button>
-                            ) : null}
-                            {permissions.can_create_lorry_hire &&
-                            urls.create_lorry_hire ? (
-                                <Button
-                                    asChild
-                                    className="bg-[#2FB36F] text-white hover:bg-[#279960]"
-                                >
-                                    <Link href={urls.create_lorry_hire}>
-                                        Manage Lorry Hire
-                                    </Link>
-                                </Button>
-                            ) : null}
-                            {linkedLorryHire ? (
-                                <Button asChild variant="secondary">
-                                    <Link href={linkedLorryHire.show_url}>
-                                        Manage Lorry Hire{' '}
-                                        {linkedLorryHire.hire_number}
-                                    </Link>
-                                </Button>
-                            ) : null}
-                            {linkedTrip ? (
-                                <Button asChild variant="secondary">
-                                    <Link href={linkedTrip.show_url}>
-                                        Manage Expenses
-                                    </Link>
-                                </Button>
-                            ) : null}
-                            <Button asChild variant="secondary">
-                                <Link href={urls.print}>Print</Link>
-                            </Button>
-                            {permissions.can_delete && isPending ? (
-                                <Button
-                                    type="button"
-                                    variant="destructive"
-                                    onClick={() =>
-                                        setConfirmDelete((value) => !value)
-                                    }
-                                >
-                                    Delete
-                                </Button>
-                            ) : null}
-                        </div>
-
-                        {confirmDelete ? (
-                            <Form
-                                action={urls.destroy}
-                                method="delete"
-                                className="rounded-lg border border-destructive/40 bg-destructive/5 p-4"
-                            >
-                                {({ processing }) => (
-                                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                                        <p className="text-sm">
-                                            Soft-delete this pending LR? This
-                                            cannot be undone from the UI.
-                                        </p>
-                                        <div className="flex gap-2">
-                                            <Button
-                                                type="button"
-                                                variant="secondary"
+                <FbDetailLayout
+                    main={
+                        <>
+                            <FbDetailCard
+                                title={`Bilty Information (${lorryReceipt.lr_number})`}
+                                badges={
+                                    <WorkspaceStatusBadge
+                                        status={lorryReceipt.status}
+                                    />
+                                }
+                                actions={
+                                    <>
+                                        <AppIconAction
+                                            icon={ArrowLeft}
+                                            label="Back to list"
+                                            href={urls.index}
+                                            variant="outline"
+                                            size="sm"
+                                        />
+                                        <AppIconAction
+                                            icon={Printer}
+                                            label="Print bilty"
+                                            href={urls.print}
+                                            variant="secondary"
+                                            size="sm"
+                                        />
+                                        {permissions.can_edit && isPending ? (
+                                            <AppIconAction
+                                                icon={Pencil}
+                                                label="Edit bilty"
+                                                href={urls.edit}
+                                                variant="warning"
+                                                size="sm"
+                                            />
+                                        ) : null}
+                                        {permissions.can_create_trip &&
+                                        urls.create_trip ? (
+                                            <AppIconAction
+                                                icon={Wallet}
+                                                label="Create Trip"
+                                                href={urls.create_trip}
+                                                variant="default"
+                                                size="sm"
+                                            />
+                                        ) : null}
+                                        {linkedTrip && tripManageUrl ? (
+                                            <AppIconAction
+                                                icon={Wallet}
+                                                label="Manage Expenses"
+                                                href={tripManageUrl}
+                                                variant="default"
+                                                size="sm"
+                                            />
+                                        ) : null}
+                                        {permissions.can_create_lorry_hire &&
+                                        urls.create_lorry_hire ? (
+                                            <AppIconAction
+                                                icon={Truck}
+                                                label="Create Lorry Hire"
+                                                href={urls.create_lorry_hire}
+                                                variant="default"
+                                                size="sm"
+                                            />
+                                        ) : null}
+                                        {linkedLorryHire ? (
+                                            <AppIconAction
+                                                icon={Truck}
+                                                label={`Manage Lorry Hire ${linkedLorryHire.hire_number}`}
+                                                href={linkedLorryHire.show_url}
+                                                variant="default"
+                                                size="sm"
+                                            />
+                                        ) : null}
+                                        {documentDrawer ? (
+                                            <AppIconAction
+                                                icon={FolderOpen}
+                                                label="Documents / POD"
                                                 onClick={() =>
-                                                    setConfirmDelete(false)
+                                                    setDocsOpen(true)
                                                 }
+                                                variant="info"
+                                                size="sm"
+                                            />
+                                        ) : urls.documents ? (
+                                            <AppIconAction
+                                                icon={FolderOpen}
+                                                label="Documents"
+                                                href={urls.documents}
+                                                variant="info"
+                                                size="sm"
+                                            />
+                                        ) : null}
+                                    </>
+                                }
+                            >
+                                <FbInfoGrid>
+                                    <FbInfoItem
+                                        label="Bilty No."
+                                        value={lorryReceipt.lr_number}
+                                        accent
+                                    />
+                                    <FbInfoItem
+                                        label="GR Date"
+                                        value={formatDisplayDate(
+                                            lorryReceipt.lr_date,
+                                        )}
+                                    />
+                                    <FbInfoItem
+                                        label="Service"
+                                        value={workflowContextLabel(
+                                            lorryReceipt.workflow_context,
+                                        )}
+                                    />
+                                    <FbInfoItem
+                                        label="Status"
+                                        value={lorryReceipt.status}
+                                    />
+                                    <FbInfoItem
+                                        label="Loading"
+                                        value={fromLabel}
+                                        accent
+                                    />
+                                    <FbInfoItem
+                                        label="Unloading"
+                                        value={toLabel}
+                                        accent
+                                    />
+                                    <FbInfoItem
+                                        label="Consignor"
+                                        value={lorryReceipt.consignor_name}
+                                    />
+                                    <FbInfoItem
+                                        label="Consignee"
+                                        value={lorryReceipt.consignee_name}
+                                    />
+                                    <FbInfoItem
+                                        label="Goods value"
+                                        value={lorryReceipt.goods_value}
+                                    />
+                                    <FbInfoItem
+                                        label="Freight total"
+                                        value={lorryReceipt.freight_total}
+                                    />
+                                    <FbInfoItem
+                                        label="Additional charges"
+                                        value={
+                                            lorryReceipt.additional_charges_total
+                                        }
+                                    />
+                                </FbInfoGrid>
+                            </FbDetailCard>
+
+                            <FbCompactTable
+                                title="Goods"
+                                count={lorryReceipt.goods.length}
+                                headers={[
+                                    'Description',
+                                    'Pkgs',
+                                    'Weight (act. / chg.)',
+                                    'Rate',
+                                    'Freight',
+                                ]}
+                                empty="No goods lines on this bilty."
+                            >
+                                {lorryReceipt.goods.map((row) => (
+                                    <tr
+                                        key={row.id}
+                                        className="border-t border-slate-100"
+                                    >
+                                        <td className="px-3 py-2">
+                                            {row.goods_label ||
+                                                row.goods_description ||
+                                                row.goods_type_name ||
+                                                '—'}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            {row.package_count ?? '—'}
+                                        </td>
+                                        <td className="px-3 py-2 whitespace-nowrap">
+                                            {formatMtLabel(
+                                                kgToMt(row.actual_weight),
+                                            )}{' '}
+                                            /{' '}
+                                            {formatMtLabel(
+                                                kgToMt(row.charged_weight),
+                                            )}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            {row.freight_rate_type.replaceAll(
+                                                '_',
+                                                ' ',
+                                            )}{' '}
+                                            @ {row.freight_rate}
+                                        </td>
+                                        <td className="px-3 py-2 font-medium">
+                                            {row.freight_amount}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </FbCompactTable>
+
+                            <div className="grid gap-3 md:grid-cols-2">
+                                <FbDetailCard title="E-way bills">
+                                    {lorryReceipt.eway_bills.length === 0 ? (
+                                        <p className="px-4 py-3 text-sm text-slate-500">
+                                            None recorded.
+                                        </p>
+                                    ) : (
+                                        <ul className="divide-y divide-slate-100 text-sm">
+                                            {lorryReceipt.eway_bills.map(
+                                                (bill) => (
+                                                    <li
+                                                        key={bill.id}
+                                                        className="flex flex-col gap-0.5 px-4 py-2.5"
+                                                    >
+                                                        <span className="font-medium text-slate-800">
+                                                            {bill.ewb_number}
+                                                        </span>
+                                                        <span className="text-xs text-slate-500">
+                                                            Issued{' '}
+                                                            {formatDisplayDate(
+                                                                bill.ewb_date,
+                                                            )}{' '}
+                                                            · Valid until{' '}
+                                                            {formatDisplayDate(
+                                                                bill.valid_until,
+                                                            )}
+                                                        </span>
+                                                    </li>
+                                                ),
+                                            )}
+                                        </ul>
+                                    )}
+                                </FbDetailCard>
+
+                                <FbDetailCard title="Additional charges">
+                                    {lorryReceipt.additional_charges.length ===
+                                    0 ? (
+                                        <p className="px-4 py-3 text-sm text-slate-500">
+                                            None recorded.
+                                        </p>
+                                    ) : (
+                                        <ul className="divide-y divide-slate-100 text-sm">
+                                            {lorryReceipt.additional_charges.map(
+                                                (charge) => (
+                                                    <li
+                                                        key={charge.id}
+                                                        className="flex items-center justify-between gap-3 px-4 py-2.5"
+                                                    >
+                                                        <span>
+                                                            {charge.description}
+                                                        </span>
+                                                        <span className="font-medium tabular-nums">
+                                                            {charge.amount}
+                                                        </span>
+                                                    </li>
+                                                ),
+                                            )}
+                                        </ul>
+                                    )}
+                                </FbDetailCard>
+                            </div>
+
+                            {documentDrawer ? (
+                                <FbDetailCard title="Documents / POD">
+                                    <div className="space-y-3 px-4 py-3">
+                                        <p className="text-sm text-slate-600">
+                                            Supporting documents and optional
+                                            proof of delivery for this bilty.
+                                        </p>
+                                        <Button
+                                            type="button"
+                                            variant="secondary"
+                                            onClick={() => setDocsOpen(true)}
+                                        >
+                                            <FileText
+                                                className="mr-2 size-4"
+                                                aria-hidden
+                                            />
+                                            Manage documents
+                                        </Button>
+                                        <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200 text-sm">
+                                            {documentDrawer.attachments
+                                                .length === 0 ? (
+                                                <li className="px-3 py-2 text-slate-500">
+                                                    No files attached yet.
+                                                </li>
+                                            ) : (
+                                                documentDrawer.attachments.map(
+                                                    (attachment) => (
+                                                        <li
+                                                            key={attachment.id}
+                                                            className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"
+                                                        >
+                                                            <span>
+                                                                {attachment.label ||
+                                                                    attachment
+                                                                        .file
+                                                                        ?.original_name ||
+                                                                    attachment.document_type ||
+                                                                    'Attachment'}
+                                                            </span>
+                                                            {attachment.download_url ? (
+                                                                <a
+                                                                    className="text-sm text-[#2A6FDB] underline"
+                                                                    href={
+                                                                        attachment.download_url
+                                                                    }
+                                                                >
+                                                                    Download
+                                                                </a>
+                                                            ) : (
+                                                                <span className="text-xs text-slate-500">
+                                                                    Unavailable
+                                                                </span>
+                                                            )}
+                                                        </li>
+                                                    ),
+                                                )
+                                            )}
+                                        </ul>
+                                    </div>
+                                </FbDetailCard>
+                            ) : null}
+
+                            {permissions.can_cancel &&
+                            lorryReceipt.status !== 'cancelled' &&
+                            lorryReceipt.status !== 'delivered' ? (
+                                <FbDetailCard title="Cancel bilty">
+                                    <Form
+                                        action={urls.cancel}
+                                        method="post"
+                                        className="grid max-w-xl gap-3 px-4 py-3"
+                                    >
+                                        {({ processing }) => (
+                                            <>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="remark">
+                                                        Remark
+                                                    </Label>
+                                                    <Input
+                                                        id="remark"
+                                                        name="remark"
+                                                        required
+                                                    />
+                                                    {errors?.remark ? (
+                                                        <p className="text-sm text-destructive">
+                                                            {errors.remark}
+                                                        </p>
+                                                    ) : null}
+                                                </div>
+                                                <Button
+                                                    type="submit"
+                                                    variant="destructive"
+                                                    disabled={processing}
+                                                >
+                                                    Cancel lorry receipt
+                                                </Button>
+                                            </>
+                                        )}
+                                    </Form>
+                                </FbDetailCard>
+                            ) : null}
+
+                            {permissions.can_delete && isPending ? (
+                                <FbDetailCard title="Delete bilty">
+                                    <div className="space-y-3 px-4 py-3">
+                                        <Button
+                                            type="button"
+                                            variant="destructive"
+                                            onClick={() =>
+                                                setConfirmDelete(
+                                                    (value) => !value,
+                                                )
+                                            }
+                                        >
+                                            {confirmDelete
+                                                ? 'Hide delete form'
+                                                : 'Delete pending bilty'}
+                                        </Button>
+                                        {confirmDelete ? (
+                                            <Form
+                                                action={urls.destroy}
+                                                method="delete"
+                                                className="rounded-lg border border-destructive/40 bg-destructive/5 p-4"
                                             >
-                                                Keep
-                                            </Button>
-                                            <Button
-                                                type="submit"
-                                                variant="destructive"
-                                                disabled={processing}
-                                            >
-                                                Confirm delete
-                                            </Button>
-                                        </div>
-                                        {errors?.delete ? (
-                                            <p className="text-sm text-destructive">
-                                                {errors.delete}
-                                            </p>
+                                                {({ processing }) => (
+                                                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                                                        <p className="text-sm">
+                                                            Soft-delete this
+                                                            pending bilty? This
+                                                            cannot be undone
+                                                            from the UI.
+                                                        </p>
+                                                        <div className="flex gap-2">
+                                                            <Button
+                                                                type="button"
+                                                                variant="secondary"
+                                                                onClick={() =>
+                                                                    setConfirmDelete(
+                                                                        false,
+                                                                    )
+                                                                }
+                                                            >
+                                                                Keep
+                                                            </Button>
+                                                            <Button
+                                                                type="submit"
+                                                                variant="destructive"
+                                                                disabled={
+                                                                    processing
+                                                                }
+                                                            >
+                                                                Confirm delete
+                                                            </Button>
+                                                        </div>
+                                                        {errors?.delete ? (
+                                                            <p className="text-sm text-destructive">
+                                                                {errors.delete}
+                                                            </p>
+                                                        ) : null}
+                                                    </div>
+                                                )}
+                                            </Form>
                                         ) : null}
                                     </div>
-                                )}
-                            </Form>
-                        ) : null}
-                    </DetailTabPanel>
-
-                    <DetailTabPanel id="overview" activeId={tab}>
-                        <FormSection title="Consignment overview" columns={3}>
-                            <section className="contents">
-                                <Detail
-                                    label="Status"
-                                    value={lorryReceipt.status}
-                                />
-                                <Detail
-                                    label="Service"
-                                    value={workflowContextLabel(
-                                        lorryReceipt.workflow_context,
-                                    )}
-                                />
-                                <Detail
-                                    label="Date"
-                                    value={formatDisplayDate(
-                                        lorryReceipt.lr_date,
-                                    )}
-                                />
-                                <Detail
-                                    label="Loading Station"
-                                    value={
-                                        lorryReceipt.from_station_name ||
-                                        lorryReceipt.from_text ||
-                                        '—'
-                                    }
-                                />
-                                <Detail
-                                    label="Unloading Station"
-                                    value={
-                                        lorryReceipt.to_station_name ||
-                                        lorryReceipt.to_text ||
-                                        '—'
-                                    }
-                                />
-                                <Detail
-                                    label="Consignor"
-                                    value={lorryReceipt.consignor_name || '—'}
-                                />
-                                <Detail
-                                    label="Consignee"
-                                    value={lorryReceipt.consignee_name || '—'}
-                                />
-                                <Detail
-                                    label="Freight total"
-                                    value={lorryReceipt.freight_total}
-                                />
-                                <Detail
-                                    label="Additional charges"
-                                    value={
-                                        lorryReceipt.additional_charges_total
-                                    }
-                                />
-                                <Detail
-                                    label="Goods value"
-                                    value={lorryReceipt.goods_value || '—'}
-                                />
-                            </section>
-                        </FormSection>
-                    </DetailTabPanel>
-
-                    <DetailTabPanel id="goods" activeId={tab}>
-                        <FormSection title="Goods" columns={1}>
-                            <section className="space-y-3">
-                                <h2 className="sr-only">Goods</h2>
-                                <div className="overflow-x-auto">
-                                    <table className="w-full min-w-[640px] text-left text-sm">
-                                        <thead className="text-muted-foreground">
-                                            <tr className="border-b border-border">
-                                                <th className="px-2 py-2 font-medium">
-                                                    Description
-                                                </th>
-                                                <th className="px-2 py-2 font-medium">
-                                                    Pkgs
-                                                </th>
-                                                <th className="px-2 py-2 font-medium">
-                                                    Weight
-                                                </th>
-                                                <th className="px-2 py-2 font-medium">
-                                                    Rate
-                                                </th>
-                                                <th className="px-2 py-2 font-medium">
-                                                    Freight
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {lorryReceipt.goods.map((row) => (
-                                                <tr
-                                                    key={row.id}
-                                                    className="border-b border-border/70"
-                                                >
-                                                    <td className="px-2 py-2">
-                                                        {row.goods_label ||
-                                                            row.goods_description ||
-                                                            row.goods_type_name ||
-                                                            '—'}
-                                                    </td>
-                                                    <td className="px-2 py-2">
-                                                        {row.package_count ||
-                                                            '—'}
-                                                    </td>
-                                                    <td className="px-2 py-2">
-                                                        {formatMtLabel(
-                                                            kgToMt(
-                                                                row.actual_weight,
-                                                            ),
-                                                        )}{' '}
-                                                        /{' '}
-                                                        {formatMtLabel(
-                                                            kgToMt(
-                                                                row.charged_weight,
-                                                            ),
-                                                        )}
-                                                    </td>
-                                                    <td className="px-2 py-2">
-                                                        {row.freight_rate_type.replaceAll(
-                                                            '_',
-                                                            ' ',
-                                                        )}{' '}
-                                                        @ {row.freight_rate}
-                                                    </td>
-                                                    <td className="px-2 py-2">
-                                                        {row.freight_amount}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </section>
-                        </FormSection>
-                    </DetailTabPanel>
-
-                    <DetailTabPanel id="documents" activeId={tab}>
-                        <section className="grid gap-4 md:grid-cols-2">
-                            <div className="space-y-3 rounded-xl border border-border bg-card p-4 md:p-5">
-                                <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-                                    E-way bills
-                                </h2>
-                                {lorryReceipt.eway_bills.length === 0 ? (
-                                    <p className="text-sm text-muted-foreground">
-                                        None
-                                    </p>
-                                ) : (
-                                    <ul className="space-y-2 text-sm">
-                                        {lorryReceipt.eway_bills.map((bill) => (
-                                            <li key={bill.id}>
-                                                {bill.ewb_number} · valid until{' '}
-                                                {bill.valid_until}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                )}
-                            </div>
-                            <div className="space-y-3 rounded-xl border border-border bg-card p-4 md:p-5">
-                                <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-                                    Additional charges
-                                </h2>
-                                {lorryReceipt.additional_charges.length ===
-                                0 ? (
-                                    <p className="text-sm text-muted-foreground">
-                                        None
-                                    </p>
-                                ) : (
-                                    <ul className="space-y-2 text-sm">
-                                        {lorryReceipt.additional_charges.map(
-                                            (charge) => (
-                                                <li
-                                                    key={charge.id}
-                                                    className="flex justify-between gap-3"
-                                                >
-                                                    <span>
-                                                        {charge.description}
-                                                    </span>
-                                                    <span>{charge.amount}</span>
-                                                </li>
-                                            ),
-                                        )}
-                                    </ul>
-                                )}
-                            </div>
-                        </section>
-
-                        {permissions.can_cancel &&
-                        lorryReceipt.status !== 'cancelled' &&
-                        lorryReceipt.status !== 'delivered' ? (
-                            <section className="space-y-3 rounded-xl border border-border bg-card p-4 md:p-5">
-                                <h2 className="text-sm font-semibold tracking-wide text-muted-foreground uppercase">
-                                    Cancel LR
-                                </h2>
-                                <Form
-                                    action={urls.cancel}
-                                    method="post"
-                                    className="grid gap-3 md:max-w-xl"
-                                >
-                                    {({ processing }) => (
-                                        <>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="remark">
-                                                    Remark
-                                                </Label>
-                                                <Input
-                                                    id="remark"
-                                                    name="remark"
-                                                    required
-                                                />
-                                                {errors?.remark ? (
-                                                    <p className="text-sm text-destructive">
-                                                        {errors.remark}
-                                                    </p>
-                                                ) : null}
-                                            </div>
-                                            <Button
-                                                type="submit"
-                                                variant="destructive"
-                                                disabled={processing}
-                                            >
-                                                Cancel Lorry Receipt
-                                            </Button>
-                                        </>
-                                    )}
-                                </Form>
-                            </section>
-                        ) : null}
-
-                        {lorryReceipt.cancellation_remark ? (
-                            <p className="text-sm text-muted-foreground">
-                                Cancellation remark:{' '}
-                                {lorryReceipt.cancellation_remark}
-                            </p>
-                        ) : null}
-                    </DetailTabPanel>
-
-                    <DetailTabPanel id="files" activeId={tab}>
-                        <div className="space-y-3">
-                            <p className="text-sm text-muted-foreground">
-                                Supporting documents and optional POD for this
-                                Lorry Receipt.
-                            </p>
-                            <div className="flex flex-wrap gap-2">
-                                {documentDrawer ? (
-                                    <Button
-                                        type="button"
-                                        variant="secondary"
-                                        onClick={() => setDocsOpen(true)}
-                                    >
-                                        Manage documents
-                                    </Button>
-                                ) : urls.documents ? (
-                                    <Button asChild variant="secondary">
-                                        <Link href={urls.documents}>
-                                            Open document manager
-                                        </Link>
-                                    </Button>
-                                ) : null}
-                            </div>
-                            {documentDrawer ? (
-                                <ul className="divide-y divide-border rounded-lg border border-border text-sm">
-                                    {documentDrawer.attachments.length === 0 ? (
-                                        <li className="px-3 py-2 text-muted-foreground">
-                                            No files attached yet.
-                                        </li>
-                                    ) : (
-                                        documentDrawer.attachments.map(
-                                            (attachment) => (
-                                                <li
-                                                    key={attachment.id}
-                                                    className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"
-                                                >
-                                                    <span>
-                                                        {attachment.label ||
-                                                            attachment.file
-                                                                ?.original_name ||
-                                                            attachment.document_type ||
-                                                            'Attachment'}
-                                                    </span>
-                                                    {attachment.download_url ? (
-                                                        <a
-                                                            className="text-sm text-[#2A6FDB] underline"
-                                                            href={
-                                                                attachment.download_url
-                                                            }
-                                                        >
-                                                            Download
-                                                        </a>
-                                                    ) : (
-                                                        <span className="text-xs text-muted-foreground">
-                                                            Unavailable
-                                                        </span>
-                                                    )}
-                                                </li>
-                                            ),
-                                        )
-                                    )}
-                                </ul>
+                                </FbDetailCard>
                             ) : null}
-                        </div>
-                    </DetailTabPanel>
-                </DetailTabs>
-            </PageShell>
+                        </>
+                    }
+                    side={
+                        <>
+                            <FbFinancialSummary
+                                balanceDue={false}
+                                cleared
+                                trAmount={lorryReceipt.freight_total}
+                                deductions={
+                                    lorryReceipt.additional_charges_total
+                                }
+                                balance={freightGrandTotal}
+                                rows={[
+                                    {
+                                        label: 'Customer freight',
+                                        value: lorryReceipt.freight_total,
+                                    },
+                                    {
+                                        label: 'Additional charges',
+                                        value: lorryReceipt.additional_charges_total,
+                                    },
+                                    {
+                                        label: 'Declared goods value',
+                                        value: lorryReceipt.goods_value ?? '—',
+                                    },
+                                    {
+                                        label: 'Total billable',
+                                        value: freightGrandTotal,
+                                    },
+                                ]}
+                            />
+                            <FbDetailCard title="Record Info">
+                                <FbInfoGrid>
+                                    <FbInfoItem
+                                        label="Bilty No."
+                                        value={lorryReceipt.lr_number}
+                                    />
+                                    <FbInfoItem
+                                        label="GR Date"
+                                        value={formatDisplayDate(
+                                            lorryReceipt.lr_date,
+                                        )}
+                                    />
+                                    <FbInfoItem
+                                        label="Service"
+                                        value={workflowContextLabel(
+                                            lorryReceipt.workflow_context,
+                                        )}
+                                    />
+                                    <FbInfoItem
+                                        label="Status"
+                                        value={lorryReceipt.status}
+                                    />
+                                    {linkedTrip ? (
+                                        <FbInfoItem
+                                            label="Linked trip"
+                                            value={
+                                                <Link
+                                                    href={tripManageUrl!}
+                                                    className="text-[#2A6FDB] underline"
+                                                >
+                                                    {linkedTrip.status}
+                                                </Link>
+                                            }
+                                        />
+                                    ) : null}
+                                    {linkedLorryHire ? (
+                                        <FbInfoItem
+                                            label="Linked hire"
+                                            value={
+                                                <Link
+                                                    href={
+                                                        linkedLorryHire.show_url
+                                                    }
+                                                    className="text-[#2A6FDB] underline"
+                                                >
+                                                    {
+                                                        linkedLorryHire.hire_number
+                                                    }
+                                                </Link>
+                                            }
+                                        />
+                                    ) : null}
+                                    {lorryReceipt.delivered_at ? (
+                                        <FbInfoItem
+                                            label="Delivered"
+                                            value={formatDisplayDate(
+                                                lorryReceipt.delivered_at,
+                                            )}
+                                        />
+                                    ) : null}
+                                    {lorryReceipt.cancelled_at ? (
+                                        <FbInfoItem
+                                            label="Cancelled"
+                                            value={formatDisplayDate(
+                                                lorryReceipt.cancelled_at,
+                                            )}
+                                        />
+                                    ) : null}
+                                </FbInfoGrid>
+                            </FbDetailCard>
+                        </>
+                    }
+                />
+            </FbDetailPage>
             {documentDrawer ? (
                 <DocumentDrawer
                     open={docsOpen}
@@ -607,16 +728,5 @@ export default function LorryReceiptShow({
                 />
             ) : null}
         </>
-    );
-}
-
-function Detail({ label, value }: { label: string; value: string }) {
-    return (
-        <div className="space-y-1">
-            <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-                {label}
-            </p>
-            <p className="text-sm">{value}</p>
-        </div>
     );
 }
