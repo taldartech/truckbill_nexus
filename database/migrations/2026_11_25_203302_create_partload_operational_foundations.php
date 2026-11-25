@@ -71,7 +71,7 @@ return new class extends Migration
             $table->foreign(['company_id', 'to_account_party_id'])
                 ->references(['company_id', 'id'])
                 ->on('parties')
-                ->nullOnDelete();
+                ->restrictOnDelete();
             $table->unique(['company_id', 'id']);
             $table->index(['company_id', 'branch_id', 'status']);
             $table->index(['company_id', 'challan_date']);
@@ -147,11 +147,11 @@ return new class extends Migration
             $table->foreign(['company_id', 'vehicle_id'])
                 ->references(['company_id', 'id'])
                 ->on('vehicles')
-                ->nullOnDelete();
+                ->restrictOnDelete();
             $table->foreign(['company_id', 'driver_party_id'])
                 ->references(['company_id', 'id'])
                 ->on('parties')
-                ->nullOnDelete();
+                ->restrictOnDelete();
             $table->unique(['company_id', 'id']);
             $table->index(['company_id', 'branch_id', 'status']);
         });
@@ -181,24 +181,24 @@ return new class extends Migration
             $table->softDeletes();
 
             $table->foreign('company_id')->references('id')->on('companies')->restrictOnDelete();
-            $table->foreign(['company_id', 'partload_inward_register_id'])
+            $table->foreign(['company_id', 'partload_inward_register_id'], 'pl_inward_lines_register_fk')
                 ->references(['company_id', 'id'])
                 ->on('partload_inward_registers')
                 ->restrictOnDelete();
-            $table->foreign(['company_id', 'lorry_receipt_id'])
+            $table->foreign(['company_id', 'lorry_receipt_id'], 'pl_inward_lines_lr_fk')
                 ->references(['company_id', 'id'])
                 ->on('lorry_receipts')
                 ->restrictOnDelete();
-            $table->foreign(['company_id', 'partload_challan_line_id'])
+            $table->foreign(['company_id', 'partload_challan_line_id'], 'pl_inward_lines_challan_line_fk')
                 ->references(['company_id', 'id'])
                 ->on('partload_challan_lines')
-                ->nullOnDelete();
+                ->restrictOnDelete();
             $table->unique(['company_id', 'id']);
-            $table->index(['company_id', 'partload_inward_register_id']);
+            $table->index(['company_id', 'partload_inward_register_id'], 'pl_inward_lines_register_idx');
         });
         SoftDeleteUniqueIndex::createActiveUniqueIndex(
             'partload_inward_lines',
-            'partload_inward_lines_active_lr_unique',
+            'pl_inward_lines_active_lr_unique',
             ['company_id', 'lorry_receipt_id', 'partload_inward_register_id'],
         );
 
@@ -239,18 +239,18 @@ return new class extends Migration
                 ->references(['company_id', 'id'])
                 ->on('lorry_receipts')
                 ->restrictOnDelete();
-            $table->foreign(['company_id', 'partload_inward_line_id'])
+            $table->foreign(['company_id', 'partload_inward_line_id'], 'pl_dr_inward_line_fk')
                 ->references(['company_id', 'id'])
                 ->on('partload_inward_lines')
-                ->nullOnDelete();
-            $table->foreign(['company_id', 'consignee_party_id'])
+                ->restrictOnDelete();
+            $table->foreign(['company_id', 'consignee_party_id'], 'pl_dr_consignee_fk')
                 ->references(['company_id', 'id'])
                 ->on('parties')
-                ->nullOnDelete();
-            $table->foreign(['company_id', 'payment_due_from_party_id'])
+                ->restrictOnDelete();
+            $table->foreign(['company_id', 'payment_due_from_party_id'], 'pl_dr_due_from_fk')
                 ->references(['company_id', 'id'])
                 ->on('parties')
-                ->nullOnDelete();
+                ->restrictOnDelete();
             $table->foreign('bank_cash_account_id')->references('id')->on('bank_cash_accounts')->nullOnDelete();
             $table->unique(['company_id', 'id']);
             $table->index(['company_id', 'branch_id', 'status']);

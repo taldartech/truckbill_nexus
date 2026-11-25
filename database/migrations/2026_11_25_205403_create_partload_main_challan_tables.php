@@ -66,7 +66,7 @@ return new class extends Migration
             $table->foreign(['company_id', 'to_account_party_id'])
                 ->references(['company_id', 'id'])
                 ->on('parties')
-                ->nullOnDelete();
+                ->restrictOnDelete();
             $table->unique(['company_id', 'id']);
             $table->index(['company_id', 'branch_id', 'status']);
             $table->index(['company_id', 'main_challan_date']);
@@ -87,21 +87,21 @@ return new class extends Migration
             $table->softDeletes();
 
             $table->foreign('company_id')->references('id')->on('companies')->restrictOnDelete();
-            $table->foreign(['company_id', 'partload_main_challan_id'])
+            $table->foreign(['company_id', 'partload_main_challan_id'], 'pl_main_lines_main_fk')
                 ->references(['company_id', 'id'])
                 ->on('partload_main_challans')
                 ->restrictOnDelete();
-            $table->foreign(['company_id', 'partload_challan_id'])
+            $table->foreign(['company_id', 'partload_challan_id'], 'pl_main_lines_challan_fk')
                 ->references(['company_id', 'id'])
                 ->on('partload_challans')
                 ->restrictOnDelete();
             $table->unique(['company_id', 'id']);
-            $table->index(['company_id', 'partload_main_challan_id']);
-            $table->index(['company_id', 'partload_challan_id']);
+            $table->index(['company_id', 'partload_main_challan_id'], 'pl_main_lines_main_idx');
+            $table->index(['company_id', 'partload_challan_id'], 'pl_main_lines_challan_idx');
         });
         SoftDeleteUniqueIndex::createActiveUniqueIndex(
             'partload_main_challan_lines',
-            'partload_main_challan_lines_active_challan_unique',
+            'pl_main_lines_active_challan_unique',
             ['company_id', 'partload_challan_id'],
         );
 
@@ -110,7 +110,7 @@ return new class extends Migration
             $table->foreign(['company_id', 'partload_main_challan_id'], 'partload_challans_main_challan_fk')
                 ->references(['company_id', 'id'])
                 ->on('partload_main_challans')
-                ->nullOnDelete();
+                ->restrictOnDelete();
             $table->index(['company_id', 'partload_main_challan_id'], 'partload_challans_main_challan_idx');
         });
     }

@@ -99,10 +99,11 @@ return new class extends Migration
             $table->softDeletes();
 
             $table->foreign('company_id')->references('id')->on('companies')->restrictOnDelete();
+            // MySQL rejects SET NULL on composite FKs when company_id is NOT NULL.
             $table->foreign(['company_id', 'branch_id'], 'accounting_vouchers_company_branch_fk')
                 ->references(['company_id', 'id'])
                 ->on('branches')
-                ->nullOnDelete();
+                ->restrictOnDelete();
             $table->foreign('accounting_period_id')->references('id')->on('accounting_periods')->restrictOnDelete();
             $table->index(['company_id', 'voucher_date']);
             $table->index(['company_id', 'status']);
@@ -138,7 +139,7 @@ return new class extends Migration
             $table->foreign(['company_id', 'branch_id'], 'accounting_voucher_lines_company_branch_fk')
                 ->references(['company_id', 'id'])
                 ->on('branches')
-                ->nullOnDelete();
+                ->restrictOnDelete();
             $table->unique(['accounting_voucher_id', 'line_no']);
             $table->index(['company_id', 'gl_ledger_id']);
         });
