@@ -1,5 +1,5 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
-import { FileText, Fuel, Wallet } from 'lucide-react';
+import { FileText, Fuel, Route, Wallet } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { AppIconAction } from '@/components/app-icon-action';
 import {
@@ -75,6 +75,7 @@ type Props = {
     };
     urls: {
         show: string;
+        multi_point?: string;
         lr_show: string;
         index: string;
         add_expense: string;
@@ -167,6 +168,14 @@ export default function TripExpensesWorkspace({
                             href={urls.index}
                             variant="outline"
                         />
+                        {urls.multi_point ? (
+                            <AppIconAction
+                                icon={Route}
+                                label="Multi-point route"
+                                href={urls.multi_point}
+                                variant="outline"
+                            />
+                        ) : null}
                         {documentDrawer ? (
                             <AppIconAction
                                 icon={FileText}

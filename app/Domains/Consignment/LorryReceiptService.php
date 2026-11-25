@@ -78,6 +78,9 @@ final class LorryReceiptService
         ?string $query = null,
         ?string $status = null,
         ?string $workflowContext = null,
+        ?string $ownership = null,
+        bool $awaitingTrip = false,
+        bool $hasTrip = false,
         int $perPage = 15,
     ): LengthAwarePaginator {
         $this->ensureTenantMatches($company, $branch);
@@ -121,6 +124,24 @@ final class LorryReceiptService
                 throw ValidationException::withMessages(['workflow_context' => 'Invalid workflow context filter.']);
             }
             $builder->where('workflow_context', $contextEnum->value);
+        }
+
+        $ownershipKey = strtolower(trim((string) $ownership));
+        if ($ownershipKey === 'own') {
+            $builder->where('workflow_context', LrWorkflowContext::OwnFleet->value);
+        } elseif ($ownershipKey === 'market') {
+            $builder->where('workflow_context', LrWorkflowContext::Broker->value);
+        }
+
+        if ($awaitingTrip) {
+            $builder->where('workflow_context', LrWorkflowContext::OwnFleet->value)
+                ->where('status', LrStatus::Pending->value)
+                ->whereDoesntHave('trip', fn ($query) => $query->whereNull('deleted_at'));
+        }
+
+        if ($hasTrip) {
+            $builder->where('workflow_context', LrWorkflowContext::OwnFleet->value)
+                ->whereHas('trip', fn ($query) => $query->whereNull('deleted_at'));
         }
 
         return $builder->paginate(min(100, max(1, $perPage)));

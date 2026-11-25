@@ -85,7 +85,7 @@ export default function BrokerInvoiceShow({
     return (
         <>
             <Head title={`Invoice ${invoice.invoice_number}`} />
-            <FbDetailPage>
+            <FbDetailPage title={`Invoice ${invoice.invoice_number}`}>
                 {invoice.cancellation_remark ? (
                     <div
                         className="mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"

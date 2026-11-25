@@ -1,3 +1,4 @@
+import { execSync } from 'node:child_process';
 import { expect, test } from '@playwright/test';
 import {
     addDieselExpense,
@@ -12,12 +13,41 @@ import {
     uploadTripDocumentViaDrawer,
 } from '../fixtures/ownfleet-workflow';
 
+/**
+ * Cancel leftover Pending/In Progress trips on FREE/DEMO plates so browser
+ * journeys are not blocked by interrupted prior runs. Preserves PEND fixtures
+ * used for overlap protection.
+ */
+function releaseDemoJourneyVehicles(): void {
+    try {
+        execSync(
+            `php artisan tinker --execute '${[
+                'use App\\Models\\Trip;',
+                '$rows = Trip::query()->whereIn("status", ["pending","in_progress"])->whereNull("deleted_at")->with("vehicle")->get();',
+                'foreach ($rows as $trip) {',
+                '  $reg = (string) ($trip->vehicle?->registration_number ?? "");',
+                '  if (!str_contains($reg, "FREE") && !str_contains($reg, "DEMO")) { continue; }',
+                '  $trip->forceFill(["status" => "cancelled", "cancelled_at" => now(), "cancellation_remark" => "E2E fixture release"])->save();',
+                '}',
+            ].join(' ')}'`,
+            {
+                cwd: process.cwd(),
+                stdio: 'ignore',
+                timeout: 60_000,
+            },
+        );
+    } catch {
+        // Fixture best-effort — journey assertions still enforce overlap rules.
+    }
+}
+
 test.describe('OwnFleet complete workflow', () => {
     test.beforeEach(() => {
         test.skip(
             process.env.E2E_REQUIRE_DEMO !== '1',
             'Set E2E_REQUIRE_DEMO=1 after LocalDemoWorkspaceSeeder.',
         );
+        releaseDemoJourneyVehicles();
     });
 
     test('journey — LR → trip → dispatch → invoice → payments', async ({
@@ -65,7 +95,12 @@ test.describe('OwnFleet complete workflow', () => {
         await expect(
             page.getByRole('heading', { name: 'Invoices' }),
         ).toBeVisible({ timeout: 15_000 });
-        await expect(page.getByText(invoiceNumber).first()).toBeVisible();
+        await expect(
+            page
+                .getByRole('table', { name: 'Customer invoices' })
+                .getByText(invoiceNumber, { exact: true })
+                .first(),
+        ).toBeVisible({ timeout: 15_000 });
     });
 
     test('edge — duplicate trip link hidden after first trip', async ({
@@ -87,10 +122,14 @@ test.describe('OwnFleet complete workflow', () => {
 
         await page.goto(lr.lrPath);
         await expect(
-            page.getByRole('link', { name: 'Create Trip' }),
+            page
+                .locator('main')
+                .getByRole('link', { name: /Start Trip|Create Trip/i }),
         ).toHaveCount(0);
         await expect(
-            page.getByRole('link', { name: /Manage Expenses|Open Trip/i }),
+            page.locator('main').getByRole('link', {
+                name: /Manage Expenses|Trip Operations|Open Trip/i,
+            }),
         ).toBeVisible();
 
         const duplicateVisit = page.waitForURL(/\/trips\//, {

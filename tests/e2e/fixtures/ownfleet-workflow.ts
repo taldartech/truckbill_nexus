@@ -28,26 +28,65 @@ function todayIsoDate(): string {
     return new Date().toISOString().slice(0, 10);
 }
 
+/**
+ * Prefer free Own demo vehicles (DEMO/FREE). Skip PEND — that plate is reserved
+ * for the seeded active Pending-trip fixture and must stay locked for overlap tests.
+ */
 async function selectFirstOwnVehicle(page: Page): Promise<void> {
     const vehicle = page.locator('#vehicle_id');
     await expect(page.locator('#vehicle_id-trigger')).toBeVisible();
     const options = vehicle.locator('option[value]:not([value=""])');
     const count = await options.count();
-    for (let i = 0; i < count; i += 1) {
-        const text = (await options.nth(i).textContent()) ?? '';
-        if (/\bOwn\b/i.test(text) && !/\bMarket\b/i.test(text)) {
-            const value = await options.nth(i).getAttribute('value');
-            if (value) {
-                await vehicle.selectOption(value);
-                return;
+
+    const pick = async (matcher: RegExp): Promise<boolean> => {
+        for (let i = 0; i < count; i += 1) {
+            const text = (await options.nth(i).textContent()) ?? '';
+            if (
+                /\bOwn\b/i.test(text) &&
+                !/\bMarket\b/i.test(text) &&
+                !/PEND/i.test(text) &&
+                matcher.test(text)
+            ) {
+                const value = await options.nth(i).getAttribute('value');
+                if (value) {
+                    await vehicle.selectOption(value);
+                    return true;
+                }
             }
         }
+        return false;
+    };
+
+    // Prefer FREE (dedicated unlocked e2e vehicle) over DEMO (may hold completed
+    // invoice history or leftover active trips from interrupted runs).
+    if (await pick(/FREE/i)) {
+        return;
     }
+    if (await pick(/DEMO/i)) {
+        return;
+    }
+    if (await pick(/.*/)) {
+        return;
+    }
+
     await page.locator('#vehicle_id-trigger').click();
+    const preferred = page
+        .getByRole('listbox')
+        .getByRole('option')
+        .filter({ hasText: /\bOwn\b/i })
+        .filter({ hasNotText: /PEND|Market/i })
+        .filter({ hasText: /FREE/i })
+        .first();
+    if ((await preferred.count()) > 0) {
+        await expect(preferred).toBeVisible({ timeout: 10_000 });
+        await preferred.click();
+        return;
+    }
     const ownOption = page
         .getByRole('listbox')
         .getByRole('option')
         .filter({ hasText: /\bOwn\b/i })
+        .filter({ hasNotText: /PEND|Market/i })
         .first();
     await expect(ownOption).toBeVisible({ timeout: 10_000 });
     await ownOption.click();
@@ -137,15 +176,25 @@ export async function createOwnFleetLrViaUi(
 }
 
 export async function openLrCreateTrip(page: Page): Promise<void> {
-    const manageExpenses = page.getByRole('link', { name: 'Manage Expenses' });
-    const createTrip = page.getByRole('link', { name: /Create Trip/i });
+    // Prefer the Bilty show / register row action — never the sidebar filter link
+    // "OwnFleet — Start Trip" which only opens the filtered register.
+    const manageExpenses = page
+        .locator('main')
+        .getByRole('link', { name: /^Manage Expenses$/i });
+    const startTrip = page
+        .locator('main')
+        .getByRole('link', { name: /Start Trip|Create Trip/i });
     if ((await manageExpenses.count()) > 0) {
         await manageExpenses.first().click();
     } else {
-        await createTrip.first().click();
+        await expect(startTrip.first()).toBeVisible({ timeout: 15_000 });
+        await startTrip.first().click();
     }
-    await expect(page).toHaveURL(/\/(create-trip|trips\/[0-9a-f-]+\/expenses)/);
-    if (/\/expenses/.test(page.url())) {
+    await expect(page).toHaveURL(
+        /\/(create-trip|trips\/[0-9a-f-]+(\/(expenses|multi-point))?)/,
+        { timeout: 20_000 },
+    );
+    if (/\/(expenses|multi-point)/.test(page.url())) {
         return;
     }
     await expect(
@@ -159,7 +208,9 @@ export async function submitTripCreateFromLr(page: Page): Promise<void> {
     }
     await expect(page.locator('#vehicle_display')).toHaveAttribute('readonly');
     await expect(page.locator('select#vehicle_id')).toHaveCount(0);
-    await page.getByRole('button', { name: 'Create Trip' }).click();
+    await page
+        .getByRole('button', { name: 'Create Trip', exact: true })
+        .click();
     await confirmFormDialog(page);
     await expect(page).toHaveURL(/\/trips\/[0-9a-f-]+(\/expenses)?$/, {
         timeout: 30_000,

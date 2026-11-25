@@ -229,7 +229,7 @@ export default function LorryReceiptShow({
                                         urls.create_trip ? (
                                             <AppIconAction
                                                 icon={Wallet}
-                                                label="Create Trip"
+                                                label="Start Trip / Expenses"
                                                 href={urls.create_trip}
                                                 variant="default"
                                                 size="sm"

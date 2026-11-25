@@ -70,12 +70,19 @@ class LorryReceiptController extends Controller
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertPermission($actor, $company, $branch, PermissionCodes::LR_VIEW);
 
+        $ownership = $request->string('ownership')->toString() ?: null;
+        $awaitingTrip = $request->boolean('awaiting_trip');
+        $hasTrip = $request->boolean('has_trip');
+
         $page = $this->lorryReceipts->search(
             company: $company,
             branch: $branch,
             query: $request->string('q')->toString() ?: null,
             status: $request->string('status')->toString() ?: null,
             workflowContext: $request->string('workflow_context')->toString() ?: null,
+            ownership: $ownership,
+            awaitingTrip: $awaitingTrip,
+            hasTrip: $hasTrip,
             perPage: min(100, max(1, (int) $request->input('per_page', 15))),
         );
 
@@ -87,6 +94,9 @@ class LorryReceiptController extends Controller
                 'q' => $request->string('q')->toString(),
                 'status' => $request->string('status')->toString(),
                 'workflow_context' => $request->string('workflow_context')->toString(),
+                'ownership' => $ownership ?? '',
+                'awaiting_trip' => $awaitingTrip ? '1' : '',
+                'has_trip' => $hasTrip ? '1' : '',
             ],
             'permissions' => $permissions,
             'statusOptions' => collect(LrStatus::cases())->map(fn (LrStatus $status): array => [
@@ -845,7 +855,7 @@ class LorryReceiptController extends Controller
     }
 
     /**
-     * @return array{label: string, url: string, kind: string}|null
+     * @return array{label: string, url: string, kind: string, expenses_url?: string, multi_point_url?: string}|null
      */
     private function primaryOperationAction(LorryReceipt $lr, User $actor, Company $company, Branch $branch): ?array
     {
@@ -861,9 +871,11 @@ class LorryReceiptController extends Controller
                 }
 
                 return [
-                    'kind' => 'manage_expenses',
-                    'label' => 'Manage Expenses',
-                    'url' => route('branch.trips.expenses', [$trip], absolute: false),
+                    'kind' => 'trip_operations',
+                    'label' => 'Trip Operations',
+                    'url' => route('branch.trips.show', [$trip], absolute: false),
+                    'expenses_url' => route('branch.trips.expenses', [$trip], absolute: false),
+                    'multi_point_url' => route('branch.trips.multi-point', [$trip], absolute: false),
                 ];
             }
 
@@ -873,7 +885,7 @@ class LorryReceiptController extends Controller
             ) {
                 return [
                     'kind' => 'init_trip',
-                    'label' => 'Manage Expenses',
+                    'label' => 'Start Trip / Expenses',
                     'url' => route('branch.trips.create-from-lr', [$lr], absolute: false),
                 ];
             }

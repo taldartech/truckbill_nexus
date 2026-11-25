@@ -414,7 +414,7 @@ export async function createAdjustInAdvanceVoucher(
         timeout: 30_000,
     });
     const heading = await page
-        .getByRole('heading')
+        .getByRole('heading', { level: 1 })
         .filter({ hasText: /Voucher/i })
         .first()
         .innerText({ timeout: 15_000 });
@@ -452,7 +452,9 @@ export async function assignMemoAndDeliverLr(
 ): Promise<void> {
     await page.goto('/broker/deliveries');
     await expect(
-        page.getByRole('heading', { name: 'Delivery, Memo & POD' }),
+        page
+            .getByText(/Bulk memo\s*\/\s*POD assignment|Eligible bilties/i)
+            .first(),
     ).toBeVisible({ timeout: 15_000 });
 
     const checkbox = page.getByRole('checkbox', {
@@ -533,7 +535,12 @@ export async function addBrokerLorryHireAdjustment(
     page: Page,
     amount: string,
 ): Promise<void> {
-    await page.getByRole('tab', { name: 'Adjustments' }).click();
+    const adjustments = page
+        .locator('main')
+        .getByText('Freight Adjustments')
+        .first();
+    await expect(adjustments).toBeVisible({ timeout: 15_000 });
+    await adjustments.scrollIntoViewIfNeeded();
     await page.locator('#adj_type').selectOption('detention');
     await page.locator('#adj_amount').fill(amount);
     await page.locator('#adj_reason').fill('E2E detention adjustment');
@@ -573,9 +580,23 @@ export async function createBrokerCustomerInvoice(
     await expect(page).toHaveURL(/\/broker\/invoices\/[0-9a-f-]+$/, {
         timeout: 30_000,
     });
-    const title = await page.getByRole('heading', { level: 1 }).innerText();
-    const match = title.match(/^Invoice\s+(.+)$/i);
-    return match?.[1]?.trim() ?? '';
+    const heading = page.getByRole('heading', { level: 1 }).filter({
+        hasText: /Invoice/i,
+    });
+    if ((await heading.count()) > 0) {
+        const title = await heading.first().innerText({ timeout: 15_000 });
+        const match = title.match(/^Invoice\s+(.+)$/i);
+        if (match?.[1]) {
+            return match[1].trim();
+        }
+    }
+    const cardTitle = await page
+        .locator('main strong')
+        .filter({ hasText: /Customer Invoice/i })
+        .first()
+        .innerText({ timeout: 15_000 });
+    const cardMatch = cardTitle.match(/Customer Invoice\s*\((.+)\)/i);
+    return cardMatch?.[1]?.trim() ?? cardTitle.trim();
 }
 
 export async function openBrokerInvoicePrintPreview(page: Page): Promise<void> {

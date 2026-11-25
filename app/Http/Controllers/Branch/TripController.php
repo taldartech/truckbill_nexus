@@ -154,7 +154,11 @@ class TripController extends Controller
             'use_substitute_driver' => ['sometimes', 'boolean'],
             'substitute_driver_party_id' => ['nullable', 'uuid'],
             'expected_end_at' => ['nullable', 'date'],
+            'continue_to' => ['nullable', 'in:expenses,multi_point,show'],
         ]);
+
+        $continueTo = (string) ($validated['continue_to'] ?? 'expenses');
+        unset($validated['continue_to']);
 
         try {
             $trip = $this->trips->createFromLorryReceipt($lorryReceipt, $actor, $validated);
@@ -168,9 +172,21 @@ class TripController extends Controller
             throw ValidationException::withMessages(['vehicle_id' => $e->getMessage()]);
         }
 
+        $route = match ($continueTo) {
+            'multi_point' => 'branch.trips.multi-point',
+            'show' => 'branch.trips.show',
+            default => 'branch.trips.expenses',
+        };
+
+        $message = match ($continueTo) {
+            'multi_point' => 'OwnFleet Trip created. Define multi-point pickups, drops and allocations.',
+            'show' => 'OwnFleet Trip created. Continue with Trip Operations.',
+            default => 'OwnFleet Trip created. Continue with expenses, diesel and trip operations.',
+        };
+
         return redirect()
-            ->route('branch.trips.expenses', [$trip])
-            ->with('success', 'OwnFleet Trip created. Continue with expenses, diesel and trip operations.');
+            ->route($route, [$trip])
+            ->with('success', $message);
     }
 
     public function show(Request $request, Trip $trip, Company $company, Branch $branch): Response
@@ -199,6 +215,44 @@ class TripController extends Controller
         $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
 
         return Inertia::render('branch/trips/show', $this->tripWorkspaceProps(
+            $actor,
+            $company,
+            $branch,
+            $trip,
+            $maySeeFreight,
+        ));
+    }
+
+    /**
+     * Dedicated multi-point pickup / drop / allocation workspace.
+     */
+    public function multiPoint(Request $request, Trip $trip, Company $company, Branch $branch): Response
+    {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertPermission($actor, $company, $branch, PermissionCodes::TRIP_VIEW);
+
+        try {
+            $trip = $this->trips->findForBranch($company, $branch, $trip->id);
+        } catch (TripDomainException $e) {
+            abort(404, $e->getMessage());
+        }
+
+        $trip->load([
+            'pickups.station',
+            'pickups.consignor',
+            'drops.station',
+            'drops.consignee',
+            'allocations',
+            'lorryReceipt.fromStation',
+            'lorryReceipt.toStation',
+            'lorryReceipt.billingCustomer',
+            'vehicle',
+            'driver',
+        ]);
+
+        $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
+
+        return Inertia::render('branch/trips/multi-point', $this->tripWorkspaceProps(
             $actor,
             $company,
             $branch,
@@ -426,9 +480,7 @@ class TripController extends Controller
             throw ValidationException::withMessages(['weight' => $e->getMessage()]);
         }
 
-        return redirect()
-            ->route('branch.trips.show', [$trip])
-            ->with('success', 'Pickup added.');
+        return back()->with('success', 'Pickup added.');
     }
 
     public function storeDrop(Request $request, Trip $trip, Company $company, Branch $branch): RedirectResponse
@@ -452,9 +504,7 @@ class TripController extends Controller
             throw ValidationException::withMessages(['station_id' => $e->getMessage()]);
         }
 
-        return redirect()
-            ->route('branch.trips.show', [$trip])
-            ->with('success', 'Drop added.');
+        return back()->with('success', 'Drop added.');
     }
 
     public function destroyPickup(
@@ -476,9 +526,7 @@ class TripController extends Controller
             throw ValidationException::withMessages(['pickup' => $e->getMessage()]);
         }
 
-        return redirect()
-            ->route('branch.trips.show', [$trip])
-            ->with('success', 'Pickup removed.');
+        return back()->with('success', 'Pickup removed.');
     }
 
     public function destroyDrop(
@@ -500,9 +548,7 @@ class TripController extends Controller
             throw ValidationException::withMessages(['drop' => $e->getMessage()]);
         }
 
-        return redirect()
-            ->route('branch.trips.show', [$trip])
-            ->with('success', 'Drop removed.');
+        return back()->with('success', 'Drop removed.');
     }
 
     public function storeAllocation(Request $request, Trip $trip, Company $company, Branch $branch): RedirectResponse
@@ -536,9 +582,7 @@ class TripController extends Controller
             throw ValidationException::withMessages(['allocation_weight' => $e->getMessage()]);
         }
 
-        return redirect()
-            ->route('branch.trips.show', [$trip])
-            ->with('success', 'Allocation saved.');
+        return back()->with('success', 'Allocation saved.');
     }
 
     public function destroyAllocation(
@@ -560,9 +604,7 @@ class TripController extends Controller
             throw ValidationException::withMessages(['allocation' => $e->getMessage()]);
         }
 
-        return redirect()
-            ->route('branch.trips.show', [$trip])
-            ->with('success', 'Allocation removed.');
+        return back()->with('success', 'Allocation removed.');
     }
 
     private function assertTrip(Trip $trip, Company $company, Branch $branch): void
@@ -886,6 +928,8 @@ class TripController extends Controller
                 'index' => route('branch.trips.index', absolute: false),
                 'lr_show' => route('branch.lorry-receipts.show', [$trip->lorry_receipt_id], absolute: false),
                 'expenses' => route('branch.trips.expenses', [$trip], absolute: false),
+                'multi_point' => route('branch.trips.multi-point', [$trip], absolute: false),
+                'show' => route('branch.trips.show', [$trip], absolute: false),
                 'add_pickup' => route('branch.trips.pickups.store', [$trip], absolute: false),
                 'remove_pickup' => route('branch.trips.pickups.destroy', [$trip, 'PICKUP_ID'], absolute: false),
                 'add_drop' => route('branch.trips.drops.store', [$trip], absolute: false),
@@ -957,6 +1001,7 @@ class TripController extends Controller
             'permissions' => $this->tripPermissions($actor, $company, $branch, $maySeeFreight),
             'urls' => [
                 'show' => route('branch.trips.show', [$trip], absolute: false),
+                'multi_point' => route('branch.trips.multi-point', [$trip], absolute: false),
                 'lr_show' => route('branch.lorry-receipts.show', [$trip->lorry_receipt_id], absolute: false),
                 'index' => route('branch.lorry-receipts.index', absolute: false),
                 'add_expense' => route('branch.trips.expenses.store', [$trip], absolute: false),

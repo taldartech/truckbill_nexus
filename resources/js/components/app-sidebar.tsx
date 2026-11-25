@@ -18,6 +18,7 @@ import {
     Truck,
     UserCog,
     Users,
+    Wallet,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
 import { NavMain } from '@/components/nav-main';
@@ -153,6 +154,16 @@ export function AppSidebar() {
             title: 'Bilty Register',
             href: '/lorry-receipts',
             icon: Receipt,
+        },
+        {
+            title: 'OwnFleet — Start Trip',
+            href: '/lorry-receipts?ownership=own&awaiting_trip=1',
+            icon: Wallet,
+        },
+        {
+            title: 'OwnFleet — Active Trips',
+            href: '/lorry-receipts?ownership=own&has_trip=1',
+            icon: Truck,
         },
         {
             title: 'Lorry Hires',

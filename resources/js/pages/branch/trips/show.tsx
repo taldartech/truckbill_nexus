@@ -1,5 +1,5 @@
 import { Form, Head, Link, router, usePage } from '@inertiajs/react';
-import { ArrowLeft, FileText, Wallet } from 'lucide-react';
+import { ArrowLeft, FileText, Route, Wallet } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import { AppIconAction } from '@/components/app-icon-action';
 import {
@@ -129,6 +129,8 @@ type Props = {
         index: string;
         lr_show: string;
         expenses?: string;
+        multi_point?: string;
+        show?: string;
         add_pickup: string;
         remove_pickup?: string;
         add_drop: string;
@@ -286,6 +288,49 @@ export default function TripShow({
                     </p>
                 ) : null}
 
+                {mutable ? (
+                    <div
+                        role="region"
+                        aria-label="Next Trip actions"
+                        className="mb-3 rounded-lg border border-[#2D8CFF]/30 bg-[#2D8CFF]/5 px-4 py-3"
+                    >
+                        <p className="mb-2 text-sm font-semibold text-slate-800">
+                            Next actions
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                            {urls.multi_point ? (
+                                <AppIconAction
+                                    icon={Route}
+                                    label="Multi-point route"
+                                    href={urls.multi_point}
+                                    variant="outline"
+                                    size="sm"
+                                />
+                            ) : null}
+                            <AppIconAction
+                                icon={Wallet}
+                                label="Manage expenses"
+                                href={urls.expenses ?? '#manage-expenses'}
+                                variant="outline"
+                                size="sm"
+                            />
+                            {permissions.can_dispatch &&
+                            trip.status === 'pending' ? (
+                                <span className="self-center text-xs text-muted-foreground">
+                                    Then dispatch with starting odometer below.
+                                </span>
+                            ) : null}
+                            {permissions.can_complete &&
+                            trip.status === 'in_progress' ? (
+                                <span className="self-center text-xs text-muted-foreground">
+                                    Complete trip when drops and expenses are
+                                    done.
+                                </span>
+                            ) : null}
+                        </div>
+                    </div>
+                ) : null}
+
                 <TripDetailLayout
                     main={
                         <>
@@ -304,6 +349,14 @@ export default function TripShow({
                                             href={urls.lr_show}
                                             variant="outline"
                                         />
+                                        {urls.multi_point ? (
+                                            <AppIconAction
+                                                icon={Route}
+                                                label="Multi-point route"
+                                                href={urls.multi_point}
+                                                variant="outline"
+                                            />
+                                        ) : null}
                                         <AppIconAction
                                             icon={Wallet}
                                             label="Manage expenses"

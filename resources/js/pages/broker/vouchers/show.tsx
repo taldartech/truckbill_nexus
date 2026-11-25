@@ -82,7 +82,7 @@ export default function VoucherShow({
     return (
         <>
             <Head title={`Voucher ${voucher.voucher_number}`} />
-            <FbDetailPage>
+            <FbDetailPage title={`Voucher ${voucher.voucher_number}`}>
                 <FbDetailLayout
                     main={
                         <>

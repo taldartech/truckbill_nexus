@@ -2,10 +2,15 @@
 
 namespace App\Http\Controllers\Branch;
 
+use App\Domains\Broker\BrokerOperationalOverview;
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Company\Exceptions\CompanyAccessException;
 use App\Domains\Company\WorkspaceNavigationService;
+use App\Domains\OwnFleet\Trip\OwnFleetOperationalOverview;
 use App\Domains\Rbac\PermissionAuthorizer;
+use App\Domains\Rbac\PermissionCodes;
+use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
+use App\Domains\Subscription\Enums\SubscriptionModule;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Company;
@@ -21,6 +26,9 @@ class BranchDashboardController extends Controller
         private readonly CompanyAccessService $access,
         private readonly WorkspaceNavigationService $navigation,
         private readonly PermissionAuthorizer $authorizer = new PermissionAuthorizer,
+        private readonly CoreModuleEntitlementResolver $moduleEntitlements = new CoreModuleEntitlementResolver,
+        private readonly OwnFleetOperationalOverview $ownFleetOverview = new OwnFleetOperationalOverview,
+        private readonly BrokerOperationalOverview $brokerOverview = new BrokerOperationalOverview,
     ) {}
 
     public function __invoke(Request $request, Company $company, Branch $branch): Response
@@ -44,13 +52,13 @@ class BranchDashboardController extends Controller
             abort(403, 'Not authorized to view Branch Panel.');
         }
 
-        // Context already established by ResolveBranchWorkspace / context POST.
-        // Sync without bumping version on routine dashboard GET.
         WorkspaceSession::sync($request, $company->id, $branch->id);
         $siblingBranches = $this->navigation->accessibleBranches($user, $company);
 
-        // PO-P2-DESIGN-MODULES: hide unavailable modules — no Broker/OwnFleet/Partload product screens in Phase 2.
-        $modules = [];
+        $ownFleet = $this->ownFleetOverview->forBranch($company, $branch, $user);
+        $broker = $this->brokerOverview->forBranch($company, $branch, $user);
+
+        $modules = $this->moduleShortcuts($company, $branch, $user, $ownFleet, $broker);
 
         return Inertia::render('branch/dashboard', [
             'company' => [
@@ -65,6 +73,8 @@ class BranchDashboardController extends Controller
             ],
             'isOwner' => $isOwner,
             'modules' => $modules,
+            'ownFleet' => $ownFleet,
+            'broker' => $broker,
             'siblingBranches' => $siblingBranches,
             'links' => [
                 'dashboard' => route('branch.dashboard', absolute: false),
@@ -75,7 +85,69 @@ class BranchDashboardController extends Controller
                 'select_branch' => $siblingBranches->count() > 1
                     ? route('workspace.branches.select', ['company' => $company], absolute: false)
                     : null,
+                'bilty_register' => route('branch.lorry-receipts.index', absolute: false),
+                'create_bilty' => route('branch.lorry-receipts.create', absolute: false),
             ],
         ]);
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $ownFleet
+     * @param  array<string, mixed>|null  $broker
+     * @return list<array{key: string, label: string, href: string, description: string}>
+     */
+    private function moduleShortcuts(
+        Company $company,
+        Branch $branch,
+        User $user,
+        ?array $ownFleet,
+        ?array $broker,
+    ): array {
+        $modules = [];
+
+        if ($this->authorizer->allowsCustomer($user, PermissionCodes::LR_VIEW, $company, $branch)) {
+            $modules[] = [
+                'key' => 'bilty_register',
+                'label' => 'Bilty Register',
+                'href' => route('branch.lorry-receipts.index', absolute: false),
+                'description' => 'Primary operational entry for Own and Market vehicles',
+            ];
+            $modules[] = [
+                'key' => 'create_bilty',
+                'label' => 'Create Bilty',
+                'href' => route('branch.lorry-receipts.create', absolute: false),
+                'description' => 'Select Own or Market vehicle — workflow follows ownership',
+            ];
+        }
+
+        if ($ownFleet !== null && ($ownFleet['can_view_trips'] ?? false)) {
+            $modules[] = [
+                'key' => 'ownfleet_awaiting',
+                'label' => 'OwnFleet — Start Trip',
+                'href' => (string) ($ownFleet['links']['awaiting_trip'] ?? route('branch.lorry-receipts.index', absolute: false)),
+                'description' => 'Own vehicle Bilties waiting for Trip / Expenses',
+            ];
+            $modules[] = [
+                'key' => 'ownfleet_active',
+                'label' => 'OwnFleet — Active Trips',
+                'href' => (string) ($ownFleet['links']['active_trips'] ?? route('branch.lorry-receipts.index', absolute: false)),
+                'description' => 'Open Trip Operations, Diesel and Expenses',
+            ];
+        }
+
+        if (
+            $broker !== null
+            && ($broker['can_view_hires'] ?? false)
+            && $this->moduleEntitlements->isEntitled($company, SubscriptionModule::Broker)
+        ) {
+            $modules[] = [
+                'key' => 'broker_hires',
+                'label' => 'Lorry Hires',
+                'href' => (string) ($broker['links']['lorry_hires'] ?? route('branch.broker.lorry-hires.index', absolute: false)),
+                'description' => 'Market vehicle transporter hire and settlement',
+            ];
+        }
+
+        return $modules;
     }
 }

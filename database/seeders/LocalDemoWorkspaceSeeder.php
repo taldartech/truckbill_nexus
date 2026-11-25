@@ -477,6 +477,17 @@ class LocalDemoWorkspaceSeeder extends Seeder
             truckTypeId: $catalogues['truck']->id,
             tyreLayoutId: $catalogues['tyre']->id,
         );
+        // Dedicated free Own vehicle for browser / operator journeys — never
+        // attached to seeded Pending or invoice trips (overlap protection stays on PEND).
+        $this->ensureVehicle(
+            $company,
+            $head,
+            'MH12FREE'.substr((string) crc32($company->id.'free'), 0, 4),
+            ownership: VehicleOwnership::Own,
+            primaryDriverPartyId: $primaryDriver->id,
+            truckTypeId: $catalogues['truck']->id,
+            tyreLayoutId: $catalogues['tyre']->id,
+        );
         $marketVehicle = $this->ensureVehicle(
             $company,
             $masterScopeBranch ?? $second,

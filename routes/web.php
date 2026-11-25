@@ -252,6 +252,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('/trips', [TripController::class, 'index'])->name('branch.trips.index');
         Route::get('/trips/{trip}', [TripController::class, 'show'])->name('branch.trips.show');
+        Route::get('/trips/{trip}/multi-point', [TripController::class, 'multiPoint'])->name('branch.trips.multi-point');
         Route::get('/trips/{trip}/expenses', [TripController::class, 'expenses'])->name('branch.trips.expenses');
         Route::post('/trips/{trip}/dispatch', [TripController::class, 'dispatch'])->name('branch.trips.dispatch');
         Route::post('/trips/{trip}/complete', [TripController::class, 'complete'])->name('branch.trips.complete');

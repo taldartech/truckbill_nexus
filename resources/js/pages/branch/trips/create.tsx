@@ -217,12 +217,36 @@ export default function TripCreate({
                                 <div className="flex flex-wrap gap-2 sm:col-span-2">
                                     <Button
                                         type="submit"
+                                        name="continue_to"
+                                        value="expenses"
                                         variant="primary"
                                         disabled={
                                             processing || vehicles.length === 0
                                         }
                                     >
                                         Create Trip
+                                    </Button>
+                                    <Button
+                                        type="submit"
+                                        name="continue_to"
+                                        value="multi_point"
+                                        variant="secondary"
+                                        disabled={
+                                            processing || vehicles.length === 0
+                                        }
+                                    >
+                                        Create Trip & Multi-point route
+                                    </Button>
+                                    <Button
+                                        type="submit"
+                                        name="continue_to"
+                                        value="show"
+                                        variant="outline"
+                                        disabled={
+                                            processing || vehicles.length === 0
+                                        }
+                                    >
+                                        Create Trip & open workspace
                                     </Button>
                                     <Button asChild variant="secondary">
                                         <Link href={urls.lr_show}>Cancel</Link>

@@ -26,6 +26,8 @@ type PrimaryOperation = {
     label: string;
     url: string;
     kind: string;
+    expenses_url?: string;
+    multi_point_url?: string;
 };
 
 type LrRow = {
@@ -66,7 +68,14 @@ type CreateAction =
       };
 
 type Props = {
-    filters: { q: string; status: string; workflow_context: string };
+    filters: {
+        q: string;
+        status: string;
+        workflow_context: string;
+        ownership?: string;
+        awaiting_trip?: string;
+        has_trip?: string;
+    };
     permissions: {
         can_create: boolean;
         can_edit?: boolean;
@@ -111,7 +120,11 @@ function lrPrintUrl(row: LrRow): string | undefined {
 }
 
 function operationIcon(kind: string) {
-    if (kind === 'manage_expenses' || kind === 'init_trip') {
+    if (
+        kind === 'manage_expenses' ||
+        kind === 'init_trip' ||
+        kind === 'trip_operations'
+    ) {
         return Wallet;
     }
 
@@ -161,6 +174,11 @@ export default function LorryReceiptsIndex({
     const [workflowContext, setWorkflowContext] = useState(
         filters.workflow_context,
     );
+    const [ownership, setOwnership] = useState(filters.ownership ?? '');
+    const [awaitingTrip, setAwaitingTrip] = useState(
+        filters.awaiting_trip ?? '',
+    );
+    const [hasTrip, setHasTrip] = useState(filters.has_trip ?? '');
     const mayViewFreight = permissions.can_view_freight !== false;
     const mayEdit = permissions.can_edit !== false;
     const columnCount = mayViewFreight ? 9 : 8;
@@ -173,6 +191,9 @@ export default function LorryReceiptsIndex({
                 q: q || undefined,
                 status: status || undefined,
                 workflow_context: workflowContext || undefined,
+                ownership: ownership || undefined,
+                awaiting_trip: awaitingTrip || undefined,
+                has_trip: hasTrip || undefined,
             },
             { preserveState: true },
         );
@@ -182,6 +203,9 @@ export default function LorryReceiptsIndex({
         setQ('');
         setStatus('');
         setWorkflowContext('');
+        setOwnership('');
+        setAwaitingTrip('');
+        setHasTrip('');
         router.get(urls.index, {}, { preserveState: true });
     };
 
@@ -273,6 +297,48 @@ export default function LorryReceiptsIndex({
                                 </select>
                             </div>
                         ) : null}
+                        <div className="space-y-1">
+                            <Label htmlFor="lr-ownership">Ownership</Label>
+                            <select
+                                id="lr-ownership"
+                                className={selectClass}
+                                value={ownership}
+                                onChange={(e) => setOwnership(e.target.value)}
+                            >
+                                <option value="">All</option>
+                                <option value="own">Own</option>
+                                <option value="market">Market</option>
+                            </select>
+                        </div>
+                        <div className="space-y-1">
+                            <Label htmlFor="lr-ownfleet-ops">
+                                OwnFleet ops
+                            </Label>
+                            <select
+                                id="lr-ownfleet-ops"
+                                className={selectClass}
+                                value={
+                                    awaitingTrip === '1'
+                                        ? 'awaiting'
+                                        : hasTrip === '1'
+                                          ? 'active'
+                                          : ''
+                                }
+                                onChange={(e) => {
+                                    const next = e.target.value;
+                                    setAwaitingTrip(
+                                        next === 'awaiting' ? '1' : '',
+                                    );
+                                    setHasTrip(next === 'active' ? '1' : '');
+                                }}
+                            >
+                                <option value="">All</option>
+                                <option value="awaiting">
+                                    Awaiting Start Trip
+                                </option>
+                                <option value="active">Has Trip</option>
+                            </select>
+                        </div>
                         <div className="flex flex-wrap items-center gap-2">
                             <Button
                                 type="submit"
@@ -418,6 +484,17 @@ export default function LorryReceiptsIndex({
                                                                 size="sm"
                                                             />
                                                         ) : null}
+                                                        {op?.expenses_url ? (
+                                                            <AppIconAction
+                                                                icon={Wallet}
+                                                                label="Manage Expenses"
+                                                                href={
+                                                                    op.expenses_url
+                                                                }
+                                                                variant="outline"
+                                                                size="sm"
+                                                            />
+                                                        ) : null}
                                                         {printUrl ? (
                                                             <AppIconAction
                                                                 icon={Printer}
@@ -446,6 +523,10 @@ export default function LorryReceiptsIndex({
                                 status: filters.status || undefined,
                                 workflow_context:
                                     filters.workflow_context || undefined,
+                                ownership: filters.ownership || undefined,
+                                awaiting_trip:
+                                    filters.awaiting_trip || undefined,
+                                has_trip: filters.has_trip || undefined,
                             }}
                         />
                     </div>
