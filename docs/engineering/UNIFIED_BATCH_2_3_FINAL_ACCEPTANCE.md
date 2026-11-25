@@ -2,7 +2,7 @@
 
 **Date:** 26 November 2026  
 **Status:** **PARTIAL — CORE REGRESSION GREEN** (PO-ERP-001 autonomous continuation)  
-**Local HEAD:** `71bbfe4` + pending Partload UI / Playwright smoke commit (ahead of origin ~44+; no push)
+**Local HEAD:** `8bc9250` (ahead of origin ~45; no push)
 
 ## Verdict
 
