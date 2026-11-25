@@ -28,6 +28,7 @@ class RbacSeeder extends Seeder
             $this->seedCustomerPhase5InvoicePermissions();
             $this->seedCustomerPhase6Permissions();
             $this->seedCustomerPartloadPermissions();
+            $this->seedCustomerAccountingPermissions();
             $this->seedInternalRoles();
             $this->seedCustomerDefaultRoles();
             $this->seedCustomerDefaultMatrix();
@@ -155,6 +156,26 @@ class RbacSeeder extends Seeder
             [PermissionCodes::BROKER_LINKED_BILTY_CREATE, 'broker', 'linked_bilty', 'Create Linked Bilties', 'Create linked bilty groups'],
             [PermissionCodes::BROKER_LINKED_BILTY_PAY, 'broker', 'linked_bilty', 'Pay Linked Bilties', 'Record linked bilty payments'],
             [PermissionCodes::BROKER_BOOK_BALANCE_VIEW, 'broker', 'book_balance', 'View Book Balance', 'View transporter book balance'],
+        ];
+
+        foreach ($definitions as [$code, $module, $submodule, $name, $description]) {
+            $this->upsertPermission(
+                domain: PermissionDomain::Customer,
+                module: $module,
+                submodule: $submodule,
+                name: $name,
+                code: $code,
+                description: $description,
+            );
+        }
+    }
+
+    private function seedCustomerAccountingPermissions(): void
+    {
+        $definitions = [
+            [PermissionCodes::BRANCH_ACCOUNTING_VIEW, 'accounting', 'workspace', 'View Accounting', 'View branch accounting workspace'],
+            [PermissionCodes::BRANCH_ACCOUNTING_VOUCHER_CREATE, 'accounting', 'voucher', 'Create Accounting Vouchers', 'Create manual accounting vouchers'],
+            [PermissionCodes::BRANCH_ACCOUNTING_REPORT_VIEW, 'accounting', 'report', 'View Accounting Reports', 'View Day Book, Ledger, Trial Balance'],
         ];
 
         foreach ($definitions as [$code, $module, $submodule, $name, $description]) {

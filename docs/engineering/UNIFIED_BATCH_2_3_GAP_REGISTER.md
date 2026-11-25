@@ -52,6 +52,7 @@
 | U23-PARTLOAD-CHALLAN   | Partload Challan consolidation + dispatch                    | Partload          | Aligned foundation (26 Nov 2026 ERP)                       |
 | U23-PARTLOAD-INWARD-DR | Partload Inward Register + Delivery Receipt                  | Partload          | Aligned foundation (26 Nov 2026 ERP)                       |
 | U23-ACC-F0             | Accounting COA/periods/posting engine                        | Accounting        | Aligned foundation (`1b48769`)                             |
+| U23-ACC-UI             | Day Book / Ledger / Trial Balance / manual voucher UI        | Accounting        | Aligned foundation (26 Nov 2026 ERP)                       |
 
 ## PO directive (25 Nov 2026) — superseding earlier OwnFleet navigation
 

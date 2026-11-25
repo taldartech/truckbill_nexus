@@ -150,6 +150,12 @@ final class PermissionCodes
 
     public const PARTLOAD_DR_CREATE = 'partload.delivery_receipt.create';
 
+    public const BRANCH_ACCOUNTING_VIEW = 'branch.accounting.view';
+
+    public const BRANCH_ACCOUNTING_VOUCHER_CREATE = 'branch.accounting.voucher.create';
+
+    public const BRANCH_ACCOUNTING_REPORT_VIEW = 'branch.accounting.report.view';
+
     /**
      * @return list<string>
      */
@@ -270,6 +276,20 @@ final class PermissionCodes
             self::PARTLOAD_INWARD_CREATE,
             self::PARTLOAD_DR_VIEW,
             self::PARTLOAD_DR_CREATE,
+        ];
+    }
+
+    /**
+     * Branch Accounting catalogue (registered; assigned explicitly).
+     *
+     * @return list<string>
+     */
+    public static function customerAccountingCatalogue(): array
+    {
+        return [
+            self::BRANCH_ACCOUNTING_VIEW,
+            self::BRANCH_ACCOUNTING_VOUCHER_CREATE,
+            self::BRANCH_ACCOUNTING_REPORT_VIEW,
         ];
     }
 }

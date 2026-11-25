@@ -17,6 +17,9 @@ use App\Http\Controllers\Api\GeographyController;
 use App\Http\Controllers\Api\GeographyQuickCreateController;
 use App\Http\Controllers\Api\PublicLeadController;
 use App\Http\Controllers\Api\PublicLeadOnboardingController;
+use App\Http\Controllers\Branch\Accounting\AccountingLedgerController;
+use App\Http\Controllers\Branch\Accounting\AccountingReportController;
+use App\Http\Controllers\Branch\Accounting\AccountingVoucherController;
 use App\Http\Controllers\Branch\BankCashAccountController;
 use App\Http\Controllers\Branch\BranchDashboardController;
 use App\Http\Controllers\Branch\BranchSettingsController;
@@ -315,6 +318,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/partload/inwards/{partloadInward}', [PartloadInwardController::class, 'show'])->name('branch.partload.inwards.show');
         Route::get('/partload/delivery-receipts/create', [PartloadDeliveryReceiptController::class, 'create'])->name('branch.partload.delivery-receipts.create');
         Route::post('/partload/delivery-receipts', [PartloadDeliveryReceiptController::class, 'store'])->name('branch.partload.delivery-receipts.store');
+
+        Route::get('/accounting/vouchers', [AccountingVoucherController::class, 'index'])->name('branch.accounting.vouchers.index');
+        Route::get('/accounting/vouchers/create', [AccountingVoucherController::class, 'create'])->name('branch.accounting.vouchers.create');
+        Route::post('/accounting/vouchers', [AccountingVoucherController::class, 'store'])->name('branch.accounting.vouchers.store');
+        Route::get('/accounting/vouchers/{accountingVoucher}', [AccountingVoucherController::class, 'show'])->name('branch.accounting.vouchers.show');
+        Route::get('/accounting/ledgers', [AccountingLedgerController::class, 'index'])->name('branch.accounting.ledgers.index');
+        Route::get('/accounting/ledgers/{glLedger}', [AccountingLedgerController::class, 'show'])->name('branch.accounting.ledgers.show');
+        Route::get('/accounting/reports/trial-balance', [AccountingReportController::class, 'trialBalance'])->name('branch.accounting.reports.trial-balance');
 
         Route::get('/trips', [TripController::class, 'index'])->name('branch.trips.index');
         Route::get('/trips/{trip}', [TripController::class, 'show'])->name('branch.trips.show');

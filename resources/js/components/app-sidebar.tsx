@@ -215,6 +215,11 @@ export function AppSidebar() {
             icon: Truck,
         },
         {
+            title: 'Accounting',
+            href: '/accounting/vouchers',
+            icon: Landmark,
+        },
+        {
             title: 'Broker Registers',
             href: '/broker/registers',
             icon: ClipboardList,
