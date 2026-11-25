@@ -1,18 +1,16 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Eye, Filter, Plus } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { Eye, Plus } from 'lucide-react';
 import { AppIconAction } from '@/components/app-icon-action';
 import {
-    ResponsiveDataTable,
-    type DataTableColumn,
-} from '@/components/data-table';
-import { FormSection } from '@/components/form-section';
-import { PageShell } from '@/components/page-shell';
+    AppIndexFilters,
+    AppIndexListCard,
+    AppIndexPage,
+} from '@/components/app-index-page';
 import { TablePagination } from '@/components/table-pagination';
+import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 
 type Row = {
     id: string;
@@ -48,134 +46,138 @@ export default function VehiclesIndex({
     links,
 }: Props) {
     const { flash } = usePage<{ flash?: { success?: string | null } }>().props;
-    const [q, setQ] = useState(filters.q);
     const showUrl = (id: string) => `/vehicles/${id}`;
-
-    const columns = useMemo<DataTableColumn<Row>[]>(
-        () => [
-            {
-                id: 'registration',
-                header: 'Registration',
-                priority: 0,
-                cell: (row) => (
-                    <span className="font-medium">
-                        {row.registration_number}
-                    </span>
-                ),
-            },
-            {
-                id: 'status',
-                header: 'Status',
-                priority: 1,
-                cell: (row) => (
-                    <WorkspaceStatusBadge
-                        status={row.is_active ? 'Active' : 'Inactive'}
-                    />
-                ),
-            },
-            {
-                id: 'type',
-                header: 'Type',
-                priority: 2,
-                cell: (row) => row.vehicle_type || '—',
-            },
-            {
-                id: 'make_model',
-                header: 'Make / model',
-                priority: 2,
-                cell: (row) =>
-                    [row.make, row.model].filter(Boolean).join(' ') || '—',
-            },
-        ],
-        [],
-    );
 
     return (
         <>
             <Head title={`Vehicles · ${branch.name}`} />
-            <PageShell
-                title="Vehicles"
-                description="Fleet registry for OwnFleet and operational assignments."
-                actions={
-                    permissions.can_create ? (
-                        <Button asChild variant="primary" className="gap-2">
-                            <Link href={links.create}>
-                                <Plus className="size-4" />
+            <AppIndexPage>
+                <AppIndexListCard
+                    title="Vehicles"
+                    toolbar={
+                        permissions.can_create ? (
+                            <Link
+                                href={links.create}
+                                className="app-index-header-btn"
+                            >
+                                <Plus className="h-3.5 w-3.5" />
                                 Create vehicle
                             </Link>
-                        </Button>
-                    ) : null
-                }
-            >
-                {flash?.success ? (
-                    <p
-                        role="status"
-                        className="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm"
-                    >
-                        {flash.success}
-                    </p>
-                ) : null}
+                        ) : null
+                    }
+                >
+                    {flash?.success ? (
+                        <p
+                            role="status"
+                            className="border-b border-[#e5e7eb] bg-[#f8fafc] px-4 py-2 text-sm text-[#334155]"
+                        >
+                            {flash.success}
+                        </p>
+                    ) : null}
 
-                <FormSection title="Filters" columns={2}>
-                    <form
-                        onSubmit={(e) => {
-                            e.preventDefault();
+                    <AppIndexFilters
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            const form = event.currentTarget;
+                            const q = (
+                                form.elements.namedItem('q') as HTMLInputElement
+                            ).value.trim();
                             router.get(
                                 links.index,
                                 { q: q || undefined },
                                 { preserveState: true, replace: true },
                             );
                         }}
-                        className="contents"
                     >
-                        <div className="space-y-2">
+                        <div className="space-y-1">
                             <Label htmlFor="q">Search</Label>
                             <Input
                                 id="q"
-                                value={q}
-                                onChange={(e) => setQ(e.target.value)}
+                                name="q"
+                                defaultValue={filters.q}
                                 placeholder="Registration, make, model…"
+                                className="min-w-[12rem]"
                             />
                         </div>
-                        <div className="flex items-end">
-                            <Button
-                                type="submit"
-                                variant="secondary"
-                                className="gap-2"
-                            >
-                                <Filter className="size-4" />
-                                Apply
-                            </Button>
-                        </div>
-                    </form>
-                </FormSection>
+                        <Button
+                            type="submit"
+                            className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                        >
+                            Filter
+                        </Button>
+                    </AppIndexFilters>
 
-                <ResponsiveDataTable
-                    caption="Vehicles"
-                    columns={columns}
-                    rows={vehicles.data}
-                    rowKey={(row) => row.id}
-                    emptyTitle="No vehicles"
-                    emptyDescription="Create a vehicle to get started."
-                    actions={(row) => (
-                        <AppIconAction
-                            icon={Eye}
-                            label="View vehicle"
-                            href={showUrl(row.id)}
-                            variant="info"
+                    <div className="overflow-x-auto">
+                        <table className="app-index-table min-w-full">
+                            <thead>
+                                <tr>
+                                    <th>Registration</th>
+                                    <th>Status</th>
+                                    <th>Type</th>
+                                    <th>Make / model</th>
+                                    <th className="text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {vehicles.data.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={5}>
+                                            <p className="app-index-empty">
+                                                No vehicles. Create a vehicle to
+                                                get started.
+                                            </p>
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    vehicles.data.map((row) => (
+                                        <tr key={row.id}>
+                                            <td className="font-medium">
+                                                {row.registration_number}
+                                            </td>
+                                            <td>
+                                                <WorkspaceStatusBadge
+                                                    status={
+                                                        row.is_active
+                                                            ? 'Active'
+                                                            : 'Inactive'
+                                                    }
+                                                />
+                                            </td>
+                                            <td>{row.vehicle_type || '—'}</td>
+                                            <td>
+                                                {[row.make, row.model]
+                                                    .filter(Boolean)
+                                                    .join(' ') || '—'}
+                                            </td>
+                                            <td>
+                                                <div className="flex justify-center">
+                                                    <AppIconAction
+                                                        icon={Eye}
+                                                        label="View vehicle"
+                                                        href={showUrl(row.id)}
+                                                        variant="info"
+                                                    />
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div className="border-t border-[#e5e7eb] px-4 py-3">
+                        <TablePagination
+                            baseUrl={links.index}
+                            meta={vehicles.meta}
+                            query={{
+                                q: filters.q || undefined,
+                                active: filters.active || undefined,
+                            }}
                         />
-                    )}
-                />
-
-                <TablePagination
-                    baseUrl={links.index}
-                    meta={vehicles.meta}
-                    query={{
-                        q: filters.q || undefined,
-                        active: filters.active || undefined,
-                    }}
-                />
-            </PageShell>
+                    </div>
+                </AppIndexListCard>
+            </AppIndexPage>
         </>
     );
 }

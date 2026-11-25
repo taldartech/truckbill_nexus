@@ -1,13 +1,11 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Eye, Filter, Pencil, Plus } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { Eye, Pencil, Plus } from 'lucide-react';
 import { AppIconAction } from '@/components/app-icon-action';
 import {
-    ResponsiveDataTable,
-    type DataTableColumn,
-} from '@/components/data-table';
-import { FormSection } from '@/components/form-section';
-import { PageShell } from '@/components/page-shell';
+    AppIndexFilters,
+    AppIndexListCard,
+    AppIndexPage,
+} from '@/components/app-index-page';
 import { TablePagination } from '@/components/table-pagination';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,97 +50,73 @@ export default function PartiesIndex({
     links,
 }: Props) {
     const { flash } = usePage<{ flash?: { success?: string | null } }>().props;
-    const [q, setQ] = useState(filters.q);
-    const [role, setRole] = useState(filters.role);
 
     const partyShowUrl = (id: string) => `/parties/${id}`;
     const partyEditUrl = (id: string) => `/parties/${id}/edit`;
 
-    const applyFilters = (event: React.FormEvent) => {
-        event.preventDefault();
-        router.get(
-            links.index,
-            { q: q || undefined, role: role || undefined },
-            { preserveState: true, replace: true },
-        );
-    };
-
-    const columns = useMemo<DataTableColumn<PartyRow>[]>(
-        () => [
-            {
-                id: 'name',
-                header: 'Name',
-                priority: 0,
-                cell: (row) => <span className="font-medium">{row.name}</span>,
-            },
-            {
-                id: 'roles',
-                header: 'Roles',
-                priority: 1,
-                cell: (row) => row.roles.join(', ') || '—',
-            },
-            {
-                id: 'contact',
-                header: 'Contact',
-                priority: 2,
-                className: 'text-muted-foreground',
-                cell: (row) => row.contact_number || row.email || '—',
-            },
-            {
-                id: 'city',
-                header: 'City',
-                priority: 2,
-                className: 'text-muted-foreground',
-                cell: (row) => row.city || '—',
-            },
-        ],
-        [],
-    );
-
     return (
         <>
             <Head title="Parties" />
-            <PageShell
-                title="Parties"
-                description="Customers, vendors, transporters, and drivers."
-                actions={
-                    permissions.can_create ? (
-                        <Button asChild variant="primary" className="gap-2">
-                            <Link href={links.create}>
-                                <Plus className="size-4" />
+            <AppIndexPage>
+                <AppIndexListCard
+                    title="Parties"
+                    toolbar={
+                        permissions.can_create ? (
+                            <Link
+                                href={links.create}
+                                className="app-index-header-btn"
+                            >
+                                <Plus className="h-3.5 w-3.5" />
                                 Create party
                             </Link>
-                        </Button>
-                    ) : null
-                }
-            >
-                {flash?.success ? (
-                    <p
-                        role="status"
-                        className="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm"
-                    >
-                        {flash.success}
-                    </p>
-                ) : null}
+                        ) : null
+                    }
+                >
+                    {flash?.success ? (
+                        <p
+                            role="status"
+                            className="border-b border-[#e5e7eb] bg-[#f8fafc] px-4 py-2 text-sm text-[#334155]"
+                        >
+                            {flash.success}
+                        </p>
+                    ) : null}
 
-                <FormSection title="Filters" columns={3}>
-                    <form onSubmit={applyFilters} className="contents">
-                        <div className="space-y-2">
+                    <AppIndexFilters
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            const form = event.currentTarget;
+                            const q = (
+                                form.elements.namedItem('q') as HTMLInputElement
+                            ).value.trim();
+                            const role = (
+                                form.elements.namedItem(
+                                    'role',
+                                ) as HTMLSelectElement
+                            ).value;
+                            router.get(
+                                links.index,
+                                { q: q || undefined, role: role || undefined },
+                                { preserveState: true, replace: true },
+                            );
+                        }}
+                    >
+                        <div className="space-y-1">
                             <Label htmlFor="party-q">Search</Label>
                             <Input
                                 id="party-q"
-                                value={q}
-                                onChange={(e) => setQ(e.target.value)}
+                                name="q"
+                                defaultValue={filters.q}
                                 placeholder="Name, phone, GSTIN…"
+                                className="min-w-[12rem]"
                             />
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-1">
                             <Label htmlFor="party-role">Role</Label>
                             <select
                                 id="party-role"
-                                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                value={role}
-                                onChange={(e) => setRole(e.target.value)}
+                                name="role"
+                                defaultValue={filters.role}
+                                className="h-9 min-w-[10rem] rounded-md border border-input bg-background px-3 text-sm"
                             >
                                 <option value="">All roles</option>
                                 {roleOptions.map((option) => (
@@ -155,54 +129,94 @@ export default function PartiesIndex({
                                 ))}
                             </select>
                         </div>
-                        <div className="flex items-end">
-                            <Button
-                                type="submit"
-                                variant="secondary"
-                                className="gap-2"
-                            >
-                                <Filter className="size-4" />
-                                Apply
-                            </Button>
-                        </div>
-                    </form>
-                </FormSection>
+                        <Button
+                            type="submit"
+                            className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                        >
+                            Filter
+                        </Button>
+                    </AppIndexFilters>
 
-                <ResponsiveDataTable
-                    caption="Parties"
-                    columns={columns}
-                    rows={parties.data}
-                    rowKey={(row) => row.id}
-                    emptyTitle="No parties found"
-                    emptyDescription="Create a party or adjust filters."
-                    actions={(row) => (
-                        <div className="flex justify-end gap-1">
-                            <AppIconAction
-                                icon={Eye}
-                                label="View party"
-                                href={partyShowUrl(row.id)}
-                                variant="info"
-                            />
-                            <AppIconAction
-                                icon={Pencil}
-                                label="Edit party"
-                                href={partyEditUrl(row.id)}
-                                variant="warning"
-                                visible={permissions.can_edit}
-                            />
-                        </div>
-                    )}
-                />
+                    <div className="overflow-x-auto">
+                        <table className="app-index-table min-w-full">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Roles</th>
+                                    <th>Contact</th>
+                                    <th>City</th>
+                                    <th className="text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {parties.data.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={5}>
+                                            <p className="app-index-empty">
+                                                No parties found. Create a party
+                                                or adjust filters.
+                                            </p>
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    parties.data.map((row) => (
+                                        <tr key={row.id}>
+                                            <td className="font-medium">
+                                                {row.name}
+                                            </td>
+                                            <td>
+                                                {row.roles.join(', ') || '—'}
+                                            </td>
+                                            <td className="text-slate-500">
+                                                {row.contact_number ||
+                                                    row.email ||
+                                                    '—'}
+                                            </td>
+                                            <td className="text-slate-500">
+                                                {row.city || '—'}
+                                            </td>
+                                            <td>
+                                                <div className="flex items-center justify-center gap-1">
+                                                    <AppIconAction
+                                                        icon={Eye}
+                                                        label="View party"
+                                                        href={partyShowUrl(
+                                                            row.id,
+                                                        )}
+                                                        variant="info"
+                                                    />
+                                                    <AppIconAction
+                                                        icon={Pencil}
+                                                        label="Edit party"
+                                                        href={partyEditUrl(
+                                                            row.id,
+                                                        )}
+                                                        variant="warning"
+                                                        visible={
+                                                            permissions.can_edit
+                                                        }
+                                                    />
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
 
-                <TablePagination
-                    baseUrl={links.index}
-                    meta={parties.meta}
-                    query={{
-                        q: filters.q || undefined,
-                        role: filters.role || undefined,
-                    }}
-                />
-            </PageShell>
+                    <div className="border-t border-[#e5e7eb] px-4 py-3">
+                        <TablePagination
+                            baseUrl={links.index}
+                            meta={parties.meta}
+                            query={{
+                                q: filters.q || undefined,
+                                role: filters.role || undefined,
+                            }}
+                        />
+                    </div>
+                </AppIndexListCard>
+            </AppIndexPage>
         </>
     );
 }

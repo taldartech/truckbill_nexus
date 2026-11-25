@@ -1,11 +1,10 @@
 import { Form, Head, router, usePage } from '@inertiajs/react';
-import { useMemo, useState } from 'react';
-import {
-    ResponsiveDataTable,
-    type DataTableColumn,
-} from '@/components/data-table';
 import InputError from '@/components/input-error';
-import { PageShell } from '@/components/page-shell';
+import {
+    AppIndexFilters,
+    AppIndexListCard,
+    AppIndexPage,
+} from '@/components/app-index-page';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -42,191 +41,222 @@ export default function CataloguesIndex({
     links,
 }: Props) {
     const { flash } = usePage<{ flash?: { success?: string | null } }>().props;
-    const [q, setQ] = useState(filters.q);
-    const [type, setType] = useState(filters.type);
-
-    const columns = useMemo<DataTableColumn<Item>[]>(
-        () => [
-            {
-                id: 'code',
-                header: 'Code',
-                priority: 0,
-                className: 'font-mono',
-                cell: (row) => row.code,
-            },
-            {
-                id: 'status',
-                header: 'Status',
-                priority: 1,
-                cell: (row) => (row.is_active ? 'Active' : 'Inactive'),
-            },
-            {
-                id: 'name',
-                header: 'Name',
-                priority: 2,
-                cell: (row) => row.name,
-            },
-        ],
-        [],
-    );
 
     return (
         <>
             <Head title={`Supporting masters · ${branch.name}`} />
-            <PageShell title={'Supporting masters'}>
-                {flash?.success ? (
-                    <p
-                        role="status"
-                        className="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm"
-                    >
-                        {flash.success}
-                    </p>
-                ) : null}
-                <form
-                    onSubmit={(e) => {
-                        e.preventDefault();
-                        router.get(
-                            links.index,
-                            { q: q || undefined, type },
-                            { preserveState: true, replace: true },
-                        );
-                    }}
-                    className="flex flex-col gap-3 md:flex-row md:items-end"
-                >
-                    <div className="space-y-2 md:w-56">
-                        <Label htmlFor="type">Catalogue</Label>
-                        <select
-                            id="type"
-                            value={type}
-                            onChange={(e) => setType(e.target.value)}
-                            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+            <AppIndexPage>
+                <AppIndexListCard title="Supporting masters">
+                    {flash?.success ? (
+                        <p
+                            role="status"
+                            className="border-b border-[#e5e7eb] bg-[#f8fafc] px-4 py-2 text-sm text-[#334155]"
                         >
-                            {typeOptions.map((o) => (
-                                <option key={o.value} value={o.value}>
-                                    {o.label}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                    <div className="flex-1 space-y-2">
-                        <Label htmlFor="q">Search</Label>
-                        <Input
-                            id="q"
-                            value={q}
-                            onChange={(e) => setQ(e.target.value)}
-                        />
-                    </div>
-                    <Button type="submit" variant="secondary">
-                        Filter
-                    </Button>
-                </form>
-                {canManageOwnerCatalogues ? (
-                    <Form
-                        action={links.store}
-                        method="post"
-                        className="grid max-w-2xl gap-3 rounded-xl border border-border p-4 sm:grid-cols-2"
+                            {flash.success}
+                        </p>
+                    ) : null}
+
+                    <AppIndexFilters
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            const form = event.currentTarget;
+                            const type = (
+                                form.elements.namedItem(
+                                    'type',
+                                ) as HTMLSelectElement
+                            ).value;
+                            const q = (
+                                form.elements.namedItem('q') as HTMLInputElement
+                            ).value.trim();
+                            router.get(
+                                links.index,
+                                { q: q || undefined, type },
+                                { preserveState: true, replace: true },
+                            );
+                        }}
                     >
-                        {({ processing, errors }) => (
-                            <>
-                                <h2 className="font-medium sm:col-span-2">
-                                    Add catalogue item
-                                </h2>
-                                <input
-                                    type="hidden"
-                                    name="catalogue_type"
-                                    value={type}
-                                />
-                                <div className="space-y-2">
-                                    <Label htmlFor="code">Code</Label>
-                                    <Input id="code" name="code" required />
-                                    <InputError message={errors.code} />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="name">Name</Label>
-                                    <Input id="name" name="name" required />
-                                    <InputError message={errors.name} />
-                                </div>
-                                <div className="space-y-2 sm:col-span-2">
-                                    <Label htmlFor="remark">Remark</Label>
-                                    <Input
-                                        id="remark"
-                                        name="remark"
-                                        defaultValue="Create catalogue item"
+                        <div className="space-y-1">
+                            <Label htmlFor="type">Catalogue</Label>
+                            <select
+                                id="type"
+                                name="type"
+                                defaultValue={filters.type}
+                                className="h-9 min-w-[10rem] rounded-md border border-input bg-background px-3 text-sm"
+                            >
+                                {typeOptions.map((o) => (
+                                    <option key={o.value} value={o.value}>
+                                        {o.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="space-y-1">
+                            <Label htmlFor="q">Search</Label>
+                            <Input
+                                id="q"
+                                name="q"
+                                defaultValue={filters.q}
+                                className="min-w-[12rem]"
+                            />
+                        </div>
+                        <Button
+                            type="submit"
+                            className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                        >
+                            Filter
+                        </Button>
+                    </AppIndexFilters>
+
+                    {canManageOwnerCatalogues ? (
+                        <Form
+                            action={links.store}
+                            method="post"
+                            className="grid gap-3 border-b border-[#e5e7eb] bg-white px-4 py-4 sm:grid-cols-2"
+                        >
+                            {({ processing, errors }) => (
+                                <>
+                                    <h3 className="text-sm font-semibold text-[#334155] sm:col-span-2">
+                                        Add catalogue item
+                                    </h3>
+                                    <input
+                                        type="hidden"
+                                        name="catalogue_type"
+                                        value={filters.type}
                                     />
-                                </div>
-                                <Button
-                                    type="submit"
-                                    disabled={processing}
-                                    className="sm:col-span-2"
-                                >
-                                    Create
-                                </Button>
-                            </>
-                        )}
-                    </Form>
-                ) : (
-                    <p className="text-sm text-muted-foreground">
-                        Owner-only create/edit. Payment modes below are
-                        read-only.
-                    </p>
-                )}
-                <ResponsiveDataTable
-                    caption="Catalogue items"
-                    columns={columns}
-                    rows={items.data}
-                    rowKey={(row) => row.id}
-                    emptyTitle="No catalogue items"
-                    emptyDescription="Add an item using the form above."
-                    actions={
-                        canManageOwnerCatalogues
-                            ? (item) => (
-                                  <Form
-                                      action={`/catalogues/${item.id}`}
-                                      method="delete"
-                                      className="inline"
-                                  >
-                                      {({ processing }) => (
-                                          <>
-                                              <input
-                                                  type="hidden"
-                                                  name="remark"
-                                                  value="Delete catalogue item"
-                                              />
-                                              <Button
-                                                  type="submit"
-                                                  size="sm"
-                                                  variant="outline"
-                                                  disabled={processing}
-                                              >
-                                                  Delete
-                                              </Button>
-                                          </>
-                                      )}
-                                  </Form>
-                              )
-                            : undefined
-                    }
-                />
-                <section className="space-y-3">
-                    <h2 className="text-lg font-semibold">
-                        Payment modes (read-only)
-                    </h2>
-                    <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                                    <div className="space-y-1">
+                                        <Label htmlFor="code">Code</Label>
+                                        <Input id="code" name="code" required />
+                                        <InputError message={errors.code} />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label htmlFor="name">Name</Label>
+                                        <Input id="name" name="name" required />
+                                        <InputError message={errors.name} />
+                                    </div>
+                                    <div className="space-y-1 sm:col-span-2">
+                                        <Label htmlFor="remark">Remark</Label>
+                                        <Input
+                                            id="remark"
+                                            name="remark"
+                                            defaultValue="Create catalogue item"
+                                        />
+                                    </div>
+                                    <Button
+                                        type="submit"
+                                        disabled={processing}
+                                        className="bg-[#2FB36F] text-white hover:bg-[#279960] sm:col-span-2 sm:w-fit"
+                                    >
+                                        Create
+                                    </Button>
+                                </>
+                            )}
+                        </Form>
+                    ) : (
+                        <p className="border-b border-[#e5e7eb] px-4 py-2 text-sm text-slate-500">
+                            Owner-only create/edit. Payment modes below are
+                            read-only.
+                        </p>
+                    )}
+
+                    <div className="overflow-x-auto">
+                        <table className="app-index-table min-w-full">
+                            <thead>
+                                <tr>
+                                    <th>Code</th>
+                                    <th>Status</th>
+                                    <th>Name</th>
+                                    {canManageOwnerCatalogues ? (
+                                        <th className="text-center">Actions</th>
+                                    ) : null}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {items.data.length === 0 ? (
+                                    <tr>
+                                        <td
+                                            colSpan={
+                                                canManageOwnerCatalogues ? 4 : 3
+                                            }
+                                        >
+                                            <p className="app-index-empty">
+                                                No catalogue items. Add an item
+                                                using the form above.
+                                            </p>
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    items.data.map((item) => (
+                                        <tr key={item.id}>
+                                            <td className="font-mono">
+                                                {item.code}
+                                            </td>
+                                            <td>
+                                                {item.is_active
+                                                    ? 'Active'
+                                                    : 'Inactive'}
+                                            </td>
+                                            <td>{item.name}</td>
+                                            {canManageOwnerCatalogues ? (
+                                                <td>
+                                                    <div className="flex justify-center">
+                                                        <Form
+                                                            action={`/catalogues/${item.id}`}
+                                                            method="delete"
+                                                            className="inline"
+                                                        >
+                                                            {({
+                                                                processing,
+                                                            }) => (
+                                                                <>
+                                                                    <input
+                                                                        type="hidden"
+                                                                        name="remark"
+                                                                        value="Delete catalogue item"
+                                                                    />
+                                                                    <Button
+                                                                        type="submit"
+                                                                        size="sm"
+                                                                        variant="outline"
+                                                                        disabled={
+                                                                            processing
+                                                                        }
+                                                                    >
+                                                                        Delete
+                                                                    </Button>
+                                                                </>
+                                                            )}
+                                                        </Form>
+                                                    </div>
+                                                </td>
+                                            ) : null}
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </AppIndexListCard>
+
+                <AppIndexListCard
+                    title="Payment modes (read-only)"
+                    className="mt-4"
+                >
+                    <ul className="grid gap-2 p-4 sm:grid-cols-2 lg:grid-cols-3">
                         {paymentModes.map((mode) => (
                             <li
                                 key={mode.id}
-                                className="rounded-xl border border-border p-3 text-sm"
+                                className="rounded-lg border border-[#e5e7eb] p-3 text-sm"
                             >
                                 <p className="font-medium">{mode.name}</p>
-                                <p className="text-muted-foreground">
+                                <p className="text-slate-500">
                                     {mode.code} ·{' '}
                                     {mode.is_active ? 'Active' : 'Inactive'}
                                 </p>
                             </li>
                         ))}
                     </ul>
-                </section>
-            </PageShell>
+                </AppIndexListCard>
+            </AppIndexPage>
         </>
     );
 }

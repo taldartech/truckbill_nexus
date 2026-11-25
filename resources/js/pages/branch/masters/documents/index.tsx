@@ -1,10 +1,10 @@
 import { Head, usePage } from '@inertiajs/react';
 import { useState } from 'react';
+import { AppIndexListCard, AppIndexPage } from '@/components/app-index-page';
 import {
     DocumentDrawer,
     type DocumentDrawerAttachment,
 } from '@/components/masters/document-drawer';
-import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
 
 type Props = {
@@ -36,39 +36,48 @@ export default function DocumentsIndex({
     return (
         <>
             <Head title={`Documents · ${parent.type}`} />
-            <PageShell title={'Document management'}>
-                {flash?.success ? (
-                    <p
-                        role="status"
-                        className="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm"
-                    >
-                        {flash.success}
-                    </p>
-                ) : null}
-                <p className="text-sm text-muted-foreground">
-                    Parent: {parent.type.replaceAll('_', ' ')} / {parent.id}
-                </p>
-                <Button type="button" onClick={() => setDrawerOpen(true)}>
-                    Open document drawer
-                </Button>
-                <ul className="space-y-2 md:hidden">
-                    {attachments.map((a) => (
-                        <li
-                            key={a.id}
-                            className="rounded-xl border border-border p-3 text-sm"
+            <AppIndexPage>
+                <AppIndexListCard title="Document management">
+                    {flash?.success ? (
+                        <p
+                            role="status"
+                            className="border-b border-[#e5e7eb] bg-[#f8fafc] px-4 py-2 text-sm text-[#334155]"
                         >
-                            <p className="font-medium">
-                                {a.label ||
-                                    a.file?.original_name ||
-                                    'Attachment'}
-                            </p>
-                            <p className="text-muted-foreground">
-                                v{a.version} · {a.file?.scan_status}
-                            </p>
-                        </li>
-                    ))}
-                </ul>
-            </PageShell>
+                            {flash.success}
+                        </p>
+                    ) : null}
+                    <div className="space-y-3 p-4">
+                        <p className="text-sm text-slate-500">
+                            Parent: {parent.type.replaceAll('_', ' ')} /{' '}
+                            {parent.id}
+                        </p>
+                        <Button
+                            type="button"
+                            className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                            onClick={() => setDrawerOpen(true)}
+                        >
+                            Open document drawer
+                        </Button>
+                        <ul className="space-y-2 md:hidden">
+                            {attachments.map((a) => (
+                                <li
+                                    key={a.id}
+                                    className="rounded-lg border border-[#e5e7eb] p-3 text-sm"
+                                >
+                                    <p className="font-medium">
+                                        {a.label ||
+                                            a.file?.original_name ||
+                                            'Attachment'}
+                                    </p>
+                                    <p className="text-slate-500">
+                                        v{a.version} · {a.file?.scan_status}
+                                    </p>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                </AppIndexListCard>
+            </AppIndexPage>
             <DocumentDrawer
                 open={drawerOpen}
                 onOpenChange={setDrawerOpen}

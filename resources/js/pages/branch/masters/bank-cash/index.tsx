@@ -1,12 +1,12 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Eye, Filter } from 'lucide-react';
-import { useMemo, useState } from 'react';
+import { Eye, Plus } from 'lucide-react';
 import { AppIconAction } from '@/components/app-icon-action';
 import {
-    ResponsiveDataTable,
-    type DataTableColumn,
-} from '@/components/data-table';
-import { PageShell } from '@/components/page-shell';
+    AppIndexFilters,
+    AppIndexListCard,
+    AppIndexPage,
+} from '@/components/app-index-page';
+import { TablePagination } from '@/components/table-pagination';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,7 +34,6 @@ type Props = {
 };
 
 export default function BankCashIndex({
-    company,
     branch,
     permissions,
     filters,
@@ -42,86 +41,70 @@ export default function BankCashIndex({
     links,
 }: Props) {
     const { flash } = usePage<{ flash?: { success?: string | null } }>().props;
-    const [q, setQ] = useState(filters.q);
-    const [kind, setKind] = useState(filters.kind);
     const showUrl = (id: string) => `/bank-cash/${id}`;
-
-    const columns = useMemo<DataTableColumn<Row>[]>(
-        () => [
-            {
-                id: 'name',
-                header: 'Name',
-                priority: 0,
-                cell: (row) => <span className="font-medium">{row.name}</span>,
-            },
-            {
-                id: 'status',
-                header: 'Status',
-                priority: 1,
-                cell: (row) => (row.is_active ? 'Active' : 'Inactive'),
-            },
-            {
-                id: 'kind',
-                header: 'Kind',
-                priority: 2,
-                cell: (row) => row.account_kind,
-            },
-            {
-                id: 'bank',
-                header: 'Bank',
-                priority: 2,
-                cell: (row) => row.bank_name || '—',
-            },
-            {
-                id: 'account',
-                header: 'Account',
-                priority: 3,
-                className: 'font-mono',
-                cell: (row) => row.account_number_masked || '—',
-            },
-        ],
-        [company.id, branch.id],
-    );
 
     return (
         <>
             <Head title={`Bank / Cash · ${branch.name}`} />
-            <PageShell title={'Bank / Cash accounts'}>
-                {flash?.success ? (
-                    <p
-                        role="status"
-                        className="rounded-xl border border-border bg-muted/40 px-4 py-3 text-sm"
-                    >
-                        {flash.success}
-                    </p>
-                ) : null}
-                <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-                    <form
-                        onSubmit={(e) => {
-                            e.preventDefault();
+            <AppIndexPage>
+                <AppIndexListCard
+                    title="Bank / Cash accounts"
+                    toolbar={
+                        permissions.can_create ? (
+                            <Link
+                                href={links.create}
+                                className="app-index-header-btn"
+                            >
+                                <Plus className="h-3.5 w-3.5" />
+                                Create account
+                            </Link>
+                        ) : null
+                    }
+                >
+                    {flash?.success ? (
+                        <p
+                            role="status"
+                            className="border-b border-[#e5e7eb] bg-[#f8fafc] px-4 py-2 text-sm text-[#334155]"
+                        >
+                            {flash.success}
+                        </p>
+                    ) : null}
+
+                    <AppIndexFilters
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            const form = event.currentTarget;
+                            const q = (
+                                form.elements.namedItem('q') as HTMLInputElement
+                            ).value.trim();
+                            const kind = (
+                                form.elements.namedItem(
+                                    'kind',
+                                ) as HTMLSelectElement
+                            ).value;
                             router.get(
                                 links.index,
                                 { q: q || undefined, kind: kind || undefined },
                                 { preserveState: true, replace: true },
                             );
                         }}
-                        className="flex w-full flex-col gap-3 md:max-w-2xl md:flex-row"
                     >
-                        <div className="flex-1 space-y-2">
+                        <div className="space-y-1">
                             <Label htmlFor="q">Search</Label>
                             <Input
                                 id="q"
-                                value={q}
-                                onChange={(e) => setQ(e.target.value)}
+                                name="q"
+                                defaultValue={filters.q}
+                                className="min-w-[12rem]"
                             />
                         </div>
-                        <div className="space-y-2 md:w-40">
+                        <div className="space-y-1">
                             <Label htmlFor="kind">Kind</Label>
                             <select
                                 id="kind"
-                                value={kind}
-                                onChange={(e) => setKind(e.target.value)}
-                                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                name="kind"
+                                defaultValue={filters.kind}
+                                className="h-9 min-w-[8rem] rounded-md border border-input bg-background px-3 text-sm"
                             >
                                 <option value="">All</option>
                                 <option value="bank">Bank</option>
@@ -130,36 +113,80 @@ export default function BankCashIndex({
                         </div>
                         <Button
                             type="submit"
-                            variant="secondary"
-                            className="gap-2"
+                            className="bg-[#2FB36F] text-white hover:bg-[#279960]"
                         >
-                            <Filter className="size-4" aria-hidden />
                             Filter
                         </Button>
-                    </form>
-                    {permissions.can_create ? (
-                        <Button asChild>
-                            <Link href={links.create}>Create account</Link>
-                        </Button>
-                    ) : null}
-                </div>
-                <ResponsiveDataTable
-                    caption="Bank and cash accounts"
-                    columns={columns}
-                    rows={accounts.data}
-                    rowKey={(row) => row.id}
-                    emptyTitle="No accounts"
-                    emptyDescription="Create a bank or cash account."
-                    actions={(row) => (
-                        <AppIconAction
-                            icon={Eye}
-                            label="View account"
-                            href={showUrl(row.id)}
-                            variant="info"
+                    </AppIndexFilters>
+
+                    <div className="overflow-x-auto">
+                        <table className="app-index-table min-w-full">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Status</th>
+                                    <th>Kind</th>
+                                    <th>Bank</th>
+                                    <th>Account</th>
+                                    <th className="text-center">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {accounts.data.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={6}>
+                                            <p className="app-index-empty">
+                                                No accounts. Create a bank or
+                                                cash account.
+                                            </p>
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    accounts.data.map((row) => (
+                                        <tr key={row.id}>
+                                            <td className="font-medium">
+                                                {row.name}
+                                            </td>
+                                            <td>
+                                                {row.is_active
+                                                    ? 'Active'
+                                                    : 'Inactive'}
+                                            </td>
+                                            <td>{row.account_kind}</td>
+                                            <td>{row.bank_name || '—'}</td>
+                                            <td className="font-mono">
+                                                {row.account_number_masked ||
+                                                    '—'}
+                                            </td>
+                                            <td>
+                                                <div className="flex justify-center">
+                                                    <AppIconAction
+                                                        icon={Eye}
+                                                        label="View account"
+                                                        href={showUrl(row.id)}
+                                                        variant="info"
+                                                    />
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div className="border-t border-[#e5e7eb] px-4 py-3">
+                        <TablePagination
+                            baseUrl={links.index}
+                            meta={accounts.meta}
+                            query={{
+                                q: filters.q || undefined,
+                                kind: filters.kind || undefined,
+                            }}
                         />
-                    )}
-                />
-            </PageShell>
+                    </div>
+                </AppIndexListCard>
+            </AppIndexPage>
         </>
     );
 }
