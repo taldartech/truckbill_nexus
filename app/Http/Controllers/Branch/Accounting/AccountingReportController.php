@@ -56,6 +56,56 @@ class AccountingReportController extends Controller
             'urls' => [
                 'index' => route('branch.accounting.reports.trial-balance', absolute: false),
                 'vouchers' => route('branch.accounting.vouchers.index', absolute: false),
+                'profit_and_loss' => route('branch.accounting.reports.profit-and-loss', absolute: false),
+                'balance_sheet' => route('branch.accounting.reports.balance-sheet', absolute: false),
+            ],
+        ]);
+    }
+
+    public function profitAndLoss(Request $request, Company $company, Branch $branch): Response
+    {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertPermission($actor, $company, $branch, PermissionCodes::BRANCH_ACCOUNTING_REPORT_VIEW);
+        $this->workspace->bootstrap($company);
+
+        $from = $request->string('from_date')->toString() ?: null;
+        $to = $request->string('to_date')->toString() ?: null;
+        $report = $this->workspace->profitAndLoss($company, $from, $to, $branch);
+
+        return Inertia::render('accounting/reports/profit-and-loss', [
+            'filters' => [
+                'from_date' => $report['from_date'],
+                'to_date' => $report['to_date'],
+            ],
+            'report' => $report,
+            'urls' => [
+                'index' => route('branch.accounting.reports.profit-and-loss', absolute: false),
+                'trial_balance' => route('branch.accounting.reports.trial-balance', absolute: false),
+                'balance_sheet' => route('branch.accounting.reports.balance-sheet', absolute: false),
+                'vouchers' => route('branch.accounting.vouchers.index', absolute: false),
+            ],
+        ]);
+    }
+
+    public function balanceSheet(Request $request, Company $company, Branch $branch): Response
+    {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertPermission($actor, $company, $branch, PermissionCodes::BRANCH_ACCOUNTING_REPORT_VIEW);
+        $this->workspace->bootstrap($company);
+
+        $asOf = $request->string('as_of')->toString() ?: null;
+        $report = $this->workspace->balanceSheet($company, $asOf, $branch);
+
+        return Inertia::render('accounting/reports/balance-sheet', [
+            'filters' => [
+                'as_of' => $report['as_of'],
+            ],
+            'report' => $report,
+            'urls' => [
+                'index' => route('branch.accounting.reports.balance-sheet', absolute: false),
+                'trial_balance' => route('branch.accounting.reports.trial-balance', absolute: false),
+                'profit_and_loss' => route('branch.accounting.reports.profit-and-loss', absolute: false),
+                'vouchers' => route('branch.accounting.vouchers.index', absolute: false),
             ],
         ]);
     }

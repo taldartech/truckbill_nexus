@@ -2,11 +2,16 @@
 
 use App\Domains\Accounting\Enums\AccountingVoucherType;
 use App\Domains\Accounting\OperationalAccountingPoster;
+use App\Domains\Broker\Enums\VoucherPaymentMode;
+use App\Domains\Broker\Enums\VoucherPaymentType;
+use App\Domains\Broker\Enums\VoucherStatus;
 use App\Domains\Broker\Invoice\BrokerInvoiceService;
+use App\Domains\Broker\Voucher\TransporterVoucherService;
 use App\Models\AccountingPostingLink;
 use App\Models\AccountingVoucher;
 use App\Models\BrokerInvoice;
 use App\Models\LorryHire;
+use App\Models\TransporterVoucher;
 use App\Support\Tenant\TenantContextHolder;
 use Database\Seeders\RbacSeeder;
 use Database\Seeders\SubscriptionCatalogueSeeder;
@@ -94,6 +99,50 @@ test('broker invoice issue and payment post sales and receipt vouchers', functio
             ->where('source_type', BrokerInvoice::class)
             ->where('source_id', $invoice->id)
             ->where('posting_purpose', 'invoice_issued')
+            ->count(),
+    )->toBe(1);
+});
+
+test('paid transporter voucher posts payment against transporter payable', function () {
+    $ctx = brokerWorkspace();
+    brokerGrantVoucherPermissions();
+    $hire = brokerCreateLorryHire($ctx);
+
+    $voucher = app(TransporterVoucherService::class)->createForLorryHire($hire, $ctx['member'], [
+        'amount' => '1000.00',
+        'payment_type' => VoucherPaymentType::Advance->value,
+        'payment_mode' => VoucherPaymentMode::Cash->value,
+        'voucher_date' => now()->toDateString(),
+    ]);
+
+    expect($voucher->status)->toBe(VoucherStatus::InProgress);
+
+    $paid = app(TransporterVoucherService::class)->transitionStatus(
+        $voucher,
+        $ctx['member'],
+        VoucherStatus::Paid,
+    );
+
+    expect($paid->status)->toBe(VoucherStatus::Paid);
+
+    $link = AccountingPostingLink::query()
+        ->where('source_type', TransporterVoucher::class)
+        ->where('source_id', $paid->id)
+        ->where('posting_purpose', 'transporter_voucher_paid')
+        ->first();
+
+    expect($link)->not->toBeNull();
+    $payment = AccountingVoucher::query()->findOrFail($link->accounting_voucher_id);
+    expect($payment->voucher_type)->toBe(AccountingVoucherType::Payment)
+        ->and((string) $payment->total_debit)->toBe('1000.00')
+        ->and((string) $payment->total_credit)->toBe('1000.00');
+
+    app(OperationalAccountingPoster::class)->postTransporterVoucherPaid($paid->fresh(), $ctx['member']);
+    expect(
+        AccountingPostingLink::query()
+            ->where('source_type', TransporterVoucher::class)
+            ->where('source_id', $paid->id)
+            ->where('posting_purpose', 'transporter_voucher_paid')
             ->count(),
     )->toBe(1);
 });

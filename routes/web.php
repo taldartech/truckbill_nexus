@@ -18,6 +18,7 @@ use App\Http\Controllers\Api\GeographyQuickCreateController;
 use App\Http\Controllers\Api\PublicLeadController;
 use App\Http\Controllers\Api\PublicLeadOnboardingController;
 use App\Http\Controllers\Branch\Accounting\AccountingLedgerController;
+use App\Http\Controllers\Branch\Accounting\AccountingLedgerQuickCreateController;
 use App\Http\Controllers\Branch\Accounting\AccountingReportController;
 use App\Http\Controllers\Branch\Accounting\AccountingVoucherController;
 use App\Http\Controllers\Branch\BankCashAccountController;
@@ -324,8 +325,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/accounting/vouchers', [AccountingVoucherController::class, 'store'])->name('branch.accounting.vouchers.store');
         Route::get('/accounting/vouchers/{accountingVoucher}', [AccountingVoucherController::class, 'show'])->name('branch.accounting.vouchers.show');
         Route::get('/accounting/ledgers', [AccountingLedgerController::class, 'index'])->name('branch.accounting.ledgers.index');
+        Route::post('/accounting/ledgers/quick', [AccountingLedgerQuickCreateController::class, 'store'])->name('branch.accounting.ledgers.quick-store');
         Route::get('/accounting/ledgers/{glLedger}', [AccountingLedgerController::class, 'show'])->name('branch.accounting.ledgers.show');
         Route::get('/accounting/reports/trial-balance', [AccountingReportController::class, 'trialBalance'])->name('branch.accounting.reports.trial-balance');
+        Route::get('/accounting/reports/profit-and-loss', [AccountingReportController::class, 'profitAndLoss'])->name('branch.accounting.reports.profit-and-loss');
+        Route::get('/accounting/reports/balance-sheet', [AccountingReportController::class, 'balanceSheet'])->name('branch.accounting.reports.balance-sheet');
 
         Route::get('/trips', [TripController::class, 'index'])->name('branch.trips.index');
         Route::get('/trips/{trip}', [TripController::class, 'show'])->name('branch.trips.show');

@@ -36,6 +36,8 @@ type Props = {
         create: string;
         ledgers: string;
         trial_balance: string;
+        profit_and_loss: string;
+        balance_sheet: string;
     };
 };
 
@@ -59,9 +61,17 @@ export default function AccountingVouchersIndex({
                                 <Link href={urls.ledgers}>Ledgers</Link>
                             </Button>
                             {permissions.can_report ? (
-                                <Button asChild variant="outline" size="sm">
-                                    <Link href={urls.trial_balance}>Trial Balance</Link>
-                                </Button>
+                                <>
+                                    <Button asChild variant="outline" size="sm">
+                                        <Link href={urls.trial_balance}>Trial Balance</Link>
+                                    </Button>
+                                    <Button asChild variant="outline" size="sm">
+                                        <Link href={urls.profit_and_loss}>P&L</Link>
+                                    </Button>
+                                    <Button asChild variant="outline" size="sm">
+                                        <Link href={urls.balance_sheet}>Balance Sheet</Link>
+                                    </Button>
+                                </>
                             ) : null}
                             {permissions.can_create ? (
                                 <Button asChild size="sm" className="bg-[#2FB36F] text-white hover:bg-[#279960]">

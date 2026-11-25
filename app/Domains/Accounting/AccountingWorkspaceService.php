@@ -4,6 +4,7 @@ namespace App\Domains\Accounting;
 
 use App\Domains\Accounting\Enums\AccountingVoucherStatus;
 use App\Domains\Accounting\Enums\AccountingVoucherType;
+use App\Domains\Accounting\Enums\AccountNature;
 use App\Models\AccountingVoucher;
 use App\Models\AccountingVoucherLine;
 use App\Models\Branch;
@@ -267,6 +268,186 @@ final class AccountingWorkspaceService
         }
 
         return $rows;
+    }
+
+    /**
+     * @return array{
+     *     from_date: string,
+     *     to_date: string,
+     *     income: list<array{ledger_id: string, ledger_name: string, amount: string}>,
+     *     expenses: list<array{ledger_id: string, ledger_name: string, amount: string}>,
+     *     total_income: string,
+     *     total_expenses: string,
+     *     net_profit: string
+     * }
+     */
+    public function profitAndLoss(
+        Company $company,
+        ?string $fromDate = null,
+        ?string $toDate = null,
+        ?Branch $branch = null,
+    ): array {
+        $from = filled($fromDate)
+            ? CarbonImmutable::parse($fromDate)->toDateString()
+            : $this->periods->ensureCurrentFinancialYear($company)->starts_on->toDateString();
+        $to = filled($toDate)
+            ? CarbonImmutable::parse($toDate)->toDateString()
+            : CarbonImmutable::now('Asia/Kolkata')->toDateString();
+
+        $income = [];
+        $expenses = [];
+        $totalIncome = '0.00';
+        $totalExpenses = '0.00';
+
+        foreach ($this->activeLedgers($company) as $ledger) {
+            if (! in_array($ledger->nature, [AccountNature::Income, AccountNature::Expense], true)) {
+                continue;
+            }
+
+            $statement = $this->ledgerStatement($company, $ledger, $from, $to, $branch);
+            $periodDebit = '0.00';
+            $periodCredit = '0.00';
+            foreach ($statement['rows'] as $row) {
+                $periodDebit = bcadd($periodDebit, $row['debit'], 2);
+                $periodCredit = bcadd($periodCredit, $row['credit'], 2);
+            }
+
+            if ($ledger->nature === AccountNature::Income) {
+                $amount = bcsub($periodCredit, $periodDebit, 2);
+                if (bccomp($amount, '0', 2) === 0) {
+                    continue;
+                }
+                $income[] = [
+                    'ledger_id' => $ledger->id,
+                    'ledger_name' => $ledger->name,
+                    'amount' => $amount,
+                ];
+                $totalIncome = bcadd($totalIncome, $amount, 2);
+
+                continue;
+            }
+
+            $amount = bcsub($periodDebit, $periodCredit, 2);
+            if (bccomp($amount, '0', 2) === 0) {
+                continue;
+            }
+            $expenses[] = [
+                'ledger_id' => $ledger->id,
+                'ledger_name' => $ledger->name,
+                'amount' => $amount,
+            ];
+            $totalExpenses = bcadd($totalExpenses, $amount, 2);
+        }
+
+        return [
+            'from_date' => $from,
+            'to_date' => $to,
+            'income' => $income,
+            'expenses' => $expenses,
+            'total_income' => $totalIncome,
+            'total_expenses' => $totalExpenses,
+            'net_profit' => bcsub($totalIncome, $totalExpenses, 2),
+        ];
+    }
+
+    /**
+     * @return array{
+     *     as_of: string,
+     *     assets: list<array{ledger_id: string, ledger_name: string, amount: string}>,
+     *     liabilities: list<array{ledger_id: string, ledger_name: string, amount: string}>,
+     *     equity: list<array{ledger_id: string, ledger_name: string, amount: string}>,
+     *     total_assets: string,
+     *     total_liabilities: string,
+     *     total_equity: string,
+     *     net_profit: string,
+     *     balanced: bool
+     * }
+     */
+    public function balanceSheet(
+        Company $company,
+        ?string $asOfDate = null,
+        ?Branch $branch = null,
+    ): array {
+        $asOf = filled($asOfDate)
+            ? CarbonImmutable::parse($asOfDate)->toDateString()
+            : CarbonImmutable::now('Asia/Kolkata')->toDateString();
+        $fyStart = $this->periods->ensureCurrentFinancialYear($company)->starts_on->toDateString();
+        $pnl = $this->profitAndLoss($company, $fyStart, $asOf, $branch);
+
+        $assets = [];
+        $liabilities = [];
+        $equity = [];
+        $totalAssets = '0.00';
+        $totalLiabilities = '0.00';
+        $totalEquity = '0.00';
+
+        foreach ($this->activeLedgers($company) as $ledger) {
+            if (! in_array($ledger->nature, [AccountNature::Asset, AccountNature::Liability, AccountNature::Equity], true)) {
+                continue;
+            }
+
+            $statement = $this->ledgerStatement($company, $ledger, $fyStart, $asOf, $branch);
+            $closingDebit = $statement['closing_debit'];
+            $closingCredit = $statement['closing_credit'];
+
+            if ($ledger->nature === AccountNature::Asset) {
+                $amount = bcsub($closingDebit, $closingCredit, 2);
+                if (bccomp($amount, '0', 2) === 0) {
+                    continue;
+                }
+                $assets[] = [
+                    'ledger_id' => $ledger->id,
+                    'ledger_name' => $ledger->name,
+                    'amount' => $amount,
+                ];
+                $totalAssets = bcadd($totalAssets, $amount, 2);
+
+                continue;
+            }
+
+            $amount = bcsub($closingCredit, $closingDebit, 2);
+            if (bccomp($amount, '0', 2) === 0) {
+                continue;
+            }
+
+            $row = [
+                'ledger_id' => $ledger->id,
+                'ledger_name' => $ledger->name,
+                'amount' => $amount,
+            ];
+
+            if ($ledger->nature === AccountNature::Liability) {
+                $liabilities[] = $row;
+                $totalLiabilities = bcadd($totalLiabilities, $amount, 2);
+            } else {
+                $equity[] = $row;
+                $totalEquity = bcadd($totalEquity, $amount, 2);
+            }
+        }
+
+        $netProfit = $pnl['net_profit'];
+        if (bccomp($netProfit, '0', 2) !== 0) {
+            $equity[] = [
+                'ledger_id' => 'current-year-result',
+                'ledger_name' => 'Current Year Profit / Loss',
+                'amount' => $netProfit,
+            ];
+            $totalEquity = bcadd($totalEquity, $netProfit, 2);
+        }
+
+        $rightSide = bcadd($totalLiabilities, $totalEquity, 2);
+
+        return [
+            'as_of' => $asOf,
+            'assets' => $assets,
+            'liabilities' => $liabilities,
+            'equity' => $equity,
+            'total_assets' => $totalAssets,
+            'total_liabilities' => $totalLiabilities,
+            'total_equity' => $totalEquity,
+            'net_profit' => $netProfit,
+            'balanced' => bccomp($totalAssets, $rightSide, 2) === 0,
+        ];
     }
 
     /**

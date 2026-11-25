@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Branch\Accounting;
 use App\Domains\Accounting\AccountingWorkspaceService;
 use App\Domains\Accounting\Enums\AccountingVoucherType;
 use App\Domains\Accounting\Exceptions\AccountingDomainException;
+use App\Domains\Accounting\GlLedgerService;
 use App\Domains\Accounting\VoucherPostingService;
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Rbac\PermissionAuthorizer;
@@ -31,6 +32,7 @@ class AccountingVoucherController extends Controller
         private readonly PermissionAuthorizer $authorizer,
         private readonly AccountingWorkspaceService $workspace,
         private readonly VoucherPostingService $posting,
+        private readonly GlLedgerService $ledgerService,
     ) {}
 
     public function index(Request $request, Company $company, Branch $branch): Response
@@ -83,6 +85,8 @@ class AccountingVoucherController extends Controller
                 'create' => route('branch.accounting.vouchers.create', absolute: false),
                 'ledgers' => route('branch.accounting.ledgers.index', absolute: false),
                 'trial_balance' => route('branch.accounting.reports.trial-balance', absolute: false),
+                'profit_and_loss' => route('branch.accounting.reports.profit-and-loss', absolute: false),
+                'balance_sheet' => route('branch.accounting.reports.balance-sheet', absolute: false),
             ],
         ]);
     }
@@ -99,9 +103,11 @@ class AccountingVoucherController extends Controller
                 'id' => $ledger->id,
                 'name' => $ledger->name,
             ])->values()->all(),
+            'accountGroups' => $this->ledgerService->groupOptions($company),
             'urls' => [
                 'store' => route('branch.accounting.vouchers.store', absolute: false),
                 'index' => route('branch.accounting.vouchers.index', absolute: false),
+                'ledger_quick_create' => route('branch.accounting.ledgers.quick-store', absolute: false),
             ],
         ]);
     }

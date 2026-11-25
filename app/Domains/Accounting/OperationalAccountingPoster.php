@@ -3,12 +3,14 @@
 namespace App\Domains\Accounting;
 
 use App\Domains\Accounting\Enums\AccountingVoucherType;
+use App\Domains\Broker\Enums\VoucherPaymentMode;
 use App\Models\Branch;
 use App\Models\BrokerInvoice;
 use App\Models\BrokerInvoicePayment;
 use App\Models\Company;
 use App\Models\GlLedger;
 use App\Models\LorryHire;
+use App\Models\TransporterVoucher;
 use App\Models\TripExpense;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -135,6 +137,55 @@ final class OperationalAccountingPoster
             lines: [
                 ['gl_ledger_id' => $expense->id, 'debit_amount' => $freight, 'credit_amount' => 0, 'narration' => 'Transporter freight'],
                 ['gl_ledger_id' => $payable->id, 'debit_amount' => 0, 'credit_amount' => $freight, 'narration' => 'Transporter payable'],
+            ],
+            branch: $branch,
+        );
+    }
+
+    public function postTransporterVoucherPaid(TransporterVoucher $voucher, User $actor): void
+    {
+        $company = Company::query()->findOrFail($voucher->company_id);
+        $branch = Branch::query()->findOrFail($voucher->branch_id);
+        $this->prepare($company);
+
+        $amount = $this->money($voucher->amount);
+        if (bccomp($amount, '0', 2) !== 1) {
+            return;
+        }
+
+        $payable = $this->ledgers->requireByName($company, 'Transporter Payables');
+        $mode = $voucher->payment_mode instanceof VoucherPaymentMode
+            ? $voucher->payment_mode
+            : VoucherPaymentMode::tryFrom((string) $voucher->payment_mode);
+
+        if ($mode === VoucherPaymentMode::AdjustInAdvance) {
+            $advance = $this->ledgers->requireByName($company, 'Transporter Advances');
+            $creditLedger = $advance;
+            $creditNarration = 'Adjust in advance '.$voucher->voucher_number;
+        } else {
+            $creditLedger = $this->resolveCashOrBank(
+                $company,
+                $voucher->bank_cash_account_id,
+                $mode?->value ?? 'cash',
+            );
+            $creditNarration = 'Transporter payment '.$voucher->voucher_number;
+        }
+
+        $this->posting->postManual(
+            company: $company,
+            actor: $actor,
+            header: [
+                'voucher_type' => AccountingVoucherType::Payment,
+                'voucher_date' => $voucher->voucher_date?->toDateString() ?? now()->toDateString(),
+                'narration' => 'Transporter voucher '.$voucher->voucher_number,
+                'branch_id' => $branch->id,
+                'source_type' => TransporterVoucher::class,
+                'source_id' => $voucher->id,
+                'posting_purpose' => 'transporter_voucher_paid',
+            ],
+            lines: [
+                ['gl_ledger_id' => $payable->id, 'debit_amount' => $amount, 'credit_amount' => 0, 'narration' => 'Settle transporter payable'],
+                ['gl_ledger_id' => $creditLedger->id, 'debit_amount' => 0, 'credit_amount' => $amount, 'narration' => $creditNarration],
             ],
             branch: $branch,
         );

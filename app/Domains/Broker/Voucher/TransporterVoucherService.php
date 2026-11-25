@@ -2,6 +2,7 @@
 
 namespace App\Domains\Broker\Voucher;
 
+use App\Domains\Accounting\OperationalAccountingPoster;
 use App\Domains\Broker\Enums\BookBalanceEntryType;
 use App\Domains\Broker\Enums\LorryHireStatus;
 use App\Domains\Broker\Enums\VoucherPaymentMode;
@@ -49,6 +50,7 @@ final class TransporterVoucherService
         private readonly DocumentNumberAllocator $numbers = new DocumentNumberAllocator,
         private readonly LorryHireCalculationService $calculations = new LorryHireCalculationService,
         private readonly TransporterBookBalanceService $bookBalance = new TransporterBookBalanceService,
+        private readonly OperationalAccountingPoster $accounting = new OperationalAccountingPoster,
     ) {}
 
     /**
@@ -278,8 +280,8 @@ final class TransporterVoucherService
         }
         $this->assertBrokerEntitled($company);
 
-        return $this->auditedTransaction->run(function () use ($voucher, $company, $branch, $to): TransporterVoucher {
-            return $this->withTenant($company, $branch, function () use ($voucher, $to): TransporterVoucher {
+        return $this->auditedTransaction->run(function () use ($voucher, $company, $branch, $actor, $to): TransporterVoucher {
+            return $this->withTenant($company, $branch, function () use ($voucher, $actor, $to): TransporterVoucher {
                 $locked = TransporterVoucher::query()
                     ->whereKey($voucher->id)
                     ->whereNull('deleted_at')
@@ -318,7 +320,12 @@ final class TransporterVoucherService
                     after: $locked->fresh()?->toArray(),
                 );
 
-                return $locked->fresh(['lorryHire']) ?? $locked;
+                $fresh = $locked->fresh(['lorryHire']) ?? $locked;
+                if ($to === VoucherStatus::Paid) {
+                    $this->accounting->postTransporterVoucherPaid($fresh, $actor);
+                }
+
+                return $fresh;
             });
         });
     }

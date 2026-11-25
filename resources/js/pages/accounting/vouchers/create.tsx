@@ -1,5 +1,6 @@
 import { Form, Head, Link } from '@inertiajs/react';
 import { useState } from 'react';
+import { QuickCreateLedgerSheet } from '@/components/accounting/quick-create-ledger-sheet';
 import {
     AppIndexListCard,
     AppIndexPage,
@@ -9,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 type Ledger = { id: string; name: string };
+type AccountGroup = { id: string; name: string; nature: string };
 
 type Line = {
     gl_ledger_id: string;
@@ -20,14 +22,19 @@ type Line = {
 type Props = {
     voucherTypeOptions: Array<{ value: string; label: string }>;
     ledgers: Ledger[];
-    urls: { store: string; index: string };
+    accountGroups: AccountGroup[];
+    urls: { store: string; index: string; ledger_quick_create: string };
 };
 
 export default function AccountingVoucherCreate({
     voucherTypeOptions,
-    ledgers,
+    ledgers: initialLedgers,
+    accountGroups,
     urls,
 }: Props) {
+    const [ledgers, setLedgers] = useState<Ledger[]>(initialLedgers);
+    const [quickCreateOpen, setQuickCreateOpen] = useState(false);
+    const [quickCreateLineIndex, setQuickCreateLineIndex] = useState(0);
     const [lines, setLines] = useState<Line[]>([
         { gl_ledger_id: '', debit_amount: '', credit_amount: '', narration: '' },
         { gl_ledger_id: '', debit_amount: '', credit_amount: '', narration: '' },
@@ -36,6 +43,11 @@ export default function AccountingVoucherCreate({
     const totalDebit = lines.reduce((sum, line) => sum + Number(line.debit_amount || 0), 0);
     const totalCredit = lines.reduce((sum, line) => sum + Number(line.credit_amount || 0), 0);
     const balanced = Math.abs(totalDebit - totalCredit) < 0.005 && totalDebit > 0;
+
+    const openQuickCreate = (lineIndex: number) => {
+        setQuickCreateLineIndex(lineIndex);
+        setQuickCreateOpen(true);
+    };
 
     return (
         <>
@@ -122,29 +134,43 @@ export default function AccountingVoucherCreate({
                                                 {lines.map((line, index) => (
                                                     <tr key={index} className="border-b last:border-0">
                                                         <td className="px-3 py-2">
-                                                            <select
-                                                                name={`lines[${index}][gl_ledger_id]`}
-                                                                required
-                                                                className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
-                                                                value={line.gl_ledger_id}
-                                                                onChange={(event) => {
-                                                                    const value = event.target.value;
-                                                                    setLines((current) =>
-                                                                        current.map((row, rowIndex) =>
-                                                                            rowIndex === index
-                                                                                ? { ...row, gl_ledger_id: value }
-                                                                                : row,
-                                                                        ),
-                                                                    );
-                                                                }}
-                                                            >
-                                                                <option value="">Select</option>
-                                                                {ledgers.map((ledger) => (
-                                                                    <option key={ledger.id} value={ledger.id}>
-                                                                        {ledger.name}
-                                                                    </option>
-                                                                ))}
-                                                            </select>
+                                                            <div className="space-y-1">
+                                                                <div className="flex items-center justify-between gap-2">
+                                                                    <span className="text-xs text-muted-foreground">
+                                                                        Ledger *
+                                                                    </span>
+                                                                    <button
+                                                                        type="button"
+                                                                        className="text-xs font-medium text-primary hover:underline"
+                                                                        onClick={() => openQuickCreate(index)}
+                                                                    >
+                                                                        + Add
+                                                                    </button>
+                                                                </div>
+                                                                <select
+                                                                    name={`lines[${index}][gl_ledger_id]`}
+                                                                    required
+                                                                    className="border-input bg-background h-9 w-full rounded-md border px-2 text-sm"
+                                                                    value={line.gl_ledger_id}
+                                                                    onChange={(event) => {
+                                                                        const value = event.target.value;
+                                                                        setLines((current) =>
+                                                                            current.map((row, rowIndex) =>
+                                                                                rowIndex === index
+                                                                                    ? { ...row, gl_ledger_id: value }
+                                                                                    : row,
+                                                                            ),
+                                                                        );
+                                                                    }}
+                                                                >
+                                                                    <option value="">Select</option>
+                                                                    {ledgers.map((ledger) => (
+                                                                        <option key={ledger.id} value={ledger.id}>
+                                                                            {ledger.name}
+                                                                        </option>
+                                                                    ))}
+                                                                </select>
+                                                            </div>
                                                         </td>
                                                         <td className="px-3 py-2">
                                                             <Input
@@ -235,6 +261,27 @@ export default function AccountingVoucherCreate({
                     </Form>
                 </AppIndexListCard>
             </AppIndexPage>
+
+            <QuickCreateLedgerSheet
+                open={quickCreateOpen}
+                onOpenChange={setQuickCreateOpen}
+                storeUrl={urls.ledger_quick_create}
+                accountGroups={accountGroups}
+                onCreated={(ledger) => {
+                    setLedgers((current) =>
+                        current.some((row) => row.id === ledger.id)
+                            ? current
+                            : [...current, ledger],
+                    );
+                    setLines((current) =>
+                        current.map((row, rowIndex) =>
+                            rowIndex === quickCreateLineIndex
+                                ? { ...row, gl_ledger_id: ledger.id }
+                                : row,
+                        ),
+                    );
+                }}
+            />
         </>
     );
 }
