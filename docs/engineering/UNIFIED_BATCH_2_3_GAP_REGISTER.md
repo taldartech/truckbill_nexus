@@ -32,8 +32,8 @@
 | U23-BULK-VOUCHER-UI    | Combined/Bulk Payment operator UI                            | Market            | Aligned layout (`broker/vouchers/bulk`)        |
 | U23-DIESEL-VARIANCE    | Expected vs actual diesel presentation                       | Own               | Aligned when planned diesel recorded           |
 | U23-INVOICE-UNIFIED    | Already unified invoice — visual polish                      | Shared            | Partial                                        |
-| U23-LEGACY-SCREENSHOTS | Three-way visual certification artifacts                     | Certification     | Open                                           |
-| U23-FULL-REGRESSION    | Full PG + MySQL + Playwright matrix                          | Certification     | Open                                           |
+| U23-LEGACY-SCREENSHOTS | Three-way visual certification artifacts                     | Certification     | Open (live legacy apps still blocked)          |
+| U23-FULL-REGRESSION    | Full PG + MySQL + Playwright matrix                          | Certification     | PG+MySQL closed (790/792); Playwright partial  |
 
 ## Intentional approved differences
 
