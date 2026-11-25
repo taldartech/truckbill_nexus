@@ -57,6 +57,8 @@
 | U23-ACC-VOUCHER-POST   | Transporter voucher Paid → GL Payment posting                | Accounting        | Aligned (`5811d66`)                                        |
 | U23-ACC-LEDGER-QA      | Accounting ledger quick-add on voucher create                | Accounting        | Aligned (`5811d66`)                                        |
 | U23-PARTLOAD-MAIN      | Partload Main Challan consolidation + cascade dispatch       | Partload          | Aligned (`0c59683`)                                        |
+| U23-ACC-OPENING        | Opening balance dry-run + idempotent Opening voucher         | Accounting        | Aligned (`b9a4708`)                                        |
+| U23-MYSQL-FK           | MySQL composite FK SET NULL / identifier length              | Infra             | Aligned for ACC/Partload migrations (`b9a4708`)            |
 
 ## PO directive (25 Nov 2026) — superseding earlier OwnFleet navigation
 
