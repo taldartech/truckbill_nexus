@@ -192,6 +192,9 @@ test('edit common fields without losing transporter attributes', function () {
     ['owner' => $owner, 'company' => $company, 'branch' => $branch, 'member' => $member] = partyRoleAttrsWorkspace();
     $this->actingAs($owner);
 
+    $bengaluru = geographyIdsFor('Karnataka', 'Bengaluru');
+    $mysuru = geographyIdsFor('Karnataka', 'Mysuru');
+
     $party = app(PartyService::class)->create(
         actor: $owner,
         company: $company,
@@ -200,8 +203,8 @@ test('edit common fields without losing transporter attributes', function () {
             'name' => 'Fleet Co',
             'contact_number' => '9888877777',
             'pan' => 'BBBBB1234B',
-            'state' => 'Karnataka',
-            'city' => 'Bengaluru',
+            'state_id' => $bengaluru['state_id'],
+            'city_id' => $bengaluru['city_id'],
         ],
         roles: [[
             'role' => PartyRoleType::Transporter->value,
@@ -224,8 +227,8 @@ test('edit common fields without losing transporter attributes', function () {
         'name' => 'Fleet Co Updated',
         'contact_number' => '9888877777',
         'pan' => 'BBBBB1234B',
-        'state' => 'Karnataka',
-        'city' => 'Mysuru',
+        'state_id' => $mysuru['state_id'],
+        'city_id' => $mysuru['city_id'],
         'roles' => [[
             'role' => 'transporter',
             'attributes' => [
@@ -243,7 +246,7 @@ test('edit common fields without losing transporter attributes', function () {
     $attrs = $fresh->roles->firstWhere('role', 'transporter')?->role_attributes;
 
     expect($fresh->name)->toBe('Fleet Co Updated')
-        ->and($fresh->city)->toBe('Mysuru')
+        ->and($fresh->city)->toBe($mysuru['city'])
         ->and($attrs)->toMatchArray([
             'pan' => 'BBBBB1234B',
             'pan_status' => 'active',

@@ -18,15 +18,27 @@ trait ResolvesAddressGeography
      */
     protected function withResolvedGeography(array $attributes): array
     {
-        if (! array_key_exists('state_id', $attributes)
-            && ! array_key_exists('city_id', $attributes)) {
+        $geography = new GeographyLookupService;
+        $stateId = filled($attributes['state_id'] ?? null) ? (string) $attributes['state_id'] : null;
+        $cityId = filled($attributes['city_id'] ?? null) ? (string) $attributes['city_id'] : null;
+
+        // Accept legacy/test payloads that still send State/City names.
+        if ($stateId === null && filled($attributes['state'] ?? null)) {
+            $stateId = $geography->findActiveStateIdByName((string) $attributes['state']);
+        }
+        if ($cityId === null && $stateId !== null && filled($attributes['city'] ?? null)) {
+            $cityId = $geography->findActiveCityIdByName($stateId, (string) $attributes['city']);
+        }
+
+        if ($stateId === null && $cityId === null
+            && ! array_key_exists('state_id', $attributes)
+            && ! array_key_exists('city_id', $attributes)
+            && ! filled($attributes['state'] ?? null)
+            && ! filled($attributes['city'] ?? null)) {
             return $attributes;
         }
 
-        $resolved = (new GeographyLookupService)->resolveAddressFields(
-            filled($attributes['state_id'] ?? null) ? (string) $attributes['state_id'] : null,
-            filled($attributes['city_id'] ?? null) ? (string) $attributes['city_id'] : null,
-        );
+        $resolved = $geography->resolveAddressFields($stateId, $cityId);
 
         unset($attributes['state'], $attributes['city']);
 
@@ -51,6 +63,9 @@ trait ResolvesAddressGeography
                 'uuid',
                 Rule::exists('cities', 'id')->where(fn ($query) => $query->where('is_active', true)),
             ],
+            // Optional name fields for legacy/test clients; resolved to Masters in withResolvedGeography.
+            'state' => ['nullable', 'string', 'max:120'],
+            'city' => ['nullable', 'string', 'max:120'],
         ];
     }
 }

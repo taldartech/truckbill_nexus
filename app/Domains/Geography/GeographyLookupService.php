@@ -77,8 +77,61 @@ final class GeographyLookupService
     }
 
     /**
+     * Resolve an active India State master ID by exact name or ISO code (case-insensitive).
+     */
+    public function findActiveStateIdByName(string $stateName): ?string
+    {
+        $name = trim($stateName);
+        if ($name === '') {
+            return null;
+        }
+
+        $needle = mb_strtolower($name, 'UTF-8');
+
+        $state = State::query()
+            ->where('country_code', 'IN')
+            ->where('is_active', true)
+            ->where(function ($query) use ($needle): void {
+                $query->whereRaw('lower(name) = ?', [$needle])
+                    ->orWhereRaw('lower(code) = ?', [$needle]);
+            })
+            ->first();
+
+        return $state?->id;
+    }
+
+    /**
+     * Resolve an active City master ID by name within a State (exact, then normalized prefix).
+     */
+    public function findActiveCityIdByName(string $stateId, string $cityName): ?string
+    {
+        $name = trim($cityName);
+        if ($name === '' || ! $this->looksLikeUuid($stateId)) {
+            return null;
+        }
+
+        $normalized = City::normalizeName($name);
+        $city = City::query()
+            ->where('state_id', $stateId)
+            ->where('is_active', true)
+            ->where(function ($query) use ($name, $normalized): void {
+                $query->whereRaw('lower(name) = ?', [mb_strtolower($name)])
+                    ->orWhere('name_normalized', $normalized)
+                    ->orWhere('name_normalized', 'like', $normalized.'%');
+            })
+            ->orderByRaw(
+                'case when lower(name) = ? then 0 when name_normalized = ? then 1 when name_normalized like ? then 2 else 3 end',
+                [mb_strtolower($name), $normalized, $normalized.'%'],
+            )
+            ->orderBy('name')
+            ->first();
+
+        return $city?->id;
+    }
+
+    /**
      * Resolve Master geographic IDs into authoritative ID + denormalized name pairs.
-     * Client-supplied names are ignored; CRM Lead free-text is handled separately.
+     * Client-supplied names are ignored once IDs are known; CRM Lead free-text is handled separately.
      *
      * @return array{state_id: string|null, city_id: string|null, state: string|null, city: string|null}
      */

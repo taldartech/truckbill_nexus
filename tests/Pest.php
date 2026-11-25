@@ -22,6 +22,8 @@ pest()->extend(TestCase::class)
     ->beforeEach(function (): void {
         // MySQL CI job does not run Vite build; Inertia HTML responses must not require the manifest.
         $this->withoutVite();
+        // Party/company address forms resolve State/City names against Masters.
+        ensureIndiaGeography();
     });
 
 /*
@@ -51,15 +53,23 @@ function internalRoute(string $name, array $parameters = []): string
 }
 
 /**
+ * Seed the India State/City masters when the disposable test database is empty.
+ */
+function ensureIndiaGeography(): void
+{
+    if (State::query()->where('country_code', 'IN')->count() < 36) {
+        test()->seed(IndiaGeographySeeder::class);
+    }
+}
+
+/**
  * Ensure India geography is seeded and resolve State/City master IDs for address forms.
  *
  * @return array{state_id: string, city_id: string, state: string, city: string}
  */
 function geographyIdsFor(string $stateName = 'Maharashtra', string $cityName = 'Mumbai City'): array
 {
-    if (State::query()->where('country_code', 'IN')->count() < 36) {
-        test()->seed(IndiaGeographySeeder::class);
-    }
+    ensureIndiaGeography();
 
     $state = State::query()
         ->where('country_code', 'IN')

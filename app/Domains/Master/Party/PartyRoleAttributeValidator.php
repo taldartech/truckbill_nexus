@@ -84,8 +84,14 @@ final class PartyRoleAttributeValidator
         }
 
         if ($needsCustomerFamily || $needsTransporter) {
-            $this->assertFilled($partyAttributes, 'state', 'State is required.');
-            $this->assertFilled($partyAttributes, 'city', 'City is required.');
+            $hasState = filled($partyAttributes['state'] ?? null) || filled($partyAttributes['state_id'] ?? null);
+            $hasCity = filled($partyAttributes['city'] ?? null) || filled($partyAttributes['city_id'] ?? null);
+            if (! $hasState) {
+                throw ValidationException::withMessages(['state' => 'State is required.']);
+            }
+            if (! $hasCity) {
+                throw ValidationException::withMessages(['city' => 'City is required.']);
+            }
         }
 
         if ($needsVendor) {

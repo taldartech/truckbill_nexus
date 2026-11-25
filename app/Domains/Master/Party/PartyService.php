@@ -3,6 +3,7 @@
 namespace App\Domains\Master\Party;
 
 use App\Domains\Company\CompanyAccessService;
+use App\Domains\Geography\Concerns\ResolvesAddressGeography;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Party\Exceptions\PartyDomainException;
 use App\Domains\Rbac\PermissionAuthorizer;
@@ -32,6 +33,8 @@ use Illuminate\Validation\ValidationException;
  */
 final class PartyService
 {
+    use ResolvesAddressGeography;
+
     public function __construct(
         private readonly CompanyAccessService $access = new CompanyAccessService,
         private readonly PermissionAuthorizer $authorizer = new PermissionAuthorizer,
@@ -63,6 +66,7 @@ final class PartyService
             throw new PartyDomainException('Branch does not belong to company.');
         }
 
+        $attributes = $this->withResolvedGeography($attributes);
         $normalizedRoles = $this->normalizeRolePayloads($roles, $attributes);
         $this->roleAttributes->validatePartyAttributes(
             $attributes,
@@ -134,6 +138,8 @@ final class PartyService
             : null;
 
         $this->assertCanMutate($actor, $company, $branch ?? $this->resolveActorBranch($actor, $company));
+
+        $attributes = $this->withResolvedGeography($attributes);
 
         $mergedPartyAttributes = array_merge($party->only([
             'name',

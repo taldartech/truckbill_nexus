@@ -37,6 +37,13 @@ final class CompanyProfileValidator
         $stateId = filled($profile['state_id'] ?? null) ? (string) $profile['state_id'] : null;
         $cityId = filled($profile['city_id'] ?? null) ? (string) $profile['city_id'] : null;
 
+        if ($stateId === null && filled($profile['state'] ?? null)) {
+            $stateId = $this->geography->findActiveStateIdByName((string) $profile['state']);
+        }
+        if ($cityId === null && $stateId !== null && filled($profile['city'] ?? null)) {
+            $cityId = $this->geography->findActiveCityIdByName($stateId, (string) $profile['city']);
+        }
+
         try {
             $resolvedGeography = $this->geography->resolveAddressFields($stateId, $cityId);
         } catch (ValidationException $e) {

@@ -10,6 +10,12 @@
  */
 require dirname(__DIR__).'/vendor/autoload.php';
 
+// Full Feature suites exceed the default 128M CLI limit when route files and
+// factories accumulate across hundreds of tests in one process.
+if (function_exists('ini_set')) {
+    ini_set('memory_limit', '512M');
+}
+
 $forced = [
     'APP_ENV' => 'testing',
     'APP_MAINTENANCE_DRIVER' => 'file',
