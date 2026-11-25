@@ -540,6 +540,10 @@ class LorryHireController extends Controller
             'tds_amount' => $this->freightPresentation->presentAmount($summary['tds_amount'], $maySeeFreight),
             'net_payable' => $this->freightPresentation->presentAmount($summary['net_payable'], $maySeeFreight),
             'outstanding_amount' => $this->freightPresentation->presentAmount($summary['outstanding_amount'], $maySeeFreight),
+            'balance_due' => $this->freightPresentation->presentAmount($summary['balance_due'], $maySeeFreight),
+            'negative_adjusted_amount' => $this->freightPresentation->presentAmount($summary['negative_adjusted_amount'], $maySeeFreight),
+            'remaining_payable' => $this->freightPresentation->presentAmount($summary['remaining_payable'], $maySeeFreight),
+            'reserved_voucher_amount' => $this->freightPresentation->presentAmount($summary['reserved_voucher_amount'], $maySeeFreight),
             'customer_freight_total' => $this->freightPresentation->presentAmount($lr?->freight_total, $maySeeFreight),
             'gross_freight_margin' => $this->grossFreightMargin(
                 $maySeeFreight && $lr !== null ? (string) $lr->freight_total : null,

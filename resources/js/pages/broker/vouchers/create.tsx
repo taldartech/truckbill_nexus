@@ -21,6 +21,11 @@ type HireOption = {
     transporter_name: string | null;
     vehicle_registration: string | null;
     outstanding_amount: string | null;
+    balance_due?: string | null;
+    negative_adjusted_amount?: string | null;
+    remaining_payable?: string | null;
+    reserved_voucher_amount?: string | null;
+    book_balance?: string | null;
     allocatable_amount: string | null;
     net_payable?: string | null;
     freight_total?: string | null;
@@ -117,13 +122,28 @@ export default function VoucherCreate({
 
     const proposedAmount = parseAmount(form.data.amount);
     const outstanding = parseAmount(selectedHire?.outstanding_amount);
+    const balanceDue = parseAmount(
+        selectedHire?.balance_due ?? selectedHire?.outstanding_amount,
+    );
+    const negativeAdjusted = parseAmount(
+        selectedHire?.negative_adjusted_amount,
+    );
+    const remainingPayable = parseAmount(
+        selectedHire?.remaining_payable ?? selectedHire?.allocatable_amount,
+    );
+    const bookBalance = parseAmount(selectedHire?.book_balance);
     const allocatable = parseAmount(selectedHire?.allocatable_amount);
     const netPayable = parseAmount(selectedHire?.net_payable);
     const freightTotal = parseAmount(selectedHire?.freight_total);
     const tdsAmount = parseAmount(selectedHire?.tds_amount);
-    const resultingBalance =
+    const isAdjustInAdvance = form.data.payment_mode === 'adjust_in_advance';
+    const resultingHireOutstanding =
         outstanding !== null && proposedAmount !== null
-            ? outstanding - proposedAmount
+            ? Math.max(outstanding - proposedAmount, 0)
+            : null;
+    const resultingBookBalance =
+        isAdjustInAdvance && bookBalance !== null && proposedAmount !== null
+            ? bookBalance - proposedAmount
             : null;
 
     const openConfirmation = () => {
@@ -170,13 +190,38 @@ export default function VoucherCreate({
                 value: formatMoney(netPayable),
             },
             {
-                label: 'Outstanding',
-                value: formatMoney(outstanding),
+                label: 'Balance Due',
+                value: formatMoney(balanceDue),
+            },
+            {
+                label: 'Negative Adjusted Amount',
+                value: formatMoney(negativeAdjusted),
             },
             {
                 label: 'Available payable',
-                value: formatMoney(allocatable),
+                value: formatMoney(remainingPayable ?? allocatable),
             },
+            ...(isAdjustInAdvance
+                ? [
+                      {
+                          label: 'Available Book Balance',
+                          value: formatMoney(bookBalance),
+                      },
+                      {
+                          label: 'Resulting Book Balance',
+                          value: formatMoney(resultingBookBalance),
+                      },
+                      {
+                          label: 'Resulting Hire Outstanding',
+                          value: formatMoney(resultingHireOutstanding),
+                      },
+                  ]
+                : [
+                      {
+                          label: 'Resulting Outstanding',
+                          value: formatMoney(resultingHireOutstanding),
+                      },
+                  ]),
             {
                 label: 'Payment type',
                 value: paymentTypeLabel,
@@ -192,10 +237,6 @@ export default function VoucherCreate({
             {
                 label: 'Proposed payment',
                 value: formatMoney(proposedAmount),
-            },
-            {
-                label: 'Resulting balance',
-                value: formatMoney(resultingBalance),
             },
         ]);
         setConfirmOpen(true);
@@ -251,16 +292,47 @@ export default function VoucherCreate({
                             </p>
                             <p>
                                 <span className="font-semibold text-slate-700">
-                                    Amount:
+                                    Balance Due:
                                 </span>{' '}
-                                {formatMoney(outstanding)}
+                                {formatMoney(balanceDue)}
                             </p>
                             <p>
                                 <span className="font-semibold text-slate-700">
-                                    Available:
+                                    Available payable:
                                 </span>{' '}
-                                {formatMoney(allocatable)}
+                                {formatMoney(remainingPayable ?? allocatable)}
                             </p>
+                            {isAdjustInAdvance ? (
+                                <>
+                                    <p>
+                                        <span className="font-semibold text-slate-700">
+                                            Book Balance:
+                                        </span>{' '}
+                                        {formatMoney(bookBalance)}
+                                    </p>
+                                    <p>
+                                        <span className="font-semibold text-slate-700">
+                                            Remaining Book Balance:
+                                        </span>{' '}
+                                        {formatMoney(resultingBookBalance)}
+                                    </p>
+                                    <p>
+                                        <span className="font-semibold text-slate-700">
+                                            Remaining Hire Outstanding:
+                                        </span>{' '}
+                                        {formatMoney(resultingHireOutstanding)}
+                                    </p>
+                                </>
+                            ) : null}
+                            {negativeAdjusted !== null &&
+                            negativeAdjusted > 0 ? (
+                                <p>
+                                    <span className="font-semibold text-slate-700">
+                                        Negative Adjusted Amount:
+                                    </span>{' '}
+                                    {formatMoney(negativeAdjusted)}
+                                </p>
+                            ) : null}
                         </div>
                     </div>
                 ) : null}
@@ -303,8 +375,8 @@ export default function VoucherCreate({
                             </div>
 
                             <div className="space-y-1">
-                                <Label htmlFor="payment_type">
-                                    Payment Type *
+                                <Label htmlFor="payment_type" required>
+                                    Payment Type
                                 </Label>
                                 <select
                                     id="payment_type"
@@ -329,8 +401,8 @@ export default function VoucherCreate({
                             </div>
 
                             <div className="space-y-1">
-                                <Label htmlFor="payment_mode">
-                                    Payment Mode *
+                                <Label htmlFor="payment_mode" required>
+                                    Payment Mode
                                 </Label>
                                 <select
                                     id="payment_mode"
@@ -355,7 +427,9 @@ export default function VoucherCreate({
                             </div>
 
                             <div className="space-y-1">
-                                <Label htmlFor="amount">Amount *</Label>
+                                <Label htmlFor="amount" required>
+                                    Amount
+                                </Label>
                                 <Input
                                     id="amount"
                                     type="number"
@@ -377,8 +451,18 @@ export default function VoucherCreate({
                                 ) : null}
                                 {proposedAmount !== null ? (
                                     <p className="text-xs text-slate-500">
-                                        Resulting balance{' '}
-                                        {formatMoney(resultingBalance)}
+                                        {isAdjustInAdvance
+                                            ? 'Remaining hire outstanding '
+                                            : 'Resulting outstanding '}
+                                        {formatMoney(resultingHireOutstanding)}
+                                        {isAdjustInAdvance ? (
+                                            <>
+                                                {' · Remaining book balance '}
+                                                {formatMoney(
+                                                    resultingBookBalance,
+                                                )}
+                                            </>
+                                        ) : null}
                                     </p>
                                 ) : null}
                             </div>

@@ -374,7 +374,9 @@ export function SearchableCombobox({
         return (
             <div className={cn('space-y-2', className)}>
                 <div className="flex items-center justify-between gap-2">
-                    <Label htmlFor={id}>{label}</Label>
+                    <Label htmlFor={id} required={required}>
+                        {label}
+                    </Label>
                     {addActionControl}
                 </div>
                 <div className="space-y-2 rounded-md border border-dashed p-3 text-sm text-muted-foreground">
@@ -404,7 +406,9 @@ export function SearchableCombobox({
     return (
         <div className={cn('space-y-2', className)} ref={rootRef}>
             <div className="flex items-center justify-between gap-2">
-                <Label htmlFor={id}>{label}</Label>
+                <Label htmlFor={id} required={required}>
+                    {label}
+                </Label>
                 {addActionControl}
             </div>
             <div className="relative">

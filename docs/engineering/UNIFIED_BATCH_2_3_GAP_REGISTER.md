@@ -7,40 +7,59 @@
 
 ## Classification
 
-| ID                     | Gap                                                          | Class             | Status                                        |
-| ---------------------- | ------------------------------------------------------------ | ----------------- | --------------------------------------------- |
-| U23-BILTY-OWN-PANEL    | Own vehicle panel shows Primary Driver; hide Pay To          | Vehicle-dependent | Aligned                                       |
-| U23-SAVE-TRIP          | Save & Manage Expenses → `redirect_to_trip`                  | Vehicle-dependent | Aligned                                       |
-| U23-QC-OWN-VEHICLE     | Inline Own Vehicle quick-create (type/tyre/driver)           | Shared            | Aligned                                       |
-| U23-COMBOBOX           | Single searchable combobox standard                          | Shared            | Aligned (196a7ae+)                            |
-| U23-PAY-TO             | Market Pay To Owner\|Agency + intended payee                 | Market            | Aligned; Hire inherits payee (PO-LGC-018)     |
-| U23-HIRE-COMPACT       | Hire create compact chrome + numbered sections               | Market visual     | Aligned (this pass)                           |
-| U23-REGISTER-COMPACT   | Bilty Register compact chrome                                | Shared visual     | Aligned                                       |
-| U23-VOUCHER-COMPACT    | Voucher create compact chrome                                | Market visual     | Aligned                                       |
-| U23-VOUCHER-SEARCH     | Searchable hire + account selectors on voucher create        | Market            | Aligned (this pass)                           |
-| U23-LINKED-LAYOUT      | Linked Bilty create two-panel Document \| Vehicle & Payee    | Market visual     | Aligned (this pass)                           |
-| U23-HIRE-SHOW          | Hire show compact financial cockpit                          | Market visual     | Partial (compact done; density)               |
-| U23-HIRE-HERO          | Legacy Freight Booking linked-bilty hero / hire charges grid | Market visual     | Aligned (hero payload + inherit payee)        |
-| U23-CUSTOMER-MANDATORY | Blank Billing Customer blocked; detail shows name            | Shared critical   | Aligned (PO-LGC-018)                          |
-| U23-BROKER-ROUTE       | Broker From/To from Consignor/Consignee                      | Market critical   | Aligned (PO-LGC-018)                          |
-| U23-RATE-MT            | Four new rate types; MT UI; historical `rate_semantics`      | Shared critical   | Aligned + certified (PO-LGC-018 pass)         |
-| U23-DUP-HIRE           | False active Hire → redirect to existing / uniqueness kept   | Market critical   | Aligned; frontend lock + conflict recover     |
-| U23-CONFIRM-UI         | Structured multi-column confirmation dialogs                 | Shared visual     | Aligned (partial; continue polish)            |
-| U23-TRIP-ODO           | Odometer on trip create (legacy Vue) vs dispatch on show     | Own intentional   | Retain Nexus (dispatch)                       |
-| U23-MULTI-POINT        | Multi-point pickup/drop UI polish                            | Own               | Aligned dedicated `/trips/{id}/multi-point`   |
-| U23-EXPENSE-UX         | Manage Expenses visual parity                                | Own visual        | Aligned dedicated `/trips/{id}/expenses`      |
-| U23-BULK-VOUCHER-UI    | Combined/Bulk Payment operator UI                            | Market            | Aligned layout (`broker/vouchers/bulk`)       |
-| U23-DIESEL-VARIANCE    | Expected vs actual diesel presentation                       | Own               | Aligned when planned diesel recorded          |
-| U23-OWNFLEET-DISCOVER  | Dashboard + sidebar OwnFleet entry points                    | Own               | Aligned (ops overview + Start/Active links)   |
-| U23-INVOICE-UNIFIED    | Already unified invoice — visual polish                      | Shared            | Partial                                       |
-| U23-LEGACY-SCREENSHOTS | Three-way visual certification artifacts                     | Certification     | Open (live legacy apps still blocked)         |
-| U23-FULL-REGRESSION    | Full PG + MySQL + Playwright matrix                          | Certification     | OwnFleet+Broker Playwright green; dual-DB TBD |
+| ID                     | Gap                                                          | Class             | Status                                                     |
+| ---------------------- | ------------------------------------------------------------ | ----------------- | ---------------------------------------------------------- |
+| U23-BILTY-OWN-PANEL    | Own vehicle panel shows Primary Driver; hide Pay To          | Vehicle-dependent | Aligned                                                    |
+| U23-SAVE-TRIP          | Save & Manage Expenses → `redirect_to_trip`                  | Vehicle-dependent | Aligned                                                    |
+| U23-QC-OWN-VEHICLE     | Inline Own Vehicle quick-create (type/tyre/driver)           | Shared            | Aligned                                                    |
+| U23-COMBOBOX           | Single searchable combobox standard                          | Shared            | Aligned (196a7ae+)                                         |
+| U23-PAY-TO             | Market Pay To Owner\|Agency + intended payee                 | Market            | Aligned; Hire inherits payee (PO-LGC-018)                  |
+| U23-HIRE-COMPACT       | Hire create compact chrome + numbered sections               | Market visual     | Aligned (this pass)                                        |
+| U23-REGISTER-COMPACT   | Bilty Register compact chrome                                | Shared visual     | Aligned                                                    |
+| U23-VOUCHER-COMPACT    | Voucher create compact chrome                                | Market visual     | Aligned                                                    |
+| U23-VOUCHER-SEARCH     | Searchable hire + account selectors on voucher create        | Market            | Aligned (this pass)                                        |
+| U23-LINKED-LAYOUT      | Linked Bilty create two-panel Document \| Vehicle & Payee    | Market visual     | Aligned (this pass)                                        |
+| U23-HIRE-SHOW          | Hire show compact financial cockpit                          | Market visual     | Partial (compact done; density)                            |
+| U23-HIRE-HERO          | Legacy Freight Booking linked-bilty hero / hire charges grid | Market visual     | Aligned (hero payload + inherit payee)                     |
+| U23-CUSTOMER-MANDATORY | Blank Billing Customer blocked; detail shows name            | Shared critical   | Aligned (PO-LGC-018)                                       |
+| U23-BROKER-ROUTE       | Broker From/To from Consignor/Consignee                      | Market critical   | Aligned (PO-LGC-018)                                       |
+| U23-RATE-MT            | Four new rate types; MT UI; historical `rate_semantics`      | Shared critical   | Aligned + certified (PO-LGC-018 pass)                      |
+| U23-DUP-HIRE           | False active Hire → redirect to existing / uniqueness kept   | Market critical   | Aligned; frontend lock + conflict recover                  |
+| U23-CONFIRM-UI         | Structured multi-column confirmation dialogs                 | Shared visual     | Aligned (partial; continue polish)                         |
+| U23-TRIP-ODO           | Odometer on trip create (legacy Vue) vs dispatch on show     | Own intentional   | Retain Nexus (dispatch)                                    |
+| U23-MULTI-POINT        | Multi-point pickup/drop UI polish                            | Own               | Aligned dedicated `/trips/{id}/multi-point`                |
+| U23-EXPENSE-UX         | Manage Expenses visual parity                                | Own visual        | Aligned dedicated `/trips/{id}/expenses`                   |
+| U23-BULK-VOUCHER-UI    | Combined/Bulk Payment operator UI                            | Market            | Aligned layout (`broker/vouchers/bulk`)                    |
+| U23-DIESEL-VARIANCE    | Expected vs actual diesel presentation                       | Own               | Aligned when planned diesel recorded                       |
+| U23-OWNFLEET-DISCOVER  | Dashboard + sidebar OwnFleet entry points                    | Own               | **Superseded** — no separate Start Trip / Active Trips nav |
+| U23-UNIFIED-BILTY      | Truck-first unified Bilty; Own save creates Trip atomically  | Shared critical   | Aligned (this PO directive)                                |
+| U23-REGISTER-ACTIONS   | Market Create/View Hire; Own Change Status + Manage Expenses | Shared critical   | Aligned                                                    |
+| U23-STATUS-LIFECYCLE   | Pending→In Progress→Delivered→Invoiced (Broker Hire sync)    | Shared critical   | Aligned                                                    |
+| U23-BOOK-BALANCE       | Transporter Book Balance on Party Master + Adjust in Advance | Market critical   | Aligned                                                    |
+| U23-NEG-ADJ            | Balance Due / Negative Adjusted Amount split                 | Market critical   | Aligned                                                    |
+| U23-VOUCHER-REMAINING  | Remaining payable after Pending/In Progress reservation      | Market critical   | Aligned                                                    |
+| U23-PRE-DELIVERY-ADJ   | Freight adjustments editable before Delivered                | Market            | Aligned (hire show; not gated on delivery)                 |
+| U23-PENDING-DELETE     | Soft-delete Pending Bilty (+ draft Trip cascade)             | Shared            | Aligned                                                    |
+| U23-FCM-GST-SPLIT      | Forward Charge CGST/SGST or IGST on customer invoice         | Market critical   | Aligned                                                    |
+| U23-OPTIONAL-DETAILS   | GR Number / Invoice Number / Goods Value / Reference By      | Shared            | Aligned                                                    |
+| U23-REQUIRED-ASTERISK  | Red * on mandatory labels via shared Label `required`        | Shared            | In progress (shared Label + combobox wired)                |
+| U23-INVOICE-UNIFIED    | Already unified invoice — visual polish                      | Shared            | Partial                                                    |
+| U23-LEGACY-SCREENSHOTS | Three-way visual certification artifacts                     | Certification     | Open (live legacy apps still blocked)                      |
+| U23-FULL-REGRESSION    | Full PG + MySQL + Playwright matrix                          | Certification     | Focused Pest green; dual-DB + Playwright TBD               |
+
+## PO directive (25 Nov 2026) — superseding earlier OwnFleet navigation
+
+- No separate mandatory LR + Trip creation flow.
+- Truck-first unified Bilty form; Own Vehicle submission creates internal Trip atomically.
+- Remove OwnFleet — Start Trip / Active Trips as mandatory operator entry points.
+- Bilty Register is the primary operational workspace for Market and Own vehicles.
+- Preserve internal Trip entities for expenses, diesel, movement, and multi-Bilty trips.
 
 ## Intentional approved differences
 
 - Stations master FKs for OwnFleet (vs legacy free-text cities).
-- Separate Bilty vs Lorry Hire / Trip entities.
+- Separate Bilty vs Lorry Hire / Trip entities (Trip remains internal, not a separate operator process).
 - Intended payee does not auto-create Hire.
-- Odometer captured at Trip dispatch/complete, not bilty create.
+- Odometer captured at Trip dispatch/complete (Change Status), not bilty create.
 - No Co-driver.
 - Own Vehicle Pay To / Agency hidden.

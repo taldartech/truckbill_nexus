@@ -134,7 +134,7 @@ test('active lorry hire blocks lr soft delete', function () {
     $hire = brokerCreateLorryHire($ctx);
     $lr = $hire->lorryReceipt;
 
-    expect(fn () => app(LorryReceiptService::class)->softDelete($lr, $ctx['member']))
+    expect(fn () => app(LorryReceiptService::class)->softDelete($lr, $ctx['member'], 'Blocked delete'))
         ->toThrow(LorryReceiptConflictException::class);
 });
 
@@ -185,7 +185,7 @@ test('cancelled lorry hire soft-deletes when lr soft-deleted', function () {
         'settle_outstanding' => false,
     ]);
 
-    app(LorryReceiptService::class)->softDelete($lr->fresh(), $ctx['member']);
+    app(LorryReceiptService::class)->softDelete($lr->fresh(), $ctx['member'], 'Cleanup after hire cancel');
 
     $trashed = LorryHire::withTrashed()->findOrFail($hire->id);
 

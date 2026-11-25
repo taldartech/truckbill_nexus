@@ -58,7 +58,7 @@ class BranchDashboardController extends Controller
         $ownFleet = $this->ownFleetOverview->forBranch($company, $branch, $user);
         $broker = $this->brokerOverview->forBranch($company, $branch, $user);
 
-        $modules = $this->moduleShortcuts($company, $branch, $user, $ownFleet, $broker);
+        $modules = $this->moduleShortcuts($company, $branch, $user, $broker);
 
         return Inertia::render('branch/dashboard', [
             'company' => [
@@ -92,7 +92,6 @@ class BranchDashboardController extends Controller
     }
 
     /**
-     * @param  array<string, mixed>|null  $ownFleet
      * @param  array<string, mixed>|null  $broker
      * @return list<array{key: string, label: string, href: string, description: string}>
      */
@@ -100,7 +99,6 @@ class BranchDashboardController extends Controller
         Company $company,
         Branch $branch,
         User $user,
-        ?array $ownFleet,
         ?array $broker,
     ): array {
         $modules = [];
@@ -117,21 +115,6 @@ class BranchDashboardController extends Controller
                 'label' => 'Create Bilty',
                 'href' => route('branch.lorry-receipts.create', absolute: false),
                 'description' => 'Select Own or Market vehicle — workflow follows ownership',
-            ];
-        }
-
-        if ($ownFleet !== null && ($ownFleet['can_view_trips'] ?? false)) {
-            $modules[] = [
-                'key' => 'ownfleet_awaiting',
-                'label' => 'OwnFleet — Start Trip',
-                'href' => (string) ($ownFleet['links']['awaiting_trip'] ?? route('branch.lorry-receipts.index', absolute: false)),
-                'description' => 'Own vehicle Bilties waiting for Trip / Expenses',
-            ];
-            $modules[] = [
-                'key' => 'ownfleet_active',
-                'label' => 'OwnFleet — Active Trips',
-                'href' => (string) ($ownFleet['links']['active_trips'] ?? route('branch.lorry-receipts.index', absolute: false)),
-                'description' => 'Open Trip Operations, Diesel and Expenses',
             ];
         }
 

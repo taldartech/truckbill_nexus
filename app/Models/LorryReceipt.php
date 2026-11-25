@@ -31,7 +31,9 @@ class LorryReceipt extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
-        'id', 'company_id', 'branch_id', 'workflow_context', 'lr_number', 'lr_date',
+        'id', 'company_id', 'branch_id', 'workflow_context', 'lr_number',
+        'external_gr_number', 'client_invoice_number', 'reference_by',
+        'lr_date',
         'from_text', 'to_text', 'from_station_id', 'to_station_id',
         'consignor_party_id', 'consignee_party_id', 'vehicle_id',
         'intended_payee_type', 'intended_payee_party_id',

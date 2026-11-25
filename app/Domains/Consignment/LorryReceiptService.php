@@ -20,6 +20,7 @@ use App\Domains\Numbering\DocumentNumberAllocator;
 use App\Domains\Numbering\Enums\DocumentNumberScopeType;
 use App\Domains\Numbering\Enums\DocumentNumberType;
 use App\Domains\Numbering\Exceptions\DocumentNumberConflictException;
+use App\Domains\OwnFleet\Enums\TripStatus;
 use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
 use App\Domains\Subscription\Entitlement\SubscriptionEntitlementGate;
 use App\Models\Branch;
@@ -34,6 +35,7 @@ use App\Models\OwnerCatalogueItem;
 use App\Models\Party;
 use App\Models\PartyRole;
 use App\Models\Station;
+use App\Models\Trip;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Support\Audit\AuditAction;
@@ -186,6 +188,9 @@ final class LorryReceiptService
                     'billing_customer_party_id' => $normalized['billing_customer_party_id'],
                     'status' => LrStatus::Pending,
                     'goods_value' => $normalized['goods_value'],
+                    'external_gr_number' => $normalized['external_gr_number'],
+                    'client_invoice_number' => $normalized['client_invoice_number'],
+                    'reference_by' => $normalized['reference_by'],
                     'freight_total' => $normalized['freight_total'],
                     'additional_charges_total' => $normalized['additional_charges_total'],
                     'created_by_user_id' => $actor->id,
@@ -274,6 +279,9 @@ final class LorryReceiptService
                     'intended_payee_type' => $normalized['intended_payee_type'],
                     'intended_payee_party_id' => $normalized['intended_payee_party_id'],
                     'goods_value' => $normalized['goods_value'],
+                    'external_gr_number' => $normalized['external_gr_number'],
+                    'client_invoice_number' => $normalized['client_invoice_number'],
+                    'reference_by' => $normalized['reference_by'],
                     'freight_total' => $normalized['freight_total'],
                     'additional_charges_total' => $normalized['additional_charges_total'],
                 ])->save();
@@ -354,7 +362,7 @@ final class LorryReceiptService
         });
     }
 
-    public function softDelete(LorryReceipt $lorryReceipt, User $actor): void
+    public function softDelete(LorryReceipt $lorryReceipt, User $actor, ?string $remark = null): void
     {
         $company = Company::query()->whereKey($lorryReceipt->company_id)->firstOrFail();
         $branch = Branch::query()->whereKey($lorryReceipt->branch_id)->firstOrFail();
@@ -366,6 +374,13 @@ final class LorryReceiptService
             throw new LorryReceiptDomainException('Only pending Lorry Receipts can be soft-deleted.');
         }
 
+        $deletionRemark = trim((string) $remark);
+        if ($deletionRemark === '') {
+            throw ValidationException::withMessages([
+                'remark' => 'A deletion remark is required.',
+            ]);
+        }
+
         $blockers = $this->dependencyGuard()->blockersForSoftDelete($lorryReceipt);
         if ($blockers !== []) {
             throw new LorryReceiptConflictException(
@@ -373,8 +388,8 @@ final class LorryReceiptService
             );
         }
 
-        $this->auditedTransaction->run(function () use ($company, $branch, $lorryReceipt): void {
-            $this->withTenant($company, $branch, function () use ($lorryReceipt): void {
+        $this->auditedTransaction->run(function () use ($company, $branch, $lorryReceipt, $deletionRemark): void {
+            $this->withTenant($company, $branch, function () use ($lorryReceipt, $deletionRemark): void {
                 $before = [
                     'lr_number' => $lorryReceipt->lr_number,
                     'status' => $lorryReceipt->status->value,
@@ -387,6 +402,16 @@ final class LorryReceiptService
                     ->whereNull('deleted_at')
                     ->each(fn (LorryHire $hire) => $hire->delete());
 
+                Trip::query()
+                    ->where('company_id', $lorryReceipt->company_id)
+                    ->where('lorry_receipt_id', $lorryReceipt->id)
+                    ->where('status', TripStatus::Pending->value)
+                    ->whereNull('deleted_at')
+                    ->whereDoesntHave('expenses')
+                    ->each(function (Trip $trip): void {
+                        $trip->delete();
+                    });
+
                 $lorryReceipt->goodsRows()->each(fn (LrGoodsRow $row) => $row->delete());
                 $lorryReceipt->ewayBills()->each(fn (LrEwayBill $row) => $row->delete());
                 $lorryReceipt->additionalCharges()->each(fn (LrAdditionalCharge $row) => $row->delete());
@@ -396,7 +421,7 @@ final class LorryReceiptService
                     AuditAction::Deleted,
                     LorryReceipt::class,
                     $lorryReceipt->id,
-                    remark: 'Lorry Receipt soft-deleted',
+                    remark: $deletionRemark,
                     before: $before,
                     after: null,
                 );
@@ -552,6 +577,9 @@ final class LorryReceiptService
             'freight_total' => number_format((float) $freightTotal, 2, '.', ''),
             'additional_charges_total' => number_format((float) $chargesTotal, 2, '.', ''),
             'goods_value' => $resolvedGoodsValue,
+            'external_gr_number' => $this->optionalTrimmedString($payload['external_gr_number'] ?? null, 100),
+            'client_invoice_number' => $this->optionalTrimmedString($payload['client_invoice_number'] ?? null, 100),
+            'reference_by' => $this->optionalTrimmedString($payload['reference_by'] ?? null, 255),
         ];
     }
 
@@ -1383,6 +1411,20 @@ final class LorryReceiptService
         }
 
         return $this->requireDecimal($value, $field, 2);
+    }
+
+    private function optionalTrimmedString(mixed $value, int $maxLength): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $trimmed = trim((string) $value);
+        if ($trimmed === '') {
+            return null;
+        }
+
+        return mb_substr($trimmed, 0, $maxLength);
     }
 
     private function ensureTenantMatches(Company $company, Branch $branch): void

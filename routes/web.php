@@ -200,6 +200,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/lorry-receipts/{lorryReceipt}/edit', [LorryReceiptController::class, 'edit'])->name('branch.lorry-receipts.edit');
         Route::patch('/lorry-receipts/{lorryReceipt}', [LorryReceiptController::class, 'update'])->name('branch.lorry-receipts.update');
         Route::delete('/lorry-receipts/{lorryReceipt}', [LorryReceiptController::class, 'destroy'])->name('branch.lorry-receipts.destroy');
+        Route::post('/lorry-receipts/{lorryReceipt}/change-status', [LorryReceiptController::class, 'changeStatus'])->name('branch.lorry-receipts.change-status');
         Route::post('/lorry-receipts/{lorryReceipt}/cancel', [LorryReceiptController::class, 'cancel'])->name('branch.lorry-receipts.cancel');
         Route::get('/lorry-receipts/{lorryReceipt}/print', [LorryReceiptController::class, 'print'])->name('branch.lorry-receipts.print');
         Route::get('/lorry-receipts/{lorryReceipt}/create-trip', [TripController::class, 'createFromLorryReceipt'])->name('branch.trips.create-from-lr');

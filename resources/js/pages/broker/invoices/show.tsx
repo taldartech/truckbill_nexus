@@ -29,6 +29,14 @@ type Props = {
         billing_customer_name: string | null;
         taxable_total: string | null;
         gst_amount: string | null;
+        cgst_amount?: string | null;
+        sgst_amount?: string | null;
+        igst_amount?: string | null;
+        cgst_rate?: string | number | null;
+        sgst_rate?: string | number | null;
+        igst_rate?: string | number | null;
+        supply_type?: string | null;
+        tax_liability?: string | null;
         invoice_total: string | null;
         amount_received: string | null;
         customer_tds_amount: string | null;
@@ -150,8 +158,32 @@ export default function BrokerInvoiceShow({
                                         label="Taxable total"
                                         value={invoice.taxable_total}
                                     />
+                                    {invoice.supply_type === 'intra_state' ||
+                                    (invoice.cgst_amount &&
+                                        invoice.cgst_amount !== '0.00' &&
+                                        invoice.cgst_amount !== '—') ? (
+                                        <>
+                                            <FbInfoItem
+                                                label={`CGST${invoice.cgst_rate ? ` (${invoice.cgst_rate}%)` : ''}`}
+                                                value={invoice.cgst_amount}
+                                            />
+                                            <FbInfoItem
+                                                label={`SGST${invoice.sgst_rate ? ` (${invoice.sgst_rate}%)` : ''}`}
+                                                value={invoice.sgst_amount}
+                                            />
+                                        </>
+                                    ) : null}
+                                    {invoice.supply_type === 'inter_state' ||
+                                    (invoice.igst_amount &&
+                                        invoice.igst_amount !== '0.00' &&
+                                        invoice.igst_amount !== '—') ? (
+                                        <FbInfoItem
+                                            label={`IGST${invoice.igst_rate ? ` (${invoice.igst_rate}%)` : ''}`}
+                                            value={invoice.igst_amount}
+                                        />
+                                    ) : null}
                                     <FbInfoItem
-                                        label="GST"
+                                        label="Total GST"
                                         value={invoice.gst_amount}
                                     />
                                     <FbInfoItem

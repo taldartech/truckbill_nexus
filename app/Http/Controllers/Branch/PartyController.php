@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Branch;
 
+use App\Domains\Broker\Voucher\TransporterBookBalanceService;
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Company\CompanyProfileValidator;
 use App\Domains\Company\MasterDataVisibilityResolver;
@@ -14,6 +15,7 @@ use App\Domains\Master\Party\PartyRoleAttributeValidator;
 use App\Domains\Master\Party\PartyService;
 use App\Domains\Master\Support\MasterAccess;
 use App\Domains\Rbac\PermissionAuthorizer;
+use App\Domains\Rbac\PermissionCodes;
 use App\Domains\Tax\Exceptions\TaxDomainException;
 use App\Domains\Tax\TransporterTdsCalculationService;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
@@ -24,6 +26,7 @@ use App\Models\Company;
 use App\Models\Party;
 use App\Models\PartyRole;
 use App\Models\User;
+use App\Support\Presentation\FreightAmountPresentation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -46,6 +49,8 @@ class PartyController extends Controller
         private readonly PartyService $parties,
         private readonly DocumentAttachmentService $documents,
         private readonly TransporterTdsCalculationService $transporterTds,
+        private readonly TransporterBookBalanceService $bookBalances = new TransporterBookBalanceService,
+        private readonly FreightAmountPresentation $freightPresentation = new FreightAmountPresentation,
     ) {}
 
     public function index(Request $request, Company $company, Branch $branch): Response|JsonResponse
@@ -387,11 +392,41 @@ class PartyController extends Controller
 
         $party->load(['roles' => fn ($q) => $q->orderByDesc('created_at')]);
 
+        $isTransporter = $party->roles->contains(
+            fn (PartyRole $role): bool => (string) $role->role === PartyRoleType::Transporter->value
+                && $role->deactivated_at === null,
+        );
+
+        $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
+        $mayViewBookBalance = $isTransporter
+            && $maySeeFreight
+            && (
+                $actor->id === $company->owner_user_id
+                || $this->authorizer->allowsCustomer(
+                    $actor,
+                    PermissionCodes::BROKER_BOOK_BALANCE_VIEW,
+                    $company,
+                    $branch,
+                )
+            );
+
+        $bookBalance = null;
+        if ($mayViewBookBalance) {
+            $running = $this->bookBalances->runningBalanceForTransporter($company, $branch, $party->id);
+            $bookBalance = [
+                'available_balance' => $this->freightPresentation->presentAmount($running, true),
+                'statement_url' => route('branch.broker.transporter-balances.index', [
+                    'transporter_party_id' => $party->id,
+                ], absolute: false),
+            ];
+        }
+
         return Inertia::render('branch/masters/parties/show', [
             'company' => $this->companyPayload($company),
             'branch' => $this->branchPayload($branch),
             'permissions' => $permissions,
             'party' => $this->partyDetailPayload($party),
+            'bookBalance' => $bookBalance,
             'roleOptions' => collect(PartyRoleType::cases())->map(fn (PartyRoleType $role): array => [
                 'value' => $role->value,
                 'label' => str_replace('_', ' ', ucfirst($role->value)),

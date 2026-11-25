@@ -37,20 +37,26 @@ final class TripLrDependencyGuard implements LrDependencyGuard
 
     public function blockersForSoftDelete(LorryReceipt $lorryReceipt): array
     {
-        $exists = Trip::query()
+        $trip = Trip::query()
             ->where('company_id', $lorryReceipt->company_id)
             ->where('lorry_receipt_id', $lorryReceipt->id)
             ->whereNull('deleted_at')
-            ->exists();
+            ->withCount('expenses')
+            ->first();
 
-        if (! $exists) {
+        if ($trip === null) {
+            return [];
+        }
+
+        // Draft Trip created with the Own Vehicle Bilty may be cascade soft-deleted.
+        if ($trip->status === TripStatus::Pending && (int) $trip->expenses_count === 0) {
             return [];
         }
 
         return [
             new LrDependencyBlocker(
                 code: 'trip.exists',
-                message: 'Cannot soft-delete LR while an OwnFleet Trip exists.',
+                message: 'Cannot soft-delete LR while an active OwnFleet Trip or Trip expenses exist.',
                 source: 'ownfleet.trip',
             ),
         ];

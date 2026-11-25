@@ -3,6 +3,7 @@
 namespace App\Domains\OwnFleet\Invoice;
 
 use App\Domains\Company\MasterDataVisibilityResolver;
+use App\Domains\Consignment\Enums\LrStatus;
 use App\Domains\Consignment\Enums\LrWorkflowContext;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Numbering\DocumentNumberAllocator;
@@ -501,6 +502,12 @@ final class TripInvoiceService
                         'trip_invoice_id' => $invoice->id,
                         ...$line,
                     ]);
+
+                    LorryReceipt::query()
+                        ->where('id', $line['lorry_receipt_id'])
+                        ->where('company_id', $company->id)
+                        ->whereIn('status', [LrStatus::Delivered->value, LrStatus::InProgress->value])
+                        ->update(['status' => LrStatus::Invoiced->value]);
                 }
 
                 foreach ($charges as $charge) {

@@ -1,11 +1,13 @@
-import { Form, Head, Link, usePage } from '@inertiajs/react';
+import { Form, Head, Link, router, usePage } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 import {
     ArrowLeft,
+    ArrowRightLeft,
     FileText,
     FolderOpen,
     Pencil,
     Printer,
+    Trash2,
     Truck,
     Wallet,
 } from 'lucide-react';
@@ -45,6 +47,9 @@ type LorryReceipt = {
     consignee_name: string | null;
     billing_customer_name?: string | null;
     goods_value: string | null;
+    external_gr_number?: string | null;
+    client_invoice_number?: string | null;
+    reference_by?: string | null;
     freight_total: string;
     additional_charges_total: string;
     cancellation_remark: string | null;
@@ -76,15 +81,23 @@ type LorryReceipt = {
     }>;
 };
 
+type PrimaryOperation = {
+    label: string;
+    url: string;
+    kind: string;
+    expenses_url?: string;
+    change_status_url?: string;
+    next_status?: string | null;
+};
+
 type Props = {
     lorryReceipt: LorryReceipt;
     permissions: {
         can_edit: boolean;
         can_cancel: boolean;
         can_delete: boolean;
-        can_create_trip?: boolean;
-        can_create_lorry_hire?: boolean;
     };
+    primaryOperation?: PrimaryOperation | null;
     linkedTrip?: {
         id: string;
         status: string;
@@ -102,8 +115,6 @@ type Props = {
         cancel: string;
         destroy: string;
         print: string;
-        create_trip?: string;
-        create_lorry_hire?: string;
         documents?: string;
     };
     documentDrawer?: Omit<DocumentDrawerProps, 'open' | 'onOpenChange'> | null;
@@ -134,6 +145,7 @@ function formatTotal(freight: string, additional: string): string {
 export default function LorryReceiptShow({
     lorryReceipt,
     permissions,
+    primaryOperation = null,
     linkedTrip = null,
     linkedLorryHire = null,
     urls,
@@ -144,6 +156,7 @@ export default function LorryReceiptShow({
         errors?: Record<string, string>;
     }>().props;
     const [confirmDelete, setConfirmDelete] = useState(false);
+    const [deleteRemark, setDeleteRemark] = useState('');
     const [docsOpen, setDocsOpen] = useState(false);
     const isPending = lorryReceipt.status === 'pending';
 
@@ -225,41 +238,79 @@ export default function LorryReceiptShow({
                                                 size="sm"
                                             />
                                         ) : null}
-                                        {permissions.can_create_trip &&
-                                        urls.create_trip ? (
+                                        {primaryOperation?.kind ===
+                                            'manage_expenses' &&
+                                        primaryOperation.change_status_url &&
+                                        primaryOperation.next_status ? (
                                             <AppIconAction
-                                                icon={Wallet}
-                                                label="Start Trip / Expenses"
-                                                href={urls.create_trip}
-                                                variant="default"
+                                                icon={ArrowRightLeft}
+                                                label="Change Status"
+                                                onClick={() => {
+                                                    if (
+                                                        !window.confirm(
+                                                            `Change status to ${primaryOperation.next_status?.replaceAll('_', ' ')}?`,
+                                                        )
+                                                    ) {
+                                                        return;
+                                                    }
+                                                    router.post(
+                                                        primaryOperation.change_status_url!,
+                                                        {
+                                                            status: primaryOperation.next_status,
+                                                        },
+                                                    );
+                                                }}
+                                                variant="primary"
                                                 size="sm"
                                             />
                                         ) : null}
-                                        {linkedTrip && tripManageUrl ? (
+                                        {(primaryOperation?.expenses_url ||
+                                            tripManageUrl) &&
+                                        (primaryOperation?.kind ===
+                                            'manage_expenses' ||
+                                            linkedTrip) ? (
                                             <AppIconAction
                                                 icon={Wallet}
                                                 label="Manage Expenses"
-                                                href={tripManageUrl}
+                                                href={
+                                                    primaryOperation?.expenses_url ??
+                                                    tripManageUrl!
+                                                }
                                                 variant="default"
                                                 size="sm"
                                             />
                                         ) : null}
-                                        {permissions.can_create_lorry_hire &&
-                                        urls.create_lorry_hire ? (
+                                        {primaryOperation?.kind ===
+                                            'create_lorry_hire' ||
+                                        primaryOperation?.kind ===
+                                            'view_lorry_hire' ? (
                                             <AppIconAction
                                                 icon={Truck}
-                                                label="Create Lorry Hire"
-                                                href={urls.create_lorry_hire}
+                                                label={primaryOperation.label}
+                                                href={primaryOperation.url}
                                                 variant="default"
                                                 size="sm"
                                             />
                                         ) : null}
-                                        {linkedLorryHire ? (
+                                        {linkedLorryHire &&
+                                        primaryOperation?.kind !==
+                                            'view_lorry_hire' ? (
                                             <AppIconAction
                                                 icon={Truck}
-                                                label={`Manage Lorry Hire ${linkedLorryHire.hire_number}`}
+                                                label={`View Lorry Hire ${linkedLorryHire.hire_number}`}
                                                 href={linkedLorryHire.show_url}
                                                 variant="default"
+                                                size="sm"
+                                            />
+                                        ) : null}
+                                        {permissions.can_delete && isPending ? (
+                                            <AppIconAction
+                                                icon={Trash2}
+                                                label="Delete pending bilty"
+                                                onClick={() =>
+                                                    setConfirmDelete(true)
+                                                }
+                                                variant="destructive"
                                                 size="sm"
                                             />
                                         ) : null}
@@ -328,6 +379,24 @@ export default function LorryReceiptShow({
                                     <FbInfoItem
                                         label="Goods value"
                                         value={lorryReceipt.goods_value}
+                                    />
+                                    <FbInfoItem
+                                        label="GR Number"
+                                        value={
+                                            lorryReceipt.external_gr_number ??
+                                            '—'
+                                        }
+                                    />
+                                    <FbInfoItem
+                                        label="Invoice Number"
+                                        value={
+                                            lorryReceipt.client_invoice_number ??
+                                            '—'
+                                        }
+                                    />
+                                    <FbInfoItem
+                                        label="Reference By"
+                                        value={lorryReceipt.reference_by ?? '—'}
                                     />
                                     <FbInfoItem
                                         label="Freight total"
@@ -574,25 +643,52 @@ export default function LorryReceiptShow({
                                             <Form
                                                 action={urls.destroy}
                                                 method="delete"
-                                                className="rounded-lg border border-destructive/40 bg-destructive/5 p-4"
+                                                className="space-y-3 rounded-lg border border-destructive/40 bg-destructive/5 p-4"
                                             >
                                                 {({ processing }) => (
-                                                    <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                                                    <>
                                                         <p className="text-sm">
                                                             Soft-delete this
                                                             pending bilty? This
                                                             cannot be undone
                                                             from the UI.
                                                         </p>
+                                                        <div className="space-y-1">
+                                                            <Label
+                                                                htmlFor="delete-remark"
+                                                                required
+                                                            >
+                                                                Deletion remark
+                                                            </Label>
+                                                            <Input
+                                                                id="delete-remark"
+                                                                name="remark"
+                                                                value={
+                                                                    deleteRemark
+                                                                }
+                                                                onChange={(e) =>
+                                                                    setDeleteRemark(
+                                                                        e.target
+                                                                            .value,
+                                                                    )
+                                                                }
+                                                                required
+                                                                minLength={3}
+                                                                placeholder="Reason for deletion"
+                                                            />
+                                                        </div>
                                                         <div className="flex gap-2">
                                                             <Button
                                                                 type="button"
                                                                 variant="secondary"
-                                                                onClick={() =>
+                                                                onClick={() => {
                                                                     setConfirmDelete(
                                                                         false,
-                                                                    )
-                                                                }
+                                                                    );
+                                                                    setDeleteRemark(
+                                                                        '',
+                                                                    );
+                                                                }}
                                                             >
                                                                 Keep
                                                             </Button>
@@ -600,7 +696,10 @@ export default function LorryReceiptShow({
                                                                 type="submit"
                                                                 variant="destructive"
                                                                 disabled={
-                                                                    processing
+                                                                    processing ||
+                                                                    deleteRemark.trim()
+                                                                        .length <
+                                                                        3
                                                                 }
                                                             >
                                                                 Confirm delete
@@ -611,7 +710,7 @@ export default function LorryReceiptShow({
                                                                 {errors.delete}
                                                             </p>
                                                         ) : null}
-                                                    </div>
+                                                    </>
                                                 )}
                                             </Form>
                                         ) : null}

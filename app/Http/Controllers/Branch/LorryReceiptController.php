@@ -10,6 +10,7 @@ use App\Domains\Consignment\Enums\LrWorkflowContext;
 use App\Domains\Consignment\Exceptions\LorryReceiptAuthorizationException;
 use App\Domains\Consignment\Exceptions\LorryReceiptConflictException;
 use App\Domains\Consignment\Exceptions\LorryReceiptDomainException;
+use App\Domains\Consignment\LorryReceiptOperationalStatusService;
 use App\Domains\Consignment\LorryReceiptService;
 use App\Domains\Consignment\LrVehicleClassificationService;
 use App\Domains\Consignment\LrWorkflowContextResolver;
@@ -19,6 +20,7 @@ use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Party\PartyOptionQuery;
 use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
 use App\Domains\Master\Vehicle\VehicleOptionQuery;
+use App\Domains\OwnFleet\Trip\OwnFleetBiltyTripOrchestrator;
 use App\Domains\OwnFleet\Trip\TripService;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
@@ -59,6 +61,8 @@ class LorryReceiptController extends Controller
         private readonly LrWorkflowContextResolver $contextResolver,
         private readonly LrVehicleClassificationService $vehicleClassification,
         private readonly TripService $trips,
+        private readonly OwnFleetBiltyTripOrchestrator $ownFleetBiltyTrip,
+        private readonly LorryReceiptOperationalStatusService $lrOperationalStatus,
         private readonly LorryHireService $lorryHires,
         private readonly FreightAmountPresentation $freightPresentation,
         private readonly DocumentAttachmentService $documents,
@@ -99,10 +103,12 @@ class LorryReceiptController extends Controller
                 'has_trip' => $hasTrip ? '1' : '',
             ],
             'permissions' => $permissions,
-            'statusOptions' => collect(LrStatus::cases())->map(fn (LrStatus $status): array => [
-                'value' => $status->value,
-                'label' => ucfirst($status->value),
-            ])->values()->all(),
+            'statusOptions' => collect(LrStatus::cases())
+                ->reject(fn (LrStatus $status): bool => $status === LrStatus::Cancelled)
+                ->map(fn (LrStatus $status): array => [
+                    'value' => $status->value,
+                    'label' => $status->label(),
+                ])->values()->all(),
             'contextOptions' => $this->contextOptions(),
             'createAction' => $permissions['can_create']
                 ? $this->createActionPayload($company, $actor, $branch)
@@ -243,8 +249,23 @@ class LorryReceiptController extends Controller
             $payload['vehicle_id'] = $classified['vehicle']->id;
         }
 
+        $createTrip = ($payload['workflow_context'] ?? null) === LrWorkflowContext::OwnFleet->value
+            && $this->authorizer->allowsCustomer(
+                $actor,
+                PermissionCodes::TRIP_CREATE,
+                $company,
+                $branch,
+            );
+
         try {
-            $lr = $this->lorryReceipts->create($company, $branch, $actor, $payload);
+            if ($createTrip) {
+                $created = $this->ownFleetBiltyTrip->create($company, $branch, $actor, $payload, true);
+                $lr = $created['lorry_receipt'];
+                $trip = $created['trip'];
+            } else {
+                $lr = $this->lorryReceipts->create($company, $branch, $actor, $payload);
+                $trip = null;
+            }
         } catch (ValidationException $e) {
             throw $e;
         } catch (LorryReceiptAuthorizationException $e) {
@@ -270,24 +291,67 @@ class LorryReceiptController extends Controller
                 ->with('success', 'Bilty created. Continue with Lorry Hire.');
         }
 
-        $redirectToTrip = $request->boolean('redirect_to_trip')
-            && $lr->workflow_context === LrWorkflowContext::OwnFleet
+        $openExpenses = $request->boolean('redirect_to_trip')
+            && $trip !== null
             && $this->authorizer->allowsCustomer(
                 $actor,
-                PermissionCodes::TRIP_CREATE,
+                PermissionCodes::TRIP_VIEW,
                 $company,
                 $branch,
             );
 
-        if ($redirectToTrip) {
+        if ($openExpenses) {
             return redirect()
-                ->route('branch.trips.create-from-lr', [$lr])
-                ->with('success', 'Bilty created. Continue with Trip / Manage Expenses.');
+                ->route('branch.trips.expenses', [$trip])
+                ->with('success', 'Bilty and Trip created. Continue with expenses and status.');
+        }
+
+        if ($trip !== null) {
+            return redirect()
+                ->route('branch.lorry-receipts.show', [$lr])
+                ->with('success', 'Bilty created with OwnFleet Trip context.');
         }
 
         return redirect()
             ->route('branch.lorry-receipts.show', [$lr])
             ->with('success', 'Lorry Receipt created.');
+    }
+
+    public function changeStatus(
+        Request $request,
+        LorryReceipt $lorryReceipt,
+        Company $company,
+        Branch $branch,
+    ): RedirectResponse {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertPermission($actor, $company, $branch, PermissionCodes::LR_EDIT);
+        $this->assertLr($lorryReceipt, $company, $branch);
+
+        $validated = $request->validate([
+            'status' => ['required', 'string', Rule::in([
+                LrStatus::InProgress->value,
+                LrStatus::Delivered->value,
+            ])],
+            'starting_odometer' => ['nullable', 'numeric', 'min:0'],
+            'ending_odometer' => ['nullable', 'numeric', 'min:0'],
+            'departure_at' => ['nullable', 'date'],
+            'actual_arrival_at' => ['nullable', 'date'],
+            'remark' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        try {
+            $this->lrOperationalStatus->changeStatus($lorryReceipt, $actor, $validated);
+        } catch (ValidationException $e) {
+            throw $e;
+        } catch (LorryReceiptDomainException $e) {
+            abort(403, $e->getMessage());
+        }
+
+        $statusLabel = LrStatus::from($validated['status'])->label();
+
+        return redirect()
+            ->route('branch.lorry-receipts.index')
+            ->with('success', 'Bilty status updated to '.$statusLabel.'.');
     }
 
     public function show(Request $request, LorryReceipt $lorryReceipt, Company $company, Branch $branch): Response
@@ -309,27 +373,17 @@ class LorryReceiptController extends Controller
         ]);
 
         $linkedTrip = $this->trips->tripForLorryReceipt($lorryReceipt);
-        $canCreateTrip = $lorryReceipt->workflow_context === LrWorkflowContext::OwnFleet
-            && $lorryReceipt->status === LrStatus::Pending
-            && $linkedTrip === null
-            && $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_CREATE, $company, $branch);
-
+        $lorryReceipt->setRelation('trip', $linkedTrip);
         $linkedLorryHire = $this->lorryHires->hireForLorryReceipt($lorryReceipt);
-        $canCreateLorryHire = $lorryReceipt->workflow_context === LrWorkflowContext::Broker
-            && $lorryReceipt->status === LrStatus::Pending
-            && $linkedLorryHire === null
-            && $lorryReceipt->vehicle?->ownership === VehicleOwnership::Market
-            && $this->moduleEntitlements->isEntitled($company, SubscriptionModule::Broker)
-            && $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_LORRY_HIRE_CREATE, $company, $branch);
+        $lorryReceipt->setRelation('lorryHire', $linkedLorryHire);
 
         $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
+        $primaryOperation = $this->primaryOperationAction($lorryReceipt, $actor, $company, $branch);
 
         return Inertia::render('branch/lorry-receipts/show', [
             'lorryReceipt' => $this->detailPayload($lorryReceipt, $maySeeFreight),
-            'permissions' => array_merge($this->lrPermissions($actor, $company, $branch, $maySeeFreight), [
-                'can_create_trip' => $canCreateTrip,
-                'can_create_lorry_hire' => $canCreateLorryHire,
-            ]),
+            'permissions' => $this->lrPermissions($actor, $company, $branch, $maySeeFreight),
+            'primaryOperation' => $primaryOperation,
             'linkedTrip' => $linkedTrip === null ? null : [
                 'id' => $linkedTrip->id,
                 'status' => $linkedTrip->status->value,
@@ -347,8 +401,6 @@ class LorryReceiptController extends Controller
                 'cancel' => route('branch.lorry-receipts.cancel', [$lorryReceipt], absolute: false),
                 'destroy' => route('branch.lorry-receipts.destroy', [$lorryReceipt], absolute: false),
                 'print' => route('branch.lorry-receipts.print', [$lorryReceipt], absolute: false),
-                'create_trip' => route('branch.trips.create-from-lr', [$lorryReceipt], absolute: false),
-                'create_lorry_hire' => route('branch.broker.lorry-hires.create-from-lr', [$lorryReceipt], absolute: false),
                 'documents' => route('branch.documents.index', [
                     'parentType' => 'lorry_receipt',
                     'parentId' => $lorryReceipt->id,
@@ -442,8 +494,12 @@ class LorryReceiptController extends Controller
         $this->assertPermission($actor, $company, $branch, PermissionCodes::LR_DELETE);
         $this->assertLr($lorryReceipt, $company, $branch);
 
+        $validated = $request->validate([
+            'remark' => ['required', 'string', 'min:3', 'max:500'],
+        ]);
+
         try {
-            $this->lorryReceipts->softDelete($lorryReceipt, $actor);
+            $this->lorryReceipts->softDelete($lorryReceipt, $actor, $validated['remark']);
         } catch (LorryReceiptAuthorizationException $e) {
             abort(403, $e->getMessage());
         } catch (LorryReceiptConflictException|LorryReceiptDomainException $e) {
@@ -579,6 +635,9 @@ class LorryReceiptController extends Controller
             'consignor_party_id' => ['nullable', 'uuid'],
             'consignee_party_id' => ['nullable', 'uuid'],
             'goods_value' => ['nullable', 'numeric', 'min:0'],
+            'external_gr_number' => ['nullable', 'string', 'max:100'],
+            'client_invoice_number' => ['nullable', 'string', 'max:100'],
+            'reference_by' => ['nullable', 'string', 'max:255'],
             'goods' => ['required', 'array', 'min:1'],
             'goods.*.goods_type_id' => ['nullable', 'uuid'],
             'goods.*.package_type_id' => ['nullable', 'uuid'],
@@ -832,6 +891,7 @@ class LorryReceiptController extends Controller
             'lr_date' => $lr->lr_date?->toDateString(),
             'workflow_context' => $lr->workflow_context->value,
             'status' => $lr->status->value,
+            'status_label' => $lr->status->label(),
             'from_text' => $lr->from_text,
             'to_text' => $lr->to_text,
             'loading_station' => $loadingStation,
@@ -849,13 +909,27 @@ class LorryReceiptController extends Controller
             'consignee_name' => $lr->consignee?->name,
             'primary_operation' => $this->primaryOperationAction($lr, $actor, $company, $branch),
             'show_url' => route('branch.lorry-receipts.show', [$lr], absolute: false),
-            'edit_url' => route('branch.lorry-receipts.edit', [$lr], absolute: false),
+            'edit_url' => $lr->status === LrStatus::Pending
+                ? route('branch.lorry-receipts.edit', [$lr], absolute: false)
+                : null,
             'print_url' => route('branch.lorry-receipts.print', [$lr], absolute: false),
+            'destroy_url' => $lr->status === LrStatus::Pending
+                && $this->authorizer->allowsCustomer($actor, PermissionCodes::LR_DELETE, $company, $branch)
+                ? route('branch.lorry-receipts.destroy', [$lr], absolute: false)
+                : null,
         ];
     }
 
     /**
-     * @return array{label: string, url: string, kind: string, expenses_url?: string, multi_point_url?: string}|null
+     * @return array{
+     *     label: string,
+     *     url: string,
+     *     kind: string,
+     *     expenses_url?: string,
+     *     change_status_url?: string,
+     *     next_status?: string|null,
+     *     destroy_url?: string
+     * }|null
      */
     private function primaryOperationAction(LorryReceipt $lr, User $actor, Company $company, Branch $branch): ?array
     {
@@ -865,32 +939,30 @@ class LorryReceiptController extends Controller
 
         if ($lr->workflow_context === LrWorkflowContext::OwnFleet) {
             $trip = $lr->trip;
-            if ($trip !== null) {
-                if (! $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_VIEW, $company, $branch)) {
-                    return null;
-                }
-
-                return [
-                    'kind' => 'trip_operations',
-                    'label' => 'Trip Operations',
-                    'url' => route('branch.trips.show', [$trip], absolute: false),
-                    'expenses_url' => route('branch.trips.expenses', [$trip], absolute: false),
-                    'multi_point_url' => route('branch.trips.multi-point', [$trip], absolute: false),
-                ];
+            if ($trip === null) {
+                return null;
             }
 
-            if (
-                $lr->status === LrStatus::Pending
-                && $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_CREATE, $company, $branch)
-            ) {
-                return [
-                    'kind' => 'init_trip',
-                    'label' => 'Start Trip / Expenses',
-                    'url' => route('branch.trips.create-from-lr', [$lr], absolute: false),
-                ];
+            if (! $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_VIEW, $company, $branch)) {
+                return null;
             }
 
-            return null;
+            $nextStatus = match ($lr->status) {
+                LrStatus::Pending => LrStatus::InProgress->value,
+                LrStatus::InProgress => LrStatus::Delivered->value,
+                default => null,
+            };
+
+            return [
+                'kind' => 'manage_expenses',
+                'label' => 'Manage Expenses',
+                'url' => route('branch.trips.expenses', [$trip], absolute: false),
+                'expenses_url' => route('branch.trips.expenses', [$trip], absolute: false),
+                'change_status_url' => $nextStatus !== null
+                    ? route('branch.lorry-receipts.change-status', [$lr], absolute: false)
+                    : null,
+                'next_status' => $nextStatus,
+            ];
         }
 
         if ($lr->workflow_context === LrWorkflowContext::Broker) {
@@ -905,20 +977,20 @@ class LorryReceiptController extends Controller
                 }
 
                 return [
-                    'kind' => 'manage_lorry_hire',
-                    'label' => 'Manage Lorry Hire',
+                    'kind' => 'view_lorry_hire',
+                    'label' => 'View Lorry Hire',
                     'url' => route('branch.broker.lorry-hires.show', [$hire], absolute: false),
                 ];
             }
 
             if (
-                $lr->status === LrStatus::Pending
+                in_array($lr->status, [LrStatus::Pending, LrStatus::InProgress], true)
                 && $lr->vehicle?->ownership === VehicleOwnership::Market
                 && $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_LORRY_HIRE_CREATE, $company, $branch)
             ) {
                 return [
                     'kind' => 'create_lorry_hire',
-                    'label' => 'Manage Lorry Hire',
+                    'label' => 'Create Lorry Hire',
                     'url' => route('branch.broker.lorry-hires.create-from-lr', [$lr], absolute: false),
                 ];
             }
@@ -955,6 +1027,9 @@ class LorryReceiptController extends Controller
             'consignee_name' => $lr->consignee?->name,
             'vehicle_registration' => $lr->vehicle?->registration_number,
             'goods_value' => $lr->goods_value,
+            'external_gr_number' => $lr->external_gr_number,
+            'client_invoice_number' => $lr->client_invoice_number,
+            'reference_by' => $lr->reference_by,
             'freight_total' => $this->freightPresentation->presentAmount($lr->freight_total, $maySeeFreight),
             'additional_charges_total' => $this->freightPresentation->presentAmount($lr->additional_charges_total, $maySeeFreight),
             'delivered_at' => $lr->delivered_at?->toIso8601String(),

@@ -480,7 +480,7 @@ test('cancel and soft-delete enforce pending rules', function () {
             ]],
         ]),
     );
-    $service->softDelete($pending, $ctx['member']);
+    $service->softDelete($pending, $ctx['member'], 'Test soft delete pending bilty');
 
     expect(LorryReceipt::query()->whereKey($pending->id)->exists())->toBeFalse()
         ->and(LorryReceipt::withTrashed()->whereKey($pending->id)->exists())->toBeTrue();

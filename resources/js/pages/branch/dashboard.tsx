@@ -134,22 +134,20 @@ export default function BranchDashboard({
                                 OwnFleet operations
                             </h2>
                             <div className="flex flex-wrap gap-2">
-                                {ownFleet.links.awaiting_trip ? (
+                                {ownFleet.links.bilty_register ? (
+                                    <Button asChild size="sm" variant="outline">
+                                        <Link
+                                            href={ownFleet.links.bilty_register}
+                                        >
+                                            Open Bilty Register
+                                        </Link>
+                                    </Button>
+                                ) : ownFleet.links.awaiting_trip ? (
                                     <Button asChild size="sm" variant="outline">
                                         <Link
                                             href={ownFleet.links.awaiting_trip}
                                         >
-                                            Start Trip / Expenses
-                                        </Link>
-                                    </Button>
-                                ) : null}
-                                {ownFleet.links.active_trips ? (
-                                    <Button asChild size="sm" variant="outline">
-                                        <Link
-                                            href={ownFleet.links.active_trips}
-                                        >
-                                            <Wallet className="size-3.5" />
-                                            Active Trip Ops
+                                            Own Vehicle Bilties
                                         </Link>
                                     </Button>
                                 ) : null}
@@ -171,9 +169,9 @@ export default function BranchDashboard({
                                 tone="blue"
                             />
                             <MetricCard
-                                label="Bilty awaiting Trip"
+                                label="Pending Own Bilties"
                                 value={ownFleet.metrics.bilty_awaiting_trip}
-                                hint="Own vehicle Bilties without Trip yet"
+                                hint="Own vehicle Bilties awaiting dispatch"
                                 icon={Truck}
                                 tone="amber"
                             />
@@ -186,10 +184,10 @@ export default function BranchDashboard({
                             />
                         </div>
                         <p className="text-sm text-muted-foreground">
-                            Workflow: Create Own Vehicle Bilty → Start Trip /
-                            Manage Expenses → Dispatch → Diesel &amp; Expenses →
-                            Complete → Invoice → Receipt. Open any Own Vehicle
-                            row in the Bilty Register for Trip Operations.
+                            Workflow: Create Own Vehicle Bilty (Trip created
+                            automatically) → Change Status → Manage Expenses →
+                            Deliver → Invoice → Receipt. Use the Bilty Register
+                            as the sole operational workspace.
                         </p>
                     </section>
                 ) : null}

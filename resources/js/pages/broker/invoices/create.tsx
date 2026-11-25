@@ -27,6 +27,13 @@ type Preview = {
     shortage_damage_total: string | null;
     taxable_total: string | null;
     gst_amount: string | null;
+    cgst_amount?: string | null;
+    sgst_amount?: string | null;
+    igst_amount?: string | null;
+    cgst_rate?: string | number | null;
+    sgst_rate?: string | number | null;
+    igst_rate?: string | number | null;
+    supply_type?: string | null;
     invoice_total: string | null;
 };
 
@@ -357,9 +364,51 @@ export default function BrokerInvoiceCreate({
                                                         '—'}
                                                 </dd>
                                             </div>
+                                            {preview.cgst_amount &&
+                                            preview.cgst_amount !== '0.00' ? (
+                                                <div>
+                                                    <dt className="text-muted-foreground">
+                                                        CGST
+                                                        {preview.cgst_rate
+                                                            ? ` (${preview.cgst_rate}%)`
+                                                            : ''}
+                                                    </dt>
+                                                    <dd>
+                                                        {preview.cgst_amount}
+                                                    </dd>
+                                                </div>
+                                            ) : null}
+                                            {preview.sgst_amount &&
+                                            preview.sgst_amount !== '0.00' ? (
+                                                <div>
+                                                    <dt className="text-muted-foreground">
+                                                        SGST
+                                                        {preview.sgst_rate
+                                                            ? ` (${preview.sgst_rate}%)`
+                                                            : ''}
+                                                    </dt>
+                                                    <dd>
+                                                        {preview.sgst_amount}
+                                                    </dd>
+                                                </div>
+                                            ) : null}
+                                            {preview.igst_amount &&
+                                            preview.igst_amount !== '0.00' ? (
+                                                <div>
+                                                    <dt className="text-muted-foreground">
+                                                        IGST
+                                                        {preview.igst_rate
+                                                            ? ` (${preview.igst_rate}%)`
+                                                            : ''}
+                                                    </dt>
+                                                    <dd>
+                                                        {preview.igst_amount}
+                                                    </dd>
+                                                </div>
+                                            ) : null}
                                             <div>
                                                 <dt className="text-muted-foreground">
-                                                    GST
+                                                    Total GST
                                                 </dt>
                                                 <dd>
                                                     {preview.gst_amount ?? '—'}

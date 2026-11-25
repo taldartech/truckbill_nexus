@@ -69,6 +69,10 @@ type Props = {
         tds_amount: string | null;
         net_payable: string | null;
         outstanding_amount: string | null;
+        balance_due?: string | null;
+        negative_adjusted_amount?: string | null;
+        remaining_payable?: string | null;
+        reserved_voucher_amount?: string | null;
         goods_lines: GoodsLine[];
         tds_snapshot: {
             applicable_rate: string;
@@ -313,11 +317,12 @@ export default function LorryHireShow({
         return kg > 0 ? `${(kg / 1000).toFixed(3)} MT` : '—';
     }, [lorryHire.goods_lines]);
 
-    const outstandingNumber = Number(lorryHire.outstanding_amount ?? NaN);
+    const balanceDueNumber = Number(
+        lorryHire.balance_due ?? lorryHire.outstanding_amount ?? NaN,
+    );
     const balanceDue =
-        Number.isFinite(outstandingNumber) && outstandingNumber > 0;
-    const cleared =
-        Number.isFinite(outstandingNumber) && outstandingNumber <= 0;
+        Number.isFinite(balanceDueNumber) && balanceDueNumber > 0;
+    const cleared = Number.isFinite(balanceDueNumber) && balanceDueNumber <= 0;
 
     return (
         <>
@@ -847,9 +852,17 @@ export default function LorryHireShow({
                                                 value={lorryHire.net_payable}
                                             />
                                             <PreviewField
-                                                label="Outstanding"
+                                                label="Balance Due"
                                                 value={
+                                                    lorryHire.balance_due ??
                                                     lorryHire.outstanding_amount
+                                                }
+                                            />
+                                            <PreviewField
+                                                label="Negative Adjusted Amount"
+                                                value={
+                                                    lorryHire.negative_adjusted_amount ??
+                                                    '0.00'
                                                 }
                                             />
                                         </dl>
@@ -942,7 +955,11 @@ export default function LorryHireShow({
                                 cleared={cleared}
                                 trAmount={lorryHire.freight_total ?? '—'}
                                 deductions={lorryHire.tds_amount ?? '—'}
-                                balance={lorryHire.outstanding_amount ?? '—'}
+                                balance={
+                                    lorryHire.balance_due ??
+                                    lorryHire.outstanding_amount ??
+                                    '—'
+                                }
                                 rows={[
                                     {
                                         label: 'TR Freight',
@@ -957,9 +974,30 @@ export default function LorryHireShow({
                                         value: lorryHire.net_payable ?? '—',
                                     },
                                     {
-                                        label: 'Outstanding',
+                                        label: 'Balance Due',
                                         value:
-                                            lorryHire.outstanding_amount ?? '—',
+                                            lorryHire.balance_due ??
+                                            lorryHire.outstanding_amount ??
+                                            '—',
+                                    },
+                                    {
+                                        label: 'Negative Adjusted Amount',
+                                        value:
+                                            lorryHire.negative_adjusted_amount ??
+                                            '0.00',
+                                    },
+                                    {
+                                        label: 'In-progress / reserved',
+                                        value:
+                                            lorryHire.reserved_voucher_amount ??
+                                            '0.00',
+                                    },
+                                    {
+                                        label: 'Remaining payable',
+                                        value:
+                                            lorryHire.remaining_payable ??
+                                            lorryHire.outstanding_amount ??
+                                            '—',
                                     },
                                     {
                                         label: 'Customer freight',

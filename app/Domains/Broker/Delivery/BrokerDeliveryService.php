@@ -61,7 +61,7 @@ final class BrokerDeliveryService
             ->where('company_id', $company->id)
             ->where('branch_id', $branch->id)
             ->where('workflow_context', LrWorkflowContext::Broker->value)
-            ->where('status', LrStatus::Pending->value)
+            ->where('status', LrStatus::InProgress->value)
             ->whereNull('delivered_at')
             ->whereNull('deleted_at')
             ->whereHas('lorryHire', function ($query): void {
@@ -374,8 +374,16 @@ final class BrokerDeliveryService
             throw new BrokerConflictException('Lorry Receipt is already delivered.');
         }
 
+        if ($receipt->status === LrStatus::Invoiced) {
+            throw new BrokerConflictException('Invoiced LRs cannot be re-delivered.');
+        }
+
         if ($receipt->status === LrStatus::Cancelled) {
             throw new BrokerConflictException('Cancelled LRs cannot be delivered.');
+        }
+
+        if ($receipt->status !== LrStatus::InProgress) {
+            throw new BrokerConflictException('Lorry Receipt must be In Progress (with Lorry Hire) before delivery.');
         }
     }
 

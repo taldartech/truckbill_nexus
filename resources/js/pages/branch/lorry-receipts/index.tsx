@@ -1,14 +1,16 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
 import {
+    ArrowRightLeft,
     Eye,
     Pencil,
     Plus,
     Printer,
     RotateCcw,
+    Trash2,
     Truck,
     Wallet,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { AppIconAction } from '@/components/app-icon-action';
 import {
     AppIndexFilters,
@@ -21,13 +23,22 @@ import { TablePagination } from '@/components/table-pagination';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
 
 type PrimaryOperation = {
     label: string;
     url: string;
     kind: string;
     expenses_url?: string;
-    multi_point_url?: string;
+    change_status_url?: string;
+    next_status?: string | null;
 };
 
 type LrRow = {
@@ -36,6 +47,7 @@ type LrRow = {
     lr_date: string | null;
     workflow_context: string;
     status: string;
+    status_label?: string;
     from_text: string | null;
     to_text: string | null;
     loading_station: string | null;
@@ -47,8 +59,9 @@ type LrRow = {
     freight_total: string;
     primary_operation?: PrimaryOperation | null;
     show_url: string;
-    edit_url?: string;
+    edit_url?: string | null;
     print_url?: string;
+    destroy_url?: string | null;
     consignor_name: string | null;
     consignee_name: string | null;
 };
@@ -80,6 +93,7 @@ type Props = {
         can_create: boolean;
         can_edit?: boolean;
         can_view_freight?: boolean;
+        can_delete?: boolean;
     };
     statusOptions: Option[];
     contextOptions: Option[];
@@ -100,39 +114,11 @@ type Props = {
 const selectClass =
     'h-9 min-w-[9rem] rounded-md border border-input bg-background px-3 text-sm';
 
-function statusLabel(status: string): string {
-    return status.replaceAll('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase());
-}
-
 function routeLabel(row: LrRow): string {
     const from = row.loading_station ?? row.from_text ?? '—';
     const to = row.unloading_station ?? row.to_text ?? '—';
 
     return `${from} → ${to}`;
-}
-
-function lrEditUrl(row: LrRow): string {
-    return row.edit_url ?? `${row.show_url}/edit`;
-}
-
-function lrPrintUrl(row: LrRow): string | undefined {
-    return row.print_url ?? `${row.show_url}/print`;
-}
-
-function operationIcon(kind: string) {
-    if (
-        kind === 'manage_expenses' ||
-        kind === 'init_trip' ||
-        kind === 'trip_operations'
-    ) {
-        return Wallet;
-    }
-
-    if (kind === 'manage_lorry_hire' || kind === 'create_lorry_hire') {
-        return Truck;
-    }
-
-    return Truck;
 }
 
 function CreateBiltyAction({ action }: { action: CreateAction }) {
@@ -156,11 +142,21 @@ function CreateBiltyAction({ action }: { action: CreateAction }) {
     );
 }
 
+function nextStatusLabel(status: string | null | undefined): string {
+    if (status === 'in_progress') {
+        return 'In Progress';
+    }
+    if (status === 'delivered') {
+        return 'Delivered';
+    }
+
+    return status ?? '';
+}
+
 export default function LorryReceiptsIndex({
     filters,
     permissions,
     statusOptions,
-    contextOptions,
     createAction,
     partloadCreateUrl,
     lorryReceipts,
@@ -171,17 +167,16 @@ export default function LorryReceiptsIndex({
     };
     const [q, setQ] = useState(filters.q);
     const [status, setStatus] = useState(filters.status);
-    const [workflowContext, setWorkflowContext] = useState(
-        filters.workflow_context,
-    );
     const [ownership, setOwnership] = useState(filters.ownership ?? '');
-    const [awaitingTrip, setAwaitingTrip] = useState(
-        filters.awaiting_trip ?? '',
-    );
-    const [hasTrip, setHasTrip] = useState(filters.has_trip ?? '');
+    const [deleteTarget, setDeleteTarget] = useState<LrRow | null>(null);
+    const [deleteRemark, setDeleteRemark] = useState('');
+    const [statusTarget, setStatusTarget] = useState<LrRow | null>(null);
+    const [statusRemark, setStatusRemark] = useState('');
+    const [startingOdometer, setStartingOdometer] = useState('');
+    const [endingOdometer, setEndingOdometer] = useState('');
     const mayViewFreight = permissions.can_view_freight !== false;
     const mayEdit = permissions.can_edit !== false;
-    const columnCount = mayViewFreight ? 9 : 8;
+    const columnCount = mayViewFreight ? 11 : 10;
 
     const applyFilters = (event: React.FormEvent) => {
         event.preventDefault();
@@ -190,10 +185,7 @@ export default function LorryReceiptsIndex({
             {
                 q: q || undefined,
                 status: status || undefined,
-                workflow_context: workflowContext || undefined,
                 ownership: ownership || undefined,
-                awaiting_trip: awaitingTrip || undefined,
-                has_trip: hasTrip || undefined,
             },
             { preserveState: true },
         );
@@ -202,11 +194,56 @@ export default function LorryReceiptsIndex({
     const resetFilters = () => {
         setQ('');
         setStatus('');
-        setWorkflowContext('');
         setOwnership('');
-        setAwaitingTrip('');
-        setHasTrip('');
         router.get(urls.index, {}, { preserveState: true });
+    };
+
+    const submitDelete = () => {
+        if (!deleteTarget?.destroy_url || deleteRemark.trim() === '') {
+            return;
+        }
+
+        router.delete(deleteTarget.destroy_url, {
+            data: { remark: deleteRemark.trim() },
+            preserveScroll: true,
+            onSuccess: () => {
+                setDeleteTarget(null);
+                setDeleteRemark('');
+            },
+        });
+    };
+
+    const submitStatusChange = () => {
+        const op = statusTarget?.primary_operation;
+        if (!op?.change_status_url || !op.next_status) {
+            return;
+        }
+
+        const payload: Record<string, string> = {
+            status: op.next_status,
+            remark: statusRemark.trim(),
+        };
+
+        if (
+            op.next_status === 'in_progress' &&
+            startingOdometer.trim() !== ''
+        ) {
+            payload.starting_odometer = startingOdometer.trim();
+        }
+
+        if (op.next_status === 'delivered' && endingOdometer.trim() !== '') {
+            payload.ending_odometer = endingOdometer.trim();
+        }
+
+        router.post(op.change_status_url, payload, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setStatusTarget(null);
+                setStatusRemark('');
+                setStartingOdometer('');
+                setEndingOdometer('');
+            },
+        });
     };
 
     const toolbar = (
@@ -225,6 +262,14 @@ export default function LorryReceiptsIndex({
             ) : null}
         </div>
     );
+
+    const statusDialogTitle = useMemo(() => {
+        if (!statusTarget?.primary_operation?.next_status) {
+            return 'Change Status';
+        }
+
+        return `Change Status → ${nextStatusLabel(statusTarget.primary_operation.next_status)}`;
+    }, [statusTarget]);
 
     return (
         <>
@@ -272,31 +317,6 @@ export default function LorryReceiptsIndex({
                                 ))}
                             </select>
                         </div>
-                        {contextOptions.length > 0 ? (
-                            <div className="space-y-1">
-                                <Label htmlFor="lr-context">
-                                    Operational type
-                                </Label>
-                                <select
-                                    id="lr-context"
-                                    className={selectClass}
-                                    value={workflowContext}
-                                    onChange={(e) =>
-                                        setWorkflowContext(e.target.value)
-                                    }
-                                >
-                                    <option value="">All</option>
-                                    {contextOptions.map((option) => (
-                                        <option
-                                            key={option.value}
-                                            value={option.value}
-                                        >
-                                            {option.label}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                        ) : null}
                         <div className="space-y-1">
                             <Label htmlFor="lr-ownership">Ownership</Label>
                             <select
@@ -306,37 +326,8 @@ export default function LorryReceiptsIndex({
                                 onChange={(e) => setOwnership(e.target.value)}
                             >
                                 <option value="">All</option>
-                                <option value="own">Own</option>
-                                <option value="market">Market</option>
-                            </select>
-                        </div>
-                        <div className="space-y-1">
-                            <Label htmlFor="lr-ownfleet-ops">
-                                OwnFleet ops
-                            </Label>
-                            <select
-                                id="lr-ownfleet-ops"
-                                className={selectClass}
-                                value={
-                                    awaitingTrip === '1'
-                                        ? 'awaiting'
-                                        : hasTrip === '1'
-                                          ? 'active'
-                                          : ''
-                                }
-                                onChange={(e) => {
-                                    const next = e.target.value;
-                                    setAwaitingTrip(
-                                        next === 'awaiting' ? '1' : '',
-                                    );
-                                    setHasTrip(next === 'active' ? '1' : '');
-                                }}
-                            >
-                                <option value="">All</option>
-                                <option value="awaiting">
-                                    Awaiting Start Trip
-                                </option>
-                                <option value="active">Has Trip</option>
+                                <option value="own">Own Vehicle</option>
+                                <option value="market">Market Vehicle</option>
                             </select>
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
@@ -360,18 +351,24 @@ export default function LorryReceiptsIndex({
                     </AppIndexFilters>
 
                     <div className="overflow-x-auto">
-                        <table className="app-index-table min-w-full">
+                        <table className="app-index-table w-full min-w-[72rem] table-fixed">
                             <thead>
                                 <tr>
-                                    <th>GR Date</th>
-                                    <th>Bilty No</th>
-                                    <th>Customer</th>
-                                    <th>Consignor</th>
-                                    <th>Consignee</th>
-                                    <th>Truck No</th>
-                                    <th>Weight</th>
-                                    {mayViewFreight ? <th>Amount</th> : null}
-                                    <th className="text-center">Actions</th>
+                                    <th className="w-[7rem]">GR Date</th>
+                                    <th className="w-[8rem]">Bilty No</th>
+                                    <th className="w-[9rem]">Customer</th>
+                                    <th className="w-[8rem]">Consignor</th>
+                                    <th className="w-[8rem]">Consignee</th>
+                                    <th className="w-[7rem]">Truck No</th>
+                                    <th className="w-[10rem]">Route</th>
+                                    <th className="w-[5.5rem]">Weight</th>
+                                    {mayViewFreight ? (
+                                        <th className="w-[7rem]">Freight</th>
+                                    ) : null}
+                                    <th className="w-[6.5rem]">Status</th>
+                                    <th className="sticky right-0 z-10 w-[11rem] bg-[#f8fafc] text-center shadow-[-6px_0_8px_-8px_rgba(15,23,42,0.25)]">
+                                        Actions
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -386,13 +383,21 @@ export default function LorryReceiptsIndex({
                                     </tr>
                                 ) : (
                                     lorryReceipts.data.map((row) => {
-                                        const printUrl = lrPrintUrl(row);
+                                        const printUrl =
+                                            row.print_url ??
+                                            `${row.show_url}/print`;
                                         const op = row.primary_operation;
-                                        const OpIcon = op
-                                            ? operationIcon(op.kind)
-                                            : Wallet;
                                         const showEdit =
-                                            mayEdit && row.status === 'pending';
+                                            mayEdit &&
+                                            row.status === 'pending' &&
+                                            Boolean(row.edit_url);
+                                        const statusText =
+                                            row.status_label ??
+                                            row.status
+                                                .replaceAll('_', ' ')
+                                                .replace(/\b\w/g, (c) =>
+                                                    c.toUpperCase(),
+                                                );
 
                                         return (
                                             <tr key={row.id}>
@@ -406,42 +411,34 @@ export default function LorryReceiptsIndex({
                                                         <div className="font-medium">
                                                             {row.lr_number}
                                                         </div>
-                                                        <div className="flex flex-wrap items-center gap-1 text-[11px] text-slate-500">
-                                                            {row.vehicle_ownership_label ? (
-                                                                <span className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0 font-medium text-slate-700">
-                                                                    {
-                                                                        row.vehicle_ownership_label
-                                                                    }
-                                                                </span>
-                                                            ) : null}
-                                                            <span className="capitalize">
-                                                                {statusLabel(
-                                                                    row.status,
-                                                                )}
+                                                        {row.vehicle_ownership_label ? (
+                                                            <span className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0 text-[11px] font-medium text-slate-700">
+                                                                {
+                                                                    row.vehicle_ownership_label
+                                                                }
                                                             </span>
-                                                        </div>
+                                                        ) : null}
                                                     </div>
                                                 </td>
-                                                <td>
+                                                <td className="truncate">
                                                     {row.billing_customer_name ??
                                                         '—'}
                                                 </td>
-                                                <td>
+                                                <td className="truncate">
                                                     {row.consignor_name ?? '—'}
                                                 </td>
-                                                <td>
+                                                <td className="truncate">
                                                     {row.consignee_name ?? '—'}
                                                 </td>
-                                                <td>
-                                                    <div className="space-y-0.5">
-                                                        <div>
-                                                            {row.vehicle_registration ??
-                                                                '—'}
-                                                        </div>
-                                                        <div className="text-[11px] text-slate-500">
-                                                            {routeLabel(row)}
-                                                        </div>
-                                                    </div>
+                                                <td className="whitespace-nowrap">
+                                                    {row.vehicle_registration ??
+                                                        '—'}
+                                                </td>
+                                                <td
+                                                    className="truncate text-[12px] text-slate-600"
+                                                    title={routeLabel(row)}
+                                                >
+                                                    {routeLabel(row)}
                                                 </td>
                                                 <td className="tabular-nums">
                                                     {formatMtLabel(
@@ -456,7 +453,12 @@ export default function LorryReceiptsIndex({
                                                     </td>
                                                 ) : null}
                                                 <td>
-                                                    <div className="flex items-center justify-center gap-1">
+                                                    <span className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[11px] font-medium text-slate-700">
+                                                        {statusText}
+                                                    </span>
+                                                </td>
+                                                <td className="sticky right-0 z-10 bg-white shadow-[-6px_0_8px_-8px_rgba(15,23,42,0.25)]">
+                                                    <div className="flex flex-wrap items-center justify-center gap-1">
                                                         <AppIconAction
                                                             icon={Eye}
                                                             label={`View Bilty ${row.lr_number}`}
@@ -464,27 +466,48 @@ export default function LorryReceiptsIndex({
                                                             variant="info"
                                                             size="sm"
                                                         />
-                                                        {showEdit ? (
+                                                        {showEdit &&
+                                                        row.edit_url ? (
                                                             <AppIconAction
                                                                 icon={Pencil}
                                                                 label={`Edit Bilty ${row.lr_number}`}
-                                                                href={lrEditUrl(
-                                                                    row,
-                                                                )}
+                                                                href={
+                                                                    row.edit_url
+                                                                }
                                                                 variant="outline"
                                                                 size="sm"
                                                             />
                                                         ) : null}
-                                                        {op ? (
+                                                        {op?.kind ===
+                                                            'manage_expenses' &&
+                                                        op.change_status_url &&
+                                                        op.next_status ? (
                                                             <AppIconAction
-                                                                icon={OpIcon}
-                                                                label={op.label}
-                                                                href={op.url}
+                                                                icon={
+                                                                    ArrowRightLeft
+                                                                }
+                                                                label={`Change Status to ${nextStatusLabel(op.next_status)}`}
+                                                                onClick={() => {
+                                                                    setStatusTarget(
+                                                                        row,
+                                                                    );
+                                                                    setStatusRemark(
+                                                                        '',
+                                                                    );
+                                                                    setStartingOdometer(
+                                                                        '',
+                                                                    );
+                                                                    setEndingOdometer(
+                                                                        '',
+                                                                    );
+                                                                }}
                                                                 variant="primary"
                                                                 size="sm"
                                                             />
                                                         ) : null}
-                                                        {op?.expenses_url ? (
+                                                        {op?.kind ===
+                                                            'manage_expenses' &&
+                                                        op.expenses_url ? (
                                                             <AppIconAction
                                                                 icon={Wallet}
                                                                 label="Manage Expenses"
@@ -495,12 +518,40 @@ export default function LorryReceiptsIndex({
                                                                 size="sm"
                                                             />
                                                         ) : null}
+                                                        {op?.kind ===
+                                                            'create_lorry_hire' ||
+                                                        op?.kind ===
+                                                            'view_lorry_hire' ? (
+                                                            <AppIconAction
+                                                                icon={Truck}
+                                                                label={op.label}
+                                                                href={op.url}
+                                                                variant="primary"
+                                                                size="sm"
+                                                            />
+                                                        ) : null}
                                                         {printUrl ? (
                                                             <AppIconAction
                                                                 icon={Printer}
                                                                 label={`Print Bilty ${row.lr_number}`}
                                                                 href={printUrl}
                                                                 variant="outline"
+                                                                size="sm"
+                                                            />
+                                                        ) : null}
+                                                        {row.destroy_url ? (
+                                                            <AppIconAction
+                                                                icon={Trash2}
+                                                                label={`Delete Bilty ${row.lr_number}`}
+                                                                onClick={() => {
+                                                                    setDeleteTarget(
+                                                                        row,
+                                                                    );
+                                                                    setDeleteRemark(
+                                                                        '',
+                                                                    );
+                                                                }}
+                                                                variant="destructive"
                                                                 size="sm"
                                                             />
                                                         ) : null}
@@ -521,17 +572,151 @@ export default function LorryReceiptsIndex({
                             query={{
                                 q: filters.q || undefined,
                                 status: filters.status || undefined,
-                                workflow_context:
-                                    filters.workflow_context || undefined,
                                 ownership: filters.ownership || undefined,
-                                awaiting_trip:
-                                    filters.awaiting_trip || undefined,
-                                has_trip: filters.has_trip || undefined,
                             }}
                         />
                     </div>
                 </AppIndexListCard>
             </AppIndexPage>
+
+            <Dialog
+                open={deleteTarget !== null}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setDeleteTarget(null);
+                        setDeleteRemark('');
+                    }
+                }}
+            >
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Delete Pending Bilty</DialogTitle>
+                        <DialogDescription>
+                            Soft-delete Bilty {deleteTarget?.lr_number}. This
+                            cannot be undone from the register. Enter a
+                            mandatory remark.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-2">
+                        <Label htmlFor="delete-remark">
+                            Deletion remark{' '}
+                            <span className="text-red-600">*</span>
+                        </Label>
+                        <Input
+                            id="delete-remark"
+                            value={deleteRemark}
+                            onChange={(e) => setDeleteRemark(e.target.value)}
+                            placeholder="Reason for deletion"
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                                setDeleteTarget(null);
+                                setDeleteRemark('');
+                            }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="destructive"
+                            disabled={deleteRemark.trim() === ''}
+                            onClick={submitDelete}
+                        >
+                            Delete Bilty
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog
+                open={statusTarget !== null}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setStatusTarget(null);
+                        setStatusRemark('');
+                        setStartingOdometer('');
+                        setEndingOdometer('');
+                    }
+                }}
+            >
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>{statusDialogTitle}</DialogTitle>
+                        <DialogDescription>
+                            Current status:{' '}
+                            {statusTarget?.status_label ??
+                                statusTarget?.status ??
+                                '—'}
+                            . Associated Trip state will update with this
+                            change.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-3">
+                        {statusTarget?.primary_operation?.next_status ===
+                        'in_progress' ? (
+                            <div className="space-y-1">
+                                <Label htmlFor="starting-odo">
+                                    Starting odometer
+                                </Label>
+                                <Input
+                                    id="starting-odo"
+                                    value={startingOdometer}
+                                    onChange={(e) =>
+                                        setStartingOdometer(e.target.value)
+                                    }
+                                    inputMode="decimal"
+                                />
+                            </div>
+                        ) : null}
+                        {statusTarget?.primary_operation?.next_status ===
+                        'delivered' ? (
+                            <div className="space-y-1">
+                                <Label htmlFor="ending-odo">
+                                    Ending odometer
+                                </Label>
+                                <Input
+                                    id="ending-odo"
+                                    value={endingOdometer}
+                                    onChange={(e) =>
+                                        setEndingOdometer(e.target.value)
+                                    }
+                                    inputMode="decimal"
+                                />
+                            </div>
+                        ) : null}
+                        <div className="space-y-1">
+                            <Label htmlFor="status-remark">Remark</Label>
+                            <Input
+                                id="status-remark"
+                                value={statusRemark}
+                                onChange={(e) =>
+                                    setStatusRemark(e.target.value)
+                                }
+                                placeholder="Optional remark"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => {
+                                setStatusTarget(null);
+                                setStatusRemark('');
+                            }}
+                        >
+                            Cancel
+                        </Button>
+                        <Button type="button" onClick={submitStatusChange}>
+                            Confirm Status Change
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </>
     );
 }

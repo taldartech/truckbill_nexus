@@ -358,6 +358,12 @@ final class LorryHireService
                         'snapshotted_at' => CarbonImmutable::now('UTC'),
                     ]);
 
+                    if ($lorryReceipt->status === LrStatus::Pending) {
+                        $lorryReceipt->forceFill([
+                            'status' => LrStatus::InProgress,
+                        ])->save();
+                    }
+
                     $this->audit->write(
                         AuditAction::Created,
                         LorryHire::class,
@@ -370,6 +376,7 @@ final class LorryHireService
                             'freight_total' => $freightTotal,
                             'tds_amount' => $tdsAmount,
                             'status' => LorryHireStatus::Pending->value,
+                            'lorry_receipt_status' => LrStatus::InProgress->value,
                         ],
                     );
 
@@ -638,6 +645,17 @@ final class LorryHireService
             throw ValidationException::withMessages([
                 'lorry_receipt_id' => 'Only Broker Lorry Receipts can create a Lorry Hire.',
             ]);
+        }
+
+        $existingHire = LorryHire::query()
+            ->where('company_id', $lorryReceipt->company_id)
+            ->where('lorry_receipt_id', $lorryReceipt->id)
+            ->whereNull('deleted_at')
+            ->where('status', '!=', LorryHireStatus::Cancelled->value)
+            ->exists();
+
+        if ($existingHire) {
+            throw new BrokerConflictException('This Broker LR already has an active Lorry Hire.');
         }
 
         if ($lorryReceipt->status !== LrStatus::Pending) {

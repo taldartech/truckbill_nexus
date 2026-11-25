@@ -9,6 +9,8 @@ use App\Domains\Broker\Exceptions\BrokerAuthorizationException;
 use App\Domains\Broker\Exceptions\BrokerConflictException;
 use App\Domains\Broker\Exceptions\BrokerDomainException;
 use App\Domains\Broker\Invoice\Enums\BrokerInvoicePaymentStatus;
+use App\Domains\Company\Enums\GstRegistrationType;
+use App\Domains\Company\Enums\TaxLiability;
 use App\Domains\Consignment\Enums\LrStatus;
 use App\Domains\Consignment\Enums\LrWorkflowContext;
 use App\Domains\Numbering\DocumentNumberAllocator;
@@ -29,6 +31,7 @@ use App\Models\Company;
 use App\Models\GstRate;
 use App\Models\LorryHire;
 use App\Models\LorryReceipt;
+use App\Models\Party;
 use App\Models\User;
 use App\Support\Audit\AuditAction;
 use App\Support\Audit\AuditedTransaction;
@@ -152,7 +155,13 @@ final class BrokerInvoiceService
             $taxableBase = bcadd($taxableBase, $this->storedDecimal($line['line_total']), 2);
         }
 
-        [$taxable, $gstAmount, $invoiceTotal, $snapshot] = $this->computeTaxTotals($company, $taxableBase, '0.00');
+        $billingCustomer = $receipts->first()?->billingCustomer;
+        [$taxable, $gstAmount, $invoiceTotal, $snapshot] = $this->computeTaxTotals(
+            $company,
+            $taxableBase,
+            '0.00',
+            $billingCustomer,
+        );
 
         return [
             'lines' => $lines,
@@ -161,6 +170,14 @@ final class BrokerInvoiceService
             'shortage_damage_total' => $shortageSum,
             'taxable_total' => $taxable,
             'gst_amount' => $gstAmount,
+            'cgst_amount' => is_array($snapshot) ? ($snapshot['cgst_amount'] ?? '0.00') : '0.00',
+            'sgst_amount' => is_array($snapshot) ? ($snapshot['sgst_amount'] ?? '0.00') : '0.00',
+            'igst_amount' => is_array($snapshot) ? ($snapshot['igst_amount'] ?? '0.00') : '0.00',
+            'cgst_rate' => is_array($snapshot) ? ($snapshot['cgst_rate'] ?? null) : null,
+            'sgst_rate' => is_array($snapshot) ? ($snapshot['sgst_rate'] ?? null) : null,
+            'igst_rate' => is_array($snapshot) ? ($snapshot['igst_rate'] ?? null) : null,
+            'supply_type' => is_array($snapshot) ? ($snapshot['supply_type'] ?? null) : null,
+            'tax_liability' => is_array($snapshot) ? ($snapshot['tax_liability'] ?? null) : null,
             'invoice_total' => $invoiceTotal,
             'gst_rate_snapshot' => is_array($snapshot) ? $snapshot : null,
         ];
@@ -200,7 +217,17 @@ final class BrokerInvoiceService
 
                 $preview = $this->buildLinePayloads($receipts);
                 $taxableBase = $preview['taxable_base'];
-                [$taxable, $gstAmount, $invoiceTotal, $gstSnapshot] = $this->computeTaxTotals($company, $taxableBase, '0.00');
+                $billingCustomer = Party::query()
+                    ->where('company_id', $company->id)
+                    ->whereKey($billingCustomerId)
+                    ->whereNull('deleted_at')
+                    ->first();
+                [$taxable, $gstAmount, $invoiceTotal, $gstSnapshot] = $this->computeTaxTotals(
+                    $company,
+                    $taxableBase,
+                    '0.00',
+                    $billingCustomer,
+                );
 
                 try {
                     $allocation = $this->numbers->allocateNext(
@@ -259,6 +286,11 @@ final class BrokerInvoiceService
                         'amount' => $line['line_total'],
                         'position' => $position,
                     ]);
+                    LorryReceipt::query()
+                        ->where('id', $line['lorry_receipt_id'])
+                        ->where('company_id', $company->id)
+                        ->where('status', LrStatus::Delivered->value)
+                        ->update(['status' => LrStatus::Invoiced->value]);
                     $position++;
                 }
 
@@ -413,10 +445,26 @@ final class BrokerInvoiceService
 
                 $before = $locked->toArray();
 
+                $receiptIds = BrokerInvoiceLine::query()
+                    ->where('broker_invoice_id', $locked->id)
+                    ->whereNull('deleted_at')
+                    ->pluck('lorry_receipt_id')
+                    ->filter()
+                    ->unique()
+                    ->values()
+                    ->all();
+
                 BrokerInvoiceLine::query()
                     ->where('broker_invoice_id', $locked->id)
                     ->whereNull('deleted_at')
                     ->each(fn (BrokerInvoiceLine $line) => $line->delete());
+
+                if ($receiptIds !== []) {
+                    LorryReceipt::query()
+                        ->whereIn('id', $receiptIds)
+                        ->where('status', LrStatus::Invoiced->value)
+                        ->update(['status' => LrStatus::Delivered->value]);
+                }
 
                 $locked->forceFill([
                     'status' => BrokerInvoiceStatus::Cancelled,
@@ -536,7 +584,7 @@ final class BrokerInvoiceService
             ->where('branch_id', $branch->id)
             ->whereIn('id', $lorryReceiptIds)
             ->whereNull('deleted_at')
-            ->with(['lorryHire', 'delivery'])
+            ->with(['lorryHire', 'delivery', 'billingCustomer'])
             ->get();
 
         if ($receipts->count() !== count($lorryReceiptIds)) {
@@ -650,25 +698,87 @@ final class BrokerInvoiceService
     /**
      * @return array{0: string, 1: string, 2: string, 3: array<string, mixed>|null}
      */
-    private function computeTaxTotals(Company $company, string $baseFreight, string $additional): array
-    {
+    private function computeTaxTotals(
+        Company $company,
+        string $baseFreight,
+        string $additional,
+        ?Party $billingCustomer = null,
+    ): array {
         $taxable = bcadd($this->storedDecimal($baseFreight), $this->storedDecimal($additional), 2);
-        $snapshot = $company->gst_rate_snapshot;
-        $gstAmount = '0.00';
+        $snapshot = is_array($company->gst_rate_snapshot) ? $company->gst_rate_snapshot : [];
+        $ratePercent = '0';
 
-        if (is_array($snapshot) && filled($snapshot['rate_percent'] ?? null)) {
-            $gstAmount = bcmul($taxable, bcdiv((string) $snapshot['rate_percent'], '100', 6), 2);
+        if (filled($snapshot['rate_percent'] ?? null)) {
+            $ratePercent = (string) $snapshot['rate_percent'];
         } elseif (filled($company->gst_rate_id)) {
             $rate = GstRate::query()->find($company->gst_rate_id);
             if ($rate !== null) {
                 $snapshot = $rate->toSnapshot();
-                $gstAmount = bcmul($taxable, bcdiv((string) $rate->rate_percent, '100', 6), 2);
+                $ratePercent = (string) $rate->rate_percent;
             }
         }
 
-        $invoiceTotal = bcadd($taxable, $gstAmount, 2);
+        $registration = $company->gst_registration_type;
+        $taxLiability = $company->tax_liability ?? TaxLiability::Fcm;
 
-        return [$taxable, $gstAmount, $invoiceTotal, is_array($snapshot) ? $snapshot : null];
+        $cgst = '0.00';
+        $sgst = '0.00';
+        $igst = '0.00';
+        $gstAmount = '0.00';
+        $supplyType = null;
+        $cgstRate = null;
+        $sgstRate = null;
+        $igstRate = null;
+
+        // Company registration gates taxability. Customer GST flags do not blank Forward Charge.
+        $taxableForGst = $registration === GstRegistrationType::Unregistered
+            || $registration === GstRegistrationType::Composition
+            || bccomp($ratePercent, '0', 4) <= 0
+            ? false
+            : true;
+
+        if ($taxableForGst) {
+            $companyState = strtoupper(trim((string) ($company->state ?? '')));
+            $customerState = strtoupper(trim((string) ($billingCustomer?->state ?? '')));
+            $intraState = $companyState !== ''
+                && $customerState !== ''
+                && $companyState === $customerState;
+
+            $supplyType = $intraState ? 'intra_state' : 'inter_state';
+            $halfRate = bcdiv($ratePercent, '2', 4);
+
+            if ($intraState) {
+                $cgstRate = $halfRate;
+                $sgstRate = $halfRate;
+                $cgst = bcmul($taxable, bcdiv($halfRate, '100', 6), 2);
+                $sgst = bcmul($taxable, bcdiv($halfRate, '100', 6), 2);
+                $gstAmount = bcadd($cgst, $sgst, 2);
+            } else {
+                $igstRate = $ratePercent;
+                $igst = bcmul($taxable, bcdiv($ratePercent, '100', 6), 2);
+                $gstAmount = $igst;
+            }
+        }
+
+        // Forward Charge: GST adds to invoice total. RCM: tax shown but not collected in invoice total.
+        $invoiceTotal = $taxLiability === TaxLiability::Rcm
+            ? $taxable
+            : bcadd($taxable, $gstAmount, 2);
+
+        $snapshot = array_merge($snapshot, [
+            'rate_percent' => $ratePercent,
+            'tax_liability' => $taxLiability->value,
+            'supply_type' => $supplyType,
+            'cgst_rate' => $cgstRate,
+            'sgst_rate' => $sgstRate,
+            'igst_rate' => $igstRate,
+            'cgst_amount' => $cgst,
+            'sgst_amount' => $sgst,
+            'igst_amount' => $igst,
+            'gst_amount' => $gstAmount,
+        ]);
+
+        return [$taxable, $gstAmount, $invoiceTotal, $snapshot];
     }
 
     private function assertCanCreate(User $actor, Company $company, Branch $branch): void

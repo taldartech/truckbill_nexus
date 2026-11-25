@@ -7,6 +7,12 @@ type Props = {
         billing_customer_name: string | null;
         taxable_total: string | null;
         gst_amount: string | null;
+        cgst_amount?: string | null;
+        sgst_amount?: string | null;
+        igst_amount?: string | null;
+        cgst_rate?: string | number | null;
+        sgst_rate?: string | number | null;
+        igst_rate?: string | number | null;
         invoice_total: string | null;
         amount_received: string | null;
         customer_tds_amount: string | null;
@@ -93,8 +99,53 @@ export default function BrokerInvoicePrint({
                                 {invoice.taxable_total ?? '—'}
                             </td>
                         </tr>
+                        {invoice.cgst_amount &&
+                        invoice.cgst_amount !== '0.00' &&
+                        invoice.cgst_amount !== '—' ? (
+                            <tr className="border-b">
+                                <td className="py-2">
+                                    CGST
+                                    {invoice.cgst_rate
+                                        ? ` (${invoice.cgst_rate}%)`
+                                        : ''}
+                                </td>
+                                <td className="py-2 text-right">
+                                    {invoice.cgst_amount}
+                                </td>
+                            </tr>
+                        ) : null}
+                        {invoice.sgst_amount &&
+                        invoice.sgst_amount !== '0.00' &&
+                        invoice.sgst_amount !== '—' ? (
+                            <tr className="border-b">
+                                <td className="py-2">
+                                    SGST
+                                    {invoice.sgst_rate
+                                        ? ` (${invoice.sgst_rate}%)`
+                                        : ''}
+                                </td>
+                                <td className="py-2 text-right">
+                                    {invoice.sgst_amount}
+                                </td>
+                            </tr>
+                        ) : null}
+                        {invoice.igst_amount &&
+                        invoice.igst_amount !== '0.00' &&
+                        invoice.igst_amount !== '—' ? (
+                            <tr className="border-b">
+                                <td className="py-2">
+                                    IGST
+                                    {invoice.igst_rate
+                                        ? ` (${invoice.igst_rate}%)`
+                                        : ''}
+                                </td>
+                                <td className="py-2 text-right">
+                                    {invoice.igst_amount}
+                                </td>
+                            </tr>
+                        ) : null}
                         <tr className="border-b">
-                            <td className="py-2">GST</td>
+                            <td className="py-2">Total GST</td>
                             <td className="py-2 text-right">
                                 {invoice.gst_amount ?? '—'}
                             </td>

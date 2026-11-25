@@ -39,6 +39,10 @@ type Props = {
             tds_percent: string | null;
             net_payable: string | null;
             outstanding_amount: string | null;
+            balance_due?: string | null;
+            negative_adjusted_amount?: string | null;
+            remaining_payable?: string | null;
+            reserved_voucher_amount?: string | null;
             paid_amount: string | null;
             adjustments: Array<{
                 type: string;
@@ -203,8 +207,30 @@ export default function VoucherShow({
                                             value={hire.net_payable}
                                         />
                                         <FbInfoItem
-                                            label="Paid / Outstanding"
-                                            value={`${hire.paid_amount ?? '—'} / ${hire.outstanding_amount ?? '—'}`}
+                                            label="Paid / Balance Due"
+                                            value={`${hire.paid_amount ?? '—'} / ${hire.balance_due ?? hire.outstanding_amount ?? '—'}`}
+                                        />
+                                        <FbInfoItem
+                                            label="In-progress / reserved"
+                                            value={
+                                                hire.reserved_voucher_amount ??
+                                                '0.00'
+                                            }
+                                        />
+                                        <FbInfoItem
+                                            label="Remaining payable"
+                                            value={
+                                                hire.remaining_payable ??
+                                                hire.outstanding_amount ??
+                                                '—'
+                                            }
+                                        />
+                                        <FbInfoItem
+                                            label="Negative Adjusted Amount"
+                                            value={
+                                                hire.negative_adjusted_amount ??
+                                                '0.00'
+                                            }
                                         />
                                     </FbInfoGrid>
                                 </FbDetailCard>

@@ -90,6 +90,9 @@ type LorryReceiptDetail = {
     consignor_party_id: string | null;
     consignee_party_id: string | null;
     goods_value: string | null;
+    external_gr_number?: string | null;
+    client_invoice_number?: string | null;
+    reference_by?: string | null;
     goods: Array<{
         id?: string | null;
         goods_type_id: string | null;
@@ -583,6 +586,18 @@ export default function LrForm({
                   valid_until: row.valid_until ?? '',
               }))
             : [],
+    );
+    const [externalGrNumber, setExternalGrNumber] = useState(
+        lorryReceipt?.external_gr_number ?? '',
+    );
+    const [clientInvoiceNumber, setClientInvoiceNumber] = useState(
+        lorryReceipt?.client_invoice_number ?? '',
+    );
+    const [referenceBy, setReferenceBy] = useState(
+        lorryReceipt?.reference_by ?? '',
+    );
+    const [declaredGoodsValue, setDeclaredGoodsValue] = useState(
+        lorryReceipt?.goods_value ?? '',
     );
     const [charges, setCharges] = useState<ChargeRow[]>(() =>
         lorryReceipt?.additional_charges?.length
@@ -1251,6 +1266,29 @@ export default function LrForm({
                 group: 'Optional',
             });
         }
+
+        fields.push(
+            {
+                label: 'GR Number',
+                value: externalGrNumber.trim() || '—',
+                group: 'Optional Details',
+            },
+            {
+                label: 'Invoice Number',
+                value: clientInvoiceNumber.trim() || '—',
+                group: 'Optional Details',
+            },
+            {
+                label: 'Goods Value',
+                value: declaredGoodsValue.trim() || summary.totalGoodsValue,
+                group: 'Optional Details',
+            },
+            {
+                label: 'Reference By',
+                value: referenceBy.trim() || '—',
+                group: 'Optional Details',
+            },
+        );
 
         fields.push(
             {
@@ -2937,6 +2975,89 @@ export default function LrForm({
                                                   ]),
                                         ]}
                                     />
+                                </div>
+                            </LrfSection>
+
+                            <LrfSection
+                                step={4}
+                                title="Optional Details"
+                                description="External GR, client invoice, declared cargo value, and reference. These do not change freight."
+                                tone="receipt"
+                            >
+                                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                                    <div className="space-y-1">
+                                        <Label htmlFor="external_gr_number">
+                                            GR Number
+                                        </Label>
+                                        <Input
+                                            id="external_gr_number"
+                                            name="external_gr_number"
+                                            value={externalGrNumber}
+                                            onChange={(e) =>
+                                                setExternalGrNumber(
+                                                    e.target.value,
+                                                )
+                                            }
+                                            placeholder="External / reference GR"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label htmlFor="client_invoice_number">
+                                            Invoice Number
+                                        </Label>
+                                        <Input
+                                            id="client_invoice_number"
+                                            name="client_invoice_number"
+                                            value={clientInvoiceNumber}
+                                            onChange={(e) =>
+                                                setClientInvoiceNumber(
+                                                    e.target.value,
+                                                )
+                                            }
+                                            placeholder="Client material / E-Way invoice"
+                                        />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label htmlFor="goods_value">
+                                            Goods Value
+                                        </Label>
+                                        <Input
+                                            id="goods_value"
+                                            name="goods_value"
+                                            value={declaredGoodsValue}
+                                            onChange={(e) =>
+                                                setDeclaredGoodsValue(
+                                                    e.target.value,
+                                                )
+                                            }
+                                            inputMode="decimal"
+                                            placeholder={
+                                                summary.totalGoodsValue !==
+                                                '0.00'
+                                                    ? `Sum of rows ₹${summary.totalGoodsValue}`
+                                                    : 'Declared cargo value'
+                                            }
+                                        />
+                                        <p className="text-[11px] text-slate-500">
+                                            Leave blank to use the sum of
+                                            goods-row values. Not freight
+                                            revenue.
+                                        </p>
+                                    </div>
+                                    <div className="space-y-1">
+                                        <Label htmlFor="reference_by">
+                                            Reference By
+                                        </Label>
+                                        <Input
+                                            id="reference_by"
+                                            name="reference_by"
+                                            value={referenceBy}
+                                            onChange={(e) =>
+                                                setReferenceBy(e.target.value)
+                                            }
+                                            placeholder="Broker / agent / contact"
+                                        />
+                                    </div>
                                 </div>
                             </LrfSection>
 

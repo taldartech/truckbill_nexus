@@ -233,13 +233,46 @@ final class LorryHireCalculationService
         $tds = $this->money($hire->tds_amount);
         $net = $this->netPayable($freight, $tds, $hire->adjustments);
         $outstanding = $this->outstandingAmount($net, $hire->vouchers, $hire->bookBalanceEntries);
+        $reserved = $this->reservedVoucherAmount($hire->vouchers);
+        $remainingPayable = bcsub($outstanding, $reserved, 2);
+        if (bccomp($remainingPayable, '0.00', 2) < 0) {
+            $remainingPayable = '0.00';
+        }
+
+        $balanceDue = bccomp($outstanding, '0.00', 2) >= 0 ? $outstanding : '0.00';
+        $negativeAdjusted = bccomp($outstanding, '0.00', 2) < 0
+            ? bcmul($outstanding, '-1', 2)
+            : '0.00';
 
         return [
             'freight_total' => $freight,
             'tds_amount' => $tds,
             'net_payable' => $net,
             'outstanding_amount' => $outstanding,
+            'balance_due' => $balanceDue,
+            'negative_adjusted_amount' => $negativeAdjusted,
+            'reserved_voucher_amount' => $reserved,
+            'remaining_payable' => $remainingPayable,
         ];
+    }
+
+    /**
+     * Sum of Pending / In Progress voucher amounts that reserve hire payable.
+     *
+     * @param  Collection<int, TransporterVoucher>  $vouchers
+     * @return numeric-string
+     */
+    public function reservedVoucherAmount(Collection $vouchers): string
+    {
+        $reserved = '0.00';
+
+        foreach ($vouchers as $voucher) {
+            if (in_array($voucher->status, [VoucherStatus::Pending, VoucherStatus::InProgress], true)) {
+                $reserved = bcadd($reserved, $this->money($voucher->amount), 2);
+            }
+        }
+
+        return $reserved;
     }
 
     /**

@@ -50,6 +50,10 @@ type Props = {
         created_at: string | null;
         updated_at: string | null;
     };
+    bookBalance?: {
+        available_balance: string;
+        statement_url: string;
+    } | null;
     roleOptions: { value: string; label: string }[];
     documentDrawer: Omit<
         DocumentDrawerProps,
@@ -69,6 +73,7 @@ type Props = {
 export default function PartyShow({
     permissions,
     party,
+    bookBalance = null,
     roleOptions,
     documentDrawer,
     links,
@@ -173,6 +178,28 @@ export default function PartyShow({
                         />
                     </FbInfoGrid>
                 </FbDetailCard>
+
+                {bookBalance ? (
+                    <FbDetailCard title="Transporter Book Balance">
+                        <FbInfoGrid>
+                            <FbInfoItem
+                                label="Available Advance Balance"
+                                value={bookBalance.available_balance}
+                            />
+                            <FbInfoItem
+                                label="Statement"
+                                value={
+                                    <a
+                                        href={bookBalance.statement_url}
+                                        className="text-sm font-medium text-[#0f766e] underline"
+                                    >
+                                        View Book Balance detail
+                                    </a>
+                                }
+                            />
+                        </FbInfoGrid>
+                    </FbDetailCard>
+                ) : null}
 
                 <FbDetailCard title="Roles">
                     <div className="space-y-3 px-4 py-3">

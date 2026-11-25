@@ -10,6 +10,7 @@ use App\Domains\Broker\Exceptions\BrokerConflictException;
 use App\Domains\Broker\Exceptions\BrokerDomainException;
 use App\Domains\Broker\LorryHire\LorryHireCalculationService;
 use App\Domains\Broker\Voucher\BulkVoucherService;
+use App\Domains\Broker\Voucher\TransporterBookBalanceService;
 use App\Domains\Broker\Voucher\TransporterVoucherService;
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Rbac\PermissionAuthorizer;
@@ -43,6 +44,7 @@ class TransporterVoucherController extends Controller
         private readonly TransporterVoucherService $vouchers,
         private readonly BulkVoucherService $bulkVouchers,
         private readonly LorryHireCalculationService $hireCalculations,
+        private readonly TransporterBookBalanceService $bookBalances,
         private readonly FreightAmountPresentation $freightPresentation,
         private readonly CoreModuleEntitlementResolver $moduleEntitlements = new CoreModuleEntitlementResolver,
     ) {}
@@ -431,9 +433,16 @@ class TransporterVoucherController extends Controller
 
         return [
             'selectedLorryHireId' => $selectedHireId,
-            'eligibleLorryHires' => $hires->map(function (LorryHire $hire) use ($maySeeFreight): array {
+            'eligibleLorryHires' => $hires->map(function (LorryHire $hire) use ($company, $branch, $maySeeFreight): array {
                 $allocatable = $this->vouchers->allocatableAmount($hire);
                 $summary = $this->hireCalculations->summarize($hire);
+                $bookBalance = $hire->transporter_party_id !== null
+                    ? $this->bookBalances->runningBalanceForTransporter(
+                        $company,
+                        $branch,
+                        (string) $hire->transporter_party_id,
+                    )
+                    : '0.00';
 
                 return [
                     'id' => $hire->id,
@@ -445,6 +454,11 @@ class TransporterVoucherController extends Controller
                     'consignor_name' => $hire->lorryReceipt?->consignor?->name,
                     'consignee_name' => $hire->lorryReceipt?->consignee?->name,
                     'outstanding_amount' => $this->freightPresentation->presentAmount($summary['outstanding_amount'], $maySeeFreight),
+                    'balance_due' => $this->freightPresentation->presentAmount($summary['balance_due'], $maySeeFreight),
+                    'negative_adjusted_amount' => $this->freightPresentation->presentAmount($summary['negative_adjusted_amount'], $maySeeFreight),
+                    'remaining_payable' => $this->freightPresentation->presentAmount($summary['remaining_payable'], $maySeeFreight),
+                    'reserved_voucher_amount' => $this->freightPresentation->presentAmount($summary['reserved_voucher_amount'], $maySeeFreight),
+                    'book_balance' => $this->freightPresentation->presentAmount($bookBalance, $maySeeFreight),
                     'allocatable_amount' => $this->freightPresentation->presentAmount($allocatable, $maySeeFreight),
                     'net_payable' => $this->freightPresentation->presentAmount($summary['net_payable'], $maySeeFreight),
                     'freight_total' => $this->freightPresentation->presentAmount($summary['freight_total'], $maySeeFreight),
@@ -516,6 +530,10 @@ class TransporterVoucherController extends Controller
                         : null),
                 'net_payable' => $this->freightPresentation->presentAmount($summary['net_payable'], $maySeeFreight),
                 'outstanding_amount' => $this->freightPresentation->presentAmount($summary['outstanding_amount'], $maySeeFreight),
+                'balance_due' => $this->freightPresentation->presentAmount($summary['balance_due'], $maySeeFreight),
+                'negative_adjusted_amount' => $this->freightPresentation->presentAmount($summary['negative_adjusted_amount'], $maySeeFreight),
+                'remaining_payable' => $this->freightPresentation->presentAmount($summary['remaining_payable'], $maySeeFreight),
+                'reserved_voucher_amount' => $this->freightPresentation->presentAmount($summary['reserved_voucher_amount'], $maySeeFreight),
                 'paid_amount' => $this->freightPresentation->presentAmount($hire->paid_amount, $maySeeFreight),
                 'adjustments' => $hire->relationLoaded('adjustments')
                     ? $hire->adjustments->map(fn ($row): array => [
