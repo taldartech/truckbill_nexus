@@ -86,8 +86,8 @@ test('create form presents broker free-text route labels', function () {
         ->assertInertia(fn ($page) => $page
             ->component('broker/lorry-hires/create')
             // Broker route is derived from party city/state (PO-LGC-018).
-            ->where('lorryReceipt.loading_station', 'Mumbai, MH')
-            ->where('lorryReceipt.unloading_station', 'Pune, MH')
+            ->where('lorryReceipt.loading_station', 'Mumbai City, Maharashtra')
+            ->where('lorryReceipt.unloading_station', 'Pune, Maharashtra')
             ->has('goodsRows.0.id')
             ->has('rateTypeOptions')
             ->has('transporterOptions')

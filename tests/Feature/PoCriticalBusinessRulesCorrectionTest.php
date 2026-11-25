@@ -63,8 +63,8 @@ test('selected billing customer is persisted and broker route derives from parti
 
     expect($lr->billing_customer_party_id)->not->toBeNull()
         ->and($lr->intended_payee_party_id)->not->toBeNull()
-        ->and($lr->from_text)->toBe('Mumbai, MH')
-        ->and($lr->to_text)->toBe('Pune, MH');
+        ->and($lr->from_text)->toBe('Mumbai City, Maharashtra')
+        ->and($lr->to_text)->toBe('Pune, Maharashtra');
 });
 
 test('per charged weight with weight_mt semantics multiplies rate by MT', function () {

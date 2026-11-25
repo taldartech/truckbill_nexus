@@ -1115,7 +1115,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
                 'contact_number' => '98'.str_pad(substr((string) abs(crc32($fixtureKey)), 0, 8), 8, '0'),
                 'email' => $email,
                 'pan' => $pan,
-                'state' => 'Maharashtra',
+                'state' => $this->stateForDemoCity($city),
                 'city' => $city,
                 'address' => 'Demo address for '.$fixtureKey,
                 'is_gst_applicable' => false,
@@ -1123,6 +1123,18 @@ class LocalDemoWorkspaceSeeder extends Seeder
             roles: $rolePayload,
             remark: 'Local demo: create party '.$fixtureKey,
         );
+    }
+
+    /**
+     * Demo fixtures use short city labels; map them to the correct State Master
+     * so PartyService geography resolution can bind city_id.
+     */
+    private function stateForDemoCity(string $city): string
+    {
+        return match (true) {
+            in_array($city, ['Ahmedabad', 'Surat', 'Rajkot', 'Vadodara'], true) => 'Gujarat',
+            default => 'Maharashtra',
+        };
     }
 
     private function ensureVehicle(

@@ -541,8 +541,8 @@ test('edit cannot change workflow context', function () {
     ]));
 
     expect($updated->workflow_context)->toBe(LrWorkflowContext::Broker)
-        ->and($updated->from_text)->toBe('Mumbai, MH')
-        ->and($updated->to_text)->toBe('Pune, MH');
+        ->and($updated->from_text)->toBe('Mumbai City, Maharashtra')
+        ->and($updated->to_text)->toBe('Pune, Maharashtra');
 });
 
 test('broker validation requires parties and own_fleet requires stations', function () {

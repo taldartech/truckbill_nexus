@@ -5,7 +5,6 @@ use App\Domains\Crm\Enums\LeadSource;
 use App\Domains\Crm\Enums\LeadStatus;
 use App\Models\City;
 use App\Models\Crm\Lead;
-use App\Models\State;
 use Illuminate\Support\Facades\RateLimiter;
 
 beforeEach(function () {
@@ -65,8 +64,8 @@ test('public lead capture creates website lead with text geography', function ()
         ->and($lead->utm_campaign)->toBe('spring')
         ->and($lead->assigned_to_user_id)->toBeNull()
         ->and($lead->created_by_user_id)->toBeNull()
-        ->and(City::query()->where('name', 'Unknown Town')->exists())->toBeFalse()
-        ->and(State::query()->where('name', 'Rajasthan')->exists())->toBeFalse();
+        ->and(City::query()->where('name', 'Unknown Town')->exists())->toBeFalse();
+    // CRM leads keep free-text geography; IndiaGeographySeeder may already contain Rajasthan.
 });
 
 test('public lead capture rejects privileged fields', function () {
