@@ -132,14 +132,11 @@ function CreateBiltyAction({ action }: { action: CreateAction }) {
         );
     }
 
-    const buttonLabel =
-        action.label === 'Create LR' ? 'Create Bilty' : action.label;
-
     return (
         <Button asChild variant="primary" className="gap-2">
             <Link href={action.url} data-testid="create-lr-direct">
                 <Plus className="size-4" aria-hidden />
-                {buttonLabel}
+                Add New Good Receipt (Bilty)
             </Link>
         </Button>
     );
@@ -167,107 +164,115 @@ export default function LorryReceiptsIndex({
     const mayEdit = permissions.can_edit !== false;
 
     const columns = useMemo<DataTableColumn<LrRow>[]>(() => {
+        // Column order mirrors legacy Broker LR index: Date → LR → Customer →
+        // Consignor → Consignee → Truck → Weight → Amount → Action.
         const base: DataTableColumn<LrRow>[] = [
             {
-                id: 'lr_number',
-                header: 'Bilty No',
-                priority: 0,
-                width: '7rem',
-                minWidth: '7rem',
-                className: 'whitespace-nowrap font-medium',
-                cell: (row) => row.lr_number,
-            },
-            {
                 id: 'lr_date',
-                header: 'Date',
+                header: 'GR Date',
                 priority: 0,
-                width: '7.5rem',
-                minWidth: '7.5rem',
-                className: 'whitespace-nowrap',
+                width: '6.5rem',
+                minWidth: '6.5rem',
+                className: 'whitespace-nowrap text-[12.5px]',
                 cell: (row) => formatDisplayDate(row.lr_date),
             },
             {
-                id: 'vehicle_registration',
-                header: 'Truck No',
-                priority: 1,
-                width: '9rem',
-                minWidth: '9rem',
-                className: 'whitespace-nowrap',
-                cell: (row) => row.vehicle_registration ?? '—',
-            },
-            {
-                id: 'vehicle_ownership',
-                header: 'Vehicle Type',
-                priority: 2,
-                width: '5rem',
-                minWidth: '5rem',
-                className: 'whitespace-nowrap',
-                cell: (row) =>
-                    row.vehicle_ownership_label ? (
-                        <Badge
-                            variant={
-                                row.vehicle_ownership_label === 'Own'
-                                    ? 'secondary'
-                                    : 'outline'
-                            }
-                        >
-                            {row.vehicle_ownership_label}
-                        </Badge>
-                    ) : (
-                        '—'
-                    ),
+                id: 'lr_number',
+                header: 'LR / Bilty',
+                priority: 0,
+                width: '8.5rem',
+                minWidth: '8.5rem',
+                className: 'whitespace-nowrap text-[12.5px] font-medium',
+                cell: (row) => (
+                    <div className="space-y-0.5">
+                        <div>{row.lr_number}</div>
+                        <div className="flex flex-wrap items-center gap-1">
+                            {row.vehicle_ownership_label ? (
+                                <Badge
+                                    variant={
+                                        row.vehicle_ownership_label === 'Own'
+                                            ? 'secondary'
+                                            : 'outline'
+                                    }
+                                    className="px-1.5 py-0 text-[10px]"
+                                >
+                                    {row.vehicle_ownership_label}
+                                </Badge>
+                            ) : null}
+                            <span className="text-[10px] text-muted-foreground capitalize">
+                                {statusLabel(row.status)}
+                            </span>
+                        </div>
+                    </div>
+                ),
             },
             {
                 id: 'billing_customer',
                 header: 'Customer',
-                priority: 2,
-                width: '12rem',
-                minWidth: '12rem',
+                priority: 1,
+                width: '11rem',
+                minWidth: '10rem',
                 wrap: true,
+                className: 'text-[12.5px]',
                 cell: (row) => row.billing_customer_name ?? '—',
             },
             {
-                id: 'route',
-                header: 'Route',
+                id: 'consignor',
+                header: 'Consignor',
                 priority: 2,
-                width: '14rem',
-                minWidth: '14rem',
+                width: '10rem',
+                minWidth: '9rem',
                 wrap: true,
-                cell: (row) => routeLabel(row),
+                className: 'text-[12.5px]',
+                cell: (row) => row.consignor_name ?? '—',
+            },
+            {
+                id: 'consignee',
+                header: 'Consignee',
+                priority: 2,
+                width: '10rem',
+                minWidth: '9rem',
+                wrap: true,
+                className: 'text-[12.5px]',
+                cell: (row) => row.consignee_name ?? '—',
+            },
+            {
+                id: 'vehicle_registration',
+                header: 'Truck',
+                priority: 1,
+                width: '8rem',
+                minWidth: '7.5rem',
+                className: 'whitespace-nowrap text-[12.5px]',
+                cell: (row) => (
+                    <div className="space-y-0.5">
+                        <div>{row.vehicle_registration ?? '—'}</div>
+                        <div className="text-[10px] text-muted-foreground">
+                            {routeLabel(row)}
+                        </div>
+                    </div>
+                ),
             },
             {
                 id: 'charged_weight_total',
-                header: 'Weight (MT)',
+                header: 'Weight',
                 priority: 2,
-                width: '7rem',
-                minWidth: '7rem',
+                width: '5.5rem',
+                minWidth: '5rem',
                 align: 'right',
-                className: 'whitespace-nowrap tabular-nums',
+                className: 'whitespace-nowrap text-[12.5px] tabular-nums',
                 cell: (row) => formatMtLabel(kgToMt(row.charged_weight_total)),
-            },
-            {
-                id: 'status',
-                header: 'Status',
-                priority: 1,
-                width: '7rem',
-                minWidth: '7rem',
-                cell: (row) => (
-                    <span className="inline-flex rounded-full bg-muted px-2 py-0.5 text-xs font-medium capitalize">
-                        {statusLabel(row.status)}
-                    </span>
-                ),
             },
         ];
 
         if (mayViewFreight) {
             base.push({
                 id: 'freight_total',
-                header: 'Freight',
+                header: 'Amount',
                 priority: 1,
-                width: '7rem',
-                minWidth: '7rem',
+                width: '6.5rem',
+                minWidth: '6rem',
                 align: 'right',
-                className: 'whitespace-nowrap tabular-nums',
+                className: 'whitespace-nowrap text-[12.5px] tabular-nums',
                 cell: (row) => row.freight_total,
             });
         }
