@@ -3,6 +3,10 @@ import { useMemo, useRef, useState } from 'react';
 import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
 import type { FieldReview } from '@/components/form-confirmation/types';
 import {
+    QuickCreateBankCashSheet,
+    type QuickCreatedBankCashAccount,
+} from '@/components/masters/quick-create-bank-cash-sheet';
+import {
     LrfPage,
     LrfSection,
 } from '@/pages/branch/lorry-receipts/lr-form-sections';
@@ -41,7 +45,10 @@ type Props = {
     paymentTypeOptions: Array<{ value: string; label: string }>;
     paymentModeOptions: Array<{ value: string; label: string }>;
     bankCashAccounts: Array<{ id: string; name: string }>;
-    urls: { store: string; index: string };
+    permissions?: {
+        can_create_bank_cash?: boolean;
+    };
+    urls: { store: string; index: string; bank_cash_store?: string };
 };
 
 function parseAmount(value: string | null | undefined): number | null {
@@ -64,7 +71,8 @@ export default function VoucherCreate({
     eligibleLorryHires,
     paymentTypeOptions,
     paymentModeOptions,
-    bankCashAccounts,
+    bankCashAccounts: initialBankCashAccounts,
+    permissions,
     urls,
 }: Props) {
     const initialHireId =
@@ -87,6 +95,14 @@ export default function VoucherCreate({
     const submitAllowed = useRef(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [reviewFields, setReviewFields] = useState<FieldReview[]>([]);
+    const [bankCashAccounts, setBankCashAccounts] = useState(
+        initialBankCashAccounts,
+    );
+    const [bankCashQuickCreateOpen, setBankCashQuickCreateOpen] =
+        useState(false);
+    const canQuickCreateBankCash =
+        Boolean(permissions?.can_create_bank_cash) &&
+        Boolean(urls.bank_cash_store);
 
     const selectedHire = eligibleLorryHires.find(
         (row) => row.id === form.data.lorry_hire_id,
@@ -485,6 +501,17 @@ export default function VoucherCreate({
                                         placeholder="Search account…"
                                         emptyMessage="No bank/cash accounts in this branch."
                                         error={form.errors.bank_cash_account_id}
+                                        addAction={
+                                            canQuickCreateBankCash
+                                                ? {
+                                                      label: '+ Add',
+                                                      onClick: () =>
+                                                          setBankCashQuickCreateOpen(
+                                                              true,
+                                                          ),
+                                                  }
+                                                : undefined
+                                        }
                                     />
                                 </div>
                             ) : null}
@@ -553,6 +580,29 @@ export default function VoucherCreate({
                         }, 0);
                     }}
                 />
+
+                {bankCashQuickCreateOpen && urls.bank_cash_store ? (
+                    <QuickCreateBankCashSheet
+                        open={bankCashQuickCreateOpen}
+                        onOpenChange={setBankCashQuickCreateOpen}
+                        storeUrl={urls.bank_cash_store}
+                        onCreated={(account: QuickCreatedBankCashAccount) => {
+                            setBankCashAccounts((current) =>
+                                current.some((row) => row.id === account.id)
+                                    ? current
+                                    : [
+                                          ...current,
+                                          {
+                                              id: account.id,
+                                              name: account.name,
+                                          },
+                                      ],
+                            );
+                            form.setData('bank_cash_account_id', account.id);
+                            setBankCashQuickCreateOpen(false);
+                        }}
+                    />
+                ) : null}
             </LrfPage>
         </>
     );

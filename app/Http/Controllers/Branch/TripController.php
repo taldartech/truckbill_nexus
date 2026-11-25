@@ -660,6 +660,13 @@ class TripController extends Controller
             'can_delete' => $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_DELETE, $company, $branch),
             'can_view_freight' => $maySeeFreight,
             'can_quick_create_catalogues' => (int) $actor->id === (int) $company->owner_user_id,
+            'can_create_bank_cash' => $this->masterPermissions(
+                $actor,
+                $company,
+                $branch,
+                $this->access,
+                $this->authorizer,
+            )['can_create'],
         ];
     }
 
@@ -1008,6 +1015,7 @@ class TripController extends Controller
                 'add_expense' => route('branch.trips.expenses.store', [$trip], absolute: false),
                 'remove_expense' => route('branch.trips.expenses.destroy', [$trip, 'EXPENSE_ID'], absolute: false),
                 'expense_categories_store' => route('branch.expense-categories.store', absolute: false),
+                'bank_cash_store' => route('branch.bank-cash.store', absolute: false),
                 'documents' => route('branch.documents.index', [
                     'parentType' => 'trip',
                     'parentId' => $trip->id,

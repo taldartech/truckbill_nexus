@@ -3,6 +3,10 @@ import { FileText, Fuel, Route, Wallet } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { AppIconAction } from '@/components/app-icon-action';
 import {
+    QuickCreateBankCashSheet,
+    type QuickCreatedBankCashAccount,
+} from '@/components/masters/quick-create-bank-cash-sheet';
+import {
     QuickCreateCatalogueSheet,
     type QuickCreatedCatalogueItem,
 } from '@/components/masters/quick-create-catalogue-sheet';
@@ -77,6 +81,7 @@ type Props = {
         can_edit: boolean;
         can_view_freight: boolean;
         can_quick_create_catalogues?: boolean;
+        can_create_bank_cash?: boolean;
     };
     urls: {
         show: string;
@@ -86,6 +91,7 @@ type Props = {
         add_expense: string;
         remove_expense: string;
         expense_categories_store?: string;
+        bank_cash_store?: string;
         documents: string;
     };
     documentDrawer?: DocumentDrawerProps | null;
@@ -142,11 +148,21 @@ export default function TripExpensesWorkspace({
     const [expenseCategories, setExpenseCategories] = useState(
         () => formOptions.expense_categories,
     );
+    const [bankCashAccounts, setBankCashAccounts] = useState(
+        () => formOptions.bank_cash_accounts,
+    );
+    const [paidFromBankCashAccountId, setPaidFromBankCashAccountId] =
+        useState('');
     const [expenseCategoryId, setExpenseCategoryId] = useState('');
     const [expenseCategoryQuickCreateOpen, setExpenseCategoryQuickCreateOpen] =
         useState(false);
+    const [bankCashQuickCreateOpen, setBankCashQuickCreateOpen] =
+        useState(false);
     const canQuickCreateCatalogues =
         permissions.can_quick_create_catalogues === true;
+    const canQuickCreateBankCash =
+        permissions.can_create_bank_cash === true &&
+        Boolean(urls.bank_cash_store);
 
     const mutable = permissions.can_edit && trip.status !== 'cancelled';
     const dieselLitres = useMemo(
@@ -478,19 +494,43 @@ export default function TripExpensesWorkspace({
                                                         </select>
                                                     </div>
                                                     <div className="space-y-1.5">
-                                                        <Label htmlFor="paid_from_bank_cash_account_id">
-                                                            Bank / cash account
-                                                        </Label>
+                                                        <div className="flex items-center justify-between gap-2">
+                                                            <Label htmlFor="paid_from_bank_cash_account_id">
+                                                                Bank / cash
+                                                                account
+                                                            </Label>
+                                                            {canQuickCreateBankCash ? (
+                                                                <button
+                                                                    type="button"
+                                                                    className="text-xs font-medium text-[#2D8CFF] hover:underline"
+                                                                    onClick={() =>
+                                                                        setBankCashQuickCreateOpen(
+                                                                            true,
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    + Add
+                                                                </button>
+                                                            ) : null}
+                                                        </div>
                                                         <select
                                                             id="paid_from_bank_cash_account_id"
                                                             name="paid_from_bank_cash_account_id"
                                                             className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                                            defaultValue=""
+                                                            value={
+                                                                paidFromBankCashAccountId
+                                                            }
+                                                            onChange={(event) =>
+                                                                setPaidFromBankCashAccountId(
+                                                                    event.target
+                                                                        .value,
+                                                                )
+                                                            }
                                                         >
                                                             <option value="">
                                                                 Optional
                                                             </option>
-                                                            {formOptions.bank_cash_accounts.map(
+                                                            {bankCashAccounts.map(
                                                                 (account) => (
                                                                     <option
                                                                         key={
@@ -730,6 +770,29 @@ export default function TripExpensesWorkspace({
                         });
                         setExpenseCategoryId(item.id);
                         setExpenseCategoryQuickCreateOpen(false);
+                    }}
+                />
+            ) : null}
+
+            {bankCashQuickCreateOpen && urls.bank_cash_store ? (
+                <QuickCreateBankCashSheet
+                    open={bankCashQuickCreateOpen}
+                    onOpenChange={setBankCashQuickCreateOpen}
+                    storeUrl={urls.bank_cash_store}
+                    onCreated={(account: QuickCreatedBankCashAccount) => {
+                        setBankCashAccounts((current) => {
+                            if (
+                                current.some((entry) => entry.id === account.id)
+                            ) {
+                                return current;
+                            }
+                            return [
+                                ...current,
+                                { id: account.id, name: account.name },
+                            ];
+                        });
+                        setPaidFromBankCashAccountId(account.id);
+                        setBankCashQuickCreateOpen(false);
                     }}
                 />
             ) : null}

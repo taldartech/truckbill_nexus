@@ -16,6 +16,7 @@ use App\Models\BankCashAccount;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -100,7 +101,7 @@ class BankCashAccountController extends Controller
         ]);
     }
 
-    public function store(Request $request, Company $company, Branch $branch): RedirectResponse
+    public function store(Request $request, Company $company, Branch $branch): RedirectResponse|JsonResponse
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
 
@@ -128,6 +129,16 @@ class BankCashAccountController extends Controller
             );
         } catch (MasterDomainException $e) {
             abort(403, $e->getMessage());
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'data' => [
+                    'id' => $account->id,
+                    'name' => $account->name,
+                    'account_kind' => $account->account_kind,
+                ],
+            ], 201);
         }
 
         return redirect()

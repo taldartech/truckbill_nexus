@@ -524,7 +524,18 @@ class TransporterVoucherController extends Controller
                 ->map(fn (BankCashAccount $account): array => ['id' => $account->id, 'name' => $account->name])
                 ->values()
                 ->all(),
-            'permissions' => $this->voucherPermissions($actor, $company, $branch, $maySeeFreight),
+            'permissions' => array_merge(
+                $this->voucherPermissions($actor, $company, $branch, $maySeeFreight),
+                [
+                    'can_create_bank_cash' => $this->masterPermissions(
+                        $actor,
+                        $company,
+                        $branch,
+                        $this->access,
+                        $this->authorizer,
+                    )['can_create'],
+                ],
+            ),
             'urls' => [
                 'store' => route('branch.broker.vouchers.store', absolute: false),
                 'index' => route('branch.broker.vouchers.index', absolute: false),
@@ -532,6 +543,7 @@ class TransporterVoucherController extends Controller
                 'bulk' => route('branch.broker.vouchers.bulk.create', absolute: false),
                 'bulk_preview' => route('branch.broker.vouchers.bulk.preview', absolute: false),
                 'bulk_store' => route('branch.broker.vouchers.bulk.store', absolute: false),
+                'bank_cash_store' => route('branch.bank-cash.store', absolute: false),
             ],
         ];
     }
