@@ -273,6 +273,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::get('/broker/vouchers', [TransporterVoucherController::class, 'index'])->name('branch.broker.vouchers.index');
         Route::get('/broker/vouchers/create', [TransporterVoucherController::class, 'create'])->name('branch.broker.vouchers.create');
+        Route::get('/broker/vouchers/export-payout', [TransporterVoucherController::class, 'exportPayout'])->name('branch.broker.vouchers.export-payout');
         Route::get('/broker/vouchers/bulk', [TransporterVoucherController::class, 'bulkCreate'])->name('branch.broker.vouchers.bulk.create');
         Route::post('/broker/vouchers', [TransporterVoucherController::class, 'store'])->name('branch.broker.vouchers.store');
         Route::post('/broker/vouchers/bulk/preview', [TransporterVoucherController::class, 'bulkPreview'])->name('branch.broker.vouchers.bulk.preview');

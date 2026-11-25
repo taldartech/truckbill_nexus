@@ -12,6 +12,7 @@ use App\Domains\Broker\LorryHire\LorryHireCalculationService;
 use App\Domains\Broker\Voucher\BulkVoucherService;
 use App\Domains\Broker\Voucher\TransporterBookBalanceService;
 use App\Domains\Broker\Voucher\TransporterVoucherService;
+use App\Domains\Broker\Voucher\VoucherPayoutExportService;
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
@@ -33,6 +34,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class TransporterVoucherController extends Controller
 {
@@ -46,6 +48,7 @@ class TransporterVoucherController extends Controller
         private readonly LorryHireCalculationService $hireCalculations,
         private readonly TransporterBookBalanceService $bookBalances,
         private readonly FreightAmountPresentation $freightPresentation,
+        private readonly VoucherPayoutExportService $payoutExport,
         private readonly CoreModuleEntitlementResolver $moduleEntitlements = new CoreModuleEntitlementResolver,
     ) {}
 
@@ -85,8 +88,26 @@ class TransporterVoucherController extends Controller
                 'index' => route('branch.broker.vouchers.index', absolute: false),
                 'create' => route('branch.broker.vouchers.create', absolute: false),
                 'bulk' => route('branch.broker.vouchers.bulk.create', absolute: false),
+                'export_payout' => route('branch.broker.vouchers.export-payout', absolute: false),
             ],
         ]);
+    }
+
+    public function exportPayout(Request $request, Company $company, Branch $branch): StreamedResponse
+    {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+
+        $validated = $request->validate([
+            'status' => ['nullable', Rule::enum(VoucherStatus::class)],
+            'date_from' => ['nullable', 'date'],
+            'date_to' => ['nullable', 'date', 'after_or_equal:date_from'],
+        ]);
+
+        try {
+            return $this->payoutExport->streamCsv($company, $branch, $actor, $validated);
+        } catch (BrokerAuthorizationException $e) {
+            abort(403, $e->getMessage());
+        }
     }
 
     public function create(Request $request, Company $company, Branch $branch): Response
@@ -112,13 +133,23 @@ class TransporterVoucherController extends Controller
         $this->assertPermission($actor, $company, $branch, PermissionCodes::BROKER_VOUCHER_BULK);
 
         $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
+        $hireIds = array_values(array_filter(
+            array_map('strval', (array) $request->input('hire_ids', [])),
+            static fn (string $id): bool => $id !== '',
+        ));
 
-        return Inertia::render('broker/vouchers/bulk', $this->voucherFormProps(
-            $actor,
-            $company,
-            $branch,
-            $maySeeFreight,
-            null,
+        return Inertia::render('broker/vouchers/bulk', array_merge(
+            $this->voucherFormProps(
+                $actor,
+                $company,
+                $branch,
+                $maySeeFreight,
+                null,
+                $hireIds,
+            ),
+            [
+                'initialSelectedHireIds' => $hireIds,
+            ],
         ));
     }
 
@@ -388,12 +419,16 @@ class TransporterVoucherController extends Controller
     /**
      * @return array<string, mixed>
      */
+    /**
+     * @param  list<string>  $ensureHireIds
+     */
     private function voucherFormProps(
         User $actor,
         Company $company,
         Branch $branch,
         bool $maySeeFreight,
         ?string $selectedHireId,
+        array $ensureHireIds = [],
     ): array {
         $hires = LorryHire::query()
             ->where('company_id', $company->id)
@@ -410,12 +445,24 @@ class TransporterVoucherController extends Controller
             ->limit(100)
             ->get();
 
-        if ($selectedHireId !== null && ! $hires->contains(fn (LorryHire $hire): bool => $hire->id === $selectedHireId)) {
-            $selectedHire = LorryHire::query()
+        $missingIds = [];
+        if ($selectedHireId !== null) {
+            $missingIds[] = $selectedHireId;
+        }
+        foreach ($ensureHireIds as $hireId) {
+            $missingIds[] = $hireId;
+        }
+        $missingIds = array_values(array_unique(array_filter(
+            $missingIds,
+            static fn (string $id): bool => ! $hires->contains(fn (LorryHire $hire): bool => $hire->id === $id),
+        )));
+
+        if ($missingIds !== []) {
+            $extra = LorryHire::query()
                 ->where('company_id', $company->id)
                 ->where('branch_id', $branch->id)
                 ->whereNull('deleted_at')
-                ->whereKey($selectedHireId)
+                ->whereIn('id', $missingIds)
                 ->with([
                     'lorryReceipt.billingCustomer',
                     'lorryReceipt.consignor',
@@ -423,10 +470,9 @@ class TransporterVoucherController extends Controller
                     'vehicle',
                     'transporter',
                 ])
-                ->first();
-            if ($selectedHire !== null) {
-                $hires = $hires->prepend($selectedHire)->unique('id')->values();
-            } else {
+                ->get();
+            $hires = $extra->concat($hires)->unique('id')->values();
+            if ($selectedHireId !== null && ! $hires->contains(fn (LorryHire $hire): bool => $hire->id === $selectedHireId)) {
                 $selectedHireId = null;
             }
         }

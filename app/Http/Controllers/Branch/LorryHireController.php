@@ -73,11 +73,30 @@ class LorryHireController extends Controller
 
         $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
 
+        $canCreateVoucher = $this->authorizer->allowsCustomer(
+            $actor,
+            PermissionCodes::BROKER_VOUCHER_CREATE,
+            $company,
+            $branch,
+        );
+        $canBulkVoucher = $this->authorizer->allowsCustomer(
+            $actor,
+            PermissionCodes::BROKER_VOUCHER_BULK,
+            $company,
+            $branch,
+        );
+
         return Inertia::render('broker/lorry-hires/index', [
             'filters' => [
                 'status' => $request->string('status')->toString(),
             ],
-            'permissions' => $this->lorryHirePermissions($actor, $company, $branch, $maySeeFreight),
+            'permissions' => array_merge(
+                $this->lorryHirePermissions($actor, $company, $branch, $maySeeFreight),
+                [
+                    'can_create_voucher' => $canCreateVoucher,
+                    'can_bulk_voucher' => $canBulkVoucher,
+                ],
+            ),
             'statusOptions' => collect(LorryHireStatus::cases())->map(fn (LorryHireStatus $status): array => [
                 'value' => $status->value,
                 'label' => match ($status) {
@@ -87,7 +106,9 @@ class LorryHireController extends Controller
                 },
             ])->values()->all(),
             'lorryHires' => [
-                'data' => collect($page->items())->map(fn (LorryHire $hire): array => $this->listPayload($hire, $maySeeFreight))->values()->all(),
+                'data' => collect($page->items())->map(
+                    fn (LorryHire $hire): array => $this->listPayload($hire, $maySeeFreight, $canCreateVoucher),
+                )->values()->all(),
                 'meta' => [
                     'current_page' => $page->currentPage(),
                     'last_page' => $page->lastPage(),
@@ -97,6 +118,9 @@ class LorryHireController extends Controller
             ],
             'urls' => [
                 'index' => route('branch.broker.lorry-hires.index', absolute: false),
+                'bulk_voucher' => $canBulkVoucher
+                    ? route('branch.broker.vouchers.bulk.create', absolute: false)
+                    : null,
             ],
         ]);
     }
@@ -612,13 +636,19 @@ class LorryHireController extends Controller
      *     freight_total: string|null,
      *     outstanding_amount: string|null,
      *     created_at: string|null,
-     *     urls: array{show: string}
+     *     selectable_for_bulk: bool,
+     *     urls: array{show: string, voucher_create: string|null}
      * }
      */
-    private function listPayload(LorryHire $hire, bool $maySeeFreight): array
+    private function listPayload(LorryHire $hire, bool $maySeeFreight, bool $canCreateVoucher = false): array
     {
         $weightKg = $hire->goodsLines->sum(fn ($line): float => (float) ($line->loading_weight ?? 0));
         $primaryLine = $hire->goodsLines->first();
+        $outstanding = (string) ($hire->outstanding_amount ?? '0.00');
+        $hasOutstanding = bccomp($outstanding, '0', 2) === 1;
+        $voucherEligible = $canCreateVoucher
+            && $hire->status !== LorryHireStatus::Cancelled
+            && $hasOutstanding;
 
         return [
             'id' => $hire->id,
@@ -630,6 +660,8 @@ class LorryHireController extends Controller
             'billing_customer_name' => $hire->lorryReceipt?->billingCustomer?->name,
             'vehicle_registration' => $hire->vehicle?->registration_number,
             'transporter_name' => $hire->transporter?->name,
+            'transporter_party_id' => $hire->transporter_party_id,
+            'vehicle_id' => $hire->vehicle_id,
             'from_station_name' => $hire->lorryReceipt !== null
                 ? $this->loadingStationLabel($hire->lorryReceipt)
                 : null,
@@ -645,8 +677,14 @@ class LorryHireController extends Controller
             'freight_total' => $this->freightPresentation->presentAmount($hire->freight_total, $maySeeFreight),
             'outstanding_amount' => $this->freightPresentation->presentAmount($hire->outstanding_amount, $maySeeFreight),
             'created_at' => $hire->created_at?->format('d-m-Y'),
+            'selectable_for_bulk' => $voucherEligible,
             'urls' => [
                 'show' => route('branch.broker.lorry-hires.show', [$hire], absolute: false),
+                'voucher_create' => $voucherEligible
+                    ? route('branch.broker.vouchers.create', [
+                        'lorry_hire_id' => $hire->id,
+                    ], absolute: false)
+                    : null,
             ],
         ];
     }

@@ -39,7 +39,12 @@ type Props = {
             per_page: number;
         };
     };
-    urls: { index: string; create: string; bulk?: string };
+    urls: {
+        index: string;
+        create: string;
+        bulk?: string;
+        export_payout?: string;
+    };
 };
 
 export default function VouchersIndex({
@@ -58,6 +63,24 @@ export default function VouchersIndex({
                     title="Voucher Payments"
                     toolbar={
                         <div className="flex flex-wrap items-center gap-2">
+                            {urls.export_payout ? (
+                                <a
+                                    href={`${urls.export_payout}${
+                                        filters.status || filters.payment_mode
+                                            ? `?${new URLSearchParams(
+                                                  filters.status
+                                                      ? {
+                                                            status: filters.status,
+                                                        }
+                                                      : {},
+                                              ).toString()}`
+                                            : ''
+                                    }`}
+                                    className="app-index-header-btn"
+                                >
+                                    Export bank payout
+                                </a>
+                            ) : null}
                             {permissions.can_bulk && urls.bulk ? (
                                 <Link
                                     href={urls.bulk}

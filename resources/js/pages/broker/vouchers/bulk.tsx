@@ -38,6 +38,7 @@ type PreviewLine = {
 
 type Props = {
     eligibleLorryHires: HireOption[];
+    initialSelectedHireIds?: string[];
     paymentTypeOptions: Array<{ value: string; label: string }>;
     paymentModeOptions: Array<{ value: string; label: string }>;
     bankCashAccounts: Array<{ id: string; name: string }>;
@@ -66,6 +67,7 @@ function formatMoney(value: number | null): string {
 
 export default function VoucherBulkCreate({
     eligibleLorryHires,
+    initialSelectedHireIds = [],
     paymentTypeOptions,
     paymentModeOptions,
     bankCashAccounts,
@@ -74,8 +76,19 @@ export default function VoucherBulkCreate({
     const page = usePage<{ errors?: Record<string, string> }>();
     const errors = page.props.errors ?? {};
 
-    const [selectedIds, setSelectedIds] = useState<string[]>([]);
-    const [amounts, setAmounts] = useState<Record<string, string>>({});
+    const seededIds = initialSelectedHireIds.filter((id) =>
+        eligibleLorryHires.some((hire) => hire.id === id),
+    );
+
+    const [selectedIds, setSelectedIds] = useState<string[]>(seededIds);
+    const [amounts, setAmounts] = useState<Record<string, string>>(() => {
+        const next: Record<string, string> = {};
+        for (const id of seededIds) {
+            const hire = eligibleLorryHires.find((row) => row.id === id);
+            next[id] = hire?.allocatable_amount ?? '';
+        }
+        return next;
+    });
     const [previewLines, setPreviewLines] = useState<PreviewLine[]>([]);
     const [previewing, setPreviewing] = useState(false);
     const [confirmOpen, setConfirmOpen] = useState(false);

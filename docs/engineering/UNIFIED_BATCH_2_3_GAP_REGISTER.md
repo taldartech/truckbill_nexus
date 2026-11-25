@@ -46,6 +46,9 @@
 | U23-INVOICE-UNIFIED    | Already unified invoice — visual polish                      | Shared            | Partial                                                    |
 | U23-LEGACY-SCREENSHOTS | Three-way visual certification artifacts                     | Certification     | Open (live legacy apps still blocked)                      |
 | U23-FULL-REGRESSION    | Full PG + MySQL + Playwright matrix                          | Certification     | Focused Pest green; dual-DB + Playwright TBD               |
+| U23-HIRE-MULTI-PAY     | Hire register multi-select → bulk voucher                    | Market            | Aligned (26 Nov 2026 ERP directive)                        |
+| U23-PAYOUT-EXPORT      | Bank payout CSV export from voucher register                 | Market            | Aligned (26 Nov 2026 ERP directive)                        |
+| U23-HIRE-VOUCHER-CTA   | Hire index Record voucher CTA for outstanding hires          | Market            | Aligned (was missing from listPayload)                     |
 
 ## PO directive (25 Nov 2026) — superseding earlier OwnFleet navigation
 

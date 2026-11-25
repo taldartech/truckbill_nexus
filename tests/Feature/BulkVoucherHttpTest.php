@@ -62,5 +62,9 @@ test('voucher index exposes bulk payment url when permitted', function () {
             ->where(
                 'urls.bulk',
                 route('branch.broker.vouchers.bulk.create', absolute: false),
+            )
+            ->where(
+                'urls.export_payout',
+                route('branch.broker.vouchers.export-payout', absolute: false),
             ));
 });
