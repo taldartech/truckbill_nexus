@@ -57,6 +57,18 @@
 | Live legacy visual comparison                                        | Blocked — legacy apps not launched; source Blade/Vue + Nexus screenshots only           |
 | Blocked / intentional gaps                                           | Dedicated trip expenses route; archive/restore; stop-scoped expenses; Batch 4 / Phase 7 |
 
+## Regression (continuation pass)
+
+| Check                                                                      | Result                                                                                  |
+| -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `npm run check` / `types:check` / production build / Pint                  | Pass @ `946f743`                                                                        |
+| Focused Pest (`LorryHire\|TransporterVoucher\|LinkedBilty\|BrokerInvoice`) | **40 passed**                                                                           |
+| Full PostgreSQL Pest                                                       | Incomplete locally — memory/419 CSRF noise on shared env; not treated as UI regressions |
+| Disposable MySQL 8.4 Pest                                                  | Not executed this pass                                                                  |
+| Playwright journey A (Bilty Register)                                      | **Pass**                                                                                |
+| Playwright journey B/C                                                     | Needs re-run after Bilty show `h1` fix                                                  |
+| Live legacy apps                                                           | Not launched (read-only source + Nexus screenshots only)                                |
+
 ## Intentional approved differences (preserve)
 
 - Blank bilty number = auto numbering
