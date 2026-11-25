@@ -51,7 +51,8 @@ type Props = {
     /**
      * Opt-in free-text option ("Use custom value").
      * Disabled by default — Master forms must never enable this.
-     * CRM Lead geography is the approved exception.
+     * CRM Lead geography is the approved exception: custom text is offered
+     * only after a settled search returns zero Master matches.
      */
     allowCustomValue?: boolean;
 };
@@ -192,6 +193,8 @@ export function SearchableCombobox({
     );
     const [loading, setLoading] = useState(false);
     const [searchError, setSearchError] = useState<string | null>(null);
+    /** Last query that completed a successful remote search (null while unsettled). */
+    const [settledQuery, setSettledQuery] = useState<string | null>(null);
     const [highlightedIndex, setHighlightedIndex] = useState(0);
     const [optionCache, setOptionCache] = useState<
         Record<string, ComboboxOption>
@@ -206,43 +209,48 @@ export function SearchableCombobox({
     const sourceOptions = remoteOptions ?? options;
 
     const filtered = useMemo(() => {
-        let list: ComboboxOption[];
-        if (searchUrl) {
-            // Guard against stale remote catalogues while a new query is in flight.
-            list = filterOptionsLocally(sourceOptions, query);
-        } else {
-            list = filterOptionsLocally(sourceOptions, query);
-        }
-
+        let list = filterOptionsLocally(sourceOptions, query);
         list = rankOptions(list, query);
+        // Master records only — never keep stale custom rows in the candidate set.
+        list = list.filter((option) => !isCustomOptionId(option.id));
 
-        if (allowCustomValue) {
-            const trimmed = query.trim();
-            if (trimmed.length >= 2) {
-                const hasExact = list.some(
-                    (option) =>
-                        option.label.localeCompare(trimmed, undefined, {
-                            sensitivity: 'accent',
-                        }) === 0 ||
-                        option.label.toLowerCase() === trimmed.toLowerCase(),
-                );
-                if (!hasExact) {
-                    list = [
-                        {
-                            id: `${CUSTOM_ID_PREFIX}${trimmed}`,
-                            label: trimmed,
-                            description: 'Use custom value',
-                        },
-                        ...list,
-                    ];
-                }
-            }
-        } else {
-            list = list.filter((option) => !isCustomOptionId(option.id));
+        const trimmed = query.trim();
+        const masterMatchesExist = list.length > 0;
+        const remoteSearchSettled =
+            searchUrl !== undefined &&
+            !loading &&
+            searchError === null &&
+            settledQuery === trimmed;
+        const localSearchSettled =
+            searchUrl === undefined && !loading && searchError === null;
+        const canOfferCustom =
+            allowCustomValue &&
+            trimmed.length >= 2 &&
+            !masterMatchesExist &&
+            (searchUrl !== undefined
+                ? remoteSearchSettled
+                : localSearchSettled);
+
+        if (canOfferCustom) {
+            list = [
+                {
+                    id: `${CUSTOM_ID_PREFIX}${trimmed}`,
+                    label: trimmed,
+                    description: 'Use custom value',
+                },
+            ];
         }
 
         return list;
-    }, [allowCustomValue, query, searchUrl, sourceOptions]);
+    }, [
+        allowCustomValue,
+        loading,
+        query,
+        searchError,
+        searchUrl,
+        settledQuery,
+        sourceOptions,
+    ]);
 
     const selectedOption = useMemo(() => {
         const fromLists =
@@ -290,9 +298,11 @@ export function SearchableCombobox({
         const seq = ++requestSeqRef.current;
         const timer = window.setTimeout(() => {
             const params = buildSearchParams(query, selected);
+            const requestQuery = query.trim();
 
             setLoading(true);
             setSearchError(null);
+            setSettledQuery(null);
 
             void fetch(`${searchUrl}?${params.toString()}`, {
                 headers: {
@@ -313,6 +323,7 @@ export function SearchableCombobox({
                     const next = mapResponse(json);
                     setRemoteOptions(next);
                     mergeCache(next);
+                    setSettledQuery(requestQuery);
                 })
                 .catch((fetchError: unknown) => {
                     if (
@@ -324,7 +335,9 @@ export function SearchableCombobox({
                     if (seq !== requestSeqRef.current) {
                         return;
                     }
+                    // Failed requests must not be treated as empty Master results.
                     setSearchError('Unable to search.');
+                    setSettledQuery(null);
                 })
                 .finally(() => {
                     if (seq === requestSeqRef.current) {
@@ -352,6 +365,7 @@ export function SearchableCombobox({
             setRemoteOptions(null);
             setQuery('');
             setSearchError(null);
+            setSettledQuery(null);
             setLoading(false);
             requestSeqRef.current += 1;
         }
@@ -545,14 +559,15 @@ export function SearchableCombobox({
                 event.preventDefault();
             }
             const option = filtered[highlightedIndex];
-            if (option) {
-                if (event.key === 'Tab') {
-                    event.preventDefault();
-                }
-                applySelection(option.id, option);
-            } else if (event.key === 'Enter' && !allowCustomValue) {
+            // Enter/Tab only commit a listed option. Never accept raw search text
+            // when no option is highlighted (avoids incomplete custom selection).
+            if (!option) {
+                return;
+            }
+            if (event.key === 'Tab') {
                 event.preventDefault();
             }
+            applySelection(option.id, option);
         }
     };
 
@@ -584,7 +599,7 @@ export function SearchableCombobox({
                   <div
                       ref={panelRef}
                       data-searchable-combobox-panel=""
-                      className="fixed z-[80] rounded-md border border-input bg-popover text-popover-foreground shadow-md"
+                      className="fixed z-[200] rounded-md border border-input bg-popover text-popover-foreground shadow-md"
                       style={{
                           top: panelPosition.top,
                           left: panelPosition.left,
