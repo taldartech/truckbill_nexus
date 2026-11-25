@@ -18,8 +18,6 @@ class GstRateFactory extends Factory
     public function definition(): array
     {
         return [
-            'code' => 'GST18',
-            'name' => 'GST 18%',
             'rate_percent' => '18.000',
             'effective_from' => now()->toDateString(),
             'effective_to' => null,

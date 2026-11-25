@@ -29,6 +29,11 @@ type Props = {
     onCreated: (state: QuickCreatedState) => void;
     /** Raise stacking order when opened above another sheet. */
     nested?: boolean;
+    /**
+     * Customer/operator mode: name only; backend resolves approved India catalogue
+     * GST jurisdiction codes. Internal freeform keeps code + GST fields.
+     */
+    catalogueOnly?: boolean;
 };
 
 type Draft = {
@@ -95,6 +100,7 @@ export function QuickCreateStateSheet({
     storeUrl,
     onCreated,
     nested = false,
+    catalogueOnly = false,
 }: Props) {
     const [draft, setDraft] = useState<Draft>(EMPTY);
     const [errors, setErrors] = useState<Record<string, string[] | string>>({});
@@ -102,19 +108,23 @@ export function QuickCreateStateSheet({
     const [processing, setProcessing] = useState(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
 
-    const reviewFields = useMemo<FieldReview[]>(
-        () => [
+    const reviewFields = useMemo<FieldReview[]>(() => {
+        const fields: FieldReview[] = [
             { label: 'State name', value: draft.name },
-            { label: 'State code', value: draft.code },
-            { label: 'GST state code', value: draft.gst_code },
-            { label: 'Country', value: draft.country_code },
-            {
-                label: 'Active',
-                value: draft.is_active ? 'Yes' : 'No',
-            },
-        ],
-        [draft],
-    );
+        ];
+        if (!catalogueOnly) {
+            fields.push(
+                { label: 'State code', value: draft.code },
+                { label: 'GST state code', value: draft.gst_code },
+                { label: 'Country', value: draft.country_code },
+                {
+                    label: 'Active',
+                    value: draft.is_active ? 'Yes' : 'No',
+                },
+            );
+        }
+        return fields;
+    }, [catalogueOnly, draft]);
 
     const reset = () => {
         setDraft(EMPTY);
@@ -147,13 +157,15 @@ export function QuickCreateStateSheet({
         setFormError(null);
         setErrors({});
 
-        const payload = {
-            name: draft.name.trim(),
-            code: draft.code.trim(),
-            gst_code: draft.gst_code.trim(),
-            country_code: draft.country_code.trim() || 'IN',
-            is_active: draft.is_active,
-        };
+        const payload = catalogueOnly
+            ? { name: draft.name.trim() }
+            : {
+                  name: draft.name.trim(),
+                  code: draft.code.trim(),
+                  gst_code: draft.gst_code.trim(),
+                  country_code: draft.country_code.trim() || 'IN',
+                  is_active: draft.is_active,
+              };
 
         try {
             const response = await fetch(storeUrl, {
@@ -216,8 +228,9 @@ export function QuickCreateStateSheet({
                     <SheetHeader className="border-b border-border p-4 text-left">
                         <SheetTitle>Add state</SheetTitle>
                         <SheetDescription>
-                            Create a platform state record. It becomes available
-                            in geography selectors immediately.
+                            {catalogueOnly
+                                ? 'Add an approved Indian State or Union Territory. GST jurisdiction codes are assigned from the official catalogue.'
+                                : 'Create a platform state record. It becomes available in geography selectors immediately.'}
                         </SheetDescription>
                     </SheetHeader>
 
@@ -254,77 +267,93 @@ export function QuickCreateStateSheet({
                                     message={firstError(errors, 'name')}
                                 />
                             </div>
-                            <div className="space-y-1.5">
-                                <Label htmlFor="quick-state-code">
-                                    State code *
-                                </Label>
-                                <Input
-                                    id="quick-state-code"
-                                    value={draft.code}
-                                    onChange={(event) =>
-                                        update('code', event.target.value)
-                                    }
-                                    required
-                                    maxLength={16}
-                                    className="font-mono uppercase"
-                                />
-                                <InputError
-                                    message={firstError(errors, 'code')}
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label htmlFor="quick-state-gst">
-                                    GST state code *
-                                </Label>
-                                <Input
-                                    id="quick-state-gst"
-                                    value={draft.gst_code}
-                                    onChange={(event) =>
-                                        update('gst_code', event.target.value)
-                                    }
-                                    required
-                                    maxLength={8}
-                                    className="font-mono"
-                                    placeholder="24"
-                                />
-                                <InputError
-                                    message={firstError(errors, 'gst_code')}
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label htmlFor="quick-state-country">
-                                    Country
-                                </Label>
-                                <Input
-                                    id="quick-state-country"
-                                    value={draft.country_code}
-                                    onChange={(event) =>
-                                        update(
-                                            'country_code',
-                                            event.target.value,
-                                        )
-                                    }
-                                    maxLength={2}
-                                    className="font-mono uppercase"
-                                />
-                                <InputError
-                                    message={firstError(errors, 'country_code')}
-                                />
-                            </div>
-                            <label className="flex items-center gap-2 text-sm sm:col-span-2">
-                                <input
-                                    type="checkbox"
-                                    checked={draft.is_active}
-                                    onChange={(event) =>
-                                        update(
-                                            'is_active',
-                                            event.target.checked,
-                                        )
-                                    }
-                                    className="size-4 rounded border border-input"
-                                />
-                                Active
-                            </label>
+                            {!catalogueOnly ? (
+                                <>
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="quick-state-code">
+                                            State code *
+                                        </Label>
+                                        <Input
+                                            id="quick-state-code"
+                                            value={draft.code}
+                                            onChange={(event) =>
+                                                update(
+                                                    'code',
+                                                    event.target.value,
+                                                )
+                                            }
+                                            required
+                                            maxLength={16}
+                                            className="font-mono uppercase"
+                                        />
+                                        <InputError
+                                            message={firstError(errors, 'code')}
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="quick-state-gst">
+                                            GST state code *
+                                        </Label>
+                                        <Input
+                                            id="quick-state-gst"
+                                            value={draft.gst_code}
+                                            onChange={(event) =>
+                                                update(
+                                                    'gst_code',
+                                                    event.target.value,
+                                                )
+                                            }
+                                            required
+                                            maxLength={8}
+                                            className="font-mono"
+                                            placeholder="24"
+                                        />
+                                        <InputError
+                                            message={firstError(
+                                                errors,
+                                                'gst_code',
+                                            )}
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label htmlFor="quick-state-country">
+                                            Country
+                                        </Label>
+                                        <Input
+                                            id="quick-state-country"
+                                            value={draft.country_code}
+                                            onChange={(event) =>
+                                                update(
+                                                    'country_code',
+                                                    event.target.value,
+                                                )
+                                            }
+                                            maxLength={2}
+                                            className="font-mono uppercase"
+                                        />
+                                        <InputError
+                                            message={firstError(
+                                                errors,
+                                                'country_code',
+                                            )}
+                                        />
+                                    </div>
+                                    <label className="flex items-center gap-2 text-sm sm:col-span-2">
+                                        <input
+                                            type="checkbox"
+                                            checked={draft.is_active}
+                                            onChange={(event) =>
+                                                update(
+                                                    'is_active',
+                                                    event.target.checked,
+                                                )
+                                            }
+                                            className="size-4 rounded border border-input"
+                                        />
+                                        Active
+                                    </label>
+                                </>
+                            ) : null}
                         </div>
 
                         <SheetFooter className="mt-auto gap-2 border-t border-border pt-4 sm:flex-row sm:justify-end">

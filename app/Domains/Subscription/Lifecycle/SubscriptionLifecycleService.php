@@ -2,6 +2,7 @@
 
 namespace App\Domains\Subscription\Lifecycle;
 
+use App\Domains\Crm\LeadLifecycleService;
 use App\Domains\Subscription\Contract\CompanySubscriptionContractService;
 use App\Domains\Subscription\Exceptions\SubscriptionDomainException;
 use App\Domains\Subscription\Support\SubscriptionClock;
@@ -28,6 +29,7 @@ final class SubscriptionLifecycleService
         private readonly AuditedTransaction $tx = new AuditedTransaction,
         private readonly AuditWriter $audit = new AuditWriter,
         private readonly CompanySubscriptionContractService $contracts = new CompanySubscriptionContractService,
+        private readonly LeadLifecycleService $leadLifecycle = new LeadLifecycleService,
     ) {}
 
     /**
@@ -147,7 +149,7 @@ final class SubscriptionLifecycleService
         return $this->tx->run(function () use ($subscription, $paidThroughDate, $actor, $remark): CompanySubscription {
             $company = $subscription->company()->firstOrFail();
 
-            return $this->withTenant($actor, $company, function () use ($subscription, $paidThroughDate, $actor, $remark): CompanySubscription {
+            return $this->withTenant($actor, $company, function () use ($subscription, $paidThroughDate, $actor, $remark, $company): CompanySubscription {
                 /** @var CompanySubscription $locked */
                 $locked = CompanySubscription::query()->whereKey($subscription->id)->lockForUpdate()->firstOrFail();
 
@@ -178,6 +180,11 @@ final class SubscriptionLifecycleService
                     before: $before,
                     after: $locked->fresh()?->toArray(),
                 );
+
+                $owner = User::query()->find($company->owner_user_id);
+                if ($owner instanceof User) {
+                    $this->leadLifecycle->syncSubscriptionActivated($owner, $company);
+                }
 
                 return $locked->fresh(['items']) ?? $locked;
             });

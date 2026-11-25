@@ -11,8 +11,6 @@ use Illuminate\Support\Str;
 
 /**
  * @property string $id
- * @property string $code
- * @property string $name
  * @property string $rate_percent
  * @property CarbonInterface $effective_from
  * @property CarbonInterface|null $effective_to
@@ -30,8 +28,6 @@ class GstRate extends Model
 
     protected $fillable = [
         'id',
-        'code',
-        'name',
         'rate_percent',
         'effective_from',
         'effective_to',
@@ -61,18 +57,27 @@ class GstRate extends Model
 
     /**
      * Snapshot-safe payload for future transactions (immutable reference).
+     * Historical invoice JSON may still contain legacy code/name keys — do not rewrite those.
      *
-     * @return array{gst_rate_id: string, code: string, name: string, rate_percent: string, version: int, effective_from: string}
+     * @return array{gst_rate_id: string, rate_percent: string, version: int, effective_from: string}
      */
     public function toSnapshot(): array
     {
         return [
             'gst_rate_id' => $this->id,
-            'code' => $this->code,
-            'name' => $this->name,
             'rate_percent' => (string) $this->rate_percent,
             'version' => (int) $this->version,
             'effective_from' => $this->effective_from->toDateString(),
         ];
+    }
+
+    public function displayLabel(): string
+    {
+        $value = rtrim(rtrim((string) $this->rate_percent, '0'), '.');
+        if ($value === '' || $value === '-') {
+            $value = '0';
+        }
+
+        return $value.'%';
     }
 }

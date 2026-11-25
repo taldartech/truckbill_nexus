@@ -100,10 +100,8 @@ test('qualified lead converts to customer company without overwriting existing p
     app(LeadService::class)->transition($sa, $lead->fresh(), LeadStatus::Qualified, 'Ready');
 
     $rate = GstRate::query()->firstOrCreate(
-        ['code' => 'GST18', 'version' => 1],
+        ['rate_percent' => '18.000', 'version' => 1],
         [
-            'name' => 'GST 18%',
-            'rate_percent' => '18.000',
             'effective_from' => now()->toDateString(),
             'is_active' => true,
         ],

@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
-import { readCanManageGeography } from '@/lib/geography-permissions';
+import { readCanQuickCreateGeography } from '@/lib/geography-permissions';
 
 type RolePayload = {
     id?: string;
@@ -631,7 +631,9 @@ function TransporterTdsPanel({
 }
 
 export default function PartyForm({ mode, party, roleOptions, links }: Props) {
-    const canQuickCreateGeography = readCanManageGeography(usePage().props);
+    const canQuickCreateGeography = readCanQuickCreateGeography(
+        usePage().props,
+    );
     const submitAllowed = useRef(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [reviewFields, setReviewFields] = useState<FieldReview[]>([]);

@@ -59,6 +59,8 @@ class HandleInertiaRequests extends Middleware
                     'updated_at' => $user->updated_at,
                 ],
                 'can_manage_geography' => $user !== null && $user->isInternal() && $user->isActive(),
+                // Quick-add on forms (Owners + Internal). Distinct from master administration.
+                'can_quick_create_geography' => $user !== null && $user->isActive(),
             ],
             'flash' => [
                 'success' => $request->session()->get('success'),

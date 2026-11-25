@@ -124,6 +124,7 @@ const PIPELINE_ORDER = [
     'qualified',
     'onboarding_invite_sent',
     'onboarded',
+    'trial',
     'converted',
 ] as const;
 

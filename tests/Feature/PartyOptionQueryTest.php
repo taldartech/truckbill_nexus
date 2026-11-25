@@ -39,10 +39,8 @@ function partyOptionWorkspace(): array
     ]);
 
     $rate = GstRate::query()->firstOrCreate(
-        ['code' => 'GST18', 'version' => 1],
+        ['rate_percent' => '18.000', 'version' => 1],
         [
-            'name' => 'GST 18%',
-            'rate_percent' => '18.000',
             'effective_from' => now()->toDateString(),
             'effective_to' => null,
             'is_active' => true,

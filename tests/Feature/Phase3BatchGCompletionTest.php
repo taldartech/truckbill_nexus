@@ -54,15 +54,12 @@ test('super admin can manage gst rates via admin ui', function () {
 
     $this->actingAs($admin)
         ->post(route('admin.gst-rates.store'), [
-            'code' => 'GST12',
-            'name' => 'GST 12%',
             'rate_percent' => '12.000',
-            'effective_from' => '2026-04-01',
             'remark' => 'Batch G create',
         ])
         ->assertRedirect();
 
-    $rate = GstRate::query()->where('code', 'GST12')->where('is_active', true)->first();
+    $rate = GstRate::query()->where('rate_percent', '12.000')->where('is_active', true)->first();
     expect($rate)->not->toBeNull();
 
     $this->actingAs($admin)
@@ -268,14 +265,10 @@ test('tax services remain authoritative for historical gst versions', function (
 
     $gst = app(GstRateService::class);
     $v1 = $gst->createVersion($admin, [
-        'code' => 'GST18G',
-        'name' => 'GST 18 G',
         'rate_percent' => '18.000',
         'effective_from' => '2025-04-01',
     ]);
     $gst->createVersion($admin, [
-        'code' => 'GST18G',
-        'name' => 'GST 18 G v2',
         'rate_percent' => '18.000',
         'effective_from' => '2026-04-01',
     ]);

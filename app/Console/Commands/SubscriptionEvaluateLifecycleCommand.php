@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Domains\Crm\LeadLifecycleService;
 use App\Domains\Subscription\Capacity\CompanyCapacityService;
 use App\Domains\Subscription\Lifecycle\SubscriptionLifecycleService;
 use App\Domains\Subscription\Storage\StorageReconciliationService;
@@ -11,13 +12,14 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
 #[Signature('subscription:evaluate-lifecycle {--storage : Also reconcile storage usage for active companies}')]
-#[Description('Finalize due cancellations/downgrades and optionally reconcile storage thresholds')]
+#[Description('Finalize due cancellations/downgrades, sync CRM lead expiry, and optionally reconcile storage')]
 class SubscriptionEvaluateLifecycleCommand extends Command
 {
     public function handle(
         SubscriptionLifecycleService $lifecycle,
         CompanyCapacityService $capacity,
         StorageReconciliationService $storage,
+        LeadLifecycleService $leadLifecycle,
     ): int {
         $finalized = $lifecycle->finalizeDueCancellations();
         $this->info("Cancellations finalized: {$finalized}");
@@ -26,6 +28,9 @@ class SubscriptionEvaluateLifecycleCommand extends Command
             fn ($company): array => $capacity->evaluate($company),
         );
         $this->info("Scheduled downgrades resolved: {$downgrades}");
+
+        $expiredOwners = $leadLifecycle->processExpiredEntitlements();
+        $this->info("CRM lead expiry owners processed: {$expiredOwners}");
 
         if ($this->option('storage')) {
             $allocation = (int) config('subscription.storage.default_allocation_bytes', 0);

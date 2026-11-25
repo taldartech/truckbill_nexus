@@ -175,3 +175,47 @@ Job Card: Draft/Open/Inspection/Work in Progress/On Hold/Completed/Closed; cance
 ## 18. Acceptance
 
 Every feature requires field validation, state transition tests, permission/tenant tests, audit/remark tests, cancellation/deletion dependency tests, accounting/reversal tests, entitlement tests, idempotency/retry tests, file/notification tests and operational monitoring. No production release without security, reconciliation, backup/restore and load certification.
+
+## 19. Codebase Cleanliness, Minimalism and Dead Code Elimination
+
+These rules are permanent and mandatory for every implementation task.
+
+### No unnecessary files
+
+Do not create files without a clear implementation, testing, configuration or documentation purpose. Remove obsolete exclusive components, controllers, services, requests, utilities, types, routes, assets and duplicate documentation after verifying no valid consumer remains.
+
+### No unnecessary database fields
+
+Every column must have an identifiable business, technical, security or historical integrity purpose. Do not retain fields merely because a legacy system used them, a prior iteration needed them, a template expected them, they are hidden from the UI, or they might become useful someday. When a field becomes obsolete, migrate consumers and remove it through a safe forward migration.
+
+### No hidden obsolete functionality
+
+Removing a feature means removing its exclusive UI, routes, controllers, services, validation, permissions, types, configuration and tests. Do not hide a navigation entry or form field while retaining an unnecessary implementation. Preserve shared infrastructure and historical records where required.
+
+### No duplicate implementations
+
+Reuse existing domain services, form components, validation, query builders, authorization, API clients, confirmation frameworks and master-creation components. Do not create parallel implementations for the same business operation.
+
+### No unnecessary lines of code
+
+Remove unused imports, variables, functions, unreachable branches, obsolete commented-out code, redundant wrappers/transforms, duplicate validation and temporary debugging statements after a feature is replaced.
+
+### No speculative architecture
+
+Implement only approved requirements. Do not add abstractions, fields, feature flags or services for hypothetical future use without a documented reason. Prefer the simplest maintainable design that satisfies the approved rules.
+
+### No excessive documentation
+
+Maintain authoritative documents. Prefer updating an existing record over creating parallel progress/audit documents for small corrections. Avoid contradictory governing artefacts.
+
+### No unnecessary dependencies
+
+Review new packages before installation. Remove unused packages only after confirming no consumers. Prefer existing project capabilities. Do not remove required security, testing or build dependencies merely to reduce counts.
+
+### Safe cleanup
+
+Cleanliness must never compromise historical financial records, audit history, migration integrity, security, authorization, test coverage, public API compatibility, approved business rules or operational functionality. Do not delete legitimate defensive code to reduce line count.
+
+### Mandatory cleanup before every task completion (Definition of Done)
+
+Before completing any implementation task: review the full diff; remove unused imports/variables and temporary debug code; remove obsolete exclusive routes/components/helpers; review newly introduced database fields and duplicated business logic; update or remove obsolete documentation; run applicable static analysis and relevant tests. A feature is not complete if its replaced exclusive implementation remains unnecessarily in the codebase.

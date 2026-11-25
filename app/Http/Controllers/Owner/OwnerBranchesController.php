@@ -558,8 +558,7 @@ class OwnerBranchesController extends Controller
                 ),
                 'gst_rates' => $this->gstRates->listActive()->map(fn ($rate): array => [
                     'id' => $rate->id,
-                    'code' => $rate->code,
-                    'name' => $rate->name,
+                    'label' => $rate->displayLabel(),
                     'rate_percent' => (string) $rate->rate_percent,
                 ])->values(),
             ],
@@ -675,7 +674,7 @@ class OwnerBranchesController extends Controller
     }
 
     /**
-     * @return array{registration_types: list<array{value: string, label: string}>, tax_liabilities: list<array{value: string, label: string}>, gst_rates: Collection<int, array{id: string, code: string, name: string, rate_percent: string}>}
+     * @return array{registration_types: list<array{value: string, label: string}>, tax_liabilities: list<array{value: string, label: string}>, gst_rates: Collection<int, array{id: string, label: string, rate_percent: string}>}
      */
     private function gstFormOptions(): array
     {
@@ -690,8 +689,7 @@ class OwnerBranchesController extends Controller
             ),
             'gst_rates' => $this->gstRates->listActive()->map(fn ($rate): array => [
                 'id' => $rate->id,
-                'code' => $rate->code,
-                'name' => $rate->name,
+                'label' => $rate->displayLabel(),
                 'rate_percent' => (string) $rate->rate_percent,
             ])->values(),
         ];

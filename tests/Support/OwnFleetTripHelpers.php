@@ -443,9 +443,7 @@ if (! function_exists('tripEnsureCompanyGstSnapshot')) {
         $company->forceFill([
             'gst_rate_snapshot' => [
                 'gst_rate_id' => 'test-rate',
-                'code' => 'GST18',
-                'name' => 'GST 18%',
-                'rate_percent' => '18.00',
+                'rate_percent' => '18.000',
                 'version' => 1,
                 'effective_from' => '2026-04-01',
             ],

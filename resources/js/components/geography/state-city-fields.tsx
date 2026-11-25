@@ -4,7 +4,10 @@ import {
     SearchableCombobox,
     type ComboboxOption,
 } from '@/components/searchable-combobox';
-import { readCanManageGeography } from '@/lib/geography-permissions';
+import {
+    readCanManageGeography,
+    readCanQuickCreateGeography,
+} from '@/lib/geography-permissions';
 import { usePage } from '@inertiajs/react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
@@ -98,12 +101,19 @@ export function StateCityFields({
     stateError,
     cityError,
     canQuickCreate,
-    stateStoreUrl = '/admin/states',
-    cityStoreUrl = '/admin/cities',
+    stateStoreUrl,
+    cityStoreUrl,
     onChange,
 }: Props) {
     const page = usePage();
-    const canManage = canQuickCreate ?? readCanManageGeography(page.props);
+    const canManageMasters = readCanManageGeography(page.props);
+    const canManage = canQuickCreate ?? readCanQuickCreateGeography(page.props);
+    const resolvedStateStoreUrl =
+        stateStoreUrl ??
+        (canManageMasters ? '/admin/states' : '/api/geography/states');
+    const resolvedCityStoreUrl =
+        cityStoreUrl ??
+        (canManageMasters ? '/admin/cities' : '/api/geography/cities');
 
     const [selectedStateId, setSelectedStateId] = useState(() =>
         resolveSelectedId(stateId ?? '', stateName ?? '', valueMode),
@@ -207,6 +217,13 @@ export function StateCityFields({
                     disabled={disabled}
                     error={stateError}
                     searchUrl="/api/geography/states"
+                    buildSearchParams={(query) => {
+                        const params = new URLSearchParams();
+                        if (query.trim() !== '') {
+                            params.set('q', query.trim());
+                        }
+                        return params;
+                    }}
                     mapResponse={mapStates}
                     emptyMessage="No states found."
                     placeholder="Search state…"
@@ -295,7 +312,8 @@ export function StateCityFields({
                     <QuickCreateStateSheet
                         open={stateQuickCreateOpen}
                         onOpenChange={setStateQuickCreateOpen}
-                        storeUrl={stateStoreUrl}
+                        storeUrl={resolvedStateStoreUrl}
+                        catalogueOnly={!canManageMasters}
                         nested
                         onCreated={(created) => {
                             const option = {
@@ -323,8 +341,10 @@ export function StateCityFields({
                     <QuickCreateCitySheet
                         open={cityQuickCreateOpen}
                         onOpenChange={setCityQuickCreateOpen}
-                        storeUrl={cityStoreUrl}
-                        initialStateId={selectedStateId}
+                        storeUrl={resolvedCityStoreUrl}
+                        initialStateId={
+                            isRealUuid(selectedStateId) ? selectedStateId : ''
+                        }
                         initialStateName={selectedStateName}
                         nested
                         onCreated={(created) => {

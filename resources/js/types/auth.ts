@@ -14,4 +14,5 @@ export type User = {
 export type Auth = {
     user: User | null;
     can_manage_geography?: boolean;
+    can_quick_create_geography?: boolean;
 };

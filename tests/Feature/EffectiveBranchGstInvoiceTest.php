@@ -35,9 +35,7 @@ test('effective gst resolver inherits company then switches to independent branc
 
     $rate = GstRate::query()->create([
         'id' => (string) Str::uuid(),
-        'code' => 'GST18-TEST',
-        'name' => 'GST 18% test',
-        'rate_percent' => '18.0000',
+        'rate_percent' => '18.000',
         'version' => 1,
         'is_active' => true,
         'effective_from' => now()->toDateString(),
@@ -85,9 +83,7 @@ test('issued broker invoice retains supplier gst snapshot after branch gst chang
 
     $rate = GstRate::query()->create([
         'id' => (string) Str::uuid(),
-        'code' => 'GST18-INV',
-        'name' => 'GST 18% invoice',
-        'rate_percent' => '18.0000',
+        'rate_percent' => '18.000',
         'version' => 1,
         'is_active' => true,
         'effective_from' => now()->toDateString(),

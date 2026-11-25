@@ -14,7 +14,7 @@ import {
     SheetHeader,
     SheetTitle,
 } from '@/components/ui/sheet';
-import { readCanManageGeography } from '@/lib/geography-permissions';
+import { readCanQuickCreateGeography } from '@/lib/geography-permissions';
 import { getCsrfToken } from '@/lib/csrf';
 import { usePage } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
@@ -94,7 +94,9 @@ export function QuickCreatePartySheet({
     role,
     onCreated,
 }: Props) {
-    const canQuickCreateGeography = readCanManageGeography(usePage().props);
+    const canQuickCreateGeography = readCanQuickCreateGeography(
+        usePage().props,
+    );
     const title = ROLE_TITLES[role];
     const isTransporter = role === 'transporter';
     const [draft, setDraft] = useState<Draft>(EMPTY);

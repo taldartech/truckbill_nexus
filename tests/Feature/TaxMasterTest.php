@@ -27,8 +27,6 @@ test('gst rate versioning preserves historical snapshot and selection', function
 
     $service = app(GstRateService::class);
     $v1 = $service->createVersion($admin, [
-        'code' => 'GST18',
-        'name' => 'GST 18% v1',
         'rate_percent' => '18.000',
         'effective_from' => '2024-04-01',
     ]);
@@ -36,8 +34,6 @@ test('gst rate versioning preserves historical snapshot and selection', function
     $snapshot = $service->snapshot($v1);
 
     $v2 = $service->createVersion($admin, [
-        'code' => 'GST18',
-        'name' => 'GST 18% v2',
         'rate_percent' => '18.000',
         'effective_from' => '2025-04-01',
     ]);
@@ -46,7 +42,7 @@ test('gst rate versioning preserves historical snapshot and selection', function
         ->and($v1->fresh()->is_active)->toBeFalse()
         ->and($v1->fresh()->effective_to?->toDateString())->toBe('2025-03-31');
 
-    $selected = $service->selectForDate('GST18', '2025-06-01');
+    $selected = $service->selectForDate('18.000', '2025-06-01');
     expect($selected->id)->toBe($v2->id);
 
     // Historical snapshot remains immutable even after successor rate.
@@ -60,8 +56,6 @@ test('customer cannot mutate gst rates', function () {
     $this->actingAs($customer);
 
     expect(fn () => app(GstRateService::class)->createVersion($customer, [
-        'code' => 'GST5',
-        'name' => 'GST 5%',
         'rate_percent' => '5',
         'effective_from' => '2025-01-01',
     ]))->toThrow(TaxDomainException::class);
@@ -180,8 +174,7 @@ test('gst rate can be created from rate percent only without operator code or na
         'rate_percent' => '7.5',
     ], 'Operator create by percent');
 
-    expect($rate->code)->toBe('GST7_5')
-        ->and($rate->name)->toBe('GST 7.5%')
+    expect($rate->displayLabel())->toBe('7.5%')
         ->and((string) $rate->rate_percent)->toBe('7.500')
         ->and($rate->is_active)->toBeTrue()
         ->and($rate->effective_from)->not->toBeNull();

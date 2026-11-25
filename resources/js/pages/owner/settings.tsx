@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { FormSection } from '@/components/form-section';
 import { StateCityFields } from '@/components/geography/state-city-fields';
-import { readCanManageGeography } from '@/lib/geography-permissions';
+import { readCanQuickCreateGeography } from '@/lib/geography-permissions';
 import { CompanyOwnerPageShell } from '@/components/owner/owner-page-header';
 
 type DeferredSection = {
@@ -19,8 +19,7 @@ type DeferredSection = {
 type Option = { value: string; label: string };
 type GstRateOption = {
     id: string;
-    code: string;
-    name: string;
+    label?: string;
     rate_percent: string;
 };
 
@@ -78,7 +77,7 @@ export default function OwnerSettings({
 }: OwnerSettingsProps) {
     const page = usePage<FlashPageProps>();
     const { flash } = page.props;
-    const canQuickCreateGeography = readCanManageGeography(page.props);
+    const canQuickCreateGeography = readCanQuickCreateGeography(page.props);
     const [gstType, setGstType] = useState(
         company.gst_registration_type ?? 'regular',
     );
@@ -276,9 +275,8 @@ export default function OwnerSettings({
                                                         key={rate.id}
                                                         value={rate.id}
                                                     >
-                                                        {rate.code} —{' '}
-                                                        {rate.name} (
-                                                        {rate.rate_percent}%)
+                                                        {rate.label ??
+                                                            `${rate.rate_percent}%`}
                                                     </option>
                                                 ))}
                                             </select>

@@ -123,8 +123,9 @@ Before every local commit, review the diff against:
 10. Authorization / security
 11. Maintainability / testability
 12. Compatibility with existing architecture
+13. **Codebase cleanliness** (governing `Rules.md` §19): unused imports/variables, obsolete exclusive routes/components, redundant helpers, unnecessary new DB fields, duplicated business logic, temporary debug code
 
-Remove duplication, dead code and accidental complexity introduced by the current task. Do not perform large unrelated refactors. Do not change approved behaviour for style alone.
+Remove duplication, dead code and accidental complexity introduced by the current task. A feature is not complete if its replaced exclusive implementation remains unnecessarily in the codebase. Do not perform large unrelated refactors. Do not change approved behaviour for style alone.
 
 ---
 

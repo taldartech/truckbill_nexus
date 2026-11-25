@@ -67,8 +67,7 @@ class OwnerSettingsController extends Controller
             ]),
             'gstRates' => $this->gstRates->listActive()->map(fn ($rate): array => [
                 'id' => $rate->id,
-                'code' => $rate->code,
-                'name' => $rate->name,
+                'label' => $rate->displayLabel(),
                 'rate_percent' => (string) $rate->rate_percent,
             ])->values(),
             'options' => [

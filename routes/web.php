@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\OwnershipTransferController;
 use App\Http\Controllers\Admin\SubscriptionInvoiceController;
 use App\Http\Controllers\Admin\TdsRuleController;
 use App\Http\Controllers\Api\GeographyController;
+use App\Http\Controllers\Api\GeographyQuickCreateController;
 use App\Http\Controllers\Api\PublicLeadController;
 use App\Http\Controllers\Api\PublicLeadOnboardingController;
 use App\Http\Controllers\Branch\BankCashAccountController;
@@ -109,6 +110,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('geography.states');
     Route::get('/api/geography/cities', [GeographyController::class, 'cities'])
         ->name('geography.cities');
+    Route::post('/api/geography/states', [GeographyQuickCreateController::class, 'storeState'])
+        ->middleware('throttle:20,1')
+        ->name('geography.states.store');
+    Route::post('/api/geography/cities', [GeographyQuickCreateController::class, 'storeCity'])
+        ->middleware('throttle:30,1')
+        ->name('geography.cities.store');
 
     // P2-WS-8 Customer workspace — company/branch from route model binding only.
     Route::get('/workspace', WorkspaceLandingController::class)->name('workspace.landing');

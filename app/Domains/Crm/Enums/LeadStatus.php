@@ -9,11 +9,15 @@ enum LeadStatus: string
     case Qualified = 'qualified';
     case OnboardingInviteSent = 'onboarding_invite_sent';
     case Onboarded = 'onboarded';
+    case Trial = 'trial';
     case Converted = 'converted';
+    case Expired = 'expired';
     case Disqualified = 'disqualified';
     case Lost = 'lost';
 
     /**
+     * Manual CRM transitions (system lifecycle uses LeadLifecycleService).
+     *
      * @return list<self>
      */
     public function allowedTransitions(): array
@@ -24,6 +28,8 @@ enum LeadStatus: string
             self::Qualified => [self::OnboardingInviteSent, self::Disqualified, self::Lost],
             self::OnboardingInviteSent => [self::Onboarded, self::Qualified, self::Disqualified, self::Lost],
             self::Onboarded => [self::Lost],
+            self::Trial => [self::Lost],
+            self::Expired => [self::Lost],
             self::Converted, self::Disqualified, self::Lost => [],
         };
     }

@@ -2,6 +2,7 @@
 
 namespace App\Domains\Subscription\Lifecycle;
 
+use App\Domains\Crm\LeadLifecycleService;
 use App\Domains\Subscription\Exceptions\SubscriptionDomainException;
 use App\Domains\Subscription\Support\SubscriptionClock;
 use App\Models\Company;
@@ -26,6 +27,7 @@ final class SubscriptionTrialService
         private readonly AuditedTransaction $tx = new AuditedTransaction,
         private readonly AuditWriter $audit = new AuditWriter,
         private readonly OutboxWriter $outbox = new OutboxWriter,
+        private readonly LeadLifecycleService $leadLifecycle = new LeadLifecycleService,
     ) {}
 
     public function startFirstCompanyTrial(User $owner, Company $company): ?CompanySubscriptionTrial
@@ -88,6 +90,8 @@ final class SubscriptionTrialService
                         'trial_id' => $trial->id,
                         'ends_at' => $trial->ends_at->toIso8601String(),
                     ]);
+
+                    $this->leadLifecycle->syncTrialActivated($owner, $company, $trial);
 
                     return $trial;
                 } finally {

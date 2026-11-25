@@ -143,7 +143,7 @@ test('default database seeder seeds geography tax subscription and super admin w
         ->and(City::query()->count())->toBeGreaterThan(100)
         ->and(PaymentMode::query()->count())->toBeGreaterThanOrEqual(8)
         ->and(PaymentMode::query()->whereIn('code', ['cash', 'upi', 'neft', 'rtgs', 'imps', 'other'])->count())->toBe(6)
-        ->and(GstRate::query()->where('is_active', true)->whereIn('code', ['GST0', 'GST5', 'GST12', 'GST18', 'GST28'])->count())->toBe(5)
+        ->and(GstRate::query()->where('is_active', true)->whereIn('rate_percent', ['0.000', '5.000', '12.000', '18.000', '28.000'])->count())->toBe(5)
         ->and(TdsRule::query()->where('is_active', true)->count())->toBeGreaterThanOrEqual(4)
         ->and(SubscriptionPlan::query()->count())->toBeGreaterThanOrEqual(11)
         ->and(SubscriptionAddon::query()->count())->toBeGreaterThanOrEqual(12)

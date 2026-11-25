@@ -9,7 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { readCanManageGeography } from '@/lib/geography-permissions';
+import { readCanQuickCreateGeography } from '@/lib/geography-permissions';
 
 type Station = {
     id: string;
@@ -35,7 +35,9 @@ type Props = {
     };
 };
 export default function StationForm({ mode, station, links }: Props) {
-    const canQuickCreateGeography = readCanManageGeography(usePage().props);
+    const canQuickCreateGeography = readCanQuickCreateGeography(
+        usePage().props,
+    );
     const action = mode === 'create' ? links.store! : links.update!;
     const [stateId, setStateId] = useState(station?.state_id ?? '');
     const [cityId, setCityId] = useState(station?.city_id ?? '');

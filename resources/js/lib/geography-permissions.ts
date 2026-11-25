@@ -16,7 +16,7 @@ function isAuth(value: unknown): value is Auth {
 }
 
 /**
- * Whether the signed-in user may quick-create platform geography masters.
+ * Internal Team master administration (edit / deactivate / GST codes).
  */
 export function readCanManageGeography(props: unknown): boolean {
     if (!isRecord(props)) {
@@ -26,5 +26,23 @@ export function readCanManageGeography(props: unknown): boolean {
     if (!isAuth(auth)) {
         return false;
     }
+    return auth.can_manage_geography === true;
+}
+
+/**
+ * Authenticated users may quick-add missing State/City from operational forms.
+ */
+export function readCanQuickCreateGeography(props: unknown): boolean {
+    if (!isRecord(props)) {
+        return false;
+    }
+    const auth = (props as SharedPageProps).auth;
+    if (!isAuth(auth)) {
+        return false;
+    }
+    if (auth.can_quick_create_geography === true) {
+        return true;
+    }
+    // Backward-compatible fallback while shared props roll out.
     return auth.can_manage_geography === true;
 }

@@ -13,7 +13,7 @@ import {
 import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
 import type { FieldReview } from '@/components/form-confirmation/types';
 import { StateCityFields } from '@/components/geography/state-city-fields';
-import { readCanManageGeography } from '@/lib/geography-permissions';
+import { readCanQuickCreateGeography } from '@/lib/geography-permissions';
 import { WorkspaceContextAction } from '@/components/workspace-context-action';
 import { CreditCard } from 'lucide-react';
 
@@ -61,8 +61,7 @@ type OwnerBranchesCreateProps = {
         tax_liabilities: Array<{ value: string; label: string }>;
         gst_rates: Array<{
             id: string;
-            code: string;
-            name: string;
+            label?: string;
             rate_percent: string;
         }>;
     };
@@ -102,7 +101,7 @@ export default function OwnerBranchesCreate({
 }: OwnerBranchesCreateProps) {
     const page = usePage<PageErrors>();
     const { errors } = page.props;
-    const canQuickCreateGeography = readCanManageGeography(page.props);
+    const canQuickCreateGeography = readCanQuickCreateGeography(page.props);
     const [assignments, setAssignments] = useState<AssignmentDraft[]>([]);
     const [branchName, setBranchName] = useState('');
     const [contactNumber, setContactNumber] = useState('');
@@ -615,9 +614,8 @@ export default function OwnerBranchesCreate({
                                                             key={rate.id}
                                                             value={rate.id}
                                                         >
-                                                            {rate.name} (
-                                                            {rate.rate_percent}
-                                                            %)
+                                                            {rate.label ??
+                                                                `${rate.rate_percent}%`}
                                                         </option>
                                                     ))}
                                                 </select>

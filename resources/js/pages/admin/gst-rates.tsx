@@ -17,8 +17,7 @@ import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 
 type GstRateRow = {
     id: string;
-    code: string;
-    name: string;
+    label: string;
     rate_percent: string;
     version: number;
     is_active: boolean;
@@ -51,12 +50,11 @@ export default function AdminGstRates({
                 priority: 0,
                 cell: (row) => (
                     <>
-                        <div className="font-medium">{row.rate_percent}%</div>
-                        {row.version > 1 ? (
-                            <div className="text-xs text-muted-foreground">
-                                v{row.version}
-                            </div>
-                        ) : null}
+                        <div className="font-medium">{row.label}</div>
+                        <div className="text-xs text-muted-foreground">
+                            {row.rate_percent}%
+                            {row.version > 1 ? ` · v${row.version}` : ''}
+                        </div>
                     </>
                 ),
             },

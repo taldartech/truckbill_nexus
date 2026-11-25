@@ -37,8 +37,7 @@ class GstRateController extends Controller
             'compliance_note' => 'Central GST rate versions for platform configuration. Production statutory validation remains Pending (TB-TAX). Historical versions are preserved; creating a successor closes the prior open version.',
             'rates' => $rates->map(fn (GstRate $rate): array => [
                 'id' => $rate->id,
-                'code' => $rate->code,
-                'name' => $rate->name,
+                'label' => $rate->displayLabel(),
                 'rate_percent' => (string) $rate->rate_percent,
                 'version' => $rate->version,
                 'is_active' => $rate->is_active,

@@ -22,7 +22,7 @@ use Illuminate\Validation\ValidationException;
  * Centrally managed GST rates (Rules §5–§6).
  *
  * Historical versions remain immutable references for transaction snapshots.
- * Not a production statutory-compliance claim — external legal validation Pending.
+ * Rate lineage is keyed by rate_percent + version (no code/name fields).
  */
 final class GstRateService
 {
@@ -45,45 +45,18 @@ final class GstRateService
         }
 
         $rateNormalized = $this->normalizeRatePercent($rate);
-        $code = strtoupper(trim((string) ($attributes['code'] ?? '')));
-        if ($code === '') {
-            $code = $this->codeFromRatePercent($rateNormalized);
-        }
-
-        $name = trim((string) ($attributes['name'] ?? ''));
-        if ($name === '') {
-            $displayRate = rtrim(rtrim($rateNormalized, '0'), '.');
-            if ($displayRate === '' || $displayRate === '-') {
-                $displayRate = '0';
-            }
-            $name = 'GST '.$displayRate.'%';
-        }
 
         $effectiveFrom = $attributes['effective_from'] ?? null;
         if ($effectiveFrom === null || $effectiveFrom === '') {
             $effectiveFrom = Carbon::now('Asia/Kolkata')->toDateString();
         }
 
-        // One active open version per rate code — successors close the prior open version.
-        $duplicateActiveSameRate = GstRate::query()
-            ->where('is_active', true)
-            ->whereNull('effective_to')
-            ->where('code', '!=', $code)
-            ->where('rate_percent', $rateNormalized)
-            ->exists();
-        if ($duplicateActiveSameRate) {
-            throw ValidationException::withMessages([
-                'rate_percent' => 'An active GST rate with this percentage already exists under a different code.',
-            ]);
-        }
+        $nextVersion = ((int) GstRate::query()->where('rate_percent', $rateNormalized)->max('version')) + 1;
 
-        $nextVersion = ((int) GstRate::query()->where('code', $code)->max('version')) + 1;
-
-        return $this->withPlatformTenant(function () use ($code, $name, $rateNormalized, $effectiveFrom, $attributes, $remark, $nextVersion): GstRate {
-            return $this->auditedTransaction->run(function () use ($code, $name, $rateNormalized, $effectiveFrom, $attributes, $remark, $nextVersion): GstRate {
-                // Close previous active version for this code when a successor starts.
+        return $this->withPlatformTenant(function () use ($rateNormalized, $effectiveFrom, $attributes, $remark, $nextVersion): GstRate {
+            return $this->auditedTransaction->run(function () use ($rateNormalized, $effectiveFrom, $attributes, $remark, $nextVersion): GstRate {
                 $previous = GstRate::query()
-                    ->where('code', $code)
+                    ->where('rate_percent', $rateNormalized)
                     ->where('is_active', true)
                     ->whereNull('effective_to')
                     ->orderByDesc('version')
@@ -97,12 +70,10 @@ final class GstRateService
 
                 $rateModel = GstRate::query()->create([
                     'id' => (string) Str::uuid(),
-                    'code' => $code,
-                    'name' => $name,
                     'rate_percent' => $rateNormalized,
                     'effective_from' => $effectiveFrom,
                     'effective_to' => $attributes['effective_to'] ?? null,
-                    'version' => $nextVersion,
+                    'version' => max(1, $nextVersion),
                     'is_active' => $attributes['is_active'] ?? true,
                 ]);
 
@@ -145,14 +116,15 @@ final class GstRateService
     }
 
     /**
-     * Select effective GST rate for a date (for future transactions).
+     * Select effective GST rate for a percentage lineage and date.
      */
-    public function selectForDate(string $code, CarbonInterface|string $onDate): GstRate
+    public function selectForDate(string $ratePercent, CarbonInterface|string $onDate): GstRate
     {
         $date = Carbon::parse($onDate)->toDateString();
+        $normalized = $this->normalizeRatePercent($ratePercent);
 
         $rate = GstRate::query()
-            ->where('code', strtoupper($code))
+            ->where('rate_percent', $normalized)
             ->where('is_active', true)
             ->where('effective_from', '<=', $date)
             ->where(function ($q) use ($date): void {
@@ -162,7 +134,7 @@ final class GstRateService
             ->first();
 
         if ($rate === null) {
-            throw new TaxDomainException('No active GST rate found for the requested code and date.');
+            throw new TaxDomainException('No active GST rate found for the requested percentage and date.');
         }
 
         return $rate;
@@ -171,35 +143,26 @@ final class GstRateService
     /**
      * @return Collection<int, GstRate>
      */
-    public function listActive(?string $code = null): Collection
+    public function listActive(?string $ratePercent = null): Collection
     {
-        $builder = GstRate::query()->where('is_active', true)->orderBy('code')->orderByDesc('version');
-        if ($code !== null) {
-            $builder->where('code', strtoupper($code));
+        $builder = GstRate::query()
+            ->where('is_active', true)
+            ->orderBy('rate_percent')
+            ->orderByDesc('version');
+
+        if ($ratePercent !== null) {
+            $builder->where('rate_percent', $this->normalizeRatePercent($ratePercent));
         }
 
         return $builder->get();
     }
 
     /**
-     * @return array{gst_rate_id: string, code: string, name: string, rate_percent: string, version: int, effective_from: string}
+     * @return array{gst_rate_id: string, rate_percent: string, version: int, effective_from: string}
      */
     public function snapshot(GstRate $rate): array
     {
         return $rate->toSnapshot();
-    }
-
-    /**
-     * Operator-facing creates may omit code; derive a stable internal identifier from the rate.
-     */
-    public function codeFromRatePercent(string $rateNormalized): string
-    {
-        $trimmed = rtrim(rtrim($rateNormalized, '0'), '.');
-        if ($trimmed === '' || $trimmed === '-') {
-            $trimmed = '0';
-        }
-
-        return 'GST'.str_replace('.', '_', $trimmed);
     }
 
     private function normalizeRatePercent(mixed $rate): string

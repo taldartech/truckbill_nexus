@@ -9,13 +9,12 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { readCanManageGeography } from '@/lib/geography-permissions';
+import { readCanQuickCreateGeography } from '@/lib/geography-permissions';
 
 type Option = { value: string; label: string };
 type GstRateOption = {
     id: string;
-    code: string;
-    name: string;
+    label: string;
     rate_percent: string;
 };
 
@@ -46,7 +45,9 @@ export default function OwnerCompanyCreate({
     options,
     links,
 }: CreateCompanyProps) {
-    const canQuickCreateGeography = readCanManageGeography(usePage().props);
+    const canQuickCreateGeography = readCanQuickCreateGeography(
+        usePage().props,
+    );
     const [gstType, setGstType] = useState(defaults.gst_registration_type);
     const [createBranch, setCreateBranch] = useState(
         defaults.create_initial_branch,
@@ -205,10 +206,7 @@ export default function OwnerCompanyCreate({
                                                             key={rate.id}
                                                             value={rate.id}
                                                         >
-                                                            {rate.code} —{' '}
-                                                            {rate.name} (
-                                                            {rate.rate_percent}
-                                                            %)
+                                                            {rate.label}
                                                         </option>
                                                     ))}
                                                 </select>
