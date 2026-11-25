@@ -58,6 +58,27 @@ test('geography lookup lists states and cities for form selectors', function ():
     expect($cities)->not->toBeEmpty();
 });
 
+test('state search ranks exact and prefix matches ahead of substring matches', function (): void {
+    $service = new GeographyLookupService;
+
+    $raj = $service->listActiveStates('raj', 20);
+    expect($raj)->not->toBeEmpty()
+        ->and($raj[0]['name'])->toBe('Rajasthan')
+        ->and(collect($raj)->pluck('name'))->toContain('Rajasthan');
+
+    $ra = $service->listActiveStates('ra', 20);
+    expect($ra)->not->toBeEmpty();
+    $names = collect($ra)->pluck('name');
+    expect($names)->toContain('Rajasthan');
+    // Prefix matches (Rajasthan) must appear before pure substring matches.
+    $prefixIndex = $names->search(fn (string $name): bool => str_starts_with(mb_strtolower($name), 'ra'));
+    $substringOnly = $names->search(fn (string $name): bool => ! str_starts_with(mb_strtolower($name), 'ra')
+        && str_contains(mb_strtolower($name), 'ra'));
+    if ($prefixIndex !== false && $substringOnly !== false) {
+        expect($prefixIndex)->toBeLessThan($substringOnly);
+    }
+});
+
 test('guests cannot search geography over http', function (): void {
     $this->getJson(route('geography.states'))
         ->assertUnauthorized();

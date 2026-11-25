@@ -229,8 +229,8 @@ export function StateCityFields({
                     mapResponse={mapStates}
                     emptyMessage={
                         canManage
-                            ? 'No matching State. Use + Add to create one.'
-                            : 'No matching State found.'
+                            ? 'No matching states found. Use + Add to create one.'
+                            : 'No matching states found.'
                     }
                     placeholder="Search state…"
                     addAction={stateAddAction}
@@ -299,8 +299,8 @@ export function StateCityFields({
                         !stateHasSelection
                             ? 'Select a state first.'
                             : canManage
-                              ? 'No matching City. Use + Add to create one.'
-                              : 'No cities in this state.'
+                              ? 'No matching cities found. Use + Add to create one.'
+                              : 'No matching cities found.'
                     }
                     placeholder="Search city…"
                     addAction={cityAddAction}

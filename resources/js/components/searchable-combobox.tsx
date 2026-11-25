@@ -7,11 +7,13 @@ import {
     useCallback,
     useEffect,
     useId,
+    useLayoutEffect,
     useMemo,
     useRef,
     useState,
     type KeyboardEvent,
 } from 'react';
+import { createPortal } from 'react-dom';
 
 export type ComboboxOption = {
     id: string;
@@ -46,15 +48,111 @@ type Props = {
     addAction?: AddAction;
     /** When true, render only the empty dashed panel (no combobox). */
     showEmptyState?: boolean;
-    /** Prepend a synthetic option when the search query has no exact label match. */
+    /**
+     * Opt-in free-text option ("Use custom value").
+     * Disabled by default — Master forms must never enable this.
+     * CRM Lead geography is the approved exception.
+     */
     allowCustomValue?: boolean;
 };
+
+type PanelPosition = {
+    top: number;
+    left: number;
+    width: number;
+    maxHeight: number;
+    placement: 'below' | 'above';
+};
+
+const CUSTOM_ID_PREFIX = 'custom:';
+const PANEL_MAX_HEIGHT = 240;
+const VIEWPORT_GAP = 8;
 
 function findOption(
     options: ComboboxOption[],
     id: string,
 ): ComboboxOption | null {
     return options.find((option) => option.id === id) ?? null;
+}
+
+function isCustomOptionId(id: string): boolean {
+    return id.startsWith(CUSTOM_ID_PREFIX);
+}
+
+function rankOptions(
+    options: ComboboxOption[],
+    query: string,
+): ComboboxOption[] {
+    const q = query.trim().toLowerCase();
+    if (q === '') {
+        return options;
+    }
+
+    return [...options].sort((a, b) => {
+        const score = (label: string): number => {
+            const value = label.toLowerCase();
+            if (value === q) {
+                return 0;
+            }
+            if (value.startsWith(q)) {
+                return 1;
+            }
+            if (value.includes(q)) {
+                return 2;
+            }
+            return 3;
+        };
+
+        const delta = score(a.label) - score(b.label);
+        if (delta !== 0) {
+            return delta;
+        }
+        return a.label.localeCompare(b.label);
+    });
+}
+
+function filterOptionsLocally(
+    options: ComboboxOption[],
+    query: string,
+): ComboboxOption[] {
+    const q = query.trim().toLowerCase();
+    if (q === '') {
+        return options;
+    }
+
+    return options.filter((option) => option.label.toLowerCase().includes(q));
+}
+
+function computePanelPosition(
+    trigger: HTMLElement | null,
+): PanelPosition | null {
+    if (trigger === null || typeof window === 'undefined') {
+        return null;
+    }
+
+    const rect = trigger.getBoundingClientRect();
+    const spaceBelow = window.innerHeight - rect.bottom - VIEWPORT_GAP;
+    const spaceAbove = rect.top - VIEWPORT_GAP;
+    const preferBelow = spaceBelow >= Math.min(PANEL_MAX_HEIGHT, 160);
+    const placement: 'below' | 'above' =
+        preferBelow || spaceBelow >= spaceAbove ? 'below' : 'above';
+    const available =
+        placement === 'below'
+            ? Math.max(120, spaceBelow)
+            : Math.max(120, spaceAbove);
+    const maxHeight = Math.min(PANEL_MAX_HEIGHT, available);
+    const top =
+        placement === 'below'
+            ? rect.bottom + 4
+            : Math.max(VIEWPORT_GAP, rect.top - 4 - maxHeight);
+
+    return {
+        top,
+        left: rect.left,
+        width: rect.width,
+        maxHeight,
+        placement,
+    };
 }
 
 export function SearchableCombobox({
@@ -82,7 +180,10 @@ export function SearchableCombobox({
     const listboxId = useId();
     const panelSearchId = useId();
     const rootRef = useRef<HTMLDivElement>(null);
+    const triggerRef = useRef<HTMLButtonElement>(null);
+    const panelRef = useRef<HTMLDivElement>(null);
     const searchRef = useRef<HTMLInputElement>(null);
+    const requestSeqRef = useRef(0);
     const [open, setOpen] = useState(false);
     const [query, setQuery] = useState('');
     const [internalValue, setInternalValue] = useState(defaultValue);
@@ -95,6 +196,9 @@ export function SearchableCombobox({
     const [optionCache, setOptionCache] = useState<
         Record<string, ComboboxOption>
     >({});
+    const [panelPosition, setPanelPosition] = useState<PanelPosition | null>(
+        null,
+    );
 
     const selected = value ?? internalValue;
     const resolvedPlaceholder = placeholder ?? `Select ${label.toLowerCase()}…`;
@@ -104,17 +208,13 @@ export function SearchableCombobox({
     const filtered = useMemo(() => {
         let list: ComboboxOption[];
         if (searchUrl) {
-            list = sourceOptions;
+            // Guard against stale remote catalogues while a new query is in flight.
+            list = filterOptionsLocally(sourceOptions, query);
         } else {
-            const q = query.trim().toLowerCase();
-            if (q === '') {
-                list = sourceOptions;
-            } else {
-                list = sourceOptions.filter((option) =>
-                    option.label.toLowerCase().includes(q),
-                );
-            }
+            list = filterOptionsLocally(sourceOptions, query);
         }
+
+        list = rankOptions(list, query);
 
         if (allowCustomValue) {
             const trimmed = query.trim();
@@ -129,7 +229,7 @@ export function SearchableCombobox({
                 if (!hasExact) {
                     list = [
                         {
-                            id: `custom:${trimmed}`,
+                            id: `${CUSTOM_ID_PREFIX}${trimmed}`,
                             label: trimmed,
                             description: 'Use custom value',
                         },
@@ -137,6 +237,8 @@ export function SearchableCombobox({
                     ];
                 }
             }
+        } else {
+            list = list.filter((option) => !isCustomOptionId(option.id));
         }
 
         return list;
@@ -159,7 +261,9 @@ export function SearchableCombobox({
             setOptionCache((prev) => {
                 const merged = { ...prev };
                 for (const option of next) {
-                    merged[option.id] = option;
+                    if (!isCustomOptionId(option.id) || allowCustomValue) {
+                        merged[option.id] = option;
+                    }
                 }
                 if (selected !== '') {
                     const current = findOption(next, selected);
@@ -170,7 +274,7 @@ export function SearchableCombobox({
                 return merged;
             });
         },
-        [selected],
+        [allowCustomValue, selected],
     );
 
     useEffect(() => {
@@ -183,6 +287,7 @@ export function SearchableCombobox({
         }
 
         const controller = new AbortController();
+        const seq = ++requestSeqRef.current;
         const timer = window.setTimeout(() => {
             const params = buildSearchParams(query, selected);
 
@@ -202,6 +307,9 @@ export function SearchableCombobox({
                         throw new Error('Search failed.');
                     }
                     const json: unknown = await response.json();
+                    if (seq !== requestSeqRef.current) {
+                        return;
+                    }
                     const next = mapResponse(json);
                     setRemoteOptions(next);
                     mergeCache(next);
@@ -213,12 +321,17 @@ export function SearchableCombobox({
                     ) {
                         return;
                     }
+                    if (seq !== requestSeqRef.current) {
+                        return;
+                    }
                     setSearchError('Unable to search.');
                 })
                 .finally(() => {
-                    setLoading(false);
+                    if (seq === requestSeqRef.current) {
+                        setLoading(false);
+                    }
                 });
-        }, 250);
+        }, 200);
 
         return () => {
             controller.abort();
@@ -233,6 +346,35 @@ export function SearchableCombobox({
         searchUrl,
         selected,
     ]);
+
+    useEffect(() => {
+        if (!open) {
+            setRemoteOptions(null);
+            setQuery('');
+            setSearchError(null);
+            setLoading(false);
+            requestSeqRef.current += 1;
+        }
+    }, [open]);
+
+    useLayoutEffect(() => {
+        if (!open) {
+            setPanelPosition(null);
+            return;
+        }
+
+        const update = () => {
+            setPanelPosition(computePanelPosition(triggerRef.current));
+        };
+        update();
+
+        window.addEventListener('resize', update);
+        window.addEventListener('scroll', update, true);
+        return () => {
+            window.removeEventListener('resize', update);
+            window.removeEventListener('scroll', update, true);
+        };
+    }, [open, filtered.length, loading]);
 
     useEffect(() => {
         if (!open) {
@@ -256,13 +398,14 @@ export function SearchableCombobox({
             return;
         }
         const handlePointer = (event: MouseEvent) => {
+            const target = event.target as Node;
             if (
-                rootRef.current &&
-                !rootRef.current.contains(event.target as Node)
+                rootRef.current?.contains(target) ||
+                panelRef.current?.contains(target)
             ) {
-                setOpen(false);
-                setQuery('');
+                return;
             }
+            setOpen(false);
         };
         document.addEventListener('mousedown', handlePointer);
         return () => document.removeEventListener('mousedown', handlePointer);
@@ -270,10 +413,19 @@ export function SearchableCombobox({
 
     const applySelection = useCallback(
         (nextId: string, option: ComboboxOption | null) => {
+            if (
+                nextId !== '' &&
+                !allowCustomValue &&
+                (isCustomOptionId(nextId) ||
+                    option?.description === 'Use custom value')
+            ) {
+                return;
+            }
+
             if (value === undefined) {
                 setInternalValue(nextId);
             }
-            if (option) {
+            if (option && (!isCustomOptionId(option.id) || allowCustomValue)) {
                 setOptionCache((prev) => ({
                     ...prev,
                     [option.id]: option,
@@ -283,13 +435,16 @@ export function SearchableCombobox({
             setOpen(false);
             setQuery('');
         },
-        [onValueChange, value],
+        [allowCustomValue, onValueChange, value],
     );
 
     const handleNativeSelectChange = (
         event: React.ChangeEvent<HTMLSelectElement>,
     ) => {
         const nextId = event.target.value;
+        if (nextId !== '' && !allowCustomValue && isCustomOptionId(nextId)) {
+            return;
+        }
         const option =
             findOption(filtered, nextId) ??
             findOption(sourceOptions, nextId) ??
@@ -305,19 +460,34 @@ export function SearchableCombobox({
     const selectOptions = useMemo(() => {
         const byId = new Map<string, ComboboxOption>();
         for (const option of options) {
-            byId.set(option.id, option);
+            if (!isCustomOptionId(option.id) || allowCustomValue) {
+                byId.set(option.id, option);
+            }
         }
         for (const option of sourceOptions) {
-            byId.set(option.id, option);
+            if (!isCustomOptionId(option.id) || allowCustomValue) {
+                byId.set(option.id, option);
+            }
         }
         for (const cached of Object.values(optionCache)) {
-            byId.set(cached.id, cached);
+            if (!isCustomOptionId(cached.id) || allowCustomValue) {
+                byId.set(cached.id, cached);
+            }
         }
         if (selected !== '' && !byId.has(selected) && selectedOption) {
-            byId.set(selected, selectedOption);
+            if (!isCustomOptionId(selected) || allowCustomValue) {
+                byId.set(selected, selectedOption);
+            }
         }
         return [...byId.values()];
-    }, [optionCache, options, selected, selectedOption, sourceOptions]);
+    }, [
+        allowCustomValue,
+        optionCache,
+        options,
+        selected,
+        selectedOption,
+        sourceOptions,
+    ]);
 
     const onTriggerKeyDown = (event: KeyboardEvent<HTMLButtonElement>) => {
         if (disabled) {
@@ -370,11 +540,18 @@ export function SearchableCombobox({
             setHighlightedIndex((index) => Math.max(index - 1, 0));
             return;
         }
-        if (event.key === 'Enter') {
-            event.preventDefault();
+        if (event.key === 'Enter' || event.key === 'Tab') {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+            }
             const option = filtered[highlightedIndex];
             if (option) {
+                if (event.key === 'Tab') {
+                    event.preventDefault();
+                }
                 applySelection(option.id, option);
+            } else if (event.key === 'Enter' && !allowCustomValue) {
+                event.preventDefault();
             }
         }
     };
@@ -400,6 +577,106 @@ export function SearchableCombobox({
                 </Button>
             )
         ) : null;
+
+    const panel =
+        open && panelPosition !== null
+            ? createPortal(
+                  <div
+                      ref={panelRef}
+                      data-searchable-combobox-panel=""
+                      className="fixed z-[80] rounded-md border border-input bg-popover text-popover-foreground shadow-md"
+                      style={{
+                          top: panelPosition.top,
+                          left: panelPosition.left,
+                          width: panelPosition.width,
+                          maxHeight: panelPosition.maxHeight,
+                      }}
+                      onKeyDown={onPanelKeyDown}
+                  >
+                      <div className="border-b border-input p-2">
+                          <Input
+                              ref={searchRef}
+                              id={panelSearchId}
+                              type="search"
+                              value={query}
+                              onChange={(event) => setQuery(event.target.value)}
+                              placeholder={`Search ${label.toLowerCase()}…`}
+                              autoComplete="off"
+                              disabled={disabled}
+                              aria-controls={listboxId}
+                              aria-autocomplete="list"
+                          />
+                      </div>
+                      <div
+                          id={listboxId}
+                          role="listbox"
+                          aria-labelledby={`${id}-label`}
+                          className="overflow-y-auto p-1"
+                          style={{
+                              maxHeight: Math.max(
+                                  80,
+                                  panelPosition.maxHeight - 52,
+                              ),
+                          }}
+                      >
+                          {loading ? (
+                              <p className="px-2 py-3 text-sm text-muted-foreground">
+                                  Searching…
+                              </p>
+                          ) : null}
+                          {!loading && filtered.length === 0 ? (
+                              <p className="px-2 py-3 text-sm text-muted-foreground">
+                                  {emptyMessage}
+                              </p>
+                          ) : null}
+                          {!loading
+                              ? filtered.map((option, index) => (
+                                    <div
+                                        key={option.id}
+                                        role="option"
+                                        aria-selected={option.id === selected}
+                                        id={`${listboxId}-option-${option.id}`}
+                                        className={cn(
+                                            'cursor-pointer rounded-sm px-2 py-1.5 text-sm outline-none',
+                                            index === highlightedIndex &&
+                                                'bg-accent text-accent-foreground',
+                                            option.id === selected &&
+                                                'font-medium',
+                                        )}
+                                        onMouseEnter={() =>
+                                            setHighlightedIndex(index)
+                                        }
+                                        onMouseDown={(event) => {
+                                            event.preventDefault();
+                                        }}
+                                        onClick={() =>
+                                            applySelection(option.id, option)
+                                        }
+                                    >
+                                        <span className="block truncate">
+                                            {option.label}
+                                        </span>
+                                        {option.description ? (
+                                            <span className="block truncate text-xs text-muted-foreground">
+                                                {option.description}
+                                            </span>
+                                        ) : null}
+                                    </div>
+                                ))
+                              : null}
+                      </div>
+                      {searchError ? (
+                          <p
+                              className="border-t border-input px-2 py-2 text-xs text-destructive"
+                              role="alert"
+                          >
+                              {searchError}
+                          </p>
+                      ) : null}
+                  </div>,
+                  document.body,
+              )
+            : null;
 
     if (showEmptyState) {
         return (
@@ -446,6 +723,7 @@ export function SearchableCombobox({
                 <div className="flex gap-1">
                     <button
                         type="button"
+                        ref={triggerRef}
                         role="combobox"
                         id={`${id}-trigger`}
                         disabled={disabled}
@@ -492,91 +770,7 @@ export function SearchableCombobox({
                     ) : null}
                 </div>
 
-                {open ? (
-                    <div
-                        className="absolute z-50 mt-1 w-full rounded-md border border-input bg-popover text-popover-foreground shadow-md"
-                        onKeyDown={onPanelKeyDown}
-                    >
-                        <div className="border-b border-input p-2">
-                            <Input
-                                ref={searchRef}
-                                id={panelSearchId}
-                                type="search"
-                                value={query}
-                                onChange={(event) =>
-                                    setQuery(event.target.value)
-                                }
-                                placeholder={`Search ${label.toLowerCase()}…`}
-                                autoComplete="off"
-                                disabled={disabled}
-                                aria-controls={listboxId}
-                                aria-autocomplete="list"
-                            />
-                        </div>
-                        <div
-                            id={listboxId}
-                            role="listbox"
-                            aria-labelledby={`${id}-label`}
-                            className="max-h-60 overflow-y-auto p-1"
-                        >
-                            {loading ? (
-                                <p className="px-2 py-3 text-sm text-muted-foreground">
-                                    Searching…
-                                </p>
-                            ) : null}
-                            {!loading && filtered.length === 0 ? (
-                                <p className="px-2 py-3 text-sm text-muted-foreground">
-                                    {query.trim() === ''
-                                        ? emptyMessage
-                                        : `No matches for “${query}”.`}
-                                </p>
-                            ) : null}
-                            {!loading
-                                ? filtered.map((option, index) => (
-                                      <div
-                                          key={option.id}
-                                          role="option"
-                                          aria-selected={option.id === selected}
-                                          id={`${listboxId}-option-${option.id}`}
-                                          className={cn(
-                                              'cursor-pointer rounded-sm px-2 py-1.5 text-sm outline-none',
-                                              index === highlightedIndex &&
-                                                  'bg-accent text-accent-foreground',
-                                              option.id === selected &&
-                                                  'font-medium',
-                                          )}
-                                          onMouseEnter={() =>
-                                              setHighlightedIndex(index)
-                                          }
-                                          onMouseDown={(event) => {
-                                              event.preventDefault();
-                                          }}
-                                          onClick={() =>
-                                              applySelection(option.id, option)
-                                          }
-                                      >
-                                          <span className="block truncate">
-                                              {option.label}
-                                          </span>
-                                          {option.description ? (
-                                              <span className="block truncate text-xs text-muted-foreground">
-                                                  {option.description}
-                                              </span>
-                                          ) : null}
-                                      </div>
-                                  ))
-                                : null}
-                        </div>
-                        {searchError ? (
-                            <p
-                                className="border-t border-input px-2 py-2 text-xs text-destructive"
-                                role="alert"
-                            >
-                                {searchError}
-                            </p>
-                        ) : null}
-                    </div>
-                ) : null}
+                {panel}
 
                 <select
                     id={id}

@@ -5,6 +5,8 @@ namespace App\Domains\Geography;
 use App\Models\City;
 use App\Models\State;
 use App\Support\Database\CaseInsensitiveLike;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
@@ -21,12 +23,14 @@ final class GeographyLookupService
     {
         $query = State::query()
             ->where('country_code', 'IN')
-            ->where('is_active', true)
-            ->orderBy('name');
+            ->where('is_active', true);
 
         $search = trim((string) $search);
         if ($search !== '') {
             CaseInsensitiveLike::whereAnyContains($query, ['name', 'code'], $search);
+            $this->orderBySearchRelevance($query, ['name', 'code'], $search);
+        } else {
+            $query->orderBy('name');
         }
 
         /** @var list<array{id: string, name: string, code: string, gst_code: string}> $states */
@@ -52,12 +56,14 @@ final class GeographyLookupService
 
         $query = City::query()
             ->where('state_id', $state->id)
-            ->where('is_active', true)
-            ->orderBy('name');
+            ->where('is_active', true);
 
         $search = trim((string) $search);
         if ($search !== '') {
             CaseInsensitiveLike::whereAnyContains($query, ['name'], $search);
+            $this->orderBySearchRelevance($query, ['name'], $search);
+        } else {
+            $query->orderBy('name');
         }
 
         /** @var list<array{id: string, name: string, state_id: string}> $cities */
@@ -143,5 +149,35 @@ final class GeographyLookupService
             '/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i',
             $value,
         );
+    }
+
+    /**
+     * Exact match → prefix match → substring match, then alphabetical.
+     *
+     * @param  Builder<Model>  $query
+     * @param  list<string>  $columns
+     */
+    private function orderBySearchRelevance($query, array $columns, string $search): void
+    {
+        $needle = mb_strtolower(trim($search), 'UTF-8');
+        $prefix = $needle.'%';
+        $driver = $query->getConnection()->getDriverName();
+
+        $cases = [];
+        $bindings = [];
+        foreach ($columns as $column) {
+            if ($driver === 'pgsql') {
+                $cases[] = "WHEN LOWER({$column}) = ? THEN 0";
+                $cases[] = "WHEN LOWER({$column}) LIKE ? THEN 1";
+            } else {
+                $cases[] = "WHEN LOWER(`{$column}`) = ? THEN 0";
+                $cases[] = "WHEN LOWER(`{$column}`) LIKE ? THEN 1";
+            }
+            $bindings[] = $needle;
+            $bindings[] = $prefix;
+        }
+
+        $query->orderByRaw('CASE '.implode(' ', $cases).' ELSE 2 END', $bindings)
+            ->orderBy('name');
     }
 }
