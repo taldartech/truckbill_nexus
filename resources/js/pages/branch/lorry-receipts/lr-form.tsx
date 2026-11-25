@@ -17,6 +17,10 @@ import {
     type QuickCreatePartyRole,
 } from '@/components/masters/quick-create-party-sheet';
 import {
+    QuickCreateStationSheet,
+    type QuickCreatedStation,
+} from '@/components/masters/quick-create-station-sheet';
+import {
     SearchablePartySelect,
     type PartyOption,
 } from '@/components/searchable-party-select';
@@ -156,6 +160,7 @@ type Props = {
         vehicles_store?: string;
         goods_types_store?: string;
         package_types_store?: string;
+        stations_store?: string;
     };
     permissions?: {
         can_view_freight?: boolean;
@@ -592,6 +597,18 @@ export default function LrForm({
         kind: 'goods' | 'package';
         rowIndex: number;
     } | null>(null);
+    const [stations, setStations] = useState<NamedOption[]>(
+        () => formOptions.stations,
+    );
+    const [fromStationId, setFromStationId] = useState(
+        lorryReceipt?.from_station_id ?? '',
+    );
+    const [toStationId, setToStationId] = useState(
+        lorryReceipt?.to_station_id ?? '',
+    );
+    const [stationQuickCreateTarget, setStationQuickCreateTarget] = useState<
+        'from' | 'to' | null
+    >(null);
     const [goods, setGoods] = useState<GoodsRow[]>(() =>
         lorryReceipt?.goods?.length
             ? mapGoodsFromReceipt(lorryReceipt.goods)
@@ -1049,7 +1066,7 @@ export default function LrForm({
                 resolveLocationDisplay(
                     lorryReceipt.from_text,
                     lorryReceipt.from_station_id,
-                    formOptions.stations,
+                    stations,
                 ),
                 loadingStation,
             );
@@ -1059,7 +1076,7 @@ export default function LrForm({
                 resolveLocationDisplay(
                     lorryReceipt.to_text,
                     lorryReceipt.to_station_id,
-                    formOptions.stations,
+                    stations,
                 ),
                 unloadingStation,
             );
@@ -1447,7 +1464,7 @@ export default function LrForm({
                 }
             >
                 <datalist id="stations-list">
-                    {formOptions.stations.map((station) => (
+                    {stations.map((station) => (
                         <option key={station.id} value={station.name} />
                     ))}
                 </datalist>
@@ -1867,25 +1884,47 @@ export default function LrForm({
                                                     </div>
                                                 ) : needsStations ? (
                                                     <div className="space-y-1.5">
-                                                        <Label htmlFor="from_station_id">
-                                                            Loading Station *
-                                                        </Label>
+                                                        <div className="flex items-center justify-between gap-2">
+                                                            <Label htmlFor="from_station_id">
+                                                                Loading Station
+                                                                *
+                                                            </Label>
+                                                            {canQuickCreateCatalogues &&
+                                                            urls.stations_store ? (
+                                                                <button
+                                                                    type="button"
+                                                                    className="text-xs font-medium text-[#2D8CFF] hover:underline"
+                                                                    onClick={() =>
+                                                                        setStationQuickCreateTarget(
+                                                                            'from',
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    + Add
+                                                                </button>
+                                                            ) : null}
+                                                        </div>
                                                         <select
                                                             id="from_station_id"
                                                             name="from_station_id"
                                                             className={
                                                                 fieldClass
                                                             }
-                                                            defaultValue={
-                                                                lorryReceipt?.from_station_id ??
-                                                                ''
+                                                            value={
+                                                                fromStationId
+                                                            }
+                                                            onChange={(event) =>
+                                                                setFromStationId(
+                                                                    event.target
+                                                                        .value,
+                                                                )
                                                             }
                                                             required
                                                         >
                                                             <option value="">
                                                                 Select
                                                             </option>
-                                                            {formOptions.stations.map(
+                                                            {stations.map(
                                                                 (station) => (
                                                                     <option
                                                                         key={
@@ -2014,25 +2053,45 @@ export default function LrForm({
                                                     </div>
                                                 ) : needsStations ? (
                                                     <div className="space-y-1.5">
-                                                        <Label htmlFor="to_station_id">
-                                                            Unloading Station *
-                                                        </Label>
+                                                        <div className="flex items-center justify-between gap-2">
+                                                            <Label htmlFor="to_station_id">
+                                                                Unloading
+                                                                Station *
+                                                            </Label>
+                                                            {canQuickCreateCatalogues &&
+                                                            urls.stations_store ? (
+                                                                <button
+                                                                    type="button"
+                                                                    className="text-xs font-medium text-[#2D8CFF] hover:underline"
+                                                                    onClick={() =>
+                                                                        setStationQuickCreateTarget(
+                                                                            'to',
+                                                                        )
+                                                                    }
+                                                                >
+                                                                    + Add
+                                                                </button>
+                                                            ) : null}
+                                                        </div>
                                                         <select
                                                             id="to_station_id"
                                                             name="to_station_id"
                                                             className={
                                                                 fieldClass
                                                             }
-                                                            defaultValue={
-                                                                lorryReceipt?.to_station_id ??
-                                                                ''
+                                                            value={toStationId}
+                                                            onChange={(event) =>
+                                                                setToStationId(
+                                                                    event.target
+                                                                        .value,
+                                                                )
                                                             }
                                                             required
                                                         >
                                                             <option value="">
                                                                 Select
                                                             </option>
-                                                            {formOptions.stations.map(
+                                                            {stations.map(
                                                                 (station) => (
                                                                     <option
                                                                         key={
@@ -3286,6 +3345,43 @@ export default function LrForm({
                                 );
                             }
                             setCatalogueQuickCreate(null);
+                        }}
+                    />
+                ) : null}
+
+                {stationQuickCreateTarget && urls.stations_store ? (
+                    <QuickCreateStationSheet
+                        open={stationQuickCreateTarget !== null}
+                        onOpenChange={(open) => {
+                            if (!open) {
+                                setStationQuickCreateTarget(null);
+                            }
+                        }}
+                        storeUrl={urls.stations_store}
+                        onCreated={(station: QuickCreatedStation) => {
+                            setStations((current) => {
+                                if (
+                                    current.some(
+                                        (entry) => entry.id === station.id,
+                                    )
+                                ) {
+                                    return current;
+                                }
+                                return [
+                                    ...current,
+                                    {
+                                        id: station.id,
+                                        name: station.name,
+                                        code: station.code ?? null,
+                                    },
+                                ];
+                            });
+                            if (stationQuickCreateTarget === 'from') {
+                                setFromStationId(station.id);
+                            } else {
+                                setToStationId(station.id);
+                            }
+                            setStationQuickCreateTarget(null);
                         }}
                     />
                 ) : null}

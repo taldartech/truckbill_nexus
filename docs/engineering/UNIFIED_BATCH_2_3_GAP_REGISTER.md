@@ -67,6 +67,7 @@
 | U23-ACC-TAX-SUMMARY    | GST/TDS tax control-account summary                          | Accounting        | Aligned (`d00af8b` / `6de1b87`)                                                  |
 | U23-PARTLOAD-PENDING   | Partload Pending Loading register                            | Partload          | Aligned (`2eeb9f1`)                                                              |
 | U23-QA-CATALOGUE       | Bilty Goods/Package + Trip Expense Category quick-add        | Shared            | Aligned (`4c23b24`+)                                                             |
+| U23-QA-STATION         | Bilty Station quick-add (owner stations)                     | Shared            | Aligned (26 Nov 2026 ERP)                                                        |
 | U23-PARTLOAD-INTRANSIT | Partload In Transit (Dispatched Challans) register           | Partload          | Aligned (`e1d5967`)                                                              |
 | U23-PARTLOAD-PEND-DEL  | Partload Pending Delivery register                           | Partload          | Aligned (26 Nov 2026 ERP)                                                        |
 

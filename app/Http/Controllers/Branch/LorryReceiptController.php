@@ -181,6 +181,7 @@ class LorryReceiptController extends Controller
                 'vehicles_store' => route('branch.vehicles.store', absolute: false),
                 'goods_types_store' => route('branch.goods-types.store', absolute: false),
                 'package_types_store' => route('branch.package-types.store', absolute: false),
+                'stations_store' => route('branch.stations.store', absolute: false),
             ],
         ]);
     }
@@ -464,6 +465,7 @@ class LorryReceiptController extends Controller
                 'vehicles_store' => route('branch.vehicles.store', absolute: false),
                 'goods_types_store' => route('branch.goods-types.store', absolute: false),
                 'package_types_store' => route('branch.package-types.store', absolute: false),
+                'stations_store' => route('branch.stations.store', absolute: false),
             ],
         ]);
     }

@@ -16,8 +16,10 @@ use App\Models\Company;
 use App\Models\Party;
 use App\Models\Station;
 use App\Models\StationDefaultTransporter;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -118,23 +120,41 @@ class StationController extends Controller
         ]);
     }
 
-    public function store(Request $request, Company $company, Branch $branch): RedirectResponse
+    public function store(Request $request, Company $company, Branch $branch): RedirectResponse|JsonResponse
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
 
         $validated = $request->validate([
-            'code' => ['required', 'string', 'max:32'],
+            'code' => ['nullable', 'string', 'max:32'],
             'name' => ['required', 'string', 'max:255'],
             ...$this->geographyValidationRules(false),
             'is_active' => ['sometimes', 'boolean'],
             'remark' => ['nullable', 'string', 'max:1000'],
         ]);
+
+        $code = strtoupper(trim((string) ($validated['code'] ?? '')));
+        if ($code === '') {
+            $slug = strtoupper((string) preg_replace('/[^A-Za-z0-9]+/', '-', Str::ascii(trim((string) $validated['name']))));
+            $slug = trim($slug, '-');
+            $code = Str::limit($slug !== '' ? $slug : 'STN', 32, '');
+        }
+        $validated['code'] = $code;
         $validated = $this->withResolvedGeography($validated);
 
         try {
             $station = $this->stations->create($actor, $company, $validated, $validated['remark'] ?? 'Create station');
         } catch (MasterDomainException $e) {
             abort(403, $e->getMessage());
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'data' => [
+                    'id' => $station->id,
+                    'name' => $station->name,
+                    'code' => $station->code,
+                ],
+            ], 201);
         }
 
         return redirect()
