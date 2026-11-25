@@ -22,8 +22,6 @@ pest()->extend(TestCase::class)
     ->beforeEach(function (): void {
         // MySQL CI job does not run Vite build; Inertia HTML responses must not require the manifest.
         $this->withoutVite();
-        // Party/company address forms resolve State/City names against Masters.
-        ensureIndiaGeography();
     });
 
 /*
