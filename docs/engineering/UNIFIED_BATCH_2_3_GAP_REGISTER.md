@@ -69,7 +69,8 @@
 | U23-QA-CATALOGUE       | Bilty Goods/Package + Trip Expense Category quick-add        | Shared            | Aligned (`4c23b24`+)                                                             |
 | U23-QA-STATION         | Bilty Station quick-add (owner stations)                     | Shared            | Aligned (26 Nov 2026 ERP)                                                        |
 | U23-QA-VEHICLE-NESTED  | Nested Truck Type / Tyre Layout quick-add on vehicle sheet   | Shared            | Aligned (`fe92bc4`)                                                              |
-| U23-QA-BANK-CASH       | Bank/Cash quick-add on voucher + trip expense forms          | Shared            | Aligned (26 Nov 2026 ERP)                                                        |
+| U23-QA-BANK-CASH       | Bank/Cash quick-add on voucher + trip expense forms          | Shared            | Aligned (`f0b48df`)                                                              |
+| U23-PARTLOAD-DR-UX     | Partload DR: party/bank selectors (no raw UUID inputs)       | Partload          | Aligned (26 Nov 2026 ERP)                                                        |
 | U23-PARTLOAD-INTRANSIT | Partload In Transit (Dispatched Challans) register           | Partload          | Aligned (`e1d5967`)                                                              |
 | U23-PARTLOAD-PEND-DEL  | Partload Pending Delivery register                           | Partload          | Aligned (26 Nov 2026 ERP)                                                        |
 
