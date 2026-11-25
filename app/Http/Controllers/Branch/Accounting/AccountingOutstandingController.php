@@ -27,20 +27,66 @@ class AccountingOutstandingController extends Controller
 
     public function index(Request $request, Company $company, Branch $branch): Response
     {
+        return $this->renderSnapshot(
+            $request,
+            $company,
+            $branch,
+            'Outstanding Control Accounts',
+            'outstanding',
+            fn (): array => $this->workspace->outstandingControlAccounts(
+                $company,
+                $request->string('as_of')->toString() ?: null,
+                $branch,
+            ),
+        );
+    }
+
+    public function tax(Request $request, Company $company, Branch $branch): Response
+    {
+        return $this->renderSnapshot(
+            $request,
+            $company,
+            $branch,
+            'GST / TDS Accounting Summary',
+            'tax',
+            fn (): array => $this->workspace->taxControlAccounts(
+                $company,
+                $request->string('as_of')->toString() ?: null,
+                $branch,
+            ),
+        );
+    }
+
+    /**
+     * @param  callable(): list<array{ledger_id: string, ledger_name: string, debit: string, credit: string, net: string, side: string}>  $rows
+     */
+    private function renderSnapshot(
+        Request $request,
+        Company $company,
+        Branch $branch,
+        string $title,
+        string $kind,
+        callable $rows,
+    ): Response {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertPermission($actor, $company, $branch, PermissionCodes::BRANCH_ACCOUNTING_REPORT_VIEW);
         $this->workspace->bootstrap($company);
 
         $asOf = $request->string('as_of')->toString() ?: null;
-        $rows = $this->workspace->outstandingControlAccounts($company, $asOf, $branch);
 
         return Inertia::render('accounting/reports/outstanding', [
+            'title' => $title,
+            'kind' => $kind,
             'filters' => [
                 'as_of' => $asOf,
             ],
-            'rows' => $rows,
+            'rows' => $rows(),
             'urls' => [
-                'index' => route('branch.accounting.reports.outstanding', absolute: false),
+                'index' => $kind === 'tax'
+                    ? route('branch.accounting.reports.tax-summary', absolute: false)
+                    : route('branch.accounting.reports.outstanding', absolute: false),
+                'outstanding' => route('branch.accounting.reports.outstanding', absolute: false),
+                'tax_summary' => route('branch.accounting.reports.tax-summary', absolute: false),
                 'trial_balance' => route('branch.accounting.reports.trial-balance', absolute: false),
                 'vouchers' => route('branch.accounting.vouchers.index', absolute: false),
             ],

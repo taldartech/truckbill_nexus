@@ -465,19 +465,70 @@ final class AccountingWorkspaceService
             : CarbonImmutable::now('Asia/Kolkata')->toDateString();
         $fyStart = $this->periods->ensureCurrentFinancialYear($company)->starts_on->toDateString();
 
-        $names = [
-            'Customer Receivables',
-            'Customer Advances',
-            'Transporter Payables',
-            'Transporter Advances',
-            'Vendor Payables',
-            'Vendor Advances',
-            'Driver Payables',
-            'Driver Advances',
-            'TDS Payable',
-            'TDS Receivable',
-        ];
+        return $this->controlAccountSnapshot(
+            $company,
+            [
+                'Customer Receivables',
+                'Customer Advances',
+                'Transporter Payables',
+                'Transporter Advances',
+                'Vendor Payables',
+                'Vendor Advances',
+                'Driver Payables',
+                'Driver Advances',
+                'TDS Payable',
+                'TDS Receivable',
+            ],
+            $fyStart,
+            $asOf,
+            $branch,
+        );
+    }
 
+    /**
+     * GST / TDS tax ledger snapshot from posted GL balances.
+     *
+     * @return list<array{ledger_id: string, ledger_name: string, debit: string, credit: string, net: string, side: string}>
+     */
+    public function taxControlAccounts(
+        Company $company,
+        ?string $asOfDate = null,
+        ?Branch $branch = null,
+    ): array {
+        $asOf = filled($asOfDate)
+            ? CarbonImmutable::parse($asOfDate)->toDateString()
+            : CarbonImmutable::now('Asia/Kolkata')->toDateString();
+        $fyStart = $this->periods->ensureCurrentFinancialYear($company)->starts_on->toDateString();
+
+        return $this->controlAccountSnapshot(
+            $company,
+            [
+                'Output CGST',
+                'Output SGST',
+                'Output IGST',
+                'Input CGST',
+                'Input SGST',
+                'Input IGST',
+                'TDS Payable',
+                'TDS Receivable',
+            ],
+            $fyStart,
+            $asOf,
+            $branch,
+        );
+    }
+
+    /**
+     * @param  list<string>  $names
+     * @return list<array{ledger_id: string, ledger_name: string, debit: string, credit: string, net: string, side: string}>
+     */
+    private function controlAccountSnapshot(
+        Company $company,
+        array $names,
+        string $fyStart,
+        string $asOf,
+        ?Branch $branch,
+    ): array {
         $rows = [];
         foreach ($names as $name) {
             $ledger = GlLedger::query()
