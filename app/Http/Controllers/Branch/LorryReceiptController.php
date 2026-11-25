@@ -416,7 +416,7 @@ class LorryReceiptController extends Controller
                 [
                     'can_create' => $this->authorizer->allowsCustomer($actor, PermissionCodes::LR_EDIT, $company, $branch),
                     'can_edit' => $this->authorizer->allowsCustomer($actor, PermissionCodes::LR_EDIT, $company, $branch),
-                    'can_delete' => $this->authorizer->allowsCustomer($actor, PermissionCodes::LR_EDIT, $company, $branch),
+                    'can_delete' => $this->authorizer->allowsCustomer($actor, PermissionCodes::LR_DELETE, $company, $branch),
                 ],
             ),
         ]);
