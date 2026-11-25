@@ -59,6 +59,8 @@
 | U23-PARTLOAD-MAIN      | Partload Main Challan consolidation + cascade dispatch       | Partload          | Aligned (`0c59683`)                                        |
 | U23-ACC-OPENING        | Opening balance dry-run + idempotent Opening voucher         | Accounting        | Aligned (`b9a4708`)                                        |
 | U23-MYSQL-FK           | MySQL composite FK SET NULL / identifier length              | Infra             | Aligned for ACC/Partload migrations (`b9a4708`)            |
+| U23-ACC-CASH-BANK      | Cash Book / Bank Book reports                                | Accounting        | Aligned (`ada76d5`)                                        |
+| U23-ACC-PERIOD-REOPEN  | Controlled reopen of closed accounting periods               | Accounting        | Aligned (`22d1428`)                                        |
 
 ## PO directive (25 Nov 2026) — superseding earlier OwnFleet navigation
 
