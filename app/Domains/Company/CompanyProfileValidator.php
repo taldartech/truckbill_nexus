@@ -38,12 +38,7 @@ final class CompanyProfileValidator
         $cityId = filled($profile['city_id'] ?? null) ? (string) $profile['city_id'] : null;
 
         try {
-            $resolvedGeography = $this->geography->resolveAddressFields(
-                $stateId,
-                $cityId,
-                isset($profile['state']) ? (string) $profile['state'] : null,
-                isset($profile['city']) ? (string) $profile['city'] : null,
-            );
+            $resolvedGeography = $this->geography->resolveAddressFields($stateId, $cityId);
         } catch (ValidationException $e) {
             $messages = $e->errors();
             $first = collect($messages)->flatten()->first();
@@ -86,8 +81,9 @@ final class CompanyProfileValidator
             throw new CompanyDomainException('Registered address is required.');
         }
 
-        if ($normalized['state'] === '' || $normalized['city'] === '') {
-            throw new CompanyDomainException('State and city are required.');
+        if ($normalized['state_id'] === null || $normalized['city_id'] === null
+            || $normalized['state'] === '' || $normalized['city'] === '') {
+            throw new CompanyDomainException('State and city must be selected from the geographic master.');
         }
 
         if ($normalized['pin'] === '' || ! preg_match(self::PIN_PATTERN, $normalized['pin'])) {

@@ -88,6 +88,8 @@ function mergeOptions(
 
 /**
  * Dependent State → City selectors with remote search.
+ * Default `ids` mode is Master-only (no custom text).
+ * `names` mode is CRM Lead-only: Master selection or free-text.
  * Changing State clears an incompatible City.
  */
 export function StateCityFields({
@@ -225,11 +227,22 @@ export function StateCityFields({
                         return params;
                     }}
                     mapResponse={mapStates}
-                    emptyMessage="No states found."
+                    emptyMessage={
+                        canManage
+                            ? 'No matching State. Use + Add to create one.'
+                            : 'No matching State found.'
+                    }
                     placeholder="Search state…"
                     addAction={stateAddAction}
                     allowCustomValue={useNamesMode}
                     onValueChange={(id, option) => {
+                        if (
+                            !useNamesMode &&
+                            id !== '' &&
+                            (isCustomGeographyId(id) || !isRealUuid(id))
+                        ) {
+                            return;
+                        }
                         const nextState = id;
                         const nextStateName = option?.label ?? '';
                         setSelectedStateId(nextState);
@@ -244,13 +257,19 @@ export function StateCityFields({
                         });
                     }}
                 />
-                <input type="hidden" name="state" value={selectedStateName} />
                 {useNamesMode ? (
-                    <input
-                        type="hidden"
-                        name="state_id"
-                        value={submittedStateId}
-                    />
+                    <>
+                        <input
+                            type="hidden"
+                            name="state"
+                            value={selectedStateName}
+                        />
+                        <input
+                            type="hidden"
+                            name="state_id"
+                            value={submittedStateId}
+                        />
+                    </>
                 ) : null}
                 <SearchableCombobox
                     id="city_id"
@@ -277,14 +296,23 @@ export function StateCityFields({
                     }}
                     mapResponse={mapCities}
                     emptyMessage={
-                        stateHasSelection
-                            ? 'No cities in this state.'
-                            : 'Select a state first.'
+                        !stateHasSelection
+                            ? 'Select a state first.'
+                            : canManage
+                              ? 'No matching City. Use + Add to create one.'
+                              : 'No cities in this state.'
                     }
                     placeholder="Search city…"
                     addAction={cityAddAction}
                     allowCustomValue={useNamesMode}
                     onValueChange={(id, option) => {
+                        if (
+                            !useNamesMode &&
+                            id !== '' &&
+                            (isCustomGeographyId(id) || !isRealUuid(id))
+                        ) {
+                            return;
+                        }
                         const nextCity = id;
                         const nextCityName = option?.label ?? '';
                         setSelectedCityId(nextCity);
@@ -297,13 +325,19 @@ export function StateCityFields({
                         });
                     }}
                 />
-                <input type="hidden" name="city" value={selectedCityName} />
                 {useNamesMode ? (
-                    <input
-                        type="hidden"
-                        name="city_id"
-                        value={submittedCityId}
-                    />
+                    <>
+                        <input
+                            type="hidden"
+                            name="city"
+                            value={selectedCityName}
+                        />
+                        <input
+                            type="hidden"
+                            name="city_id"
+                            value={submittedCityId}
+                        />
+                    </>
                 ) : null}
             </div>
 

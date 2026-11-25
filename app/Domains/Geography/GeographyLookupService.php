@@ -9,7 +9,8 @@ use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Central State/City lookup and validation for address forms.
+ * Central State/City lookup and validation for Master-based address forms.
+ * Names are derived exclusively from selected Master records — no client text fallback.
  */
 final class GeographyLookupService
 {
@@ -70,14 +71,23 @@ final class GeographyLookupService
     }
 
     /**
+     * Resolve Master geographic IDs into authoritative ID + denormalized name pairs.
+     * Client-supplied names are ignored; CRM Lead free-text is handled separately.
+     *
      * @return array{state_id: string|null, city_id: string|null, state: string|null, city: string|null}
      */
-    public function resolveAddressFields(?string $stateId, ?string $cityId, ?string $fallbackState = null, ?string $fallbackCity = null): array
+    public function resolveAddressFields(?string $stateId, ?string $cityId): array
     {
         $state = null;
         $city = null;
 
         if (filled($stateId)) {
+            if (! $this->looksLikeUuid((string) $stateId) || str_starts_with((string) $stateId, 'custom:')) {
+                throw ValidationException::withMessages([
+                    'state_id' => 'Select a valid State from the master list.',
+                ]);
+            }
+
             $state = State::query()->whereKey($stateId)->where('is_active', true)->first();
             if ($state === null) {
                 throw ValidationException::withMessages([
@@ -87,6 +97,12 @@ final class GeographyLookupService
         }
 
         if (filled($cityId)) {
+            if (! $this->looksLikeUuid((string) $cityId) || str_starts_with((string) $cityId, 'custom:')) {
+                throw ValidationException::withMessages([
+                    'city_id' => 'Select a valid City from the master list.',
+                ]);
+            }
+
             $city = City::query()->whereKey($cityId)->where('is_active', true)->first();
             if ($city === null) {
                 throw ValidationException::withMessages([
@@ -104,10 +120,8 @@ final class GeographyLookupService
         return [
             'state_id' => $state?->id,
             'city_id' => $city?->id,
-            'state' => ($state !== null ? $state->name : null)
-                ?? (filled($fallbackState) ? trim((string) $fallbackState) : null),
-            'city' => ($city !== null ? $city->name : null)
-                ?? (filled($fallbackCity) ? trim((string) $fallbackCity) : null),
+            'state' => $state?->name,
+            'city' => $city?->name,
         ];
     }
 
@@ -121,5 +135,13 @@ final class GeographyLookupService
             ->where('is_active', true)
             ->orderBy('name')
             ->get();
+    }
+
+    private function looksLikeUuid(string $value): bool
+    {
+        return (bool) preg_match(
+            '/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i',
+            $value,
+        );
     }
 }

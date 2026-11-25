@@ -176,6 +176,15 @@ Job Card: Draft/Open/Inspection/Work in Progress/On Hold/Completed/Closed; cance
 
 Every feature requires field validation, state transition tests, permission/tenant tests, audit/remark tests, cancellation/deletion dependency tests, accounting/reversal tests, entitlement tests, idempotency/retry tests, file/notification tests and operational monitoring. No production release without security, reconciliation, backup/restore and load certification.
 
+## 18A. Geographic Master Enforcement
+
+All Company, Branch, Party, Station and other Master-based geographic inputs must use valid State and City Master relationships. Custom State and City values are permitted exclusively for CRM Leads, including public website Lead submissions. Shared geographic services must not provide unrestricted text fallback for Master-based entities.
+
+- When geography is optional, empty values remain permitted; any provided location must resolve to an active Master record with a valid State↔City relationship.
+- Missing locations are created only through the shared Add State / Add City quick-create workflow (catalogue-safe State codes; duplicate City prevention).
+- Denormalized State/City name columns on Master-based entities, where retained for presentation or search, must be derived from the selected Master records — never trusted from client free text.
+- CRM Lead geography is stored as text without mandatory State/City foreign keys. Selecting a Master on a Lead form persists the Master name as text and does not invent a global Master from unmatched Lead text.
+
 ## 19. Codebase Cleanliness, Minimalism and Dead Code Elimination
 
 These rules are permanent and mandatory for every implementation task.

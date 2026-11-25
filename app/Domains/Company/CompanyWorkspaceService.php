@@ -72,7 +72,9 @@ final class CompanyWorkspaceService
                 'pan' => $normalized['pan'] !== '' ? $normalized['pan'] : null,
                 'registered_address' => $normalized['registered_address'] !== '' ? $normalized['registered_address'] : null,
                 'state' => $normalized['state'] !== '' ? $normalized['state'] : null,
+                'state_id' => $normalized['state_id'],
                 'city' => $normalized['city'] !== '' ? $normalized['city'] : null,
+                'city_id' => $normalized['city_id'],
                 'pin' => $normalized['pin'] !== '' ? $normalized['pin'] : null,
                 'contact_person' => $normalized['contact_person'] !== '' ? $normalized['contact_person'] : null,
                 'mobile' => $normalized['mobile'] !== '' ? $normalized['mobile'] : null,
@@ -164,7 +166,9 @@ final class CompanyWorkspaceService
                         'pan' => $normalized['pan'] !== '' ? $normalized['pan'] : null,
                         'registered_address' => $normalized['registered_address'] !== '' ? $normalized['registered_address'] : null,
                         'state' => $normalized['state'] !== '' ? $normalized['state'] : null,
+                        'state_id' => $normalized['state_id'],
                         'city' => $normalized['city'] !== '' ? $normalized['city'] : null,
+                        'city_id' => $normalized['city_id'],
                         'pin' => $normalized['pin'] !== '' ? $normalized['pin'] : null,
                         'contact_person' => $normalized['contact_person'] !== '' ? $normalized['contact_person'] : null,
                         'mobile' => $normalized['mobile'] !== '' ? $normalized['mobile'] : null,
@@ -589,13 +593,10 @@ final class CompanyWorkspaceService
             }
         }
 
-        if (array_key_exists('state_id', $attributes) || array_key_exists('city_id', $attributes)
-            || array_key_exists('state', $attributes) || array_key_exists('city', $attributes)) {
+        if (array_key_exists('state_id', $attributes) || array_key_exists('city_id', $attributes)) {
             $resolved = $this->geography->resolveAddressFields(
-                isset($attributes['state_id']) ? ($attributes['state_id'] !== null && $attributes['state_id'] !== '' ? (string) $attributes['state_id'] : null) : null,
-                isset($attributes['city_id']) ? ($attributes['city_id'] !== null && $attributes['city_id'] !== '' ? (string) $attributes['city_id'] : null) : null,
-                isset($attributes['state']) ? (string) $attributes['state'] : null,
-                isset($attributes['city']) ? (string) $attributes['city'] : null,
+                filled($attributes['state_id'] ?? null) ? (string) $attributes['state_id'] : null,
+                filled($attributes['city_id'] ?? null) ? (string) $attributes['city_id'] : null,
             );
             $normalized['state_id'] = $resolved['state_id'];
             $normalized['city_id'] = $resolved['city_id'];
