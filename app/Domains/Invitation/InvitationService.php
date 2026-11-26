@@ -3,15 +3,19 @@
 namespace App\Domains\Invitation;
 
 use App\Domains\Company\CompanyAccessService;
+use App\Domains\Company\CompanyWorkspaceService;
 use App\Domains\Identity\Enums\IdentityType;
 use App\Domains\Identity\IdentityLifecycleService;
 use App\Domains\Invitation\Enums\InvitationStatus;
 use App\Domains\Invitation\Exceptions\InvitationException;
+use App\Domains\Rbac\RoleAssignmentService;
 use App\Models\Branch;
 use App\Models\BranchAssignment;
+use App\Models\BranchRoleAssignment;
 use App\Models\Company;
 use App\Models\CompanyMembership;
 use App\Models\Invitation;
+use App\Models\InvitationBranchAccessIntent;
 use App\Models\User;
 use App\Support\Audit\AuditAction;
 use App\Support\Audit\AuditedTransaction;
@@ -38,12 +42,14 @@ final class InvitationService
         private readonly OutboxWriter $outboxWriter = new OutboxWriter,
         private readonly CompanyAccessService $access = new CompanyAccessService,
         private readonly IdentityLifecycleService $identities = new IdentityLifecycleService,
+        private readonly CompanyWorkspaceService $workspace = new CompanyWorkspaceService,
+        private readonly RoleAssignmentService $roles = new RoleAssignmentService,
     ) {}
 
     /**
      * @return array{invitation: Invitation, plain_token: string}
      */
-    public function create(User $actor, Company $company, string $email, ?Branch $branch = null): array
+    public function create(User $actor, Company $company, string $email, ?Branch $branch = null, ?string $inviteeName = null): array
     {
         $this->assertCanManageCompanyInvitations($actor, $company);
 
@@ -72,13 +78,14 @@ final class InvitationService
         $tokenHash = $this->hashToken($plainToken);
         $expiresHours = max(1, (int) config('invitations.expires_hours', 168));
 
-        $invitation = $this->auditedTransaction->run(function () use ($actor, $company, $branch, $email, $tokenHash, $expiresHours, $plainToken): Invitation {
-            return $this->withCompanyContext($company, function () use ($actor, $company, $branch, $email, $tokenHash, $expiresHours, $plainToken): Invitation {
+        $invitation = $this->auditedTransaction->run(function () use ($actor, $company, $branch, $email, $inviteeName, $tokenHash, $expiresHours, $plainToken): Invitation {
+            return $this->withCompanyContext($company, function () use ($actor, $company, $branch, $email, $inviteeName, $tokenHash, $expiresHours, $plainToken): Invitation {
                 $invitation = new Invitation;
                 $invitation->forceFill([
                     'company_id' => $company->id,
                     'branch_id' => $branch?->id,
                     'email' => $email,
+                    'invitee_name' => filled(trim((string) $inviteeName)) ? trim((string) $inviteeName) : null,
                     'token_hash' => $tokenHash,
                     'status' => InvitationStatus::Pending,
                     'invited_by_user_id' => $actor->id,
@@ -199,23 +206,13 @@ final class InvitationService
                     $this->attachMembershipWithinContext($company, $user, $invitation);
                 }
 
-                if ($invitation->branch_id !== null) {
-                    $branch = Branch::query()->findOrFail($invitation->branch_id);
-                    $membership = CompanyMembership::query()
-                        ->where('company_id', $company->id)
-                        ->where('user_id', $user->id)
-                        ->whereNull('deactivated_at')
-                        ->firstOrFail();
+                $membership = CompanyMembership::query()
+                    ->where('company_id', $company->id)
+                    ->where('user_id', $user->id)
+                    ->whereNull('deactivated_at')
+                    ->firstOrFail();
 
-                    $alreadyAssigned = $membership->branchAssignments()
-                        ->where('branch_id', $branch->id)
-                        ->whereNull('deactivated_at')
-                        ->exists();
-
-                    if (! $alreadyAssigned) {
-                        $this->attachBranchWithinContext($membership, $branch);
-                    }
-                }
+                $this->fulfillBranchAccessIntents($invitation, $membership);
 
                 $invitation->forceFill([
                     'status' => InvitationStatus::Accepted,
@@ -320,7 +317,7 @@ final class InvitationService
             return $existing;
         }
 
-        $name = trim((string) ($credentials['name'] ?? ''));
+        $name = trim((string) ($credentials['name'] ?? $invitation->invitee_name ?? ''));
         $password = (string) ($credentials['password'] ?? '');
 
         if ($name === '' || $password === '') {
@@ -369,6 +366,83 @@ final class InvitationService
                 'invitation_id' => $invitation->id,
             ],
         );
+    }
+
+    private function fulfillBranchAccessIntents(Invitation $invitation, CompanyMembership $membership): void
+    {
+        $intents = InvitationBranchAccessIntent::query()
+            ->where('invitation_id', $invitation->id)
+            ->with(['branch', 'role'])
+            ->get();
+
+        if ($intents->isNotEmpty()) {
+            $actor = User::query()->find($invitation->invited_by_user_id);
+            if ($actor === null) {
+                throw new InvitationException('Invitation actor is missing; cannot apply branch access.');
+            }
+
+            foreach ($intents as $intent) {
+                $branch = $intent->branch;
+                $role = $intent->role;
+                if ($branch === null || $role === null || ! $branch->isActive()) {
+                    continue;
+                }
+
+                $branchAssignment = BranchAssignment::query()
+                    ->where('company_membership_id', $membership->id)
+                    ->where('branch_id', $branch->id)
+                    ->whereNull('deactivated_at')
+                    ->whereNull('deleted_at')
+                    ->first();
+
+                if ($branchAssignment === null) {
+                    $branchAssignment = $this->workspace->assignBranch(
+                        $membership,
+                        $branch,
+                        'Invitation acceptance branch assignment',
+                    );
+                }
+
+                $hasRole = BranchRoleAssignment::query()
+                    ->where('company_membership_id', $membership->id)
+                    ->where('branch_id', $branch->id)
+                    ->whereNull('deactivated_at')
+                    ->whereNull('deleted_at')
+                    ->exists();
+
+                if (! $hasRole) {
+                    $this->roles->assignCustomerBranchRole(
+                        $actor,
+                        $membership,
+                        $branch,
+                        $branchAssignment,
+                        $role,
+                        'Invitation acceptance role assignment',
+                    );
+                }
+            }
+
+            return;
+        }
+
+        if ($invitation->branch_id === null) {
+            return;
+        }
+
+        $branch = Branch::query()->find($invitation->branch_id);
+        if ($branch === null || ! $branch->isActive()) {
+            return;
+        }
+
+        $alreadyAssigned = BranchAssignment::query()
+            ->where('company_membership_id', $membership->id)
+            ->where('branch_id', $branch->id)
+            ->whereNull('deactivated_at')
+            ->exists();
+
+        if (! $alreadyAssigned) {
+            $this->attachBranchWithinContext($membership, $branch);
+        }
     }
 
     private function attachBranchWithinContext(CompanyMembership $membership, Branch $branch): void

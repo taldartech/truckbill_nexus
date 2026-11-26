@@ -68,11 +68,12 @@ test('owner can list create edit and enter branch management screens', function 
     enterManagementCompany($company)->assertRedirect();
 
     $this->get(route('owner.branches'))
+        ->assertRedirect(route('owner.branches.all', ['company' => $company->id]));
+
+    $this->get(route('owner.branches.all', ['company' => $company->id]))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('owner/branches/index')
-            ->where('canManage', true)
-            ->has('capacity')
+            ->component('owner/branches/all')
             ->has('branches.data', 1));
 
     $this->get(route('owner.branches.create'))
@@ -273,12 +274,12 @@ test('non-owner and cross-company branch mutations are denied', function () {
     ])->assertNotFound();
 });
 
-test('owner branch administration service rejects empty remarks and deactivated companies', function () {
+test('owner branch administration service allows create without remark and rejects deactivated companies', function () {
     ['owner' => $owner, 'company' => $company] = createBranchAdminWorkspace();
     $service = app(OwnerBranchAdministrationService::class);
 
-    expect(fn () => $service->createBranch($owner, $company, 'X', ''))
-        ->toThrow(InvalidArgumentException::class);
+    $created = $service->createBranch($owner, $company, 'No Remark Branch', null);
+    expect($created->name)->toBe('No Remark Branch');
 
     $sa = User::factory()->superAdmin()->create();
     branchAdminWorkspace()->deactivateCompany($sa, $company, 'Pause');

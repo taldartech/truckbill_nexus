@@ -237,11 +237,10 @@ export default function OwnerCompaniesIndex({
                                 variant="warning"
                                 disabled={!company.can_manage}
                             />
-                            <WorkspaceContextAction
-                                contextUrl={company.urls.context}
-                                redirect={company.urls.branches}
+                            <AppIconAction
                                 icon={GitBranch}
                                 label="Manage branches"
+                                href={company.urls.branches}
                                 variant="info"
                             />
                             {company.urls.create_branch ? (
@@ -252,26 +251,23 @@ export default function OwnerCompaniesIndex({
                                     variant="default"
                                 />
                             ) : null}
-                            <WorkspaceContextAction
-                                contextUrl={company.urls.context}
-                                redirect={company.urls.users}
+                            <AppIconAction
                                 icon={Users}
                                 label="Manage users"
+                                href={company.urls.users}
                                 variant="info"
                             />
                             <span className="hidden sm:contents">
-                                <WorkspaceContextAction
-                                    contextUrl={company.urls.context}
-                                    redirect={company.urls.subscription}
+                                <AppIconAction
                                     icon={CreditCard}
-                                    label="Manage subscription"
+                                    label="View subscriptions"
+                                    href={company.urls.subscription}
                                     variant="default"
                                 />
-                                <WorkspaceContextAction
-                                    contextUrl={company.urls.context}
-                                    redirect={company.urls.audit}
+                                <AppIconAction
                                     icon={History}
                                     label="View audit"
+                                    href={company.urls.audit}
                                     variant="secondary"
                                 />
                             </span>

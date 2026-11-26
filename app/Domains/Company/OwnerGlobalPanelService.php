@@ -57,6 +57,7 @@ final class OwnerGlobalPanelService
         string $sort = 'name',
         string $direction = 'asc',
         int $perPage = 20,
+        ?string $companyId = null,
     ): LengthAwarePaginator {
         $this->assertCustomerOwnerActor($user);
 
@@ -81,6 +82,10 @@ final class OwnerGlobalPanelService
                     ->orWhere('pan', 'ilike', '%'.$search.'%')
                     ->orWhere('gstin', 'ilike', '%'.$search.'%');
             });
+        }
+
+        if ($companyId !== null && $companyId !== '') {
+            $query->whereKey($companyId);
         }
 
         $direction = strtolower($direction) === 'desc' ? 'desc' : 'asc';
@@ -121,10 +126,10 @@ final class OwnerGlobalPanelService
             'urls' => [
                 'context' => route('workspace.context.company', ['company' => $company]),
                 'settings' => SafeInternalRedirect::route('owner.settings'),
-                'branches' => SafeInternalRedirect::route('owner.branches'),
-                'subscription' => SafeInternalRedirect::route('owner.subscription'),
-                'audit' => SafeInternalRedirect::route('owner.audit'),
-                'users' => SafeInternalRedirect::route('owner.users'),
+                'branches' => SafeInternalRedirect::route('owner.branches.all', ['company' => $company->id]),
+                'subscription' => SafeInternalRedirect::route('owner.subscriptions.index', ['company' => $company->id]),
+                'audit' => SafeInternalRedirect::route('owner.audit.all', ['company' => $company->id]),
+                'users' => SafeInternalRedirect::route('owner.users.all', ['company' => $company->id]),
                 'create_branch' => $company->isActive()
                     ? SafeInternalRedirect::route('owner.companies.branches.create', ['company' => $company])
                     : null,
@@ -458,8 +463,9 @@ final class OwnerGlobalPanelService
         string $search = '',
         string $status = 'all',
         int $perPage = 20,
+        ?string $companyId = null,
     ): LengthAwarePaginator {
-        return $this->paginateOwnedCompanies($user, $search, $status, 'name', 'asc', $perPage);
+        return $this->paginateOwnedCompanies($user, $search, $status, 'name', 'asc', $perPage, $companyId);
     }
 
     /**

@@ -1,5 +1,5 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { Settings2 } from 'lucide-react';
+import { Plus, Settings2 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { AppIconAction } from '@/components/app-icon-action';
 import {
@@ -30,7 +30,8 @@ type Props = {
         data: MembershipRow[];
         meta: { current_page: number; last_page: number; total: number };
     };
-    links: { index: string; companies: string };
+    links: { index: string; companies: string; create: string };
+    canManage: boolean;
 };
 
 export default function OwnerUsersAll({
@@ -38,6 +39,7 @@ export default function OwnerUsersAll({
     companyOptions,
     memberships,
     links,
+    canManage,
 }: Props) {
     const [search, setSearch] = useState(filters.q);
     const [status, setStatus] = useState(filters.status);
@@ -117,9 +119,29 @@ export default function OwnerUsersAll({
                 title="Users"
                 description="Memberships across every company you own. Open a row to manage invitations, roles, and branches."
                 actions={
-                    <Button asChild variant="outline">
-                        <Link href={links.companies}>Companies</Link>
-                    </Button>
+                    <div className="flex flex-wrap items-center gap-2">
+                        {canManage ? (
+                            <AppIconAction
+                                icon={Plus}
+                                label="Add user"
+                                href={
+                                    filters.company
+                                        ? `${links.create}?company=${encodeURIComponent(filters.company)}`
+                                        : links.create
+                                }
+                                variant="default"
+                                size="default"
+                                className="gap-2 px-3"
+                            >
+                                <span className="text-sm font-medium">
+                                    Add user
+                                </span>
+                            </AppIconAction>
+                        ) : null}
+                        <Button asChild variant="outline">
+                            <Link href={links.companies}>Companies</Link>
+                        </Button>
+                    </div>
                 }
             >
                 <form
@@ -177,7 +199,7 @@ export default function OwnerUsersAll({
                     rows={memberships.data}
                     rowKey={(row) => row.id}
                     emptyTitle="No memberships found"
-                    emptyDescription="Invite users from a company Users screen, or adjust filters."
+                    emptyDescription="Add a user or adjust filters to find memberships."
                     actions={(row) =>
                         row.urls.show ? (
                             <AppIconAction

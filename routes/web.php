@@ -54,6 +54,7 @@ use App\Http\Controllers\Branch\TransporterBookBalanceController;
 use App\Http\Controllers\Branch\TransporterVoucherController;
 use App\Http\Controllers\Branch\TripController;
 use App\Http\Controllers\Branch\TripInvoiceController;
+use App\Http\Controllers\Branch\TyreLayoutController;
 use App\Http\Controllers\Branch\VehicleController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\HomeController;
@@ -170,7 +171,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('owner.companies.branches.create');
     Route::post('/management/companies/{company}/branches', [OwnerBranchesController::class, 'storeForCompany'])
         ->name('owner.companies.branches.store');
-    Route::get('/management/users', OwnerGlobalUsersController::class)->name('owner.users.all');
+    Route::get('/management/users', [OwnerGlobalUsersController::class, 'index'])->name('owner.users.all');
+    Route::get('/management/users/create', [OwnerGlobalUsersController::class, 'createGlobal'])->name('owner.users.create.global');
+    Route::post('/management/users', [OwnerGlobalUsersController::class, 'storeGlobal'])->name('owner.users.store.global');
     Route::get('/management/subscriptions', [OwnerSubscriptionsController::class, 'index'])->name('owner.subscriptions.index');
     Route::get('/management/audit', OwnerGlobalAuditController::class)->name('owner.audit.all');
 
@@ -441,8 +444,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/goods-types', [CatalogueController::class, 'storeGoodsTypes'])->name('branch.goods-types.store');
         Route::get('/truck-types', [CatalogueController::class, 'truckTypes'])->name('branch.truck-types.index');
         Route::post('/truck-types', [CatalogueController::class, 'storeTruckTypes'])->name('branch.truck-types.store');
-        Route::get('/tyre-layouts', [CatalogueController::class, 'tyreLayouts'])->name('branch.tyre-layouts.index');
-        Route::post('/tyre-layouts', [CatalogueController::class, 'storeTyreLayouts'])->name('branch.tyre-layouts.store');
+        Route::get('/tyre-layouts', [TyreLayoutController::class, 'index'])->name('branch.tyre-layouts.index');
+        Route::post('/tyre-layouts', [TyreLayoutController::class, 'store'])->name('branch.tyre-layouts.store');
+        Route::patch('/tyre-layouts/{tyreLayout}', [TyreLayoutController::class, 'update'])->name('branch.tyre-layouts.update');
+        Route::delete('/tyre-layouts/{tyreLayout}', [TyreLayoutController::class, 'destroy'])->name('branch.tyre-layouts.destroy');
         Route::get('/document-types', [CatalogueController::class, 'documentTypes'])->name('branch.document-types.index');
         Route::post('/document-types', [CatalogueController::class, 'storeDocumentTypes'])->name('branch.document-types.store');
         Route::get('/expense-categories', [CatalogueController::class, 'expenseCategories'])->name('branch.expense-categories.index');

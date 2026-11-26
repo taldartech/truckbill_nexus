@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Owner;
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Company\CompanyWorkspaceService;
 use App\Domains\Company\Exceptions\CompanyDomainException;
-use App\Domains\Invitation\Enums\InvitationStatus;
 use App\Domains\Invitation\Exceptions\InvitationException;
 use App\Domains\Invitation\InvitationService;
 use App\Domains\Rbac\Enums\PermissionDomain;
@@ -42,98 +41,15 @@ class OwnerUsersController extends Controller
         private readonly RoleAssignmentService $roles,
     ) {}
 
-    public function index(Request $request, Company $company): Response
+    public function index(Request $request, Company $company): RedirectResponse
     {
-        ['scope' => $scope] = $this->authorizeOwnerPanel($request, $company, $this->access);
+        $this->authorizeOwnerPanel($request, $company, $this->access);
 
-        $search = trim((string) $request->query('q', ''));
-        $status = (string) $request->query('status', 'active');
-
-        $membershipQuery = CompanyMembership::query()
-            ->where('company_id', $company->id)
-            ->with(['user'])
-            ->orderByDesc('created_at');
-
-        if ($status === 'active') {
-            $membershipQuery->whereNull('deactivated_at');
-        } elseif ($status === 'inactive') {
-            $membershipQuery->withTrashed()->where(function ($query): void {
-                $query->whereNotNull('deactivated_at')->orWhereNotNull('deleted_at');
-            });
-        } elseif ($status === 'all') {
-            $membershipQuery->withTrashed();
-        }
-
-        if ($search !== '') {
-            $membershipQuery->whereHas('user', function ($query) use ($search): void {
-                $query->where('name', 'ilike', '%'.$search.'%')
-                    ->orWhere('email', 'ilike', '%'.$search.'%');
-            });
-        }
-
-        $memberships = $membershipQuery->paginate(20)->withQueryString();
-
-        $pendingInvitations = Invitation::query()
-            ->where('company_id', $company->id)
-            ->where('status', InvitationStatus::Pending)
-            ->with('branch:id,name')
-            ->orderByDesc('created_at')
-            ->limit(50)
-            ->get();
-
-        $branches = Branch::query()
-            ->where('company_id', $company->id)
-            ->whereNull('deactivated_at')
-            ->whereNull('deleted_at')
-            ->orderBy('name')
-            ->get(['id', 'name']);
-
-        return Inertia::render('owner/users/index', [
-            'company' => $this->companyPayload($company),
-            'ownerPanelScope' => $scope,
-            'canManage' => $scope === CompanyAccessService::OWNER_PANEL_FULL,
-            'filters' => [
-                'q' => $search,
-                'status' => in_array($status, ['active', 'inactive', 'all'], true) ? $status : 'active',
-            ],
-            'memberships' => [
-                'data' => $memberships->getCollection()->map(function (CompanyMembership $membership) use ($company): array {
-                    return [
-                        'id' => $membership->id,
-                        'status' => $membership->isActive() ? 'Active' : 'Inactive',
-                        'is_owner' => (int) $membership->user_id === (int) $company->owner_user_id,
-                        'user' => [
-                            'id' => $membership->user?->id,
-                            'name' => $membership->user?->name,
-                            'email' => $membership->user?->email,
-                        ],
-                        'show_url' => route('owner.users.show', ['membership' => $membership,
-                        ]),
-                    ];
-                })->values(),
-                'links' => $memberships->linkCollection()->toArray(),
-                'meta' => [
-                    'current_page' => $memberships->currentPage(),
-                    'last_page' => $memberships->lastPage(),
-                    'total' => $memberships->total(),
-                ],
-            ],
-            'pendingInvitations' => $pendingInvitations->map(fn (Invitation $invitation): array => [
-                'id' => $invitation->id,
-                'email' => $invitation->email,
-                'branch_name' => $invitation->branch?->name,
-                'expires_at' => $invitation->expires_at->toIso8601String(),
-            ])->values(),
-            'branches' => $branches->map(fn (Branch $branch): array => [
-                'id' => $branch->id,
-                'name' => $branch->name,
-            ])->values(),
-            'links' => [
-                'dashboard' => route('owner.home'),
-                'invite' => route('owner.users.invite'),
-                'index' => route('owner.users'),
-            ],
-        ]);
+        return redirect()->route('owner.users.all', array_filter([
+            'company' => $company->id,
+            'q' => $request->query('q'),
+            'status' => $request->query('status'),
+        ]));
     }
 
     public function show(Request $request, CompanyMembership $membership, Company $company): Response
@@ -224,7 +140,7 @@ class OwnerUsersController extends Controller
                 'slug' => $role->slug,
             ])->values(),
             'links' => [
-                'index' => route('owner.users'),
+                'index' => route('owner.users.all', ['company' => $company->id]),
                 'dashboard' => route('owner.home'),
                 'deactivate' => route('owner.users.deactivate', ['membership' => $membership,
                 ]),
@@ -265,7 +181,7 @@ class OwnerUsersController extends Controller
         }
 
         return redirect()
-            ->route('owner.users')
+            ->route('owner.users.all', ['company' => $company->id])
             ->with('success', 'Invitation revoked.');
     }
 
@@ -285,7 +201,7 @@ class OwnerUsersController extends Controller
         }
 
         return redirect()
-            ->route('owner.users')
+            ->route('owner.users.all', ['company' => $company->id])
             ->with('success', 'Membership deactivated.');
     }
 
@@ -375,7 +291,7 @@ class OwnerUsersController extends Controller
         }
 
         return redirect()
-            ->route('owner.users')
+            ->route('owner.users.all', ['company' => $company->id])
             ->with('success', 'Invitation created.');
     }
 

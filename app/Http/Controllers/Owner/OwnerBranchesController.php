@@ -45,74 +45,15 @@ class OwnerBranchesController extends Controller
         private readonly GstRateService $gstRates = new GstRateService,
     ) {}
 
-    public function index(Request $request, Company $company): Response
+    public function index(Request $request, Company $company): RedirectResponse
     {
-        ['scope' => $scope] = $this->authorizeOwnerPanel($request, $company, $this->access);
+        $this->authorizeOwnerPanel($request, $company, $this->access);
 
-        $canManage = $company->isActive() && $scope === CompanyAccessService::OWNER_PANEL_FULL;
-        $search = trim((string) $request->query('q', ''));
-        $status = (string) $request->query('status', 'active');
-
-        $query = Branch::query()
-            ->where('company_id', $company->id)
-            ->orderBy('name');
-
-        if ($status === 'active') {
-            $query->whereNull('deactivated_at')->whereNull('deleted_at');
-        } elseif ($status === 'inactive') {
-            $query->withTrashed()->where(function ($builder): void {
-                $builder->whereNotNull('deactivated_at')->orWhereNotNull('deleted_at');
-            });
-        } elseif ($status === 'all') {
-            $query->withTrashed();
-        } else {
-            $status = 'active';
-            $query->whereNull('deactivated_at')->whereNull('deleted_at');
-        }
-
-        if ($search !== '') {
-            $query->where('name', 'ilike', '%'.$search.'%');
-        }
-
-        $paginator = $query->paginate(20)->withQueryString();
-        $capacity = $this->branches->capacitySnapshot($company);
-
-        return Inertia::render('owner/branches/index', [
-            'company' => $this->companyPayload($company),
-            'ownerPanelScope' => $scope,
-            'canManage' => $canManage,
-            'canEnterBranch' => $canManage,
-            'capacity' => $capacity,
-            'filters' => [
-                'q' => $search,
-                'status' => $status,
-            ],
-            'branches' => [
-                'data' => $paginator->getCollection()->map(function (Branch $branch): array {
-                    return [
-                        'id' => $branch->id,
-                        'name' => $branch->name,
-                        'status' => $branch->isActive() ? 'Active' : 'Deactivated',
-                        'show_url' => route('owner.branches.show', ['branch' => $branch,
-                        ]),
-                    ];
-                })->values(),
-                'links' => $paginator->linkCollection()->toArray(),
-                'meta' => [
-                    'current_page' => $paginator->currentPage(),
-                    'last_page' => $paginator->lastPage(),
-                    'total' => $paginator->total(),
-                ],
-            ],
-            'deactivatedMessage' => $canManage
-                ? null
-                : 'Branch administration is unavailable while this company is deactivated.',
-            'links' => [
-                'dashboard' => route('owner.home'),
-                'index' => route('owner.branches'),
-                'create' => route('owner.branches.create'),
-            ],
-        ]);
+        return redirect()->route('owner.branches.all', array_filter([
+            'company' => $company->id,
+            'q' => $request->query('q'),
+            'status' => $request->query('status'),
+        ]));
     }
 
     /**
@@ -395,7 +336,6 @@ class OwnerBranchesController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'remark' => ['required', 'string', 'max:1000'],
             'contact_number' => ['nullable', 'digits:10'],
             'is_head_office' => ['required', 'boolean'],
             'address' => ['nullable', 'string', 'max:2000'],
@@ -476,7 +416,7 @@ class OwnerBranchesController extends Controller
                 $user,
                 $company,
                 $validated['name'],
-                $validated['remark'],
+                null,
                 $assignments,
                 $attributes,
             );

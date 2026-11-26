@@ -138,7 +138,7 @@ test('owner can invite revoke deactivate membership and assign branch role', fun
 
     $this->post(route('owner.users.invite-for-branch', ['branch' => $headOffice]), [
         'email' => 'pending.revoke@example.com',
-    ])->assertRedirect(route('owner.users'));
+    ])->assertRedirect(route('owner.users.all', ['company' => $company->id]));
 
     $pendingInvitation = Invitation::query()
         ->where('email', 'pending.revoke@example.com')
@@ -194,13 +194,13 @@ test('owner can invite revoke deactivate membership and assign branch role', fun
 
     $this->post(route('owner.users.invitations.revoke', ['invitation' => $pendingInvitation]), [
         'remark' => 'No longer needed',
-    ])->assertRedirect(route('owner.users'));
+    ])->assertRedirect(route('owner.users.all', ['company' => $company->id]));
 
     expect($pendingInvitation->fresh()->status)->toBe(InvitationStatus::Revoked);
 
     $this->post(route('owner.users.deactivate', ['membership' => $membership]), [
         'remark' => 'Left company',
-    ])->assertRedirect(route('owner.users'));
+    ])->assertRedirect(route('owner.users.all', ['company' => $company->id]));
 
     expect($membership->fresh()->isActive())->toBeFalse();
 });
@@ -252,21 +252,20 @@ test('owner cannot manage another company memberships and audit is company scope
 
     $this->post(route('owner.users.invite'), [
         'email' => 'cross@example.com',
-    ])->assertRedirect(route('owner.users'));
+    ])->assertRedirect(route('owner.users.all', ['company' => $company->id]));
 
     expect(Invitation::query()->where('email', 'cross@example.com')->value('company_id'))->toBe($companyA->id);
 
     $this->get(route('owner.audit'))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->component('owner/audit')
-            ->where('company.id', $companyA->id));
+        ->assertRedirect(route('owner.audit.all', ['company' => $companyA->id]));
 
     $foreignCount = AuditEntry::query()->where('company_id', $companyB->id)->count();
     expect($foreignCount)->toBeGreaterThan(0);
 
-    $this->get(route('owner.audit'))
+    $this->get(route('owner.audit.all', ['company' => $companyA->id]))
+        ->assertOk()
         ->assertInertia(fn ($page) => $page
+            ->component('owner/audit/all')
             ->where('entries.meta.total', AuditEntry::query()->where('company_id', $companyA->id)->count()));
 
     expect($ownerB->id)->not->toBe($ownerA->id);

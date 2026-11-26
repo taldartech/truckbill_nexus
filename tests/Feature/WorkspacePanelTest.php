@@ -287,10 +287,7 @@ test('owner dashboard exposes Region B management entry points', function () {
     enterManagementCompany($company)->assertRedirect();
 
     $this->get(route('owner.users'))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->component('owner/users/index')
-            ->where('canManage', true));
+        ->assertRedirect(route('owner.users.all', ['company' => $company->id]));
 
     $this->get(route('owner.settings'))
         ->assertOk()
@@ -299,8 +296,7 @@ test('owner dashboard exposes Region B management entry points', function () {
             ->where('canEditProfile', true));
 
     $this->get(route('owner.audit'))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page->component('owner/audit'));
+        ->assertRedirect(route('owner.audit.all', ['company' => $company->id]));
 });
 
 test('member cannot open owner management entry points', function () {

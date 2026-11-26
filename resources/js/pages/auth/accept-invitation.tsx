@@ -9,6 +9,7 @@ import { Spinner } from '@/components/ui/spinner';
 type Props = {
     token: string;
     email: string;
+    defaultName?: string | null;
     requiresRegistration: boolean;
     passwordRules: string;
 };
@@ -16,6 +17,7 @@ type Props = {
 export default function AcceptInvitation({
     token,
     email,
+    defaultName,
     requiresRegistration,
     passwordRules,
 }: Props) {
@@ -51,6 +53,7 @@ export default function AcceptInvitation({
                                         type="text"
                                         name="name"
                                         required
+                                        defaultValue={defaultName ?? ''}
                                         autoFocus
                                         autoComplete="name"
                                         className="mt-1 block w-full"

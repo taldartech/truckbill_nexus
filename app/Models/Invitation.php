@@ -6,6 +6,7 @@ use App\Domains\Invitation\Enums\InvitationStatus;
 use App\Domains\Invitation\Exceptions\InvitationException;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
@@ -16,6 +17,7 @@ use Illuminate\Support\Str;
  * @property string $company_id
  * @property string|null $branch_id
  * @property string $email
+ * @property string|null $invitee_name
  * @property string $token_hash
  * @property InvitationStatus $status
  * @property int $invited_by_user_id
@@ -37,6 +39,7 @@ class Invitation extends Model
         'company_id',
         'branch_id',
         'email',
+        'invitee_name',
         'token_hash',
         'status',
         'invited_by_user_id',
@@ -102,6 +105,14 @@ class Invitation extends Model
     public function acceptedUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'accepted_user_id');
+    }
+
+    /**
+     * @return HasMany<InvitationBranchAccessIntent, $this>
+     */
+    public function branchAccessIntents(): HasMany
+    {
+        return $this->hasMany(InvitationBranchAccessIntent::class);
     }
 
     public function isExpired(): bool

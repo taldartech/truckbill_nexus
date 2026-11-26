@@ -27,14 +27,18 @@ class OwnerSubscriptionsController extends Controller
 
         $search = trim((string) $request->query('q', ''));
         $status = (string) $request->query('status', 'all');
+        $companyId = $request->query('company');
+        $companyId = is_string($companyId) ? $companyId : null;
 
-        $paginator = $this->panel->paginateOwnedSubscriptions($user, $search, $status);
+        $paginator = $this->panel->paginateOwnedSubscriptions($user, $search, $status, companyId: $companyId);
 
         return Inertia::render('owner/subscriptions/index', [
             'filters' => [
                 'q' => $search,
                 'status' => $status,
+                'company' => $companyId ?? '',
             ],
+            'companyOptions' => $this->panel->ownedCompanyFilterOptions($user),
             'companies' => [
                 'data' => $paginator->getCollection()->map(
                     fn (Company $company): array => $this->panel->presentSubscriptionRow($company),

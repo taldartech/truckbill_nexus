@@ -31,6 +31,7 @@ class InvitationAcceptanceController extends Controller
         return Inertia::render('auth/accept-invitation', [
             'token' => $token,
             'email' => $invitation->email,
+            'defaultName' => $invitation->invitee_name,
             'requiresRegistration' => ! $existingCustomer,
             'passwordRules' => Password::defaults()->toPasswordRulesString(),
         ]);

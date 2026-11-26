@@ -27,7 +27,8 @@ type SubscriptionRow = {
 };
 
 type Props = {
-    filters: { q: string; status: string };
+    filters: { q: string; status: string; company: string };
+    companyOptions: { id: string; name: string }[];
     companies: {
         data: SubscriptionRow[];
         meta: { current_page: number; last_page: number; total: number };
@@ -37,17 +38,23 @@ type Props = {
 
 export default function OwnerSubscriptionsIndex({
     filters,
+    companyOptions,
     companies,
     links,
 }: Props) {
     const [search, setSearch] = useState(filters.q);
     const [status, setStatus] = useState(filters.status);
+    const [company, setCompany] = useState(filters.company);
 
     const applyFilters = (event: React.FormEvent) => {
         event.preventDefault();
         router.get(
             links.index,
-            { q: search || undefined, status },
+            {
+                q: search || undefined,
+                status,
+                company: company || undefined,
+            },
             { preserveState: true, replace: true },
         );
     };
@@ -126,6 +133,22 @@ export default function OwnerSubscriptionsIndex({
                             value={search}
                             onChange={(event) => setSearch(event.target.value)}
                         />
+                    </div>
+                    <div className="space-y-2 sm:w-48">
+                        <Label htmlFor="company">Company</Label>
+                        <select
+                            id="company"
+                            value={company}
+                            onChange={(event) => setCompany(event.target.value)}
+                            className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm"
+                        >
+                            <option value="">All owned companies</option>
+                            {companyOptions.map((option) => (
+                                <option key={option.id} value={option.id}>
+                                    {option.name}
+                                </option>
+                            ))}
+                        </select>
                     </div>
                     <div className="space-y-2 sm:w-48">
                         <Label htmlFor="status">Company status</Label>
