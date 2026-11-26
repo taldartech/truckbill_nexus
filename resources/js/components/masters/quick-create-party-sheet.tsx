@@ -1,11 +1,18 @@
 import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
 import type { FieldReview } from '@/components/form-confirmation/types';
-import { StateCityFields } from '@/components/geography/state-city-fields';
-import InputError from '@/components/input-error';
+import { PartyMasterFormFields } from '@/components/masters/party-master/party-master-form-fields';
+import { derivePartyFieldModel } from '@/components/masters/party-master/party-role-field-model';
+import {
+    buildPartyStorePayload,
+    initialDriver,
+    initialTransporter,
+    roleIndexMap,
+    type DriverAttrs,
+    type PartyBasicValues,
+    type TransporterAttrs,
+} from '@/components/masters/party-master/party-master-types';
 import type { PartyOption } from '@/components/searchable-party-select';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import {
     Sheet,
     SheetContent,
@@ -34,59 +41,43 @@ type Props = {
     storeUrl: string;
     role: QuickCreatePartyRole;
     onCreated: (party: PartyOption) => void;
+    tdsPreviewUrl?: string;
 };
 
 const ROLE_TITLES: Record<QuickCreatePartyRole, string> = {
     customer: 'Customer',
     consignor: 'Consignor',
     consignee: 'Consignee',
-    transporter: 'Agency / Transporter',
+    transporter: 'Agency / Transporter (Truck owner)',
     driver: 'Driver',
     pump_vendor: 'Pump Vendor',
     general_vendor: 'General Vendor',
 };
 
-type Draft = {
-    name: string;
-    contact_number: string;
-    email: string;
-    state: string;
-    city: string;
-    state_id: string;
-    city_id: string;
-    address: string;
-    gstin: string;
-    pan: string;
-    pan_status: string;
-    declaration: boolean;
-    declaration_type: string;
-};
-
-const EMPTY: Draft = {
+const EMPTY_BASIC: PartyBasicValues = {
     name: '',
+    contact_person: '',
     contact_number: '',
     email: '',
-    state: '',
-    city: '',
-    state_id: '',
-    city_id: '',
     address: '',
     gstin: '',
     pan: '',
-    pan_status: 'active',
-    declaration: true,
-    declaration_type: 'agency',
+    is_gst_applicable: '',
 };
 
-function firstError(
+function normalizeErrors(
     errors: Record<string, string[] | string> | undefined,
-    key: string,
-): string | undefined {
-    const value = errors?.[key];
-    if (Array.isArray(value)) {
-        return value[0];
+): Record<string, string> {
+    if (!errors) {
+        return {};
     }
-    return typeof value === 'string' ? value : undefined;
+
+    return Object.fromEntries(
+        Object.entries(errors).map(([key, value]) => [
+            key,
+            Array.isArray(value) ? (value[0] ?? '') : value,
+        ]),
+    );
 }
 
 /**
@@ -99,47 +90,91 @@ export function QuickCreatePartySheet({
     storeUrl,
     role,
     onCreated,
+    tdsPreviewUrl,
 }: Props) {
     const canQuickCreateGeography = readCanQuickCreateGeography(
         usePage().props,
     );
     const title = ROLE_TITLES[role];
-    const isTransporter = role === 'transporter';
-    const [draft, setDraft] = useState<Draft>(EMPTY);
-    const [errors, setErrors] = useState<Record<string, string[] | string>>({});
+    const selectedRoles = useMemo(() => [role], [role]);
+    const roleIndex = useMemo(
+        () => roleIndexMap(selectedRoles),
+        [selectedRoles],
+    );
+    const fieldModel = derivePartyFieldModel(selectedRoles);
+
+    const [basic, setBasic] = useState<PartyBasicValues>(EMPTY_BASIC);
+    const [transporter, setTransporter] = useState<TransporterAttrs>(() =>
+        initialTransporter(undefined),
+    );
+    const [driver, setDriver] = useState<DriverAttrs>(() =>
+        initialDriver(undefined),
+    );
+    const [pan, setPan] = useState('');
+    const [stateId, setStateId] = useState('');
+    const [cityId, setCityId] = useState('');
+    const [state, setState] = useState('');
+    const [city, setCity] = useState('');
+    const [errors, setErrors] = useState<Record<string, string>>({});
     const [formError, setFormError] = useState<string | null>(null);
     const [processing, setProcessing] = useState(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
 
+    const roleOptions = useMemo(
+        () => [{ value: role, label: title }],
+        [role, title],
+    );
+
     const reviewFields = useMemo<FieldReview[]>(() => {
         const fields: FieldReview[] = [
-            { label: 'Name', value: draft.name },
-            { label: 'Contact number', value: draft.contact_number },
-            { label: 'State', value: draft.state },
-            { label: 'City', value: draft.city },
+            { label: 'Name', value: basic.name },
+            { label: 'Contact number', value: basic.contact_number },
+            { label: 'State', value: state },
+            { label: 'City', value: city },
             { label: 'Role', value: title },
         ];
-        if (draft.email) {
-            fields.push({ label: 'Email', value: draft.email });
+        if (basic.contact_person) {
+            fields.push({
+                label: 'Contact person',
+                value: basic.contact_person,
+            });
         }
-        if (draft.gstin) {
-            fields.push({ label: 'GSTIN', value: draft.gstin });
+        if (basic.email) {
+            fields.push({ label: 'Email', value: basic.email });
         }
-        if (draft.pan || isTransporter) {
-            fields.push({ label: 'PAN', value: draft.pan });
+        if (fieldModel.showGstBusinessTax && basic.gstin) {
+            fields.push({ label: 'GSTIN', value: basic.gstin });
         }
-        if (isTransporter) {
-            fields.push({ label: 'PAN status', value: draft.pan_status });
+        if (pan) {
+            fields.push({ label: 'PAN', value: pan });
+        }
+        if (fieldModel.needsTransporter) {
             fields.push({
                 label: 'Declaration',
-                value: draft.declaration ? 'Yes' : 'No',
+                value: transporter.declaration ? 'Yes' : 'No',
             });
         }
         return fields;
-    }, [draft, isTransporter, title]);
+    }, [
+        basic,
+        state,
+        city,
+        title,
+        fieldModel.showGstBusinessTax,
+        fieldModel.needsTransporter,
+        pan,
+        transporter.declaration,
+    ]);
 
     const reset = () => {
-        setDraft(EMPTY);
+        setBasic(EMPTY_BASIC);
+        setTransporter(initialTransporter(undefined));
+        setDriver(initialDriver(undefined));
+        setPan('');
+        setStateId('');
+        setCityId('');
+        setState('');
+        setCity('');
         setErrors({});
         setFormError(null);
         setConfirmOpen(false);
@@ -151,10 +186,6 @@ export function QuickCreatePartySheet({
             reset();
         }
         onOpenChange(next);
-    };
-
-    const update = <K extends keyof Draft>(key: K, value: Draft[K]) => {
-        setDraft((current) => ({ ...current, [key]: value }));
     };
 
     const openConfirm = (event: React.FormEvent) => {
@@ -169,36 +200,20 @@ export function QuickCreatePartySheet({
         setFormError(null);
         setErrors({});
 
-        const roles: Array<{
-            role: string;
-            attributes: Record<string, unknown>;
-        }> = [
+        const payload = buildPartyStorePayload(
+            selectedRoles,
+            basic,
+            transporter,
+            driver,
+            pan,
             {
-                role,
-                attributes: isTransporter
-                    ? {
-                          pan_status: draft.pan_status,
-                          declaration: draft.declaration,
-                          declaration_type: draft.declaration_type,
-                      }
-                    : {},
+                state,
+                city,
+                state_id: stateId,
+                city_id: cityId,
             },
-        ];
-
-        const payload = {
-            name: draft.name.trim(),
-            contact_number: draft.contact_number.trim(),
-            email: draft.email.trim() || null,
-            state: draft.state.trim(),
-            city: draft.city.trim(),
-            state_id: draft.state_id.trim() || null,
-            city_id: draft.city_id.trim() || null,
-            address: draft.address.trim() || null,
-            gstin: draft.gstin.trim() || null,
-            pan: draft.pan.trim() || null,
-            roles,
-            remark: `Quick create ${title}`,
-        };
+            fieldModel,
+        );
 
         try {
             const response = await fetch(storeUrl, {
@@ -222,7 +237,7 @@ export function QuickCreatePartySheet({
 
             if (!response.ok) {
                 if (json?.errors) {
-                    setErrors(json.errors);
+                    setErrors(normalizeErrors(json.errors));
                 }
                 setFormError(
                     json?.message ??
@@ -286,190 +301,41 @@ export function QuickCreatePartySheet({
                             </p>
                         ) : null}
 
-                        <div className="grid gap-3 sm:grid-cols-2">
-                            <div className="space-y-1.5 sm:col-span-2">
-                                <Label htmlFor="quick-party-name">Name *</Label>
-                                <Input
-                                    id="quick-party-name"
-                                    value={draft.name}
-                                    onChange={(event) =>
-                                        update('name', event.target.value)
-                                    }
-                                    required
-                                    autoFocus
-                                />
-                                <InputError
-                                    message={firstError(errors, 'name')}
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label htmlFor="quick-party-contact">
-                                    Contact number *
-                                </Label>
-                                <Input
-                                    id="quick-party-contact"
-                                    value={draft.contact_number}
-                                    onChange={(event) =>
-                                        update(
-                                            'contact_number',
-                                            event.target.value,
-                                        )
-                                    }
-                                    required
-                                />
-                                <InputError
-                                    message={firstError(
-                                        errors,
-                                        'contact_number',
-                                    )}
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label htmlFor="quick-party-email">Email</Label>
-                                <Input
-                                    id="quick-party-email"
-                                    type="email"
-                                    value={draft.email}
-                                    onChange={(event) =>
-                                        update('email', event.target.value)
-                                    }
-                                />
-                                <InputError
-                                    message={firstError(errors, 'email')}
-                                />
-                            </div>
-                            <div className="sm:col-span-2">
-                                <StateCityFields
-                                    required
-                                    canQuickCreate={canQuickCreateGeography}
-                                    stateId={draft.state_id}
-                                    cityId={draft.city_id}
-                                    stateName={draft.state}
-                                    cityName={draft.city}
-                                    stateError={
-                                        firstError(errors, 'state_id') ??
-                                        firstError(errors, 'state')
-                                    }
-                                    cityError={
-                                        firstError(errors, 'city_id') ??
-                                        firstError(errors, 'city')
-                                    }
-                                    onChange={(next) => {
-                                        setDraft((current) => ({
-                                            ...current,
-                                            state_id: next.state_id,
-                                            city_id: next.city_id,
-                                            state: next.state,
-                                            city: next.city,
-                                        }));
-                                    }}
-                                />
-                            </div>
-                            <div className="space-y-1.5 sm:col-span-2">
-                                <Label htmlFor="quick-party-address">
-                                    Address
-                                </Label>
-                                <Input
-                                    id="quick-party-address"
-                                    value={draft.address}
-                                    onChange={(event) =>
-                                        update('address', event.target.value)
-                                    }
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label htmlFor="quick-party-gstin">GSTIN</Label>
-                                <Input
-                                    id="quick-party-gstin"
-                                    value={draft.gstin}
-                                    onChange={(event) =>
-                                        update('gstin', event.target.value)
-                                    }
-                                    className="uppercase"
-                                />
-                                <InputError
-                                    message={firstError(errors, 'gstin')}
-                                />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label htmlFor="quick-party-pan">
-                                    PAN{isTransporter ? ' *' : ''}
-                                </Label>
-                                <Input
-                                    id="quick-party-pan"
-                                    value={draft.pan}
-                                    onChange={(event) =>
-                                        update('pan', event.target.value)
-                                    }
-                                    className="uppercase"
-                                    required={isTransporter}
-                                    maxLength={10}
-                                />
-                                <InputError
-                                    message={firstError(errors, 'pan')}
-                                />
-                            </div>
-                        </div>
-
-                        {isTransporter ? (
-                            <div className="grid gap-3 rounded-md border border-border p-3 sm:grid-cols-2">
-                                <div className="space-y-1.5">
-                                    <Label htmlFor="quick-party-pan-status">
-                                        PAN status *
-                                    </Label>
-                                    <select
-                                        id="quick-party-pan-status"
-                                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                        value={draft.pan_status}
-                                        onChange={(event) =>
-                                            update(
-                                                'pan_status',
-                                                event.target.value,
-                                            )
-                                        }
-                                    >
-                                        <option value="active">Active</option>
-                                        <option value="valid">Valid</option>
-                                        <option value="inactive">
-                                            Inactive
-                                        </option>
-                                        <option value="invalid">Invalid</option>
-                                    </select>
-                                </div>
-                                <div className="space-y-1.5">
-                                    <Label htmlFor="quick-party-declaration-type">
-                                        Declaration type
-                                    </Label>
-                                    <select
-                                        id="quick-party-declaration-type"
-                                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                        value={draft.declaration_type}
-                                        onChange={(event) =>
-                                            update(
-                                                'declaration_type',
-                                                event.target.value,
-                                            )
-                                        }
-                                    >
-                                        <option value="agency">Agency</option>
-                                        <option value="owner">Owner</option>
-                                    </select>
-                                </div>
-                                <label className="flex items-center gap-2 text-sm sm:col-span-2">
-                                    <input
-                                        type="checkbox"
-                                        checked={draft.declaration}
-                                        onChange={(event) =>
-                                            update(
-                                                'declaration',
-                                                event.target.checked,
-                                            )
-                                        }
-                                    />
-                                    Transporter declaration confirmed
-                                </label>
-                            </div>
-                        ) : null}
+                        <PartyMasterFormFields
+                            idPrefix="quick-party-"
+                            variant="sheet"
+                            nativeForm={false}
+                            errors={errors}
+                            roleOptions={roleOptions}
+                            selectedRoles={selectedRoles}
+                            rolesLocked
+                            basic={basic}
+                            onBasicChange={(patch) =>
+                                setBasic((current) => ({
+                                    ...current,
+                                    ...patch,
+                                }))
+                            }
+                            stateId={stateId}
+                            cityId={cityId}
+                            state={state}
+                            city={city}
+                            onGeographyChange={(next) => {
+                                setStateId(next.state_id);
+                                setCityId(next.city_id);
+                                setState(next.state);
+                                setCity(next.city);
+                            }}
+                            canQuickCreateGeography={canQuickCreateGeography}
+                            roleIndex={roleIndex}
+                            pan={pan}
+                            setPan={setPan}
+                            transporter={transporter}
+                            setTransporter={setTransporter}
+                            driver={driver}
+                            setDriver={setDriver}
+                            tdsPreviewUrl={tdsPreviewUrl}
+                        />
 
                         <SheetFooter className="mt-auto gap-2 border-t border-border pt-4 sm:flex-row sm:justify-end">
                             <Button
