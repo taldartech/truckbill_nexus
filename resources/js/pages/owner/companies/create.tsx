@@ -62,9 +62,9 @@ export default function OwnerCompanyCreate({
         <>
             <Head title="Create company" />
             <PageShell
-                width="form"
+                width="full"
                 title="New company"
-                description="Complete PRD §7 company details. First eligible owned company receives the applicable trial."
+                description="Enter company legal and contact details. The first eligible company receives the applicable trial."
             >
                 <Form
                     {...OwnerCompaniesController.store.form()}
@@ -336,11 +336,11 @@ export default function OwnerCompanyCreate({
                                         </h2>
                                         <p>
                                             Private logo and digital signature
-                                            upload is approved (PRD §7). Upload
-                                            controls attach after the company
-                                            exists via Owner Settings
-                                            document-asset controls (PrivateFile
-                                            tenant context).
+                                            upload is approved. Upload controls
+                                            attach after the company exists via
+                                            Owner Settings document-asset
+                                            controls (PrivateFile tenant
+                                            context).
                                         </p>
                                     </section>
                                 </aside>

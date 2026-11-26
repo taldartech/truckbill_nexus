@@ -286,7 +286,7 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
             <Head title={title} />
             <AppFormPage
                 title={title}
-                description="Sectioned party master — roles first, then shared contact and role-specific compliance panels."
+                description="Choose roles first, then enter contact details and only the information that applies to those roles."
                 actions={
                     <Button asChild variant="outline">
                         <Link href={links.index}>Back to parties</Link>

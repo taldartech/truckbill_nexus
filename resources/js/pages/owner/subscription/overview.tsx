@@ -111,7 +111,7 @@ type Props = {
 
 export default function SubscriptionOverview({
     company,
-    ownerPanelScope,
+    ownerPanelScope: _ownerPanelScope,
     canManage,
     subscription,
     lifecycle,
@@ -141,7 +141,7 @@ export default function SubscriptionOverview({
             <Head title={`Subscription — ${company.name}`} />
             <OwnerPageHeader
                 title={`Subscription — ${company.name}`}
-                description={`Scope: ${ownerPanelScope}`}
+                description="Subscription and capacity for this company."
                 breadcrumbs={[
                     { label: 'Owner Panel', href: links.dashboard },
                     {

@@ -261,12 +261,7 @@ export function buildPartyStorePayload(
     geography: PartyGeographyValues,
     fieldModel: PartyFieldModel,
 ): Record<string, unknown> {
-    const roles = buildRolesPayload(
-        selectedRoles,
-        transporter,
-        driver,
-        pan,
-    );
+    const roles = buildRolesPayload(selectedRoles, transporter, driver, pan);
 
     const payload: Record<string, unknown> = {
         name: basic.name.trim(),

@@ -229,3 +229,11 @@ Cleanliness must never compromise historical financial records, audit history, m
 ### Mandatory cleanup before every task completion (Definition of Done)
 
 Before completing any implementation task: review the full diff; remove unused imports/variables and temporary debug code; remove obsolete exclusive routes/components/helpers; review newly introduced database fields and duplicated business logic; update or remove obsolete documentation; run applicable static analysis and relevant tests. A feature is not complete if its replaced exclusive implementation remains unnecessarily in the codebase.
+
+## 20. Operator UI layout and registers (permanent)
+
+- **Full-width forms:** Page forms must use the available workspace content width. Do not leave half the viewport empty via unnecessary `max-w-*` clamps, nested half-grids, or parent columns that park read-only chrome beside the editable form. Use responsive 2–4 column field grids on desktop, wrap on tablet, single column on mobile. Tables, descriptions, role selectors and substantial sections use full width.
+- **Registers:** Master and management registers must not permanently embed creation forms on the listing page. Pattern: heading, Add action beside the heading, compact filters, data table, pagination, row actions.
+- **Creation surfaces:** Ordinary creation uses a dedicated page, modal or sheet appropriate to form complexity. Simple masters use modal/sheet; complex records use a dedicated page. Each entity has one authoritative reusable creation form shared with Quick Add.
+- **Role-based forms:** Display only information applicable to the selected roles. Combine multi-role requirements without duplicate fields. Frontend and backend validation must share the same role-specific rules.
+- **Operator language:** Operator-facing UI must not expose PRD/phase references, permission scopes, technical enum names, internal implementation notes or other development terminology. Use simple business descriptions only.

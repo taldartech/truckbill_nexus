@@ -89,7 +89,10 @@ final class PartyService
                     'pan' => isset($attributes['pan']) && filled($attributes['pan'])
                         ? strtoupper(trim((string) $attributes['pan']))
                         : null,
-                    'is_gst_applicable' => $attributes['is_gst_applicable'] ?? true,
+                    'is_gst_applicable' => $this->resolveGstApplicableOnCreate(
+                        $attributes,
+                        array_column($normalizedRoles, 'role'),
+                    ),
                     'state' => $attributes['state'] ?? null,
                     'state_id' => $attributes['state_id'] ?? null,
                     'city' => $attributes['city'] ?? null,
@@ -716,6 +719,31 @@ final class PartyService
 
         return $company->branches()->whereNull('deactivated_at')->get()
             ->first(fn (Branch $b) => $this->access->canAccessBranch($actor, $company, $b));
+    }
+
+    /**
+     * GST applicability is only meaningful for customer-family and vendor roles.
+     * Driver/transporter-only creates must not inherit a silent "yes" default.
+     *
+     * @param  array<string, mixed>  $attributes
+     * @param  list<string>  $roleValues
+     */
+    private function resolveGstApplicableOnCreate(array $attributes, array $roleValues): bool
+    {
+        if (array_key_exists('is_gst_applicable', $attributes)) {
+            return (bool) $attributes['is_gst_applicable'];
+        }
+
+        $roles = array_values(array_unique(array_filter($roleValues, is_string(...))));
+        $needsGstRoles = array_intersect($roles, [
+            PartyRoleType::Customer->value,
+            PartyRoleType::Consignor->value,
+            PartyRoleType::Consignee->value,
+            PartyRoleType::GeneralVendor->value,
+            PartyRoleType::PumpVendor->value,
+        ]);
+
+        return $needsGstRoles !== [];
     }
 
     /**

@@ -90,12 +90,12 @@ class OwnerSettingsController extends Controller
                 [
                     'key' => 'numbering',
                     'title' => 'Numbering',
-                    'message' => 'Document numbering configuration remains available via branch/company numbering services; dedicated settings UI polish is follow-on.',
+                    'message' => 'Document numbering is managed with each branch. A dedicated company numbering screen will be added later.',
                 ],
                 [
                     'key' => 'documents',
                     'title' => 'Documents, logo & signature',
-                    'message' => 'PRD §7 logo and signature columns and PrivateFileService storage are approved. Owner upload controls remain a follow-on document-asset slice (tenant-scoped store after company context).',
+                    'message' => 'Company logo and signature upload will be available in a later update.',
                 ],
             ],
             'links' => [

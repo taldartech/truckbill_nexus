@@ -1,5 +1,5 @@
 import { Head, router, usePage } from '@inertiajs/react';
-import { Eye, Plus } from 'lucide-react';
+import { Eye, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { AppIconAction } from '@/components/app-icon-action';
 import {
@@ -7,7 +7,9 @@ import {
     AppIndexListCard,
     AppIndexPage,
 } from '@/components/app-index-page';
+import { MasterAuditRemarkDialog } from '@/components/masters/master-audit-remark-dialog';
 import { QuickCreateStationSheet } from '@/components/masters/quick-create-station-sheet';
+import { TablePagination } from '@/components/table-pagination';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -25,13 +27,21 @@ type Props = {
     branch: { id: string; name: string; status: string };
     canManageOwnerStations: boolean;
     filters: { q: string };
-    stations: { data: Row[]; meta: { total: number } };
+    stations: {
+        data: Row[];
+        meta: {
+            current_page: number;
+            last_page: number;
+            total: number;
+        };
+    };
     links: { hub: string; index: string; store: string };
 };
 
 function geographyLabel(row: Row): string {
     const parts = [row.city, row.state].filter(
-        (part): part is string => typeof part === 'string' && part.trim() !== '',
+        (part): part is string =>
+            typeof part === 'string' && part.trim() !== '',
     );
     return parts.length > 0 ? parts.join(', ') : '—';
 }
@@ -45,7 +55,10 @@ export default function StationsIndex({
 }: Props) {
     const { flash } = usePage<{ flash?: { success?: string | null } }>().props;
     const [createOpen, setCreateOpen] = useState(false);
+    const [deleteRow, setDeleteRow] = useState<Row | null>(null);
+    const [deleteProcessing, setDeleteProcessing] = useState(false);
     const showUrl = (id: string) => `/stations/${id}`;
+    const editUrl = (id: string) => `/stations/${id}/edit`;
 
     return (
         <>
@@ -57,7 +70,7 @@ export default function StationsIndex({
                         canManageOwnerStations ? (
                             <Button
                                 type="button"
-                                className="app-index-header-btn"
+                                className="app-index-header-btn h-8 gap-1.5 border-0 bg-white/15 px-3 text-white hover:bg-white/25"
                                 onClick={() => setCreateOpen(true)}
                             >
                                 <Plus className="h-3.5 w-3.5" />
@@ -118,8 +131,8 @@ export default function StationsIndex({
                         <table className="app-index-table min-w-full">
                             <thead>
                                 <tr>
-                                    <th>Status</th>
                                     <th>Name</th>
+                                    <th>Status</th>
                                     <th>Geography</th>
                                     <th className="text-center">Actions</th>
                                 </tr>
@@ -129,14 +142,19 @@ export default function StationsIndex({
                                     <tr>
                                         <td colSpan={4}>
                                             <p className="app-index-empty">
-                                                No stations. Owner-shared
-                                                stations will appear here.
+                                                No stations yet.
+                                                {canManageOwnerStations
+                                                    ? ' Use Add station to create one.'
+                                                    : null}
                                             </p>
                                         </td>
                                     </tr>
                                 ) : (
                                     stations.data.map((row) => (
                                         <tr key={row.id}>
+                                            <td className="font-medium">
+                                                {row.name}
+                                            </td>
                                             <td>
                                                 <WorkspaceStatusBadge
                                                     status={
@@ -146,18 +164,38 @@ export default function StationsIndex({
                                                     }
                                                 />
                                             </td>
-                                            <td className="font-medium">
-                                                {row.name}
-                                            </td>
                                             <td>{geographyLabel(row)}</td>
                                             <td>
-                                                <div className="flex justify-center">
+                                                <div className="flex items-center justify-center gap-1">
                                                     <AppIconAction
                                                         icon={Eye}
                                                         label="View station"
                                                         href={showUrl(row.id)}
                                                         variant="info"
                                                     />
+                                                    {canManageOwnerStations ? (
+                                                        <>
+                                                            <AppIconAction
+                                                                icon={Pencil}
+                                                                label="Edit station"
+                                                                href={editUrl(
+                                                                    row.id,
+                                                                )}
+                                                                variant="warning"
+                                                            />
+                                                            <AppIconAction
+                                                                icon={Trash2}
+                                                                label="Delete station"
+                                                                type="button"
+                                                                variant="destructive"
+                                                                onClick={() =>
+                                                                    setDeleteRow(
+                                                                        row,
+                                                                    )
+                                                                }
+                                                            />
+                                                        </>
+                                                    ) : null}
                                                 </div>
                                             </td>
                                         </tr>
@@ -166,19 +204,56 @@ export default function StationsIndex({
                             </tbody>
                         </table>
                     </div>
+
+                    <div className="border-t border-[#e5e7eb] px-4 py-3">
+                        <TablePagination
+                            baseUrl={links.index}
+                            meta={stations.meta}
+                            query={{ q: filters.q || undefined }}
+                        />
+                    </div>
                 </AppIndexListCard>
             </AppIndexPage>
 
             {canManageOwnerStations ? (
-                <QuickCreateStationSheet
-                    open={createOpen}
-                    onOpenChange={setCreateOpen}
-                    storeUrl={links.store}
-                    showActiveToggle
-                    onCreated={() => {
-                        router.reload({ only: ['stations', 'flash'] });
-                    }}
-                />
+                <>
+                    <QuickCreateStationSheet
+                        open={createOpen}
+                        onOpenChange={setCreateOpen}
+                        storeUrl={links.store}
+                        showActiveToggle
+                        onCreated={() => {
+                            router.reload({ only: ['stations', 'flash'] });
+                        }}
+                    />
+                    <MasterAuditRemarkDialog
+                        open={deleteRow !== null}
+                        onOpenChange={(open) => {
+                            if (!open) {
+                                setDeleteRow(null);
+                                setDeleteProcessing(false);
+                            }
+                        }}
+                        title="Delete station?"
+                        description="Soft-delete this station from the shared directory."
+                        confirmLabel="Delete"
+                        processing={deleteProcessing}
+                        onConfirm={(remark) => {
+                            if (!deleteRow) {
+                                return;
+                            }
+                            setDeleteProcessing(true);
+                            router.delete(`/stations/${deleteRow.id}`, {
+                                data: { remark },
+                                preserveScroll: true,
+                                onFinish: () => {
+                                    setDeleteProcessing(false);
+                                    setDeleteRow(null);
+                                },
+                            });
+                        }}
+                    />
+                </>
             ) : null}
         </>
     );

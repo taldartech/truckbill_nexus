@@ -117,7 +117,11 @@ export default function StationShow({
                     }
                 >
                     <FbInfoGrid>
-                        <FbInfoItem label="State" value={station.state} accent />
+                        <FbInfoItem
+                            label="State"
+                            value={station.state}
+                            accent
+                        />
                         <FbInfoItem label="City" value={station.city} />
                         <FbInfoItem
                             label="Default transporter"

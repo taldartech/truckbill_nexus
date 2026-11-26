@@ -164,8 +164,8 @@ class OwnerSubscriptionController extends Controller
                 'balance' => (string) $ledger->balance,
                 'unit' => $this->creditUnitLabel($ledger->ledger_type),
             ])->values()->all(),
-            'entitlement_note' => 'Confirmed Rules §15 lifecycle enforcement is active for Branch mutations during paid grace/restricted states. Fine-grained AUD-CON-006 action cells remain Pending. Live Razorpay production charges remain gated (PO-P3-PAY-PROD).',
-            'payment_gate_note' => 'Razorpay Test Mode checkout is authorized (PO-P3-PAY-TEST). Production charges require PO-P3-PAY-PROD. Dashboard→local webhook delivery remains operationally evidenced separately from CI doubles.',
+            'entitlement_note' => 'Branch changes remain limited while a paid subscription is in grace or restricted status.',
+            'payment_gate_note' => 'Checkout uses Razorpay test mode in this environment. Live charges are not enabled yet.',
             'links' => [
                 'dashboard' => route('owner.home'),
                 'catalogue' => route('owner.subscription.catalogue'),

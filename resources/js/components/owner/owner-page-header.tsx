@@ -84,7 +84,7 @@ type CompanyScope = { name: string; status: string };
  */
 export function CompanyOwnerPageShell({
     company,
-    ownerPanelScope,
+    ownerPanelScope: _ownerPanelScope,
     section,
     actions,
     children,
@@ -102,7 +102,7 @@ export function CompanyOwnerPageShell({
     return (
         <OwnerPageHeader
             title={company.name}
-            description={`${section} · Scope: ${ownerPanelScope}`}
+            description={section}
             breadcrumbs={breadcrumbs}
             width={width}
             actions={

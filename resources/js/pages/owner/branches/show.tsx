@@ -23,7 +23,7 @@ type GstRateOption = {
 
 type OwnerBranchesShowProps = {
     company: { id: string; name: string; status: string };
-    ownerPanelScope: string;
+    ownerPanelScope?: string;
     canManage: boolean;
     canEnterBranch: boolean;
     canDeactivate: boolean;
@@ -118,7 +118,7 @@ function formatTimestamp(value: string | null): string {
 
 export default function OwnerBranchesShow({
     company,
-    ownerPanelScope,
+    ownerPanelScope: _ownerPanelScope,
     canManage,
     canEnterBranch,
     canDeactivate,
@@ -215,7 +215,7 @@ export default function OwnerBranchesShow({
             <Head title={`${branch.name} · Branches`} />
             <OwnerPageHeader
                 title={branch.name}
-                description={`${company.name} · Branch register · Scope: ${ownerPanelScope}`}
+                description={`${company.name} · Branch details`}
                 actions={<WorkspaceStatusBadge status={branch.status} />}
             >
                 {flash?.success ? (

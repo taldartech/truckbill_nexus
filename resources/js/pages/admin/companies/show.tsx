@@ -123,7 +123,7 @@ export default function AdminCompanyShow({
                                 ? 'Deactivate company'
                                 : 'Reactivate company'
                         }
-                        description="Mandatory remark and confirmation. Soft-delete and restore are prohibited (DEC-003)."
+                        description="A remark is required. Soft-delete and restore of companies are not permitted."
                         columns={2}
                     >
                         <div className="space-y-2 md:col-span-2">

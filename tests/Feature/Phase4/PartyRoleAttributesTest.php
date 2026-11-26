@@ -162,6 +162,32 @@ test('permanent driver requires license while market does not', function () {
     ]);
 });
 
+test('driver-only create does not default GST applicable to true', function () {
+    ['owner' => $owner, 'company' => $company] = partyRoleAttrsWorkspace();
+    $this->actingAs($owner);
+
+    $party = app(PartyService::class)->create(
+        actor: $owner,
+        company: $company,
+        branch: null,
+        attributes: [
+            'name' => 'Driver Only',
+            'contact_number' => '9111122222',
+        ],
+        roles: [[
+            'role' => PartyRoleType::Driver->value,
+            'attributes' => [
+                'driver_type' => 'permanent',
+                'license_number' => 'MH1420110012345',
+                'license_expiry' => now()->addYear()->toDateString(),
+            ],
+        ]],
+    );
+
+    expect($party->is_gst_applicable)->toBeFalse()
+        ->and($party->gstin)->toBeNull();
+});
+
 test('customer and consignor multi-role create shares common party fields', function () {
     ['owner' => $owner, 'company' => $company] = partyRoleAttrsWorkspace();
     $this->actingAs($owner);

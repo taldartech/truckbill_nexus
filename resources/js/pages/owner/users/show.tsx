@@ -48,7 +48,7 @@ type FlashPageProps = {
 
 export default function OwnerUsersShow({
     company,
-    ownerPanelScope,
+    ownerPanelScope: _ownerPanelScope,
     canManage,
     membership,
     assignableBranches,
@@ -93,7 +93,7 @@ export default function OwnerUsersShow({
             />
             <OwnerPageHeader
                 title={`${membership.user.name ?? 'User'}${membership.is_owner ? ' · Owner' : ''}`}
-                description={`${membership.user.email ?? ''} · ${company.name} · Scope: ${ownerPanelScope}`}
+                description={`${membership.user.email ?? ''} · ${company.name}`}
                 actions={<WorkspaceStatusBadge status={membership.status} />}
             >
                 {flash?.success ? (
