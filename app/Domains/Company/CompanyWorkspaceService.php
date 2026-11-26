@@ -203,15 +203,13 @@ final class CompanyWorkspaceService
     /**
      * @param  array<string, mixed>  $attributes
      */
-    public function createBranch(Company $company, string $name, string $remark, array $attributes = []): Branch
+    public function createBranch(Company $company, string $name, ?string $remark = null, array $attributes = []): Branch
     {
-        if (trim($remark) === '') {
-            throw new InvalidArgumentException('A remark is required when creating a branch after company setup.');
-        }
+        $auditRemark = filled(trim((string) $remark)) ? trim((string) $remark) : null;
 
-        return $this->auditedTransaction->run(function () use ($company, $name, $remark, $attributes): Branch {
-            return $this->withCompanyAuditContext($company, true, function () use ($company, $name, $remark, $attributes): Branch {
-                return $this->createBranchWithinContext($company, $name, $remark, $attributes);
+        return $this->auditedTransaction->run(function () use ($company, $name, $auditRemark, $attributes): Branch {
+            return $this->withCompanyAuditContext($company, true, function () use ($company, $name, $auditRemark, $attributes): Branch {
+                return $this->createBranchWithinContext($company, $name, $auditRemark, $attributes);
             });
         });
     }

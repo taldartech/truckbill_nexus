@@ -675,10 +675,19 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
     const needsTransporter = selectedRoles.includes('transporter');
     const needsDriver = selectedRoles.includes('driver');
     const needsVendor = selectedRoles.some((role) => VENDOR_ROLES.has(role));
+    const needsTaxIdentifiers =
+        needsCustomerFamily || needsTransporter || needsVendor;
+    const driverOnly =
+        needsDriver &&
+        !needsCustomerFamily &&
+        !needsTransporter &&
+        !needsVendor;
     const contactNumberRequired =
         needsCustomerFamily || needsTransporter || needsDriver || needsVendor;
     const stateCityRequired = needsCustomerFamily || needsTransporter;
     const contactPersonRequired = needsVendor;
+    const showBusinessContact =
+        needsCustomerFamily || needsTransporter || needsVendor;
 
     const toggleRole = (value: string) => {
         setSelectedRoles((current) =>
@@ -825,31 +834,41 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
 
                             <LrfSection
                                 step={2}
-                                title="Contact"
-                                description="Reachable contact for operations and billing."
+                                title={driverOnly ? 'Mobile' : 'Contact'}
+                                description={
+                                    driverOnly
+                                        ? 'Driver mobile number used for dispatch.'
+                                        : 'Reachable contact for operations and billing.'
+                                }
                                 tone="route"
                             >
-                                <div className="grid gap-3 md:grid-cols-2">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="contact_person">
-                                            Contact person
-                                            {contactPersonRequired ? ' *' : ''}
-                                        </Label>
-                                        <Input
-                                            id="contact_person"
-                                            name="contact_person"
-                                            required={contactPersonRequired}
-                                            defaultValue={
-                                                party?.contact_person ?? ''
-                                            }
-                                        />
-                                        <InputError
-                                            message={errors.contact_person}
-                                        />
-                                    </div>
+                                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                                    {showBusinessContact ? (
+                                        <div className="space-y-2">
+                                            <Label htmlFor="contact_person">
+                                                Contact person
+                                                {contactPersonRequired
+                                                    ? ' *'
+                                                    : ''}
+                                            </Label>
+                                            <Input
+                                                id="contact_person"
+                                                name="contact_person"
+                                                required={contactPersonRequired}
+                                                defaultValue={
+                                                    party?.contact_person ?? ''
+                                                }
+                                            />
+                                            <InputError
+                                                message={errors.contact_person}
+                                            />
+                                        </div>
+                                    ) : null}
                                     <div className="space-y-2">
                                         <Label htmlFor="contact_number">
-                                            Contact number
+                                            {driverOnly
+                                                ? 'Mobile number'
+                                                : 'Contact number'}
                                             {contactNumberRequired ? ' *' : ''}
                                         </Label>
                                         <Input
@@ -864,16 +883,22 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
                                             message={errors.contact_number}
                                         />
                                     </div>
-                                    <div className="space-y-2 md:col-span-2">
-                                        <Label htmlFor="email">Email</Label>
-                                        <Input
-                                            id="email"
-                                            name="email"
-                                            type="email"
-                                            defaultValue={party?.email ?? ''}
-                                        />
-                                        <InputError message={errors.email} />
-                                    </div>
+                                    {showBusinessContact ? (
+                                        <div className="space-y-2">
+                                            <Label htmlFor="email">Email</Label>
+                                            <Input
+                                                id="email"
+                                                name="email"
+                                                type="email"
+                                                defaultValue={
+                                                    party?.email ?? ''
+                                                }
+                                            />
+                                            <InputError
+                                                message={errors.email}
+                                            />
+                                        </div>
+                                    ) : null}
                                 </div>
                             </LrfSection>
 
@@ -1167,61 +1192,97 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
                                 </LrfSection>
                             ) : null}
 
-                            <LrfSection
-                                step={needsDriver ? 6 : 5}
-                                title="GST & PAN"
-                                description="Tax identifiers shared across roles."
-                                tone="goods"
-                            >
-                                <div className="grid gap-3 md:grid-cols-2">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="gstin">GSTIN</Label>
-                                        <Input
-                                            id="gstin"
-                                            name="gstin"
-                                            defaultValue={party?.gstin ?? ''}
-                                        />
-                                        <InputError message={errors.gstin} />
+                            {needsTaxIdentifiers ? (
+                                <LrfSection
+                                    step={needsDriver ? 6 : 5}
+                                    title={
+                                        needsTransporter
+                                            ? 'GST, PAN & tax'
+                                            : 'GST & business tax'
+                                    }
+                                    description={
+                                        needsTransporter
+                                            ? 'PAN is required for transporters. GST applies when the party is GST-registered.'
+                                            : 'Business GST details for customers, consignors, consignees and vendors.'
+                                    }
+                                    tone="goods"
+                                >
+                                    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="gstin">GSTIN</Label>
+                                            <Input
+                                                id="gstin"
+                                                name="gstin"
+                                                defaultValue={
+                                                    party?.gstin ?? ''
+                                                }
+                                            />
+                                            <InputError
+                                                message={errors.gstin}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="is_gst_applicable">
+                                                GST applicable
+                                            </Label>
+                                            <select
+                                                id="is_gst_applicable"
+                                                name="is_gst_applicable"
+                                                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                                defaultValue={
+                                                    party?.is_gst_applicable ===
+                                                    false
+                                                        ? '0'
+                                                        : '1'
+                                                }
+                                            >
+                                                <option value="1">Yes</option>
+                                                <option value="0">No</option>
+                                            </select>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="pan">
+                                                PAN
+                                                {needsTransporter ? ' *' : ''}
+                                            </Label>
+                                            <Input
+                                                id="pan"
+                                                name="pan"
+                                                required={needsTransporter}
+                                                value={pan}
+                                                onChange={(event) =>
+                                                    setPan(
+                                                        event.target.value.toUpperCase(),
+                                                    )
+                                                }
+                                            />
+                                            <InputError message={errors.pan} />
+                                        </div>
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="is_gst_applicable">
-                                            GST applicable
-                                        </Label>
-                                        <select
-                                            id="is_gst_applicable"
-                                            name="is_gst_applicable"
-                                            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                            defaultValue={
-                                                party?.is_gst_applicable ===
-                                                false
-                                                    ? '0'
-                                                    : '1'
-                                            }
-                                        >
-                                            <option value="1">Yes</option>
-                                            <option value="0">No</option>
-                                        </select>
-                                    </div>
-                                    <div className="space-y-2 md:col-span-2">
-                                        <Label htmlFor="pan">
-                                            PAN
-                                            {needsTransporter ? ' *' : ''}
-                                        </Label>
-                                        <Input
-                                            id="pan"
+                                </LrfSection>
+                            ) : (
+                                <>
+                                    <input
+                                        type="hidden"
+                                        name="is_gst_applicable"
+                                        value="0"
+                                    />
+                                    {pan !== '' ? (
+                                        <input
+                                            type="hidden"
                                             name="pan"
-                                            required={needsTransporter}
                                             value={pan}
-                                            onChange={(event) =>
-                                                setPan(
-                                                    event.target.value.toUpperCase(),
-                                                )
-                                            }
                                         />
-                                        <InputError message={errors.pan} />
-                                    </div>
-                                </div>
-                            </LrfSection>
+                                    ) : null}
+                                    {party?.gstin ? (
+                                        <input
+                                            type="hidden"
+                                            name="gstin"
+                                            value={party.gstin}
+                                        />
+                                    ) : null}
+                                </>
+                            )}
 
                             {needsTransporter ||
                             (needsDriver &&
@@ -1409,31 +1470,26 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
                                 />
                             ) : null}
 
-                            <LrfSection
-                                step={8}
-                                title="Remark"
-                                description="Audit remark for this save."
-                                tone="optional"
-                            >
-                                <div className="space-y-3">
+                            {mode === 'edit' ? (
+                                <LrfSection
+                                    step={8}
+                                    title="Remark"
+                                    description="Audit remark required when editing an existing party."
+                                    tone="optional"
+                                >
                                     <div className="space-y-2">
-                                        <Label htmlFor="remark">
-                                            Remark{mode === 'edit' ? ' *' : ''}
+                                        <Label htmlFor="remark" required>
+                                            Remark
                                         </Label>
                                         <Input
                                             id="remark"
                                             name="remark"
-                                            required={mode === 'edit'}
-                                            defaultValue={
-                                                mode === 'create'
-                                                    ? 'Create party'
-                                                    : ''
-                                            }
+                                            required
                                         />
                                         <InputError message={errors.remark} />
                                     </div>
-                                </div>
-                            </LrfSection>
+                                </LrfSection>
+                            ) : null}
 
                             <div className="sticky bottom-0 z-10 -mx-1 flex flex-wrap items-center justify-end gap-3 border-t border-border bg-background/95 px-1 py-3 backdrop-blur supports-backdrop-filter:bg-background/80">
                                 <Button asChild variant="outline">

@@ -91,7 +91,7 @@ final class OwnerUserProvisioningService
         foreach ($companyBlocks as $block) {
             $company = $this->resolveOwnedCompany($actor, (string) $block['company_id']);
             /** @var list<array{branch_id: string, role_id: string}> $assignments */
-            $assignments = $this->normalizeAssignments($company, $block['assignments'] ?? []);
+            $assignments = $this->normalizeAssignments($company, $block['assignments']);
 
             $this->assertSeatCapacityForAssignments($company, $existing, $assignments);
 
@@ -151,7 +151,8 @@ final class OwnerUserProvisioningService
      */
     public function assignableCustomerRoles(): array
     {
-        return Role::query()
+        /** @var list<array{id: string, name: string, slug: string}> $roles */
+        $roles = array_values(Role::query()
             ->where('domain', PermissionDomain::Customer)
             ->whereIn('slug', self::APPROVED_CUSTOMER_ROLE_SLUGS)
             ->whereNull('deactivated_at')
@@ -163,8 +164,9 @@ final class OwnerUserProvisioningService
                 'name' => $role->name,
                 'slug' => $role->slug,
             ])
-            ->values()
-            ->all();
+            ->all());
+
+        return $roles;
     }
 
     /**
@@ -215,7 +217,7 @@ final class OwnerUserProvisioningService
     }
 
     /**
-     * @param  list<array{branch_id?: mixed, role_id?: mixed}>  $raw
+     * @param  list<array{branch_id?: mixed, role_id?: mixed}|mixed>  $raw
      * @return list<array{branch_id: string, role_id: string}>
      */
     private function normalizeAssignments(Company $company, array $raw): array
@@ -225,6 +227,7 @@ final class OwnerUserProvisioningService
         }
 
         $seenBranches = [];
+        /** @var list<array{branch_id: string, role_id: string}> $normalized */
         $normalized = [];
 
         foreach ($raw as $row) {
@@ -273,7 +276,7 @@ final class OwnerUserProvisioningService
             ];
         }
 
-        if ($normalized === []) {
+        if (count($normalized) === 0) {
             throw new InvalidArgumentException('At least one branch and role assignment is required per company.');
         }
 

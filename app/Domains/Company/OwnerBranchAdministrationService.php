@@ -42,7 +42,7 @@ final class OwnerBranchAdministrationService
         User $actor,
         Company $company,
         string $name,
-        string $remark,
+        ?string $remark = null,
         array $memberAssignments = [],
         array $attributes = [],
     ): Branch {
@@ -52,13 +52,13 @@ final class OwnerBranchAdministrationService
             throw new InvalidArgumentException('Branch name is required.');
         }
 
-        if (trim($remark) === '') {
-            throw new InvalidArgumentException('A remark is required when creating a branch.');
-        }
-
         $this->assertBranchCapacityAvailable($company);
 
-        return $this->auditedTransaction->run(function () use ($actor, $company, $name, $remark, $memberAssignments, $attributes): Branch {
+        $assignmentRemark = filled(trim((string) $remark))
+            ? trim((string) $remark)
+            : 'Assigned during branch creation';
+
+        return $this->auditedTransaction->run(function () use ($actor, $company, $name, $remark, $memberAssignments, $attributes, $assignmentRemark): Branch {
             $branch = $this->workspace->createBranch($company, trim($name), $remark, $attributes);
 
             foreach ($memberAssignments as $assignment) {
@@ -68,7 +68,7 @@ final class OwnerBranchAdministrationService
                     $branch,
                     (int) $assignment['user_id'],
                     (string) $assignment['role_id'],
-                    $remark,
+                    $assignmentRemark,
                 );
             }
 

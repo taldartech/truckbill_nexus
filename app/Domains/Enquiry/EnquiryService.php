@@ -426,7 +426,7 @@ final class EnquiryService
             'vehicle_type_id',
         );
 
-        $goods = $this->normalizeGoodsRows($company, $payload['goods'] ?? null, byCode: false);
+        $goods = $this->normalizeGoodsRows($company, $payload['goods'] ?? null);
 
         return [
             'enquiry_date' => $this->normalizeDate($payload['enquiry_date'] ?? null, 'enquiry_date')

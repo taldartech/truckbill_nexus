@@ -191,25 +191,30 @@ export default function BankCashForm({ mode, account, links }: Props) {
                             </LrfSection>
                             <LrfSection
                                 step={2}
-                                title="Remark"
-                                description="Audit trail for this save."
+                                title={mode === 'edit' ? 'Remark' : 'Save'}
+                                description={
+                                    mode === 'edit'
+                                        ? 'Audit remark required when editing this account.'
+                                        : undefined
+                                }
                                 tone="optional"
                             >
                                 <div className="space-y-3">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="remark">Remark</Label>
-                                        <Input
-                                            id="remark"
-                                            name="remark"
-                                            required={mode === 'edit'}
-                                            defaultValue={
-                                                mode === 'create'
-                                                    ? 'Create bank/cash account'
-                                                    : ''
-                                            }
-                                        />
-                                        <InputError message={errors.remark} />
-                                    </div>
+                                    {mode === 'edit' ? (
+                                        <div className="space-y-2">
+                                            <Label htmlFor="remark" required>
+                                                Remark
+                                            </Label>
+                                            <Input
+                                                id="remark"
+                                                name="remark"
+                                                required
+                                            />
+                                            <InputError
+                                                message={errors.remark}
+                                            />
+                                        </div>
+                                    ) : null}
                                     <div className="flex gap-3">
                                         <Button
                                             type="submit"

@@ -115,7 +115,7 @@ final class TyreLayoutService
 
                 $layout->fill(collect($attributes)->only(['is_active', 'sort_order'])->all());
                 $layout->name = $name;
-                $layout->spare_tyre_count = $spareCount;
+                $layout->spare_tyre_count = $spareCount < 0 ? 0 : $spareCount;
 
                 if ($hasAxles) {
                     $axleDefinitions = $axles ?? [];
@@ -214,6 +214,7 @@ final class TyreLayoutService
     }
 
     /**
+     * @param  array<string, mixed>  $attributes
      * @return array{name: string, spare: int, axles: list<array{sequence: int, configuration: TyreAxleConfiguration}>}
      */
     private function normalizeInput(User $actor, array $attributes, ?OwnerTyreLayout $existing): array

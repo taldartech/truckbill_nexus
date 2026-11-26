@@ -38,9 +38,10 @@ Security and tenant isolation → immutable financial/audit integrity → explic
 
 ## 4. Audit and deletion
 
-- Creation does not require remark.
-- Every edit/update/deletion requires meaningful remark.
-- Cancellation requires reason and applicable cancellation date/time.
+- **Creation does not require an operator-entered Reason or Remark** for ordinary records (Company, Branch, User, Party, Vehicle, supporting Masters, GST/TDS masters, State/City, Accounting Masters, Bilty, Lorry Hire, and equivalent create / inline quick-create flows). Automatically generated audit events still record who created the record and when.
+- Do not remove legitimate operational text fields (Accounting Narration, CRM Notes, Expense Description, optional business remarks on documents) merely because they accept free text.
+- Every edit/update/deletion/deactivation/reactivation requires a meaningful operator remark.
+- Cancellation, financial reversal, and other consequential corrections require reason and applicable cancellation date/time where the module defines them.
 - Audit stores actor, timestamp, old/new values, deletion state.
 - Mutation and audit event atomic.
 - Audit immutable.

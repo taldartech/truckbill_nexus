@@ -62,13 +62,18 @@ it('preserves position ids when axle layout changes but keys remain', function (
         ->where('position_key', 'A1-L')
         ->firstOrFail();
 
-    $updated = app(TyreLayoutService::class)->update($owner, $layout, $company, [
-        'axles' => [
-            ['sequence' => 1, 'configuration' => 'single'],
-            ['sequence' => 2, 'configuration' => 'dual'],
+    $updated = app(TyreLayoutService::class)->update(
+        $owner,
+        $layout,
+        $company,
+        [
+            'axles' => [
+                ['sequence' => 1, 'configuration' => 'single'],
+                ['sequence' => 2, 'configuration' => 'dual'],
+            ],
         ],
-        'remark' => 'Add rear axle',
-    ]);
+        'Add rear axle',
+    );
 
     expect($updated->positions()->where('is_active', true)->count())->toBe(7);
 

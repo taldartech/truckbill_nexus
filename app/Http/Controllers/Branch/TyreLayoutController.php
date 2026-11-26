@@ -11,6 +11,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\OwnerTyreLayout;
+use App\Models\OwnerTyreLayoutAxle;
 use App\Models\OwnerTyreLayoutPosition;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -166,11 +167,15 @@ class TyreLayoutController extends Controller
             'needs_axle_completion' => $layout->needs_axle_completion,
             'is_active' => (bool) $layout->is_active,
             'sort_order' => $layout->sort_order,
-            'axles' => $layout->axles->map(fn ($axle): array => [
-                'sequence' => $axle->sequence,
-                'configuration' => $axle->configuration->value,
-                'label' => $axle->configuration->label(),
-            ])->values()->all(),
+            'axles' => $layout->axles->map(function (OwnerTyreLayoutAxle $axle): array {
+                $configuration = $axle->configuration;
+
+                return [
+                    'sequence' => $axle->sequence,
+                    'configuration' => $configuration->value,
+                    'label' => $configuration->label(),
+                ];
+            })->values()->all(),
             'positions' => $layout->positions
                 ->where('is_active', true)
                 ->values()

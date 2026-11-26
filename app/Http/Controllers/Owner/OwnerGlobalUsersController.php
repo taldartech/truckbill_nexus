@@ -159,37 +159,44 @@ class OwnerGlobalUsersController extends Controller
      */
     private function eligibleCompanyOptions(User $user): array
     {
-        return Company::query()
+        /** @var list<array{id: string, name: string, status: string, available_user_capacity: int, branches: list<array{id: string, name: string}>}> $options */
+        $options = [];
+
+        $companies = Company::query()
             ->where('owner_user_id', $user->id)
             ->whereNull('deleted_at')
             ->whereNull('deactivated_at')
             ->orderBy('name')
-            ->get()
-            ->map(function (Company $company): array {
-                $capacity = $this->provisioning->seatCapacitySnapshot($company);
+            ->get();
 
-                $branches = Branch::query()
-                    ->where('company_id', $company->id)
-                    ->whereNull('deactivated_at')
-                    ->whereNull('deleted_at')
-                    ->orderBy('name')
-                    ->get(['id', 'name'])
-                    ->map(fn (Branch $branch): array => [
-                        'id' => $branch->id,
-                        'name' => $branch->name,
-                    ])
-                    ->values()
-                    ->all();
+        foreach ($companies as $company) {
+            $capacity = $this->provisioning->seatCapacitySnapshot($company);
 
-                return [
-                    'id' => $company->id,
-                    'name' => $company->name,
-                    'status' => 'Active',
-                    'available_user_capacity' => (int) $capacity['available_user_capacity'],
-                    'branches' => $branches,
+            /** @var list<array{id: string, name: string}> $branches */
+            $branches = [];
+            $branchRows = Branch::query()
+                ->where('company_id', $company->id)
+                ->whereNull('deactivated_at')
+                ->whereNull('deleted_at')
+                ->orderBy('name')
+                ->get(['id', 'name']);
+
+            foreach ($branchRows as $branch) {
+                $branches[] = [
+                    'id' => $branch->id,
+                    'name' => $branch->name,
                 ];
-            })
-            ->values()
-            ->all();
+            }
+
+            $options[] = [
+                'id' => $company->id,
+                'name' => $company->name,
+                'status' => 'Active',
+                'available_user_capacity' => (int) $capacity['available_user_capacity'],
+                'branches' => $branches,
+            ];
+        }
+
+        return $options;
     }
 }

@@ -40,7 +40,7 @@ export default function TripInvoiceCreate({
                 <Form
                     action="/trip-invoices/individual"
                     method="post"
-                    className="flex max-w-2xl flex-col gap-4"
+                    className="flex w-full min-w-0 flex-col gap-4"
                 >
                     {({ processing }) => (
                         <>

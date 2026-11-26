@@ -9,6 +9,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
+/**
+ * @property TyreAxleConfiguration $configuration
+ * @property int $sequence
+ */
 class OwnerTyreLayoutAxle extends Model
 {
     /** @use HasFactory<OwnerTyreLayoutAxleFactory> */

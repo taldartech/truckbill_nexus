@@ -76,7 +76,7 @@ export function LrfSection({
 }: {
     step: number;
     title: string;
-    description: string;
+    description?: string;
     tone: StepTone;
     headRight?: ReactNode;
     children: ReactNode;
@@ -108,7 +108,11 @@ export function LrfSection({
                         </div>
                         <div>
                             <h2 className="lrf-section__title">{title}</h2>
-                            <p className="lrf-section__desc">{description}</p>
+                            {description ? (
+                                <p className="lrf-section__desc">
+                                    {description}
+                                </p>
+                            ) : null}
                         </div>
                     </div>
                     {headRight ? (
@@ -134,7 +138,9 @@ export function LrfSection({
                     </div>
                     <div>
                         <h2 className="lrf-section__title">{title}</h2>
-                        <p className="lrf-section__desc">{description}</p>
+                        {description ? (
+                            <p className="lrf-section__desc">{description}</p>
+                        ) : null}
                     </div>
                 </div>
                 {headRight ? (

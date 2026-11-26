@@ -4,11 +4,38 @@ use App\Domains\Company\CompanyWorkspaceService;
 use App\Models\Invitation;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\Tenant\TenantContextHolder;
+use Database\Seeders\RbacSeeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Testing\TestResponse;
 
 beforeEach(function () {
+    TenantContextHolder::clear();
+    $this->seed(RbacSeeder::class);
     $this->workspace = app(CompanyWorkspaceService::class);
 });
+
+afterEach(function () {
+    TenantContextHolder::clear();
+});
+
+function loginOwnerForUserCreate(User $user, string $password = 'owner-secret'): TestResponse
+{
+    if (auth()->check()) {
+        test()->post(route('logout'));
+    }
+
+    $response = test()->post(route('login.store'), [
+        'email' => $user->email,
+        'password' => $password,
+    ]);
+    $response->assertRedirect();
+    foreach ($response->headers->getCookies() as $cookie) {
+        test()->withUnencryptedCookie($cookie->getName(), $cookie->getValue());
+    }
+
+    return $response;
+}
 
 test('owner can open global add user form with company preselect', function () {
     $owner = User::factory()->customer()->create([
@@ -17,10 +44,7 @@ test('owner can open global add user form with company preselect', function () {
     ]);
     $company = $this->workspace->createCompany($owner, 'Create User Co', 'Main');
 
-    $this->post(route('login.store'), [
-        'email' => $owner->email,
-        'password' => 'owner-secret',
-    ])->assertRedirect();
+    loginOwnerForUserCreate($owner);
 
     $this->get(route('owner.users.create.global', ['company' => $company->id]))
         ->assertOk()
@@ -45,16 +69,11 @@ test('owner can invite user with branch roles from global create', function () {
     $branch = $company->branches()->where('name', 'North')->firstOrFail();
     $role = Role::query()->where('slug', 'customer.viewer')->firstOrFail();
 
-    $this->post(route('login.store'), [
-        'email' => $owner->email,
-        'password' => 'owner-secret',
-    ])->assertRedirect();
-    enterManagementCompany($company);
+    loginOwnerForUserCreate($owner);
 
     $this->post(route('owner.users.store.global'), [
         'name' => 'Invited Member',
         'email' => 'invited-member@example.test',
-        'remark' => 'Global create certification',
         'companies' => [
             [
                 'company_id' => $company->id,
@@ -85,11 +104,8 @@ test('company users listing redirects to global register with company filter', f
     ]);
     $company = $this->workspace->createCompany($owner, 'Redirect Users Co', 'Main');
 
-    $this->post(route('login.store'), [
-        'email' => $owner->email,
-        'password' => 'owner-secret',
-    ])->assertRedirect();
-    enterManagementCompany($company);
+    loginOwnerForUserCreate($owner);
+    enterManagementCompany($company)->assertRedirect();
 
     $this->get(route('owner.users'))
         ->assertRedirect(route('owner.users.all', ['company' => $company->id]));
@@ -102,10 +118,7 @@ test('company row action urls use filtered global registers without session', fu
     ]);
     $company = $this->workspace->createCompany($owner, 'Action URL Co', 'Main');
 
-    $this->post(route('login.store'), [
-        'email' => $owner->email,
-        'password' => 'owner-secret',
-    ])->assertRedirect();
+    loginOwnerForUserCreate($owner);
 
     $this->get(route('owner.companies.index'))
         ->assertOk()

@@ -61,7 +61,7 @@ export default function TripInvoiceEditCharges({
                     <Form
                         method="patch"
                         action={`/trip-invoices/${invoice.id}/charges`}
-                        className="flex max-w-2xl flex-col gap-4"
+                        className="flex w-full min-w-0 flex-col gap-4"
                     >
                         {({ processing, errors }) => (
                             <>
