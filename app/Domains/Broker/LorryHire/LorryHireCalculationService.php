@@ -110,7 +110,7 @@ final class LorryHireCalculationService
                 'charged_weight' => $applicable,
                 'package_count' => $line->lrGoodsRow?->package_count,
                 'rate_semantics' => $line->rate_semantics
-                    ?? $line->lrGoodsRow?->rate_semantics
+                    ?? ($line->lrGoodsRow !== null ? $line->lrGoodsRow->rate_semantics : null)
                     ?? FreightRateSemantics::WeightKg,
             ]);
 
@@ -222,7 +222,11 @@ final class LorryHireCalculationService
      *     freight_total: numeric-string,
      *     tds_amount: numeric-string,
      *     net_payable: numeric-string,
-     *     outstanding_amount: numeric-string
+     *     outstanding_amount: numeric-string,
+     *     balance_due: numeric-string,
+     *     negative_adjusted_amount: numeric-string,
+     *     reserved_voucher_amount: numeric-string,
+     *     remaining_payable: numeric-string
      * }
      */
     public function summarize(LorryHire $hire): array

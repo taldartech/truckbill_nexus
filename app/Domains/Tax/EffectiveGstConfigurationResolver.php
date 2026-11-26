@@ -21,9 +21,7 @@ final class EffectiveGstConfigurationResolver
             throw new CompanyDomainException('Branch does not belong to the selected company.');
         }
 
-        $mode = $branch->gst_mode instanceof BranchGstMode
-            ? $branch->gst_mode
-            : BranchGstMode::tryFrom((string) ($branch->gst_mode ?? '')) ?? BranchGstMode::InheritCompany;
+        $mode = $branch->gst_mode;
 
         if ($mode === BranchGstMode::Independent) {
             [$stateName, $gstCode] = $this->resolveStateMeta(

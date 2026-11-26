@@ -2,6 +2,7 @@
 
 namespace App\Domains\Partload\Delivery;
 
+use App\Domains\Accounting\OperationalAccountingPoster;
 use App\Domains\Consignment\Enums\LrStatus;
 use App\Domains\Numbering\DocumentNumberAllocator;
 use App\Domains\Numbering\Enums\DocumentNumberScopeType;
@@ -44,6 +45,7 @@ final class PartloadDeliveryReceiptService
         private readonly CoreModuleEntitlementResolver $entitlements = new CoreModuleEntitlementResolver,
         private readonly SubscriptionEntitlementGate $entitlementGate = new SubscriptionEntitlementGate,
         private readonly DocumentNumberAllocator $numbers = new DocumentNumberAllocator,
+        private readonly OperationalAccountingPoster $accounting = new OperationalAccountingPoster,
     ) {}
 
     /**
@@ -209,7 +211,10 @@ final class PartloadDeliveryReceiptService
                         ],
                     );
 
-                    return $dr->fresh(['lorryReceipt']) ?? $dr;
+                    $posted = $dr->fresh(['lorryReceipt']) ?? $dr;
+                    $this->accounting->postPartloadDeliveryReceipt($posted, $actor);
+
+                    return $posted;
                 });
             });
         } catch (UniqueConstraintViolationException $e) {

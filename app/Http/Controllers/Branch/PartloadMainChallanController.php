@@ -286,7 +286,7 @@ class PartloadMainChallanController extends Controller
             'to_station_name' => $main->toStation?->name,
             'vehicle_registration' => $main->vehicle?->registration_number,
             'driver_name' => $main->driver?->name,
-            'ownership_mode' => $main->ownership_mode?->value,
+            'ownership_mode' => $main->ownership_mode->value,
             'truck_freight' => (string) $main->truck_freight,
             'labour_charge' => (string) $main->labour_charge,
             'kat' => (string) $main->kat,

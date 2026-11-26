@@ -1,8 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
-import {
-    AppIndexListCard,
-    AppIndexPage,
-} from '@/components/app-index-page';
+import { AppIndexListCard, AppIndexPage } from '@/components/app-index-page';
 import { Button } from '@/components/ui/button';
 
 type Props = {
@@ -42,17 +39,28 @@ export default function PartloadInwardShow({ inward, urls }: Props) {
                 >
                     <div className="grid gap-3 p-4 md:grid-cols-3">
                         <div>
-                            <div className="text-xs text-muted-foreground">Date</div>
-                            <div className="font-medium">{inward.inward_date}</div>
-                        </div>
-                        <div>
-                            <div className="text-xs text-muted-foreground">Challan</div>
-                            <div className="font-medium">{inward.challan_number}</div>
-                        </div>
-                        <div>
-                            <div className="text-xs text-muted-foreground">Route</div>
+                            <div className="text-xs text-muted-foreground">
+                                Date
+                            </div>
                             <div className="font-medium">
-                                {inward.from_station_name} → {inward.to_station_name}
+                                {inward.inward_date}
+                            </div>
+                        </div>
+                        <div>
+                            <div className="text-xs text-muted-foreground">
+                                Challan
+                            </div>
+                            <div className="font-medium">
+                                {inward.challan_number}
+                            </div>
+                        </div>
+                        <div>
+                            <div className="text-xs text-muted-foreground">
+                                Route
+                            </div>
+                            <div className="font-medium">
+                                {inward.from_station_name} →{' '}
+                                {inward.to_station_name}
                             </div>
                         </div>
                     </div>
@@ -60,24 +68,53 @@ export default function PartloadInwardShow({ inward, urls }: Props) {
                         <table className="w-full min-w-[640px] text-left text-sm">
                             <thead className="border-b text-muted-foreground">
                                 <tr>
-                                    <th className="px-3 py-2 font-medium">Bilty</th>
-                                    <th className="px-3 py-2 font-medium">Pkgs</th>
-                                    <th className="px-3 py-2 font-medium">Weight</th>
-                                    <th className="px-3 py-2 font-medium">Disposition</th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Bilty
+                                    </th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Pkgs
+                                    </th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Weight
+                                    </th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Disposition
+                                    </th>
                                     <th className="px-3 py-2 font-medium" />
                                 </tr>
                             </thead>
                             <tbody>
                                 {inward.lines.map((line) => (
-                                    <tr key={line.id} className="border-b last:border-0">
-                                        <td className="px-3 py-2 font-medium">{line.lr_number}</td>
-                                        <td className="px-3 py-2">{line.packages}</td>
-                                        <td className="px-3 py-2">{line.weight_kg}</td>
-                                        <td className="px-3 py-2">{line.disposition_label}</td>
+                                    <tr
+                                        key={line.id}
+                                        className="border-b last:border-0"
+                                    >
+                                        <td className="px-3 py-2 font-medium">
+                                            {line.lr_number}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            {line.packages}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            {line.weight_kg}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            {line.disposition_label}
+                                        </td>
                                         <td className="px-3 py-2 text-right">
                                             {line.create_dr_url ? (
-                                                <Button asChild size="sm" variant="outline">
-                                                    <Link href={line.create_dr_url}>Create DR</Link>
+                                                <Button
+                                                    asChild
+                                                    size="sm"
+                                                    variant="outline"
+                                                >
+                                                    <Link
+                                                        href={
+                                                            line.create_dr_url
+                                                        }
+                                                    >
+                                                        Create DR
+                                                    </Link>
                                                 </Button>
                                             ) : null}
                                         </td>

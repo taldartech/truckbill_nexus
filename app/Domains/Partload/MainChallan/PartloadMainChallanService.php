@@ -167,7 +167,7 @@ final class PartloadMainChallanService
 
         $vehicle = $this->requireVehicle($company, (string) $payload['vehicle_id']);
         $driverId = $this->requireDriver($company, (string) $payload['driver_party_id']);
-        $challanIds = array_values(array_unique(array_map('strval', $payload['partload_challan_ids'] ?? [])));
+        $challanIds = array_values(array_unique(array_map('strval', $payload['partload_challan_ids'])));
         if ($challanIds === []) {
             throw ValidationException::withMessages([
                 'partload_challan_ids' => 'Select at least one Challan.',
@@ -216,7 +216,11 @@ final class PartloadMainChallanService
                         'cash_payment' => $amounts['cash_paid'],
                         'to_pay_amount' => $aggregates['to_pay_amount'],
                     ]);
-                    $totalAmount = bcadd($totalAmount, $amounts['other_charge'], 2);
+                    $totalAmount = bcadd(
+                        $totalAmount,
+                        number_format((float) $amounts['other_charge'], 2, '.', ''),
+                        2,
+                    );
 
                     $main = PartloadMainChallan::query()->create([
                         'id' => (string) Str::uuid(),

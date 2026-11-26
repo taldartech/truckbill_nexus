@@ -31,8 +31,8 @@ return new class extends Migration
             $indexes = $sm->getIndexes('gst_rates');
             $hasCodeVersionUnique = false;
             foreach ($indexes as $index) {
-                if (($index['unique'] ?? false) === true
-                    && ($index['columns'] ?? []) === ['code', 'version']) {
+                if ($index['unique'] === true
+                    && $index['columns'] === ['code', 'version']) {
                     $hasCodeVersionUnique = true;
                     break;
                 }

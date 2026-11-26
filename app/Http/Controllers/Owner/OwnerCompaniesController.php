@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Owner;
 
-use App\Domains\Company\CompanyAccessService;
 use App\Domains\Company\CompanyWorkspaceService;
 use App\Domains\Company\Enums\DataVisibility;
 use App\Domains\Company\Enums\GstRegistrationType;
@@ -27,7 +26,6 @@ use InvalidArgumentException;
 class OwnerCompaniesController extends Controller
 {
     public function __construct(
-        private readonly CompanyAccessService $access,
         private readonly CompanyWorkspaceService $workspace,
         private readonly GstRateService $gstRates,
         private readonly OwnerGlobalPanelService $panel,

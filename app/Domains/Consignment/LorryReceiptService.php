@@ -1380,7 +1380,7 @@ final class LorryReceiptService
             ]);
         }
 
-        return $normalized;
+        return number_format((int) $normalized, 0, '.', '');
     }
 
     private function resolveRateSemantics(

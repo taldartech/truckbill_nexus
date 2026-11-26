@@ -5,8 +5,8 @@ namespace App\Domains\Geography;
 use App\Models\City;
 use App\Models\State;
 use App\Support\Database\CaseInsensitiveLike;
+use Illuminate\Database\Connection;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 
@@ -207,30 +207,33 @@ final class GeographyLookupService
     /**
      * Exact match → prefix match → substring match, then alphabetical.
      *
-     * @param  Builder<Model>  $query
+     * @param  Builder<State>|Builder<City>  $query
      * @param  list<string>  $columns
      */
-    private function orderBySearchRelevance($query, array $columns, string $search): void
+    private function orderBySearchRelevance(Builder $query, array $columns, string $search): void
     {
         $needle = mb_strtolower(trim($search), 'UTF-8');
         $prefix = $needle.'%';
-        $driver = $query->getConnection()->getDriverName();
-
-        $cases = [];
-        $bindings = [];
-        foreach ($columns as $column) {
-            if ($driver === 'pgsql') {
-                $cases[] = "WHEN LOWER({$column}) = ? THEN 0";
-                $cases[] = "WHEN LOWER({$column}) LIKE ? THEN 1";
-            } else {
-                $cases[] = "WHEN LOWER(`{$column}`) = ? THEN 0";
-                $cases[] = "WHEN LOWER(`{$column}`) LIKE ? THEN 1";
-            }
-            $bindings[] = $needle;
-            $bindings[] = $prefix;
+        $connection = $query->getConnection();
+        if (! $connection instanceof Connection) {
+            return;
         }
 
-        $query->orderByRaw('CASE '.implode(' ', $cases).' ELSE 2 END', $bindings)
+        $driver = $connection->getDriverName();
+
+        $bindings = [$needle, $prefix];
+        if (count($columns) === 1) {
+            $relevanceSql = $driver === 'pgsql'
+                ? 'CASE WHEN LOWER(name) = ? THEN 0 WHEN LOWER(name) LIKE ? THEN 1 ELSE 2 END'
+                : 'CASE WHEN LOWER(`name`) = ? THEN 0 WHEN LOWER(`name`) LIKE ? THEN 1 ELSE 2 END';
+        } else {
+            $relevanceSql = $driver === 'pgsql'
+                ? 'CASE WHEN LOWER(name) = ? THEN 0 WHEN LOWER(name) LIKE ? THEN 1 WHEN LOWER(code) = ? THEN 0 WHEN LOWER(code) LIKE ? THEN 1 ELSE 2 END'
+                : 'CASE WHEN LOWER(`name`) = ? THEN 0 WHEN LOWER(`name`) LIKE ? THEN 1 WHEN LOWER(`code`) = ? THEN 0 WHEN LOWER(`code`) LIKE ? THEN 1 ELSE 2 END';
+            $bindings = [$needle, $prefix, $needle, $prefix];
+        }
+
+        $query->orderByRaw($relevanceSql, $bindings)
             ->orderBy('name');
     }
 }

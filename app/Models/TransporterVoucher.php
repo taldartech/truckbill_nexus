@@ -17,6 +17,7 @@ use Illuminate\Support\Str;
  * @property VoucherPaymentMode|null $payment_mode
  * @property string $amount
  * @property Carbon|null $voucher_date
+ * @property string|null $transporter_party_id
  * @property-read BankCashAccount|null $bankCashAccount
  * @property-read Party|null $transporter
  * @property-read LorryHire|null $lorryHire

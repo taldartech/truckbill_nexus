@@ -63,7 +63,7 @@ class AccountingVoucherController extends Controller
                 'data' => collect($page->items())->map(fn (AccountingVoucher $voucher): array => [
                     'id' => $voucher->id,
                     'voucher_number' => $voucher->voucher_number,
-                    'voucher_date' => $voucher->voucher_date?->toDateString(),
+                    'voucher_date' => $voucher->voucher_date->toDateString(),
                     'voucher_type' => $voucher->voucher_type->value,
                     'voucher_type_label' => $voucher->voucher_type->label(),
                     'narration' => $voucher->narration,
@@ -174,7 +174,7 @@ class AccountingVoucherController extends Controller
             'voucher' => [
                 'id' => $accountingVoucher->id,
                 'voucher_number' => $accountingVoucher->voucher_number,
-                'voucher_date' => $accountingVoucher->voucher_date?->toDateString(),
+                'voucher_date' => $accountingVoucher->voucher_date->toDateString(),
                 'voucher_type_label' => $accountingVoucher->voucher_type->label(),
                 'narration' => $accountingVoucher->narration,
                 'total_debit' => (string) $accountingVoucher->total_debit,

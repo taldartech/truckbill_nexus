@@ -6,6 +6,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
+/**
+ * @property string|null $voucher_date
+ * @property string|null $voucher_type
+ * @property string|null $voucher_number
+ * @property string|null $voucher_narration
+ */
 class AccountingVoucherLine extends Model
 {
     public $incrementing = false;

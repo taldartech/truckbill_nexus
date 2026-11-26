@@ -57,7 +57,7 @@ final class LorryReceiptOperationalStatusService
             throw new LorryReceiptDomainException('Not authorized to change Bilty status.');
         }
 
-        $target = LrStatus::tryFrom((string) ($payload['status'] ?? ''));
+        $target = LrStatus::tryFrom((string) $payload['status']);
         if ($target === null) {
             throw ValidationException::withMessages(['status' => 'Invalid status.']);
         }
@@ -125,12 +125,6 @@ final class LorryReceiptOperationalStatusService
                     $current->label(),
                     $target->label(),
                 ),
-            ]);
-        }
-
-        if ($target === LrStatus::Invoiced) {
-            throw ValidationException::withMessages([
-                'status' => 'Invoiced status is set automatically when a Customer Invoice is created.',
             ]);
         }
 

@@ -91,7 +91,7 @@ final class OpeningBalanceService
 
     /**
      * @param  list<array{gl_ledger_id: string, debit_amount?: numeric-string|float|int|null, credit_amount?: numeric-string|float|int|null, narration?: string|null}>  $lines
-     * @return list<array{gl_ledger_id: string, debit_amount: string, credit_amount: string, narration: string}>
+     * @return list<array{gl_ledger_id: string, debit_amount: numeric-string, credit_amount: numeric-string, narration: string}>
      */
     private function normalize(array $lines): array
     {
@@ -101,7 +101,7 @@ final class OpeningBalanceService
 
         $normalized = [];
         foreach ($lines as $index => $line) {
-            $ledgerId = (string) ($line['gl_ledger_id'] ?? '');
+            $ledgerId = (string) $line['gl_ledger_id'];
             if ($ledgerId === '') {
                 throw ValidationException::withMessages([
                     "lines.$index.gl_ledger_id" => 'Ledger is required.',

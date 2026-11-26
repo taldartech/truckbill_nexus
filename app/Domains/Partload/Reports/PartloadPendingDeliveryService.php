@@ -29,7 +29,7 @@ final class PartloadPendingDeliveryService
     /**
      * @return array{
      *     rows: list<array<string, mixed>>,
-     *     totals: array{count: int, packages: string, weight_kg: string},
+     *     totals: array{count: int, packages: numeric-string, weight_kg: numeric-string},
      * }
      */
     public function snapshot(Company $company, Branch $branch, User $actor): array
@@ -76,12 +76,12 @@ final class PartloadPendingDeliveryService
             $packages = '0';
             $weightKg = '0.000';
             foreach ($lines as $line) {
-                $packages = bcadd($packages, (string) $line->packages, 0);
-                $weightKg = bcadd($weightKg, (string) $line->weight_kg, 3);
+                $packages = bcadd($packages, $this->quantity($line->packages, 0), 0);
+                $weightKg = bcadd($weightKg, $this->quantity($line->weight_kg, 3), 3);
             }
 
             return [
-                'rows' => $rows,
+                'rows' => array_values($rows),
                 'totals' => [
                     'count' => count($rows),
                     'packages' => $packages,
@@ -142,5 +142,13 @@ final class PartloadPendingDeliveryService
                 TenantContextHolder::inject($previous);
             }
         }
+    }
+
+    /**
+     * @return numeric-string
+     */
+    private function quantity(mixed $value, int $scale): string
+    {
+        return number_format((float) ($value ?? 0), $scale, '.', '');
     }
 }

@@ -29,7 +29,7 @@ final class PartloadInTransitService
     /**
      * @return array{
      *     rows: list<array<string, mixed>>,
-     *     totals: array{count: int, packages: string, weight_kg: string, amount: string},
+     *     totals: array{count: int, packages: numeric-string, weight_kg: numeric-string, amount: numeric-string},
      * }
      */
     public function snapshot(
@@ -84,13 +84,13 @@ final class PartloadInTransitService
             $weightKg = '0.000';
             $amount = '0.00';
             foreach ($challans as $challan) {
-                $packages = bcadd($packages, (string) $challan->total_packages, 0);
-                $weightKg = bcadd($weightKg, (string) $challan->total_weight_kg, 3);
-                $amount = bcadd($amount, (string) $challan->total_amount, 2);
+                $packages = bcadd($packages, $this->quantity($challan->total_packages, 0), 0);
+                $weightKg = bcadd($weightKg, $this->quantity($challan->total_weight_kg, 3), 3);
+                $amount = bcadd($amount, $this->money($challan->total_amount), 2);
             }
 
             return [
-                'rows' => $rows,
+                'rows' => array_values($rows),
                 'totals' => [
                     'count' => count($rows),
                     'packages' => $packages,
@@ -152,5 +152,21 @@ final class PartloadInTransitService
                 TenantContextHolder::inject($previous);
             }
         }
+    }
+
+    /**
+     * @return numeric-string
+     */
+    private function money(mixed $value): string
+    {
+        return number_format((float) ($value ?? 0), 2, '.', '');
+    }
+
+    /**
+     * @return numeric-string
+     */
+    private function quantity(mixed $value, int $scale): string
+    {
+        return number_format((float) ($value ?? 0), $scale, '.', '');
     }
 }

@@ -21,6 +21,7 @@ use Illuminate\Support\Str;
  * @property Carbon|null $lr_date
  * @property Carbon|null $delivered_at
  * @property Carbon|null $cancelled_at
+ * @property PartloadFreightPaymentTerm|null $freight_payment_term
  */
 class LorryReceipt extends Model
 {

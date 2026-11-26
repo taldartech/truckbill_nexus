@@ -134,16 +134,20 @@ final class VoucherPayoutExportService
         $account = $voucher->bankCashAccount;
         $transporter = $voucher->transporter;
         $hire = $voucher->lorryHire;
-        $lr = $hire?->lorryReceipt;
-        $lrNo = $lr?->lr_number ?? '-';
-        $truckNo = $hire?->vehicle?->registration_number ?? '-';
+        $lr = $hire !== null ? $hire->lorryReceipt : null;
+        $lrNo = $lr !== null ? (string) $lr->lr_number : '-';
+        $truckNo = $hire !== null && $hire->vehicle !== null
+            ? (string) $hire->vehicle->registration_number
+            : '-';
         $beneficiaryId = $this->beneficiaryId($voucher);
         $debitAcct = $account !== null
             ? (string) ($account->getAttributes()['account_number'] ?? '')
             : '';
-        $debitBank = $account?->bank_name ?? $account?->name ?? '';
+        $debitBank = $account !== null
+            ? (string) ($account->bank_name ?? $account->name)
+            : '';
         $amount = number_format((float) $voucher->amount, 2, '.', '');
-        $mode = $voucher->payment_mode?->value ?? 'bank';
+        $mode = $voucher->payment_mode->value;
         if (bccomp($amount, '200000', 2) !== -1 && $mode === VoucherPaymentMode::Bank->value) {
             $mode = 'RTGS';
         } elseif ($mode === VoucherPaymentMode::Bank->value) {
@@ -160,13 +164,13 @@ final class VoucherPayoutExportService
             $voucher->voucher_date?->format('Y-m-d') ?? '',
             $debitAcct,
             $debitBank,
-            $transporter?->name ?? 'Vendor',
+            $transporter !== null ? (string) $transporter->name : 'Vendor',
             $beneficiaryId,
             $amount,
             strtoupper($mode),
             $lrNo,
             $truckNo,
-            (string) ($transporter?->pan ?? ''),
+            $transporter !== null ? (string) ($transporter->pan ?? '') : '',
             (string) ($voucher->cash_reference ?? ''),
             $voucher->status->value,
             $narration,

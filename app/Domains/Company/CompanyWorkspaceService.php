@@ -789,9 +789,7 @@ final class CompanyWorkspaceService
             'city' => $branch->city,
             'city_id' => $branch->city_id,
             'pin' => $branch->pin,
-            'gst_mode' => $branch->gst_mode instanceof BranchGstMode
-                ? $branch->gst_mode->value
-                : (string) ($branch->gst_mode ?? BranchGstMode::InheritCompany->value),
+            'gst_mode' => $branch->gst_mode->value,
             'gstin' => $branch->gstin,
             'gst_registration_type' => $branch->gst_registration_type?->value,
             'tax_liability' => $branch->tax_liability?->value,

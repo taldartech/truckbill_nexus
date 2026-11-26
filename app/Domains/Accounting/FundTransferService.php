@@ -41,13 +41,13 @@ final class FundTransferService
     ): AccountingVoucher {
         $this->coa->ensureDefaults($company);
 
-        $amount = number_format((float) ($payload['amount'] ?? 0), 2, '.', '');
+        $amount = number_format((float) $payload['amount'], 2, '.', '');
         if (bccomp($amount, '0', 2) !== 1) {
             throw ValidationException::withMessages(['amount' => 'Transfer amount must be positive.']);
         }
 
-        $from = $this->resolveLedger($company, (string) ($payload['from_ledger'] ?? ''));
-        $to = $this->resolveLedger($company, (string) ($payload['to_ledger'] ?? ''));
+        $from = $this->resolveLedger($company, (string) $payload['from_ledger']);
+        $to = $this->resolveLedger($company, (string) $payload['to_ledger']);
         if ($from->id === $to->id) {
             throw ValidationException::withMessages(['to_ledger' => 'From and To ledgers must differ.']);
         }

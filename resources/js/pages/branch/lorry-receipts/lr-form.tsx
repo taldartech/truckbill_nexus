@@ -3372,7 +3372,7 @@ export default function LrForm({
                                     {
                                         id: station.id,
                                         name: station.name,
-                                        code: station.code ?? null,
+                                        code: station.code ?? undefined,
                                     },
                                 ];
                             });

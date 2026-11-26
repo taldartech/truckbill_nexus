@@ -2,6 +2,7 @@
 
 namespace App\Domains\Partload\Challan;
 
+use App\Domains\Accounting\OperationalAccountingPoster;
 use App\Domains\Consignment\Enums\LrStatus;
 use App\Domains\Consignment\Enums\LrWorkflowContext;
 use App\Domains\Master\Party\Enums\PartyRoleType;
@@ -55,6 +56,7 @@ final class PartloadChallanService
         private readonly CoreModuleEntitlementResolver $entitlements = new CoreModuleEntitlementResolver,
         private readonly SubscriptionEntitlementGate $entitlementGate = new SubscriptionEntitlementGate,
         private readonly DocumentNumberAllocator $numbers = new DocumentNumberAllocator,
+        private readonly OperationalAccountingPoster $accounting = new OperationalAccountingPoster,
     ) {}
 
     /**
@@ -210,8 +212,8 @@ final class PartloadChallanService
         $this->assertDriverParty($company, $branch, $driverId);
 
         $lrIds = array_values(array_unique(array_filter(
-            $payload['lorry_receipt_ids'] ?? [],
-            static fn (mixed $id): bool => is_string($id) && $id !== '',
+            $payload['lorry_receipt_ids'],
+            static fn (string $id): bool => $id !== '',
         )));
         if ($lrIds === []) {
             throw ValidationException::withMessages([
@@ -486,7 +488,10 @@ final class PartloadChallanService
             after: ['status' => PartloadChallanStatus::Dispatched->value],
         );
 
-        return $locked->fresh(['lines', 'fromStation', 'toStation', 'vehicle', 'driver']) ?? $locked;
+        $dispatched = $locked->fresh(['lines', 'fromStation', 'toStation', 'vehicle', 'driver']) ?? $locked;
+        $this->accounting->postPartloadChallanDispatched($dispatched, $actor);
+
+        return $dispatched;
     }
 
     /**
@@ -573,12 +578,7 @@ final class PartloadChallanService
                 $weight = number_format((float) $weight + (float) ($row->charged_weight ?? $row->actual_weight ?? 0), 3, '.', '');
             }
 
-            $term = $bilty->freight_payment_term;
-            if ($term !== null && ! $term instanceof PartloadFreightPaymentTerm) {
-                $term = PartloadFreightPaymentTerm::tryFrom((string) $term)?->value;
-            } elseif ($term instanceof PartloadFreightPaymentTerm) {
-                $term = $term->value;
-            }
+            $term = $bilty->freight_payment_term?->value;
 
             $snapshots[] = [
                 'lorry_receipt_id' => $bilty->id,
@@ -586,7 +586,7 @@ final class PartloadChallanService
                 'packages' => $packages,
                 'weight_kg' => $weight,
                 'freight_amount' => number_format((float) $bilty->freight_total, 2, '.', ''),
-                'freight_payment_term' => is_string($term) ? $term : null,
+                'freight_payment_term' => $term,
             ];
         }
 

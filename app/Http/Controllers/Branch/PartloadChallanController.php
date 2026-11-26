@@ -91,7 +91,6 @@ class PartloadChallanController extends Controller
         $eligible = $this->challans->eligibleBilties($company, $branch, $fromStationId, $toStationId);
 
         return Inertia::render('partload/challans/create', [
-            'permissions' => $this->permissions($actor, $company, $branch),
             'eligibleBilties' => $eligible->map(fn ($lr): array => [
                 'id' => $lr->id,
                 'lr_number' => $lr->lr_number,
@@ -100,7 +99,7 @@ class PartloadChallanController extends Controller
                 'from_station_name' => $lr->fromStation?->name,
                 'to_station_name' => $lr->toStation?->name,
                 'freight_total' => (string) $lr->freight_total,
-                'freight_payment_term' => $lr->freight_payment_term?->value,
+                'freight_payment_term' => $lr->freight_payment_term->value,
             ])->values()->all(),
             'stationOptions' => Station::query()
                 ->whereNull('deleted_at')

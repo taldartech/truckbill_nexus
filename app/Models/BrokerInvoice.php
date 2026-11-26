@@ -15,6 +15,7 @@ use Illuminate\Support\Str;
  * @property BrokerInvoiceStatus $status
  * @property BrokerInvoicePaymentStatus $payment_status
  * @property Carbon|null $invoice_date
+ * @property array<string, mixed>|null $gst_rate_snapshot
  */
 class BrokerInvoice extends Model
 {

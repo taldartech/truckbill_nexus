@@ -144,7 +144,7 @@ final class LrFinancialImmutabilityService
             $incomingSemantics = $incoming['rate_semantics'] instanceof \BackedEnum
                 ? $incoming['rate_semantics']->value
                 : (string) ($incoming['rate_semantics'] ?? '');
-            $existingSemantics = $row->rate_semantics?->value ?? '';
+            $existingSemantics = $row->rate_semantics->value;
 
             if (
                 (string) ($incoming['goods_description'] ?? '') !== (string) $row->goods_description

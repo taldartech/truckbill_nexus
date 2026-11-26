@@ -30,7 +30,7 @@ final class PartloadPendingLoadingService
     /**
      * @return array{
      *     rows: list<array<string, mixed>>,
-     *     totals: array{count: int, packages: string, weight_kg: string, freight_total: string},
+     *     totals: array{count: int, packages: numeric-string, weight_kg: numeric-string, freight_total: numeric-string},
      * }
      */
     public function snapshot(
@@ -47,7 +47,7 @@ final class PartloadPendingLoadingService
         return $this->withTenant($company, $branch, function () use ($company, $branch, $fromStationId, $toStationId): array {
             $bilties = $this->challans->eligibleBilties($company, $branch, $fromStationId, $toStationId);
 
-            $rows = $bilties->map(fn (LorryReceipt $lr): array => $this->row($lr))->values()->all();
+            $rows = array_values($bilties->map(fn (LorryReceipt $lr): array => $this->row($lr))->all());
 
             $packages = '0';
             $weightKg = '0.000';
@@ -58,7 +58,7 @@ final class PartloadPendingLoadingService
                 $rowWeight = $this->weightTotalKg($lr);
                 $packages = bcadd($packages, $rowPackages, 0);
                 $weightKg = bcadd($weightKg, $rowWeight, 3);
-                $freight = bcadd($freight, (string) ($lr->freight_total ?? '0'), 2);
+                $freight = bcadd($freight, $this->money($lr->freight_total), 2);
             }
 
             return [
@@ -101,21 +101,27 @@ final class PartloadPendingLoadingService
         ];
     }
 
+    /**
+     * @return numeric-string
+     */
     private function packageTotal(LorryReceipt $lr): string
     {
         $total = '0';
         foreach ($lr->goodsRows as $row) {
-            $total = bcadd($total, (string) ($row->package_count ?? 0), 0);
+            $total = bcadd($total, $this->quantity($row->package_count, 0), 0);
         }
 
         return $total;
     }
 
+    /**
+     * @return numeric-string
+     */
     private function weightTotalKg(LorryReceipt $lr): string
     {
         $total = '0.000';
         foreach ($lr->goodsRows as $row) {
-            $total = bcadd($total, (string) ($row->charged_weight ?? $row->actual_weight ?? '0'), 3);
+            $total = bcadd($total, $this->quantity($row->charged_weight ?? $row->actual_weight, 3), 3);
         }
 
         return $total;
@@ -172,5 +178,21 @@ final class PartloadPendingLoadingService
                 TenantContextHolder::inject($previous);
             }
         }
+    }
+
+    /**
+     * @return numeric-string
+     */
+    private function money(mixed $value): string
+    {
+        return number_format((float) ($value ?? 0), 2, '.', '');
+    }
+
+    /**
+     * @return numeric-string
+     */
+    private function quantity(mixed $value, int $scale): string
+    {
+        return number_format((float) ($value ?? 0), $scale, '.', '');
     }
 }

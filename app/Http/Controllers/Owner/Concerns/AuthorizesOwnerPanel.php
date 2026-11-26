@@ -53,10 +53,8 @@ trait AuthorizesOwnerPanel
      */
     protected function authorizeOwnerIdentity(Request $request): User
     {
-        /** @var User $user */
         $user = $request->user();
-
-        if ($user === null || ! $user->isCustomer() || ! $user->isActive()) {
+        if (! $user instanceof User || ! $user->isCustomer() || ! $user->isActive()) {
             abort(403, 'Owner Panel requires an active Customer identity.');
         }
 

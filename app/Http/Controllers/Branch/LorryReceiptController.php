@@ -252,7 +252,7 @@ class LorryReceiptController extends Controller
             $payload['vehicle_id'] = $classified['vehicle']->id;
         }
 
-        $createTrip = ($payload['workflow_context'] ?? null) === LrWorkflowContext::OwnFleet->value
+        $createTrip = $payload['workflow_context'] === LrWorkflowContext::OwnFleet->value
             && $this->customerAllows(
                 $actor,
                 $company,
@@ -745,7 +745,7 @@ class LorryReceiptController extends Controller
         }
 
         return [
-            'rateTypeOptions' => collect([
+            'rateTypeOptions' => array_values(collect([
                 FreightRateType::FixedAmount,
                 FreightRateType::PerPackageUnit,
                 FreightRateType::PerChargedWeight,
@@ -757,9 +757,8 @@ class LorryReceiptController extends Controller
                     FreightRateType::PerPackageUnit => 'Per Unit',
                     FreightRateType::PerActualWeight => 'Per Actual Weight',
                     FreightRateType::PerChargedWeight => 'Per Charged Weight',
-                    default => $type->value,
                 },
-            ])->values()->all(),
+            ])->all()),
             'consignors' => $consignors,
             'consignees' => $consignees,
             'billingCustomers' => $billingCustomers,
@@ -787,7 +786,9 @@ class LorryReceiptController extends Controller
      * @return array{
      *     truckTypes: list<array{id: string, name: string}>,
      *     tyreLayouts: list<array{id: string, name: string}>,
-     *     drivers: list<array{id: string, name: string}>
+     *     drivers: list<array{id: string, name: string}>,
+     *     truckTypesStoreUrl: string,
+     *     tyreLayoutsStoreUrl: string
      * }
      */
     private function vehicleQuickCreateOptions(Company $company, Branch $branch): array
@@ -818,18 +819,18 @@ class LorryReceiptController extends Controller
         );
 
         return [
-            'truckTypes' => $truckTypes->map(fn (OwnerCatalogueItem $item): array => [
+            'truckTypes' => array_values($truckTypes->map(fn (OwnerCatalogueItem $item): array => [
                 'id' => $item->id,
                 'name' => $item->name,
-            ])->values()->all(),
-            'tyreLayouts' => $tyreLayouts->map(fn (OwnerCatalogueItem $item): array => [
+            ])->all()),
+            'tyreLayouts' => array_values($tyreLayouts->map(fn (OwnerCatalogueItem $item): array => [
                 'id' => $item->id,
                 'name' => $item->name,
-            ])->values()->all(),
-            'drivers' => collect($drivers)->map(fn (array $driver): array => [
+            ])->all()),
+            'drivers' => array_values(collect($drivers)->map(fn (array $driver): array => [
                 'id' => (string) $driver['id'],
                 'name' => (string) $driver['name'],
-            ])->values()->all(),
+            ])->all()),
             'truckTypesStoreUrl' => route('branch.truck-types.store', absolute: false),
             'tyreLayoutsStoreUrl' => route('branch.tyre-layouts.store', absolute: false),
         ];
@@ -1075,7 +1076,7 @@ class LorryReceiptController extends Controller
                     'actual_weight' => $row->actual_weight,
                     'charged_weight' => $row->charged_weight,
                     'freight_rate_type' => $row->freight_rate_type->value,
-                    'rate_semantics' => $row->rate_semantics?->value ?? 'weight_kg',
+                    'rate_semantics' => $row->rate_semantics->value,
                     'freight_rate' => $this->freightPresentation->presentAmount($row->freight_rate, $maySeeFreight),
                     'freight_amount' => $this->freightPresentation->presentAmount($row->freight_amount, $maySeeFreight),
                     'goods_value' => $row->goods_value,

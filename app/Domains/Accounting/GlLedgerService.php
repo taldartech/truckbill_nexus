@@ -107,18 +107,20 @@ final class GlLedgerService
     {
         $this->coa->ensureDefaults($company);
 
-        return AccountGroup::query()
+        $options = [];
+        foreach (AccountGroup::query()
             ->where('company_id', $company->id)
             ->whereNull('deleted_at')
             ->orderBy('sort_order')
             ->orderBy('name')
-            ->get(['id', 'name', 'nature'])
-            ->map(fn (AccountGroup $group): array => [
+            ->get(['id', 'name', 'nature']) as $group) {
+            $options[] = [
                 'id' => $group->id,
                 'name' => $group->name,
-                'nature' => $group->nature instanceof AccountNature ? $group->nature->value : (string) $group->nature,
-            ])
-            ->values()
-            ->all();
+                'nature' => $group->nature->value,
+            ];
+        }
+
+        return $options;
     }
 }

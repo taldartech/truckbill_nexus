@@ -578,7 +578,7 @@ class OwnerBranchesController extends Controller
      */
     private function eligibleCompanyOptions(User $user): array
     {
-        return Company::query()
+        return array_values(Company::query()
             ->where('owner_user_id', $user->id)
             ->whereNull('deleted_at')
             ->whereNull('deactivated_at')
@@ -594,8 +594,7 @@ class OwnerBranchesController extends Controller
                     'available_branch_slots' => (int) $capacity['available_branch_slots'],
                 ];
             })
-            ->values()
-            ->all();
+            ->all());
     }
 
     /**
@@ -603,7 +602,7 @@ class OwnerBranchesController extends Controller
      */
     private function customerRoleOptions(): array
     {
-        return Role::query()
+        return array_values(Role::query()
             ->where('domain', PermissionDomain::Customer->value)
             ->whereNull('deactivated_at')
             ->whereNull('deleted_at')
@@ -614,8 +613,7 @@ class OwnerBranchesController extends Controller
                 'name' => $role->name,
                 'slug' => $role->slug,
             ])
-            ->values()
-            ->all();
+            ->all());
     }
 
     /**
@@ -636,7 +634,7 @@ class OwnerBranchesController extends Controller
             'city' => $branch->city,
             'city_id' => $branch->city_id,
             'pin' => $branch->pin,
-            'gst_mode' => $branch->gst_mode?->value ?? 'inherit_company',
+            'gst_mode' => $branch->gst_mode->value,
             'gst_registration_type' => $branch->gst_registration_type?->value,
             'tax_liability' => $branch->tax_liability?->value,
             'gstin' => $branch->gstin,

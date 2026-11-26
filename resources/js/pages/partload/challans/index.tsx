@@ -55,7 +55,10 @@ export default function PartloadChallansIndex({
                     title="Partload Challans"
                     toolbar={
                         permissions.can_create ? (
-                            <Button asChild className="bg-[#2FB36F] text-white hover:bg-[#279960]">
+                            <Button
+                                asChild
+                                className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                            >
                                 <Link href={urls.create}>Create Challan</Link>
                             </Button>
                         ) : null
@@ -82,12 +85,15 @@ export default function PartloadChallansIndex({
                             <select
                                 id="status"
                                 name="status"
-                                className="border-input bg-background h-9 rounded-md border px-2 text-sm"
+                                className="h-9 rounded-md border border-input bg-background px-2 text-sm"
                                 defaultValue={filters.status}
                             >
                                 <option value="">All</option>
                                 {statusOptions.map((option) => (
-                                    <option key={option.value} value={option.value}>
+                                    <option
+                                        key={option.value}
+                                        value={option.value}
+                                    >
                                         {option.label}
                                     </option>
                                 ))}
@@ -102,13 +108,27 @@ export default function PartloadChallansIndex({
                         <table className="w-full min-w-[960px] text-left text-sm">
                             <thead className="border-b text-muted-foreground">
                                 <tr>
-                                    <th className="px-3 py-2 font-medium">Challan</th>
-                                    <th className="px-3 py-2 font-medium">Date</th>
-                                    <th className="px-3 py-2 font-medium">Route</th>
-                                    <th className="px-3 py-2 font-medium">Vehicle</th>
-                                    <th className="px-3 py-2 font-medium">Lines</th>
-                                    <th className="px-3 py-2 font-medium">Status</th>
-                                    <th className="px-3 py-2 font-medium">Total</th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Challan
+                                    </th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Date
+                                    </th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Route
+                                    </th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Vehicle
+                                    </th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Lines
+                                    </th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Status
+                                    </th>
+                                    <th className="px-3 py-2 font-medium">
+                                        Total
+                                    </th>
                                     <th className="px-3 py-2 font-medium" />
                                 </tr>
                             </thead>
@@ -119,19 +139,26 @@ export default function PartloadChallansIndex({
                                             colSpan={8}
                                             className="px-3 py-8 text-center text-muted-foreground"
                                         >
-                                            No Challans yet. Consolidate eligible
-                                            Partload Bilties to create one.
+                                            No Challans yet. Consolidate
+                                            eligible Partload Bilties to create
+                                            one.
                                         </td>
                                     </tr>
                                 ) : (
                                     challans.data.map((row) => (
-                                        <tr key={row.id} className="border-b last:border-0">
+                                        <tr
+                                            key={row.id}
+                                            className="border-b last:border-0"
+                                        >
                                             <td className="px-3 py-2 font-medium">
                                                 {row.challan_number}
                                             </td>
-                                            <td className="px-3 py-2">{row.challan_date}</td>
                                             <td className="px-3 py-2">
-                                                {row.from_station_name} → {row.to_station_name}
+                                                {row.challan_date}
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                {row.from_station_name} →{' '}
+                                                {row.to_station_name}
                                             </td>
                                             <td className="px-3 py-2">
                                                 {row.vehicle_registration}
@@ -141,12 +168,24 @@ export default function PartloadChallansIndex({
                                                     </div>
                                                 ) : null}
                                             </td>
-                                            <td className="px-3 py-2">{row.line_count}</td>
-                                            <td className="px-3 py-2">{row.status_label}</td>
-                                            <td className="px-3 py-2">{row.total_amount}</td>
+                                            <td className="px-3 py-2">
+                                                {row.line_count}
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                {row.status_label}
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                {row.total_amount}
+                                            </td>
                                             <td className="px-3 py-2 text-right">
-                                                <Button asChild variant="outline" size="sm">
-                                                    <Link href={row.urls.show}>View</Link>
+                                                <Button
+                                                    asChild
+                                                    variant="outline"
+                                                    size="sm"
+                                                >
+                                                    <Link href={row.urls.show}>
+                                                        View
+                                                    </Link>
                                                 </Button>
                                             </td>
                                         </tr>

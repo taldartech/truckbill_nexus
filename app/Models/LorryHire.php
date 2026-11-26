@@ -21,6 +21,7 @@ use Illuminate\Support\Str;
  * @property string $tds_amount
  * @property string $paid_amount
  * @property string $outstanding_amount
+ * @property string|null $transporter_party_id
  * @property-read Collection<int, LorryHireGoodsLine> $goodsLines
  * @property-read Collection<int, TransporterVoucher> $vouchers
  * @property-read Collection<int, BrokerAdjustment> $adjustments

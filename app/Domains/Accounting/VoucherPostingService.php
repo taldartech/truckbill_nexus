@@ -37,8 +37,8 @@ final class VoucherPostingService
     /**
      * @param  list<array{
      *     gl_ledger_id: string,
-     *     debit_amount?: numeric-string|float|int|null,
-     *     credit_amount?: numeric-string|float|int|null,
+     *     debit_amount?: numeric-string|float|int|string|null,
+     *     credit_amount?: numeric-string|float|int|string|null,
      *     narration?: string|null,
      *     branch_id?: string|null
      * }>  $lines
@@ -235,17 +235,19 @@ final class VoucherPostingService
         $voucher->loadMissing('lines');
         $period = $this->periods->periodForDate(
             Company::query()->findOrFail($voucher->company_id),
-            $voucher->voucher_date?->toDateString() ?? now()->toDateString(),
+            $voucher->voucher_date->toDateString(),
         );
         $this->periods->assertOpenForPosting($period);
 
         $reversalLines = $voucher->lines->map(fn (AccountingVoucherLine $line): array => [
             'gl_ledger_id' => $line->gl_ledger_id,
-            'debit_amount' => $line->credit_amount,
-            'credit_amount' => $line->debit_amount,
+            'debit_amount' => $this->money($line->credit_amount, 'debit_amount'),
+            'credit_amount' => $this->money($line->debit_amount, 'credit_amount'),
             'narration' => 'Reversal of '.$voucher->voucher_number,
             'branch_id' => $line->branch_id,
         ])->values()->all();
+
+        $reversalLines = array_values($reversalLines);
 
         $company = Company::query()->findOrFail($voucher->company_id);
 
@@ -254,7 +256,7 @@ final class VoucherPostingService
             $actor,
             [
                 'voucher_type' => $voucher->voucher_type,
-                'voucher_date' => $voucher->voucher_date?->toDateString() ?? now()->toDateString(),
+                'voucher_date' => $voucher->voucher_date->toDateString(),
                 'narration' => $remark,
                 'branch_id' => $voucher->branch_id,
                 'source_type' => 'accounting.voucher.reversal',
@@ -284,7 +286,7 @@ final class VoucherPostingService
                     after: $voucher->fresh()?->toArray(),
                 );
 
-                return $reversal->fresh(['lines']) ?? $reversal;
+                return $reversal->fresh(['lines']);
             });
         });
     }
@@ -314,8 +316,8 @@ final class VoucherPostingService
     /**
      * @param  list<array{
      *     gl_ledger_id: string,
-     *     debit_amount?: numeric-string|float|int|null,
-     *     credit_amount?: numeric-string|float|int|null,
+     *     debit_amount?: numeric-string|float|int|string|null,
+     *     credit_amount?: numeric-string|float|int|string|null,
      *     narration?: string|null,
      *     branch_id?: string|null
      * }>  $lines
@@ -329,7 +331,7 @@ final class VoucherPostingService
 
         $normalized = [];
         foreach ($lines as $index => $line) {
-            $ledgerId = (string) ($line['gl_ledger_id'] ?? '');
+            $ledgerId = (string) $line['gl_ledger_id'];
             $ledger = GlLedger::query()
                 ->where('company_id', $company->id)
                 ->whereKey($ledgerId)

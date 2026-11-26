@@ -330,9 +330,7 @@ final class LorryHireService
                             'lorry_hire_id' => $hire->id,
                             'lr_goods_row_id' => $line['lr_goods_row_id'],
                             'rate_type' => $line['rate_type']->value,
-                            'rate_semantics' => $line['rate_semantics'] instanceof FreightRateSemantics
-                                ? $line['rate_semantics']->value
-                                : (string) $line['rate_semantics'],
+                            'rate_semantics' => $line['rate_semantics']->value,
                             'rate' => $line['rate'],
                             'is_fixed_amount' => $line['is_fixed_amount'],
                             'freight_amount' => $line['freight_amount'],
@@ -415,7 +413,8 @@ final class LorryHireService
      *     rate: string,
      *     is_fixed_amount: bool,
      *     freight_amount: numeric-string,
-     *     loading_weight: numeric-string
+     *     loading_weight: numeric-string,
+     *     rate_semantics: FreightRateSemantics
      * }>
      */
     private function computeGoodsLines(LorryReceipt $lorryReceipt, array $goodsLinesInput): array

@@ -422,6 +422,10 @@ class TransporterVoucherController extends Controller
     /**
      * @param  list<string>  $ensureHireIds
      */
+    /**
+     * @param  list<string>  $ensureHireIds
+     * @return array<string, mixed>
+     */
     private function voucherFormProps(
         User $actor,
         Company $company,

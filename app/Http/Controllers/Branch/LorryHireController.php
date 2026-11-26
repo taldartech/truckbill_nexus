@@ -186,7 +186,7 @@ class LorryHireController extends Controller
             ],
             'payee' => $payee,
             'suggestedPayeeId' => $payee['id'] ?? null,
-            'transporterOptions' => [],
+            'transporterOptions' => $this->transporterOptions($company, $branch),
             // Payee is always required for Broker hire; null payee means Bilty must be corrected.
             'payeeRequired' => true,
             'tdsPreview' => $tdsPreview,
@@ -495,7 +495,11 @@ class LorryHireController extends Controller
      *     freight_total: numeric-string,
      *     tds_amount: numeric-string,
      *     net_payable: numeric-string,
-     *     outstanding_amount: numeric-string
+     *     outstanding_amount: numeric-string,
+     *     balance_due: numeric-string,
+     *     negative_adjusted_amount: numeric-string,
+     *     reserved_voucher_amount: numeric-string,
+     *     remaining_payable: numeric-string
      * }  $summary
      * @return array{
      *     id: string,
@@ -644,8 +648,8 @@ class LorryHireController extends Controller
     {
         $weightKg = $hire->goodsLines->sum(fn ($line): float => (float) ($line->loading_weight ?? 0));
         $primaryLine = $hire->goodsLines->first();
-        $outstanding = (string) ($hire->outstanding_amount ?? '0.00');
-        $hasOutstanding = bccomp($outstanding, '0', 2) === 1;
+        $outstanding = number_format((float) ($hire->outstanding_amount ?? 0), 2, '.', '');
+        $hasOutstanding = bccomp($outstanding, '0.00', 2) === 1;
         $voucherEligible = $canCreateVoucher
             && $hire->status !== LorryHireStatus::Cancelled
             && $hasOutstanding;

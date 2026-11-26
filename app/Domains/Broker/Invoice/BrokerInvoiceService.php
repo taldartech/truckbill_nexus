@@ -135,6 +135,14 @@ final class BrokerInvoiceService
      *     shortage_damage_total: string,
      *     taxable_total: string,
      *     gst_amount: string,
+     *     cgst_amount: string,
+     *     sgst_amount: string,
+     *     igst_amount: string,
+     *     cgst_rate: mixed,
+     *     sgst_rate: mixed,
+     *     igst_rate: mixed,
+     *     supply_type: mixed,
+     *     tax_liability: mixed,
      *     invoice_total: string,
      *     gst_rate_snapshot: array<string, mixed>|null
      * }
@@ -745,13 +753,13 @@ final class BrokerInvoiceService
         // Effective Branch/Company registration gates taxability.
         $taxableForGst = $registration === GstRegistrationType::Unregistered
             || $registration === GstRegistrationType::Composition
-            || bccomp($ratePercent, '0', 4) <= 0
+            || bccomp(number_format((float) $ratePercent, 4, '.', ''), '0.0000', 4) <= 0
             ? false
             : true;
 
         if ($taxableForGst) {
             $supplierState = strtoupper(trim((string) ($effective->supplierState ?? '')));
-            $customerState = strtoupper(trim((string) ($billingCustomer?->state ?? '')));
+            $customerState = strtoupper(trim((string) ($billingCustomer !== null ? ($billingCustomer->state ?? '') : '')));
             $intraState = $supplierState !== ''
                 && $customerState !== ''
                 && $supplierState === $customerState;

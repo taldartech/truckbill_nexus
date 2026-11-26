@@ -33,6 +33,9 @@ jobs:
       APP_ENV: testing
       # Fixed non-production CI key only (not a real secret). Kept in sync with .env below.
       APP_KEY: base64:2fl+KtvkdmxDJcq4+UZC0c41+6ehMy/PoKCjpTbOF0A=
+      # Fixed non-production CI bootstrap only (not a real secret). Required by migrate:fresh --seed.
+      INTERNAL_SUPER_ADMIN_EMAIL: ci-super-admin@testing.truckbill.local
+      INTERNAL_SUPER_ADMIN_PASSWORD: testing-ci-super-admin-secret-9
       DB_CONNECTION: pgsql
       DB_HOST: 127.0.0.1
       DB_PORT: 5432
@@ -147,6 +150,9 @@ jobs:
     env:
       APP_ENV: testing
       APP_KEY: base64:2fl+KtvkdmxDJcq4+UZC0c41+6ehMy/PoKCjpTbOF0A=
+      # Fixed non-production CI bootstrap only (not a real secret). Required by migrate:fresh --seed.
+      INTERNAL_SUPER_ADMIN_EMAIL: ci-super-admin@testing.truckbill.local
+      INTERNAL_SUPER_ADMIN_PASSWORD: testing-ci-super-admin-secret-9
       DB_CONNECTION: mysql
       DB_HOST: 127.0.0.1
       DB_PORT: 3306

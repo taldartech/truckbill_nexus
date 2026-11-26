@@ -384,6 +384,7 @@ export function QuickCreateBankCashSheet({
                 onOpenChange={setConfirmOpen}
                 title="Confirm Bank / Cash account"
                 description="Create this account and select it on the form."
+                mode="create"
                 fields={reviewFields}
                 confirmLabel="Create"
                 processing={processing}

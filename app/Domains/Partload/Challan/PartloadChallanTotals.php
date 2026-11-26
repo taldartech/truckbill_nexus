@@ -10,15 +10,19 @@ final class PartloadChallanTotals
 {
     /**
      * @param  array{
-     *     to_pay_amount?: numeric-string|float|int|null,
-     *     crossing_freight?: numeric-string|float|int|null,
-     *     labour_charge?: numeric-string|float|int|null,
-     *     kat?: numeric-string|float|int|null,
-     *     home_delivery_charge?: numeric-string|float|int|null,
-     *     truck_freight?: numeric-string|float|int|null,
-     *     cash_payment?: numeric-string|float|int|null,
-     *     cash_received?: numeric-string|float|int|null,
+     *     to_pay_amount?: numeric-string|float|int|string|null,
+     *     crossing_freight?: numeric-string|float|int|string|null,
+     *     labour_charge?: numeric-string|float|int|string|null,
+     *     kat?: numeric-string|float|int|string|null,
+     *     home_delivery_charge?: numeric-string|float|int|string|null,
+     *     truck_freight?: numeric-string|float|int|string|null,
+     *     cash_payment?: numeric-string|float|int|string|null,
+     *     cash_received?: numeric-string|float|int|string|null,
+     *     cartage_dalali_pf?: numeric-string|float|int|string|null,
+     *     cash_paid?: numeric-string|float|int|string|null,
+     *     other_charge?: numeric-string|float|int|string|null,
      * }  $amounts
+     * @return numeric-string
      */
     public static function computeTotal(array $amounts): string
     {

@@ -266,6 +266,7 @@ export function QuickCreateCatalogueSheet({
                 onOpenChange={setConfirmOpen}
                 title={`Confirm ${title}`}
                 description="Create this catalogue item and select it on the form."
+                mode="create"
                 fields={reviewFields}
                 confirmLabel="Create"
                 processing={processing}

@@ -90,7 +90,10 @@ class IndiaGeographySeeder extends Seeder
         foreach (IndiaGeographyData::STATE_ALIASES as $alias => $canonical) {
             $canonicalKey = City::normalizeName($canonical);
             if ($statesByName->has($canonicalKey) && ! $statesByName->has($alias)) {
-                $statesByName[$alias] = $statesByName[$canonicalKey];
+                $canonicalState = $statesByName->get($canonicalKey);
+                if ($canonicalState !== null) {
+                    $statesByName->put($alias, $canonicalState);
+                }
             }
         }
 
@@ -183,7 +186,7 @@ class IndiaGeographySeeder extends Seeder
     {
         $path = storage_path('app/geography-migration-report.json');
         File::ensureDirectoryExists(dirname($path));
-        File::put($path, json_encode([
+        $encoded = json_encode([
             'generated_at' => now()->toIso8601String(),
             'states_upserted' => $report['states_upserted'],
             'cities_upserted' => $report['cities_upserted'],
@@ -192,6 +195,11 @@ class IndiaGeographySeeder extends Seeder
             'ambiguous_count' => count($report['ambiguous']),
             'unmatched' => $report['unmatched'],
             'ambiguous' => $report['ambiguous'],
-        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
+        ], JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        if (! is_string($encoded)) {
+            throw new \RuntimeException('Failed to encode geography migration report.');
+        }
+
+        File::put($path, $encoded);
     }
 }

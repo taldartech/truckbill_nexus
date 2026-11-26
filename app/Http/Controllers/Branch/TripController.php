@@ -819,27 +819,7 @@ class TripController extends Controller
     }
 
     /**
-     * @return array{
-     *     agreed_freight: string|null,
-     *     additional_charges: string|null,
-     *     diesel_cost: string,
-     *     other_expenses: string,
-     *     total_expenses: string,
-     *     trip_profit: string|null,
-     *     trip_mileage: string|null,
-     *     trip_mileage_label: string,
-     *     total_revenue: string|null,
-     *     trip_distance: string|null,
-     *     diesel_litres_total: string,
-     *     planned_diesel_litres: string|null,
-     *     planned_diesel_amount: string|null,
-     *     diesel_litres_variance: string|null,
-     *     diesel_amount_variance: string|null,
-     *     revenue_per_km: string|null,
-     *     expense_per_km: string|null,
-     *     profit_per_km: string|null,
-     *     diesel_expected_vs_actual_available: bool
-     * }
+     * @return array<string, mixed>
      */
     private function profitPayload(Trip $trip, bool $maySeeFreight): array
     {
@@ -865,7 +845,7 @@ class TripController extends Controller
      */
     private function expenseRows(Trip $trip, bool $maySeeFreight): array
     {
-        return $trip->expenses->map(fn (TripExpense $expense): array => [
+        return array_values($trip->expenses->map(fn (TripExpense $expense): array => [
             'id' => $expense->id,
             'expense_date' => $expense->expense_date->format('d-m-Y'),
             'category_name' => $expense->category?->name,
@@ -879,7 +859,7 @@ class TripController extends Controller
             'planned_diesel_amount' => $this->freightPresentation->presentAmount($expense->planned_diesel_amount, $maySeeFreight),
             'remarks' => $expense->remarks,
             'payment_mode' => $expense->paymentMode?->name,
-        ])->values()->all();
+        ])->all());
     }
 
     /**

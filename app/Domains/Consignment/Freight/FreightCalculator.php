@@ -105,7 +105,7 @@ final class FreightCalculator
             throw new LorryReceiptDomainException("{$field} must be a positive whole number.");
         }
 
-        return $trimmed;
+        return $this->numericString($trimmed);
     }
 
     /**

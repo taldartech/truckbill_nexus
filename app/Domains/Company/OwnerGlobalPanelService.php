@@ -418,8 +418,8 @@ final class OwnerGlobalPanelService
             'city' => $branch->city,
             'state' => $branch->state,
             'address' => $branch->address,
-            'gst_mode' => $branch->gst_mode?->value ?? 'inherit_company',
-            'gstin' => $branch->gst_mode?->value === 'independent'
+            'gst_mode' => $branch->gst_mode->value,
+            'gstin' => $branch->gst_mode->value === 'independent'
                 ? $branch->gstin
                 : $company?->gstin,
             'status' => $branch->isActive() ? 'Active' : 'Deactivated',

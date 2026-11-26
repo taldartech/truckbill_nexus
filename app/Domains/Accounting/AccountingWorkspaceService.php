@@ -82,21 +82,21 @@ final class AccountingWorkspaceService
     /**
      * @return array{
      *     ledger: GlLedger,
-     *     opening_debit: string,
-     *     opening_credit: string,
+     *     opening_debit: numeric-string,
+     *     opening_credit: numeric-string,
      *     rows: list<array{
      *         date: string,
      *         voucher_type: string,
      *         voucher_number: string,
      *         particulars: string,
-     *         debit: string,
-     *         credit: string,
-     *         balance: string,
+     *         debit: numeric-string,
+     *         credit: numeric-string,
+     *         balance: numeric-string,
      *         balance_side: string,
      *         voucher_id: string
      *     }>,
-     *     closing_debit: string,
-     *     closing_credit: string
+     *     closing_debit: numeric-string,
+     *     closing_credit: numeric-string
      * }
      */
     public function ledgerStatement(
@@ -206,12 +206,12 @@ final class AccountingWorkspaceService
      *     ledger_id: string,
      *     ledger_name: string,
      *     group_name: string,
-     *     opening_debit: string,
-     *     opening_credit: string,
-     *     period_debit: string,
-     *     period_credit: string,
-     *     closing_debit: string,
-     *     closing_credit: string
+     *     opening_debit: numeric-string,
+     *     opening_credit: numeric-string,
+     *     period_debit: numeric-string,
+     *     period_credit: numeric-string,
+     *     closing_debit: numeric-string,
+     *     closing_credit: numeric-string
      * }>
      */
     public function trialBalance(
@@ -257,7 +257,7 @@ final class AccountingWorkspaceService
             $rows[] = [
                 'ledger_id' => $ledger->id,
                 'ledger_name' => $ledger->name,
-                'group_name' => $ledger->accountGroup?->name ?? '',
+                'group_name' => $ledger->accountGroup->name ?? '',
                 'opening_debit' => $statement['opening_debit'],
                 'opening_credit' => $statement['opening_credit'],
                 'period_debit' => $periodDebit,
@@ -274,11 +274,11 @@ final class AccountingWorkspaceService
      * @return array{
      *     from_date: string,
      *     to_date: string,
-     *     income: list<array{ledger_id: string, ledger_name: string, amount: string}>,
-     *     expenses: list<array{ledger_id: string, ledger_name: string, amount: string}>,
-     *     total_income: string,
-     *     total_expenses: string,
-     *     net_profit: string
+     *     income: list<array{ledger_id: string, ledger_name: string, amount: numeric-string}>,
+     *     expenses: list<array{ledger_id: string, ledger_name: string, amount: numeric-string}>,
+     *     total_income: numeric-string,
+     *     total_expenses: numeric-string,
+     *     net_profit: numeric-string
      * }
      */
     public function profitAndLoss(
@@ -353,13 +353,13 @@ final class AccountingWorkspaceService
     /**
      * @return array{
      *     as_of: string,
-     *     assets: list<array{ledger_id: string, ledger_name: string, amount: string}>,
-     *     liabilities: list<array{ledger_id: string, ledger_name: string, amount: string}>,
-     *     equity: list<array{ledger_id: string, ledger_name: string, amount: string}>,
-     *     total_assets: string,
-     *     total_liabilities: string,
-     *     total_equity: string,
-     *     net_profit: string,
+     *     assets: list<array{ledger_id: string, ledger_name: string, amount: numeric-string}>,
+     *     liabilities: list<array{ledger_id: string, ledger_name: string, amount: numeric-string}>,
+     *     equity: list<array{ledger_id: string, ledger_name: string, amount: numeric-string}>,
+     *     total_assets: numeric-string,
+     *     total_liabilities: numeric-string,
+     *     total_equity: numeric-string,
+     *     net_profit: numeric-string,
      *     balanced: bool
      * }
      */
@@ -453,7 +453,7 @@ final class AccountingWorkspaceService
     /**
      * Control-account outstanding snapshot from posted GL balances.
      *
-     * @return list<array{ledger_id: string, ledger_name: string, debit: string, credit: string, net: string, side: string}>
+     * @return list<array{ledger_id: string, ledger_name: string, debit: numeric-string, credit: numeric-string, net: numeric-string, side: string}>
      */
     public function outstandingControlAccounts(
         Company $company,
@@ -488,7 +488,7 @@ final class AccountingWorkspaceService
     /**
      * GST / TDS tax ledger snapshot from posted GL balances.
      *
-     * @return list<array{ledger_id: string, ledger_name: string, debit: string, credit: string, net: string, side: string}>
+     * @return list<array{ledger_id: string, ledger_name: string, debit: numeric-string, credit: numeric-string, net: numeric-string, side: string}>
      */
     public function taxControlAccounts(
         Company $company,
@@ -520,7 +520,7 @@ final class AccountingWorkspaceService
 
     /**
      * @param  list<string>  $names
-     * @return list<array{ledger_id: string, ledger_name: string, debit: string, credit: string, net: string, side: string}>
+     * @return list<array{ledger_id: string, ledger_name: string, debit: numeric-string, credit: numeric-string, net: numeric-string, side: string}>
      */
     private function controlAccountSnapshot(
         Company $company,
@@ -584,12 +584,11 @@ final class AccountingWorkspaceService
      */
     public function voucherTypeOptions(): array
     {
-        return collect(AccountingVoucherType::cases())
+        return array_values(collect(AccountingVoucherType::cases())
             ->map(fn (AccountingVoucherType $type): array => [
                 'value' => $type->value,
                 'label' => $type->label(),
             ])
-            ->values()
-            ->all();
+            ->all());
     }
 }

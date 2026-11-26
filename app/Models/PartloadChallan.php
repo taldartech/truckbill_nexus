@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
 use App\Domains\Partload\Enums\PartloadChallanStatus;
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,6 +18,7 @@ use Illuminate\Support\Str;
  * @property PartloadChallanStatus $status
  * @property VehicleOwnership $ownership_mode
  * @property Carbon|null $challan_date
+ * @property CarbonImmutable|null $dispatched_at
  * @property-read Collection<int, PartloadChallanLine> $lines
  * @property-read PartloadInwardRegister|null $inwardRegister
  */
