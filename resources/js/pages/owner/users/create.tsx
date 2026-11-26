@@ -86,7 +86,6 @@ export default function OwnerUsersCreate({
     const { errors } = usePage<PageErrors>().props;
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
-    const [remark, setRemark] = useState('');
     const [companyBlocks, setCompanyBlocks] = useState<CompanyBlock[]>(() =>
         initialBlock(preselectedCompanyId, customerRoles),
     );
@@ -211,7 +210,6 @@ export default function OwnerUsersCreate({
             {
                 name: name.trim() || undefined,
                 email: email.trim(),
-                remark: remark.trim(),
                 companies: companyBlocks,
             },
             {
@@ -264,19 +262,6 @@ export default function OwnerUsersCreate({
                                         autoComplete="email"
                                     />
                                     <InputError message={errors?.email} />
-                                </div>
-                                <div className="space-y-2 md:col-span-2">
-                                    <Label htmlFor="remark">Remark</Label>
-                                    <Input
-                                        id="remark"
-                                        value={remark}
-                                        onChange={(e) =>
-                                            setRemark(e.target.value)
-                                        }
-                                        required
-                                        placeholder="Why is this access being granted?"
-                                    />
-                                    <InputError message={errors?.remark} />
                                 </div>
                             </AppFormGrid>
                         </AppFormSection>
