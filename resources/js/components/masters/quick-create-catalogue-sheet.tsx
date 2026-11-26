@@ -36,6 +36,7 @@ type Props = {
     onOpenChange: (open: boolean) => void;
     title: string;
     storeUrl: string;
+    usesCode?: boolean;
     onCreated: (item: QuickCreatedCatalogueItem) => void;
 };
 
@@ -60,13 +61,14 @@ function parseCreatedItem(json: unknown): QuickCreatedCatalogueItem | null {
 }
 
 /**
- * Owner catalogue quick-create (Goods Type, Package Type, Truck Type, etc.).
+ * Owner catalogue quick-create (Goods Type, Package Type, Truck Type, Document Type, etc.).
  */
 export function QuickCreateCatalogueSheet({
     open,
     onOpenChange,
     title,
     storeUrl,
+    usesCode = false,
     onCreated,
 }: Props) {
     const [draft, setDraft] = useState<Draft>(EMPTY);
@@ -75,16 +77,14 @@ export function QuickCreateCatalogueSheet({
     const [processing, setProcessing] = useState(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
 
-    const reviewFields = useMemo<FieldReview[]>(
-        () => [
-            { label: 'Name', value: draft.name },
-            {
-                label: 'Code',
-                value: draft.code.trim() !== '' ? draft.code : 'Auto from name',
-            },
-        ],
-        [draft],
-    );
+    const reviewFields = useMemo<FieldReview[]>(() => {
+        const fields: FieldReview[] = [{ label: 'Name', value: draft.name }];
+        if (usesCode) {
+            fields.push({ label: 'Code', value: draft.code.trim() });
+        }
+
+        return fields;
+    }, [draft, usesCode]);
 
     const reset = () => {
         setDraft(EMPTY);
@@ -113,6 +113,10 @@ export function QuickCreateCatalogueSheet({
             setFormError('Name is required.');
             return;
         }
+        if (usesCode && draft.code.trim() === '') {
+            setFormError('Code is required.');
+            return;
+        }
         setConfirmOpen(true);
     };
 
@@ -124,7 +128,7 @@ export function QuickCreateCatalogueSheet({
         const payload: Record<string, string> = {
             name: draft.name.trim(),
         };
-        if (draft.code.trim() !== '') {
+        if (usesCode) {
             payload.code = draft.code.trim();
         }
 
@@ -196,8 +200,6 @@ export function QuickCreateCatalogueSheet({
                         <SheetTitle>Add {title}</SheetTitle>
                         <SheetDescription>
                             Create a catalogue item without leaving this form.
-                            Code is optional and will be derived from the name
-                            when blank.
                         </SheetDescription>
                     </SheetHeader>
 
@@ -229,18 +231,21 @@ export function QuickCreateCatalogueSheet({
                             <InputError message={firstError('name')} />
                         </div>
 
-                        <div className="space-y-1">
-                            <Label htmlFor="catalogue-code">Code</Label>
-                            <Input
-                                id="catalogue-code"
-                                value={draft.code}
-                                onChange={(event) =>
-                                    update('code', event.target.value)
-                                }
-                                placeholder="Optional"
-                            />
-                            <InputError message={firstError('code')} />
-                        </div>
+                        {usesCode ? (
+                            <div className="space-y-1">
+                                <Label htmlFor="catalogue-code" required>
+                                    Code
+                                </Label>
+                                <Input
+                                    id="catalogue-code"
+                                    value={draft.code}
+                                    onChange={(event) =>
+                                        update('code', event.target.value)
+                                    }
+                                />
+                                <InputError message={firstError('code')} />
+                            </div>
+                        ) : null}
 
                         <SheetFooter className="gap-2 sm:justify-end">
                             <Button

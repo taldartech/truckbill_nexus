@@ -15,7 +15,6 @@ use App\Models\OwnerCatalogueItem;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -48,11 +47,6 @@ class CatalogueController extends Controller
         return $this->renderTypeIndex($request, $company, $branch, OwnerCatalogueType::TruckType);
     }
 
-    public function tyreLayouts(Request $request, Company $company, Branch $branch): Response
-    {
-        return $this->renderTypeIndex($request, $company, $branch, OwnerCatalogueType::TyreLayout);
-    }
-
     public function documentTypes(Request $request, Company $company, Branch $branch): Response
     {
         return $this->renderTypeIndex($request, $company, $branch, OwnerCatalogueType::DocumentType);
@@ -76,11 +70,6 @@ class CatalogueController extends Controller
     public function storeTruckTypes(Request $request, Company $company, Branch $branch): RedirectResponse|JsonResponse
     {
         return $this->storeTyped($request, $company, $branch, OwnerCatalogueType::TruckType);
-    }
-
-    public function storeTyreLayouts(Request $request, Company $company, Branch $branch): RedirectResponse|JsonResponse
-    {
-        return $this->storeTyped($request, $company, $branch, OwnerCatalogueType::TyreLayout);
     }
 
     public function storeDocumentTypes(Request $request, Company $company, Branch $branch): RedirectResponse|JsonResponse
@@ -167,19 +156,13 @@ class CatalogueController extends Controller
                 'type' => $type->value,
                 'title' => $type->pageTitle(),
                 'description' => $type->pageDescription(),
+                'uses_code' => $type->usesCode(),
             ],
             'filters' => [
                 'q' => $request->string('q')->toString(),
             ],
             'items' => [
-                'data' => collect($page->items())->map(fn (OwnerCatalogueItem $item): array => [
-                    'id' => $item->id,
-                    'code' => $item->code,
-                    'name' => $item->name,
-                    'catalogue_type' => $item->catalogue_type,
-                    'is_active' => (bool) $item->is_active,
-                    'sort_order' => $item->sort_order,
-                ])->values()->all(),
+                'data' => collect($page->items())->map(fn (OwnerCatalogueItem $item): array => $this->catalogueItemPayload($type, $item))->values()->all(),
                 'meta' => [
                     'current_page' => $page->currentPage(),
                     'last_page' => $page->lastPage(),
@@ -202,14 +185,19 @@ class CatalogueController extends Controller
     ): RedirectResponse|JsonResponse {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
 
-        $validated = $request->validate([
+        $rules = [
             'catalogue_type' => ['sometimes', Rule::enum(OwnerCatalogueType::class)],
-            'code' => ['nullable', 'string', 'max:64'],
             'name' => ['required', 'string', 'max:255'],
             'is_active' => ['sometimes', 'boolean'],
             'sort_order' => ['nullable', 'integer', 'min:0'],
             'remark' => ['nullable', 'string', 'max:1000'],
-        ]);
+        ];
+
+        if ($boundType->usesCode()) {
+            $rules['code'] = ['required', 'string', 'max:64'];
+        }
+
+        $validated = $request->validate($rules);
 
         if (array_key_exists('catalogue_type', $validated)
             && OwnerCatalogueType::from($validated['catalogue_type']) !== $boundType) {
@@ -218,11 +206,9 @@ class CatalogueController extends Controller
             ]);
         }
 
-        $code = strtoupper(trim((string) ($validated['code'] ?? '')));
-        if ($code === '') {
-            $code = $this->deriveCatalogueCode((string) $validated['name']);
+        if ($boundType->usesCode()) {
+            $validated['code'] = strtoupper(trim((string) $validated['code']));
         }
-        $validated['code'] = $code;
 
         try {
             $item = $this->catalogues->create(
@@ -238,11 +224,7 @@ class CatalogueController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json([
-                'data' => [
-                    'id' => $item->id,
-                    'name' => $item->name,
-                    'code' => $item->code,
-                ],
+                'data' => $this->catalogueItemPayload($boundType, $item, forJson: true),
             ], 201);
         }
 
@@ -251,15 +233,26 @@ class CatalogueController extends Controller
             ->with('success', 'Catalogue item created.');
     }
 
-    private function deriveCatalogueCode(string $name): string
+    /**
+     * @return array<string, mixed>
+     */
+    private function catalogueItemPayload(OwnerCatalogueType $type, OwnerCatalogueItem $item, bool $forJson = false): array
     {
-        $slug = strtoupper((string) preg_replace('/[^A-Za-z0-9]+/', '-', Str::ascii(trim($name))));
-        $slug = trim($slug, '-');
-        if ($slug === '') {
-            $slug = 'ITEM';
+        $payload = [
+            'id' => $item->id,
+            'name' => $item->name,
+            'catalogue_type' => $item->catalogue_type,
+            'is_active' => (bool) $item->is_active,
+            'sort_order' => $item->sort_order,
+        ];
+
+        if ($type->usesCode()) {
+            $payload['code'] = $item->code;
+        } elseif ($forJson) {
+            $payload['code'] = null;
         }
 
-        return Str::limit($slug, 64, '');
+        return $payload;
     }
 
     private function assertItem(Company $company, OwnerCatalogueItem $item): void

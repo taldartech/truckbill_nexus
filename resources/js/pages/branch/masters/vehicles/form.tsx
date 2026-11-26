@@ -1,6 +1,8 @@
 import { Form, Head, Link } from '@inertiajs/react';
 import { useState } from 'react';
 import InputError from '@/components/input-error';
+import { QuickCreateCatalogueSheet } from '@/components/masters/quick-create-catalogue-sheet';
+import { QuickCreateTyreLayoutSheet } from '@/components/masters/quick-create-tyre-layout-sheet';
 import {
     LrfPage,
     LrfSection,
@@ -49,6 +51,8 @@ type Props = {
         store?: string;
         update?: string;
         show?: string;
+        truckTypesStoreUrl?: string;
+        tyreLayoutsStoreUrl?: string;
     };
 };
 
@@ -61,6 +65,17 @@ export default function VehicleForm({
     const action = mode === 'create' ? links.store! : links.update!;
     const [ownership, setOwnership] = useState(
         vehicle?.ownership ?? formOptions.ownershipOptions[0]?.value ?? 'own',
+    );
+    const [truckTypes, setTruckTypes] = useState(formOptions.truckTypes);
+    const [tyreLayouts, setTyreLayouts] = useState(formOptions.tyreLayouts);
+    const [truckTypeId, setTruckTypeId] = useState(
+        vehicle?.truck_type_id ?? '',
+    );
+    const [tyreLayoutId, setTyreLayoutId] = useState(
+        vehicle?.tyre_layout_id ?? '',
+    );
+    const [quickCreate, setQuickCreate] = useState<'truck' | 'tyre' | null>(
+        null,
     );
 
     return (
@@ -145,32 +160,47 @@ export default function VehicleForm({
                                     {ownership === 'own' ? (
                                         <>
                                             <div className="space-y-2">
-                                                <Label htmlFor="truck_type_id">
-                                                    Truck Type
-                                                </Label>
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <Label htmlFor="truck_type_id">
+                                                        Truck Type
+                                                    </Label>
+                                                    {links.truckTypesStoreUrl ? (
+                                                        <button
+                                                            type="button"
+                                                            className="text-xs font-medium text-[#2D8CFF] hover:underline"
+                                                            onClick={() =>
+                                                                setQuickCreate(
+                                                                    'truck',
+                                                                )
+                                                            }
+                                                        >
+                                                            + Add
+                                                        </button>
+                                                    ) : null}
+                                                </div>
                                                 <select
                                                     id="truck_type_id"
                                                     name="truck_type_id"
                                                     className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                                    defaultValue={
-                                                        vehicle?.truck_type_id ??
-                                                        ''
+                                                    value={truckTypeId}
+                                                    onChange={(event) =>
+                                                        setTruckTypeId(
+                                                            event.target.value,
+                                                        )
                                                     }
                                                     required
                                                 >
                                                     <option value="">
                                                         Select…
                                                     </option>
-                                                    {formOptions.truckTypes.map(
-                                                        (item) => (
-                                                            <option
-                                                                key={item.id}
-                                                                value={item.id}
-                                                            >
-                                                                {item.name}
-                                                            </option>
-                                                        ),
-                                                    )}
+                                                    {truckTypes.map((item) => (
+                                                        <option
+                                                            key={item.id}
+                                                            value={item.id}
+                                                        >
+                                                            {item.name}
+                                                        </option>
+                                                    ))}
                                                 </select>
                                                 <InputError
                                                     message={
@@ -179,32 +209,47 @@ export default function VehicleForm({
                                                 />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label htmlFor="tyre_layout_id">
-                                                    Tyre Layout
-                                                </Label>
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <Label htmlFor="tyre_layout_id">
+                                                        Tyre Layout
+                                                    </Label>
+                                                    {links.tyreLayoutsStoreUrl ? (
+                                                        <button
+                                                            type="button"
+                                                            className="text-xs font-medium text-[#2D8CFF] hover:underline"
+                                                            onClick={() =>
+                                                                setQuickCreate(
+                                                                    'tyre',
+                                                                )
+                                                            }
+                                                        >
+                                                            + Add
+                                                        </button>
+                                                    ) : null}
+                                                </div>
                                                 <select
                                                     id="tyre_layout_id"
                                                     name="tyre_layout_id"
                                                     className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                                    defaultValue={
-                                                        vehicle?.tyre_layout_id ??
-                                                        ''
+                                                    value={tyreLayoutId}
+                                                    onChange={(event) =>
+                                                        setTyreLayoutId(
+                                                            event.target.value,
+                                                        )
                                                     }
                                                     required
                                                 >
                                                     <option value="">
                                                         Select…
                                                     </option>
-                                                    {formOptions.tyreLayouts.map(
-                                                        (item) => (
-                                                            <option
-                                                                key={item.id}
-                                                                value={item.id}
-                                                            >
-                                                                {item.name}
-                                                            </option>
-                                                        ),
-                                                    )}
+                                                    {tyreLayouts.map((item) => (
+                                                        <option
+                                                            key={item.id}
+                                                            value={item.id}
+                                                        >
+                                                            {item.name}
+                                                        </option>
+                                                    ))}
                                                 </select>
                                                 <InputError
                                                     message={
@@ -331,8 +376,12 @@ export default function VehicleForm({
                             </LrfSection>
                             <LrfSection
                                 step={2}
-                                title="Status & audit"
-                                description="Active flag and save remark."
+                                title="Status"
+                                description={
+                                    mode === 'edit'
+                                        ? 'Active flag and audit remark for this change.'
+                                        : 'Set whether this vehicle is active.'
+                                }
                                 tone="optional"
                             >
                                 <div className="space-y-3">
@@ -347,20 +396,21 @@ export default function VehicleForm({
                                         />
                                         Active
                                     </label>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="remark">Remark</Label>
-                                        <Input
-                                            id="remark"
-                                            name="remark"
-                                            required={mode === 'edit'}
-                                            defaultValue={
-                                                mode === 'create'
-                                                    ? 'Create vehicle'
-                                                    : ''
-                                            }
-                                        />
-                                        <InputError message={errors.remark} />
-                                    </div>
+                                    {mode === 'edit' ? (
+                                        <div className="space-y-2">
+                                            <Label htmlFor="remark" required>
+                                                Remark
+                                            </Label>
+                                            <Input
+                                                id="remark"
+                                                name="remark"
+                                                required
+                                            />
+                                            <InputError
+                                                message={errors.remark}
+                                            />
+                                        </div>
+                                    ) : null}
                                     <div className="flex gap-3">
                                         <Button
                                             type="submit"
@@ -383,6 +433,49 @@ export default function VehicleForm({
                     )}
                 </Form>
             </LrfPage>
+
+            {quickCreate === 'truck' && links.truckTypesStoreUrl ? (
+                <QuickCreateCatalogueSheet
+                    open
+                    onOpenChange={(next) => {
+                        if (!next) {
+                            setQuickCreate(null);
+                        }
+                    }}
+                    title="Truck Type"
+                    storeUrl={links.truckTypesStoreUrl}
+                    onCreated={(item) => {
+                        setTruckTypes((current) =>
+                            current.some((entry) => entry.id === item.id)
+                                ? current
+                                : [...current, item],
+                        );
+                        setTruckTypeId(item.id);
+                        setQuickCreate(null);
+                    }}
+                />
+            ) : null}
+
+            {quickCreate === 'tyre' && links.tyreLayoutsStoreUrl ? (
+                <QuickCreateTyreLayoutSheet
+                    open
+                    onOpenChange={(next) => {
+                        if (!next) {
+                            setQuickCreate(null);
+                        }
+                    }}
+                    storeUrl={links.tyreLayoutsStoreUrl}
+                    onCreated={(item) => {
+                        setTyreLayouts((current) =>
+                            current.some((entry) => entry.id === item.id)
+                                ? current
+                                : [...current, item],
+                        );
+                        setTyreLayoutId(item.id);
+                        setQuickCreate(null);
+                    }}
+                />
+            ) : null}
         </>
     );
 }

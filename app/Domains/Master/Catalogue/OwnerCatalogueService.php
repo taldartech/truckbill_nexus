@@ -41,21 +41,20 @@ final class OwnerCatalogueService
         $branch = $this->access->resolveActorBranch($actor, $company);
         $this->access->assertCanMutate($actor, $company, $branch);
 
-        $code = strtoupper(trim((string) ($attributes['code'] ?? '')));
         $name = trim((string) ($attributes['name'] ?? ''));
-        if ($code === '' || $name === '') {
-            throw ValidationException::withMessages([
-                'code' => $code === '' ? 'Code is required.' : null,
-                'name' => $name === '' ? 'Name is required.' : null,
-            ]);
+        if ($name === '') {
+            throw ValidationException::withMessages(['name' => 'Name is required.']);
         }
 
-        if (OwnerCatalogueItem::query()
-            ->where('owner_user_id', $actor->id)
-            ->where('catalogue_type', $type->value)
-            ->where('code', $code)
-            ->exists()) {
-            throw ValidationException::withMessages(['code' => 'Catalogue code already exists for this owner and type.']);
+        $this->assertUniqueName($actor, $type, $name);
+
+        $code = null;
+        if ($type->usesCode()) {
+            $code = strtoupper(trim((string) ($attributes['code'] ?? '')));
+            if ($code === '') {
+                throw ValidationException::withMessages(['code' => 'Code is required.']);
+            }
+            $this->assertUniqueCode($actor, $type, $code);
         }
 
         return $this->auditedTransaction->run(function () use ($actor, $company, $branch, $type, $attributes, $code, $name, $remark): OwnerCatalogueItem {
@@ -101,9 +100,20 @@ final class OwnerCatalogueService
         $this->access->assertCanEdit($actor, $company, $branch);
 
         return $this->auditedTransaction->run(function () use ($actor, $company, $branch, $item, $attributes, $remark): OwnerCatalogueItem {
-            return $this->access->withTenant($actor, $company, $branch, function () use ($item, $attributes, $remark): OwnerCatalogueItem {
+            return $this->access->withTenant($actor, $company, $branch, function () use ($actor, $item, $attributes, $remark): OwnerCatalogueItem {
                 $before = $item->toArray();
-                $item->fill(collect($attributes)->only(['name', 'attributes', 'is_active', 'sort_order'])->all());
+
+                if (array_key_exists('name', $attributes)) {
+                    $name = trim((string) $attributes['name']);
+                    if ($name === '') {
+                        throw ValidationException::withMessages(['name' => 'Name is required.']);
+                    }
+                    $type = OwnerCatalogueType::from($item->catalogue_type);
+                    $this->assertUniqueName($actor, $type, $name, $item);
+                    $item->name = $name;
+                }
+
+                $item->fill(collect($attributes)->only(['attributes', 'is_active', 'sort_order'])->all());
                 $item->save();
 
                 $this->audit->write(
@@ -164,7 +174,8 @@ final class OwnerCatalogueService
             ->orderBy('name');
 
         if ($query !== null && trim($query) !== '') {
-            CaseInsensitiveLike::whereAnyContains($builder, ['name', 'code'], $query);
+            $searchColumns = $type->usesCode() ? ['name', 'code'] : ['name'];
+            CaseInsensitiveLike::whereAnyContains($builder, $searchColumns, $query);
         }
 
         return $builder->paginate($perPage);
@@ -191,6 +202,39 @@ final class OwnerCatalogueService
     {
         if ((int) $item->owner_user_id !== (int) $actor->id) {
             throw new MasterDomainException('Catalogue item does not belong to this owner.');
+        }
+    }
+
+    private function assertUniqueName(
+        User $actor,
+        OwnerCatalogueType $type,
+        string $name,
+        ?OwnerCatalogueItem $ignore = null,
+    ): void {
+        if ($type->usesCode()) {
+            return;
+        }
+
+        $exists = OwnerCatalogueItem::query()
+            ->where('owner_user_id', $actor->id)
+            ->where('catalogue_type', $type->value)
+            ->when($ignore !== null, fn ($q) => $q->whereKeyNot($ignore->id))
+            ->whereRaw('lower(name) = ?', [mb_strtolower($name)])
+            ->exists();
+
+        if ($exists) {
+            throw ValidationException::withMessages(['name' => 'Catalogue name already exists for this owner and type.']);
+        }
+    }
+
+    private function assertUniqueCode(User $actor, OwnerCatalogueType $type, string $code): void
+    {
+        if (OwnerCatalogueItem::query()
+            ->where('owner_user_id', $actor->id)
+            ->where('catalogue_type', $type->value)
+            ->where('code', $code)
+            ->exists()) {
+            throw ValidationException::withMessages(['code' => 'Catalogue code already exists for this owner and type.']);
         }
     }
 }

@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__.'/TyreLayoutFixtures.php';
+
 use App\Domains\Auth\WebSessionService;
 use App\Domains\Company\CompanyWorkspaceService;
 use App\Domains\Consignment\Enums\FreightRateType;
@@ -224,16 +226,10 @@ if (! function_exists('tripWorkspace')) {
             'owner_user_id' => $owner->id,
             'catalogue_type' => OwnerCatalogueType::TruckType->value,
             'name' => '12 Tyre',
-            'code' => 'T12',
+            'code' => null,
             'is_active' => true,
         ]);
-        $tyreLayout = OwnerCatalogueItem::factory()->create([
-            'owner_user_id' => $owner->id,
-            'catalogue_type' => OwnerCatalogueType::TyreLayout->value,
-            'name' => '6x2',
-            'code' => 'L62',
-            'is_active' => true,
-        ]);
+        $tyreLayout = createOwnerTyreLayout($owner, '6x2');
 
         $vehicle = Vehicle::query()->create([
             'company_id' => $company->id,

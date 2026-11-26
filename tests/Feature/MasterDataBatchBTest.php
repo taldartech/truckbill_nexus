@@ -9,6 +9,7 @@ use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Master\Catalogue\OwnerCatalogueService;
 use App\Domains\Master\Exceptions\MasterDomainException;
 use App\Domains\Master\Station\StationService;
+use App\Domains\Master\TyreLayout\TyreLayoutService;
 use App\Domains\Master\Vehicle\VehicleService;
 use App\Domains\Rbac\Enums\PermissionDomain;
 use App\Domains\Rbac\RoleAssignmentService;
@@ -223,23 +224,30 @@ test('owner catalogue and seeded payment modes', function () {
 
     $service = app(OwnerCatalogueService::class);
     $goods = $service->create($owner, $company, OwnerCatalogueType::GoodsType, [
-        'code' => 'steel',
         'name' => 'Steel Coils',
     ]);
     expect($goods->catalogue_type)->toBe(OwnerCatalogueType::GoodsType->value);
 
     foreach ([
         OwnerCatalogueType::TruckType,
-        OwnerCatalogueType::TyreLayout,
         OwnerCatalogueType::DocumentType,
         OwnerCatalogueType::ExpenseCategory,
         OwnerCatalogueType::PackageType,
     ] as $type) {
-        $service->create($owner, $company, $type, [
-            'code' => strtoupper($type->value).'_1',
-            'name' => $type->value.' item',
-        ]);
+        $payload = ['name' => $type->value.' item'];
+        if ($type->usesCode()) {
+            $payload['code'] = strtoupper($type->value).'_1';
+        }
+        $service->create($owner, $company, $type, $payload);
     }
+
+    app(TyreLayoutService::class)->create($owner, $company, [
+        'name' => 'Batch layout',
+        'spare_tyre_count' => 1,
+        'axles' => [
+            ['sequence' => 1, 'configuration' => 'single'],
+        ],
+    ]);
 
     $modes = $service->listPaymentModes($owner, $company, $branch);
     expect($modes->pluck('code')->all())->toContain('cash', 'upi', 'neft', 'rtgs', 'imps', 'other')

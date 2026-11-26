@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 
 type Item = {
     id: string;
-    code: string;
+    code?: string | null;
     name: string;
     is_active: boolean;
     sort_order: number;
@@ -123,23 +123,10 @@ export default function CataloguesIndex({
                                         name="catalogue_type"
                                         value={filters.type}
                                     />
-                                    <div className="space-y-1">
-                                        <Label htmlFor="code">Code</Label>
-                                        <Input id="code" name="code" required />
-                                        <InputError message={errors.code} />
-                                    </div>
-                                    <div className="space-y-1">
+                                    <div className="space-y-1 sm:col-span-2">
                                         <Label htmlFor="name">Name</Label>
                                         <Input id="name" name="name" required />
                                         <InputError message={errors.name} />
-                                    </div>
-                                    <div className="space-y-1 sm:col-span-2">
-                                        <Label htmlFor="remark">Remark</Label>
-                                        <Input
-                                            id="remark"
-                                            name="remark"
-                                            defaultValue="Create catalogue item"
-                                        />
                                     </div>
                                     <Button
                                         type="submit"
@@ -162,7 +149,6 @@ export default function CataloguesIndex({
                         <table className="app-index-table min-w-full">
                             <thead>
                                 <tr>
-                                    <th>Code</th>
                                     <th>Status</th>
                                     <th>Name</th>
                                     {canManageOwnerCatalogues ? (
@@ -175,7 +161,7 @@ export default function CataloguesIndex({
                                     <tr>
                                         <td
                                             colSpan={
-                                                canManageOwnerCatalogues ? 4 : 3
+                                                canManageOwnerCatalogues ? 3 : 2
                                             }
                                         >
                                             <p className="app-index-empty">
@@ -187,9 +173,6 @@ export default function CataloguesIndex({
                                 ) : (
                                     items.data.map((item) => (
                                         <tr key={item.id}>
-                                            <td className="font-mono">
-                                                {item.code}
-                                            </td>
                                             <td>
                                                 {item.is_active
                                                     ? 'Active'

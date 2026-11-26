@@ -22,7 +22,7 @@ class OwnerCatalogueItemFactory extends Factory
         return [
             'owner_user_id' => User::factory()->customer(),
             'catalogue_type' => OwnerCatalogueType::GoodsType->value,
-            'code' => strtoupper(fake()->unique()->bothify('GT###')),
+            'code' => null,
             'name' => fake()->words(2, true),
             'attributes' => null,
             'is_active' => true,

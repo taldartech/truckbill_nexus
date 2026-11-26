@@ -105,11 +105,11 @@ class Vehicle extends Model
     }
 
     /**
-     * @return BelongsTo<OwnerCatalogueItem, $this>
+     * @return BelongsTo<OwnerTyreLayout, $this>
      */
     public function tyreLayout(): BelongsTo
     {
-        return $this->belongsTo(OwnerCatalogueItem::class, 'tyre_layout_id');
+        return $this->belongsTo(OwnerTyreLayout::class, 'tyre_layout_id');
     }
 
     /**

@@ -53,19 +53,19 @@ function webhookCompany(): array
     $truck = OwnerCatalogueItem::factory()->create([
         'owner_user_id' => $owner->id,
         'catalogue_type' => OwnerCatalogueType::TruckType->value,
-        'code' => 'WH-TRUCK',
+        'code' => null,
         'name' => 'Webhook Truck',
     ]);
     $goodsType = OwnerCatalogueItem::factory()->create([
         'owner_user_id' => $owner->id,
         'catalogue_type' => OwnerCatalogueType::GoodsType->value,
-        'code' => 'WH-GOODS',
+        'code' => null,
         'name' => 'Webhook Goods',
     ]);
     $packageType = OwnerCatalogueItem::factory()->create([
         'owner_user_id' => $owner->id,
         'catalogue_type' => OwnerCatalogueType::PackageType->value,
-        'code' => 'WH-PKG',
+        'code' => null,
         'name' => 'Webhook Package',
     ]);
 
@@ -93,14 +93,14 @@ function webhookPayload(array $overrides = []): array
         'customer_email' => 'customer@example.com',
         'pickup_location' => 'Ahmedabad',
         'delivery_location' => 'Jaipur',
-        'vehicle_type_code' => 'WH-TRUCK',
+        'vehicle_type_id' => null,
         'vehicle_quantity' => 1,
         'expected_loading_date' => '2026-12-15',
         'instructions' => 'Call on arrival',
         'goods' => [
             [
-                'goods_type_code' => 'WH-GOODS',
-                'package_type_code' => 'WH-PKG',
+                'goods_type_id' => null,
+                'package_type_id' => null,
                 'goods_description' => 'Tiles',
                 'package_count' => 20,
                 'actual_weight' => 200,
@@ -108,6 +108,28 @@ function webhookPayload(array $overrides = []): array
             ],
         ],
     ], $overrides);
+}
+
+/**
+ * @param  array{truck: OwnerCatalogueItem, goodsType: OwnerCatalogueItem, packageType: OwnerCatalogueItem}  $ctx
+ * @param  array<string, mixed>  $overrides
+ * @return array<string, mixed>
+ */
+function webhookPayloadForCompany(array $ctx, array $overrides = []): array
+{
+    return webhookPayload(array_merge([
+        'vehicle_type_id' => $ctx['truck']->id,
+        'goods' => [
+            [
+                'goods_type_id' => $ctx['goodsType']->id,
+                'package_type_id' => $ctx['packageType']->id,
+                'goods_description' => 'Tiles',
+                'package_count' => 20,
+                'actual_weight' => 200,
+                'charged_weight' => 220,
+            ],
+        ],
+    ], $overrides));
 }
 
 /**
@@ -128,7 +150,7 @@ function webhookHeaders(string $token, array $extraHeaders = []): array
 
 test('valid token creates company-scoped unassigned website enquiry', function () {
     $ctx = webhookCompany();
-    $payload = webhookPayload();
+    $payload = webhookPayloadForCompany($ctx);
 
     $response = $this->postJson(route('webhooks.enquiries'), $payload, webhookHeaders($ctx['token']));
 
@@ -147,7 +169,7 @@ test('valid token creates company-scoped unassigned website enquiry', function (
 
 test('missing invalid revoked and expired tokens are rejected', function () {
     $ctx = webhookCompany();
-    $payload = webhookPayload();
+    $payload = webhookPayloadForCompany($ctx);
 
     $this->postJson(route('webhooks.enquiries'), $payload, webhookHeaders(''))
         ->assertUnauthorized();
@@ -161,7 +183,7 @@ test('missing invalid revoked and expired tokens are rejected', function () {
 
     $ctx2 = webhookCompany();
     $ctx2['credential']->forceFill(['expires_at' => now()->subMinute()])->save();
-    $this->postJson(route('webhooks.enquiries'), webhookPayload(), webhookHeaders($ctx2['token']))
+    $this->postJson(route('webhooks.enquiries'), webhookPayloadForCompany($ctx2), webhookHeaders($ctx2['token']))
         ->assertUnauthorized();
 });
 
@@ -169,7 +191,7 @@ test('cross-company isolation and tenant injection are rejected', function () {
     $a = webhookCompany();
     $b = webhookCompany();
 
-    $payload = webhookPayload(['external_reference' => 'shared-looking-ref']);
+    $payload = webhookPayloadForCompany($a, ['external_reference' => 'shared-looking-ref']);
 
     $this->postJson(route('webhooks.enquiries'), $payload, webhookHeaders($a['token']))->assertCreated();
     $this->postJson(route('webhooks.enquiries'), $payload, webhookHeaders($b['token']))->assertCreated();
@@ -177,11 +199,11 @@ test('cross-company isolation and tenant injection are rejected', function () {
     expect(Enquiry::query()->where('company_id', $a['company']->id)->where('external_reference', 'shared-looking-ref')->count())->toBe(1)
         ->and(Enquiry::query()->where('company_id', $b['company']->id)->where('external_reference', 'shared-looking-ref')->count())->toBe(1);
 
-    $this->postJson(route('webhooks.enquiries'), webhookPayload([
+    $this->postJson(route('webhooks.enquiries'), webhookPayloadForCompany($a, [
         'company_id' => $b['company']->id,
     ]), webhookHeaders($a['token']))->assertForbidden();
 
-    $this->postJson(route('webhooks.enquiries'), webhookPayload([
+    $this->postJson(route('webhooks.enquiries'), webhookPayloadForCompany($a, [
         'branch_id' => (string) Str::uuid(),
     ]), webhookHeaders($a['token']))->assertForbidden();
 });
@@ -203,8 +225,8 @@ test('malformed multipart invalid goods and vehicle payloads are rejected', func
         'goods' => [],
     ]), webhookHeaders($ctx['token']))->assertUnprocessable();
 
-    $this->postJson(route('webhooks.enquiries'), webhookPayload([
-        'vehicle_type_code' => 'NOPE',
+    $this->postJson(route('webhooks.enquiries'), webhookPayloadForCompany($ctx, [
+        'vehicle_type_id' => (string) Str::uuid(),
     ]), webhookHeaders($ctx['token']))->assertUnprocessable();
 
     $this->postJson(route('webhooks.enquiries'), webhookPayload([
@@ -218,7 +240,7 @@ test('malformed multipart invalid goods and vehicle payloads are rejected', func
 
 test('stale timestamp and reused nonce are rejected while idempotent retry succeeds', function () {
     $ctx = webhookCompany();
-    $payload = webhookPayload(['external_reference' => 'idem-stable-1']);
+    $payload = webhookPayloadForCompany($ctx, ['external_reference' => 'idem-stable-1']);
     $key = (string) Str::uuid();
     $nonce = (string) Str::uuid();
 
@@ -244,12 +266,12 @@ test('stale timestamp and reused nonce are rejected while idempotent retry succe
         ->and(Enquiry::query()->whereKey($enquiryId)->value('enquiry_number'))->toBe($number)
         ->and(OutboxMessage::query()->where('event_type', 'enquiry.created')->where('company_id', $ctx['company']->id)->count())->toBe(1);
 
-    $this->postJson(route('webhooks.enquiries'), webhookPayload(), webhookHeaders($ctx['token'], [
+    $this->postJson(route('webhooks.enquiries'), webhookPayloadForCompany($ctx), webhookHeaders($ctx['token'], [
         'X-TruckBill-Timestamp' => (string) (time() - 10_000),
     ]))->assertStatus(409);
 
     // New key but reused nonce should conflict.
-    $this->postJson(route('webhooks.enquiries'), webhookPayload(['external_reference' => 'other-ref']), webhookHeaders($ctx['token'], [
+    $this->postJson(route('webhooks.enquiries'), webhookPayloadForCompany($ctx, ['external_reference' => 'other-ref']), webhookHeaders($ctx['token'], [
         'Idempotency-Key' => (string) Str::uuid(),
         'X-TruckBill-Nonce' => $nonce,
     ]))->assertStatus(409);
@@ -257,7 +279,7 @@ test('stale timestamp and reused nonce are rejected while idempotent retry succe
 
 test('idempotency key conflict and durable external reference rules', function () {
     $ctx = webhookCompany();
-    $payload = webhookPayload(['external_reference' => 'durable-1']);
+    $payload = webhookPayloadForCompany($ctx, ['external_reference' => 'durable-1']);
     $key = (string) Str::uuid();
 
     $this->postJson(route('webhooks.enquiries'), $payload, webhookHeaders($ctx['token'], [
@@ -291,7 +313,7 @@ test('idempotency key conflict and durable external reference rules', function (
 
 test('concurrent identical website intake produces exactly one enquiry', function () {
     $ctx = webhookCompany();
-    $payload = webhookPayload(['external_reference' => 'race-ref-1']);
+    $payload = webhookPayloadForCompany($ctx, ['external_reference' => 'race-ref-1']);
 
     $service = app(EnquiryWebhookIntakeService::class);
     $requestFactory = function () use ($ctx, $payload) {
@@ -325,7 +347,7 @@ test('concurrent identical website intake produces exactly one enquiry', functio
         ->and(EnquiryExternalReference::query()->where('company_id', $ctx['company']->id)->where('external_reference', 'race-ref-1')->count())->toBe(1);
 
     // Force unique-constraint recovery path: pre-insert conflicting fingerprint race window is covered by UniqueConstraint catch.
-    $thirdPayload = webhookPayload(['external_reference' => 'race-ref-2']);
+    $thirdPayload = webhookPayloadForCompany($ctx, ['external_reference' => 'race-ref-2']);
     $results = [];
     $errors = 0;
     foreach ([1, 2] as $i) {
@@ -360,8 +382,8 @@ test('rate limit is enforced without exposing bearer token', function () {
     $ctx = webhookCompany();
     config(['enquiry_webhook.rate_limit_per_minute' => 1]);
 
-    $this->postJson(route('webhooks.enquiries'), webhookPayload(), webhookHeaders($ctx['token']))->assertCreated();
-    $limited = $this->postJson(route('webhooks.enquiries'), webhookPayload(), webhookHeaders($ctx['token']));
+    $this->postJson(route('webhooks.enquiries'), webhookPayloadForCompany($ctx), webhookHeaders($ctx['token']))->assertCreated();
+    $limited = $this->postJson(route('webhooks.enquiries'), webhookPayloadForCompany($ctx), webhookHeaders($ctx['token']));
     $limited->assertStatus(429);
     expect($limited->getContent())->not->toContain($ctx['token']);
 });
@@ -370,7 +392,7 @@ test('webhook does not require browser authentication and csrf exemption is exac
     $ctx = webhookCompany();
 
     // No session auth.
-    $this->postJson(route('webhooks.enquiries'), webhookPayload(), webhookHeaders($ctx['token']))
+    $this->postJson(route('webhooks.enquiries'), webhookPayloadForCompany($ctx), webhookHeaders($ctx['token']))
         ->assertCreated();
 
     // CSRF middleware except list includes only the exact webhook path (assert via config mirror).
@@ -383,7 +405,7 @@ test('webhook does not require browser authentication and csrf exemption is exac
 
 test('failure during nested persistence rolls back website enquiry', function () {
     $ctx = webhookCompany();
-    $payload = webhookPayload(['external_reference' => 'rollback-ref']);
+    $payload = webhookPayloadForCompany($ctx, ['external_reference' => 'rollback-ref']);
 
     TenantContextHolder::inject(new TenantContext(
         companyId: $ctx['company']->id,

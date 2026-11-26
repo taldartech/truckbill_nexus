@@ -1,5 +1,7 @@
 <?php
 
+require_once __DIR__.'/../../Support/TyreLayoutFixtures.php';
+
 use App\Domains\Consignment\Enums\LrWorkflowContext;
 use App\Domains\Consignment\LrVehicleClassificationService;
 use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
@@ -176,16 +178,10 @@ test('vehicle master requires truck type for own and transporter for market', fu
         'owner_user_id' => $ws['owner']->id,
         'catalogue_type' => OwnerCatalogueType::TruckType->value,
         'name' => 'Own Truck',
-        'code' => 'OT1',
+        'code' => null,
         'is_active' => true,
     ]);
-    $tyreLayout = OwnerCatalogueItem::factory()->create([
-        'owner_user_id' => $ws['owner']->id,
-        'catalogue_type' => OwnerCatalogueType::TyreLayout->value,
-        'name' => 'Layout A',
-        'code' => 'LA1',
-        'is_active' => true,
-    ]);
+    $tyreLayout = createOwnerTyreLayout($ws['owner'], 'Layout A');
 
     expect(fn () => $vehicles->create(
         $ws['owner'],

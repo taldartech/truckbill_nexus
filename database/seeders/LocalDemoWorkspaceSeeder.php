@@ -31,6 +31,7 @@ use App\Domains\Enquiry\EnquiryService;
 use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Party\PartyService;
+use App\Domains\Master\TyreLayout\TyreLayoutService;
 use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
 use App\Domains\OwnFleet\Invoice\TripInvoicePaymentService;
 use App\Domains\OwnFleet\Invoice\TripInvoiceService;
@@ -57,6 +58,7 @@ use App\Models\LinkedBiltyGroup;
 use App\Models\LorryHire;
 use App\Models\LorryReceipt;
 use App\Models\OwnerCatalogueItem;
+use App\Models\OwnerTyreLayout;
 use App\Models\Party;
 use App\Models\Permission;
 use App\Models\Role;
@@ -340,7 +342,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
 
         Auth::login($owner);
 
-        $catalogues = $this->ensureCatalogues($owner);
+        $catalogues = $this->ensureCatalogues($owner, $company);
         $customerParty = $this->ensureParty(
             $parties,
             $owner,
@@ -1001,16 +1003,16 @@ class LocalDemoWorkspaceSeeder extends Seeder
     }
 
     /**
-     * @return array{truck: OwnerCatalogueItem, tyre: OwnerCatalogueItem, goods: OwnerCatalogueItem, package: OwnerCatalogueItem}
+     * @return array{truck: OwnerCatalogueItem, tyre: OwnerTyreLayout, goods: OwnerCatalogueItem, package: OwnerCatalogueItem}
      */
-    private function ensureCatalogues(User $owner): array
+    private function ensureCatalogues(User $owner, Company $company): array
     {
-        $truck = $this->ensureCatalogue($owner, OwnerCatalogueType::TruckType, 'TATA407', 'Tata 407');
-        $goods = $this->ensureCatalogue($owner, OwnerCatalogueType::GoodsType, 'GEN', 'General Cargo');
-        $package = $this->ensureCatalogue($owner, OwnerCatalogueType::PackageType, 'BAG', 'Bag');
-        $this->ensureCatalogue($owner, OwnerCatalogueType::DocumentType, 'PAN', 'PAN Card');
-        $this->ensureCatalogue($owner, OwnerCatalogueType::ExpenseCategory, 'FUEL', 'Fuel');
-        $tyre = $this->ensureCatalogue($owner, OwnerCatalogueType::TyreLayout, '6W', '6-Wheel Layout');
+        $truck = $this->ensureCatalogue($owner, OwnerCatalogueType::TruckType, 'Tata 407');
+        $goods = $this->ensureCatalogue($owner, OwnerCatalogueType::GoodsType, 'General Cargo');
+        $package = $this->ensureCatalogue($owner, OwnerCatalogueType::PackageType, 'Bag');
+        $this->ensureCatalogue($owner, OwnerCatalogueType::DocumentType, 'PAN Card', 'PAN');
+        $this->ensureCatalogue($owner, OwnerCatalogueType::ExpenseCategory, 'Fuel');
+        $tyre = $this->ensureDemoTyreLayout($owner, $company);
 
         return ['truck' => $truck, 'tyre' => $tyre, 'goods' => $goods, 'package' => $package];
     }
@@ -1018,23 +1020,54 @@ class LocalDemoWorkspaceSeeder extends Seeder
     private function ensureCatalogue(
         User $owner,
         OwnerCatalogueType $type,
-        string $code,
         string $name,
+        ?string $code = null,
     ): OwnerCatalogueItem {
+        $match = [
+            'owner_user_id' => $owner->id,
+            'catalogue_type' => $type->value,
+        ];
+
+        if ($type->usesCode()) {
+            $match['code'] = $code ?? strtoupper(Str::slug($name, '_'));
+        } else {
+            $match['name'] = $name;
+        }
+
         return OwnerCatalogueItem::query()->firstOrCreate(
-            [
-                'owner_user_id' => $owner->id,
-                'catalogue_type' => $type->value,
-                'code' => $code,
-            ],
+            $match,
             [
                 'id' => (string) Str::uuid(),
                 'name' => $name,
+                'code' => $type->usesCode() ? ($code ?? strtoupper(Str::slug($name, '_'))) : null,
                 'attributes' => [],
                 'is_active' => true,
                 'sort_order' => 10,
             ],
         );
+    }
+
+    private function ensureDemoTyreLayout(User $owner, Company $company): OwnerTyreLayout
+    {
+        $existing = OwnerTyreLayout::query()
+            ->where('owner_user_id', $owner->id)
+            ->whereRaw('lower(name) = ?', ['6-wheel layout'])
+            ->first();
+
+        if ($existing !== null) {
+            return $existing;
+        }
+
+        return app(TyreLayoutService::class)->create($owner, $company, [
+            'name' => '6-Wheel Layout',
+            'spare_tyre_count' => 1,
+            'axles' => [
+                ['sequence' => 1, 'configuration' => 'single'],
+                ['sequence' => 2, 'configuration' => 'dual'],
+                ['sequence' => 3, 'configuration' => 'dual'],
+            ],
+            'remark' => 'Local demo tyre layout',
+        ]);
     }
 
     /**
@@ -1946,14 +1979,14 @@ class LocalDemoWorkspaceSeeder extends Seeder
             'customer_email' => 'lead.'.strtolower($externalReference).'@demo.test',
             'pickup_location' => 'Website Pickup Yard',
             'delivery_location' => 'Website Delivery Gate',
-            'vehicle_type_code' => $catalogues['truck']->code,
+            'vehicle_type_id' => $catalogues['truck']->id,
             'vehicle_quantity' => 1,
             'expected_loading_date' => CarbonImmutable::now()->addDays(5)->toDateString(),
             'instructions' => 'Local demo website enquiry ['.$externalReference.']',
             'goods' => [
                 [
-                    'goods_type_code' => $catalogues['goods']->code,
-                    'package_type_code' => $catalogues['package']->code,
+                    'goods_type_id' => $catalogues['goods']->id,
+                    'package_type_id' => $catalogues['package']->id,
                     'goods_description' => 'Website booked cargo',
                     'package_count' => 8,
                     'actual_weight' => 80,

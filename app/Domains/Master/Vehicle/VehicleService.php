@@ -6,6 +6,7 @@ use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Master\Exceptions\MasterDomainException;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Support\MasterAccess;
+use App\Domains\Master\TyreLayout\TyreLayoutService;
 use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
 use App\Models\Branch;
 use App\Models\Company;
@@ -28,6 +29,7 @@ final class VehicleService
         private readonly MasterAccess $access = new MasterAccess,
         private readonly AuditedTransaction $auditedTransaction = new AuditedTransaction,
         private readonly AuditWriter $audit = new AuditWriter,
+        private readonly TyreLayoutService $tyreLayouts = new TyreLayoutService,
     ) {}
 
     /**
@@ -285,7 +287,7 @@ final class VehicleService
                 ]);
             }
             $this->assertCatalogue($company, $truckTypeId, OwnerCatalogueType::TruckType, 'truck_type_id');
-            $this->assertCatalogue($company, $tyreLayoutId, OwnerCatalogueType::TyreLayout, 'tyre_layout_id');
+            $this->tyreLayouts->assertForCompany($company, $tyreLayoutId, 'tyre_layout_id');
             $ownerPartyId = null;
         } elseif ($ownership === VehicleOwnership::Market) {
             if ($ownerPartyId === null) {

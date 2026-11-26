@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+require_once __DIR__.'/TyreLayoutFixtures.php';
+
 use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
 use App\Models\OwnerCatalogueItem;
@@ -19,16 +21,10 @@ function ownVehicleMasterPayload(User $owner, array $overrides = []): array
         'owner_user_id' => $owner->id,
         'catalogue_type' => OwnerCatalogueType::TruckType->value,
         'name' => 'Test Truck '.$suffix,
-        'code' => 'TT'.$suffix,
+        'code' => null,
         'is_active' => true,
     ]);
-    $tyreLayout = OwnerCatalogueItem::factory()->create([
-        'owner_user_id' => $owner->id,
-        'catalogue_type' => OwnerCatalogueType::TyreLayout->value,
-        'name' => 'Test Layout '.$suffix,
-        'code' => 'TL'.$suffix,
-        'is_active' => true,
-    ]);
+    $tyreLayout = createOwnerTyreLayout($owner, 'Test Layout '.$suffix);
 
     return array_merge([
         'ownership' => VehicleOwnership::Own->value,

@@ -460,17 +460,19 @@ final class EnquiryService
             throw ValidationException::withMessages(['external_reference' => 'External reference is too long.']);
         }
 
-        $vehicleTypeCode = strtoupper(trim((string) ($payload['vehicle_type_code'] ?? '')));
-        if ($vehicleTypeCode === '') {
-            throw ValidationException::withMessages(['vehicle_type_code' => 'Vehicle type code is required.']);
+        $vehicleTypeId = trim((string) ($payload['vehicle_type_id'] ?? ''));
+        if ($vehicleTypeId === '') {
+            throw ValidationException::withMessages(['vehicle_type_id' => 'Vehicle type id is required.']);
         }
 
-        $vehicleType = $this->findCatalogueByCode($company, OwnerCatalogueType::TruckType, $vehicleTypeCode);
-        if ($vehicleType === null) {
-            throw ValidationException::withMessages(['vehicle_type_code' => 'Vehicle type code is invalid for this company.']);
-        }
+        $vehicleType = $this->assertCatalogueItem(
+            $company,
+            $vehicleTypeId,
+            OwnerCatalogueType::TruckType,
+            'vehicle_type_id',
+        );
 
-        $goods = $this->normalizeGoodsRows($company, $payload['goods'] ?? null, byCode: true);
+        $goods = $this->normalizeGoodsRows($company, $payload['goods'] ?? null);
 
         $customerName = $this->requireString($payload, 'customer_name', 'customer_name');
 
@@ -484,7 +486,7 @@ final class EnquiryService
             'pickup_location' => $this->requireString($payload, 'pickup_location'),
             'delivery_location' => $this->requireString($payload, 'delivery_location'),
             'vehicle_type_id' => $vehicleType->id,
-            'vehicle_type_code' => $vehicleTypeCode,
+            'vehicle_type_code' => null,
             'vehicle_quantity' => $this->normalizeVehicleQuantity($payload),
             'expected_loading_date' => $this->normalizeDate($payload['expected_loading_date'] ?? null, 'expected_loading_date'),
             'instructions' => $this->optionalString($payload['instructions'] ?? null),
@@ -495,7 +497,7 @@ final class EnquiryService
     /**
      * @return list<array<string, mixed>>
      */
-    private function normalizeGoodsRows(Company $company, mixed $goods, bool $byCode): array
+    private function normalizeGoodsRows(Company $company, mixed $goods): array
     {
         if (! is_array($goods) || $goods === []) {
             throw ValidationException::withMessages(['goods' => 'At least one goods row is required.']);
@@ -515,43 +517,24 @@ final class EnquiryService
             $goodsTypeId = null;
             $packageTypeId = null;
 
-            if ($byCode) {
-                $goodsCode = strtoupper(trim((string) ($row['goods_type_code'] ?? '')));
-                if ($goodsCode !== '') {
-                    $item = $this->findCatalogueByCode($company, OwnerCatalogueType::GoodsType, $goodsCode);
-                    if ($item === null) {
-                        throw ValidationException::withMessages(["goods.{$index}.goods_type_code" => 'Invalid goods type code.']);
-                    }
-                    $goodsTypeId = $item->id;
-                }
+            if (! empty($row['goods_type_id'])) {
+                $item = $this->assertCatalogueItem(
+                    $company,
+                    (string) $row['goods_type_id'],
+                    OwnerCatalogueType::GoodsType,
+                    "goods.{$index}.goods_type_id",
+                );
+                $goodsTypeId = $item->id;
+            }
 
-                $packageCode = strtoupper(trim((string) ($row['package_type_code'] ?? '')));
-                if ($packageCode !== '') {
-                    $item = $this->findCatalogueByCode($company, OwnerCatalogueType::PackageType, $packageCode);
-                    if ($item === null) {
-                        throw ValidationException::withMessages(["goods.{$index}.package_type_code" => 'Invalid package type code.']);
-                    }
-                    $packageTypeId = $item->id;
-                }
-            } else {
-                if (! empty($row['goods_type_id'])) {
-                    $item = $this->assertCatalogueItem(
-                        $company,
-                        (string) $row['goods_type_id'],
-                        OwnerCatalogueType::GoodsType,
-                        "goods.{$index}.goods_type_id",
-                    );
-                    $goodsTypeId = $item->id;
-                }
-                if (! empty($row['package_type_id'])) {
-                    $item = $this->assertCatalogueItem(
-                        $company,
-                        (string) $row['package_type_id'],
-                        OwnerCatalogueType::PackageType,
-                        "goods.{$index}.package_type_id",
-                    );
-                    $packageTypeId = $item->id;
-                }
+            if (! empty($row['package_type_id'])) {
+                $item = $this->assertCatalogueItem(
+                    $company,
+                    (string) $row['package_type_id'],
+                    OwnerCatalogueType::PackageType,
+                    "goods.{$index}.package_type_id",
+                );
+                $packageTypeId = $item->id;
             }
 
             $description = $this->optionalString($row['goods_description'] ?? null);
@@ -564,8 +547,8 @@ final class EnquiryService
             $normalized[] = [
                 'goods_type_id' => $goodsTypeId,
                 'package_type_id' => $packageTypeId,
-                'goods_type_code' => $byCode ? strtoupper(trim((string) ($row['goods_type_code'] ?? ''))) : null,
-                'package_type_code' => $byCode ? strtoupper(trim((string) ($row['package_type_code'] ?? ''))) : null,
+                'goods_type_code' => null,
+                'package_type_code' => null,
                 'goods_description' => $description,
                 'package_count' => $this->normalizeNonNegativeDecimal($row['package_count'] ?? null, "goods.{$index}.package_count"),
                 'actual_weight' => $this->normalizeNonNegativeDecimal($row['actual_weight'] ?? null, "goods.{$index}.actual_weight"),
@@ -648,16 +631,6 @@ final class EnquiryService
         }
 
         return $item;
-    }
-
-    private function findCatalogueByCode(Company $company, OwnerCatalogueType $type, string $code): ?OwnerCatalogueItem
-    {
-        return OwnerCatalogueItem::query()
-            ->where('owner_user_id', $company->owner_user_id)
-            ->where('catalogue_type', $type->value)
-            ->where('code', $code)
-            ->where('is_active', true)
-            ->first();
     }
 
     /**

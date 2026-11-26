@@ -36,6 +36,7 @@ use App\Models\LrAdditionalCharge;
 use App\Models\LrEwayBill;
 use App\Models\LrGoodsRow;
 use App\Models\OwnerCatalogueItem;
+use App\Models\OwnerTyreLayout;
 use App\Models\Station;
 use App\Models\User;
 use App\Support\Presentation\FreightAmountPresentation;
@@ -802,9 +803,8 @@ class LorryReceiptController extends Controller
             ->limit(200)
             ->get(['id', 'name']);
 
-        $tyreLayouts = OwnerCatalogueItem::query()
+        $tyreLayouts = OwnerTyreLayout::query()
             ->where('owner_user_id', $company->owner_user_id)
-            ->where('catalogue_type', OwnerCatalogueType::TyreLayout->value)
             ->where('is_active', true)
             ->whereNull('deleted_at')
             ->orderBy('name')
@@ -823,7 +823,7 @@ class LorryReceiptController extends Controller
                 'id' => $item->id,
                 'name' => $item->name,
             ])->all()),
-            'tyreLayouts' => array_values($tyreLayouts->map(fn (OwnerCatalogueItem $item): array => [
+            'tyreLayouts' => array_values($tyreLayouts->map(fn (OwnerTyreLayout $item): array => [
                 'id' => $item->id,
                 'name' => $item->name,
             ])->all()),

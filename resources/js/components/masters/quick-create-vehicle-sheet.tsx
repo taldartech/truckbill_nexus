@@ -6,6 +6,10 @@ import {
     type QuickCreatedCatalogueItem,
 } from '@/components/masters/quick-create-catalogue-sheet';
 import {
+    QuickCreateTyreLayoutSheet,
+    type QuickCreatedTyreLayout,
+} from '@/components/masters/quick-create-tyre-layout-sheet';
+import {
     SearchablePartySelect,
     type PartyOption,
 } from '@/components/searchable-party-select';
@@ -609,41 +613,46 @@ export function QuickCreateVehicleSheet({
                 }}
             />
 
-            {catalogueQuickCreate ? (
+            {catalogueQuickCreate === 'truck' ? (
                 <QuickCreateCatalogueSheet
-                    open={catalogueQuickCreate !== null}
+                    open
                     onOpenChange={(next) => {
                         if (!next) {
                             setCatalogueQuickCreate(null);
                         }
                     }}
-                    title={
-                        catalogueQuickCreate === 'truck'
-                            ? 'Truck Type'
-                            : 'Tyre Layout'
-                    }
-                    storeUrl={
-                        catalogueQuickCreate === 'truck'
-                            ? (truckTypesStoreUrl ?? '')
-                            : (tyreLayoutsStoreUrl ?? '')
-                    }
+                    title="Truck Type"
+                    storeUrl={truckTypesStoreUrl ?? ''}
                     onCreated={(item: QuickCreatedCatalogueItem) => {
                         const option = { id: item.id, name: item.name };
-                        if (catalogueQuickCreate === 'truck') {
-                            setTruckTypes((current) =>
-                                current.some((entry) => entry.id === item.id)
-                                    ? current
-                                    : [...current, option],
-                            );
-                            update('truck_type_id', item.id);
-                        } else {
-                            setTyreLayouts((current) =>
-                                current.some((entry) => entry.id === item.id)
-                                    ? current
-                                    : [...current, option],
-                            );
-                            update('tyre_layout_id', item.id);
+                        setTruckTypes((current) =>
+                            current.some((entry) => entry.id === item.id)
+                                ? current
+                                : [...current, option],
+                        );
+                        update('truck_type_id', item.id);
+                        setCatalogueQuickCreate(null);
+                    }}
+                />
+            ) : null}
+
+            {catalogueQuickCreate === 'tyre' ? (
+                <QuickCreateTyreLayoutSheet
+                    open
+                    onOpenChange={(next) => {
+                        if (!next) {
+                            setCatalogueQuickCreate(null);
                         }
+                    }}
+                    storeUrl={tyreLayoutsStoreUrl ?? ''}
+                    onCreated={(item: QuickCreatedTyreLayout) => {
+                        const option = { id: item.id, name: item.name };
+                        setTyreLayouts((current) =>
+                            current.some((entry) => entry.id === item.id)
+                                ? current
+                                : [...current, option],
+                        );
+                        update('tyre_layout_id', item.id);
                         setCatalogueQuickCreate(null);
                     }}
                 />

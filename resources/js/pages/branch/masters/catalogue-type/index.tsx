@@ -14,7 +14,7 @@ import { Label } from '@/components/ui/label';
 
 type Item = {
     id: string;
-    code: string;
+    code?: string | null;
     name: string;
     is_active: boolean;
     sort_order: number;
@@ -28,6 +28,7 @@ type Props = {
         type: string;
         title: string;
         description: string;
+        uses_code?: boolean;
     };
     filters: { q: string };
     items: { data: Item[]; meta: { total: number } };
@@ -43,6 +44,7 @@ export default function CatalogueTypeIndex({
     links,
 }: Props) {
     const { flash } = usePage<{ flash?: { success?: string | null } }>().props;
+    const usesCode = catalogue.uses_code ?? catalogue.type === 'document_type';
 
     return (
         <>
@@ -104,23 +106,27 @@ export default function CatalogueTypeIndex({
                                     <h3 className="text-sm font-semibold text-[#334155] sm:col-span-2">
                                         Add {catalogue.title.toLowerCase()} item
                                     </h3>
-                                    <div className="space-y-1">
-                                        <Label htmlFor="code">Code</Label>
-                                        <Input id="code" name="code" required />
-                                        <InputError message={errors.code} />
-                                    </div>
-                                    <div className="space-y-1">
+                                    {usesCode ? (
+                                        <div className="space-y-1">
+                                            <Label htmlFor="code">Code</Label>
+                                            <Input
+                                                id="code"
+                                                name="code"
+                                                required
+                                            />
+                                            <InputError message={errors.code} />
+                                        </div>
+                                    ) : null}
+                                    <div
+                                        className={
+                                            usesCode
+                                                ? 'space-y-1'
+                                                : 'space-y-1 sm:col-span-2'
+                                        }
+                                    >
                                         <Label htmlFor="name">Name</Label>
                                         <Input id="name" name="name" required />
                                         <InputError message={errors.name} />
-                                    </div>
-                                    <div className="space-y-1 sm:col-span-2">
-                                        <Label htmlFor="remark">Remark</Label>
-                                        <Input
-                                            id="remark"
-                                            name="remark"
-                                            defaultValue="Create catalogue item"
-                                        />
                                     </div>
                                     <Button
                                         type="submit"
@@ -143,7 +149,7 @@ export default function CatalogueTypeIndex({
                         <table className="app-index-table min-w-full">
                             <thead>
                                 <tr>
-                                    <th>Code</th>
+                                    {usesCode ? <th>Code</th> : null}
                                     <th>Status</th>
                                     <th>Name</th>
                                     {canManageOwnerCatalogues ? (
@@ -156,7 +162,11 @@ export default function CatalogueTypeIndex({
                                     <tr>
                                         <td
                                             colSpan={
-                                                canManageOwnerCatalogues ? 4 : 3
+                                                (usesCode ? 1 : 0) +
+                                                2 +
+                                                (canManageOwnerCatalogues
+                                                    ? 1
+                                                    : 0)
                                             }
                                         >
                                             <p className="app-index-empty">
@@ -170,9 +180,11 @@ export default function CatalogueTypeIndex({
                                 ) : (
                                     items.data.map((item) => (
                                         <tr key={item.id}>
-                                            <td className="font-mono">
-                                                {item.code}
-                                            </td>
+                                            {usesCode ? (
+                                                <td className="font-mono">
+                                                    {item.code ?? '—'}
+                                                </td>
+                                            ) : null}
                                             <td>
                                                 <WorkspaceStatusBadge
                                                     status={

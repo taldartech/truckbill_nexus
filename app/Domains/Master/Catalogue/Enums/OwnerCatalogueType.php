@@ -11,6 +11,11 @@ enum OwnerCatalogueType: string
     case ExpenseCategory = 'expense_category';
     case PackageType = 'package_type';
 
+    public function usesCode(): bool
+    {
+        return $this === self::DocumentType;
+    }
+
     public function routeSlug(): string
     {
         return match ($this) {
@@ -40,7 +45,7 @@ enum OwnerCatalogueType: string
         return match ($this) {
             self::GoodsType => 'Standard goods classifications used on lorry receipts and trips.',
             self::TruckType => 'Vehicle body and truck type codes for fleet and LR capture.',
-            self::TyreLayout => 'Axle and tyre layout codes for vehicle master data.',
+            self::TyreLayout => 'Structured axle and tyre positions for own-fleet vehicles.',
             self::DocumentType => 'KYC and compliance document types for party and fleet records.',
             self::ExpenseCategory => 'Trip and operational expense categories for capture and reporting.',
             self::PackageType => 'Packaging unit types for consignment lines.',

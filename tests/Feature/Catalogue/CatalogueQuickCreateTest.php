@@ -42,7 +42,7 @@ function catalogueQuickCreateWorkspace(): array
     ];
 }
 
-it('creates goods type via json quick-create and derives code from name', function (): void {
+it('creates goods type via json quick-create without code', function (): void {
     ['owner' => $owner, 'company' => $company, 'branch' => $branch] = catalogueQuickCreateWorkspace();
 
     $this->flushSession();
@@ -63,11 +63,11 @@ it('creates goods type via json quick-create and derives code from name', functi
 
     $item = OwnerCatalogueItem::query()->findOrFail($id);
     expect($item->catalogue_type)->toBe(OwnerCatalogueType::GoodsType->value)
-        ->and($item->code)->toBe('STEEL-COILS')
+        ->and($item->code)->toBeNull()
         ->and($item->name)->toBe('Steel Coils');
 });
 
-it('creates package type via json with explicit code', function (): void {
+it('creates package type via json without code', function (): void {
     ['owner' => $owner, 'company' => $company, 'branch' => $branch] = catalogueQuickCreateWorkspace();
 
     $this->flushSession();
@@ -77,13 +77,14 @@ it('creates package type via json with explicit code', function (): void {
 
     $response = $this->postJson(route('branch.package-types.store'), [
         'name' => 'Wooden Crate',
-        'code' => 'WCRATE',
         'remark' => 'Quick create',
     ]);
 
     $response->assertCreated()
-        ->assertJsonPath('data.code', 'WCRATE')
         ->assertJsonPath('data.name', 'Wooden Crate');
+
+    $item = OwnerCatalogueItem::query()->findOrFail($response->json('data.id'));
+    expect($item->code)->toBeNull();
 });
 
 it('creates expense category via json quick-create', function (): void {
@@ -104,5 +105,5 @@ it('creates expense category via json quick-create', function (): void {
 
     $item = OwnerCatalogueItem::query()->findOrFail($response->json('data.id'));
     expect($item->catalogue_type)->toBe(OwnerCatalogueType::ExpenseCategory->value)
-        ->and($item->code)->toBe('PARKING-FEE');
+        ->and($item->code)->toBeNull();
 });

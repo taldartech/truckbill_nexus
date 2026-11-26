@@ -20,6 +20,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\OwnerCatalogueItem;
+use App\Models\OwnerTyreLayout;
 use App\Models\User;
 use App\Models\Vehicle;
 use Illuminate\Http\JsonResponse;
@@ -152,6 +153,8 @@ class VehicleController extends Controller
             'links' => array_merge($this->branchMasterNavLinks(), [
                 'index' => route('branch.vehicles.index', absolute: false),
                 'store' => route('branch.vehicles.store', absolute: false),
+                'truckTypesStoreUrl' => route('branch.truck-types.store', absolute: false),
+                'tyreLayoutsStoreUrl' => route('branch.tyre-layouts.store', absolute: false),
             ]),
         ]);
     }
@@ -286,6 +289,8 @@ class VehicleController extends Controller
                 'index' => route('branch.vehicles.index', absolute: false),
                 'show' => route('branch.vehicles.show', [$vehicle], absolute: false),
                 'update' => route('branch.vehicles.update', [$vehicle], absolute: false),
+                'truckTypesStoreUrl' => route('branch.truck-types.store', absolute: false),
+                'tyreLayoutsStoreUrl' => route('branch.tyre-layouts.store', absolute: false),
             ]),
         ]);
     }
@@ -401,9 +406,8 @@ class VehicleController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        $tyreLayouts = OwnerCatalogueItem::query()
+        $tyreLayouts = OwnerTyreLayout::query()
             ->where('owner_user_id', $company->owner_user_id)
-            ->where('catalogue_type', OwnerCatalogueType::TyreLayout->value)
             ->where('is_active', true)
             ->whereNull('deleted_at')
             ->orderBy('name')
@@ -420,7 +424,7 @@ class VehicleController extends Controller
                 'id' => $item->id,
                 'name' => $item->name,
             ])->values()->all(),
-            'tyreLayouts' => $tyreLayouts->map(fn (OwnerCatalogueItem $item): array => [
+            'tyreLayouts' => $tyreLayouts->map(fn (OwnerTyreLayout $item): array => [
                 'id' => $item->id,
                 'name' => $item->name,
             ])->values()->all(),
