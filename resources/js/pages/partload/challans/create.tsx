@@ -1,4 +1,4 @@
-import { Form, Head, Link } from '@inertiajs/react';
+import { Form, Head, Link, router } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 import { AppIndexListCard, AppIndexPage } from '@/components/app-index-page';
 import {
@@ -51,6 +51,7 @@ type Props = {
     urls: {
         store: string;
         index: string;
+        create?: string;
         stations_store?: string;
         vehicles_store?: string;
         vehicles_options?: string;
@@ -66,11 +67,21 @@ export default function PartloadChallanCreate({
     driverOptions,
     permissions,
     urls,
-}: Props) {
+    filters,
+}: Props & {
+    filters?: {
+        from_station_id?: string | null;
+        to_station_id?: string | null;
+    };
+}) {
     const [selected, setSelected] = useState<string[]>([]);
     const [stations, setStations] = useState(initialStations);
-    const [fromStationId, setFromStationId] = useState('');
-    const [toStationId, setToStationId] = useState('');
+    const [fromStationId, setFromStationId] = useState(
+        filters?.from_station_id ?? '',
+    );
+    const [toStationId, setToStationId] = useState(
+        filters?.to_station_id ?? '',
+    );
     const [vehicleId, setVehicleId] = useState('');
     const [driverPartyId, setDriverPartyId] = useState('');
     const [stationQuickCreateTarget, setStationQuickCreateTarget] = useState<
@@ -86,6 +97,23 @@ export default function PartloadChallanCreate({
         () => eligibleBilties.filter((row) => selected.includes(row.id)),
         [eligibleBilties, selected],
     );
+
+    const reloadEligible = (fromId: string, toId: string) => {
+        setSelected([]);
+        router.get(
+            urls.create ?? '/partload/challans/create',
+            {
+                from_station_id: fromId || undefined,
+                to_station_id: toId || undefined,
+            },
+            {
+                preserveState: true,
+                preserveScroll: true,
+                replace: true,
+                only: ['eligibleBilties'],
+            },
+        );
+    };
 
     const toggle = (id: string) => {
         setSelected((current) =>
@@ -154,11 +182,14 @@ export default function PartloadChallanCreate({
                                             required
                                             className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
                                             value={fromStationId}
-                                            onChange={(event) =>
-                                                setFromStationId(
-                                                    event.target.value,
-                                                )
-                                            }
+                                            onChange={(event) => {
+                                                const next = event.target.value;
+                                                setFromStationId(next);
+                                                reloadEligible(
+                                                    next,
+                                                    toStationId,
+                                                );
+                                            }}
                                         >
                                             <option value="">Select</option>
                                             {stations.map((station) => (
@@ -204,11 +235,14 @@ export default function PartloadChallanCreate({
                                             required
                                             className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
                                             value={toStationId}
-                                            onChange={(event) =>
-                                                setToStationId(
-                                                    event.target.value,
-                                                )
-                                            }
+                                            onChange={(event) => {
+                                                const next = event.target.value;
+                                                setToStationId(next);
+                                                reloadEligible(
+                                                    fromStationId,
+                                                    next,
+                                                );
+                                            }}
                                         >
                                             <option value="">Select</option>
                                             {stations.map((station) => (

@@ -128,6 +128,7 @@ class PartloadChallanController extends Controller
             'urls' => [
                 'store' => route('branch.partload.challans.store', absolute: false),
                 'index' => route('branch.partload.challans.index', absolute: false),
+                'create' => route('branch.partload.challans.create', absolute: false),
                 'stations_store' => route('branch.stations.store', absolute: false),
                 'vehicles_store' => route('branch.vehicles.store', absolute: false),
                 'vehicles_options' => route('branch.vehicles.options', absolute: false),
