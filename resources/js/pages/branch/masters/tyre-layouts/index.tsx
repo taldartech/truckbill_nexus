@@ -1,5 +1,5 @@
 import { Head, router, usePage } from '@inertiajs/react';
-import { Trash2 } from 'lucide-react';
+import { Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { AppIconAction } from '@/components/app-icon-action';
 import {
@@ -7,18 +7,14 @@ import {
     AppIndexListCard,
     AppIndexPage,
 } from '@/components/app-index-page';
-import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
-import type { FieldReview } from '@/components/form-confirmation/types';
-import {
-    TyreLayoutFormFields,
-    type TyreAxleDraft,
-} from '@/components/masters/tyre-layout-form-fields';
-import { TyreLayoutPreview } from '@/components/masters/tyre-layout-preview';
+import { EditTyreLayoutSheet } from '@/components/masters/edit-tyre-layout-sheet';
+import { MasterAuditRemarkDialog } from '@/components/masters/master-audit-remark-dialog';
+import { QuickCreateTyreLayoutSheet } from '@/components/masters/quick-create-tyre-layout-sheet';
+import { TablePagination } from '@/components/table-pagination';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { getCsrfToken } from '@/lib/csrf';
 
 type LayoutItem = {
     id: string;
@@ -48,15 +44,16 @@ type Props = {
     branch: { id: string; name: string; status: string };
     canManageOwnerCatalogues: boolean;
     filters: { q: string };
-    items: { data: LayoutItem[]; meta: { total: number } };
+    items: {
+        data: LayoutItem[];
+        meta: {
+            current_page: number;
+            last_page: number;
+            total: number;
+        };
+    };
     links: { hub: string; index: string; store: string };
 };
-
-const defaultAxles = (): TyreAxleDraft[] => [
-    { sequence: 1, configuration: 'single' },
-    { sequence: 2, configuration: 'dual' },
-    { sequence: 3, configuration: 'dual' },
-];
 
 export default function TyreLayoutsIndex({
     branch,
@@ -66,75 +63,32 @@ export default function TyreLayoutsIndex({
     links,
 }: Props) {
     const { flash } = usePage<{ flash?: { success?: string | null } }>().props;
-    const [name, setName] = useState('');
-    const [spareTyreCount, setSpareTyreCount] = useState(1);
-    const [axles, setAxles] = useState<TyreAxleDraft[]>(defaultAxles);
-    const [errors, setErrors] = useState<Record<string, string[] | string>>({});
-    const [formError, setFormError] = useState<string | null>(null);
-    const [processing, setProcessing] = useState(false);
-    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [createOpen, setCreateOpen] = useState(false);
+    const [editItem, setEditItem] = useState<LayoutItem | null>(null);
+    const [deleteItem, setDeleteItem] = useState<LayoutItem | null>(null);
+    const [deleteProcessing, setDeleteProcessing] = useState(false);
 
-    const reviewFields: FieldReview[] = [
-        { label: 'Layout name', value: name },
-        { label: 'Axles', value: String(axles.length) },
-        { label: 'Spare tyres', value: String(spareTyreCount) },
-    ];
-
-    const submitCreate = async () => {
-        setProcessing(true);
-        setFormError(null);
-        setErrors({});
-
-        try {
-            const response = await fetch(links.store, {
-                method: 'POST',
-                headers: {
-                    Accept: 'application/json',
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'X-CSRF-TOKEN': getCsrfToken(),
-                    'X-XSRF-TOKEN': getCsrfToken(),
-                },
-                credentials: 'same-origin',
-                body: JSON.stringify({
-                    name: name.trim(),
-                    spare_tyre_count: spareTyreCount,
-                    axles,
-                }),
-            });
-
-            if (!response.ok) {
-                const json = (await response.json().catch(() => null)) as {
-                    message?: string;
-                    errors?: Record<string, string[] | string>;
-                } | null;
-                if (json?.errors) {
-                    setErrors(json.errors);
-                }
-                setFormError(json?.message ?? 'Could not create tyre layout.');
-                setConfirmOpen(false);
-                setProcessing(false);
-                return;
-            }
-
-            setConfirmOpen(false);
-            setProcessing(false);
-            setName('');
-            setSpareTyreCount(1);
-            setAxles(defaultAxles());
-            router.reload();
-        } catch {
-            setFormError('Network error while creating tyre layout.');
-            setConfirmOpen(false);
-            setProcessing(false);
-        }
-    };
+    const colSpan = canManageOwnerCatalogues ? 7 : 6;
 
     return (
         <>
             <Head title={`Tyre layouts · ${branch.name}`} />
             <AppIndexPage>
-                <AppIndexListCard title="Tyre layouts">
+                <AppIndexListCard
+                    title="Tyre layouts"
+                    toolbar={
+                        canManageOwnerCatalogues ? (
+                            <Button
+                                type="button"
+                                className="app-index-header-btn h-8 gap-1.5 border-0 bg-white/15 px-3 text-white hover:bg-white/25"
+                                onClick={() => setCreateOpen(true)}
+                            >
+                                <Plus className="h-3.5 w-3.5" />
+                                Add tyre layout
+                            </Button>
+                        ) : null
+                    }
+                >
                     {flash?.success ? (
                         <p
                             role="status"
@@ -181,140 +135,161 @@ export default function TyreLayoutsIndex({
                         </Button>
                     </AppIndexFilters>
 
-                    {canManageOwnerCatalogues ? (
-                        <form
-                            className="space-y-4 border-b border-[#e5e7eb] bg-white px-4 py-4"
-                            onSubmit={(event) => {
-                                event.preventDefault();
-                                setFormError(null);
-                                if (name.trim() === '' || axles.length === 0) {
-                                    setFormError(
-                                        'Layout name and at least one axle are required.',
-                                    );
-                                    return;
-                                }
-                                setConfirmOpen(true);
-                            }}
-                        >
-                            <h3 className="text-sm font-semibold text-[#334155]">
-                                Add tyre layout
-                            </h3>
-                            {formError ? (
-                                <p
-                                    className="text-sm text-destructive"
-                                    role="alert"
-                                >
-                                    {formError}
-                                </p>
-                            ) : null}
-                            <TyreLayoutFormFields
-                                layoutName={name}
-                                spareTyreCount={spareTyreCount}
-                                axles={axles}
-                                errors={errors}
-                                onLayoutNameChange={setName}
-                                onSpareTyreCountChange={setSpareTyreCount}
-                                onAxlesChange={setAxles}
-                            />
-                            <Button
-                                type="submit"
-                                className="bg-[#2FB36F] text-white hover:bg-[#279960]"
-                            >
-                                Review & create
-                            </Button>
-                        </form>
-                    ) : (
+                    {!canManageOwnerCatalogues ? (
                         <p className="border-b border-[#e5e7eb] px-4 py-2 text-sm text-slate-500">
-                            Owner-only create and deactivate for tyre layouts.
+                            Owner-only create, edit, and delete for tyre
+                            layouts.
                         </p>
-                    )}
+                    ) : null}
 
-                    <div className="space-y-4 px-4 py-4">
-                        {items.data.length === 0 ? (
-                            <p className="app-index-empty">
-                                No tyre layouts yet. Add a structured layout
-                                above.
-                            </p>
-                        ) : (
-                            items.data.map((item) => (
-                                <article
-                                    key={item.id}
-                                    className="rounded-xl border border-[#e5e7eb] bg-white p-4"
-                                >
-                                    <div className="mb-3 flex flex-wrap items-start justify-between gap-3">
-                                        <div>
-                                            <h4 className="font-medium text-slate-800">
-                                                {item.name}
-                                            </h4>
-                                            <p className="text-sm text-slate-500">
-                                                {item.drive_tyre_count} running
-                                                · {item.spare_tyre_count} spare
-                                                · {item.total_tyre_count} total
-                                                {item.needs_axle_completion
-                                                    ? ' · needs axle completion'
-                                                    : ''}
+                    <div className="overflow-x-auto">
+                        <table className="app-index-table min-w-full">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Status</th>
+                                    <th>Running</th>
+                                    <th>Spare</th>
+                                    <th>Total</th>
+                                    <th>Notes</th>
+                                    {canManageOwnerCatalogues ? (
+                                        <th className="text-center">Actions</th>
+                                    ) : null}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {items.data.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={colSpan}>
+                                            <p className="app-index-empty">
+                                                No tyre layouts yet.
+                                                {canManageOwnerCatalogues
+                                                    ? ' Use Add tyre layout to create one.'
+                                                    : null}
                                             </p>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <WorkspaceStatusBadge
-                                                status={
-                                                    item.is_active
-                                                        ? 'Active'
-                                                        : 'Inactive'
-                                                }
-                                            />
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    items.data.map((item) => (
+                                        <tr key={item.id}>
+                                            <td className="font-medium">
+                                                {item.name}
+                                            </td>
+                                            <td>
+                                                <WorkspaceStatusBadge
+                                                    status={
+                                                        item.is_active
+                                                            ? 'Active'
+                                                            : 'Inactive'
+                                                    }
+                                                />
+                                            </td>
+                                            <td>{item.drive_tyre_count}</td>
+                                            <td>{item.spare_tyre_count}</td>
+                                            <td>{item.total_tyre_count}</td>
+                                            <td className="text-slate-500">
+                                                {item.needs_axle_completion
+                                                    ? 'Needs axle completion'
+                                                    : '—'}
+                                            </td>
                                             {canManageOwnerCatalogues ? (
-                                                <form
-                                                    method="post"
-                                                    action={`/tyre-layouts/${item.id}`}
-                                                    onSubmit={(event) => {
-                                                        event.preventDefault();
-                                                        router.delete(
-                                                            `/tyre-layouts/${item.id}`,
-                                                            {
-                                                                data: {
-                                                                    remark: 'Delete tyre layout',
-                                                                },
-                                                            },
-                                                        );
-                                                    }}
-                                                >
-                                                    <AppIconAction
-                                                        icon={Trash2}
-                                                        label="Deactivate tyre layout"
-                                                        type="submit"
-                                                        variant="destructive"
-                                                    />
-                                                </form>
+                                                <td>
+                                                    <div className="flex items-center justify-center gap-1">
+                                                        <AppIconAction
+                                                            icon={Pencil}
+                                                            label="Edit tyre layout"
+                                                            type="button"
+                                                            variant="warning"
+                                                            onClick={() =>
+                                                                setEditItem(
+                                                                    item,
+                                                                )
+                                                            }
+                                                        />
+                                                        <AppIconAction
+                                                            icon={Trash2}
+                                                            label="Delete tyre layout"
+                                                            type="button"
+                                                            variant="destructive"
+                                                            onClick={() =>
+                                                                setDeleteItem(
+                                                                    item,
+                                                                )
+                                                            }
+                                                        />
+                                                    </div>
+                                                </td>
                                             ) : null}
-                                        </div>
-                                    </div>
-                                    <TyreLayoutPreview
-                                        axles={item.axles}
-                                        positions={item.positions}
-                                        spareTyreCount={item.spare_tyre_count}
-                                        compact
-                                    />
-                                </article>
-                            ))
-                        )}
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div className="border-t border-[#e5e7eb] px-4 py-3">
+                        <TablePagination
+                            baseUrl={links.index}
+                            meta={items.meta}
+                            query={{ q: filters.q || undefined }}
+                        />
                     </div>
                 </AppIndexListCard>
             </AppIndexPage>
 
-            <FormConfirmationDialog
-                open={confirmOpen}
-                onOpenChange={setConfirmOpen}
-                mode="create"
-                title="Create tyre layout?"
-                description="Confirm layout name and axle configuration."
-                fields={reviewFields}
-                processing={processing}
-                onConfirm={() => {
-                    void submitCreate();
-                }}
-                confirmLabel={processing ? 'Saving…' : 'Create'}
-            />
+            {canManageOwnerCatalogues ? (
+                <>
+                    <QuickCreateTyreLayoutSheet
+                        open={createOpen}
+                        onOpenChange={setCreateOpen}
+                        storeUrl={links.store}
+                        onCreated={() => {
+                            router.reload();
+                        }}
+                    />
+                    <EditTyreLayoutSheet
+                        open={editItem !== null}
+                        onOpenChange={(open) => {
+                            if (!open) {
+                                setEditItem(null);
+                            }
+                        }}
+                        item={editItem}
+                        updateUrl={
+                            editItem
+                                ? `/tyre-layouts/${editItem.id}`
+                                : '/tyre-layouts'
+                        }
+                    />
+                    <MasterAuditRemarkDialog
+                        open={deleteItem !== null}
+                        onOpenChange={(open) => {
+                            if (!open) {
+                                setDeleteItem(null);
+                                setDeleteProcessing(false);
+                            }
+                        }}
+                        title="Delete tyre layout?"
+                        description="Soft-delete this tyre layout from the register."
+                        confirmLabel="Delete"
+                        processing={deleteProcessing}
+                        onConfirm={(remark) => {
+                            if (!deleteItem) {
+                                return;
+                            }
+                            setDeleteProcessing(true);
+                            router.delete(`/tyre-layouts/${deleteItem.id}`, {
+                                data: { remark },
+                                preserveScroll: true,
+                                onFinish: () => {
+                                    setDeleteProcessing(false);
+                                    setDeleteItem(null);
+                                },
+                            });
+                        }}
+                    />
+                </>
+            ) : null}
         </>
     );
 }

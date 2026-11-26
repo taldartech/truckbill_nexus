@@ -37,6 +37,7 @@ type Props = {
     title: string;
     storeUrl: string;
     usesCode?: boolean;
+    sheetDescription?: string;
     onCreated: (item: QuickCreatedCatalogueItem) => void;
 };
 
@@ -69,6 +70,7 @@ export function QuickCreateCatalogueSheet({
     title,
     storeUrl,
     usesCode = false,
+    sheetDescription = 'Create a catalogue item without leaving this form.',
     onCreated,
 }: Props) {
     const [draft, setDraft] = useState<Draft>(EMPTY);
@@ -198,9 +200,7 @@ export function QuickCreateCatalogueSheet({
                 <SheetContent className="sm:max-w-md">
                     <SheetHeader>
                         <SheetTitle>Add {title}</SheetTitle>
-                        <SheetDescription>
-                            Create a catalogue item without leaving this form.
-                        </SheetDescription>
+                        <SheetDescription>{sheetDescription}</SheetDescription>
                     </SheetHeader>
 
                     <form
