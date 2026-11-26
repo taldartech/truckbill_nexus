@@ -182,9 +182,13 @@ export default function AccountingVoucherCreate({
                                                         <td className="px-3 py-2">
                                                             <div className="space-y-1">
                                                                 <div className="flex items-center justify-between gap-2">
-                                                                    <span className="text-xs text-muted-foreground">
-                                                                        Ledger *
-                                                                    </span>
+                                                                    <Label
+                                                                        htmlFor={`voucher-line-ledger-${index}`}
+                                                                        className="text-xs text-muted-foreground"
+                                                                        required
+                                                                    >
+                                                                        Ledger
+                                                                    </Label>
                                                                     <button
                                                                         type="button"
                                                                         className="text-xs font-medium text-primary hover:underline"
@@ -198,6 +202,7 @@ export default function AccountingVoucherCreate({
                                                                     </button>
                                                                 </div>
                                                                 <select
+                                                                    id={`voucher-line-ledger-${index}`}
                                                                     name={`lines[${index}][gl_ledger_id]`}
                                                                     required
                                                                     className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"

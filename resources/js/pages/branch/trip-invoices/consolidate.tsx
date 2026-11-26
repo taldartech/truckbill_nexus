@@ -1,6 +1,7 @@
 import { Form, Head, Link } from '@inertiajs/react';
 import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { useState } from 'react';
 
 type Eligible = {
@@ -70,11 +71,14 @@ export default function TripInvoiceConsolidate({
                                     value={id}
                                 />
                             ))}
-                            <label className="flex flex-col gap-1 text-sm">
-                                Particulars
+                            <div className="flex flex-col gap-1.5">
+                                <Label htmlFor="particulars_mode">
+                                    Particulars
+                                </Label>
                                 <select
+                                    id="particulars_mode"
                                     name="particulars_mode"
-                                    className="rounded-md border px-2 py-1"
+                                    className="rounded-md border px-2 py-1 text-sm"
                                     defaultValue="combined_freight"
                                 >
                                     {particularsOptions.map((opt) => (
@@ -86,7 +90,7 @@ export default function TripInvoiceConsolidate({
                                         </option>
                                     ))}
                                 </select>
-                            </label>
+                            </div>
                             <div className="flex gap-2">
                                 <Button
                                     type="submit"

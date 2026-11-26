@@ -11,8 +11,6 @@ use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Party\PartyOptionQuery;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
-use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
-use App\Domains\Subscription\Enums\SubscriptionModule;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Controller;
 use App\Models\BankCashAccount;
@@ -39,7 +37,6 @@ class BrokerInvoiceController extends Controller
         private readonly PermissionAuthorizer $authorizer,
         private readonly BrokerInvoiceService $invoices,
         private readonly FreightAmountPresentation $freightPresentation,
-        private readonly CoreModuleEntitlementResolver $moduleEntitlements = new CoreModuleEntitlementResolver,
     ) {}
 
     public function index(Request $request, Company $company, Branch $branch): RedirectResponse
@@ -350,17 +347,8 @@ class BrokerInvoiceController extends Controller
 
     private function assertPermission(User $actor, Company $company, Branch $branch, string $code): void
     {
-        $this->assertBrokerModule($company);
-
         if (! $this->authorizer->allowsCustomer($actor, $code, $company, $branch)) {
             abort(403, 'Not authorized for Broker invoice operation.');
-        }
-    }
-
-    private function assertBrokerModule(Company $company): void
-    {
-        if (! $this->moduleEntitlements->isEntitled($company, SubscriptionModule::Broker)) {
-            abort(403, 'Broker module is not entitled.');
         }
     }
 

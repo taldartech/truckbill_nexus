@@ -4,6 +4,7 @@ namespace App\Domains\Subscription\Lifecycle;
 
 use App\Domains\Crm\LeadLifecycleService;
 use App\Domains\Subscription\Contract\CompanySubscriptionContractService;
+use App\Domains\Subscription\Entitlement\CompanyCapabilityResolver;
 use App\Domains\Subscription\Exceptions\SubscriptionDomainException;
 use App\Domains\Subscription\Support\SubscriptionClock;
 use App\Models\Company;
@@ -23,14 +24,21 @@ use Illuminate\Support\Str;
  */
 final class SubscriptionLifecycleService
 {
+    private readonly SubscriptionStatusEvaluator $evaluator;
+
+    private readonly SubscriptionClock $clock;
+
     public function __construct(
-        private readonly SubscriptionStatusEvaluator $evaluator = new SubscriptionStatusEvaluator,
-        private readonly SubscriptionClock $clock = new SubscriptionClock,
+        ?SubscriptionStatusEvaluator $evaluator = null,
+        ?SubscriptionClock $clock = null,
         private readonly AuditedTransaction $tx = new AuditedTransaction,
         private readonly AuditWriter $audit = new AuditWriter,
         private readonly CompanySubscriptionContractService $contracts = new CompanySubscriptionContractService,
         private readonly LeadLifecycleService $leadLifecycle = new LeadLifecycleService,
-    ) {}
+    ) {
+        $this->clock = $clock ?? app(SubscriptionClock::class);
+        $this->evaluator = $evaluator ?? new SubscriptionStatusEvaluator($this->clock);
+    }
 
     /**
      * @return array<string, mixed>
@@ -84,6 +92,7 @@ final class SubscriptionLifecycleService
                     before: $before,
                     after: $locked->fresh()?->toArray(),
                 );
+                CompanyCapabilityResolver::invalidate($locked->company_id);
 
                 return $locked->fresh() ?? $locked;
             });
@@ -131,6 +140,7 @@ final class SubscriptionLifecycleService
                     before: $before,
                     after: $locked->fresh()?->toArray(),
                 );
+                CompanyCapabilityResolver::invalidate($locked->company_id);
 
                 return $locked->fresh() ?? $locked;
             });
@@ -186,6 +196,8 @@ final class SubscriptionLifecycleService
                     $this->leadLifecycle->syncSubscriptionActivated($owner, $company);
                 }
 
+                CompanyCapabilityResolver::invalidate($company);
+
                 return $locked->fresh(['items']) ?? $locked;
             });
         });
@@ -203,7 +215,7 @@ final class SubscriptionLifecycleService
         return $this->tx->run(function () use ($subscription, $newPaidThrough, $actor, $remark): CompanySubscription {
             $company = $subscription->company()->firstOrFail();
 
-            return $this->withTenant($actor, $company, function () use ($subscription, $newPaidThrough, $actor, $remark): CompanySubscription {
+            return $this->withTenant($actor, $company, function () use ($subscription, $newPaidThrough, $actor, $remark, $company): CompanySubscription {
                 /** @var CompanySubscription $locked */
                 $locked = CompanySubscription::query()->whereKey($subscription->id)->lockForUpdate()->firstOrFail();
 
@@ -233,6 +245,7 @@ final class SubscriptionLifecycleService
                     before: $before,
                     after: $locked->fresh()?->toArray(),
                 );
+                CompanyCapabilityResolver::invalidate($company);
 
                 return $locked->fresh(['items']) ?? $locked;
             });
@@ -329,7 +342,7 @@ final class SubscriptionLifecycleService
                             return;
                         }
                         $company = $locked->company()->firstOrFail();
-                        $this->withTenant(null, $company, function () use ($locked, &$count): void {
+                        $this->withTenant(null, $company, function () use ($locked, $company, &$count): void {
                             $before = $locked->toArray();
                             $locked->status = 'cancelled';
                             $locked->cancelled_at = $this->clock->now();
@@ -343,6 +356,7 @@ final class SubscriptionLifecycleService
                                 before: $before,
                                 after: $locked->fresh()?->toArray(),
                             );
+                            CompanyCapabilityResolver::invalidate($company);
                             $count++;
                         });
                     });

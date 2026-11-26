@@ -8,8 +8,8 @@ use App\Domains\Broker\Exceptions\BrokerAuthorizationException;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
-use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
-use App\Domains\Subscription\Enums\SubscriptionModule;
+use App\Domains\Subscription\Entitlement\CompanyCapabilities;
+use App\Domains\Subscription\Entitlement\CompanyCapabilityResolver;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\PartyRole;
@@ -26,7 +26,7 @@ final class VoucherPayoutExportService
 {
     public function __construct(
         private readonly PermissionAuthorizer $authorizer = new PermissionAuthorizer,
-        private readonly CoreModuleEntitlementResolver $entitlements = new CoreModuleEntitlementResolver,
+        private readonly ?CompanyCapabilityResolver $capabilities = null,
     ) {}
 
     /**
@@ -205,7 +205,8 @@ final class VoucherPayoutExportService
 
     private function assertCanExport(User $actor, Company $company, Branch $branch): void
     {
-        if (! $this->entitlements->isEntitled($company, SubscriptionModule::Broker)) {
+        $capabilities = $this->capabilities ?? app(CompanyCapabilityResolver::class);
+        if (! $capabilities->allowsRead($company, CompanyCapabilities::BROKER_VOUCHERS)) {
             throw new BrokerAuthorizationException('Broker module is not entitled for this company.');
         }
 

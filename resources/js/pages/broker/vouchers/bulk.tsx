@@ -415,9 +415,12 @@ export default function VoucherBulkCreate({
                 >
                     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                         <div className="space-y-1">
-                            <Label htmlFor="payment_type">Payment type</Label>
+                            <Label htmlFor="payment_type" required>
+                                Payment type
+                            </Label>
                             <select
                                 id="payment_type"
+                                required
                                 className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
                                 value={form.data.payment_type}
                                 onChange={(event) =>
@@ -438,9 +441,12 @@ export default function VoucherBulkCreate({
                             </select>
                         </div>
                         <div className="space-y-1">
-                            <Label htmlFor="payment_mode">Payment mode</Label>
+                            <Label htmlFor="payment_mode" required>
+                                Payment mode
+                            </Label>
                             <select
                                 id="payment_mode"
+                                required
                                 className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
                                 value={form.data.payment_mode}
                                 onChange={(event) =>
@@ -467,6 +473,7 @@ export default function VoucherBulkCreate({
                                     name="bank_cash_account_id"
                                     label="Bank / cash account"
                                     options={accountOptions}
+                                    required
                                     value={form.data.bank_cash_account_id}
                                     onValueChange={(id) =>
                                         form.setData('bank_cash_account_id', id)

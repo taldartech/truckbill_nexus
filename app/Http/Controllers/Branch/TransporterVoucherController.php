@@ -16,8 +16,6 @@ use App\Domains\Broker\Voucher\VoucherPayoutExportService;
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
-use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
-use App\Domains\Subscription\Enums\SubscriptionModule;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Controller;
 use App\Models\BankCashAccount;
@@ -49,7 +47,6 @@ class TransporterVoucherController extends Controller
         private readonly TransporterBookBalanceService $bookBalances,
         private readonly FreightAmountPresentation $freightPresentation,
         private readonly VoucherPayoutExportService $payoutExport,
-        private readonly CoreModuleEntitlementResolver $moduleEntitlements = new CoreModuleEntitlementResolver,
     ) {}
 
     public function index(Request $request, Company $company, Branch $branch): Response
@@ -300,17 +297,8 @@ class TransporterVoucherController extends Controller
 
     private function assertPermission(User $actor, Company $company, Branch $branch, string $code): void
     {
-        $this->assertBrokerModule($company);
-
         if (! $this->authorizer->allowsCustomer($actor, $code, $company, $branch)) {
             abort(403, 'Not authorized for Broker voucher operation.');
-        }
-    }
-
-    private function assertBrokerModule(Company $company): void
-    {
-        if (! $this->moduleEntitlements->isEntitled($company, SubscriptionModule::Broker)) {
-            abort(403, 'Broker module is not entitled for this company.');
         }
     }
 

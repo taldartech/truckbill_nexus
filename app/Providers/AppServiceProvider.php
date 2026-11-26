@@ -12,6 +12,7 @@ use App\Domains\Subscription\Payments\Gateway\PaymentGateway;
 use App\Domains\Subscription\Payments\Gateway\PaymentGatewayAuthorization;
 use App\Domains\Subscription\Payments\Gateway\RazorpayClient;
 use App\Domains\Subscription\Payments\Gateway\RazorpaySdkClient;
+use App\Domains\Subscription\Support\SubscriptionClock;
 use App\Models\User;
 use App\Policies\UserPolicy;
 use App\Support\Files\Scanning\MalwareScanner;
@@ -43,6 +44,7 @@ class AppServiceProvider extends ServiceProvider
 
         $this->app->singleton(PermissionAuthorizer::class);
         $this->app->singleton(WebSessionService::class);
+        $this->app->singleton(SubscriptionClock::class);
         $this->app->singleton(CompositeLrDependencyGuard::class, function (): CompositeLrDependencyGuard {
             return new CompositeLrDependencyGuard([
                 new TripLrDependencyGuard,

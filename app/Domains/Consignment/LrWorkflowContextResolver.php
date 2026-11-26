@@ -3,6 +3,8 @@
 namespace App\Domains\Consignment;
 
 use App\Domains\Consignment\Enums\LrWorkflowContext;
+use App\Domains\Subscription\Entitlement\CompanyCapabilities;
+use App\Domains\Subscription\Entitlement\CompanyCapabilityResolver;
 use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
 use App\Models\Branch;
 use App\Models\Company;
@@ -125,7 +127,10 @@ final class LrWorkflowContextResolver
 
         return [
             'status' => 'blocked',
-            'reason' => 'No subscribed core module entitles Lorry Receipt creation. Activate Broker, OwnFleet, or Partload from the Owner Panel.',
+            'reason' => app(CompanyCapabilityResolver::class)->denyMessage(
+                $company,
+                CompanyCapabilities::LR_UNIFIED,
+            ),
         ];
     }
 

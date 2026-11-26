@@ -33,6 +33,7 @@ use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Party\PartyService;
 use App\Domains\Master\TyreLayout\TyreLayoutService;
 use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
+use App\Domains\OwnFleet\Enums\DriverAttendanceStatus;
 use App\Domains\OwnFleet\Invoice\TripInvoicePaymentService;
 use App\Domains\OwnFleet\Invoice\TripInvoiceService;
 use App\Domains\OwnFleet\Trip\TripMovementService;
@@ -71,6 +72,8 @@ use App\Models\Trip;
 use App\Models\TripInvoice;
 use App\Models\User;
 use App\Models\Vehicle;
+use App\Models\VehicleDriverAssignment;
+use App\Models\VehicleDriverAttendance;
 use App\Support\Tenant\TenantContext;
 use App\Support\Tenant\TenantContextHolder;
 use Carbon\CarbonImmutable;
@@ -434,6 +437,47 @@ class LocalDemoWorkspaceSeeder extends Seeder
                     'attributes' => [
                         'driver_type' => 'permanent',
                         'license_number' => 'MH12P5'.substr((string) abs(crc32($company->id.'p')), 0, 6),
+                        'license_expiry' => CarbonImmutable::now()->addYears(2)->toDateString(),
+                        'joining_date' => '2024-06-01',
+                    ],
+                ],
+            ],
+            $companyName === self::COMPANY_A_NAME ? 'Pune' : 'Ahmedabad',
+        );
+        $pendingTripDriver = $this->ensurePartyWithRoles(
+            $parties,
+            $owner,
+            $company,
+            null,
+            'demo-party:'.$company->id.':driver-primary-pend',
+            $companyName === self::COMPANY_A_NAME ? 'Alpha Trip Driver' : 'Beta Trip Driver',
+            [
+                [
+                    'role' => PartyRoleType::Driver->value,
+                    'attributes' => [
+                        'driver_type' => 'permanent',
+                        'license_number' => 'MH12P6'.substr((string) abs(crc32($company->id.'pend')), 0, 6),
+                        'license_expiry' => CarbonImmutable::now()->addYears(2)->toDateString(),
+                        'joining_date' => '2024-06-01',
+                    ],
+                ],
+            ],
+            $companyName === self::COMPANY_A_NAME ? 'Pune' : 'Ahmedabad',
+        );
+        $freeVehicleDriver = $this->ensurePartyWithRoles(
+            $parties,
+            $owner,
+            $company,
+            null,
+            'demo-party:'.$company->id.':driver-primary-free',
+            $companyName === self::COMPANY_A_NAME ? 'Alpha Fleet Driver' : 'Beta Fleet Driver',
+            [
+                [
+                    'role' => PartyRoleType::Driver->value,
+                    'attributes' => [
+                        'driver_type' => 'permanent',
+                        'license_number' => 'MH12P7'.substr((string) abs(crc32($company->id.'free')), 0, 6),
+                        'license_expiry' => CarbonImmutable::now()->addYears(2)->toDateString(),
                         'joining_date' => '2024-06-01',
                     ],
                 ],
@@ -452,6 +496,8 @@ class LocalDemoWorkspaceSeeder extends Seeder
                     'role' => PartyRoleType::Driver->value,
                     'attributes' => [
                         'driver_type' => 'market',
+                        'license_number' => 'MH12S5'.substr((string) abs(crc32($company->id.'sub')), 0, 6),
+                        'license_expiry' => CarbonImmutable::now()->addYears(2)->toDateString(),
                     ],
                 ],
             ],
@@ -475,27 +521,34 @@ class LocalDemoWorkspaceSeeder extends Seeder
             $head,
             'MH12PEND'.substr((string) crc32($company->id.'pend'), 0, 4),
             ownership: VehicleOwnership::Own,
-            primaryDriverPartyId: $primaryDriver->id,
+            primaryDriverPartyId: $pendingTripDriver->id,
             truckTypeId: $catalogues['truck']->id,
             tyreLayoutId: $catalogues['tyre']->id,
         );
         // Dedicated free Own vehicle for browser / operator journeys — never
         // attached to seeded Pending or invoice trips (overlap protection stays on PEND).
-        $this->ensureVehicle(
+        $vehicleFree = $this->ensureVehicle(
             $company,
             $head,
             'MH12FREE'.substr((string) crc32($company->id.'free'), 0, 4),
             ownership: VehicleOwnership::Own,
-            primaryDriverPartyId: $primaryDriver->id,
+            primaryDriverPartyId: $freeVehicleDriver->id,
             truckTypeId: $catalogues['truck']->id,
             tyreLayoutId: $catalogues['tyre']->id,
+        );
+        $this->ensureOwnFleetDriverHistoryAndAttendanceFixtures(
+            $company,
+            $head,
+            $owner,
+            $vehicleFree,
+            $substituteDriver,
         );
         $marketVehicle = $this->ensureVehicle(
             $company,
             $masterScopeBranch ?? $second,
             'MH14DEMO'.substr((string) crc32($company->id.'2'), 0, 4),
             ownership: VehicleOwnership::Market,
-            primaryDriverPartyId: $substituteDriver->id,
+            primaryDriverPartyId: null,
             ownerPartyId: $transporterParty->id,
             sharedScope: $visibility === DataVisibility::SharedData,
         );
@@ -1191,28 +1244,107 @@ class LocalDemoWorkspaceSeeder extends Seeder
             'truck_type_id' => $ownership === VehicleOwnership::Own ? $truckTypeId : null,
             'tyre_layout_id' => $ownership === VehicleOwnership::Own ? $tyreLayoutId : null,
             'owner_party_id' => $ownership === VehicleOwnership::Market ? $ownerPartyId : null,
-            'primary_driver_party_id' => $primaryDriverPartyId,
+            'primary_driver_party_id' => $ownership === VehicleOwnership::Own ? $primaryDriverPartyId : null,
             'is_active' => true,
             'branch_id' => $sharedScope ? null : $branch->id,
         ];
 
         if ($existing !== null) {
             $existing->forceFill($attributes)->save();
-
-            return $existing->fresh() ?? $existing;
+            $vehicle = $existing->fresh() ?? $existing;
+        } else {
+            $vehicle = Vehicle::query()->create([
+                'id' => (string) Str::uuid(),
+                'company_id' => $company->id,
+                'branch_id' => $sharedScope ? null : $branch->id,
+                'registration_number' => $registration,
+                'vehicle_type' => 'truck',
+                'make' => 'Tata',
+                'model' => '407',
+                'manufacture_year' => 2021,
+                ...$attributes,
+            ]);
         }
 
-        return Vehicle::query()->create([
-            'id' => (string) Str::uuid(),
-            'company_id' => $company->id,
-            'branch_id' => $sharedScope ? null : $branch->id,
-            'registration_number' => $registration,
-            'vehicle_type' => 'truck',
-            'make' => 'Tata',
-            'model' => '407',
-            'manufacture_year' => 2021,
-            ...$attributes,
-        ]);
+        if ($ownership === VehicleOwnership::Own && $vehicle->primary_driver_party_id !== null) {
+            $hasOpenAssignment = VehicleDriverAssignment::query()
+                ->where('company_id', $company->id)
+                ->where('vehicle_id', $vehicle->id)
+                ->where('is_primary', true)
+                ->whereNull('assigned_to')
+                ->whereNull('deleted_at')
+                ->exists();
+
+            if (! $hasOpenAssignment) {
+                VehicleDriverAssignment::query()->create([
+                    'id' => (string) Str::uuid(),
+                    'company_id' => $company->id,
+                    'branch_id' => $branch->id,
+                    'vehicle_id' => $vehicle->id,
+                    'driver_party_id' => $vehicle->primary_driver_party_id,
+                    'assigned_from' => CarbonImmutable::now()->subDays(30)->toDateString(),
+                    'assigned_to' => null,
+                    'is_primary' => true,
+                    'remarks' => 'Initial primary driver assignment',
+                ]);
+            }
+        }
+
+        return $vehicle;
+    }
+
+    private function ensureOwnFleetDriverHistoryAndAttendanceFixtures(
+        Company $company,
+        Branch $branch,
+        User $actor,
+        Vehicle $vehicle,
+        Party $substituteDriver,
+    ): void {
+        $hasHistory = VehicleDriverAssignment::query()
+            ->where('company_id', $company->id)
+            ->where('vehicle_id', $vehicle->id)
+            ->whereNotNull('assigned_to')
+            ->whereNull('deleted_at')
+            ->exists();
+
+        if (! $hasHistory) {
+            VehicleDriverAssignment::query()->create([
+                'id' => (string) Str::uuid(),
+                'company_id' => $company->id,
+                'branch_id' => $branch->id,
+                'vehicle_id' => $vehicle->id,
+                'driver_party_id' => $substituteDriver->id,
+                'assigned_from' => CarbonImmutable::now()->subDays(90)->toDateString(),
+                'assigned_to' => CarbonImmutable::now()->subDays(31)->toDateString(),
+                'is_primary' => true,
+                'remarks' => 'Prior driver assignment replaced after handover',
+                'created_by_user_id' => $actor->id,
+            ]);
+        }
+
+        $yesterday = CarbonImmutable::now()->subDay()->toDateString();
+        $hasAttendance = VehicleDriverAttendance::query()
+            ->where('company_id', $company->id)
+            ->where('vehicle_id', $vehicle->id)
+            ->whereDate('attendance_date', $yesterday)
+            ->whereNull('deleted_at')
+            ->exists();
+
+        if (! $hasAttendance) {
+            VehicleDriverAttendance::query()->create([
+                'id' => (string) Str::uuid(),
+                'company_id' => $company->id,
+                'branch_id' => $branch->id,
+                'vehicle_id' => $vehicle->id,
+                'attendance_date' => $yesterday,
+                'primary_driver_party_id' => $vehicle->primary_driver_party_id,
+                'status' => DriverAttendanceStatus::Absent->value,
+                'temporary_driver_party_id' => $substituteDriver->id,
+                'remarks' => 'Seeded attendance exception with substitute driver',
+                'marked_via' => 'seeder',
+                'created_by_user_id' => $actor->id,
+            ]);
+        }
     }
 
     private function ensureBank(Company $company, Branch $branch, string $fixtureKey): BankCashAccount
@@ -2080,7 +2212,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
             $branch,
             'MH12BRKOWN'.substr((string) crc32($company->id.'broker-owner'), 0, 2),
             ownership: VehicleOwnership::Market,
-            primaryDriverPartyId: $substituteDriver?->id,
+            primaryDriverPartyId: null,
             ownerPartyId: $ownerTransporter->id,
         );
 
@@ -2089,7 +2221,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
             $branch,
             'MH12BRKAGY'.substr((string) crc32($company->id.'broker-agency'), 0, 2),
             ownership: VehicleOwnership::Market,
-            primaryDriverPartyId: $substituteDriver?->id,
+            primaryDriverPartyId: null,
             ownerPartyId: $agencyTransporter->id,
         );
 

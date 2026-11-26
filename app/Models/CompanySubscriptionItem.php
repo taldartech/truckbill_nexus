@@ -55,4 +55,12 @@ class CompanySubscriptionItem extends Model
     {
         return $this->belongsTo(CompanySubscription::class, 'company_subscription_id');
     }
+
+    /**
+     * @return BelongsTo<SubscriptionAddon, $this>
+     */
+    public function addon(): BelongsTo
+    {
+        return $this->belongsTo(SubscriptionAddon::class, 'addon_id');
+    }
 }

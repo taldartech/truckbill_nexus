@@ -69,6 +69,7 @@ export function AppSidebar() {
         '/enquiries',
         '/parties',
         '/vehicles',
+        '/vehicle-drivers',
         '/bank-cash',
         '/stations',
         '/goods-types',
@@ -85,6 +86,8 @@ export function AppSidebar() {
         '/trip-invoices',
         '/payments',
         '/broker',
+        '/partload',
+        '/accounting',
     ];
     const inOpsPath =
         opsRoots.some(
@@ -153,150 +156,273 @@ export function AppSidebar() {
         },
     ];
 
+    const nav = workspace?.navigation ?? null;
+
     const branchOperations: NavItem[] = [
-        {
-            title: 'Bilty Register',
-            href: '/lorry-receipts',
-            icon: Receipt,
-        },
-        {
-            title: 'Lorry Hires',
-            href: '/broker/lorry-hires',
-            icon: Truck,
-        },
-        {
-            title: 'Transporter Voucher Payments',
-            href: '/broker/vouchers',
-            icon: CreditCard,
-        },
-        {
-            title: 'Daily Payments',
-            href: '/broker/daily-payments',
-            icon: CreditCard,
-        },
-        {
-            title: 'Invoices',
-            href: '/invoices',
-            icon: Receipt,
-        },
-        {
-            title: 'Customer Invoice Receipts',
-            href: '/payments',
-            icon: CreditCard,
-        },
-        {
-            title: 'Delivery / Memo / POD',
-            href: '/broker/deliveries',
-            icon: Truck,
-        },
-        {
-            title: 'Linked Bilties',
-            href: '/broker/linked-bilties',
-            icon: Truck,
-        },
-        {
-            title: 'Transporter Balances',
-            href: '/broker/transporter-balances',
-            icon: Landmark,
-        },
-        {
-            title: 'Enquiries',
-            href: '/enquiries',
-            icon: Ticket,
-        },
-        {
-            title: 'Partload Bilty',
-            href: '/lorry-receipts/create?context=partload',
-            icon: Receipt,
-        },
-        {
-            title: 'Pending Loading',
-            href: '/partload/pending-loading',
-            icon: ClipboardList,
-        },
-        {
-            title: 'In Transit',
-            href: '/partload/in-transit',
-            icon: Truck,
-        },
-        {
-            title: 'Pending Delivery',
-            href: '/partload/pending-delivery',
-            icon: ClipboardList,
-        },
-        {
-            title: 'Partload Challans',
-            href: '/partload/challans',
-            icon: Truck,
-        },
-        {
-            title: 'Main Challans',
-            href: '/partload/main-challans',
-            icon: Truck,
-        },
-        {
-            title: 'Accounting',
-            href: '/accounting/vouchers',
-            icon: Landmark,
-        },
-        {
-            title: 'Broker Registers',
-            href: '/broker/registers',
-            icon: ClipboardList,
-        },
+        ...(nav?.bilty_register
+            ? [
+                  {
+                      title: 'Bilty Register',
+                      href: '/lorry-receipts',
+                      icon: Receipt,
+                  },
+              ]
+            : []),
+        ...(nav?.ownfleet_vehicle_drivers
+            ? [
+                  {
+                      title: 'Vehicle Drivers',
+                      href: '/vehicle-drivers',
+                      icon: Users,
+                  },
+              ]
+            : []),
+        ...(nav?.broker_lorry_hires
+            ? [
+                  {
+                      title: 'Lorry Hires',
+                      href: '/broker/lorry-hires',
+                      icon: Truck,
+                  },
+              ]
+            : []),
+        ...(nav?.broker_vouchers
+            ? [
+                  {
+                      title: 'Transporter Voucher Payments',
+                      href: '/broker/vouchers',
+                      icon: CreditCard,
+                  },
+              ]
+            : []),
+        ...(nav?.broker_daily_payments
+            ? [
+                  {
+                      title: 'Daily Payments',
+                      href: '/broker/daily-payments',
+                      icon: CreditCard,
+                  },
+              ]
+            : []),
+        ...(nav?.customer_invoices
+            ? [
+                  {
+                      title: 'Invoices',
+                      href: '/invoices',
+                      icon: Receipt,
+                  },
+              ]
+            : []),
+        ...(nav?.customer_payments
+            ? [
+                  {
+                      title: 'Customer Invoice Receipts',
+                      href: '/payments',
+                      icon: CreditCard,
+                  },
+              ]
+            : []),
+        ...(nav?.broker_deliveries
+            ? [
+                  {
+                      title: 'Delivery / Memo / POD',
+                      href: '/broker/deliveries',
+                      icon: Truck,
+                  },
+              ]
+            : []),
+        ...(nav?.broker_linked_bilties
+            ? [
+                  {
+                      title: 'Linked Bilties',
+                      href: '/broker/linked-bilties',
+                      icon: Truck,
+                  },
+              ]
+            : []),
+        ...(nav?.broker_transporter_balances
+            ? [
+                  {
+                      title: 'Transporter Balances',
+                      href: '/broker/transporter-balances',
+                      icon: Landmark,
+                  },
+              ]
+            : []),
+        ...(nav?.enquiries
+            ? [
+                  {
+                      title: 'Enquiries',
+                      href: '/enquiries',
+                      icon: Ticket,
+                  },
+              ]
+            : []),
+        ...(nav?.partload_bilty_shortcut
+            ? [
+                  {
+                      title: 'Partload Bilty',
+                      href: '/lorry-receipts/create?context=partload',
+                      icon: Receipt,
+                  },
+              ]
+            : []),
+        ...(nav?.partload_pending_loading
+            ? [
+                  {
+                      title: 'Pending Loading',
+                      href: '/partload/pending-loading',
+                      icon: ClipboardList,
+                  },
+              ]
+            : []),
+        ...(nav?.partload_in_transit
+            ? [
+                  {
+                      title: 'In Transit',
+                      href: '/partload/in-transit',
+                      icon: Truck,
+                  },
+              ]
+            : []),
+        ...(nav?.partload_pending_delivery
+            ? [
+                  {
+                      title: 'Pending Delivery',
+                      href: '/partload/pending-delivery',
+                      icon: ClipboardList,
+                  },
+              ]
+            : []),
+        ...(nav?.partload_challans
+            ? [
+                  {
+                      title: 'Partload Challans',
+                      href: '/partload/challans',
+                      icon: Truck,
+                  },
+              ]
+            : []),
+        ...(nav?.partload_main_challans
+            ? [
+                  {
+                      title: 'Main Challans',
+                      href: '/partload/main-challans',
+                      icon: Truck,
+                  },
+              ]
+            : []),
+        ...(nav?.accounting
+            ? [
+                  {
+                      title: 'Accounting',
+                      href: '/accounting/vouchers',
+                      icon: Landmark,
+                  },
+              ]
+            : []),
+        ...(nav?.broker_registers
+            ? [
+                  {
+                      title: 'Broker Registers',
+                      href: '/broker/registers',
+                      icon: ClipboardList,
+                  },
+              ]
+            : []),
     ];
 
     const branchMasters: NavItem[] = [
-        {
-            title: 'Party Master',
-            href: '/parties',
-            icon: Users,
-        },
-        {
-            title: 'Vehicle Master',
-            href: '/vehicles',
-            icon: Truck,
-        },
-        {
-            title: 'Bank/Cash Accounts',
-            href: '/bank-cash',
-            icon: Landmark,
-        },
-        {
-            title: 'Station Master',
-            href: '/stations',
-            icon: MapPin,
-        },
-        {
-            title: 'Goods Types',
-            href: '/goods-types',
-            icon: Package,
-        },
-        {
-            title: 'Truck Types',
-            href: '/truck-types',
-            icon: Truck,
-        },
-        {
-            title: 'Tyre Layouts',
-            href: '/tyre-layouts',
-            icon: Truck,
-        },
-        {
-            title: 'Document Types',
-            href: '/document-types',
-            icon: FileSearch,
-        },
-        {
-            title: 'Expense Categories',
-            href: '/expense-categories',
-            icon: Percent,
-        },
-        {
-            title: 'Package Types',
-            href: '/package-types',
-            icon: Package,
-        },
+        ...(nav?.masters_parties
+            ? [
+                  {
+                      title: 'Party Master',
+                      href: '/parties',
+                      icon: Users,
+                  },
+              ]
+            : []),
+        ...(nav?.masters_vehicles
+            ? [
+                  {
+                      title: 'Vehicle Master',
+                      href: '/vehicles',
+                      icon: Truck,
+                  },
+              ]
+            : []),
+        ...(nav?.masters_bank_cash
+            ? [
+                  {
+                      title: 'Bank/Cash Accounts',
+                      href: '/bank-cash',
+                      icon: Landmark,
+                  },
+              ]
+            : []),
+        ...(nav?.masters_stations
+            ? [
+                  {
+                      title: 'Station Master',
+                      href: '/stations',
+                      icon: MapPin,
+                  },
+              ]
+            : []),
+        ...(nav?.masters_goods_types
+            ? [
+                  {
+                      title: 'Goods Types',
+                      href: '/goods-types',
+                      icon: Package,
+                  },
+              ]
+            : []),
+        ...(nav?.masters_truck_types
+            ? [
+                  {
+                      title: 'Truck Types',
+                      href: '/truck-types',
+                      icon: Truck,
+                  },
+              ]
+            : []),
+        ...(nav?.masters_tyre_layouts
+            ? [
+                  {
+                      title: 'Tyre Layouts',
+                      href: '/tyre-layouts',
+                      icon: Truck,
+                  },
+              ]
+            : []),
+        ...(nav?.masters_document_types
+            ? [
+                  {
+                      title: 'Document Types',
+                      href: '/document-types',
+                      icon: FileSearch,
+                  },
+              ]
+            : []),
+        ...(nav?.masters_expense_categories
+            ? [
+                  {
+                      title: 'Expense Categories',
+                      href: '/expense-categories',
+                      icon: Percent,
+                  },
+              ]
+            : []),
+        ...(nav?.masters_package_types
+            ? [
+                  {
+                      title: 'Package Types',
+                      href: '/package-types',
+                      icon: Package,
+                  },
+              ]
+            : []),
     ];
 
     const branchSettings: NavItem[] = [
@@ -311,8 +437,12 @@ export function AppSidebar() {
         inBranchPanel && activeCompanyId && activeBranchId
             ? [
                   { label: 'Overview', items: branchOverview },
-                  { label: 'Operations', items: branchOperations },
-                  { label: 'Masters', items: branchMasters },
+                  ...(branchOperations.length > 0
+                      ? [{ label: 'Operations', items: branchOperations }]
+                      : []),
+                  ...(branchMasters.length > 0
+                      ? [{ label: 'Masters', items: branchMasters }]
+                      : []),
                   { label: 'Settings', items: branchSettings },
               ]
             : [

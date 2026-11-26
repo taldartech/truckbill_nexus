@@ -8,6 +8,9 @@ use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Support\MasterAccess;
 use App\Domains\Master\TyreLayout\TyreLayoutService;
 use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
+use App\Domains\OwnFleet\Driver\VehicleDriverAssignmentService;
+use App\Domains\Subscription\Entitlement\CompanyCapabilities;
+use App\Domains\Subscription\Entitlement\CompanyCapabilityResolver;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\OwnerCatalogueItem;
@@ -25,12 +28,21 @@ use Illuminate\Validation\ValidationException;
 
 final class VehicleService
 {
+    private readonly CompanyCapabilityResolver $capabilities;
+
+    private readonly VehicleDriverAssignmentService $driverAssignments;
+
     public function __construct(
         private readonly MasterAccess $access = new MasterAccess,
         private readonly AuditedTransaction $auditedTransaction = new AuditedTransaction,
         private readonly AuditWriter $audit = new AuditWriter,
         private readonly TyreLayoutService $tyreLayouts = new TyreLayoutService,
-    ) {}
+        ?CompanyCapabilityResolver $capabilities = null,
+        ?VehicleDriverAssignmentService $driverAssignments = null,
+    ) {
+        $this->capabilities = $capabilities ?? app(CompanyCapabilityResolver::class);
+        $this->driverAssignments = $driverAssignments ?? app(VehicleDriverAssignmentService::class);
+    }
 
     /**
      * @param  array<string, mixed>  $attributes
@@ -49,8 +61,8 @@ final class VehicleService
         $panelBranch = $visibilityBranch ?? $branch;
         $normalized = $this->normalizeOwnershipAttributes($company, $panelBranch, $attributes);
 
-        return $this->auditedTransaction->run(function () use ($actor, $company, $branch, $attributes, $normalized, $remark): Vehicle {
-            return $this->access->withTenant($actor, $company, $branch, function () use ($company, $branch, $attributes, $normalized, $remark): Vehicle {
+        return $this->auditedTransaction->run(function () use ($actor, $company, $branch, $panelBranch, $attributes, $normalized, $remark): Vehicle {
+            return $this->access->withTenant($actor, $company, $branch, function () use ($actor, $company, $branch, $panelBranch, $attributes, $normalized, $remark): Vehicle {
                 $vehicle = Vehicle::query()->create([
                     'id' => (string) Str::uuid(),
                     'company_id' => $company->id,
@@ -70,6 +82,18 @@ final class VehicleService
                     'owner_party_id' => $normalized['owner_party_id'],
                     'primary_driver_party_id' => $normalized['primary_driver_party_id'],
                 ]);
+
+                if ($vehicle->ownership === VehicleOwnership::Own && $vehicle->primary_driver_party_id !== null) {
+                    $this->driverAssignments->syncFromVehicleMaster(
+                        actor: $actor,
+                        company: $company,
+                        branch: $panelBranch,
+                        vehicle: $vehicle,
+                        previousDriverId: null,
+                        newDriverId: $vehicle->primary_driver_party_id,
+                        remark: $remark,
+                    );
+                }
 
                 $this->audit->write(
                     AuditAction::Created,
@@ -123,9 +147,10 @@ final class VehicleService
             ?? Branch::query()->where('company_id', $company->id)->orderBy('created_at')->first();
         $normalized = $this->normalizeOwnershipAttributes($company, $panelBranch, $merged, requireOwnership: array_key_exists('ownership', $attributes) || $vehicle->ownership !== null);
 
-        return $this->auditedTransaction->run(function () use ($actor, $company, $branch, $vehicle, $attributes, $normalized, $remark): Vehicle {
-            return $this->access->withTenant($actor, $company, $branch, function () use ($vehicle, $attributes, $normalized, $remark): Vehicle {
+        return $this->auditedTransaction->run(function () use ($actor, $company, $branch, $panelBranch, $vehicle, $attributes, $normalized, $remark): Vehicle {
+            return $this->access->withTenant($actor, $company, $branch, function () use ($actor, $company, $panelBranch, $vehicle, $attributes, $normalized, $remark): Vehicle {
                 $before = $vehicle->toArray();
+                $previousDriverId = $vehicle->primary_driver_party_id;
                 $vehicle->fill(collect($attributes)->only([
                     'registration_number',
                     'vehicle_type',
@@ -149,6 +174,16 @@ final class VehicleService
                 }
 
                 $vehicle->save();
+
+                $this->driverAssignments->syncFromVehicleMaster(
+                    actor: $actor,
+                    company: $company,
+                    branch: $panelBranch,
+                    vehicle: $vehicle,
+                    previousDriverId: $previousDriverId,
+                    newDriverId: $vehicle->primary_driver_party_id,
+                    remark: $remark,
+                );
 
                 $this->audit->write(
                     AuditAction::Updated,
@@ -275,6 +310,16 @@ final class VehicleService
         $ownerPartyId = $this->optionalUuid($attributes['owner_party_id'] ?? null);
         $primaryDriverId = $this->optionalUuid($attributes['primary_driver_party_id'] ?? null);
 
+        if ($ownership !== null && ! $this->capabilities->allowsVehicleOwnership($company, $ownership)) {
+            $requiredCap = $ownership === VehicleOwnership::Own
+                ? CompanyCapabilities::VEHICLE_OWNERSHIP_OWN
+                : CompanyCapabilities::VEHICLE_OWNERSHIP_MARKET;
+
+            throw ValidationException::withMessages([
+                'ownership' => $this->capabilities->denyMessage($company, $requiredCap),
+            ]);
+        }
+
         if ($ownership === VehicleOwnership::Own) {
             if ($truckTypeId === null) {
                 throw ValidationException::withMessages([
@@ -298,6 +343,7 @@ final class VehicleService
             $this->assertTransporterParty($company, $branch, $ownerPartyId);
             $truckTypeId = null;
             $tyreLayoutId = null;
+            $primaryDriverId = null;
         } else {
             // Unclassified historical-style create: clear ownership-dependent FKs.
             $truckTypeId = null;

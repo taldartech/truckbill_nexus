@@ -12,47 +12,133 @@ use App\Models\CompanySubscriptionTrial;
 use Carbon\CarbonImmutable;
 
 /**
- * Resolves catalogue core-module entitlements from active subscription items
- * and first-company trial coverage.
+ * Resolves catalogue core-module and add-on entitlements from active/historical
+ * subscription items and first-company trial coverage.
  *
- * CompanySubscriptionTrial stores no per-module list; an active trial that
- * permits Branch mutations therefore grants all catalogue core modules
- * (Rules §15: trial covers all features subject to configurable limits).
+ * Operational mutations strictly require Active or active Trial status.
+ * Historical read-only access during PaidGrace / Restricted / Cancelled preserves
+ * only the modules actually subscribed or trialed by that Company.
  */
 final class CoreModuleEntitlementResolver
 {
+    private readonly SubscriptionEntitlementGate $gate;
+
+    private readonly SubscriptionClock $clock;
+
     public function __construct(
-        private readonly SubscriptionEntitlementGate $gate = new SubscriptionEntitlementGate,
-        private readonly SubscriptionClock $clock = new SubscriptionClock,
-    ) {}
+        ?SubscriptionEntitlementGate $gate = null,
+        ?SubscriptionClock $clock = null,
+    ) {
+        $this->gate = $gate ?? app(SubscriptionEntitlementGate::class);
+        $this->clock = $clock ?? app(SubscriptionClock::class);
+    }
 
     /**
+     * Operationally entitled core modules (Active paid subscription or active Trial).
+     *
      * @return list<SubscriptionModule>
      */
     public function entitledModules(Company $company): array
     {
-        /** @var array<string, SubscriptionModule> $modules */
-        $modules = [];
-
-        foreach ($this->modulesFromActiveSubscription($company) as $module) {
-            $modules[$module->value] = $module;
-        }
-
         $decision = $this->gate->evaluate($company);
+        if (! $decision['company_admin_active'] || ! $decision['branch_mutations_allowed']) {
+            return [];
+        }
+
+        if ($decision['status'] === SubscriptionLifecycleStatus::Active) {
+            return $this->orderModules($this->modulesFromSubscription($company, ['active']));
+        }
+
         if ($this->trialGrantsAllCoreModules($company, $decision)) {
-            foreach (SubscriptionModule::cases() as $module) {
-                $modules[$module->value] = $module;
-            }
+            return SubscriptionModule::cases();
         }
 
-        $ordered = [];
-        foreach (SubscriptionModule::cases() as $module) {
-            if (isset($modules[$module->value])) {
-                $ordered[] = $module;
-            }
+        return [];
+    }
+
+    /**
+     * Modules available for historical read-only views (Active/Trial modules plus
+     * previously activated/trialed modules during PaidGrace/Restricted/Cancelled).
+     *
+     * @return list<SubscriptionModule>
+     */
+    public function historicalModules(Company $company): array
+    {
+        $decision = $this->gate->evaluate($company);
+        if (! $decision['company_admin_active'] || ! $decision['branch_view_allowed']) {
+            return [];
         }
 
-        return $ordered;
+        $active = $this->entitledModules($company);
+        if ($active !== []) {
+            return $active;
+        }
+
+        if (! in_array($decision['status'], [
+            SubscriptionLifecycleStatus::PaidGrace,
+            SubscriptionLifecycleStatus::Restricted,
+            SubscriptionLifecycleStatus::Cancelled,
+        ], true)) {
+            return [];
+        }
+
+        $fromSubscription = $this->modulesFromSubscription($company, ['active', 'cancelled'], requireActivated: true);
+        if ($fromSubscription !== []) {
+            return $this->orderModules($fromSubscription);
+        }
+
+        if (CompanySubscriptionTrial::query()->where('company_id', $company->id)->exists()) {
+            return SubscriptionModule::cases();
+        }
+
+        return [];
+    }
+
+    /**
+     * Active subscription add-on codes (e.g., accounting).
+     *
+     * @return list<string>
+     */
+    public function activeAddonCodes(Company $company): array
+    {
+        $decision = $this->gate->evaluate($company);
+        if (! $decision['company_admin_active'] || ! $decision['branch_mutations_allowed']) {
+            return [];
+        }
+
+        if ($decision['status'] !== SubscriptionLifecycleStatus::Active) {
+            return [];
+        }
+
+        return $this->addonCodesFromSubscription($company, ['active']);
+    }
+
+    /**
+     * Historical subscription add-on codes (includes PaidGrace/Restricted/Cancelled).
+     *
+     * @return list<string>
+     */
+    public function historicalAddonCodes(Company $company): array
+    {
+        $decision = $this->gate->evaluate($company);
+        if (! $decision['company_admin_active'] || ! $decision['branch_view_allowed']) {
+            return [];
+        }
+
+        $active = $this->activeAddonCodes($company);
+        if ($active !== []) {
+            return $active;
+        }
+
+        if (! in_array($decision['status'], [
+            SubscriptionLifecycleStatus::PaidGrace,
+            SubscriptionLifecycleStatus::Restricted,
+            SubscriptionLifecycleStatus::Cancelled,
+        ], true)) {
+            return [];
+        }
+
+        return $this->addonCodesFromSubscription($company, ['active', 'cancelled'], requireActivated: true);
     }
 
     public function isEntitled(Company $company, SubscriptionModule|LrWorkflowContext $module): bool
@@ -61,13 +147,16 @@ final class CoreModuleEntitlementResolver
             ? $this->toSubscriptionModule($module)
             : $module;
 
-        foreach ($this->entitledModules($company) as $entitled) {
-            if ($entitled === $target) {
-                return true;
-            }
-        }
+        return in_array($target, $this->entitledModules($company), true);
+    }
 
-        return false;
+    public function isHistoricallyEntitled(Company $company, SubscriptionModule|LrWorkflowContext $module): bool
+    {
+        $target = $module instanceof LrWorkflowContext
+            ? $this->toSubscriptionModule($module)
+            : $module;
+
+        return in_array($target, $this->historicalModules($company), true);
     }
 
     public function toSubscriptionModule(LrWorkflowContext $context): SubscriptionModule
@@ -89,35 +178,116 @@ final class CoreModuleEntitlementResolver
     }
 
     /**
-     * @return list<SubscriptionModule>
+     * @param  list<string>  $statuses
+     * @return array<string, SubscriptionModule>
      */
-    private function modulesFromActiveSubscription(Company $company): array
-    {
-        $subscription = CompanySubscription::query()
+    private function modulesFromSubscription(
+        Company $company,
+        array $statuses,
+        bool $requireActivated = false,
+    ): array {
+        $today = $this->clock->now()->toDateString();
+
+        $subscriptions = CompanySubscription::query()
             ->where('company_id', $company->id)
-            ->where('status', 'active')
+            ->whereIn('status', $statuses)
+            ->when($requireActivated, fn ($q) => $q->whereNotNull('activated_at'))
+            ->when(
+                $statuses === ['active'] && ! $requireActivated,
+                fn ($q) => $q->where(fn ($sub) => $sub
+                    ->whereNull('paid_through_date')
+                    ->orWhereDate('paid_through_date', '>=', $today)),
+            )
             ->whereNull('deleted_at')
             ->with('items')
             ->orderByDesc('activated_at')
-            ->first();
+            ->orderByDesc('created_at')
+            ->get();
 
-        if ($subscription === null) {
+        if ($subscriptions->isEmpty()) {
             return [];
         }
 
         $modules = [];
-        foreach ($subscription->items as $item) {
-            if (! is_string($item->module) || $item->module === '') {
-                continue;
-            }
+        foreach ($subscriptions as $subscription) {
+            foreach ($subscription->items as $item) {
+                if (! is_string($item->module) || $item->module === '') {
+                    continue;
+                }
 
-            $module = SubscriptionModule::tryFrom($item->module);
-            if ($module !== null) {
-                $modules[$module->value] = $module;
+                $module = SubscriptionModule::tryFrom($item->module);
+                if ($module !== null) {
+                    $modules[$module->value] = $module;
+                }
             }
         }
 
-        return array_values($modules);
+        return $modules;
+    }
+
+    /**
+     * @param  list<string>  $statuses
+     * @return list<string>
+     */
+    private function addonCodesFromSubscription(
+        Company $company,
+        array $statuses,
+        bool $requireActivated = false,
+    ): array {
+        $today = $this->clock->now()->toDateString();
+
+        $subscriptions = CompanySubscription::query()
+            ->where('company_id', $company->id)
+            ->whereIn('status', $statuses)
+            ->when($requireActivated, fn ($q) => $q->whereNotNull('activated_at'))
+            ->when(
+                $statuses === ['active'] && ! $requireActivated,
+                fn ($q) => $q->where(fn ($sub) => $sub
+                    ->whereNull('paid_through_date')
+                    ->orWhereDate('paid_through_date', '>=', $today)),
+            )
+            ->whereNull('deleted_at')
+            ->with(['items.addon'])
+            ->orderByDesc('activated_at')
+            ->orderByDesc('created_at')
+            ->get();
+
+        if ($subscriptions->isEmpty()) {
+            return [];
+        }
+
+        $codes = [];
+        foreach ($subscriptions as $subscription) {
+            foreach ($subscription->items as $item) {
+                if ($item->item_type !== 'addon' && $item->addon_id === null) {
+                    continue;
+                }
+                $code = $item->code !== ''
+                    ? $item->code
+                    : ($item->addon !== null ? $item->addon->code : '');
+                if ($code !== '') {
+                    $codes[$code] = $code;
+                }
+            }
+        }
+
+        return array_values($codes);
+    }
+
+    /**
+     * @param  array<string, SubscriptionModule>  $modules
+     * @return list<SubscriptionModule>
+     */
+    private function orderModules(array $modules): array
+    {
+        $ordered = [];
+        foreach (SubscriptionModule::cases() as $module) {
+            if (isset($modules[$module->value])) {
+                $ordered[] = $module;
+            }
+        }
+
+        return $ordered;
     }
 
     /**

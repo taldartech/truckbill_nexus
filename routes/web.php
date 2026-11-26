@@ -56,6 +56,7 @@ use App\Http\Controllers\Branch\TripController;
 use App\Http\Controllers\Branch\TripInvoiceController;
 use App\Http\Controllers\Branch\TyreLayoutController;
 use App\Http\Controllers\Branch\VehicleController;
+use App\Http\Controllers\Branch\VehicleDriverController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\InvitationAcceptanceController;
@@ -246,229 +247,323 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/operations', BranchDashboardController::class)->name('branch.dashboard');
         Route::get('/settings/branch', BranchSettingsController::class)->name('branch.settings');
 
-        Route::get('/enquiries', [EnquiryController::class, 'index'])->name('branch.enquiries.index');
-        Route::get('/enquiries/create', [EnquiryController::class, 'create'])->name('branch.enquiries.create');
-        Route::post('/enquiries', [EnquiryController::class, 'store'])->name('branch.enquiries.store');
-        Route::get('/enquiries/{enquiry}', [EnquiryController::class, 'show'])->name('branch.enquiries.show');
-        Route::patch('/enquiries/{enquiry}', [EnquiryController::class, 'update'])->name('branch.enquiries.update');
-        Route::post('/enquiries/{enquiry}/assign', [EnquiryController::class, 'assign'])->name('branch.enquiries.assign');
-        Route::post('/enquiries/{enquiry}/follow-ups', [EnquiryController::class, 'storeFollowUp'])->name('branch.enquiries.follow-ups.store');
-        Route::post('/enquiries/{enquiry}/follow-ups/{followUp}/complete', [EnquiryController::class, 'completeFollowUp'])->name('branch.enquiries.follow-ups.complete');
-        Route::post('/enquiries/{enquiry}/quotations', [EnquiryController::class, 'storeQuotation'])->name('branch.enquiries.quotations.store');
-        Route::patch('/enquiries/{enquiry}/quotations/{quotation}', [EnquiryController::class, 'updateQuotation'])->name('branch.enquiries.quotations.update');
-        Route::post('/enquiries/{enquiry}/quotations/{quotation}/select', [EnquiryController::class, 'selectQuotation'])->name('branch.enquiries.quotations.select');
-        Route::post('/enquiries/{enquiry}/quotation-broadcasts', [EnquiryController::class, 'storeQuotationBroadcast'])->name('branch.enquiries.quotation-broadcasts.store');
-        Route::get('/enquiries/{enquiry}/conversion-preview', [EnquiryController::class, 'conversionPreview'])->name('branch.enquiries.conversion-preview');
-        Route::post('/enquiries/{enquiry}/convert', [EnquiryController::class, 'convert'])->name('branch.enquiries.convert');
+        Route::middleware('company.capability:enquiries')->group(function () {
+            Route::get('/enquiries', [EnquiryController::class, 'index'])->name('branch.enquiries.index');
+            Route::get('/enquiries/create', [EnquiryController::class, 'create'])->name('branch.enquiries.create');
+            Route::post('/enquiries', [EnquiryController::class, 'store'])->name('branch.enquiries.store');
+            Route::get('/enquiries/{enquiry}', [EnquiryController::class, 'show'])->name('branch.enquiries.show');
+            Route::patch('/enquiries/{enquiry}', [EnquiryController::class, 'update'])->name('branch.enquiries.update');
+            Route::post('/enquiries/{enquiry}/assign', [EnquiryController::class, 'assign'])->name('branch.enquiries.assign');
+            Route::post('/enquiries/{enquiry}/follow-ups', [EnquiryController::class, 'storeFollowUp'])->name('branch.enquiries.follow-ups.store');
+            Route::post('/enquiries/{enquiry}/follow-ups/{followUp}/complete', [EnquiryController::class, 'completeFollowUp'])->name('branch.enquiries.follow-ups.complete');
+            Route::post('/enquiries/{enquiry}/quotations', [EnquiryController::class, 'storeQuotation'])->name('branch.enquiries.quotations.store');
+            Route::patch('/enquiries/{enquiry}/quotations/{quotation}', [EnquiryController::class, 'updateQuotation'])->name('branch.enquiries.quotations.update');
+            Route::post('/enquiries/{enquiry}/quotations/{quotation}/select', [EnquiryController::class, 'selectQuotation'])->name('branch.enquiries.quotations.select');
+            Route::post('/enquiries/{enquiry}/quotation-broadcasts', [EnquiryController::class, 'storeQuotationBroadcast'])->name('branch.enquiries.quotation-broadcasts.store');
+            Route::get('/enquiries/{enquiry}/conversion-preview', [EnquiryController::class, 'conversionPreview'])->name('branch.enquiries.conversion-preview');
+            Route::post('/enquiries/{enquiry}/convert', [EnquiryController::class, 'convert'])->name('branch.enquiries.convert');
+        });
 
-        Route::get('/lorry-receipts', [LorryReceiptController::class, 'index'])->name('branch.lorry-receipts.index');
-        Route::get('/lorry-receipts/create', [LorryReceiptController::class, 'create'])->name('branch.lorry-receipts.create');
-        Route::post('/lorry-receipts', [LorryReceiptController::class, 'store'])->name('branch.lorry-receipts.store');
-        Route::get('/lorry-receipts/{lorryReceipt}', [LorryReceiptController::class, 'show'])->name('branch.lorry-receipts.show');
-        Route::get('/lorry-receipts/{lorryReceipt}/edit', [LorryReceiptController::class, 'edit'])->name('branch.lorry-receipts.edit');
-        Route::patch('/lorry-receipts/{lorryReceipt}', [LorryReceiptController::class, 'update'])->name('branch.lorry-receipts.update');
-        Route::delete('/lorry-receipts/{lorryReceipt}', [LorryReceiptController::class, 'destroy'])->name('branch.lorry-receipts.destroy');
-        Route::post('/lorry-receipts/{lorryReceipt}/change-status', [LorryReceiptController::class, 'changeStatus'])->name('branch.lorry-receipts.change-status');
-        Route::post('/lorry-receipts/{lorryReceipt}/cancel', [LorryReceiptController::class, 'cancel'])->name('branch.lorry-receipts.cancel');
-        Route::get('/lorry-receipts/{lorryReceipt}/print', [LorryReceiptController::class, 'print'])->name('branch.lorry-receipts.print');
-        Route::get('/lorry-receipts/{lorryReceipt}/create-trip', [TripController::class, 'createFromLorryReceipt'])->name('branch.trips.create-from-lr');
-        Route::post('/lorry-receipts/{lorryReceipt}/trips', [TripController::class, 'storeFromLorryReceipt'])->name('branch.trips.store-from-lr');
-        Route::get('/lorry-receipts/{lorryReceipt}/create-lorry-hire', [LorryHireController::class, 'createFromLorryReceipt'])->name('branch.broker.lorry-hires.create-from-lr');
-        Route::post('/lorry-receipts/{lorryReceipt}/lorry-hires', [LorryHireController::class, 'storeFromLorryReceipt'])->name('branch.broker.lorry-hires.store-from-lr');
+        Route::middleware('company.capability:lr.unified')->group(function () {
+            Route::get('/lorry-receipts', [LorryReceiptController::class, 'index'])->name('branch.lorry-receipts.index');
+            Route::get('/lorry-receipts/create', [LorryReceiptController::class, 'create'])->name('branch.lorry-receipts.create');
+            Route::post('/lorry-receipts', [LorryReceiptController::class, 'store'])->name('branch.lorry-receipts.store');
+            Route::get('/lorry-receipts/{lorryReceipt}', [LorryReceiptController::class, 'show'])->name('branch.lorry-receipts.show');
+            Route::get('/lorry-receipts/{lorryReceipt}/edit', [LorryReceiptController::class, 'edit'])->name('branch.lorry-receipts.edit');
+            Route::patch('/lorry-receipts/{lorryReceipt}', [LorryReceiptController::class, 'update'])->name('branch.lorry-receipts.update');
+            Route::delete('/lorry-receipts/{lorryReceipt}', [LorryReceiptController::class, 'destroy'])->name('branch.lorry-receipts.destroy');
+            Route::post('/lorry-receipts/{lorryReceipt}/change-status', [LorryReceiptController::class, 'changeStatus'])->name('branch.lorry-receipts.change-status');
+            Route::post('/lorry-receipts/{lorryReceipt}/cancel', [LorryReceiptController::class, 'cancel'])->name('branch.lorry-receipts.cancel');
+            Route::get('/lorry-receipts/{lorryReceipt}/print', [LorryReceiptController::class, 'print'])->name('branch.lorry-receipts.print');
+        });
 
-        Route::get('/broker/registers', [BrokerRegistersController::class, 'index'])->name('branch.broker.registers.index');
+        Route::middleware('company.capability:ownfleet.trips')->group(function () {
+            Route::get('/lorry-receipts/{lorryReceipt}/create-trip', [TripController::class, 'createFromLorryReceipt'])->name('branch.trips.create-from-lr');
+            Route::post('/lorry-receipts/{lorryReceipt}/trips', [TripController::class, 'storeFromLorryReceipt'])->name('branch.trips.store-from-lr');
+        });
 
-        Route::get('/broker/lorry-hires', [LorryHireController::class, 'index'])->name('branch.broker.lorry-hires.index');
-        Route::get('/broker/lorry-hires/{lorryHire}', [LorryHireController::class, 'show'])->name('branch.broker.lorry-hires.show');
-        Route::post('/broker/lorry-hires/{lorryHire}/cancel', [LorryHireController::class, 'cancel'])->name('branch.broker.lorry-hires.cancel');
-        Route::get('/broker/lorry-hires/{lorryHire}/adjustments', [BrokerAdjustmentController::class, 'index'])->name('branch.broker.lorry-hires.adjustments.index');
-        Route::post('/broker/lorry-hires/{lorryHire}/adjustments', [BrokerAdjustmentController::class, 'store'])->name('branch.broker.lorry-hires.adjustments.store');
+        Route::middleware('company.capability:broker.lorry_hire')->group(function () {
+            Route::get('/lorry-receipts/{lorryReceipt}/create-lorry-hire', [LorryHireController::class, 'createFromLorryReceipt'])->name('branch.broker.lorry-hires.create-from-lr');
+            Route::post('/lorry-receipts/{lorryReceipt}/lorry-hires', [LorryHireController::class, 'storeFromLorryReceipt'])->name('branch.broker.lorry-hires.store-from-lr');
+        });
 
-        Route::get('/broker/deliveries', [BrokerDeliveryController::class, 'index'])->name('branch.broker.deliveries.index');
-        Route::post('/broker/deliveries/memo', [BrokerDeliveryController::class, 'assignMemo'])->name('branch.broker.deliveries.memo');
-        Route::post('/broker/deliveries/{lorryReceipt}/complete', [BrokerDeliveryController::class, 'complete'])->name('branch.broker.deliveries.complete');
-        Route::post('/broker/deliveries/{brokerDelivery}/pod', [BrokerDeliveryController::class, 'attachPod'])->name('branch.broker.deliveries.pod');
+        Route::middleware('company.capability:broker.registers')->group(function () {
+            Route::get('/broker/registers', [BrokerRegistersController::class, 'index'])->name('branch.broker.registers.index');
+        });
 
-        Route::get('/broker/vouchers', [TransporterVoucherController::class, 'index'])->name('branch.broker.vouchers.index');
-        Route::get('/broker/vouchers/create', [TransporterVoucherController::class, 'create'])->name('branch.broker.vouchers.create');
-        Route::get('/broker/vouchers/export-payout', [TransporterVoucherController::class, 'exportPayout'])->name('branch.broker.vouchers.export-payout');
-        Route::get('/broker/vouchers/bulk', [TransporterVoucherController::class, 'bulkCreate'])->name('branch.broker.vouchers.bulk.create');
-        Route::post('/broker/vouchers', [TransporterVoucherController::class, 'store'])->name('branch.broker.vouchers.store');
-        Route::post('/broker/vouchers/bulk/preview', [TransporterVoucherController::class, 'bulkPreview'])->name('branch.broker.vouchers.bulk.preview');
-        Route::post('/broker/vouchers/bulk', [TransporterVoucherController::class, 'bulkStore'])->name('branch.broker.vouchers.bulk.store');
-        Route::get('/broker/vouchers/{voucher}', [TransporterVoucherController::class, 'show'])->name('branch.broker.vouchers.show');
-        Route::post('/broker/vouchers/{voucher}/status', [TransporterVoucherController::class, 'updateStatus'])->name('branch.broker.vouchers.status');
+        Route::middleware('company.capability:broker.lorry_hire')->group(function () {
+            Route::get('/broker/lorry-hires', [LorryHireController::class, 'index'])->name('branch.broker.lorry-hires.index');
+            Route::get('/broker/lorry-hires/{lorryHire}', [LorryHireController::class, 'show'])->name('branch.broker.lorry-hires.show');
+            Route::post('/broker/lorry-hires/{lorryHire}/cancel', [LorryHireController::class, 'cancel'])->name('branch.broker.lorry-hires.cancel');
+            Route::get('/broker/lorry-hires/{lorryHire}/adjustments', [BrokerAdjustmentController::class, 'index'])->name('branch.broker.lorry-hires.adjustments.index');
+            Route::post('/broker/lorry-hires/{lorryHire}/adjustments', [BrokerAdjustmentController::class, 'store'])->name('branch.broker.lorry-hires.adjustments.store');
+        });
 
-        Route::get('/broker/daily-payments', [BrokerDailyPaymentsController::class, 'index'])->name('branch.broker.daily-payments.index');
-        Route::post('/broker/daily-payments/bulk-status', [BrokerDailyPaymentsController::class, 'bulkStatus'])->name('branch.broker.daily-payments.bulk-status');
+        Route::middleware('company.capability:broker.deliveries')->group(function () {
+            Route::get('/broker/deliveries', [BrokerDeliveryController::class, 'index'])->name('branch.broker.deliveries.index');
+            Route::post('/broker/deliveries/memo', [BrokerDeliveryController::class, 'assignMemo'])->name('branch.broker.deliveries.memo');
+            Route::post('/broker/deliveries/{lorryReceipt}/complete', [BrokerDeliveryController::class, 'complete'])->name('branch.broker.deliveries.complete');
+            Route::post('/broker/deliveries/{brokerDelivery}/pod', [BrokerDeliveryController::class, 'attachPod'])->name('branch.broker.deliveries.pod');
+        });
 
-        Route::get('/broker/transporter-balances', [TransporterBookBalanceController::class, 'index'])->name('branch.broker.transporter-balances.index');
+        Route::middleware('company.capability:broker.vouchers')->group(function () {
+            Route::get('/broker/vouchers', [TransporterVoucherController::class, 'index'])->name('branch.broker.vouchers.index');
+            Route::get('/broker/vouchers/create', [TransporterVoucherController::class, 'create'])->name('branch.broker.vouchers.create');
+            Route::get('/broker/vouchers/export-payout', [TransporterVoucherController::class, 'exportPayout'])->name('branch.broker.vouchers.export-payout');
+            Route::get('/broker/vouchers/bulk', [TransporterVoucherController::class, 'bulkCreate'])->name('branch.broker.vouchers.bulk.create');
+            Route::post('/broker/vouchers', [TransporterVoucherController::class, 'store'])->name('branch.broker.vouchers.store');
+            Route::post('/broker/vouchers/bulk/preview', [TransporterVoucherController::class, 'bulkPreview'])->name('branch.broker.vouchers.bulk.preview');
+            Route::post('/broker/vouchers/bulk', [TransporterVoucherController::class, 'bulkStore'])->name('branch.broker.vouchers.bulk.store');
+            Route::get('/broker/vouchers/{voucher}', [TransporterVoucherController::class, 'show'])->name('branch.broker.vouchers.show');
+            Route::post('/broker/vouchers/{voucher}/status', [TransporterVoucherController::class, 'updateStatus'])->name('branch.broker.vouchers.status');
+        });
 
-        Route::get('/broker/invoices', [BrokerInvoiceController::class, 'index'])->name('branch.broker.invoices.index');
-        Route::get('/broker/invoices/create', [BrokerInvoiceController::class, 'create'])->name('branch.broker.invoices.create');
-        Route::post('/broker/invoices/preview', [BrokerInvoiceController::class, 'preview'])->name('branch.broker.invoices.preview');
-        Route::post('/broker/invoices', [BrokerInvoiceController::class, 'store'])->name('branch.broker.invoices.store');
-        Route::get('/broker/invoices/{brokerInvoice}', [BrokerInvoiceController::class, 'show'])->name('branch.broker.invoices.show');
-        Route::get('/broker/invoices/{brokerInvoice}/print', [BrokerInvoiceController::class, 'print'])->name('branch.broker.invoices.print');
-        Route::post('/broker/invoices/{brokerInvoice}/cancel', [BrokerInvoiceController::class, 'cancel'])->name('branch.broker.invoices.cancel');
-        Route::post('/broker/invoices/{brokerInvoice}/payments', [BrokerInvoiceController::class, 'storePayment'])->name('branch.broker.invoices.payments.store');
+        Route::middleware('company.capability:broker.daily_payments')->group(function () {
+            Route::get('/broker/daily-payments', [BrokerDailyPaymentsController::class, 'index'])->name('branch.broker.daily-payments.index');
+            Route::post('/broker/daily-payments/bulk-status', [BrokerDailyPaymentsController::class, 'bulkStatus'])->name('branch.broker.daily-payments.bulk-status');
+        });
 
-        Route::get('/broker/linked-bilties', [LinkedBiltyGroupController::class, 'index'])->name('branch.broker.linked-bilties.index');
-        Route::get('/broker/linked-bilties/create', [LinkedBiltyGroupController::class, 'create'])->name('branch.broker.linked-bilties.create');
-        Route::post('/broker/linked-bilties', [LinkedBiltyGroupController::class, 'store'])->name('branch.broker.linked-bilties.store');
-        Route::get('/broker/linked-bilties/{linkedBiltyGroup}', [LinkedBiltyGroupController::class, 'show'])->name('branch.broker.linked-bilties.show');
-        Route::post('/broker/linked-bilties/{linkedBiltyGroup}/pay/preview', [LinkedBiltyGroupController::class, 'payPreview'])->name('branch.broker.linked-bilties.pay.preview');
-        Route::post('/broker/linked-bilties/{linkedBiltyGroup}/pay', [LinkedBiltyGroupController::class, 'payStore'])->name('branch.broker.linked-bilties.pay.store');
+        Route::middleware('company.capability:broker.book_balance')->group(function () {
+            Route::get('/broker/transporter-balances', [TransporterBookBalanceController::class, 'index'])->name('branch.broker.transporter-balances.index');
+        });
 
-        Route::get('/partload/challans', [PartloadChallanController::class, 'index'])->name('branch.partload.challans.index');
-        Route::get('/partload/challans/create', [PartloadChallanController::class, 'create'])->name('branch.partload.challans.create');
-        Route::post('/partload/challans', [PartloadChallanController::class, 'store'])->name('branch.partload.challans.store');
-        Route::get('/partload/challans/{partloadChallan}', [PartloadChallanController::class, 'show'])->name('branch.partload.challans.show');
-        Route::post('/partload/challans/{partloadChallan}/dispatch', [PartloadChallanController::class, 'dispatch'])->name('branch.partload.challans.dispatch');
-        Route::post('/partload/challans/{partloadChallan}/cancel', [PartloadChallanController::class, 'cancel'])->name('branch.partload.challans.cancel');
+        Route::middleware('company.capability:broker.invoices')->group(function () {
+            Route::get('/broker/invoices', [BrokerInvoiceController::class, 'index'])->name('branch.broker.invoices.index');
+            Route::get('/broker/invoices/create', [BrokerInvoiceController::class, 'create'])->name('branch.broker.invoices.create');
+            Route::post('/broker/invoices/preview', [BrokerInvoiceController::class, 'preview'])->name('branch.broker.invoices.preview');
+            Route::post('/broker/invoices', [BrokerInvoiceController::class, 'store'])->name('branch.broker.invoices.store');
+            Route::get('/broker/invoices/{brokerInvoice}', [BrokerInvoiceController::class, 'show'])->name('branch.broker.invoices.show');
+            Route::get('/broker/invoices/{brokerInvoice}/print', [BrokerInvoiceController::class, 'print'])->name('branch.broker.invoices.print');
+            Route::post('/broker/invoices/{brokerInvoice}/cancel', [BrokerInvoiceController::class, 'cancel'])->name('branch.broker.invoices.cancel');
+            Route::post('/broker/invoices/{brokerInvoice}/payments', [BrokerInvoiceController::class, 'storePayment'])->name('branch.broker.invoices.payments.store');
+        });
 
-        Route::get('/partload/pending-loading', [PartloadPendingLoadingController::class, 'index'])->name('branch.partload.pending-loading.index');
-        Route::get('/partload/in-transit', [PartloadInTransitController::class, 'index'])->name('branch.partload.in-transit.index');
-        Route::get('/partload/pending-delivery', [PartloadPendingDeliveryController::class, 'index'])->name('branch.partload.pending-delivery.index');
+        Route::middleware('company.capability:broker.linked_bilties')->group(function () {
+            Route::get('/broker/linked-bilties', [LinkedBiltyGroupController::class, 'index'])->name('branch.broker.linked-bilties.index');
+            Route::get('/broker/linked-bilties/create', [LinkedBiltyGroupController::class, 'create'])->name('branch.broker.linked-bilties.create');
+            Route::post('/broker/linked-bilties', [LinkedBiltyGroupController::class, 'store'])->name('branch.broker.linked-bilties.store');
+            Route::get('/broker/linked-bilties/{linkedBiltyGroup}', [LinkedBiltyGroupController::class, 'show'])->name('branch.broker.linked-bilties.show');
+            Route::post('/broker/linked-bilties/{linkedBiltyGroup}/pay/preview', [LinkedBiltyGroupController::class, 'payPreview'])->name('branch.broker.linked-bilties.pay.preview');
+            Route::post('/broker/linked-bilties/{linkedBiltyGroup}/pay', [LinkedBiltyGroupController::class, 'payStore'])->name('branch.broker.linked-bilties.pay.store');
+        });
 
-        Route::get('/partload/main-challans', [PartloadMainChallanController::class, 'index'])->name('branch.partload.main-challans.index');
-        Route::get('/partload/main-challans/create', [PartloadMainChallanController::class, 'create'])->name('branch.partload.main-challans.create');
-        Route::post('/partload/main-challans', [PartloadMainChallanController::class, 'store'])->name('branch.partload.main-challans.store');
-        Route::get('/partload/main-challans/{partloadMainChallan}', [PartloadMainChallanController::class, 'show'])->name('branch.partload.main-challans.show');
-        Route::post('/partload/main-challans/{partloadMainChallan}/dispatch', [PartloadMainChallanController::class, 'dispatch'])->name('branch.partload.main-challans.dispatch');
-        Route::post('/partload/main-challans/{partloadMainChallan}/cancel', [PartloadMainChallanController::class, 'cancel'])->name('branch.partload.main-challans.cancel');
-        Route::post('/partload/inwards', [PartloadInwardController::class, 'store'])->name('branch.partload.inwards.store');
-        Route::get('/partload/inwards/{partloadInward}', [PartloadInwardController::class, 'show'])->name('branch.partload.inwards.show');
-        Route::get('/partload/delivery-receipts/create', [PartloadDeliveryReceiptController::class, 'create'])->name('branch.partload.delivery-receipts.create');
-        Route::post('/partload/delivery-receipts', [PartloadDeliveryReceiptController::class, 'store'])->name('branch.partload.delivery-receipts.store');
+        Route::middleware('company.capability:partload.challans')->group(function () {
+            Route::get('/partload/challans', [PartloadChallanController::class, 'index'])->name('branch.partload.challans.index');
+            Route::get('/partload/challans/create', [PartloadChallanController::class, 'create'])->name('branch.partload.challans.create');
+            Route::post('/partload/challans', [PartloadChallanController::class, 'store'])->name('branch.partload.challans.store');
+            Route::get('/partload/challans/{partloadChallan}', [PartloadChallanController::class, 'show'])->name('branch.partload.challans.show');
+            Route::post('/partload/challans/{partloadChallan}/dispatch', [PartloadChallanController::class, 'dispatch'])->name('branch.partload.challans.dispatch');
+            Route::post('/partload/challans/{partloadChallan}/cancel', [PartloadChallanController::class, 'cancel'])->name('branch.partload.challans.cancel');
+        });
 
-        Route::get('/accounting/vouchers', [AccountingVoucherController::class, 'index'])->name('branch.accounting.vouchers.index');
-        Route::get('/accounting/vouchers/create', [AccountingVoucherController::class, 'create'])->name('branch.accounting.vouchers.create');
-        Route::post('/accounting/vouchers', [AccountingVoucherController::class, 'store'])->name('branch.accounting.vouchers.store');
-        Route::get('/accounting/vouchers/{accountingVoucher}', [AccountingVoucherController::class, 'show'])->name('branch.accounting.vouchers.show');
-        Route::get('/accounting/ledgers', [AccountingLedgerController::class, 'index'])->name('branch.accounting.ledgers.index');
-        Route::post('/accounting/ledgers/quick', [AccountingLedgerQuickCreateController::class, 'store'])->name('branch.accounting.ledgers.quick-store');
-        Route::get('/accounting/ledgers/{glLedger}', [AccountingLedgerController::class, 'show'])->name('branch.accounting.ledgers.show');
-        Route::get('/accounting/reports/trial-balance', [AccountingReportController::class, 'trialBalance'])->name('branch.accounting.reports.trial-balance');
-        Route::get('/accounting/reports/profit-and-loss', [AccountingReportController::class, 'profitAndLoss'])->name('branch.accounting.reports.profit-and-loss');
-        Route::get('/accounting/reports/balance-sheet', [AccountingReportController::class, 'balanceSheet'])->name('branch.accounting.reports.balance-sheet');
-        Route::get('/accounting/reports/cash-book', [AccountingCashBankBookController::class, 'cash'])->name('branch.accounting.reports.cash-book');
-        Route::get('/accounting/reports/bank-book', [AccountingCashBankBookController::class, 'bank'])->name('branch.accounting.reports.bank-book');
-        Route::get('/accounting/reports/outstanding', [AccountingOutstandingController::class, 'index'])->name('branch.accounting.reports.outstanding');
-        Route::get('/accounting/reports/tax-summary', [AccountingOutstandingController::class, 'tax'])->name('branch.accounting.reports.tax-summary');
-        Route::get('/accounting/fund-transfers/create', [AccountingFundTransferController::class, 'create'])->name('branch.accounting.fund-transfers.create');
-        Route::post('/accounting/fund-transfers', [AccountingFundTransferController::class, 'store'])->name('branch.accounting.fund-transfers.store');
-        Route::get('/accounting/opening-balances/create', [AccountingOpeningBalanceController::class, 'create'])->name('branch.accounting.opening-balances.create');
-        Route::post('/accounting/opening-balances', [AccountingOpeningBalanceController::class, 'store'])->name('branch.accounting.opening-balances.store');
+        Route::middleware('company.capability:partload.pending_loading')->group(function () {
+            Route::get('/partload/pending-loading', [PartloadPendingLoadingController::class, 'index'])->name('branch.partload.pending-loading.index');
+        });
+        Route::middleware('company.capability:partload.in_transit')->group(function () {
+            Route::get('/partload/in-transit', [PartloadInTransitController::class, 'index'])->name('branch.partload.in-transit.index');
+        });
+        Route::middleware('company.capability:partload.pending_delivery')->group(function () {
+            Route::get('/partload/pending-delivery', [PartloadPendingDeliveryController::class, 'index'])->name('branch.partload.pending-delivery.index');
+        });
 
-        Route::get('/trips', [TripController::class, 'index'])->name('branch.trips.index');
-        Route::get('/trips/{trip}', [TripController::class, 'show'])->name('branch.trips.show');
-        Route::get('/trips/{trip}/multi-point', [TripController::class, 'multiPoint'])->name('branch.trips.multi-point');
-        Route::get('/trips/{trip}/expenses', [TripController::class, 'expenses'])->name('branch.trips.expenses');
-        Route::post('/trips/{trip}/dispatch', [TripController::class, 'dispatch'])->name('branch.trips.dispatch');
-        Route::post('/trips/{trip}/complete', [TripController::class, 'complete'])->name('branch.trips.complete');
-        Route::post('/trips/{trip}/cancel', [TripController::class, 'cancel'])->name('branch.trips.cancel');
-        Route::delete('/trips/{trip}', [TripController::class, 'destroy'])->name('branch.trips.destroy');
-        Route::post('/trips/{trip}/pickups', [TripController::class, 'storePickup'])->name('branch.trips.pickups.store');
-        Route::delete('/trips/{trip}/pickups/{pickup}', [TripController::class, 'destroyPickup'])->name('branch.trips.pickups.destroy');
-        Route::post('/trips/{trip}/drops', [TripController::class, 'storeDrop'])->name('branch.trips.drops.store');
-        Route::delete('/trips/{trip}/drops/{drop}', [TripController::class, 'destroyDrop'])->name('branch.trips.drops.destroy');
-        Route::post('/trips/{trip}/allocations', [TripController::class, 'storeAllocation'])->name('branch.trips.allocations.store');
-        Route::delete('/trips/{trip}/allocations/{allocation}', [TripController::class, 'destroyAllocation'])->name('branch.trips.allocations.destroy');
-        Route::post('/trips/{trip}/expenses', [TripController::class, 'storeExpense'])->name('branch.trips.expenses.store');
-        Route::delete('/trips/{trip}/expenses/{expense}', [TripController::class, 'destroyExpense'])->name('branch.trips.expenses.destroy');
+        Route::middleware('company.capability:partload.main_challans')->group(function () {
+            Route::get('/partload/main-challans', [PartloadMainChallanController::class, 'index'])->name('branch.partload.main-challans.index');
+            Route::get('/partload/main-challans/create', [PartloadMainChallanController::class, 'create'])->name('branch.partload.main-challans.create');
+            Route::post('/partload/main-challans', [PartloadMainChallanController::class, 'store'])->name('branch.partload.main-challans.store');
+            Route::get('/partload/main-challans/{partloadMainChallan}', [PartloadMainChallanController::class, 'show'])->name('branch.partload.main-challans.show');
+            Route::post('/partload/main-challans/{partloadMainChallan}/dispatch', [PartloadMainChallanController::class, 'dispatch'])->name('branch.partload.main-challans.dispatch');
+            Route::post('/partload/main-challans/{partloadMainChallan}/cancel', [PartloadMainChallanController::class, 'cancel'])->name('branch.partload.main-challans.cancel');
+        });
+        Route::middleware('company.capability:partload.inwards')->group(function () {
+            Route::post('/partload/inwards', [PartloadInwardController::class, 'store'])->name('branch.partload.inwards.store');
+            Route::get('/partload/inwards/{partloadInward}', [PartloadInwardController::class, 'show'])->name('branch.partload.inwards.show');
+        });
+        Route::middleware('company.capability:partload.delivery_receipts')->group(function () {
+            Route::get('/partload/delivery-receipts/create', [PartloadDeliveryReceiptController::class, 'create'])->name('branch.partload.delivery-receipts.create');
+            Route::post('/partload/delivery-receipts', [PartloadDeliveryReceiptController::class, 'store'])->name('branch.partload.delivery-receipts.store');
+        });
 
-        Route::get('/invoices', [CustomerInvoiceController::class, 'index'])->name('branch.invoices.index');
-        Route::get('/invoices/create', [CustomerInvoiceController::class, 'create'])->name('branch.invoices.create');
-        Route::post('/invoices/route-create', [CustomerInvoiceController::class, 'routeCreate'])->name('branch.invoices.route-create');
+        Route::middleware('company.capability:accounting')->group(function () {
+            Route::get('/accounting/vouchers', [AccountingVoucherController::class, 'index'])->name('branch.accounting.vouchers.index');
+            Route::get('/accounting/vouchers/create', [AccountingVoucherController::class, 'create'])->name('branch.accounting.vouchers.create');
+            Route::post('/accounting/vouchers', [AccountingVoucherController::class, 'store'])->name('branch.accounting.vouchers.store');
+            Route::get('/accounting/vouchers/{accountingVoucher}', [AccountingVoucherController::class, 'show'])->name('branch.accounting.vouchers.show');
+            Route::get('/accounting/ledgers', [AccountingLedgerController::class, 'index'])->name('branch.accounting.ledgers.index');
+            Route::post('/accounting/ledgers/quick', [AccountingLedgerQuickCreateController::class, 'store'])->name('branch.accounting.ledgers.quick-store');
+            Route::get('/accounting/ledgers/{glLedger}', [AccountingLedgerController::class, 'show'])->name('branch.accounting.ledgers.show');
+            Route::get('/accounting/reports/trial-balance', [AccountingReportController::class, 'trialBalance'])->name('branch.accounting.reports.trial-balance');
+            Route::get('/accounting/reports/profit-and-loss', [AccountingReportController::class, 'profitAndLoss'])->name('branch.accounting.reports.profit-and-loss');
+            Route::get('/accounting/reports/balance-sheet', [AccountingReportController::class, 'balanceSheet'])->name('branch.accounting.reports.balance-sheet');
+            Route::get('/accounting/reports/cash-book', [AccountingCashBankBookController::class, 'cash'])->name('branch.accounting.reports.cash-book');
+            Route::get('/accounting/reports/bank-book', [AccountingCashBankBookController::class, 'bank'])->name('branch.accounting.reports.bank-book');
+            Route::get('/accounting/reports/outstanding', [AccountingOutstandingController::class, 'index'])->name('branch.accounting.reports.outstanding');
+            Route::get('/accounting/reports/tax-summary', [AccountingOutstandingController::class, 'tax'])->name('branch.accounting.reports.tax-summary');
+            Route::get('/accounting/fund-transfers/create', [AccountingFundTransferController::class, 'create'])->name('branch.accounting.fund-transfers.create');
+            Route::post('/accounting/fund-transfers', [AccountingFundTransferController::class, 'store'])->name('branch.accounting.fund-transfers.store');
+            Route::get('/accounting/opening-balances/create', [AccountingOpeningBalanceController::class, 'create'])->name('branch.accounting.opening-balances.create');
+            Route::post('/accounting/opening-balances', [AccountingOpeningBalanceController::class, 'store'])->name('branch.accounting.opening-balances.store');
+        });
 
-        Route::get('/trip-invoices', [TripInvoiceController::class, 'index'])->name('branch.trip-invoices.index');
-        Route::get('/trip-invoices/create', [TripInvoiceController::class, 'create'])->name('branch.trip-invoices.create');
-        Route::get('/trip-invoices/consolidate', [TripInvoiceController::class, 'consolidate'])->name('branch.trip-invoices.consolidate');
-        Route::post('/trip-invoices/individual', [TripInvoiceController::class, 'storeIndividual'])->name('branch.trip-invoices.store-individual');
-        Route::post('/trip-invoices/consolidated', [TripInvoiceController::class, 'storeConsolidated'])->name('branch.trip-invoices.store-consolidated');
-        Route::get('/trip-invoices/{tripInvoice}', [TripInvoiceController::class, 'show'])->name('branch.trip-invoices.show');
-        Route::get('/trip-invoices/{tripInvoice}/edit-charges', [TripInvoiceController::class, 'editCharges'])->name('branch.trip-invoices.edit-charges');
-        Route::patch('/trip-invoices/{tripInvoice}/charges', [TripInvoiceController::class, 'updateCharges'])->name('branch.trip-invoices.update-charges');
-        Route::get('/trip-invoices/{tripInvoice}/print', [TripInvoiceController::class, 'print'])->name('branch.trip-invoices.print');
-        Route::post('/trip-invoices/{tripInvoice}/cancel', [TripInvoiceController::class, 'cancel'])->name('branch.trip-invoices.cancel');
-        Route::delete('/trip-invoices/{tripInvoice}', [TripInvoiceController::class, 'destroy'])->name('branch.trip-invoices.destroy');
-        Route::post('/trip-invoices/{tripInvoice}/payments', [TripInvoiceController::class, 'storePayment'])->name('branch.trip-invoices.payments.store');
+        Route::middleware('company.capability:ownfleet.trips')->group(function () {
+            Route::get('/trips', [TripController::class, 'index'])->name('branch.trips.index');
+            Route::get('/trips/{trip}', [TripController::class, 'show'])->name('branch.trips.show');
+            Route::get('/trips/{trip}/multi-point', [TripController::class, 'multiPoint'])->name('branch.trips.multi-point');
+            Route::get('/trips/{trip}/expenses', [TripController::class, 'expenses'])->name('branch.trips.expenses');
+            Route::post('/trips/{trip}/dispatch', [TripController::class, 'dispatch'])->name('branch.trips.dispatch');
+            Route::post('/trips/{trip}/complete', [TripController::class, 'complete'])->name('branch.trips.complete');
+            Route::post('/trips/{trip}/cancel', [TripController::class, 'cancel'])->name('branch.trips.cancel');
+            Route::delete('/trips/{trip}', [TripController::class, 'destroy'])->name('branch.trips.destroy');
+            Route::post('/trips/{trip}/pickups', [TripController::class, 'storePickup'])->name('branch.trips.pickups.store');
+            Route::delete('/trips/{trip}/pickups/{pickup}', [TripController::class, 'destroyPickup'])->name('branch.trips.pickups.destroy');
+            Route::post('/trips/{trip}/drops', [TripController::class, 'storeDrop'])->name('branch.trips.drops.store');
+            Route::delete('/trips/{trip}/drops/{drop}', [TripController::class, 'destroyDrop'])->name('branch.trips.drops.destroy');
+            Route::post('/trips/{trip}/allocations', [TripController::class, 'storeAllocation'])->name('branch.trips.allocations.store');
+            Route::delete('/trips/{trip}/allocations/{allocation}', [TripController::class, 'destroyAllocation'])->name('branch.trips.allocations.destroy');
+            Route::post('/trips/{trip}/expenses', [TripController::class, 'storeExpense'])->name('branch.trips.expenses.store');
+            Route::delete('/trips/{trip}/expenses/{expense}', [TripController::class, 'destroyExpense'])->name('branch.trips.expenses.destroy');
+        });
 
-        Route::get('/payments', [TripInvoiceController::class, 'paymentsIndex'])->name('branch.payments.index');
+        Route::middleware('company.capability:customer_invoices')->group(function () {
+            Route::get('/invoices', [CustomerInvoiceController::class, 'index'])->name('branch.invoices.index');
+            Route::get('/invoices/create', [CustomerInvoiceController::class, 'create'])->name('branch.invoices.create');
+            Route::post('/invoices/route-create', [CustomerInvoiceController::class, 'routeCreate'])->name('branch.invoices.route-create');
+        });
+
+        Route::middleware('company.capability:ownfleet.invoices')->group(function () {
+            Route::get('/trip-invoices', [TripInvoiceController::class, 'index'])->name('branch.trip-invoices.index');
+            Route::get('/trip-invoices/create', [TripInvoiceController::class, 'create'])->name('branch.trip-invoices.create');
+            Route::get('/trip-invoices/consolidate', [TripInvoiceController::class, 'consolidate'])->name('branch.trip-invoices.consolidate');
+            Route::post('/trip-invoices/individual', [TripInvoiceController::class, 'storeIndividual'])->name('branch.trip-invoices.store-individual');
+            Route::post('/trip-invoices/consolidated', [TripInvoiceController::class, 'storeConsolidated'])->name('branch.trip-invoices.store-consolidated');
+            Route::get('/trip-invoices/{tripInvoice}', [TripInvoiceController::class, 'show'])->name('branch.trip-invoices.show');
+            Route::get('/trip-invoices/{tripInvoice}/edit-charges', [TripInvoiceController::class, 'editCharges'])->name('branch.trip-invoices.edit-charges');
+            Route::patch('/trip-invoices/{tripInvoice}/charges', [TripInvoiceController::class, 'updateCharges'])->name('branch.trip-invoices.update-charges');
+            Route::get('/trip-invoices/{tripInvoice}/print', [TripInvoiceController::class, 'print'])->name('branch.trip-invoices.print');
+            Route::post('/trip-invoices/{tripInvoice}/cancel', [TripInvoiceController::class, 'cancel'])->name('branch.trip-invoices.cancel');
+            Route::delete('/trip-invoices/{tripInvoice}', [TripInvoiceController::class, 'destroy'])->name('branch.trip-invoices.destroy');
+            Route::post('/trip-invoices/{tripInvoice}/payments', [TripInvoiceController::class, 'storePayment'])->name('branch.trip-invoices.payments.store');
+        });
+
+        Route::middleware('company.capability:customer_payments')->group(function () {
+            Route::get('/payments', [TripInvoiceController::class, 'paymentsIndex'])->name('branch.payments.index');
+        });
 
         Route::get('/masters', MastersHubController::class)->name('branch.masters.index');
 
-        Route::get('/parties', [PartyController::class, 'index'])->name('branch.parties.index');
-        Route::get('/parties/options', [PartyController::class, 'options'])->name('branch.parties.options');
-        Route::get('/parties/tds-for-payee', [PartyController::class, 'tdsForPayee'])->name('branch.parties.tds-for-payee');
-        Route::get('/parties/create', [PartyController::class, 'create'])->name('branch.parties.create');
-        Route::post('/parties/tds-preview', [PartyController::class, 'previewTds'])->name('branch.parties.tds-preview');
-        Route::post('/parties', [PartyController::class, 'store'])->name('branch.parties.store');
-        Route::get('/parties/{party}', [PartyController::class, 'show'])->name('branch.parties.show');
-        Route::get('/parties/{party}/edit', [PartyController::class, 'edit'])->name('branch.parties.edit');
-        Route::patch('/parties/{party}', [PartyController::class, 'update'])->name('branch.parties.update');
-        Route::post('/parties/{party}/roles', [PartyController::class, 'assignRole'])->name('branch.parties.roles.assign');
-        Route::post('/parties/{party}/roles/{partyRole}/remove', [PartyController::class, 'removeRole'])->name('branch.parties.roles.remove');
-        Route::delete('/parties/{party}', [PartyController::class, 'destroy'])->name('branch.parties.destroy');
+        Route::middleware('company.capability:masters.parties')->group(function () {
+            Route::get('/parties', [PartyController::class, 'index'])->name('branch.parties.index');
+            Route::get('/parties/options', [PartyController::class, 'options'])->name('branch.parties.options');
+            Route::get('/parties/tds-for-payee', [PartyController::class, 'tdsForPayee'])->name('branch.parties.tds-for-payee');
+            Route::get('/parties/create', [PartyController::class, 'create'])->name('branch.parties.create');
+            Route::post('/parties/tds-preview', [PartyController::class, 'previewTds'])->name('branch.parties.tds-preview');
+            Route::post('/parties', [PartyController::class, 'store'])->name('branch.parties.store');
+            Route::get('/parties/{party}', [PartyController::class, 'show'])->name('branch.parties.show');
+            Route::get('/parties/{party}/edit', [PartyController::class, 'edit'])->name('branch.parties.edit');
+            Route::patch('/parties/{party}', [PartyController::class, 'update'])->name('branch.parties.update');
+            Route::post('/parties/{party}/roles', [PartyController::class, 'assignRole'])->name('branch.parties.roles.assign');
+            Route::post('/parties/{party}/roles/{partyRole}/remove', [PartyController::class, 'removeRole'])->name('branch.parties.roles.remove');
+            Route::delete('/parties/{party}', [PartyController::class, 'destroy'])->name('branch.parties.destroy');
+        });
 
-        Route::get('/vehicles', [VehicleController::class, 'index'])->name('branch.vehicles.index');
-        Route::get('/vehicles/options', [VehicleController::class, 'options'])->name('branch.vehicles.options');
-        Route::get('/vehicles/create', [VehicleController::class, 'create'])->name('branch.vehicles.create');
-        Route::post('/vehicles', [VehicleController::class, 'store'])->name('branch.vehicles.store');
-        Route::get('/vehicles/{vehicle}', [VehicleController::class, 'show'])->name('branch.vehicles.show');
-        Route::get('/vehicles/{vehicle}/edit', [VehicleController::class, 'edit'])->name('branch.vehicles.edit');
-        Route::patch('/vehicles/{vehicle}', [VehicleController::class, 'update'])->name('branch.vehicles.update');
-        Route::delete('/vehicles/{vehicle}', [VehicleController::class, 'destroy'])->name('branch.vehicles.destroy');
+        Route::middleware('company.capability:masters.vehicles')->group(function () {
+            Route::get('/vehicles', [VehicleController::class, 'index'])->name('branch.vehicles.index');
+            Route::get('/vehicles/options', [VehicleController::class, 'options'])->name('branch.vehicles.options');
+            Route::get('/vehicles/create', [VehicleController::class, 'create'])
+                ->middleware('company.capability:masters.vehicles,mutate')
+                ->name('branch.vehicles.create');
+            Route::post('/vehicles', [VehicleController::class, 'store'])->name('branch.vehicles.store');
+            Route::get('/vehicles/{vehicle}', [VehicleController::class, 'show'])->name('branch.vehicles.show');
+            Route::get('/vehicles/{vehicle}/edit', [VehicleController::class, 'edit'])
+                ->middleware('company.capability:masters.vehicles,mutate')
+                ->name('branch.vehicles.edit');
+            Route::patch('/vehicles/{vehicle}', [VehicleController::class, 'update'])->name('branch.vehicles.update');
+            Route::delete('/vehicles/{vehicle}', [VehicleController::class, 'destroy'])->name('branch.vehicles.destroy');
+        });
 
-        Route::get('/bank-cash', [BankCashAccountController::class, 'index'])->name('branch.bank-cash.index');
-        Route::get('/bank-cash/create', [BankCashAccountController::class, 'create'])->name('branch.bank-cash.create');
-        Route::post('/bank-cash', [BankCashAccountController::class, 'store'])->name('branch.bank-cash.store');
-        Route::get('/bank-cash/{bankCashAccount}', [BankCashAccountController::class, 'show'])->name('branch.bank-cash.show');
-        Route::get('/bank-cash/{bankCashAccount}/edit', [BankCashAccountController::class, 'edit'])->name('branch.bank-cash.edit');
-        Route::patch('/bank-cash/{bankCashAccount}', [BankCashAccountController::class, 'update'])->name('branch.bank-cash.update');
-        Route::delete('/bank-cash/{bankCashAccount}', [BankCashAccountController::class, 'destroy'])->name('branch.bank-cash.destroy');
+        Route::middleware('company.capability:masters.bank_cash')->group(function () {
+            Route::get('/bank-cash', [BankCashAccountController::class, 'index'])->name('branch.bank-cash.index');
+            Route::get('/bank-cash/create', [BankCashAccountController::class, 'create'])->name('branch.bank-cash.create');
+            Route::post('/bank-cash', [BankCashAccountController::class, 'store'])->name('branch.bank-cash.store');
+            Route::get('/bank-cash/{bankCashAccount}', [BankCashAccountController::class, 'show'])->name('branch.bank-cash.show');
+            Route::get('/bank-cash/{bankCashAccount}/edit', [BankCashAccountController::class, 'edit'])->name('branch.bank-cash.edit');
+            Route::patch('/bank-cash/{bankCashAccount}', [BankCashAccountController::class, 'update'])->name('branch.bank-cash.update');
+            Route::delete('/bank-cash/{bankCashAccount}', [BankCashAccountController::class, 'destroy'])->name('branch.bank-cash.destroy');
+        });
 
-        Route::get('/stations', [StationController::class, 'index'])->name('branch.stations.index');
-        Route::get('/stations/create', [StationController::class, 'create'])->name('branch.stations.create');
-        Route::post('/stations', [StationController::class, 'store'])->name('branch.stations.store');
-        Route::get('/stations/{station}', [StationController::class, 'show'])->name('branch.stations.show');
-        Route::get('/stations/{station}/edit', [StationController::class, 'edit'])->name('branch.stations.edit');
-        Route::patch('/stations/{station}', [StationController::class, 'update'])->name('branch.stations.update');
-        Route::delete('/stations/{station}', [StationController::class, 'destroy'])->name('branch.stations.destroy');
-        Route::post('/stations/{station}/default-transporter', [StationController::class, 'setDefaultTransporter'])
-            ->name('branch.stations.default-transporter');
+        Route::middleware('company.capability:masters.stations')->group(function () {
+            Route::get('/stations', [StationController::class, 'index'])->name('branch.stations.index');
+            Route::get('/stations/create', [StationController::class, 'create'])->name('branch.stations.create');
+            Route::post('/stations', [StationController::class, 'store'])->name('branch.stations.store');
+            Route::get('/stations/{station}', [StationController::class, 'show'])->name('branch.stations.show');
+            Route::get('/stations/{station}/edit', [StationController::class, 'edit'])->name('branch.stations.edit');
+            Route::patch('/stations/{station}', [StationController::class, 'update'])->name('branch.stations.update');
+            Route::delete('/stations/{station}', [StationController::class, 'destroy'])->name('branch.stations.destroy');
+            Route::post('/stations/{station}/default-transporter', [StationController::class, 'setDefaultTransporter'])
+                ->name('branch.stations.default-transporter');
+        });
 
-        Route::get('/catalogues', [CatalogueController::class, 'legacyIndex'])->name('branch.catalogues.index');
-        Route::get('/goods-types', [CatalogueController::class, 'goodsTypes'])->name('branch.goods-types.index');
-        Route::post('/goods-types', [CatalogueController::class, 'storeGoodsTypes'])->name('branch.goods-types.store');
-        Route::get('/truck-types', [CatalogueController::class, 'truckTypes'])->name('branch.truck-types.index');
-        Route::post('/truck-types', [CatalogueController::class, 'storeTruckTypes'])->name('branch.truck-types.store');
-        Route::get('/tyre-layouts', [TyreLayoutController::class, 'index'])->name('branch.tyre-layouts.index');
-        Route::post('/tyre-layouts', [TyreLayoutController::class, 'store'])->name('branch.tyre-layouts.store');
-        Route::patch('/tyre-layouts/{tyreLayout}', [TyreLayoutController::class, 'update'])->name('branch.tyre-layouts.update');
-        Route::delete('/tyre-layouts/{tyreLayout}', [TyreLayoutController::class, 'destroy'])->name('branch.tyre-layouts.destroy');
-        Route::get('/document-types', [CatalogueController::class, 'documentTypes'])->name('branch.document-types.index');
-        Route::post('/document-types', [CatalogueController::class, 'storeDocumentTypes'])->name('branch.document-types.store');
-        Route::get('/expense-categories', [CatalogueController::class, 'expenseCategories'])->name('branch.expense-categories.index');
-        Route::post('/expense-categories', [CatalogueController::class, 'storeExpenseCategories'])->name('branch.expense-categories.store');
-        Route::get('/package-types', [CatalogueController::class, 'packageTypes'])->name('branch.package-types.index');
-        Route::post('/package-types', [CatalogueController::class, 'storePackageTypes'])->name('branch.package-types.store');
+        Route::middleware('company.capability:masters.goods_types')->group(function () {
+            Route::get('/catalogues', [CatalogueController::class, 'legacyIndex'])->name('branch.catalogues.index');
+            Route::get('/goods-types', [CatalogueController::class, 'goodsTypes'])->name('branch.goods-types.index');
+            Route::post('/goods-types', [CatalogueController::class, 'storeGoodsTypes'])->name('branch.goods-types.store');
+        });
+
+        Route::middleware('company.capability:masters.document_types')->group(function () {
+            Route::get('/document-types', [CatalogueController::class, 'documentTypes'])->name('branch.document-types.index');
+            Route::post('/document-types', [CatalogueController::class, 'storeDocumentTypes'])->name('branch.document-types.store');
+        });
+
+        Route::middleware('company.capability:masters.package_types')->group(function () {
+            Route::get('/package-types', [CatalogueController::class, 'packageTypes'])->name('branch.package-types.index');
+            Route::post('/package-types', [CatalogueController::class, 'storePackageTypes'])->name('branch.package-types.store');
+        });
+
         Route::patch('/catalogues/{catalogueItem}', [CatalogueController::class, 'update'])->name('branch.catalogues.update');
         Route::delete('/catalogues/{catalogueItem}', [CatalogueController::class, 'destroy'])->name('branch.catalogues.destroy');
 
-        Route::post('/documents/attachments/{attachment}/replace', [DocumentAttachmentController::class, 'replace'])
-            ->name('branch.documents.replace');
-        Route::get('/documents/attachments/{attachment}/download', [DocumentAttachmentController::class, 'download'])
-            ->name('branch.documents.download');
-        Route::delete('/documents/attachments/{attachment}', [DocumentAttachmentController::class, 'destroy'])
-            ->name('branch.documents.destroy');
-        Route::get('/documents/{parentType}/{parentId}', [DocumentAttachmentController::class, 'index'])
-            ->where('parentType', DocumentParentTypes::routeConstraint())
-            ->name('branch.documents.index');
-        Route::post('/documents/{parentType}/{parentId}', [DocumentAttachmentController::class, 'store'])
-            ->where('parentType', DocumentParentTypes::routeConstraint())
-            ->name('branch.documents.store');
+        Route::middleware('company.capability:ownfleet.truck_types')->group(function () {
+            Route::get('/truck-types', [CatalogueController::class, 'truckTypes'])->name('branch.truck-types.index');
+            Route::post('/truck-types', [CatalogueController::class, 'storeTruckTypes'])->name('branch.truck-types.store');
+        });
+
+        Route::middleware('company.capability:ownfleet.tyre_layouts')->group(function () {
+            Route::get('/tyre-layouts', [TyreLayoutController::class, 'index'])->name('branch.tyre-layouts.index');
+            Route::post('/tyre-layouts', [TyreLayoutController::class, 'store'])->name('branch.tyre-layouts.store');
+            Route::patch('/tyre-layouts/{tyreLayout}', [TyreLayoutController::class, 'update'])->name('branch.tyre-layouts.update');
+            Route::delete('/tyre-layouts/{tyreLayout}', [TyreLayoutController::class, 'destroy'])->name('branch.tyre-layouts.destroy');
+        });
+
+        Route::middleware('company.capability:ownfleet.expense_categories')->group(function () {
+            Route::get('/expense-categories', [CatalogueController::class, 'expenseCategories'])->name('branch.expense-categories.index');
+            Route::post('/expense-categories', [CatalogueController::class, 'storeExpenseCategories'])->name('branch.expense-categories.store');
+        });
+
+        Route::middleware('company.capability:ownfleet.vehicle_drivers')->group(function () {
+            Route::get('/vehicle-drivers', [VehicleDriverController::class, 'index'])->name('branch.vehicle-drivers.index');
+            Route::get('/vehicle-drivers/{vehicle}/history', [VehicleDriverController::class, 'history'])->name('branch.vehicle-drivers.history');
+            Route::post('/vehicle-drivers/{vehicle}/assign', [VehicleDriverController::class, 'assign'])->name('branch.vehicle-drivers.assign');
+            Route::post('/vehicle-drivers/{vehicle}/remove', [VehicleDriverController::class, 'remove'])->name('branch.vehicle-drivers.remove');
+        });
+
+        Route::middleware('company.capability:ownfleet.driver_attendance')->group(function () {
+            Route::post('/vehicle-drivers/attendance', [VehicleDriverController::class, 'markAttendance'])->name('branch.vehicle-drivers.attendance.mark');
+            Route::delete('/vehicle-drivers/{vehicle}/attendance', [VehicleDriverController::class, 'clearAttendance'])->name('branch.vehicle-drivers.attendance.clear');
+        });
+
+        Route::middleware('company.capability:documents')->group(function () {
+            Route::post('/documents/attachments/{attachment}/replace', [DocumentAttachmentController::class, 'replace'])
+                ->name('branch.documents.replace');
+            Route::get('/documents/attachments/{attachment}/download', [DocumentAttachmentController::class, 'download'])
+                ->name('branch.documents.download');
+            Route::delete('/documents/attachments/{attachment}', [DocumentAttachmentController::class, 'destroy'])
+                ->name('branch.documents.destroy');
+            Route::get('/documents/{parentType}/{parentId}', [DocumentAttachmentController::class, 'index'])
+                ->where('parentType', DocumentParentTypes::routeConstraint())
+                ->name('branch.documents.index');
+            Route::post('/documents/{parentType}/{parentId}', [DocumentAttachmentController::class, 'store'])
+                ->where('parentType', DocumentParentTypes::routeConstraint())
+                ->name('branch.documents.store');
+        });
     });
 
     // Legacy Owner URLs → management (no silent company switch).

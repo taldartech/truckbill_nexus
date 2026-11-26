@@ -18,12 +18,15 @@ use Carbon\CarbonImmutable;
  */
 final class SubscriptionEntitlementGate
 {
+    private readonly SubscriptionClock $clock;
+
     private readonly SubscriptionStatusEvaluator $evaluator;
 
     public function __construct(
-        private readonly SubscriptionClock $clock = new SubscriptionClock,
+        ?SubscriptionClock $clock = null,
         ?SubscriptionStatusEvaluator $evaluator = null,
     ) {
+        $this->clock = $clock ?? app(SubscriptionClock::class);
         $this->evaluator = $evaluator ?? new SubscriptionStatusEvaluator($this->clock);
     }
 

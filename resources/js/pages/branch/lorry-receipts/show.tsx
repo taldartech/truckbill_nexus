@@ -101,6 +101,9 @@ type Props = {
     linkedTrip?: {
         id: string;
         status: string;
+        driver_party_id?: string | null;
+        driver_name?: string | null;
+        is_substitute_driver?: boolean;
         show_url: string;
         expenses_url?: string;
     } | null;
@@ -770,17 +773,29 @@ export default function LorryReceiptShow({
                                         value={lorryReceipt.status}
                                     />
                                     {linkedTrip ? (
-                                        <FbInfoItem
-                                            label="Linked trip"
-                                            value={
-                                                <Link
-                                                    href={tripManageUrl!}
-                                                    className="text-[#2A6FDB] underline"
-                                                >
-                                                    {linkedTrip.status}
-                                                </Link>
-                                            }
-                                        />
+                                        <>
+                                            <FbInfoItem
+                                                label="Linked trip"
+                                                value={
+                                                    <Link
+                                                        href={tripManageUrl!}
+                                                        className="text-[#2A6FDB] underline"
+                                                    >
+                                                        {linkedTrip.status}
+                                                    </Link>
+                                                }
+                                            />
+                                            {linkedTrip.driver_name ? (
+                                                <FbInfoItem
+                                                    label="Trip driver"
+                                                    value={
+                                                        linkedTrip.is_substitute_driver
+                                                            ? `${linkedTrip.driver_name} (Substitute)`
+                                                            : linkedTrip.driver_name
+                                                    }
+                                                />
+                                            ) : null}
+                                        </>
                                     ) : null}
                                     {linkedLorryHire ? (
                                         <FbInfoItem

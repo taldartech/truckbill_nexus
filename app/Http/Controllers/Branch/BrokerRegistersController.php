@@ -10,8 +10,6 @@ use App\Domains\Consignment\Enums\LrStatus;
 use App\Domains\Consignment\Enums\LrWorkflowContext;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
-use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
-use App\Domains\Subscription\Enums\SubscriptionModule;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
@@ -36,13 +34,11 @@ class BrokerRegistersController extends Controller
     public function __construct(
         private readonly CompanyAccessService $access,
         private readonly PermissionAuthorizer $authorizer,
-        private readonly CoreModuleEntitlementResolver $moduleEntitlements = new CoreModuleEntitlementResolver,
     ) {}
 
     public function index(Request $request, Company $company, Branch $branch): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertBrokerModule($company);
         $this->assertAnyBrokerView($actor, $company, $branch);
 
         $counts = [
@@ -187,13 +183,6 @@ class BrokerRegistersController extends Controller
                 'count' => $counts['linked_bilty_groups'],
             ],
         ];
-    }
-
-    private function assertBrokerModule(Company $company): void
-    {
-        if (! $this->moduleEntitlements->isEntitled($company, SubscriptionModule::Broker)) {
-            abort(403, 'Broker module is not entitled for this company.');
-        }
     }
 
     private function assertAnyBrokerView(User $actor, Company $company, Branch $branch): void

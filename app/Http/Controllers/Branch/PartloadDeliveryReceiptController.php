@@ -10,8 +10,6 @@ use App\Domains\Partload\Enums\PartloadDeliveryPaymentMode;
 use App\Domains\Partload\Exceptions\PartloadAuthorizationException;
 use App\Domains\Partload\Exceptions\PartloadConflictException;
 use App\Domains\Rbac\PermissionAuthorizer;
-use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
-use App\Domains\Subscription\Enums\SubscriptionModule;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Controller;
 use App\Models\BankCashAccount;
@@ -33,15 +31,12 @@ class PartloadDeliveryReceiptController extends Controller
         private readonly CompanyAccessService $access,
         private readonly PermissionAuthorizer $authorizer,
         private readonly PartloadDeliveryReceiptService $deliveryReceipts,
-        private readonly CoreModuleEntitlementResolver $moduleEntitlements = new CoreModuleEntitlementResolver,
         private readonly PartyOptionQuery $partyOptions = new PartyOptionQuery,
     ) {}
 
     public function create(Request $request, Company $company, Branch $branch): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertPartloadModule($company);
-
         $lrId = $request->string('lorry_receipt_id')->toString();
         $lr = LorryReceipt::query()
             ->with(['consignee:id,name', 'billingCustomer:id,name'])
@@ -98,8 +93,6 @@ class PartloadDeliveryReceiptController extends Controller
     public function store(Request $request, Company $company, Branch $branch): RedirectResponse
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertPartloadModule($company);
-
         $validated = $request->validate([
             'lorry_receipt_id' => ['required', 'uuid'],
             'partload_inward_line_id' => ['nullable', 'uuid'],
@@ -130,12 +123,5 @@ class PartloadDeliveryReceiptController extends Controller
         return redirect()
             ->route('branch.lorry-receipts.show', $dr->lorry_receipt_id)
             ->with('success', 'Delivery Receipt '.$dr->dr_number.' posted.');
-    }
-
-    private function assertPartloadModule(Company $company): void
-    {
-        if (! $this->moduleEntitlements->isEntitled($company, SubscriptionModule::Partload)) {
-            abort(403, 'Partload module is not entitled for this company.');
-        }
     }
 }

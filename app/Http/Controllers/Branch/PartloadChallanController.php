@@ -13,8 +13,6 @@ use App\Domains\Partload\Exceptions\PartloadConflictException;
 use App\Domains\Partload\Exceptions\PartloadDomainException;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
-use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
-use App\Domains\Subscription\Enums\SubscriptionModule;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
@@ -36,7 +34,6 @@ class PartloadChallanController extends Controller
         private readonly CompanyAccessService $access,
         private readonly PermissionAuthorizer $authorizer,
         private readonly PartloadChallanService $challans,
-        private readonly CoreModuleEntitlementResolver $moduleEntitlements = new CoreModuleEntitlementResolver,
         private readonly PartyOptionQuery $partyOptions = new PartyOptionQuery,
         private readonly VehicleOptionQuery $vehicleOptions = new VehicleOptionQuery,
     ) {}
@@ -44,7 +41,6 @@ class PartloadChallanController extends Controller
     public function index(Request $request, Company $company, Branch $branch): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertPartloadModule($company);
         $this->assertPermission($actor, $company, $branch, PermissionCodes::PARTLOAD_CHALLAN_VIEW);
 
         $page = $this->challans->search(
@@ -82,7 +78,6 @@ class PartloadChallanController extends Controller
     public function create(Request $request, Company $company, Branch $branch): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertPartloadModule($company);
         $this->assertPermission($actor, $company, $branch, PermissionCodes::PARTLOAD_CHALLAN_CREATE);
 
         $fromStationId = $request->string('from_station_id')->toString() ?: null;
@@ -146,8 +141,6 @@ class PartloadChallanController extends Controller
     public function store(Request $request, Company $company, Branch $branch): RedirectResponse
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertPartloadModule($company);
-
         $validated = $request->validate([
             'challan_date' => ['nullable', 'date'],
             'from_station_id' => ['required', 'uuid'],
@@ -188,7 +181,6 @@ class PartloadChallanController extends Controller
     public function show(Request $request, Company $company, Branch $branch, PartloadChallan $partloadChallan): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertPartloadModule($company);
         $this->assertPermission($actor, $company, $branch, PermissionCodes::PARTLOAD_CHALLAN_VIEW);
 
         $challan = $this->challans->findForBranch($company, $branch, $partloadChallan->id);
@@ -215,8 +207,6 @@ class PartloadChallanController extends Controller
     public function dispatch(Request $request, Company $company, Branch $branch, PartloadChallan $partloadChallan): RedirectResponse
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertPartloadModule($company);
-
         try {
             $challan = $this->challans->dispatch(
                 $this->challans->findForBranch($company, $branch, $partloadChallan->id),
@@ -236,8 +226,6 @@ class PartloadChallanController extends Controller
     public function cancel(Request $request, Company $company, Branch $branch, PartloadChallan $partloadChallan): RedirectResponse
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertPartloadModule($company);
-
         $validated = $request->validate([
             'cancellation_remark' => ['required', 'string', 'max:2000'],
         ]);
@@ -339,13 +327,6 @@ class PartloadChallanController extends Controller
             'can_cancel' => $isOwner || $this->authorizer->allowsCustomer($actor, PermissionCodes::PARTLOAD_CHALLAN_CANCEL, $company, $branch),
             'can_create_inward' => $isOwner || $this->authorizer->allowsCustomer($actor, PermissionCodes::PARTLOAD_INWARD_CREATE, $company, $branch),
         ];
-    }
-
-    private function assertPartloadModule(Company $company): void
-    {
-        if (! $this->moduleEntitlements->isEntitled($company, SubscriptionModule::Partload)) {
-            abort(403, 'Partload module is not entitled for this company.');
-        }
     }
 
     private function assertPermission(User $actor, Company $company, Branch $branch, string $code): void

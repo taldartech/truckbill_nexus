@@ -24,8 +24,9 @@ use App\Domains\OwnFleet\Trip\OwnFleetBiltyTripOrchestrator;
 use App\Domains\OwnFleet\Trip\TripService;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
+use App\Domains\Subscription\Entitlement\CompanyCapabilities;
+use App\Domains\Subscription\Entitlement\CompanyCapabilityResolver;
 use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
-use App\Domains\Subscription\Enums\SubscriptionModule;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Branch\Concerns\PresentsDocumentDrawer;
 use App\Http\Controllers\Controller;
@@ -110,7 +111,7 @@ class LorryReceiptController extends Controller
                     'value' => $status->value,
                     'label' => $status->label(),
                 ])->values()->all(),
-            'contextOptions' => $this->contextOptions(),
+            'contextOptions' => $this->contextOptions($company),
             'createAction' => $permissions['can_create']
                 ? $this->createActionPayload($company, $actor, $branch)
                 : null,
@@ -377,6 +378,7 @@ class LorryReceiptController extends Controller
         ]);
 
         $linkedTrip = $this->trips->tripForLorryReceipt($lorryReceipt);
+        $linkedTrip?->loadMissing(['driver']);
         $lorryReceipt->setRelation('trip', $linkedTrip);
         $linkedLorryHire = $this->lorryHires->hireForLorryReceipt($lorryReceipt);
         $lorryReceipt->setRelation('lorryHire', $linkedLorryHire);
@@ -391,6 +393,9 @@ class LorryReceiptController extends Controller
             'linkedTrip' => $linkedTrip === null ? null : [
                 'id' => $linkedTrip->id,
                 'status' => $linkedTrip->status->value,
+                'driver_party_id' => $linkedTrip->driver_party_id,
+                'driver_name' => $linkedTrip->driver?->name,
+                'is_substitute_driver' => $linkedTrip->substitute_driver_party_id !== null,
                 'show_url' => route('branch.trips.show', [$linkedTrip], absolute: false),
                 'expenses_url' => route('branch.trips.expenses', [$linkedTrip], absolute: false),
             ],
@@ -642,6 +647,8 @@ class LorryReceiptController extends Controller
             'form_mode' => ['nullable', Rule::in([LrWorkflowContextResolver::FORM_TRUCK, LrWorkflowContextResolver::FORM_PARTLOAD])],
             'workflow_context' => ['nullable', Rule::enum(LrWorkflowContext::class)],
             'vehicle_id' => ['nullable', 'uuid'],
+            'use_substitute_driver' => ['sometimes', 'boolean'],
+            'substitute_driver_party_id' => ['nullable', 'uuid', 'required_if:use_substitute_driver,1,true'],
             'intended_payee_type' => ['nullable', Rule::in(['owner', 'agency'])],
             'intended_payee_party_id' => ['nullable', 'uuid'],
             'billing_customer_party_id' => ['required', 'uuid'],
@@ -778,48 +785,71 @@ class LorryReceiptController extends Controller
                 'name' => $item->name,
             ])->values()->all(),
             'vehicles' => $vehicles,
+            'drivers' => $this->capabilities()->allowsRead($company, CompanyCapabilities::OWNFLEET_VEHICLE_DRIVERS)
+                ? $partyOptions->forRoles($company, $branch, PartyRoleType::Driver, 300)
+                : [],
             'vehicleQuickCreate' => $this->vehicleQuickCreateOptions($company, $branch),
         ];
     }
 
+    private function capabilities(): CompanyCapabilityResolver
+    {
+        return app(CompanyCapabilityResolver::class);
+    }
+
     /**
-     * Catalogue / driver options for inline Own Vehicle quick create on Bilty.
+     * Catalogue / driver / ownership options for inline Vehicle quick create on Bilty.
      *
      * @return array{
+     *     ownershipOptions: list<array{value: string, label: string}>,
      *     truckTypes: list<array{id: string, name: string}>,
      *     tyreLayouts: list<array{id: string, name: string}>,
      *     drivers: list<array{id: string, name: string}>,
-     *     truckTypesStoreUrl: string,
-     *     tyreLayoutsStoreUrl: string
+     *     truckTypesStoreUrl: ?string,
+     *     tyreLayoutsStoreUrl: ?string
      * }
      */
     private function vehicleQuickCreateOptions(Company $company, Branch $branch): array
     {
-        $truckTypes = OwnerCatalogueItem::query()
-            ->where('owner_user_id', $company->owner_user_id)
-            ->where('catalogue_type', OwnerCatalogueType::TruckType->value)
-            ->where('is_active', true)
-            ->whereNull('deleted_at')
-            ->orderBy('name')
-            ->limit(200)
-            ->get(['id', 'name']);
+        $capabilities = $this->capabilities();
+        $allowedOwnerships = $capabilities->allowedVehicleOwnerships($company);
+        $allowsOwn = in_array(VehicleOwnership::Own, $allowedOwnerships, true);
 
-        $tyreLayouts = OwnerTyreLayout::query()
-            ->where('owner_user_id', $company->owner_user_id)
-            ->where('is_active', true)
-            ->whereNull('deleted_at')
-            ->orderBy('name')
-            ->limit(200)
-            ->get(['id', 'name']);
+        $truckTypes = $allowsOwn
+            ? OwnerCatalogueItem::query()
+                ->where('owner_user_id', $company->owner_user_id)
+                ->where('catalogue_type', OwnerCatalogueType::TruckType->value)
+                ->where('is_active', true)
+                ->whereNull('deleted_at')
+                ->orderBy('name')
+                ->limit(200)
+                ->get(['id', 'name'])
+            : collect();
 
-        $drivers = app(PartyOptionQuery::class)->forRoles(
-            $company,
-            $branch,
-            PartyRoleType::Driver,
-            100,
-        );
+        $tyreLayouts = $allowsOwn
+            ? OwnerTyreLayout::query()
+                ->where('owner_user_id', $company->owner_user_id)
+                ->where('is_active', true)
+                ->whereNull('deleted_at')
+                ->orderBy('name')
+                ->limit(200)
+                ->get(['id', 'name'])
+            : collect();
+
+        $drivers = $allowsOwn
+            ? app(PartyOptionQuery::class)->forRoles(
+                $company,
+                $branch,
+                PartyRoleType::Driver,
+                100,
+            )
+            : [];
 
         return [
+            'ownershipOptions' => array_values(collect($allowedOwnerships)->map(fn (VehicleOwnership $ownership): array => [
+                'value' => $ownership->value,
+                'label' => $ownership->label(),
+            ])->all()),
             'truckTypes' => array_values($truckTypes->map(fn (OwnerCatalogueItem $item): array => [
                 'id' => $item->id,
                 'name' => $item->name,
@@ -832,8 +862,8 @@ class LorryReceiptController extends Controller
                 'id' => (string) $driver['id'],
                 'name' => (string) $driver['name'],
             ])->all()),
-            'truckTypesStoreUrl' => route('branch.truck-types.store', absolute: false),
-            'tyreLayoutsStoreUrl' => route('branch.tyre-layouts.store', absolute: false),
+            'truckTypesStoreUrl' => $allowsOwn ? route('branch.truck-types.store', absolute: false) : null,
+            'tyreLayoutsStoreUrl' => $allowsOwn ? route('branch.tyre-layouts.store', absolute: false) : null,
         ];
     }
 
@@ -877,10 +907,12 @@ class LorryReceiptController extends Controller
     /**
      * @return list<array{value: string, label: string}>
      */
-    private function contextOptions(): array
+    private function contextOptions(Company $company): array
     {
+        $historical = $this->moduleEntitlements->historicalModules($company);
         $options = [];
-        foreach (LrWorkflowContext::cases() as $context) {
+        foreach ($historical as $module) {
+            $context = $this->moduleEntitlements->toWorkflowContext($module);
             $options[] = [
                 'value' => $context->value,
                 'label' => $this->contextResolver->labelFor($context),
@@ -965,7 +997,10 @@ class LorryReceiptController extends Controller
                 return null;
             }
 
-            if (! $this->customerAllows($actor, $company, $branch, PermissionCodes::TRIP_VIEW)) {
+            if (
+                ! app(CompanyCapabilityResolver::class)->allowsRead($company, CompanyCapabilities::OWNFLEET_TRIPS)
+                || ! $this->customerAllows($actor, $company, $branch, PermissionCodes::TRIP_VIEW)
+            ) {
                 return null;
             }
 
@@ -981,6 +1016,7 @@ class LorryReceiptController extends Controller
                 'url' => route('branch.trips.expenses', [$trip], absolute: false),
                 'expenses_url' => route('branch.trips.expenses', [$trip], absolute: false),
                 'change_status_url' => $nextStatus !== null
+                    && app(CompanyCapabilityResolver::class)->allowsMutate($company, CompanyCapabilities::OWNFLEET_LR)
                     ? route('branch.lorry-receipts.change-status', [$lr], absolute: false)
                     : null,
                 'next_status' => $nextStatus,
@@ -988,13 +1024,13 @@ class LorryReceiptController extends Controller
         }
 
         if ($lr->workflow_context === LrWorkflowContext::Broker) {
-            if (! $this->moduleEntitlements->isEntitled($company, SubscriptionModule::Broker)) {
-                return null;
-            }
-
+            $capabilities = app(CompanyCapabilityResolver::class);
             $hire = $lr->lorryHire;
             if ($hire !== null) {
-                if (! $this->customerAllows($actor, $company, $branch, PermissionCodes::BROKER_LORRY_HIRE_VIEW)) {
+                if (
+                    ! $capabilities->allowsRead($company, CompanyCapabilities::BROKER_LORRY_HIRE)
+                    || ! $this->customerAllows($actor, $company, $branch, PermissionCodes::BROKER_LORRY_HIRE_VIEW)
+                ) {
                     return null;
                 }
 
@@ -1006,7 +1042,8 @@ class LorryReceiptController extends Controller
             }
 
             if (
-                in_array($lr->status, [LrStatus::Pending, LrStatus::InProgress], true)
+                $capabilities->allowsMutate($company, CompanyCapabilities::BROKER_LORRY_HIRE)
+                && in_array($lr->status, [LrStatus::Pending, LrStatus::InProgress], true)
                 && $lr->vehicle?->ownership === VehicleOwnership::Market
                 && $this->customerAllows($actor, $company, $branch, PermissionCodes::BROKER_LORRY_HIRE_CREATE)
             ) {

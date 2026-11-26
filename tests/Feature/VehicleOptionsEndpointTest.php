@@ -4,6 +4,7 @@ use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Party\PartyService;
 use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
 use App\Domains\Master\Vehicle\VehicleOptionQuery;
+use App\Domains\Subscription\Enums\SubscriptionModule;
 use App\Models\Vehicle;
 use App\Support\Tenant\TenantContext;
 use App\Support\Tenant\TenantContextHolder;
@@ -28,7 +29,10 @@ afterEach(function () {
 });
 
 test('vehicle options endpoint returns searchable branch-visible vehicles', function () {
-    $ctx = tripWorkspace();
+    $ctx = tripWorkspace([
+        SubscriptionModule::Broker->value,
+        SubscriptionModule::OwnFleet->value,
+    ]);
     tripActivate($ctx['company'], $ctx['branch']);
 
     $match = Vehicle::query()->create([
@@ -90,7 +94,7 @@ test('vehicle option query hydrates selected id beyond the bounded page', functi
 });
 
 test('json vehicle store returns option payload for quick create', function () {
-    $ctx = tripWorkspace();
+    $ctx = tripWorkspace([SubscriptionModule::Broker->value]);
     tripActivate($ctx['company'], $ctx['branch']);
     rbacHttpAs($ctx['owner'], $ctx);
 

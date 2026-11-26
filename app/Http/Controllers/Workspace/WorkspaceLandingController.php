@@ -3,12 +3,14 @@
 namespace App\Http\Controllers\Workspace;
 
 use App\Domains\Company\CompanyAccessService;
+use App\Domains\Company\Exceptions\CompanyAccessException;
 use App\Domains\Company\WorkspaceNavigationService;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\User;
+use App\Support\Workspace\WorkspaceSession;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -70,10 +72,15 @@ class WorkspaceLandingController extends Controller
                     return redirect()->route('workspace.no-access');
                 }
 
-                return redirect()->route('branch.dashboard', [
-                    'company' => $company,
-                    'branch' => $branch,
-                ]);
+                try {
+                    $this->access->activateContext($user, $company, $branch);
+                } catch (CompanyAccessException) {
+                    return redirect()->route('workspace.no-access');
+                }
+
+                WorkspaceSession::sync($request, $company->id, $branch->id);
+
+                return redirect()->route('branch.dashboard');
             }
 
             return redirect()->route('workspace.branches.select', ['company' => $company]);

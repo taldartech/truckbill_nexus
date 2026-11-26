@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\AssignCorrelationId;
 use App\Http\Middleware\EnforceWebSessionPolicy;
+use App\Http\Middleware\EnsureCompanyCapability;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\ManageTenantContextLifecycle;
@@ -35,6 +36,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'branch.workspace' => ResolveBranchWorkspace::class,
+            'company.capability' => EnsureCompanyCapability::class,
             'management.company' => ResolveManagementCompany::class,
             'website.lead.key' => VerifyWebsiteLeadApiKey::class,
         ]);

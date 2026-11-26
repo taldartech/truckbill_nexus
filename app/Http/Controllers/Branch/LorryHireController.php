@@ -18,8 +18,6 @@ use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Party\PartyOptionQuery;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
-use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
-use App\Domains\Subscription\Enums\SubscriptionModule;
 use App\Domains\Tax\Exceptions\TaxDomainException;
 use App\Domains\Tax\TransporterTdsCalculationService;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
@@ -54,14 +52,12 @@ class LorryHireController extends Controller
         private readonly LorryHireCalculationService $calculations,
         private readonly BrokerAdjustmentService $adjustments,
         private readonly FreightAmountPresentation $freightPresentation,
-        private readonly CoreModuleEntitlementResolver $moduleEntitlements = new CoreModuleEntitlementResolver,
         private readonly TransporterTdsCalculationService $tds = new TransporterTdsCalculationService,
     ) {}
 
     public function index(Request $request, Company $company, Branch $branch): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertBrokerModule($company);
         $this->assertPermission($actor, $company, $branch, PermissionCodes::BROKER_LORRY_HIRE_VIEW);
 
         $page = $this->lorryHires->search(
@@ -425,17 +421,8 @@ class LorryHireController extends Controller
 
     private function assertPermission(User $actor, Company $company, Branch $branch, string $code): void
     {
-        $this->assertBrokerModule($company);
-
         if (! $this->authorizer->allowsCustomer($actor, $code, $company, $branch)) {
             abort(403, 'Not authorized for Broker Lorry Hire operation.');
-        }
-    }
-
-    private function assertBrokerModule(Company $company): void
-    {
-        if (! $this->moduleEntitlements->isEntitled($company, SubscriptionModule::Broker)) {
-            abort(403, 'Broker module is not entitled for this company.');
         }
     }
 

@@ -1,6 +1,8 @@
 import { Form, Head, Link } from '@inertiajs/react';
 import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useState } from 'react';
 
 type Eligible = {
@@ -44,12 +46,15 @@ export default function TripInvoiceCreate({
                 >
                     {({ processing }) => (
                         <>
-                            <label className="flex flex-col gap-1 text-sm">
-                                Completed Own Fleet LR
+                            <div className="flex flex-col gap-1.5">
+                                <Label htmlFor="lorry_receipt_id" required>
+                                    Completed Own Fleet LR
+                                </Label>
                                 <select
+                                    id="lorry_receipt_id"
                                     name="lorry_receipt_id"
                                     required
-                                    className="rounded-md border px-2 py-1"
+                                    className="rounded-md border px-2 py-1 text-sm"
                                     value={lorryReceiptId}
                                     onChange={(e) =>
                                         setLorryReceiptId(e.target.value)
@@ -64,20 +69,25 @@ export default function TripInvoiceCreate({
                                         </option>
                                     ))}
                                 </select>
-                            </label>
-                            <label className="flex flex-col gap-1 text-sm">
-                                Invoice date
-                                <input
+                            </div>
+                            <div className="flex flex-col gap-1.5">
+                                <Label htmlFor="invoice_date">
+                                    Invoice date
+                                </Label>
+                                <Input
+                                    id="invoice_date"
                                     type="date"
                                     name="invoice_date"
-                                    className="rounded-md border px-2 py-1"
                                 />
-                            </label>
-                            <label className="flex flex-col gap-1 text-sm">
-                                Particulars
+                            </div>
+                            <div className="flex flex-col gap-1.5">
+                                <Label htmlFor="particulars_mode">
+                                    Particulars
+                                </Label>
                                 <select
+                                    id="particulars_mode"
                                     name="particulars_mode"
-                                    className="rounded-md border px-2 py-1"
+                                    className="rounded-md border px-2 py-1 text-sm"
                                     defaultValue="separate_lines"
                                 >
                                     {particularsOptions.map((opt) => (
@@ -89,7 +99,7 @@ export default function TripInvoiceCreate({
                                         </option>
                                     ))}
                                 </select>
-                            </label>
+                            </div>
                             {charges.map((charge, index) => (
                                 <div
                                     key={index}

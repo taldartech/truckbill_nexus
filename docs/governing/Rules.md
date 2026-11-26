@@ -237,3 +237,18 @@ Before completing any implementation task: review the full diff; remove unused i
 - **Creation surfaces:** Ordinary creation uses a dedicated page, modal or sheet appropriate to form complexity. Simple masters use modal/sheet; complex records use a dedicated page. Each entity has one authoritative reusable creation form shared with Quick Add.
 - **Role-based forms:** Display only information applicable to the selected roles. Combine multi-role requirements without duplicate fields. Frontend and backend validation must share the same role-specific rules.
 - **Operator language:** Operator-facing UI must not expose PRD/phase references, permission scopes, technical enum names, internal implementation notes or other development terminology. Use simple business descriptions only.
+
+## 21. Mandatory Field Indicators (Permanent)
+
+- Every mandatory input, select, textarea, searchable combobox and required selection across the portal must display a single red asterisk (`*`) via the shared `Label` component (`resources/js/components/ui/label.tsx`).
+- Never hardcode `*` inside label copy or add ad-hoc inline asterisk markup on individual pages.
+- Conditional mandatory indicators must dynamically mirror actual backend validation rules (such as GSTIN/GST rate for GST-registered profiles, Truck Owner for Market Vehicles, Truck Type & Tyre Layout for Own Vehicles, Driver Licence for Permanent Drivers, TDS override remark, financial mode dependencies, and required State/City selectors).
+- Never mark optional fields as mandatory; preserve accurate `required` / `aria-required` attributes for accessibility and keyboard/screen-reader parity.
+
+## 22. Centralized Subscription Entitlement Enforcement (Permanent)
+
+- Active Company subscription status, subscribed Core modules (`broker`, `ownfleet`, `partload`), active add-ons and active Trial / Paid Grace / Restricted rules must resolve through one authoritative `CompanyCapabilityResolver` at Company scope — never Owner-wide when an Owner holds multiple Companies with distinct plans.
+- Effective authorization requires all applicable gates: authenticated user, active Company/Branch workspace membership, User RBAC permission, active Company subscription capability, and resource ownership. User permissions must never override missing module entitlements; module entitlements must never override missing user permissions.
+- Navigation, Vehicle ownership creation options, Master selectors/Quick Add, unified Bilty workflow, reports, exports and direct HTTP/API routes must enforce the centralized capability map.
+- Subscription expiry, Paid Grace or module unavailability must preserve historical operational records, Masters, financial balances and audit trails for authorized read/reconciliation while blocking unauthorized new transactions.
+- Capability and permission caches must be invalidated immediately upon subscription activation, renewal, trial start, add-on purchase or lifecycle transition.

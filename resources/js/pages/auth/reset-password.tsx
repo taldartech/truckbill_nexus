@@ -43,10 +43,13 @@ export default function ResetPassword({ token, email, passwordRules }: Props) {
                         </div>
 
                         <div className="grid gap-2">
-                            <Label htmlFor="password">Password</Label>
+                            <Label htmlFor="password" required>
+                                Password
+                            </Label>
                             <PasswordInput
                                 id="password"
                                 name="password"
+                                required
                                 autoComplete="new-password"
                                 className="mt-1 block w-full"
                                 autoFocus
@@ -57,12 +60,13 @@ export default function ResetPassword({ token, email, passwordRules }: Props) {
                         </div>
 
                         <div className="grid gap-2">
-                            <Label htmlFor="password_confirmation">
+                            <Label htmlFor="password_confirmation" required>
                                 Confirm password
                             </Label>
                             <PasswordInput
                                 id="password_confirmation"
                                 name="password_confirmation"
+                                required
                                 autoComplete="new-password"
                                 className="mt-1 block w-full"
                                 placeholder="Confirm password"

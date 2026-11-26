@@ -602,13 +602,15 @@ export function SearchableCombobox({
                   <div
                       ref={panelRef}
                       data-searchable-combobox-panel=""
-                      className="fixed z-[200] rounded-md border border-input bg-popover text-popover-foreground shadow-md"
+                      className="pointer-events-auto fixed z-[200] rounded-md border border-input bg-popover text-popover-foreground shadow-md"
                       style={{
                           top: panelPosition.top,
                           left: panelPosition.left,
                           width: panelPosition.width,
                           maxHeight: panelPosition.maxHeight,
                       }}
+                      onPointerDown={(event) => event.stopPropagation()}
+                      onMouseDown={(event) => event.stopPropagation()}
                       onKeyDown={onPanelKeyDown}
                   >
                       <div className="border-b border-input p-2">
@@ -749,6 +751,7 @@ export function SearchableCombobox({
                         aria-controls={listboxId}
                         aria-haspopup="listbox"
                         aria-labelledby={`${id}-label`}
+                        aria-required={required ? 'true' : undefined}
                         className={cn(
                             'flex h-9 min-w-0 flex-1 items-center justify-between gap-2 rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50',
                             !selectedOption && 'text-muted-foreground',

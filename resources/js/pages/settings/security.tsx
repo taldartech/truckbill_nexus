@@ -60,7 +60,7 @@ export default function Security(props: Props) {
                         }
                     >
                         <div className="space-y-2 md:col-span-2">
-                            <Label htmlFor="current_password">
+                            <Label htmlFor="current_password" required>
                                 Current password
                             </Label>
 
@@ -68,6 +68,7 @@ export default function Security(props: Props) {
                                 id="current_password"
                                 ref={currentPasswordInput}
                                 name="current_password"
+                                required
                                 className="mt-1 block w-full"
                                 autoComplete="current-password"
                                 placeholder="Current password"
@@ -77,12 +78,15 @@ export default function Security(props: Props) {
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="password">New password</Label>
+                            <Label htmlFor="password" required>
+                                New password
+                            </Label>
 
                             <PasswordInput
                                 id="password"
                                 ref={passwordInput}
                                 name="password"
+                                required
                                 className="mt-1 block w-full"
                                 autoComplete="new-password"
                                 placeholder="New password"
@@ -93,13 +97,14 @@ export default function Security(props: Props) {
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="password_confirmation">
+                            <Label htmlFor="password_confirmation" required>
                                 Confirm password
                             </Label>
 
                             <PasswordInput
                                 id="password_confirmation"
                                 name="password_confirmation"
+                                required
                                 className="mt-1 block w-full"
                                 autoComplete="new-password"
                                 placeholder="Confirm password"

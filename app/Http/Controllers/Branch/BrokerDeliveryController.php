@@ -12,8 +12,6 @@ use App\Domains\Document\Exceptions\DocumentDomainException;
 use App\Domains\Master\Exceptions\MasterDomainException;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
-use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
-use App\Domains\Subscription\Enums\SubscriptionModule;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Branch\Concerns\PresentsDocumentDrawer;
 use App\Http\Controllers\Controller;
@@ -39,13 +37,11 @@ class BrokerDeliveryController extends Controller
         private readonly PermissionAuthorizer $authorizer,
         private readonly BrokerDeliveryService $deliveries,
         private readonly DocumentAttachmentService $documents,
-        private readonly CoreModuleEntitlementResolver $moduleEntitlements = new CoreModuleEntitlementResolver,
     ) {}
 
     public function index(Request $request, Company $company, Branch $branch): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertBrokerModule($company);
         $this->assertPermission($actor, $company, $branch, PermissionCodes::BROKER_DELIVERY_VIEW);
 
         $eligible = $this->deliveries->searchEligible(
@@ -190,17 +186,8 @@ class BrokerDeliveryController extends Controller
 
     private function assertPermission(User $actor, Company $company, Branch $branch, string $code): void
     {
-        $this->assertBrokerModule($company);
-
         if (! $this->authorizer->allowsCustomer($actor, $code, $company, $branch)) {
             abort(403, 'Not authorized for Broker delivery operation.');
-        }
-    }
-
-    private function assertBrokerModule(Company $company): void
-    {
-        if (! $this->moduleEntitlements->isEntitled($company, SubscriptionModule::Broker)) {
-            abort(403, 'Broker module is not entitled for this company.');
         }
     }
 

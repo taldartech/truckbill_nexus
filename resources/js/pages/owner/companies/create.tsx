@@ -56,7 +56,14 @@ export default function OwnerCompanyCreate({
     const [cityId, setCityId] = useState('');
     const [stateName, setStateName] = useState('');
     const [cityName, setCityName] = useState('');
+    const [bankName, setBankName] = useState('');
+    const [accountNumber, setAccountNumber] = useState('');
+    const [ifsc, setIfsc] = useState('');
     const needsGstin = gstType !== 'unregistered';
+    const needsOpeningBank =
+        bankName.trim() !== '' ||
+        accountNumber.trim() !== '' ||
+        ifsc.trim() !== '';
 
     return (
         <>
@@ -95,7 +102,10 @@ export default function OwnerCompanyCreate({
                                             error={errors.pan}
                                         />
                                         <div className="space-y-2 md:col-span-2">
-                                            <Label htmlFor="registered_address">
+                                            <Label
+                                                htmlFor="registered_address"
+                                                required
+                                            >
                                                 Registered address
                                             </Label>
                                             <textarea
@@ -189,7 +199,10 @@ export default function OwnerCompanyCreate({
                                         ) : null}
                                         {needsGstin ? (
                                             <div className="space-y-2">
-                                                <Label htmlFor="gst_rate_id">
+                                                <Label
+                                                    htmlFor="gst_rate_id"
+                                                    required
+                                                >
                                                     GST rate
                                                 </Label>
                                                 <select
@@ -260,6 +273,9 @@ export default function OwnerCompanyCreate({
                                             id="bank_name"
                                             label="Bank name"
                                             name="bank_name"
+                                            value={bankName}
+                                            onChange={setBankName}
+                                            required={needsOpeningBank}
                                             error={errors.bank_name}
                                         />
                                         <>
@@ -267,12 +283,18 @@ export default function OwnerCompanyCreate({
                                                 id="account_number"
                                                 label="Account number"
                                                 name="account_number"
+                                                value={accountNumber}
+                                                onChange={setAccountNumber}
+                                                required={needsOpeningBank}
                                                 error={errors.account_number}
                                             />
                                             <Field
                                                 id="ifsc"
                                                 label="IFSC"
                                                 name="ifsc"
+                                                value={ifsc}
+                                                onChange={setIfsc}
+                                                required={needsOpeningBank}
                                                 error={errors.ifsc}
                                             />
                                         </>
@@ -385,6 +407,8 @@ function Field({
     type = 'text',
     required = false,
     defaultValue,
+    value,
+    onChange,
     maxLength,
 }: {
     id: string;
@@ -394,17 +418,27 @@ function Field({
     type?: string;
     required?: boolean;
     defaultValue?: string;
+    value?: string;
+    onChange?: (value: string) => void;
     maxLength?: number;
 }) {
     return (
         <div className="space-y-2">
-            <Label htmlFor={id}>{label}</Label>
+            <Label htmlFor={id} required={required}>
+                {label}
+            </Label>
             <Input
                 id={id}
                 name={name}
                 type={type}
                 required={required}
-                defaultValue={defaultValue}
+                defaultValue={value === undefined ? defaultValue : undefined}
+                value={value}
+                onChange={
+                    onChange
+                        ? (event) => onChange(event.target.value)
+                        : undefined
+                }
                 maxLength={maxLength}
             />
             <InputError message={error} />
@@ -421,6 +455,7 @@ function SelectField({
     defaultValue,
     value,
     onChange,
+    required = true,
 }: {
     id: string;
     label: string;
@@ -430,14 +465,17 @@ function SelectField({
     defaultValue?: string;
     value?: string;
     onChange?: (value: string) => void;
+    required?: boolean;
 }) {
     return (
         <div className="space-y-2">
-            <Label htmlFor={id}>{label}</Label>
+            <Label htmlFor={id} required={required}>
+                {label}
+            </Label>
             <select
                 id={id}
                 name={name}
-                required
+                required={required}
                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm shadow-xs"
                 defaultValue={value === undefined ? defaultValue : undefined}
                 value={value}

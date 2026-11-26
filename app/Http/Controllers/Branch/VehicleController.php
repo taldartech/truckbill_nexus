@@ -13,7 +13,10 @@ use App\Domains\Master\Support\MasterAccess;
 use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
 use App\Domains\Master\Vehicle\VehicleOptionQuery;
 use App\Domains\Master\Vehicle\VehicleService;
+use App\Domains\OwnFleet\Driver\VehicleDriverAssignmentService;
 use App\Domains\Rbac\PermissionAuthorizer;
+use App\Domains\Subscription\Entitlement\CompanyCapabilities;
+use App\Domains\Subscription\Entitlement\CompanyCapabilityResolver;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Branch\Concerns\PresentsDocumentDrawer;
 use App\Http\Controllers\Controller;
@@ -23,6 +26,7 @@ use App\Models\OwnerCatalogueItem;
 use App\Models\OwnerTyreLayout;
 use App\Models\User;
 use App\Models\Vehicle;
+use App\Models\VehicleDriverAssignment;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -35,17 +39,25 @@ class VehicleController extends Controller
     use AuthorizesBranchPanel;
     use PresentsDocumentDrawer;
 
+    private readonly CompanyCapabilityResolver $capabilities;
+
     public function __construct(
         private readonly CompanyAccessService $access,
         private readonly PermissionAuthorizer $authorizer,
         private readonly VehicleService $vehicles,
         private readonly DocumentAttachmentService $documents,
-    ) {}
+        ?CompanyCapabilityResolver $capabilities = null,
+    ) {
+        $this->capabilities = $capabilities ?? app(CompanyCapabilityResolver::class);
+    }
 
     public function index(Request $request, Company $company, Branch $branch): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $permissions = $this->masterPermissions($actor, $company, $branch, $this->access, $this->authorizer);
+        $permissions['can_create'] = $permissions['can_create']
+            && $this->capabilities->allowsMutate($company, CompanyCapabilities::MASTERS_VEHICLES)
+            && $this->capabilities->allowedVehicleOwnerships($company) !== [];
 
         try {
             $active = $request->query('active');
@@ -100,28 +112,37 @@ class VehicleController extends Controller
             'active_only' => ['nullable', 'boolean'],
         ]);
 
+        $allowedOwnerships = $this->capabilities->allowedVehicleOwnerships($company, forMutation: false);
         $ownershipInputs = $validated['ownership'] ?? null;
-        $ownerships = null;
         if (is_array($ownershipInputs)) {
-            $ownerships = [];
+            $requested = [];
             foreach ($ownershipInputs as $ownershipInput) {
-                $ownerships[] = $ownershipInput instanceof VehicleOwnership
+                $requested[] = $ownershipInput instanceof VehicleOwnership
                     ? $ownershipInput
                     : VehicleOwnership::from((string) $ownershipInput);
             }
+            $ownerships = array_values(array_uintersect(
+                $requested,
+                $allowedOwnerships,
+                fn (VehicleOwnership $a, VehicleOwnership $b): int => $a->value <=> $b->value,
+            ));
+        } else {
+            $ownerships = $allowedOwnerships;
         }
 
-        $options = app(VehicleOptionQuery::class)->forBranch(
-            company: $company,
-            branch: $branch,
-            limit: (int) ($validated['limit'] ?? 50),
-            query: $validated['q'] ?? null,
-            selectedId: $validated['selected_id'] ?? null,
-            ownerships: $ownerships,
-            activeOnly: array_key_exists('active_only', $validated)
-                ? (bool) $validated['active_only']
-                : true,
-        );
+        $options = $ownerships === []
+            ? []
+            : app(VehicleOptionQuery::class)->forBranch(
+                company: $company,
+                branch: $branch,
+                limit: (int) ($validated['limit'] ?? 50),
+                query: $validated['q'] ?? null,
+                selectedId: $validated['selected_id'] ?? null,
+                ownerships: $ownerships,
+                activeOnly: array_key_exists('active_only', $validated)
+                    ? (bool) $validated['active_only']
+                    : true,
+            );
 
         return response()->json([
             'data' => $options,
@@ -142,19 +163,29 @@ class VehicleController extends Controller
             abort(403);
         }
 
+        if ($this->capabilities->allowedVehicleOwnerships($company) === []) {
+            abort(403, $this->capabilities->denyMessage($company, CompanyCapabilities::MASTERS_VEHICLES));
+        }
+
+        $ownsAllowed = $this->capabilities->allowsMutate($company, CompanyCapabilities::VEHICLE_OWNERSHIP_OWN);
+        $driversEnabled = $this->capabilities->allowsMutate($company, CompanyCapabilities::OWNFLEET_VEHICLE_DRIVERS);
+
         return Inertia::render('branch/masters/vehicles/form', [
             'company' => $this->companyPayload($company),
             'branch' => $this->branchPayload($branch),
             'permissions' => $permissions,
             'mode' => 'create',
             'vehicle' => null,
+            'driversEnabled' => $driversEnabled,
             'formOptions' => $this->formOptions($company, $branch),
             'dataVisibility' => $this->dataVisibilityPresentation($company),
             'links' => array_merge($this->branchMasterNavLinks(), [
                 'index' => route('branch.vehicles.index', absolute: false),
                 'store' => route('branch.vehicles.store', absolute: false),
-                'truckTypesStoreUrl' => route('branch.truck-types.store', absolute: false),
-                'tyreLayoutsStoreUrl' => route('branch.tyre-layouts.store', absolute: false),
+                'truckTypesStoreUrl' => $ownsAllowed ? route('branch.truck-types.store', absolute: false) : null,
+                'tyreLayoutsStoreUrl' => $ownsAllowed ? route('branch.tyre-layouts.store', absolute: false) : null,
+                'partiesOptionsUrl' => route('branch.parties.options', absolute: false),
+                'partiesStoreUrl' => route('branch.parties.store', absolute: false),
             ]),
         ]);
     }
@@ -180,6 +211,14 @@ class VehicleController extends Controller
             'primary_driver_party_id' => ['nullable', 'uuid'],
             'remark' => ['nullable', 'string', 'max:1000'],
         ]);
+
+        $requestedOwnership = VehicleOwnership::from((string) $validated['ownership']);
+        if (! $this->capabilities->allowsVehicleOwnership($company, $requestedOwnership)) {
+            $cap = $requestedOwnership === VehicleOwnership::Own
+                ? CompanyCapabilities::VEHICLE_OWNERSHIP_OWN
+                : CompanyCapabilities::VEHICLE_OWNERSHIP_MARKET;
+            abort(403, $this->capabilities->denyMessage($company, $cap));
+        }
 
         $scopeBranch = app(MasterDataVisibilityResolver::class)
             ->scopeBranchForCreate($company, $branch);
@@ -239,11 +278,48 @@ class VehicleController extends Controller
             abort(403, $e->getMessage());
         }
 
+        $canViewDrivers = $vehicle->ownership === VehicleOwnership::Own
+            && $this->capabilities->allowsRead($company, CompanyCapabilities::OWNFLEET_VEHICLE_DRIVERS);
+        $canManageDrivers = $vehicle->ownership === VehicleOwnership::Own
+            && $this->capabilities->allowsMutate($company, CompanyCapabilities::OWNFLEET_VEHICLE_DRIVERS)
+            && $permissions['can_edit'];
+
+        $driverAssignmentService = $canViewDrivers ? app(VehicleDriverAssignmentService::class) : null;
+        $today = now(filled($company->timezone) ? (string) $company->timezone : 'Asia/Kolkata')->toDateString();
+        $activeAssignment = $driverAssignmentService?->currentPrimaryForVehicle($company, $vehicle, $today);
+        $assignmentHistory = $driverAssignmentService !== null
+            ? $driverAssignmentService->historyForVehicle($company, $vehicle)->take(8)
+            : collect();
+
         return Inertia::render('branch/masters/vehicles/show', [
             'company' => $this->companyPayload($company),
             'branch' => $this->branchPayload($branch),
             'permissions' => $permissions,
             'vehicle' => $this->vehiclePayload($vehicle),
+            'driverManagement' => $canViewDrivers ? [
+                'can_manage' => $canManageDrivers,
+                'can_create_party' => $this->capabilities->allowsMutate($company, CompanyCapabilities::MASTERS_PARTIES)
+                    && $permissions['can_create'],
+                'active_assignment' => $activeAssignment !== null ? [
+                    'id' => $activeAssignment->id,
+                    'driver_party_id' => $activeAssignment->driver_party_id,
+                    'driver_name' => $activeAssignment->driver?->name,
+                    'driver_contact_number' => $activeAssignment->driver?->contact_number,
+                    'assigned_from' => $activeAssignment->assigned_from->toDateString(),
+                    'assigned_to' => $activeAssignment->assigned_to?->toDateString(),
+                ] : null,
+                'history' => $assignmentHistory->map(fn (VehicleDriverAssignment $row): array => [
+                    'id' => $row->id,
+                    'driver_name' => $row->driver !== null ? $row->driver->name : '—',
+                    'assigned_from' => $row->assigned_from->toDateString(),
+                    'assigned_to' => $row->assigned_to?->toDateString(),
+                    'status' => $row->statusOn($today),
+                    'remarks' => $row->remarks,
+                ])->values()->all(),
+                'driver_options' => $canManageDrivers
+                    ? app(PartyOptionQuery::class)->forRoles($company, $branch, PartyRoleType::Driver, 200)
+                    : [],
+            ] : null,
             'documentDrawer' => $this->documentDrawerPayload(
                 $actor,
                 $company,
@@ -258,6 +334,12 @@ class VehicleController extends Controller
                 'edit' => route('branch.vehicles.edit', [$vehicle], absolute: false),
                 'update' => route('branch.vehicles.update', [$vehicle], absolute: false),
                 'destroy' => route('branch.vehicles.destroy', [$vehicle], absolute: false),
+                'driverAssign' => $canManageDrivers ? route('branch.vehicle-drivers.assign', [$vehicle], absolute: false) : null,
+                'driverRemove' => $canManageDrivers ? route('branch.vehicle-drivers.remove', [$vehicle], absolute: false) : null,
+                'driverHistory' => $canViewDrivers ? route('branch.vehicle-drivers.history', [$vehicle], absolute: false) : null,
+                'vehicleDriversIndex' => $canViewDrivers ? route('branch.vehicle-drivers.index', absolute: false) : null,
+                'partiesOptionsUrl' => route('branch.parties.options', absolute: false),
+                'partiesStoreUrl' => route('branch.parties.store', absolute: false),
                 'documents' => route('branch.documents.index', [
                     'company' => $company,
                     'branch' => $branch,
@@ -278,19 +360,25 @@ class VehicleController extends Controller
             abort(403);
         }
 
+        $ownsAllowed = $this->capabilities->allowsMutate($company, CompanyCapabilities::VEHICLE_OWNERSHIP_OWN);
+        $driversEnabled = $this->capabilities->allowsMutate($company, CompanyCapabilities::OWNFLEET_VEHICLE_DRIVERS);
+
         return Inertia::render('branch/masters/vehicles/form', [
             'company' => $this->companyPayload($company),
             'branch' => $this->branchPayload($branch),
             'permissions' => $permissions,
             'mode' => 'edit',
             'vehicle' => $this->vehiclePayload($vehicle),
+            'driversEnabled' => $driversEnabled,
             'formOptions' => $this->formOptions($company, $branch),
             'links' => array_merge($this->branchMasterNavLinks(), [
                 'index' => route('branch.vehicles.index', absolute: false),
                 'show' => route('branch.vehicles.show', [$vehicle], absolute: false),
                 'update' => route('branch.vehicles.update', [$vehicle], absolute: false),
-                'truckTypesStoreUrl' => route('branch.truck-types.store', absolute: false),
-                'tyreLayoutsStoreUrl' => route('branch.tyre-layouts.store', absolute: false),
+                'truckTypesStoreUrl' => $ownsAllowed ? route('branch.truck-types.store', absolute: false) : null,
+                'tyreLayoutsStoreUrl' => $ownsAllowed ? route('branch.tyre-layouts.store', absolute: false) : null,
+                'partiesOptionsUrl' => route('branch.parties.options', absolute: false),
+                'partiesStoreUrl' => route('branch.parties.store', absolute: false),
             ]),
         ]);
     }
@@ -320,6 +408,14 @@ class VehicleController extends Controller
             'primary_driver_party_id' => ['nullable', 'uuid'],
             'remark' => ['required', 'string', 'max:1000'],
         ]);
+
+        $requestedOwnership = VehicleOwnership::from((string) $validated['ownership']);
+        if (! $this->capabilities->allowsVehicleOwnership($company, $requestedOwnership)) {
+            $cap = $requestedOwnership === VehicleOwnership::Own
+                ? CompanyCapabilities::VEHICLE_OWNERSHIP_OWN
+                : CompanyCapabilities::VEHICLE_OWNERSHIP_MARKET;
+            abort(403, $this->capabilities->denyMessage($company, $cap));
+        }
 
         try {
             $this->vehicles->update($actor, $vehicle, $validated, $validated['remark'], $branch);
@@ -398,25 +494,33 @@ class VehicleController extends Controller
      */
     private function formOptions(Company $company, Branch $branch): array
     {
-        $truckTypes = OwnerCatalogueItem::query()
-            ->where('owner_user_id', $company->owner_user_id)
-            ->where('catalogue_type', OwnerCatalogueType::TruckType->value)
-            ->where('is_active', true)
-            ->whereNull('deleted_at')
-            ->orderBy('name')
-            ->get(['id', 'name']);
+        $allowedOwnerships = $this->capabilities->allowedVehicleOwnerships($company);
+        $allowsOwn = in_array(VehicleOwnership::Own, $allowedOwnerships, true);
+        $allowsMarket = in_array(VehicleOwnership::Market, $allowedOwnerships, true);
 
-        $tyreLayouts = OwnerTyreLayout::query()
-            ->where('owner_user_id', $company->owner_user_id)
-            ->where('is_active', true)
-            ->whereNull('deleted_at')
-            ->orderBy('name')
-            ->get(['id', 'name']);
+        $truckTypes = $allowsOwn
+            ? OwnerCatalogueItem::query()
+                ->where('owner_user_id', $company->owner_user_id)
+                ->where('catalogue_type', OwnerCatalogueType::TruckType->value)
+                ->where('is_active', true)
+                ->whereNull('deleted_at')
+                ->orderBy('name')
+                ->get(['id', 'name'])
+            : collect();
+
+        $tyreLayouts = $allowsOwn
+            ? OwnerTyreLayout::query()
+                ->where('owner_user_id', $company->owner_user_id)
+                ->where('is_active', true)
+                ->whereNull('deleted_at')
+                ->orderBy('name')
+                ->get(['id', 'name'])
+            : collect();
 
         $partyOptions = app(PartyOptionQuery::class);
 
         return [
-            'ownershipOptions' => collect(VehicleOwnership::cases())->map(fn (VehicleOwnership $case): array => [
+            'ownershipOptions' => collect($allowedOwnerships)->map(fn (VehicleOwnership $case): array => [
                 'value' => $case->value,
                 'label' => $case->label(),
             ])->values()->all(),
@@ -428,8 +532,12 @@ class VehicleController extends Controller
                 'id' => $item->id,
                 'name' => $item->name,
             ])->values()->all(),
-            'transporters' => $partyOptions->forRoles($company, $branch, PartyRoleType::Transporter),
-            'drivers' => $partyOptions->forRoles($company, $branch, PartyRoleType::Driver),
+            'transporters' => $allowsMarket
+                ? $partyOptions->forRoles($company, $branch, PartyRoleType::Transporter)
+                : [],
+            'drivers' => $allowsOwn
+                ? $partyOptions->forRoles($company, $branch, PartyRoleType::Driver)
+                : [],
         ];
     }
 

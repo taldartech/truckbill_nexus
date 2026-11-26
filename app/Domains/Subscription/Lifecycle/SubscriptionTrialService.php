@@ -3,6 +3,7 @@
 namespace App\Domains\Subscription\Lifecycle;
 
 use App\Domains\Crm\LeadLifecycleService;
+use App\Domains\Subscription\Entitlement\CompanyCapabilityResolver;
 use App\Domains\Subscription\Exceptions\SubscriptionDomainException;
 use App\Domains\Subscription\Support\SubscriptionClock;
 use App\Models\Company;
@@ -22,13 +23,17 @@ use Throwable;
  */
 final class SubscriptionTrialService
 {
+    private readonly SubscriptionClock $clock;
+
     public function __construct(
-        private readonly SubscriptionClock $clock = new SubscriptionClock,
+        ?SubscriptionClock $clock = null,
         private readonly AuditedTransaction $tx = new AuditedTransaction,
         private readonly AuditWriter $audit = new AuditWriter,
         private readonly OutboxWriter $outbox = new OutboxWriter,
         private readonly LeadLifecycleService $leadLifecycle = new LeadLifecycleService,
-    ) {}
+    ) {
+        $this->clock = $clock ?? app(SubscriptionClock::class);
+    }
 
     public function startFirstCompanyTrial(User $owner, Company $company): ?CompanySubscriptionTrial
     {
@@ -92,6 +97,7 @@ final class SubscriptionTrialService
                     ]);
 
                     $this->leadLifecycle->syncTrialActivated($owner, $company, $trial);
+                    CompanyCapabilityResolver::invalidate($company);
 
                     return $trial;
                 } finally {

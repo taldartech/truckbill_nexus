@@ -2,7 +2,13 @@
 
 namespace App\Http\Middleware;
 
+use App\Domains\Company\CompanyAccessService;
 use App\Domains\Company\WorkspaceNavigationService;
+use App\Domains\Master\Party\Enums\PartyRoleType;
+use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
+use App\Domains\Rbac\PermissionAuthorizer;
+use App\Domains\Subscription\Entitlement\CompanyCapabilities;
+use App\Domains\Subscription\Entitlement\CompanyCapabilityResolver;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\User;
@@ -111,6 +117,44 @@ class HandleInertiaRequests extends Middleware
             ? null
             : Branch::query()->whereKey($activeBranchId)->whereNull('deleted_at')->first();
 
+        $capabilityPayload = null;
+        $branchNavigation = null;
+
+        if ($activeCompany !== null) {
+            $capabilityResolver = app(CompanyCapabilityResolver::class);
+            $resolved = $capabilityResolver->resolve($activeCompany);
+
+            $capabilityPayload = [
+                'lifecycle_status' => $resolved['lifecycle_status'],
+                'mutations_allowed' => $resolved['mutations_allowed'],
+                'is_read_only_grace_or_restricted' => $resolved['is_read_only_grace_or_restricted'],
+                'active_modules' => $resolved['active_modules'],
+                'historical_modules' => $resolved['historical_modules'],
+                'allowed_vehicle_ownerships' => array_map(
+                    fn (VehicleOwnership $ownership): string => $ownership->value,
+                    $capabilityResolver->allowedVehicleOwnerships($activeCompany),
+                ),
+                'allowed_party_roles' => array_map(
+                    fn (PartyRoleType $role): string => $role->value,
+                    $capabilityResolver->allowedPartyRoles($activeCompany),
+                ),
+                'ownfleet_drivers_enabled' => $capabilityResolver->allowsRead(
+                    $activeCompany,
+                    CompanyCapabilities::OWNFLEET_VEHICLE_DRIVERS,
+                ),
+            ];
+
+            if ($activeBranch !== null && $activeBranch->company_id === $activeCompany->id) {
+                $branchNavigation = $capabilityResolver->navigationForUser(
+                    $user,
+                    $activeCompany,
+                    $activeBranch,
+                    app(PermissionAuthorizer::class),
+                    app(CompanyAccessService::class),
+                );
+            }
+        }
+
         return [
             'companies' => $navigation->accessibleCompanies($user)->values(),
             'active_company_id' => $activeCompanyId,
@@ -126,6 +170,8 @@ class HandleInertiaRequests extends Middleware
             'context_version' => WorkspaceSession::version($request),
             'can_create_company' => true,
             'create_company_url' => route('owner.companies.create'),
+            'capabilities' => $capabilityPayload,
+            'navigation' => $branchNavigation,
         ];
     }
 }

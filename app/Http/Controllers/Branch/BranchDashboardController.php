@@ -8,9 +8,7 @@ use App\Domains\Company\Exceptions\CompanyAccessException;
 use App\Domains\Company\WorkspaceNavigationService;
 use App\Domains\OwnFleet\Trip\OwnFleetOperationalOverview;
 use App\Domains\Rbac\PermissionAuthorizer;
-use App\Domains\Rbac\PermissionCodes;
-use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
-use App\Domains\Subscription\Enums\SubscriptionModule;
+use App\Domains\Subscription\Entitlement\CompanyCapabilityResolver;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Company;
@@ -26,10 +24,15 @@ class BranchDashboardController extends Controller
         private readonly CompanyAccessService $access,
         private readonly WorkspaceNavigationService $navigation,
         private readonly PermissionAuthorizer $authorizer = new PermissionAuthorizer,
-        private readonly CoreModuleEntitlementResolver $moduleEntitlements = new CoreModuleEntitlementResolver,
+        private readonly ?CompanyCapabilityResolver $capabilities = null,
         private readonly OwnFleetOperationalOverview $ownFleetOverview = new OwnFleetOperationalOverview,
         private readonly BrokerOperationalOverview $brokerOverview = new BrokerOperationalOverview,
     ) {}
+
+    private function capabilities(): CompanyCapabilityResolver
+    {
+        return $this->capabilities ?? app(CompanyCapabilityResolver::class);
+    }
 
     public function __invoke(Request $request, Company $company, Branch $branch): Response
     {
@@ -101,33 +104,53 @@ class BranchDashboardController extends Controller
         User $user,
         ?array $broker,
     ): array {
+        $capabilities = $this->capabilities();
+        $nav = $capabilities->navigationForUser($user, $company, $branch, $this->authorizer, $this->access);
+
         $modules = [];
 
-        if ($this->authorizer->allowsCustomer($user, PermissionCodes::LR_VIEW, $company, $branch)) {
+        if ($nav['bilty_register']) {
             $modules[] = [
                 'key' => 'bilty_register',
                 'label' => 'Bilty Register',
                 'href' => route('branch.lorry-receipts.index', absolute: false),
-                'description' => 'Primary operational entry for Own and Market vehicles',
+                'description' => 'Primary operational entry for subscribed Bilty workflows',
             ];
+        }
+
+        if ($nav['create_bilty']) {
             $modules[] = [
                 'key' => 'create_bilty',
                 'label' => 'Create Bilty',
                 'href' => route('branch.lorry-receipts.create', absolute: false),
-                'description' => 'Select Own or Market vehicle — workflow follows ownership',
+                'description' => 'Create a Bilty under the company’s subscribed workflows',
             ];
         }
 
-        if (
-            $broker !== null
-            && ($broker['can_view_hires'] ?? false)
-            && $this->moduleEntitlements->isEntitled($company, SubscriptionModule::Broker)
-        ) {
+        if ($nav['ownfleet_vehicle_drivers']) {
+            $modules[] = [
+                'key' => 'vehicle_drivers',
+                'label' => 'Vehicle Drivers',
+                'href' => route('branch.vehicle-drivers.index', absolute: false),
+                'description' => 'OwnFleet primary driver assignments and daily attendance',
+            ];
+        }
+
+        if ($nav['broker_lorry_hires']) {
             $modules[] = [
                 'key' => 'broker_hires',
                 'label' => 'Lorry Hires',
                 'href' => (string) ($broker['links']['lorry_hires'] ?? route('branch.broker.lorry-hires.index', absolute: false)),
                 'description' => 'Market vehicle transporter hire and settlement',
+            ];
+        }
+
+        if ($nav['partload_challans']) {
+            $modules[] = [
+                'key' => 'partload_challans',
+                'label' => 'Partload Challans',
+                'href' => route('branch.partload.challans.index', absolute: false),
+                'description' => 'Partload consolidation, challan dispatch, inward and delivery',
             ];
         }
 

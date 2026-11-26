@@ -7,8 +7,6 @@ use App\Domains\Partload\Exceptions\PartloadAuthorizationException;
 use App\Domains\Partload\Reports\PartloadPendingDeliveryService;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
-use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
-use App\Domains\Subscription\Enums\SubscriptionModule;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
@@ -26,13 +24,11 @@ class PartloadPendingDeliveryController extends Controller
         private readonly CompanyAccessService $access,
         private readonly PermissionAuthorizer $authorizer,
         private readonly PartloadPendingDeliveryService $pendingDelivery,
-        private readonly CoreModuleEntitlementResolver $moduleEntitlements = new CoreModuleEntitlementResolver,
     ) {}
 
     public function index(Request $request, Company $company, Branch $branch): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertPartloadModule($company);
         $this->assertPermission($actor, $company, $branch, PermissionCodes::PARTLOAD_DR_VIEW);
 
         try {
@@ -61,13 +57,6 @@ class PartloadPendingDeliveryController extends Controller
                 'create_dr' => route('branch.partload.delivery-receipts.create', absolute: false),
             ],
         ]);
-    }
-
-    private function assertPartloadModule(Company $company): void
-    {
-        if (! $this->moduleEntitlements->isEntitled($company, SubscriptionModule::Partload)) {
-            abort(403, 'Partload module is not entitled for this company.');
-        }
     }
 
     private function assertPermission(User $actor, Company $company, Branch $branch, string $code): void

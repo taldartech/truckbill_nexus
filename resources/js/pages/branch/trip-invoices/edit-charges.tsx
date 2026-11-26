@@ -1,6 +1,7 @@
 import { Form, Head, Link } from '@inertiajs/react';
 import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
 import { useState } from 'react';
 
 type ChargeRow = {
@@ -65,22 +66,24 @@ export default function TripInvoiceEditCharges({
                     >
                         {({ processing, errors }) => (
                             <>
-                                <label className="flex flex-col gap-1 text-sm">
-                                    Edit reason{' '}
-                                    <span className="text-destructive">*</span>
+                                <div className="flex flex-col gap-1.5">
+                                    <Label htmlFor="edit_remark" required>
+                                        Edit reason
+                                    </Label>
                                     <textarea
+                                        id="edit_remark"
                                         name="edit_remark"
                                         required
                                         rows={3}
-                                        className="rounded-md border px-2 py-1"
+                                        className="rounded-md border px-2 py-1 text-sm"
                                         placeholder="Reason for changing additional charges"
                                     />
                                     {errors.edit_remark && (
-                                        <span className="text-destructive">
+                                        <span className="text-sm text-destructive">
                                             {errors.edit_remark}
                                         </span>
                                     )}
-                                </label>
+                                </div>
                                 {charges.map((charge, index) => (
                                     <div
                                         key={index}

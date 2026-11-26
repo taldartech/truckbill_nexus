@@ -250,8 +250,8 @@ export function QuickCreateStateSheet({
 
                         <div className="grid gap-3 sm:grid-cols-2">
                             <div className="space-y-1.5 sm:col-span-2">
-                                <Label htmlFor="quick-state-name">
-                                    State name *
+                                <Label htmlFor="quick-state-name" required>
+                                    State name
                                 </Label>
                                 <Input
                                     id="quick-state-name"
@@ -270,8 +270,11 @@ export function QuickCreateStateSheet({
                             {!catalogueOnly ? (
                                 <>
                                     <div className="space-y-1.5">
-                                        <Label htmlFor="quick-state-code">
-                                            State code *
+                                        <Label
+                                            htmlFor="quick-state-code"
+                                            required
+                                        >
+                                            State code
                                         </Label>
                                         <Input
                                             id="quick-state-code"
@@ -291,8 +294,11 @@ export function QuickCreateStateSheet({
                                         />
                                     </div>
                                     <div className="space-y-1.5">
-                                        <Label htmlFor="quick-state-gst">
-                                            GST state code *
+                                        <Label
+                                            htmlFor="quick-state-gst"
+                                            required
+                                        >
+                                            GST state code
                                         </Label>
                                         <Input
                                             id="quick-state-gst"

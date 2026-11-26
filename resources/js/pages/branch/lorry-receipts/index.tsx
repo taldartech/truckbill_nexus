@@ -598,12 +598,12 @@ export default function LorryReceiptsIndex({
                         </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-2">
-                        <Label htmlFor="delete-remark">
-                            Deletion remark{' '}
-                            <span className="text-red-600">*</span>
+                        <Label htmlFor="delete-remark" required>
+                            Deletion remark
                         </Label>
                         <Input
                             id="delete-remark"
+                            required
                             value={deleteRemark}
                             onChange={(e) => setDeleteRemark(e.target.value)}
                             placeholder="Reason for deletion"

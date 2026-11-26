@@ -4,6 +4,10 @@ import InputError from '@/components/input-error';
 import { QuickCreateCatalogueSheet } from '@/components/masters/quick-create-catalogue-sheet';
 import { QuickCreateTyreLayoutSheet } from '@/components/masters/quick-create-tyre-layout-sheet';
 import {
+    SearchablePartySelect,
+    type PartyOption,
+} from '@/components/searchable-party-select';
+import {
     LrfPage,
     LrfSection,
 } from '@/pages/branch/lorry-receipts/lr-form-sections';
@@ -37,12 +41,13 @@ type Props = {
     branch: { id: string; name: string; status: string };
     mode: 'create' | 'edit';
     vehicle: Vehicle | null;
+    driversEnabled?: boolean;
     formOptions: {
         ownershipOptions: OwnershipOption[];
         truckTypes: Option[];
         tyreLayouts: Option[];
-        transporters: Option[];
-        drivers: Option[];
+        transporters: PartyOption[];
+        drivers: PartyOption[];
     };
     links: {
         hub: string;
@@ -51,20 +56,30 @@ type Props = {
         store?: string;
         update?: string;
         show?: string;
-        truckTypesStoreUrl?: string;
-        tyreLayoutsStoreUrl?: string;
+        truckTypesStoreUrl?: string | null;
+        tyreLayoutsStoreUrl?: string | null;
+        partiesOptionsUrl?: string;
+        partiesStoreUrl?: string;
     };
 };
 
 export default function VehicleForm({
     mode,
     vehicle,
+    driversEnabled = true,
     formOptions,
     links,
 }: Props) {
     const action = mode === 'create' ? links.store! : links.update!;
+    const singleOwnership =
+        formOptions.ownershipOptions.length === 1
+            ? formOptions.ownershipOptions[0]
+            : null;
     const [ownership, setOwnership] = useState(
-        vehicle?.ownership ?? formOptions.ownershipOptions[0]?.value ?? 'own',
+        singleOwnership?.value ??
+            vehicle?.ownership ??
+            formOptions.ownershipOptions[0]?.value ??
+            'own',
     );
     const [truckTypes, setTruckTypes] = useState(formOptions.truckTypes);
     const [tyreLayouts, setTyreLayouts] = useState(formOptions.tyreLayouts);
@@ -73,6 +88,12 @@ export default function VehicleForm({
     );
     const [tyreLayoutId, setTyreLayoutId] = useState(
         vehicle?.tyre_layout_id ?? '',
+    );
+    const [ownerPartyId, setOwnerPartyId] = useState(
+        vehicle?.owner_party_id ?? '',
+    );
+    const [primaryDriverPartyId, setPrimaryDriverPartyId] = useState(
+        vehicle?.primary_driver_party_id ?? '',
     );
     const [quickCreate, setQuickCreate] = useState<'truck' | 'tyre' | null>(
         null,
@@ -112,7 +133,10 @@ export default function VehicleForm({
                             >
                                 <div className="grid gap-3 md:grid-cols-2">
                                     <div className="space-y-2">
-                                        <Label htmlFor="registration_number">
+                                        <Label
+                                            htmlFor="registration_number"
+                                            required
+                                        >
                                             Registration number
                                         </Label>
                                         <Input
@@ -129,30 +153,54 @@ export default function VehicleForm({
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="ownership">
+                                        <Label htmlFor="ownership" required>
                                             Ownership
                                         </Label>
-                                        <select
-                                            id="ownership"
-                                            name="ownership"
-                                            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                            value={ownership}
-                                            onChange={(e) =>
-                                                setOwnership(e.target.value)
-                                            }
-                                            required
-                                        >
-                                            {formOptions.ownershipOptions.map(
-                                                (option) => (
-                                                    <option
-                                                        key={option.value}
-                                                        value={option.value}
-                                                    >
-                                                        {option.label}
-                                                    </option>
-                                                ),
-                                            )}
-                                        </select>
+                                        {singleOwnership ? (
+                                            <>
+                                                <input
+                                                    type="hidden"
+                                                    name="ownership"
+                                                    value={
+                                                        singleOwnership.value
+                                                    }
+                                                />
+                                                <div
+                                                    id="ownership"
+                                                    className="flex h-9 w-full items-center rounded-md border border-input bg-muted/40 px-3 text-sm font-medium text-foreground"
+                                                >
+                                                    {singleOwnership.label}
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <select
+                                                id="ownership"
+                                                name="ownership"
+                                                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                                value={ownership}
+                                                onChange={(e) => {
+                                                    setOwnership(
+                                                        e.target.value,
+                                                    );
+                                                    setOwnerPartyId('');
+                                                    setTruckTypeId('');
+                                                    setTyreLayoutId('');
+                                                    setPrimaryDriverPartyId('');
+                                                }}
+                                                required
+                                            >
+                                                {formOptions.ownershipOptions.map(
+                                                    (option) => (
+                                                        <option
+                                                            key={option.value}
+                                                            value={option.value}
+                                                        >
+                                                            {option.label}
+                                                        </option>
+                                                    ),
+                                                )}
+                                            </select>
+                                        )}
                                         <InputError
                                             message={errors.ownership}
                                         />
@@ -161,7 +209,10 @@ export default function VehicleForm({
                                         <>
                                             <div className="space-y-2">
                                                 <div className="flex items-center justify-between gap-2">
-                                                    <Label htmlFor="truck_type_id">
+                                                    <Label
+                                                        htmlFor="truck_type_id"
+                                                        required
+                                                    >
                                                         Truck Type
                                                     </Label>
                                                     {links.truckTypesStoreUrl ? (
@@ -210,7 +261,10 @@ export default function VehicleForm({
                                             </div>
                                             <div className="space-y-2">
                                                 <div className="flex items-center justify-between gap-2">
-                                                    <Label htmlFor="tyre_layout_id">
+                                                    <Label
+                                                        htmlFor="tyre_layout_id"
+                                                        required
+                                                    >
                                                         Tyre Layout
                                                     </Label>
                                                     {links.tyreLayoutsStoreUrl ? (
@@ -260,69 +314,57 @@ export default function VehicleForm({
                                         </>
                                     ) : (
                                         <div className="space-y-2 md:col-span-2">
-                                            <Label htmlFor="owner_party_id">
-                                                Vehicle Owner (Transporter)
-                                            </Label>
-                                            <select
+                                            <SearchablePartySelect
                                                 id="owner_party_id"
                                                 name="owner_party_id"
-                                                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                                defaultValue={
-                                                    vehicle?.owner_party_id ??
-                                                    ''
+                                                label="Vehicle Owner (Transporter)"
+                                                options={
+                                                    formOptions.transporters
                                                 }
+                                                searchUrl={
+                                                    links.partiesOptionsUrl
+                                                }
+                                                role="transporter"
+                                                createStoreUrl={
+                                                    links.partiesStoreUrl
+                                                }
+                                                createLabel="Add"
+                                                createRole="transporter"
                                                 required
-                                            >
-                                                <option value="">
-                                                    Select…
-                                                </option>
-                                                {formOptions.transporters.map(
-                                                    (party) => (
-                                                        <option
-                                                            key={party.id}
-                                                            value={party.id}
-                                                        >
-                                                            {party.name}
-                                                        </option>
-                                                    ),
-                                                )}
-                                            </select>
-                                            <InputError
-                                                message={errors.owner_party_id}
+                                                value={ownerPartyId}
+                                                onValueChange={setOwnerPartyId}
+                                                emptyMessage="Search eligible Transporter owners…"
+                                                error={errors.owner_party_id}
                                             />
                                         </div>
                                     )}
-                                    <div className="space-y-2 md:col-span-2">
-                                        <Label htmlFor="primary_driver_party_id">
-                                            Primary Driver
-                                        </Label>
-                                        <select
-                                            id="primary_driver_party_id"
-                                            name="primary_driver_party_id"
-                                            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                            defaultValue={
-                                                vehicle?.primary_driver_party_id ??
-                                                ''
-                                            }
-                                        >
-                                            <option value="">None</option>
-                                            {formOptions.drivers.map(
-                                                (party) => (
-                                                    <option
-                                                        key={party.id}
-                                                        value={party.id}
-                                                    >
-                                                        {party.name}
-                                                    </option>
-                                                ),
-                                            )}
-                                        </select>
-                                        <InputError
-                                            message={
-                                                errors.primary_driver_party_id
-                                            }
-                                        />
-                                    </div>
+                                    {ownership === 'own' && driversEnabled ? (
+                                        <div className="space-y-2 md:col-span-2">
+                                            <SearchablePartySelect
+                                                id="primary_driver_party_id"
+                                                name="primary_driver_party_id"
+                                                label="Primary Driver"
+                                                options={formOptions.drivers}
+                                                searchUrl={
+                                                    links.partiesOptionsUrl
+                                                }
+                                                role="driver"
+                                                createStoreUrl={
+                                                    links.partiesStoreUrl
+                                                }
+                                                createLabel="Add"
+                                                createRole="driver"
+                                                value={primaryDriverPartyId}
+                                                onValueChange={
+                                                    setPrimaryDriverPartyId
+                                                }
+                                                emptyMessage="Search eligible Driver parties…"
+                                                error={
+                                                    errors.primary_driver_party_id
+                                                }
+                                            />
+                                        </div>
+                                    ) : null}
                                     {[
                                         [
                                             'vehicle_type',

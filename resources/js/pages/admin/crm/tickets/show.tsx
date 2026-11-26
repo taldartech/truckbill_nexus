@@ -8,6 +8,7 @@ import {
 import { AppIconAction } from '@/components/app-icon-action';
 import { FormSection } from '@/components/form-section';
 import { PageShell } from '@/components/page-shell';
+import { Label } from '@/components/ui/label';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 
 type AssignableUser = { id: number; name: string; email: string };
@@ -105,12 +106,9 @@ export default function CrmTicketShow({
                             columns={2}
                         >
                             <div className="space-y-2">
-                                <label
-                                    htmlFor="assigned_to_user_id"
-                                    className="text-sm font-medium"
-                                >
+                                <Label htmlFor="assigned_to_user_id" required>
                                     Assignee
-                                </label>
+                                </Label>
                                 <select
                                     id="assigned_to_user_id"
                                     name="assigned_to_user_id"
@@ -128,12 +126,9 @@ export default function CrmTicketShow({
                                 </select>
                             </div>
                             <div className="space-y-2 md:col-span-2">
-                                <label
-                                    htmlFor="assign-remark"
-                                    className="text-sm font-medium"
-                                >
+                                <Label htmlFor="assign-remark" required>
                                     Remark
-                                </label>
+                                </Label>
                                 <textarea
                                     id="assign-remark"
                                     name="remark"
@@ -172,12 +167,9 @@ export default function CrmTicketShow({
                             columns={2}
                         >
                             <div className="space-y-2">
-                                <label
-                                    htmlFor="status"
-                                    className="text-sm font-medium"
-                                >
+                                <Label htmlFor="status" required>
                                     New status
-                                </label>
+                                </Label>
                                 <select
                                     id="status"
                                     name="status"
@@ -195,12 +187,9 @@ export default function CrmTicketShow({
                                 </select>
                             </div>
                             <div className="space-y-2 md:col-span-2">
-                                <label
-                                    htmlFor="transition-remark"
-                                    className="text-sm font-medium"
-                                >
+                                <Label htmlFor="transition-remark">
                                     Remark
-                                </label>
+                                </Label>
                                 <textarea
                                     id="transition-remark"
                                     name="remark"

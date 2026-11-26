@@ -8,6 +8,8 @@ use App\Domains\CustomerInvoice\Enums\CustomerInvoiceSource;
 use App\Domains\OwnFleet\Invoice\TripInvoiceService;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
+use App\Domains\Subscription\Entitlement\CompanyCapabilities;
+use App\Domains\Subscription\Entitlement\CompanyCapabilityResolver;
 use App\Models\Branch;
 use App\Models\BrokerInvoice;
 use App\Models\Company;
@@ -30,31 +32,40 @@ use stdClass;
  */
 final class UnifiedCustomerInvoiceReadFacade
 {
+    private readonly CompanyCapabilityResolver $capabilities;
+
     public function __construct(
         private readonly TripInvoiceService $tripInvoices,
         private readonly BrokerInvoiceService $brokerInvoices,
         private readonly PermissionAuthorizer $authorizer,
         private readonly FreightAmountPresentation $freightPresentation,
-    ) {}
+        ?CompanyCapabilityResolver $capabilities = null,
+    ) {
+        $this->capabilities = $capabilities ?? app(CompanyCapabilityResolver::class);
+    }
 
     public function canViewOwnFleet(User $actor, Company $company, Branch $branch): bool
     {
-        return $this->authorizer->allowsCustomer($actor, PermissionCodes::INVOICE_VIEW, $company, $branch);
+        return $this->capabilities->allowsRead($company, CompanyCapabilities::OWNFLEET_INVOICES)
+            && $this->authorizer->allowsCustomer($actor, PermissionCodes::INVOICE_VIEW, $company, $branch);
     }
 
     public function canViewBroker(User $actor, Company $company, Branch $branch): bool
     {
-        return $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_INVOICE_VIEW, $company, $branch);
+        return $this->capabilities->allowsRead($company, CompanyCapabilities::BROKER_INVOICES)
+            && $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_INVOICE_VIEW, $company, $branch);
     }
 
     public function canCreateOwnFleet(User $actor, Company $company, Branch $branch): bool
     {
-        return $this->authorizer->allowsCustomer($actor, PermissionCodes::INVOICE_CREATE, $company, $branch);
+        return $this->capabilities->allowsMutate($company, CompanyCapabilities::OWNFLEET_INVOICES)
+            && $this->authorizer->allowsCustomer($actor, PermissionCodes::INVOICE_CREATE, $company, $branch);
     }
 
     public function canCreateBroker(User $actor, Company $company, Branch $branch): bool
     {
-        return $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_INVOICE_CREATE, $company, $branch);
+        return $this->capabilities->allowsMutate($company, CompanyCapabilities::BROKER_INVOICES)
+            && $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_INVOICE_CREATE, $company, $branch);
     }
 
     /**

@@ -7,6 +7,7 @@ use App\Domains\Company\Enums\DataVisibility;
 use App\Domains\Company\Exceptions\CompanyDomainException;
 use App\Domains\Geography\GeographyLookupService;
 use App\Domains\Master\BankCash\BankCashAccountService;
+use App\Domains\Subscription\Entitlement\CompanyCapabilityResolver;
 use App\Domains\Subscription\Lifecycle\SubscriptionTrialService;
 use App\Models\Branch;
 use App\Models\BranchAssignment;
@@ -374,6 +375,7 @@ final class CompanyWorkspaceService
                     before: $before,
                     after: $this->companySnapshot($company->refresh()),
                 );
+                CompanyCapabilityResolver::invalidate($company);
 
                 return $company;
             });
@@ -412,6 +414,7 @@ final class CompanyWorkspaceService
                     before: $before,
                     after: $this->companySnapshot($company->refresh()),
                 );
+                CompanyCapabilityResolver::invalidate($company);
 
                 return $company;
             });

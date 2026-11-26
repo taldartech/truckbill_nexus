@@ -15,9 +15,13 @@ use Carbon\CarbonImmutable;
  */
 final class SubscriptionStatusEvaluator
 {
+    private readonly SubscriptionClock $clock;
+
     public function __construct(
-        private readonly SubscriptionClock $clock = new SubscriptionClock,
-    ) {}
+        ?SubscriptionClock $clock = null,
+    ) {
+        $this->clock = $clock ?? app(SubscriptionClock::class);
+    }
 
     /**
      * @return array{

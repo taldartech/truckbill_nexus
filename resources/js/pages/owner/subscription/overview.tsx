@@ -2,6 +2,8 @@ import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { OwnerPageHeader } from '@/components/owner/owner-page-header';
 import ShellEmptyState from '@/components/shell-empty-state';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 
 type Props = {
@@ -555,15 +557,20 @@ export default function SubscriptionOverview({
                                         name="subscription_id"
                                         value={cancellation.subscription_id}
                                     />
-                                    <label className="flex flex-1 flex-col gap-1 text-sm">
-                                        Withdrawal remark
-                                        <input
+                                    <div className="flex flex-1 flex-col gap-1.5">
+                                        <Label
+                                            htmlFor="withdraw_cancel_remark"
+                                            required
+                                        >
+                                            Withdrawal remark
+                                        </Label>
+                                        <Input
+                                            id="withdraw_cancel_remark"
                                             name="remark"
                                             required
-                                            className="rounded-md border border-border bg-background px-3 py-2"
                                             placeholder="Keep subscription"
                                         />
-                                    </label>
+                                    </div>
                                     <Button type="submit" variant="outline">
                                         Withdraw cancellation
                                     </Button>
@@ -580,15 +587,17 @@ export default function SubscriptionOverview({
                                     name="subscription_id"
                                     value={cancellation.subscription_id}
                                 />
-                                <label className="flex flex-1 flex-col gap-1 text-sm">
-                                    Cancellation remark
-                                    <input
+                                <div className="flex flex-1 flex-col gap-1.5">
+                                    <Label htmlFor="cancel_remark" required>
+                                        Cancellation remark
+                                    </Label>
+                                    <Input
+                                        id="cancel_remark"
                                         name="remark"
                                         required
-                                        className="rounded-md border border-border bg-background px-3 py-2"
                                         placeholder="Cancel at renewal"
                                     />
-                                </label>
+                                </div>
                                 <Button type="submit" variant="outline">
                                     Schedule cancellation
                                 </Button>

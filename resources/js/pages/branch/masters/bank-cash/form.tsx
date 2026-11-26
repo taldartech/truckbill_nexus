@@ -73,12 +73,16 @@ export default function BankCashForm({ mode, account, links }: Props) {
                                 <div className="grid gap-3 md:grid-cols-2">
                                     {mode === 'create' ? (
                                         <div className="space-y-2">
-                                            <Label htmlFor="account_kind">
+                                            <Label
+                                                htmlFor="account_kind"
+                                                required
+                                            >
                                                 Kind
                                             </Label>
                                             <select
                                                 id="account_kind"
                                                 name="account_kind"
+                                                required
                                                 value={kind}
                                                 onChange={(e) =>
                                                     setKind(e.target.value)
@@ -95,7 +99,9 @@ export default function BankCashForm({ mode, account, links }: Props) {
                                         </div>
                                     ) : null}
                                     <div className="space-y-2">
-                                        <Label htmlFor="name">Name</Label>
+                                        <Label htmlFor="name" required>
+                                            Name
+                                        </Label>
                                         <Input
                                             id="name"
                                             name="name"
@@ -120,7 +126,13 @@ export default function BankCashForm({ mode, account, links }: Props) {
                                                 />
                                             </div>
                                             <div className="space-y-2">
-                                                <Label htmlFor="account_number">
+                                                <Label
+                                                    htmlFor="account_number"
+                                                    required={
+                                                        mode === 'create' &&
+                                                        kind === 'bank'
+                                                    }
+                                                >
                                                     {mode === 'edit'
                                                         ? 'Account number (leave blank to keep)'
                                                         : 'Account number'}
@@ -128,6 +140,10 @@ export default function BankCashForm({ mode, account, links }: Props) {
                                                 <Input
                                                     id="account_number"
                                                     name="account_number"
+                                                    required={
+                                                        mode === 'create' &&
+                                                        kind === 'bank'
+                                                    }
                                                     placeholder={
                                                         account?.account_number_masked ??
                                                         ''

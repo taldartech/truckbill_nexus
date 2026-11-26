@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
@@ -110,6 +111,14 @@ class Vehicle extends Model
     public function tyreLayout(): BelongsTo
     {
         return $this->belongsTo(OwnerTyreLayout::class, 'tyre_layout_id');
+    }
+
+    /**
+     * @return HasMany<VehicleDriverAssignment, $this>
+     */
+    public function driverAssignments(): HasMany
+    {
+        return $this->hasMany(VehicleDriverAssignment::class, 'vehicle_id');
     }
 
     /**

@@ -279,8 +279,8 @@ export function QuickCreateCitySheet({
                                 }}
                             />
                             <div className="space-y-1.5">
-                                <Label htmlFor="quick-city-name">
-                                    City name *
+                                <Label htmlFor="quick-city-name" required>
+                                    City name
                                 </Label>
                                 <Input
                                     id="quick-city-name"

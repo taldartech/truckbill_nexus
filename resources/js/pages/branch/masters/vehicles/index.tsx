@@ -15,6 +15,8 @@ import { Label } from '@/components/ui/label';
 type Row = {
     id: string;
     registration_number: string;
+    ownership: string | null;
+    primary_driver_name: string | null;
     vehicle_type: string | null;
     make: string | null;
     model: string | null;
@@ -112,6 +114,8 @@ export default function VehiclesIndex({
                             <thead>
                                 <tr>
                                     <th>Registration</th>
+                                    <th>Ownership</th>
+                                    <th>Primary Driver</th>
                                     <th>Status</th>
                                     <th>Type</th>
                                     <th>Make / model</th>
@@ -121,7 +125,7 @@ export default function VehiclesIndex({
                             <tbody>
                                 {vehicles.data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={5}>
+                                        <td colSpan={7}>
                                             <p className="app-index-empty">
                                                 No vehicles. Create a vehicle to
                                                 get started.
@@ -133,6 +137,19 @@ export default function VehiclesIndex({
                                         <tr key={row.id}>
                                             <td className="font-medium">
                                                 {row.registration_number}
+                                            </td>
+                                            <td>
+                                                {row.ownership === 'own'
+                                                    ? 'Own Vehicle'
+                                                    : row.ownership === 'market'
+                                                      ? 'Market Vehicle'
+                                                      : '—'}
+                                            </td>
+                                            <td>
+                                                {row.ownership === 'own'
+                                                    ? (row.primary_driver_name ??
+                                                      'Unassigned')
+                                                    : '—'}
                                             </td>
                                             <td>
                                                 <WorkspaceStatusBadge

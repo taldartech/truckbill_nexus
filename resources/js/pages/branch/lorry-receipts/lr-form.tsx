@@ -145,10 +145,14 @@ type Props = {
         goodsTypes: NamedOption[];
         packageTypes: NamedOption[];
         vehicles?: VehicleOption[];
+        drivers?: PartyOption[];
         vehicleQuickCreate?: {
+            ownershipOptions?: Option[];
             truckTypes: NamedOption[];
             tyreLayouts: NamedOption[];
             drivers: NamedOption[];
+            truckTypesStoreUrl?: string | null;
+            tyreLayoutsStoreUrl?: string | null;
         };
     };
     urls: {
@@ -588,6 +592,8 @@ export default function LrForm({
         (lorryReceipt as { intended_payee_party_id?: string | null } | null)
             ?.intended_payee_party_id ?? '',
     );
+    const [useSubstituteDriver, setUseSubstituteDriver] = useState(false);
+    const [substituteDriverPartyId, setSubstituteDriverPartyId] = useState('');
     const [agencyPayeeParty, setAgencyPayeeParty] =
         useState<PartyOption | null>(null);
     const [headerQuickCreate, setHeaderQuickCreate] =
@@ -758,6 +764,46 @@ export default function LrForm({
             setTdsPreviewLabel('—');
         }
     }, [isMarketVehicle]);
+
+    useEffect(() => {
+        if (!isOwnVehicle) {
+            setUseSubstituteDriver(false);
+            setSubstituteDriverPartyId('');
+        }
+    }, [isOwnVehicle]);
+
+    const allowedOwnershipValues = useMemo(
+        () =>
+            (formOptions.vehicleQuickCreate?.ownershipOptions ?? []).map(
+                (item) => item.value,
+            ),
+        [formOptions.vehicleQuickCreate?.ownershipOptions],
+    );
+    const allowOwnQuickCreate =
+        allowedOwnershipValues.length === 0 ||
+        allowedOwnershipValues.includes('own');
+    const allowMarketQuickCreate =
+        allowedOwnershipValues.length === 0 ||
+        allowedOwnershipValues.includes('market');
+    const defaultQuickVehicleOwnership: 'market' | 'own' =
+        allowMarketQuickCreate ? 'market' : 'own';
+    const normalizedVehicleCatalogues = useMemo(
+        () =>
+            formOptions.vehicleQuickCreate
+                ? {
+                      truckTypes: formOptions.vehicleQuickCreate.truckTypes,
+                      tyreLayouts: formOptions.vehicleQuickCreate.tyreLayouts,
+                      drivers: formOptions.vehicleQuickCreate.drivers,
+                      truckTypesStoreUrl:
+                          formOptions.vehicleQuickCreate.truckTypesStoreUrl ??
+                          undefined,
+                      tyreLayoutsStoreUrl:
+                          formOptions.vehicleQuickCreate.tyreLayoutsStoreUrl ??
+                          undefined,
+                  }
+                : undefined,
+        [formOptions.vehicleQuickCreate],
+    );
 
     useEffect(() => {
         if (intendedPayeeType !== 'owner') {
@@ -1626,6 +1672,12 @@ export default function LrForm({
                                                         searchUrl={
                                                             urls.vehicles_options
                                                         }
+                                                        ownership={
+                                                            allowedOwnershipValues.length >
+                                                            0
+                                                                ? allowedOwnershipValues
+                                                                : undefined
+                                                        }
                                                         value={vehicleId}
                                                         onValueChange={(
                                                             next,
@@ -1656,7 +1708,16 @@ export default function LrForm({
                                                             urls.parties_store
                                                         }
                                                         vehicleCatalogues={
-                                                            formOptions.vehicleQuickCreate
+                                                            normalizedVehicleCatalogues
+                                                        }
+                                                        defaultOwnership={
+                                                            defaultQuickVehicleOwnership
+                                                        }
+                                                        allowOwnQuickCreate={
+                                                            allowOwnQuickCreate
+                                                        }
+                                                        allowMarketQuickCreate={
+                                                            allowMarketQuickCreate
                                                         }
                                                         emptyMessage="No eligible vehicles in this branch."
                                                         error={
@@ -1705,30 +1766,118 @@ export default function LrForm({
                                             </div>
 
                                             {isOwnVehicle ? (
-                                                <div className="grid gap-3 sm:grid-cols-2">
-                                                    <div className="space-y-1.5">
-                                                        <Label>
-                                                            Primary Driver
-                                                        </Label>
-                                                        <div className="flex min-h-9 items-center rounded-md border border-input bg-muted/20 px-3 text-sm font-medium">
-                                                            {selectedVehicle?.primary_driver_name ??
-                                                                '—'}
+                                                <div className="space-y-3">
+                                                    <div className="grid gap-3 sm:grid-cols-2">
+                                                        <div className="space-y-1.5">
+                                                            <Label>
+                                                                Assigned Primary
+                                                                Driver
+                                                            </Label>
+                                                            <div className="flex min-h-9 items-center rounded-md border border-input bg-muted/20 px-3 text-sm font-medium">
+                                                                {selectedVehicle?.primary_driver_name ??
+                                                                    'No primary driver assigned'}
+                                                            </div>
                                                         </div>
-                                                        <p className="text-xs text-muted-foreground">
-                                                            Substitute driver is
-                                                            chosen when
-                                                            continuing to Trip /
-                                                            Manage Expenses.
-                                                        </p>
-                                                    </div>
-                                                    <div className="space-y-1.5">
-                                                        <Label>Ownership</Label>
-                                                        <div className="flex min-h-9 items-center rounded-md border border-input bg-muted/20 px-3 text-sm">
-                                                            Own fleet — no
-                                                            market Pay To /
-                                                            Agency.
+                                                        <div className="space-y-1.5">
+                                                            <Label>
+                                                                Ownership
+                                                            </Label>
+                                                            <div className="flex min-h-9 items-center rounded-md border border-input bg-muted/20 px-3 text-sm">
+                                                                Own fleet — one
+                                                                driver per Trip
+                                                            </div>
                                                         </div>
                                                     </div>
+
+                                                    {mode === 'create' ? (
+                                                        <div className="space-y-2 rounded-md border border-border bg-muted/20 p-3">
+                                                            <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={
+                                                                        useSubstituteDriver
+                                                                    }
+                                                                    onChange={(
+                                                                        e,
+                                                                    ) => {
+                                                                        const checked =
+                                                                            e
+                                                                                .target
+                                                                                .checked;
+                                                                        setUseSubstituteDriver(
+                                                                            checked,
+                                                                        );
+                                                                        if (
+                                                                            !checked
+                                                                        ) {
+                                                                            setSubstituteDriverPartyId(
+                                                                                '',
+                                                                            );
+                                                                        }
+                                                                    }}
+                                                                />
+                                                                Use substitute
+                                                                driver for this
+                                                                Trip
+                                                            </label>
+                                                            <input
+                                                                type="hidden"
+                                                                name="use_substitute_driver"
+                                                                value={
+                                                                    useSubstituteDriver
+                                                                        ? '1'
+                                                                        : '0'
+                                                                }
+                                                            />
+                                                            {useSubstituteDriver ? (
+                                                                <div className="space-y-1.5 pt-1">
+                                                                    <SearchablePartySelect
+                                                                        id="substitute_driver_party_id"
+                                                                        name="substitute_driver_party_id"
+                                                                        label="Substitute Driver"
+                                                                        options={
+                                                                            formOptions.drivers ??
+                                                                            []
+                                                                        }
+                                                                        searchUrl={
+                                                                            urls.parties_options
+                                                                        }
+                                                                        role="driver"
+                                                                        createStoreUrl={
+                                                                            urls.parties_store
+                                                                        }
+                                                                        createLabel="Add"
+                                                                        createRole="driver"
+                                                                        value={
+                                                                            substituteDriverPartyId
+                                                                        }
+                                                                        onValueChange={
+                                                                            setSubstituteDriverPartyId
+                                                                        }
+                                                                        required
+                                                                        emptyMessage="No eligible drivers in this branch."
+                                                                        error={
+                                                                            errors.substitute_driver_party_id
+                                                                        }
+                                                                    />
+                                                                    <p className="text-xs text-muted-foreground">
+                                                                        Applies
+                                                                        only to
+                                                                        this
+                                                                        Trip.
+                                                                        The
+                                                                        vehicle&apos;s
+                                                                        permanent
+                                                                        Primary
+                                                                        Driver
+                                                                        assignment
+                                                                        will not
+                                                                        change.
+                                                                    </p>
+                                                                </div>
+                                                            ) : null}
+                                                        </div>
+                                                    ) : null}
                                                 </div>
                                             ) : null}
 
@@ -1890,9 +2039,11 @@ export default function LrForm({
                                                 ) : needsStations ? (
                                                     <div className="space-y-1.5">
                                                         <div className="flex items-center justify-between gap-2">
-                                                            <Label htmlFor="from_station_id">
+                                                            <Label
+                                                                htmlFor="from_station_id"
+                                                                required
+                                                            >
                                                                 Loading Station
-                                                                *
                                                             </Label>
                                                             {canQuickCreateCatalogues &&
                                                             urls.stations_store ? (
@@ -2059,9 +2210,12 @@ export default function LrForm({
                                                 ) : needsStations ? (
                                                     <div className="space-y-1.5">
                                                         <div className="flex items-center justify-between gap-2">
-                                                            <Label htmlFor="to_station_id">
+                                                            <Label
+                                                                htmlFor="to_station_id"
+                                                                required
+                                                            >
                                                                 Unloading
-                                                                Station *
+                                                                Station
                                                             </Label>
                                                             {canQuickCreateCatalogues &&
                                                             urls.stations_store ? (
@@ -2354,14 +2508,20 @@ export default function LrForm({
                                                             </select>
                                                         </div>
                                                         <div className="space-y-1">
-                                                            <Label className="text-xs">
+                                                            <Label
+                                                                htmlFor={`goods_${index}_package_count`}
+                                                                className="text-xs"
+                                                                required
+                                                            >
                                                                 No. of Units
                                                             </Label>
                                                             <Input
+                                                                id={`goods_${index}_package_count`}
                                                                 name={`goods[${index}][package_count]`}
                                                                 type="number"
                                                                 min="1"
                                                                 step="1"
+                                                                required
                                                                 className="h-9"
                                                                 value={
                                                                     row.package_count
@@ -2408,7 +2568,11 @@ export default function LrForm({
                                                             />
                                                         </div>
                                                         <div className="space-y-1">
-                                                            <Label className="text-xs">
+                                                            <Label
+                                                                htmlFor={`goods_${index}_actual_weight`}
+                                                                className="text-xs"
+                                                                required
+                                                            >
                                                                 Actual Weight
                                                                 (MT)
                                                             </Label>
@@ -2420,9 +2584,11 @@ export default function LrForm({
                                                                 )}
                                                             />
                                                             <Input
+                                                                id={`goods_${index}_actual_weight`}
                                                                 type="number"
                                                                 min="0"
                                                                 step="0.001"
+                                                                required
                                                                 className="h-9"
                                                                 value={
                                                                     row.actual_weight
@@ -2444,7 +2610,11 @@ export default function LrForm({
                                                         </div>
                                                         <div className="space-y-1">
                                                             <div className="flex items-center justify-between gap-2">
-                                                                <Label className="text-xs">
+                                                                <Label
+                                                                    htmlFor={`goods_${index}_charged_weight`}
+                                                                    className="text-xs"
+                                                                    required
+                                                                >
                                                                     Charged
                                                                     Weight (MT)
                                                                 </Label>
@@ -2485,9 +2655,11 @@ export default function LrForm({
                                                                 )}
                                                             />
                                                             <Input
+                                                                id={`goods_${index}_charged_weight`}
                                                                 type="number"
                                                                 min="0"
                                                                 step="0.001"
+                                                                required
                                                                 className="h-9"
                                                                 value={
                                                                     row.charged_weight
@@ -2512,7 +2684,11 @@ export default function LrForm({
                                                         {mayViewFreight ? (
                                                             <>
                                                                 <div className="space-y-1">
-                                                                    <Label className="text-xs">
+                                                                    <Label
+                                                                        htmlFor={`goods_${index}_rate_type`}
+                                                                        className="text-xs"
+                                                                        required
+                                                                    >
                                                                         Rate
                                                                         Type
                                                                     </Label>
@@ -2524,6 +2700,7 @@ export default function LrForm({
                                                                         }
                                                                     />
                                                                     <select
+                                                                        id={`goods_${index}_rate_type`}
                                                                         name={`goods[${index}][freight_rate_type]`}
                                                                         className={
                                                                             fieldClass
@@ -2575,10 +2752,15 @@ export default function LrForm({
                                                                     </select>
                                                                 </div>
                                                                 <div className="space-y-1">
-                                                                    <Label className="text-xs">
+                                                                    <Label
+                                                                        htmlFor={`goods_${index}_freight_rate`}
+                                                                        className="text-xs"
+                                                                        required
+                                                                    >
                                                                         Rate
                                                                     </Label>
                                                                     <Input
+                                                                        id={`goods_${index}_freight_rate`}
                                                                         name={`goods[${index}][freight_rate]`}
                                                                         type="number"
                                                                         min="0"
@@ -2745,13 +2927,17 @@ export default function LrForm({
                                                     <thead className="text-muted-foreground">
                                                         <tr className="border-b border-border">
                                                             <th className="px-2 py-2 font-medium">
-                                                                Number
+                                                                <Label required>
+                                                                    Number
+                                                                </Label>
                                                             </th>
                                                             <th className="px-2 py-2 font-medium">
                                                                 Date
                                                             </th>
                                                             <th className="px-2 py-2 font-medium">
-                                                                Valid until
+                                                                <Label required>
+                                                                    Valid until
+                                                                </Label>
                                                             </th>
                                                             <th className="px-2 py-2 font-medium">
                                                                 Remove
@@ -2944,10 +3130,14 @@ export default function LrForm({
                                                     <thead className="text-muted-foreground">
                                                         <tr className="border-b border-border">
                                                             <th className="px-2 py-2 font-medium">
-                                                                Description
+                                                                <Label required>
+                                                                    Description
+                                                                </Label>
                                                             </th>
                                                             <th className="px-2 py-2 font-medium">
-                                                                Amount
+                                                                <Label required>
+                                                                    Amount
+                                                                </Label>
                                                             </th>
                                                             <th className="px-2 py-2 font-medium">
                                                                 Remove

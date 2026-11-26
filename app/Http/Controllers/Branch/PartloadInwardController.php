@@ -6,8 +6,6 @@ use App\Domains\Company\CompanyAccessService;
 use App\Domains\Partload\Exceptions\PartloadAuthorizationException;
 use App\Domains\Partload\Exceptions\PartloadConflictException;
 use App\Domains\Partload\Inward\PartloadInwardService;
-use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
-use App\Domains\Subscription\Enums\SubscriptionModule;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
@@ -26,14 +24,11 @@ class PartloadInwardController extends Controller
     public function __construct(
         private readonly CompanyAccessService $access,
         private readonly PartloadInwardService $inwards,
-        private readonly CoreModuleEntitlementResolver $moduleEntitlements = new CoreModuleEntitlementResolver,
     ) {}
 
     public function store(Request $request, Company $company, Branch $branch): RedirectResponse
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertPartloadModule($company);
-
         $validated = $request->validate([
             'partload_challan_id' => ['required', 'uuid'],
             'inward_date' => ['nullable', 'date'],
@@ -62,8 +57,6 @@ class PartloadInwardController extends Controller
     public function show(Request $request, Company $company, Branch $branch, PartloadInwardRegister $partloadInward): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertPartloadModule($company);
-
         if ((int) $actor->id !== (int) $company->owner_user_id) {
             // view permission checked via service find after soft gate
         }
@@ -100,12 +93,5 @@ class PartloadInwardController extends Controller
                     : null,
             ],
         ]);
-    }
-
-    private function assertPartloadModule(Company $company): void
-    {
-        if (! $this->moduleEntitlements->isEntitled($company, SubscriptionModule::Partload)) {
-            abort(403, 'Partload module is not entitled for this company.');
-        }
     }
 }

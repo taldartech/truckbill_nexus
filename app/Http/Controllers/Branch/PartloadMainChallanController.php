@@ -13,8 +13,6 @@ use App\Domains\Partload\Exceptions\PartloadDomainException;
 use App\Domains\Partload\MainChallan\PartloadMainChallanService;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
-use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
-use App\Domains\Subscription\Enums\SubscriptionModule;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
@@ -36,7 +34,6 @@ class PartloadMainChallanController extends Controller
         private readonly CompanyAccessService $access,
         private readonly PermissionAuthorizer $authorizer,
         private readonly PartloadMainChallanService $mainChallans,
-        private readonly CoreModuleEntitlementResolver $moduleEntitlements = new CoreModuleEntitlementResolver,
         private readonly PartyOptionQuery $partyOptions = new PartyOptionQuery,
         private readonly VehicleOptionQuery $vehicleOptions = new VehicleOptionQuery,
     ) {}
@@ -44,7 +41,6 @@ class PartloadMainChallanController extends Controller
     public function index(Request $request, Company $company, Branch $branch): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertPartloadModule($company);
         $this->assertPermission($actor, $company, $branch, PermissionCodes::PARTLOAD_CHALLAN_VIEW);
 
         $page = $this->mainChallans->search(
@@ -82,7 +78,6 @@ class PartloadMainChallanController extends Controller
     public function create(Request $request, Company $company, Branch $branch): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertPartloadModule($company);
         $this->assertPermission($actor, $company, $branch, PermissionCodes::PARTLOAD_CHALLAN_CREATE);
 
         $eligible = $this->mainChallans->eligibleChallans($company, $branch);
@@ -139,8 +134,6 @@ class PartloadMainChallanController extends Controller
     public function store(Request $request, Company $company, Branch $branch): RedirectResponse
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertPartloadModule($company);
-
         $validated = $request->validate([
             'main_challan_date' => ['nullable', 'date'],
             'from_station_id' => ['required', 'uuid'],
@@ -182,7 +175,6 @@ class PartloadMainChallanController extends Controller
     public function show(Request $request, Company $company, Branch $branch, PartloadMainChallan $partloadMainChallan): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertPartloadModule($company);
         $this->assertPermission($actor, $company, $branch, PermissionCodes::PARTLOAD_CHALLAN_VIEW);
 
         $main = $this->mainChallans->findForBranch($company, $branch, $partloadMainChallan->id);
@@ -205,8 +197,6 @@ class PartloadMainChallanController extends Controller
     public function dispatch(Request $request, Company $company, Branch $branch, PartloadMainChallan $partloadMainChallan): RedirectResponse
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertPartloadModule($company);
-
         try {
             $main = $this->mainChallans->dispatch(
                 $this->mainChallans->findForBranch($company, $branch, $partloadMainChallan->id),
@@ -226,8 +216,6 @@ class PartloadMainChallanController extends Controller
     public function cancel(Request $request, Company $company, Branch $branch, PartloadMainChallan $partloadMainChallan): RedirectResponse
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertPartloadModule($company);
-
         $validated = $request->validate([
             'cancellation_remark' => ['required', 'string', 'max:2000'],
         ]);
@@ -341,13 +329,6 @@ class PartloadMainChallanController extends Controller
 
         if (! $this->authorizer->allowsCustomer($actor, $code, $company, $branch)) {
             abort(403);
-        }
-    }
-
-    private function assertPartloadModule(Company $company): void
-    {
-        if (! $this->moduleEntitlements->isEntitled($company, SubscriptionModule::Partload)) {
-            abort(403, 'Partload module is not entitled for this company.');
         }
     }
 }

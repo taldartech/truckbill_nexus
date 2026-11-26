@@ -42,10 +42,20 @@ function SheetOverlay({
   )
 }
 
+function isSheetComboboxPortalTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    target.closest('[data-searchable-combobox-panel]') !== null
+  )
+}
+
 function SheetContent({
   className,
   children,
   side = "right",
+  onPointerDownOutside,
+  onFocusOutside,
+  onInteractOutside,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left"
@@ -67,6 +77,24 @@ function SheetContent({
             "data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom inset-x-0 bottom-0 h-auto border-t",
           className
         )}
+        onPointerDownOutside={(event) => {
+          if (isSheetComboboxPortalTarget(event.target)) {
+            event.preventDefault()
+          }
+          onPointerDownOutside?.(event)
+        }}
+        onFocusOutside={(event) => {
+          if (isSheetComboboxPortalTarget(event.target)) {
+            event.preventDefault()
+          }
+          onFocusOutside?.(event)
+        }}
+        onInteractOutside={(event) => {
+          if (isSheetComboboxPortalTarget(event.target)) {
+            event.preventDefault()
+          }
+          onInteractOutside?.(event)
+        }}
         {...props}
       >
         {children}

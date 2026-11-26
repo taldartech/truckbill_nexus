@@ -7,8 +7,8 @@ use App\Domains\Consignment\Enums\LrStatus;
 use App\Domains\Consignment\Enums\LrWorkflowContext;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
-use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
-use App\Domains\Subscription\Enums\SubscriptionModule;
+use App\Domains\Subscription\Entitlement\CompanyCapabilities;
+use App\Domains\Subscription\Entitlement\CompanyCapabilityResolver;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\LorryHire;
@@ -21,7 +21,7 @@ use App\Models\User;
 final class BrokerOperationalOverview
 {
     public function __construct(
-        private readonly CoreModuleEntitlementResolver $entitlements = new CoreModuleEntitlementResolver,
+        private readonly ?CompanyCapabilityResolver $capabilities = null,
         private readonly PermissionAuthorizer $authorizer = new PermissionAuthorizer,
     ) {}
 
@@ -38,7 +38,8 @@ final class BrokerOperationalOverview
      */
     public function forBranch(Company $company, Branch $branch, User $actor): ?array
     {
-        if (! $this->entitlements->isEntitled($company, SubscriptionModule::Broker)) {
+        $capabilities = $this->capabilities ?? app(CompanyCapabilityResolver::class);
+        if (! $capabilities->allowsRead($company, CompanyCapabilities::BROKER_LR)) {
             return null;
         }
 

@@ -370,8 +370,14 @@ export default function OwnerUsersCreate({
                                                 className="mt-4 grid gap-3 rounded-lg border border-border p-3 sm:grid-cols-3"
                                             >
                                                 <div className="space-y-1">
-                                                    <Label>Branch</Label>
+                                                    <Label
+                                                        htmlFor={`branch-${blockIndex}-${assignmentIndex}`}
+                                                        required
+                                                    >
+                                                        Branch
+                                                    </Label>
                                                     <select
+                                                        id={`branch-${blockIndex}-${assignmentIndex}`}
                                                         className="flex h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm"
                                                         value={
                                                             assignment.branch_id
@@ -406,8 +412,14 @@ export default function OwnerUsersCreate({
                                                     </select>
                                                 </div>
                                                 <div className="space-y-1">
-                                                    <Label>Role</Label>
+                                                    <Label
+                                                        htmlFor={`role-${blockIndex}-${assignmentIndex}`}
+                                                        required
+                                                    >
+                                                        Role
+                                                    </Label>
                                                     <select
+                                                        id={`role-${blockIndex}-${assignmentIndex}`}
                                                         className="flex h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm"
                                                         value={
                                                             assignment.role_id

@@ -7,6 +7,8 @@ use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Master\Catalogue\OwnerCatalogueService;
 use App\Domains\Master\Exceptions\MasterDomainException;
 use App\Domains\Rbac\PermissionAuthorizer;
+use App\Domains\Subscription\Entitlement\CompanyCapabilities;
+use App\Domains\Subscription\Entitlement\CompanyCapabilityResolver;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
@@ -91,6 +93,7 @@ class CatalogueController extends Controller
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertItem($company, $catalogueItem);
+        $this->assertItemCapability($company, $catalogueItem);
 
         $validated = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
@@ -112,6 +115,7 @@ class CatalogueController extends Controller
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertItem($company, $catalogueItem);
+        $this->assertItemCapability($company, $catalogueItem);
 
         $validated = $request->validate([
             'remark' => ['required', 'string', 'max:1000'],
@@ -259,6 +263,23 @@ class CatalogueController extends Controller
     {
         if ((int) $item->owner_user_id !== (int) $company->owner_user_id) {
             abort(404);
+        }
+    }
+
+    private function assertItemCapability(Company $company, OwnerCatalogueItem $item): void
+    {
+        $capability = match ($item->catalogue_type) {
+            OwnerCatalogueType::TruckType->value => CompanyCapabilities::OWNFLEET_TRUCK_TYPES,
+            OwnerCatalogueType::TyreLayout->value => CompanyCapabilities::OWNFLEET_TYRE_LAYOUTS,
+            OwnerCatalogueType::ExpenseCategory->value => CompanyCapabilities::OWNFLEET_EXPENSE_CATEGORIES,
+            OwnerCatalogueType::DocumentType->value => CompanyCapabilities::MASTERS_DOCUMENT_TYPES,
+            OwnerCatalogueType::PackageType->value => CompanyCapabilities::MASTERS_PACKAGE_TYPES,
+            default => CompanyCapabilities::MASTERS_GOODS_TYPES,
+        };
+
+        $resolver = app(CompanyCapabilityResolver::class);
+        if (! $resolver->allowsMutate($company, $capability)) {
+            abort(403, $resolver->denyMessage($company, $capability));
         }
     }
 }

@@ -6,6 +6,7 @@ use App\Domains\Consignment\Enums\LrStatus;
 use App\Domains\Consignment\Enums\LrWorkflowContext;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
+use App\Domains\OwnFleet\Driver\VehicleDriverAssignmentService;
 use App\Domains\OwnFleet\Enums\TripStatus;
 use App\Domains\OwnFleet\Enums\TripTimingPerformance;
 use App\Domains\OwnFleet\Trip\Exceptions\TripAuthorizationException;
@@ -109,7 +110,8 @@ final class TripService
         );
 
         $useSubstitute = (bool) ($payload['use_substitute_driver'] ?? false);
-        $primaryDriverId = $vehicle->primary_driver_party_id;
+        $primaryDriverId = $vehicle->primary_driver_party_id
+            ?? app(VehicleDriverAssignmentService::class)->currentPrimaryForVehicle($company, $vehicle)?->driver_party_id;
         $substituteId = filled($payload['substitute_driver_party_id'] ?? null)
             ? (string) $payload['substitute_driver_party_id']
             : null;

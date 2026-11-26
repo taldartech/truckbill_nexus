@@ -44,9 +44,19 @@ function DialogOverlay({
   )
 }
 
+function isComboboxPortalTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    target.closest('[data-searchable-combobox-panel]') !== null
+  )
+}
+
 function DialogContent({
   className,
   children,
+  onPointerDownOutside,
+  onFocusOutside,
+  onInteractOutside,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content>) {
   return (
@@ -58,6 +68,24 @@ function DialogContent({
           "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200 sm:max-w-lg",
           className
         )}
+        onPointerDownOutside={(event) => {
+          if (isComboboxPortalTarget(event.target)) {
+            event.preventDefault()
+          }
+          onPointerDownOutside?.(event)
+        }}
+        onFocusOutside={(event) => {
+          if (isComboboxPortalTarget(event.target)) {
+            event.preventDefault()
+          }
+          onFocusOutside?.(event)
+        }}
+        onInteractOutside={(event) => {
+          if (isComboboxPortalTarget(event.target)) {
+            event.preventDefault()
+          }
+          onInteractOutside?.(event)
+        }}
         {...props}
       >
         {children}

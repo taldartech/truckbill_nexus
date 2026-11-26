@@ -25,8 +25,10 @@ import {
     SheetHeader,
     SheetTitle,
 } from '@/components/ui/sheet';
+import { usePage } from '@inertiajs/react';
 import { getCsrfToken } from '@/lib/csrf';
-import { useMemo, useState } from 'react';
+import type { WorkspaceShare } from '@/types/workspace';
+import { useEffect, useMemo, useState } from 'react';
 
 export type VehicleQuickCreateCatalogues = {
     truckTypes: Array<{ id: string; name: string }>;
@@ -97,18 +99,49 @@ export function QuickCreateVehicleSheet({
     allowOwn = true,
     allowMarket = true,
 }: Props) {
-    const initialOwnership =
-        defaultOwnership === 'own' && allowOwn
+    const page = usePage<{ workspace?: WorkspaceShare }>();
+    const workspaceCaps = page.props.workspace?.capabilities;
+    const allowedFromWorkspace = workspaceCaps?.allowed_vehicle_ownerships;
+    const effectiveAllowOwn =
+        allowOwn &&
+        (allowedFromWorkspace === undefined ||
+            allowedFromWorkspace.includes('own'));
+    const effectiveAllowMarket =
+        allowMarket &&
+        (allowedFromWorkspace === undefined ||
+            allowedFromWorkspace.includes('market'));
+    const driversEnabled = workspaceCaps?.ownfleet_drivers_enabled !== false;
+
+    const initialOwnership: 'market' | 'own' =
+        defaultOwnership === 'own' && effectiveAllowOwn
             ? 'own'
-            : allowMarket
+            : effectiveAllowMarket
               ? 'market'
               : 'own';
+
+    const onlyOneOwnership =
+        (effectiveAllowOwn && !effectiveAllowMarket) ||
+        (!effectiveAllowOwn && effectiveAllowMarket);
 
     const [draft, setDraft] = useState<Draft>({
         ...EMPTY,
         ownership: initialOwnership,
     });
+    useEffect(() => {
+        if (open) {
+            setDraft((current) => {
+                if (
+                    (current.ownership === 'own' && !effectiveAllowOwn) ||
+                    (current.ownership === 'market' && !effectiveAllowMarket)
+                ) {
+                    return { ...current, ownership: initialOwnership };
+                }
+                return current;
+            });
+        }
+    }, [open, effectiveAllowOwn, effectiveAllowMarket, initialOwnership]);
     const [ownerParty, setOwnerParty] = useState<PartyOption | null>(null);
+    const [driverParty, setDriverParty] = useState<PartyOption | null>(null);
     const [errors, setErrors] = useState<Record<string, string[] | string>>({});
     const [formError, setFormError] = useState<string | null>(null);
     const [processing, setProcessing] = useState(false);
@@ -162,9 +195,11 @@ export function QuickCreateVehicleSheet({
             fields.push({
                 label: 'Primary driver',
                 value:
+                    driverParty?.name ??
                     drivers.find(
                         (item) => item.id === draft.primary_driver_party_id,
-                    )?.name ?? '—',
+                    )?.name ??
+                    '—',
             });
         }
         fields.push({
@@ -176,11 +211,21 @@ export function QuickCreateVehicleSheet({
             value: draft.capacity_mt || '—',
         });
         return fields;
-    }, [draft, drivers, isMarket, isOwn, ownerParty, truckTypes, tyreLayouts]);
+    }, [
+        draft,
+        driverParty,
+        drivers,
+        isMarket,
+        isOwn,
+        ownerParty,
+        truckTypes,
+        tyreLayouts,
+    ]);
 
     const reset = () => {
         setDraft({ ...EMPTY, ownership: initialOwnership });
         setOwnerParty(null);
+        setDriverParty(null);
         setErrors({});
         setFormError(null);
         setConfirmOpen(false);
@@ -335,8 +380,8 @@ export function QuickCreateVehicleSheet({
 
                         <div className="grid gap-3 sm:grid-cols-2">
                             <div className="space-y-1.5 sm:col-span-2">
-                                <Label htmlFor="quick-vehicle-reg">
-                                    Registration number *
+                                <Label htmlFor="quick-vehicle-reg" required>
+                                    Registration number
                                 </Label>
                                 <Input
                                     id="quick-vehicle-reg"
@@ -359,32 +404,53 @@ export function QuickCreateVehicleSheet({
                                 />
                             </div>
                             <div className="space-y-1.5 sm:col-span-2">
-                                <Label htmlFor="quick-vehicle-ownership">
-                                    Ownership *
-                                </Label>
-                                <select
-                                    id="quick-vehicle-ownership"
-                                    className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                    value={draft.ownership}
-                                    onChange={(event) => {
-                                        const next = event.target.value as
-                                            | 'market'
-                                            | 'own';
-                                        update('ownership', next);
-                                        setOwnerParty(null);
-                                        update('owner_party_id', '');
-                                        update('truck_type_id', '');
-                                        update('tyre_layout_id', '');
-                                        update('primary_driver_party_id', '');
-                                    }}
+                                <Label
+                                    htmlFor="quick-vehicle-ownership"
+                                    required
                                 >
-                                    {allowMarket ? (
-                                        <option value="market">Market</option>
-                                    ) : null}
-                                    {allowOwn ? (
-                                        <option value="own">Own</option>
-                                    ) : null}
-                                </select>
+                                    Ownership
+                                </Label>
+                                {onlyOneOwnership ? (
+                                    <div
+                                        id="quick-vehicle-ownership"
+                                        className="flex h-9 w-full items-center rounded-md border border-input bg-muted/40 px-3 text-sm font-medium text-foreground"
+                                    >
+                                        {draft.ownership === 'own'
+                                            ? 'Own'
+                                            : 'Market'}
+                                    </div>
+                                ) : (
+                                    <select
+                                        id="quick-vehicle-ownership"
+                                        required
+                                        className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                        value={draft.ownership}
+                                        onChange={(event) => {
+                                            const next = event.target.value as
+                                                | 'market'
+                                                | 'own';
+                                            update('ownership', next);
+                                            setOwnerParty(null);
+                                            setDriverParty(null);
+                                            update('owner_party_id', '');
+                                            update('truck_type_id', '');
+                                            update('tyre_layout_id', '');
+                                            update(
+                                                'primary_driver_party_id',
+                                                '',
+                                            );
+                                        }}
+                                    >
+                                        {effectiveAllowMarket ? (
+                                            <option value="market">
+                                                Market
+                                            </option>
+                                        ) : null}
+                                        {effectiveAllowOwn ? (
+                                            <option value="own">Own</option>
+                                        ) : null}
+                                    </select>
+                                )}
                             </div>
 
                             {isMarket ? (
@@ -418,8 +484,11 @@ export function QuickCreateVehicleSheet({
                                 <>
                                     <div className="space-y-1.5">
                                         <div className="flex items-center justify-between gap-2">
-                                            <Label htmlFor="quick-truck-type">
-                                                Truck type *
+                                            <Label
+                                                htmlFor="quick-truck-type"
+                                                required
+                                            >
+                                                Truck type
                                             </Label>
                                             {truckTypesStoreUrl ? (
                                                 <button
@@ -466,8 +535,11 @@ export function QuickCreateVehicleSheet({
                                     </div>
                                     <div className="space-y-1.5">
                                         <div className="flex items-center justify-between gap-2">
-                                            <Label htmlFor="quick-tyre-layout">
-                                                Tyre layout *
+                                            <Label
+                                                htmlFor="quick-tyre-layout"
+                                                required
+                                            >
+                                                Tyre layout
                                             </Label>
                                             {tyreLayoutsStoreUrl ? (
                                                 <button
@@ -512,40 +584,47 @@ export function QuickCreateVehicleSheet({
                                             )}
                                         />
                                     </div>
-                                    <div className="space-y-1.5 sm:col-span-2">
-                                        <Label htmlFor="quick-primary-driver">
-                                            Primary driver
-                                        </Label>
-                                        <select
-                                            id="quick-primary-driver"
-                                            className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                            value={
-                                                draft.primary_driver_party_id
-                                            }
-                                            onChange={(event) =>
-                                                update(
+                                    {driversEnabled ? (
+                                        <div className="space-y-1.5 sm:col-span-2">
+                                            <SearchablePartySelect
+                                                id="quick-primary-driver"
+                                                name="quick_primary_driver"
+                                                label="Primary driver"
+                                                options={
+                                                    driverParty
+                                                        ? [
+                                                              driverParty,
+                                                              ...drivers.filter(
+                                                                  (d) =>
+                                                                      d.id !==
+                                                                      driverParty.id,
+                                                              ),
+                                                          ]
+                                                        : drivers
+                                                }
+                                                searchUrl={partiesOptionsUrl}
+                                                role="driver"
+                                                createStoreUrl={partiesStoreUrl}
+                                                createLabel="Add"
+                                                createRole="driver"
+                                                value={
+                                                    draft.primary_driver_party_id
+                                                }
+                                                onValueChange={(value) =>
+                                                    update(
+                                                        'primary_driver_party_id',
+                                                        value,
+                                                    )
+                                                }
+                                                onPartyChange={setDriverParty}
+                                                emptyMessage="Search eligible Driver parties…"
+                                                error={firstError(
+                                                    errors,
                                                     'primary_driver_party_id',
-                                                    event.target.value,
-                                                )
-                                            }
-                                        >
-                                            <option value="">None</option>
-                                            {drivers.map((item) => (
-                                                <option
-                                                    key={item.id}
-                                                    value={item.id}
-                                                >
-                                                    {item.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <InputError
-                                            message={firstError(
-                                                errors,
-                                                'primary_driver_party_id',
-                                            )}
-                                        />
-                                    </div>
+                                                )}
+                                            />
+                                        </div>
+                                    ) : null}
                                 </>
                             ) : null}
 

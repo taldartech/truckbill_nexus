@@ -122,8 +122,14 @@ export default function AccountingOpeningBalanceCreate({
                                             className="grid gap-3 rounded-md border border-border/70 p-3 md:grid-cols-4"
                                         >
                                             <div className="space-y-1 md:col-span-2">
-                                                <Label required>Ledger</Label>
+                                                <Label
+                                                    htmlFor={`opening-line-ledger-${index}`}
+                                                    required
+                                                >
+                                                    Ledger
+                                                </Label>
                                                 <select
+                                                    id={`opening-line-ledger-${index}`}
                                                     name={`lines[${index}][gl_ledger_id]`}
                                                     required
                                                     className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"

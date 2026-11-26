@@ -7,8 +7,8 @@ use App\Domains\Partload\Exceptions\PartloadAuthorizationException;
 use App\Domains\Partload\Exceptions\PartloadDomainException;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
-use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
-use App\Domains\Subscription\Enums\SubscriptionModule;
+use App\Domains\Subscription\Entitlement\CompanyCapabilities;
+use App\Domains\Subscription\Entitlement\CompanyCapabilityResolver;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\LorryReceipt;
@@ -24,7 +24,7 @@ final class PartloadPendingLoadingService
     public function __construct(
         private readonly PartloadChallanService $challans = new PartloadChallanService,
         private readonly PermissionAuthorizer $authorizer = new PermissionAuthorizer,
-        private readonly CoreModuleEntitlementResolver $entitlements = new CoreModuleEntitlementResolver,
+        private readonly ?CompanyCapabilityResolver $capabilities = null,
     ) {}
 
     /**
@@ -129,7 +129,8 @@ final class PartloadPendingLoadingService
 
     private function assertEntitled(Company $company): void
     {
-        if (! $this->entitlements->isEntitled($company, SubscriptionModule::Partload)) {
+        $capabilities = $this->capabilities ?? app(CompanyCapabilityResolver::class);
+        if (! $capabilities->allowsRead($company, CompanyCapabilities::PARTLOAD_PENDING_LOADING)) {
             throw new PartloadAuthorizationException('Partload module is not entitled for this company.');
         }
     }

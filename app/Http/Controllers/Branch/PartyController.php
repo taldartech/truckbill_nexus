@@ -17,6 +17,8 @@ use App\Domains\Master\Party\PartyService;
 use App\Domains\Master\Support\MasterAccess;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
+use App\Domains\Subscription\Entitlement\CompanyCapabilities;
+use App\Domains\Subscription\Entitlement\CompanyCapabilityResolver;
 use App\Domains\Tax\Exceptions\TaxDomainException;
 use App\Domains\Tax\TransporterTdsCalculationService;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
@@ -53,7 +55,47 @@ class PartyController extends Controller
         private readonly TransporterTdsCalculationService $transporterTds,
         private readonly TransporterBookBalanceService $bookBalances = new TransporterBookBalanceService,
         private readonly FreightAmountPresentation $freightPresentation = new FreightAmountPresentation,
+        private readonly ?CompanyCapabilityResolver $capabilities = null,
     ) {}
+
+    private function capabilities(): CompanyCapabilityResolver
+    {
+        return $this->capabilities ?? app(CompanyCapabilityResolver::class);
+    }
+
+    /**
+     * @return list<array{value: string, label: string}>
+     */
+    private function partyRoleOptions(Company $company): array
+    {
+        return array_map(
+            fn (PartyRoleType $role): array => [
+                'value' => $role->value,
+                'label' => str_replace('_', ' ', ucfirst($role->value)),
+            ],
+            $this->capabilities()->allowedPartyRoles($company),
+        );
+    }
+
+    /**
+     * @param  list<array{role: string, attributes: array<string, mixed>}>  $roles
+     */
+    private function assertPartyRolesAllowed(Company $company, array $roles): void
+    {
+        $allowed = array_map(
+            fn (PartyRoleType $role): string => $role->value,
+            $this->capabilities()->allowedPartyRoles($company),
+        );
+
+        foreach ($roles as $entry) {
+            if (! in_array($entry['role'], $allowed, true)) {
+                $capability = $entry['role'] === PartyRoleType::Driver->value
+                    ? CompanyCapabilities::MASTERS_PARTIES_DRIVER_ROLE
+                    : CompanyCapabilities::MASTERS_PARTIES;
+                abort(403, $this->capabilities()->denyMessage($company, $capability));
+            }
+        }
+    }
 
     public function index(Request $request, Company $company, Branch $branch): Response|JsonResponse
     {
@@ -85,10 +127,7 @@ class PartyController extends Controller
                 'q' => $request->string('q')->toString(),
                 'role' => $request->string('role')->toString(),
             ],
-            'roleOptions' => collect(PartyRoleType::cases())->map(fn (PartyRoleType $role): array => [
-                'value' => $role->value,
-                'label' => str_replace('_', ' ', ucfirst($role->value)),
-            ])->values()->all(),
+            'roleOptions' => $this->partyRoleOptions($company),
             'parties' => [
                 'data' => collect($page->items())->map(fn (Party $party): array => $this->partyListPayload($party))->values()->all(),
                 'meta' => [
@@ -219,10 +258,7 @@ class PartyController extends Controller
             'mode' => 'create',
             'party' => null,
             'dataVisibility' => $this->dataVisibilityPresentation($company),
-            'roleOptions' => collect(PartyRoleType::cases())->map(fn (PartyRoleType $role): array => [
-                'value' => $role->value,
-                'label' => str_replace('_', ' ', ucfirst($role->value)),
-            ])->values()->all(),
+            'roleOptions' => $this->partyRoleOptions($company),
             'links' => array_merge($this->branchMasterNavLinks(), [
                 'index' => route('branch.parties.index', absolute: false),
                 'store' => route('branch.parties.store', absolute: false),
@@ -345,6 +381,7 @@ class PartyController extends Controller
         ]);
 
         $roles = $this->normalizeIncomingRoles($validated['roles']);
+        $this->assertPartyRolesAllowed($company, $roles);
         $attributes = $this->normalizePartyAttributes($validated);
 
         // PO-MASTER-COMPANY-VISIBILITY: ignore any client-submitted scope.
@@ -400,6 +437,7 @@ class PartyController extends Controller
 
         $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
         $mayViewBookBalance = $isTransporter
+            && $this->capabilities()->allowsRead($company, CompanyCapabilities::BROKER_BOOK_BALANCE)
             && $maySeeFreight
             && (
                 $actor->id === $company->owner_user_id
@@ -428,10 +466,7 @@ class PartyController extends Controller
             'permissions' => $permissions,
             'party' => $this->partyDetailPayload($party),
             'bookBalance' => $bookBalance,
-            'roleOptions' => collect(PartyRoleType::cases())->map(fn (PartyRoleType $role): array => [
-                'value' => $role->value,
-                'label' => str_replace('_', ' ', ucfirst($role->value)),
-            ])->values()->all(),
+            'roleOptions' => $this->partyRoleOptions($company),
             'documentDrawer' => $this->documentDrawerPayload(
                 $actor,
                 $company,
@@ -475,10 +510,7 @@ class PartyController extends Controller
             'permissions' => $permissions,
             'mode' => 'edit',
             'party' => $this->partyDetailPayload($party),
-            'roleOptions' => collect(PartyRoleType::cases())->map(fn (PartyRoleType $role): array => [
-                'value' => $role->value,
-                'label' => str_replace('_', ' ', ucfirst($role->value)),
-            ])->values()->all(),
+            'roleOptions' => $this->partyRoleOptions($company),
             'links' => array_merge($this->branchMasterNavLinks(), [
                 'index' => route('branch.parties.index', absolute: false),
                 'show' => route('branch.parties.show', [$party], absolute: false),
@@ -514,6 +546,9 @@ class PartyController extends Controller
         $roles = array_key_exists('roles', $validated)
             ? $this->normalizeIncomingRoles($validated['roles'])
             : null;
+        if ($roles !== null) {
+            $this->assertPartyRolesAllowed($company, $roles);
+        }
         $attributes = $this->normalizePartyAttributes($validated);
 
         try {
@@ -552,6 +587,8 @@ class PartyController extends Controller
             'attributes' => ['nullable', 'array'],
             'remark' => ['required', 'string', 'max:1000'],
         ]);
+
+        $this->assertPartyRolesAllowed($company, [['role' => (string) $validated['role'], 'attributes' => []]]);
 
         try {
             $role = $this->parties->assignRole(

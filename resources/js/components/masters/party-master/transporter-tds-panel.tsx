@@ -229,6 +229,7 @@ export function TransporterTdsPanel({
                 </Label>
                 <select
                     id={`${idPrefix}pan_status`}
+                    required
                     className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
                     value={transporter.pan_status}
                     onChange={(event) =>
@@ -276,8 +277,9 @@ export function TransporterTdsPanel({
                     />
                 ) : null}
             </div>
-            <label className="flex items-center gap-2 text-sm sm:col-span-2">
+            <div className="flex items-center gap-2 sm:col-span-2">
                 <input
+                    id={`${idPrefix}declaration`}
                     type="checkbox"
                     checked={transporter.declaration}
                     onChange={(event) =>
@@ -287,7 +289,13 @@ export function TransporterTdsPanel({
                         }))
                     }
                 />
-                Declaration affirmed *
+                <Label
+                    htmlFor={`${idPrefix}declaration`}
+                    required
+                    className="font-normal"
+                >
+                    Declaration affirmed
+                </Label>
                 {nativeForm ? (
                     <input
                         type="hidden"
@@ -295,7 +303,7 @@ export function TransporterTdsPanel({
                         value={transporter.declaration ? '1' : '0'}
                     />
                 ) : null}
-            </label>
+            </div>
             <InputError message={errors['roles.attributes.declaration']} />
 
             {previewUrl ? (
@@ -363,8 +371,8 @@ export function TransporterTdsPanel({
             {transporter.tds_override ? (
                 <>
                     <div className="space-y-2">
-                        <Label htmlFor={`${idPrefix}tds_percentage`}>
-                            TDS % *
+                        <Label htmlFor={`${idPrefix}tds_percentage`} required>
+                            TDS %
                         </Label>
                         <Input
                             id={`${idPrefix}tds_percentage`}
@@ -389,8 +397,11 @@ export function TransporterTdsPanel({
                         />
                     </div>
                     <div className="space-y-2 sm:col-span-2">
-                        <Label htmlFor={`${idPrefix}tds_adjustment_remark`}>
-                            TDS adjustment remark *
+                        <Label
+                            htmlFor={`${idPrefix}tds_adjustment_remark`}
+                            required
+                        >
+                            TDS adjustment remark
                         </Label>
                         <Input
                             id={`${idPrefix}tds_adjustment_remark`}

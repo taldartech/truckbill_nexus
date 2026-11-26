@@ -13,8 +13,8 @@ use App\Domains\OwnFleet\Invoice\TripInvoicePaymentService;
 use App\Domains\OwnFleet\Invoice\TripInvoiceService;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
-use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
-use App\Domains\Subscription\Enums\SubscriptionModule;
+use App\Domains\Subscription\Entitlement\CompanyCapabilities;
+use App\Domains\Subscription\Entitlement\CompanyCapabilityResolver;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
@@ -36,14 +36,18 @@ class TripInvoiceController extends Controller
 {
     use AuthorizesBranchPanel;
 
+    private readonly CompanyCapabilityResolver $capabilities;
+
     public function __construct(
         private readonly CompanyAccessService $access,
         private readonly PermissionAuthorizer $authorizer,
         private readonly TripInvoiceService $invoices,
         private readonly TripInvoicePaymentService $payments,
         private readonly FreightAmountPresentation $freightPresentation,
-        private readonly CoreModuleEntitlementResolver $moduleEntitlements = new CoreModuleEntitlementResolver,
-    ) {}
+        ?CompanyCapabilityResolver $capabilities = null,
+    ) {
+        $this->capabilities = $capabilities ?? app(CompanyCapabilityResolver::class);
+    }
 
     public function index(Request $request, Company $company, Branch $branch): RedirectResponse
     {
@@ -319,13 +323,21 @@ class TripInvoiceController extends Controller
     public function paymentsIndex(Request $request, Company $company, Branch $branch): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertPermission($actor, $company, $branch, PermissionCodes::PAYMENT_VIEW);
+
+        $canOwnFleetPayments = $this->capabilities->allowsRead($company, CompanyCapabilities::OWNFLEET_INVOICES)
+            && $this->authorizer->allowsCustomer($actor, PermissionCodes::PAYMENT_VIEW, $company, $branch);
+        $canBrokerPayments = $this->capabilities->allowsRead($company, CompanyCapabilities::BROKER_INVOICES)
+            && $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_INVOICE_VIEW, $company, $branch);
+
+        if (! $canOwnFleetPayments && ! $canBrokerPayments) {
+            abort(403, 'Not authorized to view customer invoice payments.');
+        }
 
         $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
 
         $rows = collect();
 
-        if ($this->authorizer->allowsCustomer($actor, PermissionCodes::PAYMENT_VIEW, $company, $branch)) {
+        if ($canOwnFleetPayments) {
             $tripRows = TripInvoicePayment::query()
                 ->where('company_id', $company->id)
                 ->whereHas('invoice', fn ($q) => $q->where('branch_id', $branch->id))
@@ -352,7 +364,7 @@ class TripInvoiceController extends Controller
             $rows = $rows->merge($tripRows);
         }
 
-        if ($this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_INVOICE_VIEW, $company, $branch)) {
+        if ($canBrokerPayments) {
             $brokerRows = BrokerInvoicePayment::query()
                 ->where('company_id', $company->id)
                 ->whereHas('brokerInvoice', fn ($q) => $q->where('branch_id', $branch->id))
@@ -437,8 +449,13 @@ class TripInvoiceController extends Controller
      */
     private function paymentPermissions(User $actor, Company $company, Branch $branch): array
     {
+        $canOwnFleet = $this->capabilities->allowsRead($company, CompanyCapabilities::OWNFLEET_INVOICES)
+            && $this->authorizer->allowsCustomer($actor, PermissionCodes::PAYMENT_VIEW, $company, $branch);
+        $canBroker = $this->capabilities->allowsRead($company, CompanyCapabilities::BROKER_INVOICES)
+            && $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_INVOICE_VIEW, $company, $branch);
+
         return [
-            'can_view_payments' => $this->authorizer->allowsCustomer($actor, PermissionCodes::PAYMENT_VIEW, $company, $branch),
+            'can_view_payments' => $canOwnFleet || $canBroker,
             'can_record_payment' => $this->authorizer->allowsCustomer($actor, PermissionCodes::PAYMENT_CREATE, $company, $branch),
         ];
     }
@@ -549,8 +566,8 @@ class TripInvoiceController extends Controller
 
     private function assertPermission(User $actor, Company $company, Branch $branch, string $code): void
     {
-        if (! $this->moduleEntitlements->isEntitled($company, SubscriptionModule::OwnFleet)) {
-            abort(403, 'OwnFleet module is not entitled for this company.');
+        if (! $this->capabilities->allowsRead($company, CompanyCapabilities::OWNFLEET_INVOICES)) {
+            abort(403, $this->capabilities->denyMessage($company, CompanyCapabilities::OWNFLEET_INVOICES));
         }
 
         if (! $this->authorizer->allowsCustomer($actor, $code, $company, $branch)) {

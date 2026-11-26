@@ -10,8 +10,6 @@ use App\Domains\Broker\Voucher\TransporterVoucherService;
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
-use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
-use App\Domains\Subscription\Enums\SubscriptionModule;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
@@ -36,7 +34,6 @@ class BrokerDailyPaymentsController extends Controller
         private readonly PermissionAuthorizer $authorizer,
         private readonly TransporterVoucherService $vouchers,
         private readonly FreightAmountPresentation $freightPresentation,
-        private readonly CoreModuleEntitlementResolver $moduleEntitlements = new CoreModuleEntitlementResolver,
     ) {}
 
     public function index(Request $request, Company $company, Branch $branch): Response
@@ -130,10 +127,6 @@ class BrokerDailyPaymentsController extends Controller
 
     private function assertPermission(User $actor, Company $company, Branch $branch, string $code): void
     {
-        if (! $this->moduleEntitlements->isEntitled($company, SubscriptionModule::Broker)) {
-            abort(403, 'Broker module is not entitled for this company.');
-        }
-
         if (! $this->authorizer->allowsCustomer($actor, $code, $company, $branch)) {
             abort(403, 'Not authorized for Broker daily payments.');
         }

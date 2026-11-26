@@ -8,8 +8,8 @@ use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
 use App\Domains\OwnFleet\Enums\TripStatus;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
-use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
-use App\Domains\Subscription\Enums\SubscriptionModule;
+use App\Domains\Subscription\Entitlement\CompanyCapabilities;
+use App\Domains\Subscription\Entitlement\CompanyCapabilityResolver;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\LorryReceipt;
@@ -25,33 +25,18 @@ use App\Support\Presentation\FreightAmountPresentation;
 final class OwnFleetOperationalOverview
 {
     public function __construct(
-        private readonly CoreModuleEntitlementResolver $entitlements = new CoreModuleEntitlementResolver,
+        private readonly ?CompanyCapabilityResolver $capabilities = null,
         private readonly PermissionAuthorizer $authorizer = new PermissionAuthorizer,
         private readonly FreightAmountPresentation $freightPresentation = new FreightAmountPresentation,
     ) {}
 
     /**
-     * @return array{
-     *     entitled: bool,
-     *     can_view_trips: bool,
-     *     can_create_trips: bool,
-     *     can_view_freight: bool,
-     *     metrics: array{
-     *         own_vehicles: int,
-     *         available_vehicles: int,
-     *         vehicles_on_trip: int,
-     *         trips_pending: int,
-     *         trips_in_progress: int,
-     *         trips_completed: int,
-     *         bilty_awaiting_trip: int,
-     *         expenses_recorded: int
-     *     },
-     *     links: array<string, string|null>
-     * }|null
+     * @return array<string, mixed>|null
      */
     public function forBranch(Company $company, Branch $branch, User $actor): ?array
     {
-        if (! $this->entitlements->isEntitled($company, SubscriptionModule::OwnFleet)) {
+        $capabilities = $this->capabilities ?? app(CompanyCapabilityResolver::class);
+        if (! $capabilities->allowsRead($company, CompanyCapabilities::OWNFLEET_LR)) {
             return null;
         }
 

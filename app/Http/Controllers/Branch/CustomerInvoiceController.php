@@ -7,6 +7,8 @@ use App\Domains\CustomerInvoice\Enums\CustomerInvoiceSource;
 use App\Domains\CustomerInvoice\UnifiedCustomerInvoiceReadFacade;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Party\PartyOptionQuery;
+use App\Domains\Subscription\Entitlement\CompanyCapabilities;
+use App\Domains\Subscription\Entitlement\CompanyCapabilityResolver;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
@@ -47,6 +49,21 @@ class CustomerInvoiceController extends Controller
         $customers = app(PartyOptionQuery::class)
             ->forRoles($company, $branch, PartyRoleType::Customer, 300);
 
+        $sourceOptions = [];
+        $capabilities = app(CompanyCapabilityResolver::class);
+        if ($capabilities->allowsRead($company, CompanyCapabilities::OWNFLEET_INVOICES)) {
+            $sourceOptions[] = [
+                'value' => CustomerInvoiceSource::OwnFleet->value,
+                'label' => CustomerInvoiceSource::OwnFleet->label(),
+            ];
+        }
+        if ($capabilities->allowsRead($company, CompanyCapabilities::BROKER_INVOICES)) {
+            $sourceOptions[] = [
+                'value' => CustomerInvoiceSource::Broker->value,
+                'label' => CustomerInvoiceSource::Broker->label(),
+            ];
+        }
+
         return Inertia::render('branch/invoices/index', [
             'filters' => $filters,
             'permissions' => [
@@ -56,10 +73,7 @@ class CustomerInvoiceController extends Controller
                 'can_view_broker' => $this->invoices->canViewBroker($actor, $company, $branch),
                 'can_view_freight' => $maySeeFreight,
             ],
-            'sourceOptions' => collect(CustomerInvoiceSource::cases())->map(fn (CustomerInvoiceSource $source): array => [
-                'value' => $source->value,
-                'label' => $source->label(),
-            ])->values()->all(),
+            'sourceOptions' => $sourceOptions,
             'customerOptions' => $customers,
             'invoices' => [
                 'data' => $page->items(),

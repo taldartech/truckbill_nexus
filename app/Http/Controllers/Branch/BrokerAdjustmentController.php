@@ -11,8 +11,6 @@ use App\Domains\Broker\LorryHire\LorryHireCalculationService;
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
-use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
-use App\Domains\Subscription\Enums\SubscriptionModule;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
@@ -37,7 +35,6 @@ class BrokerAdjustmentController extends Controller
         private readonly BrokerAdjustmentService $adjustments,
         private readonly LorryHireCalculationService $calculations,
         private readonly FreightAmountPresentation $freightPresentation,
-        private readonly CoreModuleEntitlementResolver $moduleEntitlements = new CoreModuleEntitlementResolver,
     ) {}
 
     public function index(Request $request, LorryHire $lorryHire, Company $company, Branch $branch): JsonResponse
@@ -105,17 +102,8 @@ class BrokerAdjustmentController extends Controller
 
     private function assertPermission(User $actor, Company $company, Branch $branch, string $code): void
     {
-        $this->assertBrokerModule($company);
-
         if (! $this->authorizer->allowsCustomer($actor, $code, $company, $branch)) {
             abort(403, 'Not authorized for Broker adjustment operation.');
-        }
-    }
-
-    private function assertBrokerModule(Company $company): void
-    {
-        if (! $this->moduleEntitlements->isEntitled($company, SubscriptionModule::Broker)) {
-            abort(403, 'Broker module is not entitled for this company.');
         }
     }
 
