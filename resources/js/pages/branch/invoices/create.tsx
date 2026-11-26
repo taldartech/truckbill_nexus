@@ -54,7 +54,7 @@ export default function CustomerInvoicesCreate({
             <Head title="Create Customer Invoice" />
             <PageShell
                 title="Create invoice"
-                description="Pick eligible lorry receipts. The system routes to Own Fleet or Broker billing rules."
+                description="Pick eligible lorry receipts. The system routes to Own Fleet, Broker, or Partload billing rules."
                 actions={
                     <Button asChild variant="outline">
                         <Link href={urls.index}>Back to invoices</Link>
@@ -71,7 +71,8 @@ export default function CustomerInvoicesCreate({
                         className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive"
                     >
                         Selected lorry receipts span more than one billing
-                        source. Choose only Own Fleet or only Broker receipts.
+                        source. Choose only Own Fleet, only Broker, or only
+                        Partload receipts.
                     </p>
                 ) : null}
 

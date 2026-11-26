@@ -54,8 +54,9 @@ final class PartloadPendingLoadingService
             $freight = '0.00';
 
             foreach ($bilties as $lr) {
-                $rowPackages = $this->packageTotal($lr);
-                $rowWeight = $this->weightTotalKg($lr);
+                $quantities = $this->challans->effectiveLoadingQuantities($lr);
+                $rowPackages = $this->quantity($quantities['packages'], 0);
+                $rowWeight = $this->quantity($quantities['weight_kg'], 3);
                 $packages = bcadd($packages, $rowPackages, 0);
                 $weightKg = bcadd($weightKg, $rowWeight, 3);
                 $freight = bcadd($freight, $this->money($lr->freight_total), 2);
@@ -78,8 +79,9 @@ final class PartloadPendingLoadingService
      */
     private function row(LorryReceipt $lr): array
     {
-        $packages = $this->packageTotal($lr);
-        $weightKg = $this->weightTotalKg($lr);
+        $quantities = $this->challans->effectiveLoadingQuantities($lr);
+        $packages = $this->quantity($quantities['packages'], 0);
+        $weightKg = $this->quantity($quantities['weight_kg'], 3);
 
         return [
             'id' => $lr->id,
@@ -98,33 +100,8 @@ final class PartloadPendingLoadingService
             'freight_total' => (string) ($lr->freight_total ?? '0'),
             'freight_payment_term' => $lr->freight_payment_term?->value,
             'freight_payment_term_label' => $lr->freight_payment_term?->label(),
+            'is_transshipment' => $quantities['is_transshipment'],
         ];
-    }
-
-    /**
-     * @return numeric-string
-     */
-    private function packageTotal(LorryReceipt $lr): string
-    {
-        $total = '0';
-        foreach ($lr->goodsRows as $row) {
-            $total = bcadd($total, $this->quantity($row->package_count, 0), 0);
-        }
-
-        return $total;
-    }
-
-    /**
-     * @return numeric-string
-     */
-    private function weightTotalKg(LorryReceipt $lr): string
-    {
-        $total = '0.000';
-        foreach ($lr->goodsRows as $row) {
-            $total = bcadd($total, $this->quantity($row->charged_weight ?? $row->actual_weight, 3), 3);
-        }
-
-        return $total;
     }
 
     private function assertEntitled(Company $company): void

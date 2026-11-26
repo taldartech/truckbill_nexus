@@ -36,11 +36,12 @@ if (! function_exists('partloadGrantPermissions')) {
 
 if (! function_exists('partloadWorkspace')) {
     /**
+     * @param  list<string>  $addonCodes
      * @return array<string, mixed>
      */
-    function partloadWorkspace(): array
+    function partloadWorkspace(array $addonCodes = []): array
     {
-        $ctx = tripWorkspace([SubscriptionModule::Partload->value]);
+        $ctx = tripWorkspace([SubscriptionModule::Partload->value], $addonCodes);
         partloadGrantPermissions();
 
         $customer = app(PartyService::class)->create(

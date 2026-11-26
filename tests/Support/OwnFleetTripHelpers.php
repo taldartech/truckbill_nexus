@@ -31,6 +31,7 @@ use App\Models\Permission;
 use App\Models\Role;
 use App\Models\RolePermission;
 use App\Models\Station;
+use App\Models\SubscriptionAddon;
 use App\Models\SubscriptionCatalogueVersion;
 use App\Models\SubscriptionPlan;
 use App\Models\Trip;
@@ -68,6 +69,7 @@ if (! function_exists('tripGrant')) {
 if (! function_exists('tripWorkspace')) {
     /**
      * @param  list<string>  $modules
+     * @param  list<string>  $addonCodes
      * @return array{
      *     owner: User,
      *     company: Company,
@@ -83,8 +85,10 @@ if (! function_exists('tripWorkspace')) {
      *     packageType: OwnerCatalogueItem
      * }
      */
-    function tripWorkspace(array $modules = [SubscriptionModule::OwnFleet->value]): array
-    {
+    function tripWorkspace(
+        array $modules = [SubscriptionModule::OwnFleet->value],
+        array $addonCodes = [],
+    ): array {
         $workspace = app(CompanyWorkspaceService::class);
         $rbac = app(RoleAssignmentService::class);
 
@@ -119,7 +123,7 @@ if (! function_exists('tripWorkspace')) {
         $company = $workspace->createCompany($owner, 'Trip Co');
         $branch = $company->branches()->firstOrFail();
 
-        tripActivatePaidModules($owner, $company, $modules);
+        tripActivatePaidModules($owner, $company, $modules, addonCodes: $addonCodes);
 
         test()->actingAs($owner);
         session()->forget(WebSessionService::SESSION_VERSION_KEY);
@@ -262,12 +266,14 @@ if (! function_exists('tripWorkspace')) {
 if (! function_exists('tripActivatePaidModules')) {
     /**
      * @param  list<string>  $modules
+     * @param  list<string>  $addonCodes
      */
     function tripActivatePaidModules(
         User $owner,
         Company $company,
         array $modules,
         CarbonImmutable $paidThroughDate = new CarbonImmutable('2027-12-31'),
+        array $addonCodes = [],
     ): void {
         CompanySubscriptionTrial::query()->where('owner_user_id', $owner->id)->delete();
 
@@ -283,12 +289,23 @@ if (! function_exists('tripActivatePaidModules')) {
             $planIds[] = $plan->id;
         }
 
+        $addonIds = [];
+        foreach ($addonCodes as $code) {
+            $addon = SubscriptionAddon::query()
+                ->where('catalogue_version_id', $catalogue->id)
+                ->where('code', $code)
+                ->where('is_active', true)
+                ->firstOrFail();
+            $addonIds[] = $addon->id;
+        }
+
         test()->actingAs($owner);
         $draft = app(CompanySubscriptionContractService::class)->createDraftContract(
             actor: $owner,
             company: $company,
             catalogue: $catalogue,
             planIds: $planIds,
+            addonIds: $addonIds,
             tenure: SubscriptionTenure::Yearly,
             commonRenewalDate: $paidThroughDate,
         );

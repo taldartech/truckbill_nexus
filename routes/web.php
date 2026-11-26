@@ -11,12 +11,15 @@ use App\Http\Controllers\Admin\InternalUserController;
 use App\Http\Controllers\Admin\InvitationController;
 use App\Http\Controllers\Admin\LocationController;
 use App\Http\Controllers\Admin\OwnershipTransferController;
+use App\Http\Controllers\Admin\PlatformBillingProfileController;
+use App\Http\Controllers\Admin\RolePermissionController;
 use App\Http\Controllers\Admin\SubscriptionInvoiceController;
 use App\Http\Controllers\Admin\TdsRuleController;
 use App\Http\Controllers\Api\GeographyController;
 use App\Http\Controllers\Api\GeographyQuickCreateController;
 use App\Http\Controllers\Api\PublicLeadController;
 use App\Http\Controllers\Api\PublicLeadOnboardingController;
+use App\Http\Controllers\Branch\Accounting\AccountingActivationController;
 use App\Http\Controllers\Branch\Accounting\AccountingCashBankBookController;
 use App\Http\Controllers\Branch\Accounting\AccountingFundTransferController;
 use App\Http\Controllers\Branch\Accounting\AccountingLedgerController;
@@ -36,6 +39,7 @@ use App\Http\Controllers\Branch\BrokerRegistersController;
 use App\Http\Controllers\Branch\CatalogueController;
 use App\Http\Controllers\Branch\CustomerInvoiceController;
 use App\Http\Controllers\Branch\DocumentAttachmentController;
+use App\Http\Controllers\Branch\DriverAdvanceController;
 use App\Http\Controllers\Branch\EnquiryController;
 use App\Http\Controllers\Branch\LinkedBiltyGroupController;
 use App\Http\Controllers\Branch\LorryHireController;
@@ -44,6 +48,7 @@ use App\Http\Controllers\Branch\MastersHubController;
 use App\Http\Controllers\Branch\PartloadChallanController;
 use App\Http\Controllers\Branch\PartloadDeliveryReceiptController;
 use App\Http\Controllers\Branch\PartloadInTransitController;
+use App\Http\Controllers\Branch\PartloadInvoiceController;
 use App\Http\Controllers\Branch\PartloadInwardController;
 use App\Http\Controllers\Branch\PartloadMainChallanController;
 use App\Http\Controllers\Branch\PartloadPendingDeliveryController;
@@ -57,6 +62,7 @@ use App\Http\Controllers\Branch\TripInvoiceController;
 use App\Http\Controllers\Branch\TyreLayoutController;
 use App\Http\Controllers\Branch\VehicleController;
 use App\Http\Controllers\Branch\VehicleDriverController;
+use App\Http\Controllers\Branch\VendorExpensePaymentController;
 use App\Http\Controllers\HealthController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\InvitationAcceptanceController;
@@ -80,6 +86,7 @@ use App\Http\Controllers\Workspace\SelectCompanyController;
 use App\Http\Controllers\Workspace\WorkspaceContextController;
 use App\Http\Controllers\Workspace\WorkspaceLandingController;
 use App\Http\Controllers\Workspace\WorkspaceNoAccessController;
+use App\Http\Middleware\EnforceWebSessionPolicy;
 use App\Http\Middleware\LeadOnboardingCors;
 use Illuminate\Support\Facades\Route;
 
@@ -87,8 +94,12 @@ Route::get('/', HomeController::class)->name('home');
 
 Route::get('/health/ready', [HealthController::class, 'ready'])->name('health.ready');
 
-Route::post('/webhooks/razorpay', RazorpayWebhookController::class)->name('webhooks.razorpay');
-Route::post('/webhooks/enquiries', EnquiryWebhookController::class)->name('webhooks.enquiries');
+Route::post('/webhooks/razorpay', RazorpayWebhookController::class)
+    ->withoutMiddleware([EnforceWebSessionPolicy::class])
+    ->name('webhooks.razorpay');
+Route::post('/webhooks/enquiries', EnquiryWebhookController::class)
+    ->withoutMiddleware([EnforceWebSessionPolicy::class])
+    ->name('webhooks.enquiries');
 
 Route::post('/api/v1/public/leads', [PublicLeadController::class, 'store'])
     ->middleware(['website.lead.key', 'throttle:30,1'])
@@ -176,19 +187,27 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/management/users/create', [OwnerGlobalUsersController::class, 'createGlobal'])->name('owner.users.create.global');
     Route::post('/management/users', [OwnerGlobalUsersController::class, 'storeGlobal'])->name('owner.users.store.global');
     Route::get('/management/subscriptions', [OwnerSubscriptionsController::class, 'index'])->name('owner.subscriptions.index');
+    // Simplified single-screen Subscription Purchase / Upgrade / Renewal (explicit Company; never session-dependent).
+    Route::get('/management/subscription/purchase', [OwnerSubscriptionController::class, 'purchaseGlobal'])
+        ->name('owner.subscription.purchase');
+    Route::get('/management/companies/{company}/subscription/purchase', [OwnerSubscriptionController::class, 'purchaseForCompany'])
+        ->name('owner.companies.subscription.purchase');
+    Route::post('/management/companies/{company}/subscription/quote', [OwnerSubscriptionController::class, 'quote'])
+        ->name('owner.companies.subscription.quote');
+    Route::post('/management/companies/{company}/subscription/purchase', [OwnerSubscriptionController::class, 'storePurchase'])
+        ->name('owner.companies.subscription.store');
+    Route::get('/management/companies/{company}/subscription/checkout/{intent}', [OwnerSubscriptionController::class, 'checkoutIntent'])
+        ->name('owner.companies.subscription.checkout');
+    Route::post('/management/companies/{company}/subscription/checkout/{intent}/verify', [OwnerSubscriptionController::class, 'verifyCheckoutIntent'])
+        ->name('owner.companies.subscription.checkout.verify');
+    Route::post('/management/companies/{company}/subscription/checkout/{intent}/simulate', [OwnerSubscriptionController::class, 'simulateCheckoutIntent'])
+        ->name('owner.companies.subscription.checkout.simulate');
     Route::get('/management/audit', OwnerGlobalAuditController::class)->name('owner.audit.all');
 
     // Company-scoped management — company resolved from session (management.company).
     // Prefer explicit /management/companies/{company}/… routes for mutations when available.
     Route::middleware('management.company')->group(function () {
         Route::get('/management/subscription', [OwnerSubscriptionController::class, 'overview'])->name('owner.subscription');
-        Route::get('/management/subscription/catalogue', [OwnerSubscriptionController::class, 'catalogue'])->name('owner.subscription.catalogue');
-        Route::get('/management/subscription/drafts', [OwnerSubscriptionController::class, 'drafts'])->name('owner.subscription.drafts');
-        Route::post('/management/subscription/drafts', [OwnerSubscriptionController::class, 'storeDraft'])->name('owner.subscription.drafts.store');
-        Route::get('/management/subscription/drafts/{subscription}/edit', [OwnerSubscriptionController::class, 'editDraft'])
-            ->name('owner.subscription.drafts.edit');
-        Route::put('/management/subscription/drafts/{subscription}', [OwnerSubscriptionController::class, 'updateDraft'])
-            ->name('owner.subscription.drafts.update');
         Route::get('/management/subscription/credits', [OwnerSubscriptionController::class, 'credits'])->name('owner.subscription.credits');
         Route::get('/management/subscription/payments', [OwnerSubscriptionController::class, 'payments'])->name('owner.subscription.payments');
         Route::get('/management/subscription/invoices', [OwnerSubscriptionController::class, 'invoices'])->name('owner.subscription.invoices');
@@ -197,11 +216,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/management/subscription/invoices/{invoice}/email', [OwnerSubscriptionController::class, 'invoiceEmail'])->name('owner.subscription.invoices.email');
         Route::post('/management/subscription/cancel', [OwnerSubscriptionController::class, 'requestCancellation'])->name('owner.subscription.cancel');
         Route::post('/management/subscription/cancel/withdraw', [OwnerSubscriptionController::class, 'withdrawCancellation'])->name('owner.subscription.cancel.withdraw');
-        Route::get('/management/subscription/drafts/{subscription}/checkout', [OwnerSubscriptionController::class, 'checkout'])
+        Route::get('/management/subscription/checkout/{subscription}', [OwnerSubscriptionController::class, 'checkout'])
             ->name('owner.subscription.checkout');
-        Route::post('/management/subscription/drafts/{subscription}/checkout/verify', [OwnerSubscriptionController::class, 'verifyCheckout'])
+        Route::post('/management/subscription/checkout/{subscription}/verify', [OwnerSubscriptionController::class, 'verifyCheckout'])
             ->name('owner.subscription.checkout.verify');
-        Route::post('/management/subscription/drafts/{subscription}/checkout/simulate', [OwnerSubscriptionController::class, 'simulateCheckout'])
+        Route::post('/management/subscription/checkout/{subscription}/simulate', [OwnerSubscriptionController::class, 'simulateCheckout'])
             ->name('owner.subscription.checkout.simulate');
         Route::post('/management/subscription/renew', [OwnerSubscriptionController::class, 'renew'])
             ->name('owner.subscription.renew');
@@ -382,12 +401,23 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/partload/delivery-receipts/create', [PartloadDeliveryReceiptController::class, 'create'])->name('branch.partload.delivery-receipts.create');
             Route::post('/partload/delivery-receipts', [PartloadDeliveryReceiptController::class, 'store'])->name('branch.partload.delivery-receipts.store');
         });
+        Route::middleware('company.capability:partload.invoices')->group(function () {
+            Route::get('/partload/invoices', [PartloadInvoiceController::class, 'index'])->name('branch.partload.invoices.index');
+            Route::get('/partload/invoices/create', [PartloadInvoiceController::class, 'create'])->name('branch.partload.invoices.create');
+            Route::post('/partload/invoices', [PartloadInvoiceController::class, 'store'])->name('branch.partload.invoices.store');
+            Route::get('/partload/invoices/{partloadInvoice}', [PartloadInvoiceController::class, 'show'])->name('branch.partload.invoices.show');
+            Route::post('/partload/invoices/{partloadInvoice}/payments', [PartloadInvoiceController::class, 'storePayment'])->name('branch.partload.invoices.payments.store');
+            Route::post('/partload/invoices/{partloadInvoice}/cancel', [PartloadInvoiceController::class, 'cancel'])->name('branch.partload.invoices.cancel');
+        });
 
         Route::middleware('company.capability:accounting')->group(function () {
             Route::get('/accounting/vouchers', [AccountingVoucherController::class, 'index'])->name('branch.accounting.vouchers.index');
-            Route::get('/accounting/vouchers/create', [AccountingVoucherController::class, 'create'])->name('branch.accounting.vouchers.create');
+            Route::get('/accounting/vouchers/create', [AccountingVoucherController::class, 'create'])
+                ->middleware('company.capability:accounting,mutate')
+                ->name('branch.accounting.vouchers.create');
             Route::post('/accounting/vouchers', [AccountingVoucherController::class, 'store'])->name('branch.accounting.vouchers.store');
             Route::get('/accounting/vouchers/{accountingVoucher}', [AccountingVoucherController::class, 'show'])->name('branch.accounting.vouchers.show');
+            Route::post('/accounting/vouchers/{accountingVoucher}/reverse', [AccountingVoucherController::class, 'reverse'])->name('branch.accounting.vouchers.reverse');
             Route::get('/accounting/ledgers', [AccountingLedgerController::class, 'index'])->name('branch.accounting.ledgers.index');
             Route::post('/accounting/ledgers/quick', [AccountingLedgerQuickCreateController::class, 'store'])->name('branch.accounting.ledgers.quick-store');
             Route::get('/accounting/ledgers/{glLedger}', [AccountingLedgerController::class, 'show'])->name('branch.accounting.ledgers.show');
@@ -398,9 +428,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/accounting/reports/bank-book', [AccountingCashBankBookController::class, 'bank'])->name('branch.accounting.reports.bank-book');
             Route::get('/accounting/reports/outstanding', [AccountingOutstandingController::class, 'index'])->name('branch.accounting.reports.outstanding');
             Route::get('/accounting/reports/tax-summary', [AccountingOutstandingController::class, 'tax'])->name('branch.accounting.reports.tax-summary');
-            Route::get('/accounting/fund-transfers/create', [AccountingFundTransferController::class, 'create'])->name('branch.accounting.fund-transfers.create');
+            Route::get('/accounting/reports/reconciliation', [AccountingActivationController::class, 'reconciliation'])->name('branch.accounting.reports.reconciliation');
+            Route::get('/accounting/activation', [AccountingActivationController::class, 'show'])->name('branch.accounting.activation.show');
+            Route::post('/accounting/activation/dry-run', [AccountingActivationController::class, 'dryRun'])->name('branch.accounting.activation.dry-run');
+            Route::post('/accounting/activation/confirm', [AccountingActivationController::class, 'confirm'])->name('branch.accounting.activation.confirm');
+            Route::post('/accounting/activation/catch-up', [AccountingActivationController::class, 'catchUp'])->name('branch.accounting.activation.catch-up');
+            Route::get('/accounting/fund-transfers/create', [AccountingFundTransferController::class, 'create'])
+                ->middleware('company.capability:accounting,mutate')
+                ->name('branch.accounting.fund-transfers.create');
             Route::post('/accounting/fund-transfers', [AccountingFundTransferController::class, 'store'])->name('branch.accounting.fund-transfers.store');
-            Route::get('/accounting/opening-balances/create', [AccountingOpeningBalanceController::class, 'create'])->name('branch.accounting.opening-balances.create');
+            Route::get('/accounting/opening-balances/create', [AccountingOpeningBalanceController::class, 'create'])
+                ->middleware('company.capability:accounting,mutate')
+                ->name('branch.accounting.opening-balances.create');
             Route::post('/accounting/opening-balances', [AccountingOpeningBalanceController::class, 'store'])->name('branch.accounting.opening-balances.store');
         });
 
@@ -538,11 +577,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::post('/expense-categories', [CatalogueController::class, 'storeExpenseCategories'])->name('branch.expense-categories.store');
         });
 
+        Route::middleware('company.capability:ownfleet.trip_expenses')->group(function () {
+            Route::post('/vendor-payments', [VendorExpensePaymentController::class, 'store'])->name('branch.vendor-payments.store');
+        });
+
         Route::middleware('company.capability:ownfleet.vehicle_drivers')->group(function () {
             Route::get('/vehicle-drivers', [VehicleDriverController::class, 'index'])->name('branch.vehicle-drivers.index');
             Route::get('/vehicle-drivers/{vehicle}/history', [VehicleDriverController::class, 'history'])->name('branch.vehicle-drivers.history');
             Route::post('/vehicle-drivers/{vehicle}/assign', [VehicleDriverController::class, 'assign'])->name('branch.vehicle-drivers.assign');
             Route::post('/vehicle-drivers/{vehicle}/remove', [VehicleDriverController::class, 'remove'])->name('branch.vehicle-drivers.remove');
+            Route::post('/driver-advances', [DriverAdvanceController::class, 'store'])->name('branch.driver-advances.store');
         });
 
         Route::middleware('company.capability:ownfleet.driver_attendance')->group(function () {
@@ -699,10 +743,36 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/admin/crm/tickets/{ticket}/assign', [CrmSupportTicketController::class, 'assign'])
         ->name('admin.crm.tickets.assign');
 
+    Route::get('/admin/billing-profile', [PlatformBillingProfileController::class, 'index'])
+        ->name('admin.billing-profile');
+    Route::post('/admin/billing-profile', [PlatformBillingProfileController::class, 'update'])
+        ->name('admin.billing-profile.update');
+    Route::get('/admin/billing-profile/logo', [PlatformBillingProfileController::class, 'logo'])
+        ->name('admin.billing-profile.logo');
+
+    Route::get('/admin/roles', [RolePermissionController::class, 'index'])
+        ->name('admin.roles.index');
+    Route::post('/admin/roles', [RolePermissionController::class, 'store'])
+        ->name('admin.roles.store');
+    Route::get('/admin/roles/{role}/edit', [RolePermissionController::class, 'edit'])
+        ->name('admin.roles.edit');
+    Route::put('/admin/roles/{role}', [RolePermissionController::class, 'update'])
+        ->name('admin.roles.update');
+    Route::put('/admin/roles/{role}/permissions', [RolePermissionController::class, 'syncPermissions'])
+        ->name('admin.roles.permissions.sync');
+    Route::post('/admin/roles/{role}/toggle', [RolePermissionController::class, 'toggle'])
+        ->name('admin.roles.toggle');
+
     Route::get('/admin/subscription-invoices', [SubscriptionInvoiceController::class, 'index'])
         ->name('admin.subscription-invoices');
+    Route::get('/admin/subscription-invoices/{invoice}', [SubscriptionInvoiceController::class, 'show'])
+        ->name('admin.subscription-invoices.show');
+    Route::get('/admin/subscription-invoices/{invoice}/download', [SubscriptionInvoiceController::class, 'download'])
+        ->name('admin.subscription-invoices.download');
     Route::post('/admin/subscription-invoices/{invoice}/approve', [SubscriptionInvoiceController::class, 'approve'])
         ->name('admin.subscription-invoices.approve');
+    Route::post('/admin/subscription-invoices/{invoice}/credit-note', [SubscriptionInvoiceController::class, 'issueCreditNote'])
+        ->name('admin.subscription-invoices.credit-note');
 
     Route::get('/admin/gst-rates', [GstRateController::class, 'index'])
         ->name('admin.gst-rates');

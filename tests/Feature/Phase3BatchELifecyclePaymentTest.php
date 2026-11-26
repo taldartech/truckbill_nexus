@@ -307,18 +307,18 @@ test('invoice number approval is immutable and email failure does not reverse ap
 
     $invoices = app(SubscriptionInvoiceService::class);
     $draft = $invoices->createDraftFromPayment($intent);
-    $awaiting = $invoices->submitForNumberApproval($draft, 'TB/2026-2027/0009');
-    $approved = $invoices->approveNumber($approver, $awaiting, 'TB/2026-2027/0009');
-    expect($approved->status)->toBe('approved')
-        ->and($approved->approved_number)->toBe('TB/2026-2027/0009');
+    $issuedNumber = (string) $draft->invoice_number;
+    $approved = $invoices->approveNumber($approver, $draft, 'TB/2026-2027/0009');
+    expect($approved->status)->toBe('issued')
+        ->and($approved->approved_number)->toBe($issuedNumber);
 
     expect(fn () => $approved->update(['approved_number' => 'HACK']))
         ->toThrow(SubscriptionDomainException::class);
 
     $failedEmail = $invoices->recordEmailAttempt($approved->fresh(), false, 'SMTP down');
-    expect($failedEmail->status)->toBe('approved')
+    expect($failedEmail->status)->toBe('issued')
         ->and($failedEmail->email_status)->toBe('failed')
-        ->and($failedEmail->approved_number)->toBe('TB/2026-2027/0009');
+        ->and($failedEmail->approved_number)->toBe($issuedNumber);
 });
 
 test('storage reconciliation reports allocation thresholds', function () {

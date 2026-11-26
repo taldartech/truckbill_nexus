@@ -2,6 +2,7 @@
 
 namespace App\Domains\OwnFleet\Invoice;
 
+use App\Domains\Accounting\OperationalAccountingPoster;
 use App\Domains\OwnFleet\Invoice\Enums\TripInvoicePaymentStatus;
 use App\Domains\OwnFleet\Invoice\Enums\TripInvoiceStatus;
 use App\Domains\OwnFleet\Invoice\Exceptions\TripInvoiceAuthorizationException;
@@ -38,6 +39,7 @@ final class TripInvoicePaymentService
         private readonly PermissionAuthorizer $authorizer = new PermissionAuthorizer,
         private readonly CoreModuleEntitlementResolver $entitlements = new CoreModuleEntitlementResolver,
         private readonly SubscriptionEntitlementGate $entitlementGate = new SubscriptionEntitlementGate,
+        private readonly OperationalAccountingPoster $accounting = new OperationalAccountingPoster,
     ) {}
 
     /**
@@ -159,7 +161,10 @@ final class TripInvoicePaymentService
                     after: $payment->toArray(),
                 );
 
-                return $payment->fresh('paymentMode') ?? $payment;
+                $freshPayment = $payment->fresh('paymentMode') ?? $payment;
+                $this->accounting->postTripInvoicePayment($freshPayment, $locked->fresh() ?? $locked, $actor);
+
+                return $freshPayment;
             });
         });
     }

@@ -16,6 +16,8 @@ use Illuminate\Support\Str;
  * @property PartloadMainChallanStatus $status
  * @property VehicleOwnership $ownership_mode
  * @property Carbon|null $main_challan_date
+ * @property Carbon|null $dispatched_at
+ * @property Carbon|null $cancelled_at
  * @property-read Collection<int, PartloadMainChallanLine> $lines
  */
 class PartloadMainChallan extends Model

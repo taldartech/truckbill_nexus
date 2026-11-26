@@ -24,7 +24,7 @@ afterEach(function () {
 });
 
 test('profit and loss and balance sheet reconcile from posted vouchers', function () {
-    $ctx = tripWorkspace(['broker']);
+    $ctx = tripWorkspace(['broker'], ['accounting']);
     foreach ([
         PermissionCodes::BRANCH_ACCOUNTING_VIEW,
         PermissionCodes::BRANCH_ACCOUNTING_VOUCHER_CREATE,

@@ -8,6 +8,7 @@ use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Party\PartyOptionQuery;
 use App\Domains\Master\Support\MasterAccess;
 use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
+use App\Domains\OwnFleet\Driver\DriverAdvanceService;
 use App\Domains\OwnFleet\Driver\VehicleDriverAssignmentService;
 use App\Domains\OwnFleet\Driver\VehicleDriverAttendanceService;
 use App\Domains\OwnFleet\Enums\DriverAttendanceStatus;
@@ -17,12 +18,14 @@ use App\Domains\Subscription\Entitlement\CompanyCapabilities;
 use App\Domains\Subscription\Entitlement\CompanyCapabilityResolver;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Controller;
+use App\Models\BankCashAccount;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\PartyRole;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleDriverAssignment;
+use App\Support\Presentation\FreightAmountPresentation;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -89,6 +92,24 @@ class VehicleDriverController extends Controller
         $canMutateDrivers = $this->canMutate($actor, $company, $branch, CompanyCapabilities::OWNFLEET_VEHICLE_DRIVERS);
         $canMarkAttendance = $this->canMutate($actor, $company, $branch, CompanyCapabilities::OWNFLEET_DRIVER_ATTENDANCE);
 
+        $canViewAdvances = (int) $actor->id === (int) $company->owner_user_id
+            || $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_VIEW, $company, $branch);
+        $maySeeFreight = app(FreightAmountPresentation::class)->viewerMaySeeFreight($actor, $company, $branch);
+
+        $driverAdvanceSummary = $canViewAdvances
+            ? app(DriverAdvanceService::class)->summaryForBranch($company, $branch, $actor, maySeeFreight: $maySeeFreight)
+            : ['entries' => [], 'driver_balances' => [], 'total_outstanding' => null];
+
+        $bankCashAccounts = BankCashAccount::query()
+            ->where('company_id', $company->id)
+            ->whereNull('deleted_at')
+            ->where(fn ($query) => $query->whereNull('branch_id')->orWhere('branch_id', $branch->id))
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (BankCashAccount $acc): array => ['id' => $acc->id, 'name' => $acc->name])
+            ->values()
+            ->all();
+
         return Inertia::render('branch/masters/vehicle-drivers/index', [
             'company' => $this->companyPayload($company),
             'branch' => $this->branchPayload($branch),
@@ -101,6 +122,10 @@ class VehicleDriverController extends Controller
                 'can_assign' => $canMutateDrivers,
                 'can_remove' => $canMutateDrivers,
                 'can_mark_attendance' => $canMarkAttendance,
+                'can_record_advance' => $canMutateDrivers
+                    && ((int) $actor->id === (int) $company->owner_user_id
+                        || $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_EDIT, $company, $branch)),
+                'can_view_freight' => $maySeeFreight,
                 'can_create_party' => $this->capabilities->allowsMutate($company, CompanyCapabilities::MASTERS_PARTIES)
                     && $this->authorizer->allowsCustomer($actor, PermissionCodes::PLATFORM_CREATE, $company, $branch),
                 'can_create_vehicle' => $this->capabilities->allowsMutate($company, CompanyCapabilities::VEHICLE_OWNERSHIP_OWN)
@@ -120,12 +145,15 @@ class VehicleDriverController extends Controller
                     'clear_url' => route('branch.vehicle-drivers.attendance.clear', [$row['vehicle_id']], absolute: false),
                 ]), $attendanceOverview['rows']),
             ],
+            'driverAdvanceSummary' => $driverAdvanceSummary,
+            'bankCashAccounts' => $bankCashAccounts,
             'driverOptions' => $driverOptions,
             'ownVehicleOptions' => $ownVehicleOptions,
             'urls' => [
                 'index' => route('branch.vehicle-drivers.index', absolute: false),
                 'assign_base' => '/vehicle-drivers',
                 'attendance_mark' => route('branch.vehicle-drivers.attendance.mark', absolute: false),
+                'driver_advance_store' => route('branch.driver-advances.store', absolute: false),
                 'parties_options' => route('branch.parties.options', absolute: false),
                 'parties_store' => route('branch.parties.store', absolute: false),
                 'vehicles_index' => route('branch.vehicles.index', absolute: false),

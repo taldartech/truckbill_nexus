@@ -31,7 +31,7 @@ afterEach(function () {
  */
 function openingBalanceHttpContext(): array
 {
-    $ctx = tripWorkspace(['broker']);
+    $ctx = tripWorkspace(['broker'], ['accounting']);
     tripGrant('customer.admin', PermissionCodes::BRANCH_ACCOUNTING_VOUCHER_CREATE);
     tripGrant('customer.admin', PermissionCodes::BRANCH_ACCOUNTING_VIEW);
     tripActivate($ctx['company'], $ctx['branch']);

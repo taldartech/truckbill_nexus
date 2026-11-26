@@ -12,6 +12,7 @@ use App\Domains\Numbering\Enums\DocumentNumberScopeType;
 use App\Domains\Numbering\Enums\DocumentNumberType;
 use App\Domains\Partload\Enums\PartloadChallanStatus;
 use App\Domains\Partload\Enums\PartloadFreightPaymentTerm;
+use App\Domains\Partload\Enums\PartloadInwardDisposition;
 use App\Domains\Partload\Exceptions\PartloadAuthorizationException;
 use App\Domains\Partload\Exceptions\PartloadConflictException;
 use App\Domains\Partload\Exceptions\PartloadDomainException;
@@ -23,9 +24,9 @@ use App\Domains\Subscription\Enums\SubscriptionModule;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\LorryReceipt;
-use App\Models\LrGoodsRow;
 use App\Models\PartloadChallan;
 use App\Models\PartloadChallanLine;
+use App\Models\PartloadInwardLine;
 use App\Models\Party;
 use App\Models\PartyRole;
 use App\Models\Station;
@@ -113,7 +114,7 @@ final class PartloadChallanService
     }
 
     /**
-     * Eligible Pending Partload Bilties not already on an active Challan line.
+     * Eligible Pending Partload Bilties + transshipment Forward-disposition Bilties in this branch.
      *
      * @return Collection<int, LorryReceipt>
      */
@@ -138,7 +139,7 @@ final class PartloadChallanService
             })
             ->pluck('lorry_receipt_id');
 
-        $builder = LorryReceipt::query()
+        $pendingBuilder = LorryReceipt::query()
             ->where('company_id', $company->id)
             ->where('branch_id', $branch->id)
             ->where('workflow_context', LrWorkflowContext::Partload->value)
@@ -150,18 +151,138 @@ final class PartloadChallanService
             ->orderBy('lr_number');
 
         if ($loadedIds->isNotEmpty()) {
-            $builder->whereNotIn('id', $loadedIds->all());
+            $pendingBuilder->whereNotIn('id', $loadedIds->all());
         }
 
         if (filled($fromStationId)) {
-            $builder->where('from_station_id', $fromStationId);
+            $pendingBuilder->where('from_station_id', $fromStationId);
         }
 
         if (filled($toStationId)) {
-            $builder->where('to_station_id', $toStationId);
+            $pendingBuilder->where('to_station_id', $toStationId);
         }
 
-        return $builder->limit(200)->get();
+        $pending = $pendingBuilder->limit(200)->get();
+
+        $activeOnDraftOrDispatchedIds = PartloadChallanLine::query()
+            ->where('company_id', $company->id)
+            ->whereNull('deleted_at')
+            ->whereHas('challan', function (Builder $query): void {
+                $query->whereNull('deleted_at')
+                    ->whereIn('status', [
+                        PartloadChallanStatus::Draft->value,
+                        PartloadChallanStatus::Dispatched->value,
+                    ]);
+            })
+            ->pluck('lorry_receipt_id');
+
+        $transshipBuilder = LorryReceipt::query()
+            ->where('company_id', $company->id)
+            ->where('workflow_context', LrWorkflowContext::Partload->value)
+            ->where('status', LrStatus::InProgress->value)
+            ->whereNull('deleted_at')
+            ->whereNull('cancelled_at')
+            ->whereDoesntHave('partloadDeliveryReceipt', fn (Builder $q) => $q->whereNull('deleted_at'))
+            ->whereHas('partloadInwardLines', function (Builder $q) use ($branch, $fromStationId): void {
+                $q->whereNull('deleted_at')
+                    ->where('disposition', PartloadInwardDisposition::Forward->value)
+                    ->whereHas('inwardRegister', function (Builder $reg) use ($branch, $fromStationId): void {
+                        $reg->where('branch_id', $branch->id)->whereNull('deleted_at');
+                        if (filled($fromStationId)) {
+                            $reg->where('to_station_id', $fromStationId);
+                        }
+                    });
+            })
+            ->with([
+                'billingCustomer',
+                'consignor',
+                'consignee',
+                'fromStation',
+                'toStation',
+                'goodsRows',
+                'partloadChallanLines' => fn ($q) => $q->whereNull('deleted_at')->whereHas('challan', fn (Builder $c) => $c->whereNull('deleted_at')->whereIn('status', [
+                    PartloadChallanStatus::Draft->value,
+                    PartloadChallanStatus::Dispatched->value,
+                    PartloadChallanStatus::Received->value,
+                ])),
+                'partloadInwardLines' => fn ($q) => $q->whereNull('deleted_at')->with('inwardRegister')->orderByDesc('created_at'),
+            ])
+            ->orderBy('lr_date')
+            ->orderBy('lr_number');
+
+        if ($activeOnDraftOrDispatchedIds->isNotEmpty()) {
+            $transshipBuilder->whereNotIn('id', $activeOnDraftOrDispatchedIds->all());
+        }
+
+        if (filled($toStationId)) {
+            $transshipBuilder->where('to_station_id', $toStationId);
+        }
+
+        $transshipment = $transshipBuilder->limit(200)->get()->filter(
+            fn (LorryReceipt $lr): bool => $this->isTransshippableAtBranch($lr, $branch, $fromStationId)
+        );
+
+        return $pending->concat($transshipment)->values();
+    }
+
+    /**
+     * @return array{packages: numeric-string, weight_kg: numeric-string, is_transshipment: bool}
+     */
+    public function effectiveLoadingQuantities(LorryReceipt $lr): array
+    {
+        if ($lr->status === LrStatus::InProgress) {
+            /** @var PartloadInwardLine|null $latestForward */
+            $latestForward = $lr->partloadInwardLines
+                ->whereNull('deleted_at')
+                ->sortByDesc('created_at')
+                ->first();
+
+            if ($latestForward !== null && $latestForward->disposition === PartloadInwardDisposition::Forward) {
+                return [
+                    'packages' => number_format((float) $latestForward->packages, 3, '.', ''),
+                    'weight_kg' => number_format((float) $latestForward->weight_kg, 3, '.', ''),
+                    'is_transshipment' => true,
+                ];
+            }
+        }
+
+        $packages = '0.000';
+        $weight = '0.000';
+        foreach ($lr->goodsRows->whereNull('deleted_at') as $row) {
+            $packages = number_format((float) $packages + (float) ($row->package_count ?? 0), 3, '.', '');
+            $weight = number_format((float) $weight + (float) ($row->charged_weight ?? $row->actual_weight ?? 0), 3, '.', '');
+        }
+
+        return [
+            'packages' => $packages,
+            'weight_kg' => $weight,
+            'is_transshipment' => false,
+        ];
+    }
+
+    private function isTransshippableAtBranch(LorryReceipt $lr, Branch $branch, ?string $fromStationId = null): bool
+    {
+        $activeChallanCount = $lr->partloadChallanLines->count();
+        $inwardLines = $lr->partloadInwardLines->whereNull('deleted_at')->sortByDesc('created_at')->values();
+        if ($inwardLines->isEmpty() || $activeChallanCount !== $inwardLines->count()) {
+            return false;
+        }
+
+        /** @var PartloadInwardLine $latest */
+        $latest = $inwardLines->first();
+        if ($latest->disposition !== PartloadInwardDisposition::Forward) {
+            return false;
+        }
+
+        if ($latest->inwardRegister->branch_id !== $branch->id) {
+            return false;
+        }
+
+        if (filled($fromStationId) && $latest->inwardRegister->to_station_id !== $fromStationId) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
@@ -252,8 +373,8 @@ final class PartloadChallanService
                     $allocation = $this->numbers->allocateNext(
                         companyId: $company->id,
                         documentType: DocumentNumberType::PartloadChallan,
-                        scopeType: DocumentNumberScopeType::Branch,
-                        branchId: $branch->id,
+                        scopeType: DocumentNumberScopeType::Company,
+                        branchId: null,
                     );
 
                     $lineSnapshots = $this->buildLineSnapshots($bilties);
@@ -381,8 +502,8 @@ final class PartloadChallanService
             ]);
         }
 
-        return $this->auditedTransaction->run(function () use ($challan, $company, $branch, $remark): PartloadChallan {
-            return $this->withTenant($company, $branch, function () use ($challan, $remark): PartloadChallan {
+        return $this->auditedTransaction->run(function () use ($challan, $actor, $company, $branch, $remark): PartloadChallan {
+            return $this->withTenant($company, $branch, function () use ($challan, $actor, $remark): PartloadChallan {
                 $locked = PartloadChallan::query()
                     ->whereKey($challan->id)
                     ->lockForUpdate()
@@ -408,10 +529,19 @@ final class PartloadChallanService
                         ->whereNull('deleted_at')
                         ->pluck('lorry_receipt_id');
 
-                    LorryReceipt::query()
-                        ->whereIn('id', $lineLrIds)
-                        ->where('status', LrStatus::InProgress->value)
-                        ->update(['status' => LrStatus::Pending->value]);
+                    $priorInwardLrIds = PartloadInwardLine::query()
+                        ->where('company_id', $locked->company_id)
+                        ->whereIn('lorry_receipt_id', $lineLrIds)
+                        ->whereNull('deleted_at')
+                        ->pluck('lorry_receipt_id');
+
+                    $revertableIds = $lineLrIds->diff($priorInwardLrIds)->values();
+                    if ($revertableIds->isNotEmpty()) {
+                        LorryReceipt::query()
+                            ->whereIn('id', $revertableIds)
+                            ->where('status', LrStatus::InProgress->value)
+                            ->update(['status' => LrStatus::Pending->value]);
+                    }
                 }
 
                 PartloadChallanLine::query()
@@ -435,6 +565,8 @@ final class PartloadChallanService
                     cancellationReason: $remark,
                     cancellationAt: $locked->cancelled_at ?? now(),
                 );
+
+                $this->accounting->postPartloadChallanCancelled($locked, $actor, $remark);
 
                 return $locked->fresh() ?? $locked;
             });
@@ -502,23 +634,31 @@ final class PartloadChallanService
     {
         $bilties = LorryReceipt::query()
             ->where('company_id', $company->id)
-            ->where('branch_id', $branch->id)
             ->where('workflow_context', LrWorkflowContext::Partload->value)
             ->whereIn('id', $lrIds)
             ->whereNull('deleted_at')
-            ->with('goodsRows')
+            ->with([
+                'goodsRows',
+                'partloadDeliveryReceipt',
+                'partloadChallanLines' => fn ($q) => $q->whereNull('deleted_at')->whereHas('challan', fn (Builder $c) => $c->whereNull('deleted_at')->whereIn('status', [
+                    PartloadChallanStatus::Draft->value,
+                    PartloadChallanStatus::Dispatched->value,
+                    PartloadChallanStatus::Received->value,
+                ])),
+                'partloadInwardLines' => fn ($q) => $q->whereNull('deleted_at')->with('inwardRegister')->orderByDesc('created_at'),
+            ])
             ->get();
 
         if ($bilties->count() !== count($lrIds)) {
             throw ValidationException::withMessages([
-                'lorry_receipt_ids' => 'One or more Bilties were not found in this branch.',
+                'lorry_receipt_ids' => 'One or more Bilties were not found in this company.',
             ]);
         }
 
         foreach ($bilties as $bilty) {
-            if ($bilty->status !== LrStatus::Pending || $bilty->cancelled_at !== null) {
+            if ($bilty->cancelled_at !== null) {
                 throw ValidationException::withMessages([
-                    'lorry_receipt_ids' => "Bilty {$bilty->lr_number} is not eligible for loading.",
+                    'lorry_receipt_ids' => "Bilty {$bilty->lr_number} is cancelled.",
                 ]);
             }
 
@@ -528,25 +668,32 @@ final class PartloadChallanService
                 ]);
             }
 
-            $alreadyLoaded = PartloadChallanLine::query()
-                ->where('company_id', $company->id)
-                ->where('lorry_receipt_id', $bilty->id)
-                ->whereNull('deleted_at')
-                ->whereHas('challan', function (Builder $query): void {
-                    $query->whereNull('deleted_at')
-                        ->whereIn('status', [
-                            PartloadChallanStatus::Draft->value,
-                            PartloadChallanStatus::Dispatched->value,
-                            PartloadChallanStatus::Received->value,
-                        ]);
-                })
-                ->exists();
+            if ($bilty->status === LrStatus::Pending) {
+                if ($bilty->branch_id !== $branch->id) {
+                    throw ValidationException::withMessages([
+                        'lorry_receipt_ids' => "Bilty {$bilty->lr_number} does not belong to this branch.",
+                    ]);
+                }
 
-            if ($alreadyLoaded) {
-                throw new PartloadConflictException(
-                    "Bilty {$bilty->lr_number} is already loaded on an active Challan.",
-                );
+                if ($bilty->partloadChallanLines->isNotEmpty()) {
+                    throw new PartloadConflictException(
+                        "Bilty {$bilty->lr_number} is already loaded on an active Challan.",
+                    );
+                }
+
+                continue;
             }
+
+            if ($bilty->status === LrStatus::InProgress
+                && $bilty->partloadDeliveryReceipt === null
+                && $this->isTransshippableAtBranch($bilty, $branch)
+            ) {
+                continue;
+            }
+
+            throw ValidationException::withMessages([
+                'lorry_receipt_ids' => "Bilty {$bilty->lr_number} is not eligible for loading.",
+            ]);
         }
 
         return $bilties->values();
@@ -568,23 +715,14 @@ final class PartloadChallanService
         $snapshots = [];
 
         foreach ($bilties as $bilty) {
-            $packages = '0.000';
-            $weight = '0.000';
-            /** @var Collection<int, LrGoodsRow> $rows */
-            $rows = $bilty->goodsRows;
-
-            foreach ($rows->whereNull('deleted_at') as $row) {
-                $packages = number_format((float) $packages + (float) ($row->package_count ?? 0), 3, '.', '');
-                $weight = number_format((float) $weight + (float) ($row->charged_weight ?? $row->actual_weight ?? 0), 3, '.', '');
-            }
-
+            $quantities = $this->effectiveLoadingQuantities($bilty);
             $term = $bilty->freight_payment_term?->value;
 
             $snapshots[] = [
                 'lorry_receipt_id' => $bilty->id,
                 'to_station_id' => (string) $bilty->to_station_id,
-                'packages' => $packages,
-                'weight_kg' => $weight,
+                'packages' => $quantities['packages'],
+                'weight_kg' => $quantities['weight_kg'],
                 'freight_amount' => number_format((float) $bilty->freight_total, 2, '.', ''),
                 'freight_payment_term' => $term,
             ];

@@ -2,6 +2,7 @@
 
 namespace App\Domains\Broker\Adjustment;
 
+use App\Domains\Accounting\OperationalAccountingPoster;
 use App\Domains\Broker\Enums\BrokerAdjustmentType;
 use App\Domains\Broker\Enums\LorryHireStatus;
 use App\Domains\Broker\Exceptions\BrokerAuthorizationException;
@@ -40,6 +41,7 @@ final class BrokerAdjustmentService
         private readonly CoreModuleEntitlementResolver $entitlements = new CoreModuleEntitlementResolver,
         private readonly SubscriptionEntitlementGate $entitlementGate = new SubscriptionEntitlementGate,
         private readonly LorryHireCalculationService $calculations = new LorryHireCalculationService,
+        private readonly OperationalAccountingPoster $accounting = new OperationalAccountingPoster,
     ) {}
 
     /**
@@ -133,7 +135,9 @@ final class BrokerAdjustmentService
                     'created_by_user_id' => $actor->id,
                 ]);
 
+                $previousFreight = $this->money($hire->freight_total);
                 $freightTotal = $this->calculations->recalculateFreightForUnloading($hire, $newWeight);
+                $freightDelta = bcsub($freightTotal, $previousFreight, 2);
                 $this->refreshHireFinancials($hire, $freightTotal);
 
                 $this->audit->write(
@@ -144,6 +148,8 @@ final class BrokerAdjustmentService
                     before: null,
                     after: $adjustment->toArray(),
                 );
+
+                $this->accounting->postBrokerAdjustment($adjustment, $hire->fresh() ?? $hire, $actor, $freightDelta);
 
                 return $adjustment->fresh() ?? $adjustment;
             });
@@ -278,6 +284,8 @@ final class BrokerAdjustmentService
                     after: $adjustment->toArray(),
                 );
 
+                $this->accounting->postBrokerAdjustment($adjustment, $hire->fresh() ?? $hire, $actor);
+
                 return $adjustment->fresh() ?? $adjustment;
             });
         });
@@ -339,6 +347,8 @@ final class BrokerAdjustmentService
                     before: null,
                     after: $adjustment->toArray(),
                 );
+
+                $this->accounting->postBrokerAdjustment($adjustment, $hire->fresh() ?? $hire, $actor);
 
                 return $adjustment->fresh() ?? $adjustment;
             });

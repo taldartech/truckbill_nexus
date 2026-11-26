@@ -2,6 +2,7 @@
 
 namespace App\Domains\Broker\LorryHire;
 
+use App\Domains\Accounting\OperationalAccountingPoster;
 use App\Domains\Broker\Enums\BookBalanceEntryType;
 use App\Domains\Broker\Enums\LorryHireStatus;
 use App\Domains\Broker\Exceptions\BrokerAuthorizationException;
@@ -38,6 +39,7 @@ final class LorryHireCancellationService
         private readonly SubscriptionEntitlementGate $entitlementGate = new SubscriptionEntitlementGate,
         private readonly LorryHireCalculationService $calculations = new LorryHireCalculationService,
         private readonly TransporterBookBalanceService $bookBalance = new TransporterBookBalanceService,
+        private readonly OperationalAccountingPoster $accounting = new OperationalAccountingPoster,
     ) {}
 
     /**
@@ -207,6 +209,8 @@ final class LorryHireCancellationService
                     cancellationReason: $reason,
                     cancellationAt: $locked->cancelled_at,
                 );
+
+                $this->accounting->postLorryHireCancelled($locked, $actor, $reason);
 
                 return $locked->fresh([
                     'lorryReceipt',

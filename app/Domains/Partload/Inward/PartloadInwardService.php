@@ -69,7 +69,7 @@ final class PartloadInwardService
      *     partload_challan_id: string,
      *     inward_date?: string|null,
      *     remark?: string|null,
-     *     lines?: list<array{lorry_receipt_id: string, disposition?: string, packages?: numeric-string|float|int|null, weight_kg?: numeric-string|float|int|null, remark?: string|null}>
+     *     lines?: list<array{lorry_receipt_id: string, disposition?: string, packages?: numeric-string|float|int|null, received_packages?: numeric-string|float|int|null, weight_kg?: numeric-string|float|int|null, received_weight_kg?: numeric-string|float|int|null, is_damaged?: bool, remark?: string|null}>
      * }  $payload
      */
     public function createFromChallan(Company $company, Branch $branch, User $actor, array $payload): PartloadInwardRegister
@@ -101,6 +101,60 @@ final class PartloadInwardService
 
         $lineOverrides = collect($payload['lines'] ?? [])->keyBy('lorry_receipt_id');
 
+        /** @var list<array{challan_line: PartloadChallanLine, packages: numeric-string, weight_kg: numeric-string, shortage_packages: numeric-string, shortage_weight_kg: numeric-string, is_damaged: bool, disposition: PartloadInwardDisposition, remark: string|null}> $preparedLines */
+        $preparedLines = [];
+        /** @var PartloadChallanLine $challanLine */
+        foreach ($challan->lines as $challanLine) {
+            $override = $lineOverrides->get($challanLine->lorry_receipt_id);
+            $destinationMatches = $challanLine->to_station_id === $challan->to_station_id;
+            $disposition = PartloadInwardDisposition::Delivery;
+            if (is_array($override) && filled($override['disposition'] ?? null)) {
+                $disposition = PartloadInwardDisposition::from((string) $override['disposition']);
+            } elseif (! $destinationMatches) {
+                $disposition = PartloadInwardDisposition::Forward;
+            }
+
+            $dispatchedPackages = number_format((float) $challanLine->packages, 3, '.', '');
+            $dispatchedWeight = number_format((float) $challanLine->weight_kg, 3, '.', '');
+
+            $pkgOverride = is_array($override) ? ($override['packages'] ?? $override['received_packages'] ?? null) : null;
+            $wtOverride = is_array($override) ? ($override['weight_kg'] ?? $override['received_weight_kg'] ?? null) : null;
+            $receivedPackagesRaw = $pkgOverride !== null
+                ? (float) $pkgOverride
+                : (float) $dispatchedPackages;
+            $receivedWeightRaw = $wtOverride !== null
+                ? (float) $wtOverride
+                : (float) $dispatchedWeight;
+
+            $receivedPackages = number_format($receivedPackagesRaw, 3, '.', '');
+            $receivedWeight = number_format($receivedWeightRaw, 3, '.', '');
+
+            if (bccomp($receivedPackages, '0.000', 3) === -1 || bccomp($receivedPackages, $dispatchedPackages, 3) === 1) {
+                throw ValidationException::withMessages([
+                    'lines' => "Received packages ({$receivedPackages}) must be between 0 and dispatched packages ({$dispatchedPackages}).",
+                ]);
+            }
+
+            if (bccomp($receivedWeight, '0.000', 3) === -1 || bccomp($receivedWeight, $dispatchedWeight, 3) === 1) {
+                throw ValidationException::withMessages([
+                    'lines' => "Received weight ({$receivedWeight} kg) must be between 0 and dispatched weight ({$dispatchedWeight} kg).",
+                ]);
+            }
+
+            $preparedLines[] = [
+                'challan_line' => $challanLine,
+                'packages' => $receivedPackages,
+                'weight_kg' => $receivedWeight,
+                'shortage_packages' => bcsub($dispatchedPackages, $receivedPackages, 3),
+                'shortage_weight_kg' => bcsub($dispatchedWeight, $receivedWeight, 3),
+                'is_damaged' => (bool) (is_array($override) ? ($override['is_damaged'] ?? false) : false),
+                'disposition' => $disposition,
+                'remark' => is_array($override) && filled($override['remark'] ?? null)
+                    ? trim((string) $override['remark'])
+                    : null,
+            ];
+        }
+
         try {
             return $this->auditedTransaction->run(function () use (
                 $company,
@@ -108,7 +162,7 @@ final class PartloadInwardService
                 $actor,
                 $payload,
                 $challan,
-                $lineOverrides,
+                $preparedLines,
             ): PartloadInwardRegister {
                 return $this->withTenant($company, $branch, function () use (
                     $company,
@@ -116,13 +170,13 @@ final class PartloadInwardService
                     $actor,
                     $payload,
                     $challan,
-                    $lineOverrides,
+                    $preparedLines,
                 ): PartloadInwardRegister {
                     $allocation = $this->numbers->allocateNext(
                         companyId: $company->id,
                         documentType: DocumentNumberType::PartloadInward,
-                        scopeType: DocumentNumberScopeType::Branch,
-                        branchId: $branch->id,
+                        scopeType: DocumentNumberScopeType::Company,
+                        branchId: null,
                     );
 
                     $inward = PartloadInwardRegister::query()->create([
@@ -144,17 +198,8 @@ final class PartloadInwardService
                     ]);
 
                     $position = 1;
-                    /** @var PartloadChallanLine $challanLine */
-                    foreach ($challan->lines as $challanLine) {
-                        $override = $lineOverrides->get($challanLine->lorry_receipt_id);
-                        $destinationMatches = $challanLine->to_station_id === $challan->to_station_id;
-                        $disposition = PartloadInwardDisposition::Delivery;
-                        if (is_array($override) && filled($override['disposition'] ?? null)) {
-                            $disposition = PartloadInwardDisposition::from((string) $override['disposition']);
-                        } elseif (! $destinationMatches) {
-                            $disposition = PartloadInwardDisposition::Forward;
-                        }
-
+                    foreach ($preparedLines as $lineData) {
+                        $challanLine = $lineData['challan_line'];
                         PartloadInwardLine::query()->create([
                             'id' => (string) Str::uuid(),
                             'company_id' => $company->id,
@@ -162,12 +207,13 @@ final class PartloadInwardService
                             'lorry_receipt_id' => $challanLine->lorry_receipt_id,
                             'partload_challan_line_id' => $challanLine->id,
                             'position' => $position++,
-                            'packages' => number_format((float) (is_array($override) ? ($override['packages'] ?? $challanLine->packages) : $challanLine->packages), 3, '.', ''),
-                            'weight_kg' => number_format((float) (is_array($override) ? ($override['weight_kg'] ?? $challanLine->weight_kg) : $challanLine->weight_kg), 3, '.', ''),
-                            'disposition' => $disposition,
-                            'remark' => is_array($override) && filled($override['remark'] ?? null)
-                                ? trim((string) $override['remark'])
-                                : null,
+                            'packages' => $lineData['packages'],
+                            'weight_kg' => $lineData['weight_kg'],
+                            'shortage_packages' => $lineData['shortage_packages'],
+                            'shortage_weight_kg' => $lineData['shortage_weight_kg'],
+                            'is_damaged' => $lineData['is_damaged'],
+                            'disposition' => $lineData['disposition'],
+                            'remark' => $lineData['remark'],
                         ]);
                     }
 

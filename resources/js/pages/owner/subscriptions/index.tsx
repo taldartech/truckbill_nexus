@@ -23,7 +23,12 @@ type SubscriptionRow = {
     paid_through_date: string | null;
     common_renewal_date: string | null;
     notes: string[];
-    urls: { context: string; subscription: string; company_settings: string };
+    urls: {
+        context: string;
+        subscription: string;
+        purchase?: string;
+        company_settings: string;
+    };
 };
 
 type Props = {
@@ -176,12 +181,23 @@ export default function OwnerSubscriptionsIndex({
                     emptyTitle="No owned companies"
                     emptyDescription="Create a company before managing subscriptions."
                     actions={(row) => (
-                        <WorkspaceContextAction
-                            contextUrl={row.urls.context}
-                            redirect={row.urls.subscription}
-                            icon={CreditCard}
-                            label="Manage subscription"
-                        />
+                        <div className="flex items-center justify-end gap-1.5">
+                            {row.urls.purchase ? (
+                                <Button asChild size="sm" variant="default">
+                                    <Link href={row.urls.purchase}>
+                                        {row.active_modules.length > 0
+                                            ? 'Upgrade / Renew'
+                                            : 'Buy Plan'}
+                                    </Link>
+                                </Button>
+                            ) : null}
+                            <WorkspaceContextAction
+                                contextUrl={row.urls.context}
+                                redirect={row.urls.subscription}
+                                icon={CreditCard}
+                                label="Overview"
+                            />
+                        </div>
                     )}
                 />
 

@@ -23,7 +23,7 @@ afterEach(function () {
 });
 
 test('cash to bank contra transfer posts balanced voucher idempotently', function () {
-    $ctx = tripWorkspace(['broker']);
+    $ctx = tripWorkspace(['broker'], ['accounting']);
     tripGrant('customer.admin', PermissionCodes::BRANCH_ACCOUNTING_VOUCHER_CREATE);
 
     $service = app(FundTransferService::class);

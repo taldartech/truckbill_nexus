@@ -171,4 +171,20 @@ See `docs/implementation/PRODUCT_OWNER_DECISIONS_REQUIRED.md` PO-LGC-*.
 
 ---
 
+## Workstreams A–E Delivery Update (27 November 2026)
+
+Authorized autonomous delivery closed the following cross-cutting and operational gaps cleanly on top of the Phase 1–6 baseline:
+
+| Workstream                                                 | Delivered & Verified Scope                                                                                                                                                                                                                                                                                                                                                                                                          | Status     |
+| ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------- |
+| **A — Simplified Subscription Purchase**                   | Unified explicit-Company single-screen purchase/upgrade/renewal (`owner.subscription.purchase` / `owner.companies.subscription.*`), live backend quote JSON, auto draft/checkout/verification pipeline, obsolete `catalogue`/`drafts`/`draft-edit` UI removed.                                                                                                                                                                      | **Closed** |
+| **B — Platform Billing & Subscription Invoices**           | Authorized Admin `PlatformBillingProfile` (`admin.billing-profile`), automatic idempotent GST tax invoice (`CGST+SGST` / `IGST`) + credit-note immutable snapshots, Owner & Admin invoice preview/download/register, separated from Customer transport books.                                                                                                                                                                       | **Closed** |
+| **C — Centralized RBAC Matrix**                            | Domain-isolated Internal Team & Customer Roles UI (`/admin/roles`), diff preview, non-escalation guard, last Super Admin guard, mandatory edit remarks, immediate cache invalidation, No-Freight View enforcement across UI/APIs/Accounting/reports.                                                                                                                                                                                | **Closed** |
+| **D — Enquiry / Broker / OwnFleet / Partload Gap Closure** | Multi-branch company-wide numbering consistency for Partload & Broker, Partload transshipment Challan line support (`2026_11_27_140000`), Main Challan + Hub shortage/damage + Delivery Receipt + `PartloadInvoiceService` billing/receipts, OwnFleet `VendorExpensePaymentService` & `DriverAdvanceService` (`company_id`-scoped Parties), null-safe `PaymentMode` GL posting, `LocalDemoWorkspaceSeeder` geography/tax bootstrap. | **Closed** |
+| **E — Accounting Optional Add-On**                         | Paid optional `accounting` add-on enforcement across routes/UI/services, `AccountingActivationLifecycleService` cutover dry-run/posting/expiry-reversal/renewal catch-up, `AccountingReconciliationService` operational-vs-GL & FQCN source drill-down, balanced idempotent postings across all modules.                                                                                                                            | **Closed** |
+
+_Remaining genuine external/PO gates preserved:_ live Razorpay production credentials (`PO-P3-PAY-PROD` Pending) and high-scale staging k6 certification (`P56-010`).
+
+---
+
 _Update this register when PO-LGC decisions land or parity rows are re-tested._

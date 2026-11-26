@@ -15,6 +15,9 @@ type Props = {
             lr_number: string | null;
             packages: string;
             weight_kg: string;
+            shortage_packages?: string;
+            shortage_weight_kg?: string;
+            is_damaged?: boolean;
             disposition_label: string;
             create_dr_url: string | null;
         }>;
@@ -78,6 +81,9 @@ export default function PartloadInwardShow({ inward, urls }: Props) {
                                         Weight
                                     </th>
                                     <th className="px-3 py-2 font-medium">
+                                        Shortage / Damage
+                                    </th>
+                                    <th className="px-3 py-2 font-medium">
                                         Disposition
                                     </th>
                                     <th className="px-3 py-2 font-medium" />
@@ -97,6 +103,20 @@ export default function PartloadInwardShow({ inward, urls }: Props) {
                                         </td>
                                         <td className="px-3 py-2">
                                             {line.weight_kg}
+                                        </td>
+                                        <td className="px-3 py-2">
+                                            {(line.shortage_packages &&
+                                                Number(line.shortage_packages) >
+                                                    0) ||
+                                            (line.shortage_weight_kg &&
+                                                Number(
+                                                    line.shortage_weight_kg,
+                                                ) > 0)
+                                                ? `${line.shortage_packages ?? '0'} pkg / ${line.shortage_weight_kg ?? '0'} kg`
+                                                : 'None'}
+                                            {line.is_damaged
+                                                ? ' · Damaged'
+                                                : ''}
                                         </td>
                                         <td className="px-3 py-2">
                                             {line.disposition_label}

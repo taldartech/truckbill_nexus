@@ -113,13 +113,16 @@ test('owner cannot mutate or audit another company via owner panel routes', func
 
     $this->post(route('owner.users.invite'), [
         'email' => 'cross.invite@example.com',
-    ])->assertRedirect(route('owner.users'));
+    ])->assertRedirect(route('owner.users.all', ['company' => $companyA->id]));
 
     $this->post(route('owner.users.invite-for-branch', ['branch' => $branchB]), [
         'email' => 'cross.branch.invite@example.com',
     ])->assertNotFound();
 
-    $this->get(route('owner.audit'))->assertOk();
+    $this->get(route('owner.audit'))
+        ->assertRedirect(route('owner.audit.all', ['company' => $companyA->id]));
+
+    $this->get(route('owner.audit.all', ['company' => $companyA->id]))->assertOk();
 
     $this->post(route('owner.users.deactivate', ['membership' => $membershipB]), [
         'remark' => 'Cross deactivate',
@@ -353,7 +356,10 @@ test('deactivated company blocks branch panel and owner write routes while audit
 
     $this->get(route('branch.dashboard'))->assertRedirect(route('workspace.landing'));
 
-    $this->get(route('owner.audit'))->assertOk();
+    $this->get(route('owner.audit'))
+        ->assertRedirect(route('owner.audit.all', ['company' => $company->id]));
+
+    $this->get(route('owner.audit.all', ['company' => $company->id]))->assertOk();
 
     enterManagementCompany($company)->assertRedirect();
 

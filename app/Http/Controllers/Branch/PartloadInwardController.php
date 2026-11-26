@@ -6,6 +6,8 @@ use App\Domains\Company\CompanyAccessService;
 use App\Domains\Partload\Exceptions\PartloadAuthorizationException;
 use App\Domains\Partload\Exceptions\PartloadConflictException;
 use App\Domains\Partload\Inward\PartloadInwardService;
+use App\Domains\Rbac\PermissionAuthorizer;
+use App\Domains\Rbac\PermissionCodes;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
@@ -24,6 +26,7 @@ class PartloadInwardController extends Controller
     public function __construct(
         private readonly CompanyAccessService $access,
         private readonly PartloadInwardService $inwards,
+        private readonly PermissionAuthorizer $authorizer,
     ) {}
 
     public function store(Request $request, Company $company, Branch $branch): RedirectResponse
@@ -38,6 +41,7 @@ class PartloadInwardController extends Controller
             'lines.*.disposition' => ['nullable', 'in:delivery,forward'],
             'lines.*.packages' => ['nullable', 'numeric', 'min:0'],
             'lines.*.weight_kg' => ['nullable', 'numeric', 'min:0'],
+            'lines.*.is_damaged' => ['nullable', 'boolean'],
             'lines.*.remark' => ['nullable', 'string', 'max:1000'],
         ]);
 
@@ -57,8 +61,9 @@ class PartloadInwardController extends Controller
     public function show(Request $request, Company $company, Branch $branch, PartloadInwardRegister $partloadInward): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-        if ((int) $actor->id !== (int) $company->owner_user_id) {
-            // view permission checked via service find after soft gate
+        if ((int) $actor->id !== (int) $company->owner_user_id
+            && ! $this->authorizer->allowsCustomer($actor, PermissionCodes::PARTLOAD_INWARD_VIEW, $company, $branch)) {
+            abort(403, 'Not authorized to view Partload Inward Registers.');
         }
 
         $inward = $this->inwards->findForBranch($company, $branch, $partloadInward->id);
@@ -77,8 +82,12 @@ class PartloadInwardController extends Controller
                     'lr_number' => $line->lorryReceipt?->lr_number,
                     'packages' => (string) $line->packages,
                     'weight_kg' => (string) $line->weight_kg,
+                    'shortage_packages' => (string) ($line->shortage_packages ?? '0.000'),
+                    'shortage_weight_kg' => (string) ($line->shortage_weight_kg ?? '0.000'),
+                    'is_damaged' => (bool) $line->is_damaged,
                     'disposition' => $line->disposition->value,
                     'disposition_label' => $line->disposition->label(),
+                    'remark' => $line->remark,
                     'create_dr_url' => $line->disposition->value === 'delivery'
                         ? route('branch.partload.delivery-receipts.create', [
                             'lorry_receipt_id' => $line->lorry_receipt_id,

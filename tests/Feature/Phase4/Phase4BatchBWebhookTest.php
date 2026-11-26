@@ -192,9 +192,10 @@ test('cross-company isolation and tenant injection are rejected', function () {
     $b = webhookCompany();
 
     $payload = webhookPayloadForCompany($a, ['external_reference' => 'shared-looking-ref']);
+    $payloadB = webhookPayloadForCompany($b, ['external_reference' => 'shared-looking-ref']);
 
     $this->postJson(route('webhooks.enquiries'), $payload, webhookHeaders($a['token']))->assertCreated();
-    $this->postJson(route('webhooks.enquiries'), $payload, webhookHeaders($b['token']))->assertCreated();
+    $this->postJson(route('webhooks.enquiries'), $payloadB, webhookHeaders($b['token']))->assertCreated();
 
     expect(Enquiry::query()->where('company_id', $a['company']->id)->where('external_reference', 'shared-looking-ref')->count())->toBe(1)
         ->and(Enquiry::query()->where('company_id', $b['company']->id)->where('external_reference', 'shared-looking-ref')->count())->toBe(1);
@@ -286,7 +287,7 @@ test('idempotency key conflict and durable external reference rules', function (
         'Idempotency-Key' => $key,
     ]))->assertCreated();
 
-    $this->postJson(route('webhooks.enquiries'), webhookPayload([
+    $this->postJson(route('webhooks.enquiries'), webhookPayloadForCompany($ctx, [
         'external_reference' => 'durable-1',
         'customer_name' => 'Changed Name',
     ]), webhookHeaders($ctx['token'], [
@@ -299,7 +300,7 @@ test('idempotency key conflict and durable external reference rules', function (
     ]))->assertOk()->assertJsonPath('meta.created', false);
 
     // Different key, same external reference, changed content → conflict.
-    $this->postJson(route('webhooks.enquiries'), webhookPayload([
+    $this->postJson(route('webhooks.enquiries'), webhookPayloadForCompany($ctx, [
         'external_reference' => 'durable-1',
         'pickup_location' => 'Different City',
     ]), webhookHeaders($ctx['token'], [

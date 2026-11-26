@@ -145,6 +145,12 @@ final class ChartOfAccountsBootstrapService
                 ],
             ],
             [
+                'name' => 'Indirect Expenses',
+                'nature' => AccountNature::Expense,
+                'sort_order' => 95,
+                'ledgers' => ['Software Subscription Expense'],
+            ],
+            [
                 'name' => 'Capital Account',
                 'nature' => AccountNature::Equity,
                 'sort_order' => 100,

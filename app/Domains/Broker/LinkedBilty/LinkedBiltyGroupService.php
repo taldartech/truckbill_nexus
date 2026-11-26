@@ -221,8 +221,8 @@ final class LinkedBiltyGroupService
                     $allocation = $this->numbers->allocateNext(
                         companyId: $company->id,
                         documentType: DocumentNumberType::LinkedBiltyGroup,
-                        scopeType: DocumentNumberScopeType::Branch,
-                        branchId: $branch->id,
+                        scopeType: DocumentNumberScopeType::Company,
+                        branchId: null,
                     );
 
                     $group = LinkedBiltyGroup::query()->create([

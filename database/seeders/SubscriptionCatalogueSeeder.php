@@ -58,22 +58,27 @@ class SubscriptionCatalogueSeeder extends Seeder
         }
 
         $addons = [
-            ['code' => 'lorry_hire_voucher', 'name' => 'Lorry Hire/Voucher', 'annual_price' => '3999.00'],
-            ['code' => 'invoice', 'name' => 'Invoice', 'annual_price' => '3999.00'],
-            ['code' => 'advanced_expense', 'name' => 'Advanced Expense', 'annual_price' => '2499.00'],
-            ['code' => 'vehicle_documents', 'name' => 'Vehicle Documents', 'annual_price' => '1999.00'],
-            ['code' => 'tyre', 'name' => 'Tyre', 'annual_price' => '3999.00'],
-            ['code' => 'battery', 'name' => 'Battery', 'annual_price' => '1999.00'],
-            ['code' => 'vehicle_maintenance', 'name' => 'Vehicle Maintenance', 'annual_price' => '2999.00'],
-            ['code' => 'spare_parts_store', 'name' => 'Spare Parts/Store', 'annual_price' => '3999.00'],
-            ['code' => 'workshop_job_cards', 'name' => 'Workshop/Job Cards', 'annual_price' => '3999.00'],
-            ['code' => 'challan_main_challan', 'name' => 'Challan/Main Challan', 'annual_price' => '1999.00'],
-            ['code' => 'inward_dr', 'name' => 'Inward/DR', 'annual_price' => '1999.00'],
-            ['code' => 'accounting', 'name' => 'Accounting', 'annual_price' => '5999.00'],
+            ['code' => 'lorry_hire_voucher', 'name' => 'Lorry Hire/Voucher', 'annual_price' => '3999.00', 'unit_label' => null, 'is_quantifiable' => false, 'storage_bytes_per_unit' => 0, 'credit_units_per_unit' => 0, 'sort_order' => 10],
+            ['code' => 'invoice', 'name' => 'Invoice', 'annual_price' => '3999.00', 'unit_label' => null, 'is_quantifiable' => false, 'storage_bytes_per_unit' => 0, 'credit_units_per_unit' => 0, 'sort_order' => 20],
+            ['code' => 'advanced_expense', 'name' => 'Advanced Expense', 'annual_price' => '2499.00', 'unit_label' => null, 'is_quantifiable' => false, 'storage_bytes_per_unit' => 0, 'credit_units_per_unit' => 0, 'sort_order' => 30],
+            ['code' => 'vehicle_documents', 'name' => 'Vehicle Documents', 'annual_price' => '1999.00', 'unit_label' => null, 'is_quantifiable' => false, 'storage_bytes_per_unit' => 0, 'credit_units_per_unit' => 0, 'sort_order' => 40],
+            ['code' => 'tyre', 'name' => 'Tyre', 'annual_price' => '3999.00', 'unit_label' => null, 'is_quantifiable' => false, 'storage_bytes_per_unit' => 0, 'credit_units_per_unit' => 0, 'sort_order' => 50],
+            ['code' => 'battery', 'name' => 'Battery', 'annual_price' => '1999.00', 'unit_label' => null, 'is_quantifiable' => false, 'storage_bytes_per_unit' => 0, 'credit_units_per_unit' => 0, 'sort_order' => 60],
+            ['code' => 'vehicle_maintenance', 'name' => 'Vehicle Maintenance', 'annual_price' => '2999.00', 'unit_label' => null, 'is_quantifiable' => false, 'storage_bytes_per_unit' => 0, 'credit_units_per_unit' => 0, 'sort_order' => 70],
+            ['code' => 'spare_parts_store', 'name' => 'Spare Parts/Store', 'annual_price' => '3999.00', 'unit_label' => null, 'is_quantifiable' => false, 'storage_bytes_per_unit' => 0, 'credit_units_per_unit' => 0, 'sort_order' => 80],
+            ['code' => 'workshop_job_cards', 'name' => 'Workshop/Job Cards', 'annual_price' => '3999.00', 'unit_label' => null, 'is_quantifiable' => false, 'storage_bytes_per_unit' => 0, 'credit_units_per_unit' => 0, 'sort_order' => 90],
+            ['code' => 'challan_main_challan', 'name' => 'Challan/Main Challan', 'annual_price' => '1999.00', 'unit_label' => null, 'is_quantifiable' => false, 'storage_bytes_per_unit' => 0, 'credit_units_per_unit' => 0, 'sort_order' => 100],
+            ['code' => 'inward_dr', 'name' => 'Inward/DR', 'annual_price' => '1999.00', 'unit_label' => null, 'is_quantifiable' => false, 'storage_bytes_per_unit' => 0, 'credit_units_per_unit' => 0, 'sort_order' => 110],
+            ['code' => 'accounting', 'name' => 'Accounting', 'annual_price' => '5999.00', 'unit_label' => null, 'is_quantifiable' => false, 'storage_bytes_per_unit' => 0, 'credit_units_per_unit' => 0, 'sort_order' => 120],
+            ['code' => 'extra_branch', 'name' => 'Additional Branches', 'annual_price' => '6500.00', 'unit_label' => 'branch / year', 'is_quantifiable' => true, 'storage_bytes_per_unit' => 0, 'credit_units_per_unit' => 0, 'sort_order' => 130],
+            ['code' => 'extra_user', 'name' => 'Additional Users', 'annual_price' => '500.00', 'unit_label' => 'user / year', 'is_quantifiable' => true, 'storage_bytes_per_unit' => 0, 'credit_units_per_unit' => 0, 'sort_order' => 140],
+            ['code' => 'lr_credits_broker', 'name' => 'Broker LR/Bilty Credits (500 pack)', 'annual_price' => '1000.00', 'unit_label' => 'pack (500 LRs)', 'is_quantifiable' => true, 'storage_bytes_per_unit' => 0, 'credit_units_per_unit' => 500, 'sort_order' => 150],
+            ['code' => 'lr_credits_partload', 'name' => 'Partload LR/Bilty Credits (500 pack)', 'annual_price' => '800.00', 'unit_label' => 'pack (500 LRs)', 'is_quantifiable' => true, 'storage_bytes_per_unit' => 0, 'credit_units_per_unit' => 500, 'sort_order' => 160],
+            ['code' => 'extra_storage', 'name' => 'Additional Document Storage (5 GB)', 'annual_price' => '1200.00', 'unit_label' => '5 GB / year', 'is_quantifiable' => true, 'storage_bytes_per_unit' => 5368709120, 'credit_units_per_unit' => 0, 'sort_order' => 170],
         ];
 
         foreach ($addons as $addon) {
-            SubscriptionAddon::query()->firstOrCreate(
+            $record = SubscriptionAddon::query()->firstOrCreate(
                 [
                     'catalogue_version_id' => $version->id,
                     'code' => $addon['code'],
@@ -83,9 +88,22 @@ class SubscriptionCatalogueSeeder extends Seeder
                     'name' => $addon['name'],
                     'annual_price' => $addon['annual_price'],
                     'billing_period' => 'yearly',
+                    'unit_label' => $addon['unit_label'],
+                    'is_quantifiable' => $addon['is_quantifiable'],
+                    'storage_bytes_per_unit' => $addon['storage_bytes_per_unit'],
+                    'credit_units_per_unit' => $addon['credit_units_per_unit'],
+                    'sort_order' => $addon['sort_order'],
                     'is_active' => true,
                 ],
             );
+
+            $record->forceFill([
+                'unit_label' => $addon['unit_label'],
+                'is_quantifiable' => $addon['is_quantifiable'],
+                'storage_bytes_per_unit' => $addon['storage_bytes_per_unit'],
+                'credit_units_per_unit' => $addon['credit_units_per_unit'],
+                'sort_order' => $addon['sort_order'],
+            ])->save();
         }
     }
 }

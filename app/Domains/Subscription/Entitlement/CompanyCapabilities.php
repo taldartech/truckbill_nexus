@@ -64,6 +64,8 @@ final class CompanyCapabilities
 
     public const PARTLOAD_DELIVERY_RECEIPTS = 'partload.delivery_receipts';
 
+    public const PARTLOAD_INVOICES = 'partload.invoices';
+
     // Vehicle ownership capabilities
     public const VEHICLE_OWNERSHIP_OWN = 'vehicle.ownership.own';
 
@@ -131,6 +133,7 @@ final class CompanyCapabilities
             self::PARTLOAD_MAIN_CHALLANS,
             self::PARTLOAD_INWARDS,
             self::PARTLOAD_DELIVERY_RECEIPTS,
+            self::PARTLOAD_INVOICES,
             self::VEHICLE_OWNERSHIP_OWN,
             self::VEHICLE_OWNERSHIP_MARKET,
             self::LR_UNIFIED,

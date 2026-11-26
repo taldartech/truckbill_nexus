@@ -24,6 +24,11 @@ class SubscriptionAddon extends Model
         'name',
         'annual_price',
         'billing_period',
+        'unit_label',
+        'is_quantifiable',
+        'storage_bytes_per_unit',
+        'credit_units_per_unit',
+        'sort_order',
         'is_active',
     ];
 
@@ -31,6 +36,10 @@ class SubscriptionAddon extends Model
     {
         return [
             'annual_price' => 'decimal:2',
+            'is_quantifiable' => 'boolean',
+            'storage_bytes_per_unit' => 'integer',
+            'credit_units_per_unit' => 'integer',
+            'sort_order' => 'integer',
             'is_active' => 'boolean',
         ];
     }

@@ -27,7 +27,7 @@ afterEach(function () {
 });
 
 test('chart of accounts bootstrap creates transport default ledgers idempotently', function () {
-    $ctx = tripWorkspace(['broker']);
+    $ctx = tripWorkspace(['broker'], ['accounting']);
     $bootstrap = app(ChartOfAccountsBootstrapService::class);
 
     $first = $bootstrap->ensureDefaults($ctx['company']);
@@ -42,7 +42,7 @@ test('chart of accounts bootstrap creates transport default ledgers idempotently
 });
 
 test('posted voucher must balance and is immutable via reversal only', function () {
-    $ctx = tripWorkspace(['broker']);
+    $ctx = tripWorkspace(['broker'], ['accounting']);
     app(ChartOfAccountsBootstrapService::class)->ensureDefaults($ctx['company']);
     app(AccountingPeriodService::class)->ensureCurrentFinancialYear($ctx['company']);
 
@@ -95,7 +95,7 @@ test('posted voucher must balance and is immutable via reversal only', function 
 });
 
 test('closed period rejects posting', function () {
-    $ctx = tripWorkspace(['broker']);
+    $ctx = tripWorkspace(['broker'], ['accounting']);
     app(ChartOfAccountsBootstrapService::class)->ensureDefaults($ctx['company']);
     $period = app(AccountingPeriodService::class)->ensureCurrentFinancialYear($ctx['company']);
 

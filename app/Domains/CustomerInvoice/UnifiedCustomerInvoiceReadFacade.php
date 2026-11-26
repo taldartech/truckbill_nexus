@@ -6,6 +6,7 @@ use App\Domains\Broker\Invoice\BrokerInvoiceService;
 use App\Domains\Consignment\Enums\LrWorkflowContext;
 use App\Domains\CustomerInvoice\Enums\CustomerInvoiceSource;
 use App\Domains\OwnFleet\Invoice\TripInvoiceService;
+use App\Domains\Partload\Invoice\PartloadInvoiceService;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
 use App\Domains\Subscription\Entitlement\CompanyCapabilities;
@@ -14,6 +15,7 @@ use App\Models\Branch;
 use App\Models\BrokerInvoice;
 use App\Models\Company;
 use App\Models\LorryReceipt;
+use App\Models\PartloadInvoice;
 use App\Models\TripInvoice;
 use App\Models\User;
 use App\Support\Database\CaseInsensitiveLike;
@@ -40,8 +42,14 @@ final class UnifiedCustomerInvoiceReadFacade
         private readonly PermissionAuthorizer $authorizer,
         private readonly FreightAmountPresentation $freightPresentation,
         ?CompanyCapabilityResolver $capabilities = null,
+        private readonly ?PartloadInvoiceService $partloadInvoices = null,
     ) {
         $this->capabilities = $capabilities ?? app(CompanyCapabilityResolver::class);
+    }
+
+    private function partloadService(): PartloadInvoiceService
+    {
+        return $this->partloadInvoices ?? app(PartloadInvoiceService::class);
     }
 
     public function canViewOwnFleet(User $actor, Company $company, Branch $branch): bool
@@ -56,6 +64,12 @@ final class UnifiedCustomerInvoiceReadFacade
             && $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_INVOICE_VIEW, $company, $branch);
     }
 
+    public function canViewPartload(User $actor, Company $company, Branch $branch): bool
+    {
+        return $this->capabilities->allowsRead($company, CompanyCapabilities::PARTLOAD_INVOICES)
+            && $this->authorizer->allowsCustomer($actor, PermissionCodes::INVOICE_VIEW, $company, $branch);
+    }
+
     public function canCreateOwnFleet(User $actor, Company $company, Branch $branch): bool
     {
         return $this->capabilities->allowsMutate($company, CompanyCapabilities::OWNFLEET_INVOICES)
@@ -66,6 +80,12 @@ final class UnifiedCustomerInvoiceReadFacade
     {
         return $this->capabilities->allowsMutate($company, CompanyCapabilities::BROKER_INVOICES)
             && $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_INVOICE_CREATE, $company, $branch);
+    }
+
+    public function canCreatePartload(User $actor, Company $company, Branch $branch): bool
+    {
+        return $this->capabilities->allowsMutate($company, CompanyCapabilities::PARTLOAD_INVOICES)
+            && $this->authorizer->allowsCustomer($actor, PermissionCodes::INVOICE_CREATE, $company, $branch);
     }
 
     /**
@@ -89,8 +109,9 @@ final class UnifiedCustomerInvoiceReadFacade
     ): LengthAwarePaginator {
         $canTrip = $this->canViewOwnFleet($actor, $company, $branch);
         $canBroker = $this->canViewBroker($actor, $company, $branch);
+        $canPartload = $this->canViewPartload($actor, $company, $branch);
 
-        if (! $canTrip && ! $canBroker) {
+        if (! $canTrip && ! $canBroker && ! $canPartload) {
             abort(403, 'Not authorized to view customer invoices.');
         }
 
@@ -106,18 +127,27 @@ final class UnifiedCustomerInvoiceReadFacade
             throw ValidationException::withMessages(['source' => 'Not authorized for Broker invoices.']);
         }
 
+        if ($sourceFilter === CustomerInvoiceSource::Partload && ! $canPartload) {
+            throw ValidationException::withMessages(['source' => 'Not authorized for Partload invoices.']);
+        }
+
         $perPage = min(100, max(1, (int) ($filters['per_page'] ?? 15)));
         $page = max(1, (int) ($filters['page'] ?? 1));
 
         $includeTrip = $canTrip && ($sourceFilter === null || $sourceFilter === CustomerInvoiceSource::OwnFleet);
         $includeBroker = $canBroker && ($sourceFilter === null || $sourceFilter === CustomerInvoiceSource::Broker);
+        $includePartload = $canPartload && ($sourceFilter === null || $sourceFilter === CustomerInvoiceSource::Partload);
 
-        if ($includeTrip && ! $includeBroker) {
+        if ($includeTrip && ! $includeBroker && ! $includePartload) {
             return $this->paginateTripInvoices($company, $branch, $filters, $maySeeFreight, $perPage, $page);
         }
 
-        if ($includeBroker && ! $includeTrip) {
+        if ($includeBroker && ! $includeTrip && ! $includePartload) {
             return $this->paginateBrokerInvoices($company, $branch, $filters, $maySeeFreight, $perPage, $page);
+        }
+
+        if ($includePartload && ! $includeTrip && ! $includeBroker) {
+            return $this->paginatePartloadInvoices($company, $branch, $filters, $maySeeFreight, $perPage, $page);
         }
 
         return $this->paginateUnifiedUnion(
@@ -127,6 +157,9 @@ final class UnifiedCustomerInvoiceReadFacade
             $maySeeFreight,
             $perPage,
             $page,
+            $includeTrip,
+            $includeBroker,
+            $includePartload,
         );
     }
 
@@ -159,16 +192,14 @@ final class UnifiedCustomerInvoiceReadFacade
                 return match ($receipt->workflow_context) {
                     LrWorkflowContext::OwnFleet => CustomerInvoiceSource::OwnFleet,
                     LrWorkflowContext::Broker => CustomerInvoiceSource::Broker,
-                    default => throw ValidationException::withMessages([
-                        'lorry_receipt_ids' => 'Only Own Fleet and Broker lorry receipts can be invoiced here.',
-                    ]),
+                    LrWorkflowContext::Partload => CustomerInvoiceSource::Partload,
                 };
             })
             ->unique(fn (CustomerInvoiceSource $source): string => $source->value);
 
         if ($sources->count() > 1) {
             throw ValidationException::withMessages([
-                'lorry_receipt_ids' => 'Cannot combine Own Fleet and Broker lorry receipts on one customer invoice.',
+                'lorry_receipt_ids' => 'Cannot combine Own Fleet, Broker, and Partload lorry receipts on one customer invoice.',
             ]);
         }
 
@@ -218,6 +249,24 @@ final class UnifiedCustomerInvoiceReadFacade
                     ]);
                 });
             }
+        }
+
+        if ($this->canCreatePartload($actor, $company, $branch)) {
+            $this->partloadService()->listEligibleLorryReceipts($company, $branch)
+                ->each(function (LorryReceipt $lr) use ($rows, $maySeeFreight): void {
+                    $dr = $lr->partloadDeliveryReceipt;
+                    $customer = ($dr !== null ? $dr->dueFromParty : null) ?? $lr->billingCustomer;
+                    $rows->push([
+                        'id' => $lr->id,
+                        'lr_number' => $lr->lr_number,
+                        'lr_date' => $lr->lr_date?->format('d-m-Y'),
+                        'billing_customer_name' => $customer?->name,
+                        'billing_customer_party_id' => ($customer !== null ? $customer->id : null) ?? $lr->billing_customer_party_id,
+                        'freight_total' => $this->freightPresentation->presentAmount($lr->freight_total, $maySeeFreight),
+                        'source' => CustomerInvoiceSource::Partload->value,
+                        'source_label' => CustomerInvoiceSource::Partload->label(),
+                    ]);
+                });
         }
 
         return $rows->sortBy('lr_number')->values();
@@ -281,7 +330,7 @@ final class UnifiedCustomerInvoiceReadFacade
      * @param  array<string, mixed>  $filters
      * @return LengthAwarePaginator<int, array<string, mixed>>
      */
-    private function paginateUnifiedUnion(
+    private function paginatePartloadInvoices(
         Company $company,
         Branch $branch,
         array $filters,
@@ -289,7 +338,37 @@ final class UnifiedCustomerInvoiceReadFacade
         int $perPage,
         int $page,
     ): LengthAwarePaginator {
-        $union = $this->unifiedUnionQuery($company, $branch, $filters);
+        $builder = $this->partloadInvoiceSearchQuery($company, $branch, $filters)
+            ->with(['billingCustomer', 'lines.lorryReceipt'])
+            ->orderByDesc('invoice_date')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
+
+        /** @var Paginator<int, PartloadInvoice> $paginator */
+        $paginator = $builder->paginate($perPage, ['*'], 'page', $page);
+
+        return $paginator
+            ->withPath(request()->url())
+            ->appends(request()->query())
+            ->through(fn (PartloadInvoice $invoice): array => $this->mapPartloadRow($invoice, $maySeeFreight));
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     * @return LengthAwarePaginator<int, array<string, mixed>>
+     */
+    private function paginateUnifiedUnion(
+        Company $company,
+        Branch $branch,
+        array $filters,
+        bool $maySeeFreight,
+        int $perPage,
+        int $page,
+        bool $includeTrip = true,
+        bool $includeBroker = true,
+        bool $includePartload = true,
+    ): LengthAwarePaginator {
+        $union = $this->unifiedUnionQuery($company, $branch, $filters, $includeTrip, $includeBroker, $includePartload);
 
         $total = (int) DB::query()->fromSub($union, 'unified_invoices')->count();
 
@@ -304,6 +383,7 @@ final class UnifiedCustomerInvoiceReadFacade
 
         $ownFleetValue = CustomerInvoiceSource::OwnFleet->value;
         $brokerValue = CustomerInvoiceSource::Broker->value;
+        $partloadValue = CustomerInvoiceSource::Partload->value;
 
         $tripIds = $orderedSlice
             ->where('source', $ownFleetValue)
@@ -313,6 +393,12 @@ final class UnifiedCustomerInvoiceReadFacade
 
         $brokerIds = $orderedSlice
             ->where('source', $brokerValue)
+            ->pluck('id')
+            ->map(fn (mixed $id): string => (string) $id)
+            ->all();
+
+        $partloadIds = $orderedSlice
+            ->where('source', $partloadValue)
             ->pluck('id')
             ->map(fn (mixed $id): string => (string) $id)
             ->all();
@@ -337,8 +423,18 @@ final class UnifiedCustomerInvoiceReadFacade
                 ->get()
                 ->keyBy('id');
 
+        $partloads = $partloadIds === []
+            ? collect()
+            : PartloadInvoice::query()
+                ->where('company_id', $company->id)
+                ->where('branch_id', $branch->id)
+                ->whereIn('id', $partloadIds)
+                ->with(['billingCustomer', 'lines.lorryReceipt'])
+                ->get()
+                ->keyBy('id');
+
         $items = $orderedSlice
-            ->map(function (stdClass $row) use ($trips, $brokers, $maySeeFreight, $ownFleetValue): ?array {
+            ->map(function (stdClass $row) use ($trips, $brokers, $partloads, $maySeeFreight, $ownFleetValue, $partloadValue): ?array {
                 $id = (string) $row->id;
 
                 if ($row->source === $ownFleetValue) {
@@ -346,6 +442,14 @@ final class UnifiedCustomerInvoiceReadFacade
 
                     return $invoice instanceof TripInvoice
                         ? $this->mapTripRow($invoice, $maySeeFreight)
+                        : null;
+                }
+
+                if ($row->source === $partloadValue) {
+                    $invoice = $partloads->get($id);
+
+                    return $invoice instanceof PartloadInvoice
+                        ? $this->mapPartloadRow($invoice, $maySeeFreight)
                         : null;
                 }
 
@@ -371,30 +475,43 @@ final class UnifiedCustomerInvoiceReadFacade
     /**
      * @param  array<string, mixed>  $filters
      */
-    private function unifiedUnionQuery(Company $company, Branch $branch, array $filters): QueryBuilder
-    {
-        $ownFleetSource = CustomerInvoiceSource::OwnFleet->value;
-        $brokerSource = CustomerInvoiceSource::Broker->value;
+    private function unifiedUnionQuery(
+        Company $company,
+        Branch $branch,
+        array $filters,
+        bool $includeTrip = true,
+        bool $includeBroker = true,
+        bool $includePartload = true,
+    ): QueryBuilder {
+        $queries = [];
 
-        $tripQuery = $this->tripInvoiceSearchQuery($company, $branch, $filters)
-            ->select([
-                'id',
-                DB::raw("'{$ownFleetSource}' as source"),
-                'invoice_date',
-                'created_at',
-            ])
-            ->toBase();
+        if ($includeTrip) {
+            $ownFleetSource = CustomerInvoiceSource::OwnFleet->value;
+            $queries[] = $this->tripInvoiceSearchQuery($company, $branch, $filters)
+                ->select(['id', DB::raw("'{$ownFleetSource}' as source"), 'invoice_date', 'created_at'])
+                ->toBase();
+        }
 
-        $brokerQuery = $this->brokerInvoiceSearchQuery($company, $branch, $filters)
-            ->select([
-                'id',
-                DB::raw("'{$brokerSource}' as source"),
-                'invoice_date',
-                'created_at',
-            ])
-            ->toBase();
+        if ($includeBroker) {
+            $brokerSource = CustomerInvoiceSource::Broker->value;
+            $queries[] = $this->brokerInvoiceSearchQuery($company, $branch, $filters)
+                ->select(['id', DB::raw("'{$brokerSource}' as source"), 'invoice_date', 'created_at'])
+                ->toBase();
+        }
 
-        return $tripQuery->unionAll($brokerQuery);
+        if ($includePartload) {
+            $partloadSource = CustomerInvoiceSource::Partload->value;
+            $queries[] = $this->partloadInvoiceSearchQuery($company, $branch, $filters)
+                ->select(['id', DB::raw("'{$partloadSource}' as source"), 'invoice_date', 'created_at'])
+                ->toBase();
+        }
+
+        $base = array_shift($queries);
+        foreach ($queries as $q) {
+            $base = $base->unionAll($q);
+        }
+
+        return $base;
     }
 
     /**
@@ -506,6 +623,45 @@ final class UnifiedCustomerInvoiceReadFacade
     }
 
     /**
+     * @param  array<string, mixed>  $filters
+     * @return Builder<PartloadInvoice>
+     */
+    private function partloadInvoiceSearchQuery(Company $company, Branch $branch, array $filters): Builder
+    {
+        $builder = PartloadInvoice::query()
+            ->where('company_id', $company->id)
+            ->where('branch_id', $branch->id)
+            ->whereNull('deleted_at');
+
+        $this->applyPartloadInvoiceFilters($builder, $filters);
+
+        return $builder;
+    }
+
+    /**
+     * @param  Builder<PartloadInvoice>  $builder
+     * @param  array<string, mixed>  $filters
+     */
+    private function applyPartloadInvoiceFilters(Builder $builder, array $filters): void
+    {
+        if (filled($filters['q'] ?? null)) {
+            CaseInsensitiveLike::whereContains($builder, 'invoice_number', (string) $filters['q']);
+        }
+
+        if (filled($filters['customer_id'] ?? null)) {
+            $builder->where('billing_customer_party_id', (string) $filters['customer_id']);
+        }
+
+        if (filled($filters['payment_status'] ?? null)) {
+            $builder->where('payment_status', (string) $filters['payment_status']);
+        }
+
+        if (filled($filters['invoice_status'] ?? null)) {
+            $builder->where('status', (string) $filters['invoice_status']);
+        }
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function mapBrokerRow(BrokerInvoice $invoice, bool $maySeeFreight): array
@@ -531,6 +687,36 @@ final class UnifiedCustomerInvoiceReadFacade
             'balance_due' => $this->freightPresentation->presentAmount($invoice->balance_due, $maySeeFreight),
             'urls' => [
                 'show' => route('branch.broker.invoices.show', [$invoice], absolute: false),
+            ],
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function mapPartloadRow(PartloadInvoice $invoice, bool $maySeeFreight): array
+    {
+        $lrNumbers = $invoice->lines
+            ->map(fn ($line) => $line->lorryReceipt?->lr_number)
+            ->filter()
+            ->values()
+            ->all();
+
+        return [
+            'id' => $invoice->id,
+            'source' => CustomerInvoiceSource::Partload->value,
+            'source_label' => CustomerInvoiceSource::Partload->label(),
+            'invoice_number' => $invoice->invoice_number,
+            'invoice_date' => $invoice->invoice_date->format('d-m-Y'),
+            'billing_customer_name' => $invoice->billingCustomer?->name,
+            'billing_customer_party_id' => $invoice->billing_customer_party_id,
+            'lr_numbers' => $lrNumbers,
+            'invoice_status' => $invoice->status,
+            'payment_status' => $invoice->payment_status,
+            'invoice_total' => $this->freightPresentation->presentAmount($invoice->invoice_total, $maySeeFreight),
+            'balance_due' => $this->freightPresentation->presentAmount($invoice->balance_due, $maySeeFreight),
+            'urls' => [
+                'show' => route('branch.partload.invoices.show', [$invoice], absolute: false),
             ],
         ];
     }

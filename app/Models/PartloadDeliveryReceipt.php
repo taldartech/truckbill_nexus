@@ -86,4 +86,10 @@ class PartloadDeliveryReceipt extends Model
     {
         return $this->belongsTo(Party::class, 'consignee_party_id');
     }
+
+    /** @return BelongsTo<Party, $this> */
+    public function dueFromParty(): BelongsTo
+    {
+        return $this->belongsTo(Party::class, 'payment_due_from_party_id');
+    }
 }

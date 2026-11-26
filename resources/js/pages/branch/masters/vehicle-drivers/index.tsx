@@ -1,4 +1,4 @@
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Form, Head, Link, router, usePage } from '@inertiajs/react';
 import {
     CalendarDays,
     History,
@@ -85,6 +85,8 @@ type Props = {
         can_assign: boolean;
         can_remove: boolean;
         can_mark_attendance: boolean;
+        can_record_advance?: boolean;
+        can_view_freight?: boolean;
         can_create_party: boolean;
         can_create_vehicle: boolean;
     };
@@ -102,12 +104,36 @@ type Props = {
         busy_driver_ids: Record<string, string>;
         rows: AttendanceRow[];
     };
+    driverAdvanceSummary?: {
+        entries: Array<{
+            id: string;
+            entry_date: string;
+            driver_party_id: string;
+            driver_name: string | null;
+            entry_type: string;
+            amount: string | null;
+            payment_mode: string;
+            reference: string | null;
+            remark: string | null;
+        }>;
+        driver_balances: Array<{
+            driver_party_id: string;
+            driver_name: string;
+            advances: string | null;
+            settlements: string | null;
+            recoveries: string | null;
+            net_balance: string | null;
+        }>;
+        total_outstanding: string | null;
+    };
+    bankCashAccounts?: Array<{ id: string; name: string }>;
     driverOptions: PartyOption[];
     ownVehicleOptions: DriverAssignmentVehicleOption[];
     urls: {
         index: string;
         assign_base: string;
         attendance_mark: string;
+        driver_advance_store?: string;
         parties_options: string;
         parties_store: string;
         vehicles_index: string;
@@ -146,6 +172,8 @@ export default function VehicleDriversIndex({
     permissions,
     rows,
     attendance,
+    driverAdvanceSummary,
+    bankCashAccounts = [],
     driverOptions,
     ownVehicleOptions,
     urls,
@@ -677,6 +705,172 @@ export default function VehicleDriversIndex({
                         </div>
                     </AppIndexListCard>
                 </div>
+
+                {permissions.can_view_freight && driverAdvanceSummary ? (
+                    <div className="mt-6">
+                        <AppIndexListCard
+                            title={`Driver Advance Balances & Settlement${driverAdvanceSummary.total_outstanding ? ` · Total ₹${driverAdvanceSummary.total_outstanding}` : ''}`}
+                        >
+                            {permissions.can_record_advance &&
+                            urls.driver_advance_store ? (
+                                <Form
+                                    action={urls.driver_advance_store}
+                                    method="post"
+                                    className="grid gap-3 border-b p-4 md:grid-cols-5"
+                                >
+                                    {({ processing }) => (
+                                        <>
+                                            <div className="space-y-1">
+                                                <Label
+                                                    htmlFor="vd_driver_party_id"
+                                                    required
+                                                >
+                                                    Driver
+                                                </Label>
+                                                <select
+                                                    id="vd_driver_party_id"
+                                                    name="driver_party_id"
+                                                    required
+                                                    className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                                                >
+                                                    <option value="">
+                                                        Select driver
+                                                    </option>
+                                                    {driverOptions.map((d) => (
+                                                        <option
+                                                            key={d.id}
+                                                            value={d.id}
+                                                        >
+                                                            {d.name}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <Label
+                                                    htmlFor="vd_entry_type"
+                                                    required
+                                                >
+                                                    Type
+                                                </Label>
+                                                <select
+                                                    id="vd_entry_type"
+                                                    name="entry_type"
+                                                    defaultValue="advance"
+                                                    className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                                                >
+                                                    <option value="advance">
+                                                        Advance
+                                                    </option>
+                                                    <option value="settlement">
+                                                        Settlement
+                                                    </option>
+                                                    <option value="recovery">
+                                                        Recovery
+                                                    </option>
+                                                </select>
+                                            </div>
+                                            <div className="space-y-1">
+                                                <Label
+                                                    htmlFor="vd_amount"
+                                                    required
+                                                >
+                                                    Amount
+                                                </Label>
+                                                <Input
+                                                    id="vd_amount"
+                                                    name="amount"
+                                                    type="number"
+                                                    step="0.01"
+                                                    min="0.01"
+                                                    required
+                                                />
+                                            </div>
+                                            <div className="space-y-1">
+                                                <Label htmlFor="vd_bank_cash_account_id">
+                                                    Bank / Cash
+                                                </Label>
+                                                <select
+                                                    id="vd_bank_cash_account_id"
+                                                    name="bank_cash_account_id"
+                                                    className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                                                    defaultValue=""
+                                                >
+                                                    <option value="">
+                                                        Adjustment / None
+                                                    </option>
+                                                    {bankCashAccounts.map(
+                                                        (acc) => (
+                                                            <option
+                                                                key={acc.id}
+                                                                value={acc.id}
+                                                            >
+                                                                {acc.name}
+                                                            </option>
+                                                        ),
+                                                    )}
+                                                </select>
+                                            </div>
+                                            <div className="flex items-end">
+                                                <Button
+                                                    type="submit"
+                                                    disabled={processing}
+                                                    className="w-full bg-[#2FB36F] text-white hover:bg-[#279960]"
+                                                >
+                                                    Save Entry
+                                                </Button>
+                                            </div>
+                                        </>
+                                    )}
+                                </Form>
+                            ) : null}
+                            <div className="overflow-x-auto">
+                                <table className="app-index-table min-w-full">
+                                    <thead>
+                                        <tr>
+                                            <th>Driver</th>
+                                            <th>Advances</th>
+                                            <th>Settlements</th>
+                                            <th>Recoveries</th>
+                                            <th>Net Balance</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {driverAdvanceSummary.driver_balances
+                                            .length === 0 ? (
+                                            <tr>
+                                                <td colSpan={5}>
+                                                    <p className="app-index-empty">
+                                                        No driver advance
+                                                        balances recorded yet.
+                                                    </p>
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            driverAdvanceSummary.driver_balances.map(
+                                                (b) => (
+                                                    <tr key={b.driver_party_id}>
+                                                        <td className="font-medium">
+                                                            {b.driver_name}
+                                                        </td>
+                                                        <td>₹{b.advances}</td>
+                                                        <td>
+                                                            ₹{b.settlements}
+                                                        </td>
+                                                        <td>₹{b.recoveries}</td>
+                                                        <td className="font-semibold">
+                                                            ₹{b.net_balance}
+                                                        </td>
+                                                    </tr>
+                                                ),
+                                            )
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </AppIndexListCard>
+                    </div>
+                ) : null}
             </AppIndexPage>
 
             <VehicleDriverAssignmentModal

@@ -64,32 +64,28 @@ test('owner subscription overview catalogue drafts and credits screens render', 
         ->values();
     expect($plans)->toHaveCount(2);
 
-    $this->get(route('owner.subscription.catalogue', [
-        'plan_ids' => $plans->pluck('id')->all(),
-        'tenure' => SubscriptionTenure::Yearly->value,
-    ]))
+    $this->get(route('owner.companies.subscription.purchase', ['company' => $company]))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('owner/subscription/catalogue')
-            ->has('breakdown')
-            ->where('breakdown.final_period_amount', fn ($value) => is_string($value) && $value !== ''));
+            ->component('owner/subscription/purchase')
+            ->has('plans')
+            ->has('addons')
+            ->has('tenureOptions'));
 
-    $this->post(route('owner.subscription.drafts.store'), [
-        'catalogue_version_id' => $catalogue->id,
+    $this->withCredentials()->postJson(route('owner.companies.subscription.quote', ['company' => $company]), [
         'plan_ids' => $plans->pluck('id')->all(),
         'tenure' => SubscriptionTenure::Yearly->value,
-        'common_renewal_date' => CarbonImmutable::now()->addYear()->toDateString(),
-        'remark' => 'Draft from UI test',
-    ])->assertRedirect(route('owner.subscription.drafts'));
-
-    expect(CompanySubscription::query()->where('company_id', $company->id)->where('status', 'draft')->count())->toBe(1);
-
-    $this->get(route('owner.subscription.drafts'))
+    ])
         ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->component('owner/subscription/drafts')
-            ->has('drafts', 1)
-            ->where('drafts.0.status', 'draft'));
+        ->assertJsonPath('payable', true)
+        ->assertJsonStructure(['subtotal_amount', 'discount_amount', 'taxable_amount', 'total_payable', 'common_renewal_date']);
+
+    $this->post(route('owner.companies.subscription.store', ['company' => $company]), [
+        'plan_ids' => $plans->pluck('id')->all(),
+        'tenure' => SubscriptionTenure::Yearly->value,
+    ])->assertRedirect();
+
+    expect(CompanySubscription::query()->where('company_id', $company->id)->where('status', 'pending_payment')->count())->toBe(1);
 
     app(CompanySubscriptionContractService::class)
         ->ensureCreditLedger($company, 'sms');
@@ -104,7 +100,7 @@ test('owner subscription overview catalogue drafts and credits screens render', 
             ->where('ledgers.0.is_cash_wallet', false));
 });
 
-test('owner can open and update draft contract from subscription UI', function () {
+test('obsolete manual draft and catalogue routes are removed and explicit purchase works without session', function () {
     ['owner' => $owner, 'company' => $company] = subscriptionUiOwner();
     if (auth()->check()) {
         test()->post(route('logout'));
@@ -116,60 +112,15 @@ test('owner can open and update draft contract from subscription UI', function (
         test()->withUnencryptedCookie($cookie->getName(), $cookie->getValue());
     }
 
-    enterManagementCompany($company)->assertRedirect();
+    expect(Route::has('owner.subscription.catalogue'))->toBeFalse()
+        ->and(Route::has('owner.subscription.drafts'))->toBeFalse()
+        ->and(Route::has('owner.subscription.drafts.edit'))->toBeFalse();
 
-    $catalogue = SubscriptionCatalogueVersion::query()->where('is_active', true)->firstOrFail();
-    $plans = SubscriptionPlan::query()
-        ->where('catalogue_version_id', $catalogue->id)
-        ->where('is_active', true)
-        ->get()
-        ->unique('module')
-        ->take(2)
-        ->values();
-
-    $this->post(route('owner.subscription.drafts.store'), [
-        'catalogue_version_id' => $catalogue->id,
-        'plan_ids' => [$plans->first()->id],
-        'tenure' => SubscriptionTenure::Monthly->value,
-        'common_renewal_date' => CarbonImmutable::now()->addYear()->toDateString(),
-        'remark' => 'Draft for edit UI',
-    ])->assertRedirect();
-
-    $draft = CompanySubscription::query()->where('company_id', $company->id)->where('status', 'draft')->firstOrFail();
-
-    $this->get(route('owner.subscription.drafts.edit', ['subscription' => $draft]))
+    $this->get(route('owner.subscription.purchase', ['company' => $company->id]))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
-            ->component('owner/subscription/draft-edit')
-            ->where('draft.id', $draft->id)
-            ->where('catalogue.id', $catalogue->id)
-            ->has('before_breakdown'));
-
-    $snapshotCount = $draft->snapshots()->count();
-
-    $this->put(route('owner.subscription.drafts.update', ['subscription' => $draft]), [
-        'plan_ids' => $plans->pluck('id')->all(),
-        'tenure' => SubscriptionTenure::Yearly->value,
-        'common_renewal_date' => CarbonImmutable::now()->addMonths(14)->toDateString(),
-        'renewal_eligible' => true,
-        'expected_snapshot_count' => $snapshotCount,
-        'remark' => 'UI draft update',
-    ])->assertRedirect(route('owner.subscription.drafts.edit', ['subscription' => $draft]));
-
-    $draft->refresh();
-    expect($draft->tenure)->toBe(SubscriptionTenure::Yearly->value)
-        ->and($draft->renewal_eligible)->toBeTrue()
-        ->and($draft->items()->count())->toBe(2)
-        ->and($draft->status)->toBe('draft')
-        ->and($draft->activated_at)->toBeNull();
-
-    $this->put(route('owner.subscription.drafts.update', ['subscription' => $draft]), [
-        'plan_ids' => $plans->pluck('id')->all(),
-        'tenure' => SubscriptionTenure::Monthly->value,
-        'common_renewal_date' => CarbonImmutable::now()->addYear()->toDateString(),
-        'expected_snapshot_count' => $snapshotCount,
-        'remark' => 'Stale edit',
-    ])->assertForbidden();
+            ->component('owner/subscription/purchase')
+            ->where('company.id', $company->id));
 });
 
 test('non-owner cannot open owner subscription screens', function () {
@@ -189,30 +140,13 @@ test('non-owner cannot open owner subscription screens', function () {
     }
 
     $this->get(route('owner.subscription'))->assertForbidden();
-    $this->get(route('owner.subscription.catalogue'))->assertForbidden();
-
-    $catalogue = SubscriptionCatalogueVersion::query()->where('is_active', true)->firstOrFail();
-    $plan = SubscriptionPlan::query()->where('catalogue_version_id', $catalogue->id)->where('is_active', true)->firstOrFail();
-    $draft = app(CompanySubscriptionContractService::class)->createDraftContract(
-        actor: $owner,
-        company: $company,
-        catalogue: $catalogue,
-        planIds: [$plan->id],
-        tenure: SubscriptionTenure::Yearly,
-        commonRenewalDate: CarbonImmutable::now()->addYear(),
-    );
-
-    $this->get(route('owner.subscription.drafts.edit', ['subscription' => $draft]))->assertForbidden();
-    $this->put(route('owner.subscription.drafts.update', ['subscription' => $draft]), [
-        'plan_ids' => [$plan->id],
-        'tenure' => SubscriptionTenure::Yearly->value,
-        'common_renewal_date' => CarbonImmutable::now()->addYear()->toDateString(),
-        'expected_snapshot_count' => $draft->snapshots()->count(),
-        'remark' => 'cross actor',
+    $this->get(route('owner.companies.subscription.purchase', ['company' => $company]))->assertForbidden();
+    $this->withCredentials()->postJson(route('owner.companies.subscription.quote', ['company' => $company]), [
+        'plan_ids' => [],
     ])->assertForbidden();
 });
 
-test('cross-company draft edit routes are rejected', function () {
+test('cross-company checkout routes are rejected', function () {
     $workspace = app(CompanyWorkspaceService::class);
     $ownerA = User::factory()->customer()->create(['password' => Hash::make('owner-secret')]);
     $ownerB = User::factory()->customer()->create(['password' => Hash::make('owner-secret')]);
@@ -242,12 +176,6 @@ test('cross-company draft edit routes are rejected', function () {
 
     enterManagementCompany($companyB)->assertRedirect();
 
-    $this->get(route('owner.subscription.drafts.edit', ['subscription' => $draftA]))->assertNotFound();
-    $this->put(route('owner.subscription.drafts.update', ['subscription' => $draftA]), [
-        'plan_ids' => [$plan->id],
-        'tenure' => SubscriptionTenure::Yearly->value,
-        'common_renewal_date' => CarbonImmutable::now()->addYear()->toDateString(),
-        'expected_snapshot_count' => $draftA->snapshots()->count(),
-        'remark' => 'cross company',
-    ])->assertNotFound();
+    $this->get(route('owner.subscription.checkout', ['subscription' => $draftA]))->assertNotFound();
+    $this->get(route('owner.companies.subscription.purchase', ['company' => $companyA]))->assertForbidden();
 });

@@ -106,11 +106,16 @@ final class CoreModuleEntitlementResolver
             return [];
         }
 
-        if ($decision['status'] !== SubscriptionLifecycleStatus::Active) {
-            return [];
+        if ($decision['status'] === SubscriptionLifecycleStatus::Active) {
+            return $this->addonCodesFromSubscription($company, ['active']);
         }
 
-        return $this->addonCodesFromSubscription($company, ['active']);
+        if ($this->trialGrantsAllCoreModules($company, $decision)
+            && (bool) config('subscription.trial.include_accounting', false)) {
+            return ['accounting'];
+        }
+
+        return [];
     }
 
     /**
@@ -126,19 +131,9 @@ final class CoreModuleEntitlementResolver
         }
 
         $active = $this->activeAddonCodes($company);
-        if ($active !== []) {
-            return $active;
-        }
+        $historical = $this->addonCodesFromSubscription($company, ['active', 'cancelled'], requireActivated: true);
 
-        if (! in_array($decision['status'], [
-            SubscriptionLifecycleStatus::PaidGrace,
-            SubscriptionLifecycleStatus::Restricted,
-            SubscriptionLifecycleStatus::Cancelled,
-        ], true)) {
-            return [];
-        }
-
-        return $this->addonCodesFromSubscription($company, ['active', 'cancelled'], requireActivated: true);
+        return array_values(array_unique([...$active, ...$historical]));
     }
 
     public function isEntitled(Company $company, SubscriptionModule|LrWorkflowContext $module): bool

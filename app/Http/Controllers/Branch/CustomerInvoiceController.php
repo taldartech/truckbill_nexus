@@ -63,14 +63,22 @@ class CustomerInvoiceController extends Controller
                 'label' => CustomerInvoiceSource::Broker->label(),
             ];
         }
+        if ($capabilities->allowsRead($company, CompanyCapabilities::PARTLOAD_INVOICES)) {
+            $sourceOptions[] = [
+                'value' => CustomerInvoiceSource::Partload->value,
+                'label' => CustomerInvoiceSource::Partload->label(),
+            ];
+        }
 
         return Inertia::render('branch/invoices/index', [
             'filters' => $filters,
             'permissions' => [
                 'can_create_own_fleet' => $this->invoices->canCreateOwnFleet($actor, $company, $branch),
                 'can_create_broker' => $this->invoices->canCreateBroker($actor, $company, $branch),
+                'can_create_partload' => $this->invoices->canCreatePartload($actor, $company, $branch),
                 'can_view_own_fleet' => $this->invoices->canViewOwnFleet($actor, $company, $branch),
                 'can_view_broker' => $this->invoices->canViewBroker($actor, $company, $branch),
+                'can_view_partload' => $this->invoices->canViewPartload($actor, $company, $branch),
                 'can_view_freight' => $maySeeFreight,
             ],
             'sourceOptions' => $sourceOptions,
@@ -99,7 +107,8 @@ class CustomerInvoiceController extends Controller
         $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
 
         if (! $this->invoices->canCreateOwnFleet($actor, $company, $branch)
-            && ! $this->invoices->canCreateBroker($actor, $company, $branch)) {
+            && ! $this->invoices->canCreateBroker($actor, $company, $branch)
+            && ! $this->invoices->canCreatePartload($actor, $company, $branch)) {
             abort(403, 'Not authorized to create customer invoices.');
         }
 
@@ -142,6 +151,16 @@ class CustomerInvoiceController extends Controller
             }
 
             return redirect()->route('branch.trip-invoices.consolidate', [
+                'lorry_receipt_ids' => $validated['lorry_receipt_ids'],
+            ]);
+        }
+
+        if ($source === CustomerInvoiceSource::Partload) {
+            if (! $this->invoices->canCreatePartload($actor, $company, $branch)) {
+                abort(403, 'Not authorized to create Partload invoices.');
+            }
+
+            return redirect()->route('branch.partload.invoices.create', [
                 'lorry_receipt_ids' => $validated['lorry_receipt_ids'],
             ]);
         }

@@ -203,13 +203,14 @@ test('invoice html preview download and email do not reverse approval', function
 
     $invoices = app(SubscriptionInvoiceService::class);
     $invoice = $invoices->ensureDraftQueuedAfterPayment($intent);
+    $issuedNumber = (string) $invoice->invoice_number;
     $admin = User::factory()->internal()->superAdmin()->create();
     $approved = $invoices->approveNumber($admin, $invoice, 'TB/2026-2027/G001');
 
     // Avoid session-policy logout across sequential HTTP calls: exercise document service + one Inertia show.
     $html = app(SubscriptionInvoiceDocumentService::class)->renderHtml($approved);
-    expect($html)->toContain('SAMPLE / NON-PRODUCTION')
-        ->and($html)->toContain('TB/2026-2027/G001');
+    expect($html)->toContain('Supplier billing profile was not configured at issuance')
+        ->and($html)->toContain($issuedNumber);
 
     seedManagementSession($company);
 
@@ -218,13 +219,13 @@ test('invoice html preview download and email do not reverse approval', function
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('owner/subscription/invoice-preview')
-            ->where('document.invoice.approved_number', 'TB/2026-2027/G001')
+            ->where('document.invoice.approved_number', $issuedNumber)
         );
 
     Mail::fake();
     $emailed = app(SubscriptionInvoiceDocumentService::class)->dispatchEmail($approved->fresh(), $owner);
     Mail::assertSent(SubscriptionInvoiceMail::class);
-    expect($emailed->approved_number)->toBe('TB/2026-2027/G001')
+    expect($emailed->approved_number)->toBe($issuedNumber)
         ->and($emailed->email_status)->toBe('sent');
 });
 

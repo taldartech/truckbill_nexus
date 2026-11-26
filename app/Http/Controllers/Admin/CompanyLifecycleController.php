@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\Domains\Company\CompanyWorkspaceService;
 use App\Domains\Company\Exceptions\CompanyDomainException;
+use App\Domains\Rbac\InternalAuthorization;
+use App\Domains\Rbac\PermissionCodes;
 use App\Http\Controllers\Controller;
 use App\Models\Company;
 use App\Models\OwnershipTransfer;
@@ -23,7 +25,10 @@ class CompanyLifecycleController extends Controller
 {
     public function index(Request $request): Response
     {
-        $this->assertSuperAdmin($request);
+        app(InternalAuthorization::class)->authorizeAnyOrAbort($request, [
+            PermissionCodes::INTERNAL_ONBOARDING_VIEW,
+            PermissionCodes::INTERNAL_ONBOARDING_MANAGE,
+        ]);
 
         $search = trim((string) $request->query('q', ''));
         $status = trim((string) $request->query('status', 'all'));
@@ -202,12 +207,8 @@ class CompanyLifecycleController extends Controller
 
     private function assertSuperAdmin(Request $request): User
     {
-        $actor = $request->user();
-
-        if (! $actor instanceof User || ! $actor->isSuperAdmin() || ! $actor->isActive()) {
-            abort(403, 'Only an active Super Admin may manage company lifecycle.');
-        }
-
-        return $actor;
+        return app(InternalAuthorization::class)->authorizeAnyOrAbort($request, [
+            PermissionCodes::INTERNAL_ONBOARDING_MANAGE,
+        ]);
     }
 }

@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Domains\Rbac\Enums\PermissionDomain;
 use App\Domains\Rbac\Exceptions\RbacAuthorizationException;
 use App\Domains\Rbac\Exceptions\RbacDomainException;
+use App\Domains\Rbac\InternalAuthorization;
+use App\Domains\Rbac\PermissionCodes;
 use App\Domains\Rbac\RoleAssignmentService;
 use App\Http\Controllers\Controller;
 use App\Models\InternalRoleAssignment;
@@ -26,7 +28,10 @@ class InternalUserController extends Controller
 {
     public function index(Request $request): Response
     {
-        $this->assertSuperAdmin($request);
+        app(InternalAuthorization::class)->authorizeAnyOrAbort($request, [
+            PermissionCodes::INTERNAL_USERS_VIEW,
+            PermissionCodes::INTERNAL_USERS_MANAGE,
+        ]);
 
         $search = trim($request->string('q')->toString());
         $status = trim($request->string('status')->toString());
@@ -113,7 +118,10 @@ class InternalUserController extends Controller
 
     public function store(Request $request, RoleAssignmentService $roles): RedirectResponse
     {
-        $actor = $this->assertSuperAdmin($request);
+        $actor = app(InternalAuthorization::class)->authorizeAnyOrAbort($request, [
+            PermissionCodes::INTERNAL_USERS_CREATE,
+            PermissionCodes::INTERNAL_USERS_MANAGE,
+        ]);
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
@@ -124,6 +132,9 @@ class InternalUserController extends Controller
         ]);
 
         $isSuperAdmin = (bool) ($validated['is_super_admin'] ?? false);
+        if ($isSuperAdmin && ! $actor->isSuperAdmin()) {
+            abort(403, 'Only an active Super Admin may create another Super Admin.');
+        }
         $role = null;
 
         if (! $isSuperAdmin) {
@@ -186,16 +197,5 @@ class InternalUserController extends Controller
         }
 
         return $map;
-    }
-
-    private function assertSuperAdmin(Request $request): User
-    {
-        $actor = $request->user();
-
-        if (! $actor instanceof User || ! $actor->isSuperAdmin() || ! $actor->isActive()) {
-            abort(403, 'Only an active Super Admin may manage Internal users.');
-        }
-
-        return $actor;
     }
 }

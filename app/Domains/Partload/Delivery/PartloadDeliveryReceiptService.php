@@ -76,15 +76,55 @@ final class PartloadDeliveryReceiptService
 
         $lr = LorryReceipt::query()
             ->where('company_id', $company->id)
-            ->where('branch_id', $branch->id)
             ->whereKey((string) $payload['lorry_receipt_id'])
             ->whereNull('deleted_at')
             ->first();
 
         if ($lr === null) {
             throw ValidationException::withMessages([
-                'lorry_receipt_id' => 'Bilty was not found in this branch.',
+                'lorry_receipt_id' => 'Bilty was not found.',
             ]);
+        }
+
+        $inwardLine = null;
+        if (filled($payload['partload_inward_line_id'] ?? null)) {
+            $inwardLine = PartloadInwardLine::query()
+                ->where('company_id', $company->id)
+                ->whereKey((string) $payload['partload_inward_line_id'])
+                ->where('lorry_receipt_id', $lr->id)
+                ->whereNull('deleted_at')
+                ->with('inwardRegister')
+                ->first();
+
+            if ($inwardLine === null) {
+                throw ValidationException::withMessages([
+                    'partload_inward_line_id' => 'Inward line was not found for this Bilty.',
+                ]);
+            }
+
+            if ($inwardLine->inwardRegister?->branch_id !== $branch->id) {
+                throw ValidationException::withMessages([
+                    'partload_inward_line_id' => 'Inward line does not belong to this branch.',
+                ]);
+            }
+
+            if ($inwardLine->disposition !== PartloadInwardDisposition::Delivery) {
+                throw new PartloadConflictException('Only Delivery-disposition Inward lines can create a DR.');
+            }
+        } elseif ($lr->branch_id !== $branch->id) {
+            $branchInwardExists = PartloadInwardLine::query()
+                ->where('company_id', $company->id)
+                ->where('lorry_receipt_id', $lr->id)
+                ->where('disposition', PartloadInwardDisposition::Delivery->value)
+                ->whereNull('deleted_at')
+                ->whereHas('inwardRegister', fn ($q) => $q->where('branch_id', $branch->id)->whereNull('deleted_at'))
+                ->exists();
+
+            if (! $branchInwardExists) {
+                throw ValidationException::withMessages([
+                    'lorry_receipt_id' => 'Bilty was not found in this branch.',
+                ]);
+            }
         }
 
         if ($lr->status === LrStatus::Delivered || $lr->status === LrStatus::Invoiced) {
@@ -119,26 +159,6 @@ final class PartloadDeliveryReceiptService
             ]);
         }
 
-        $inwardLine = null;
-        if (filled($payload['partload_inward_line_id'] ?? null)) {
-            $inwardLine = PartloadInwardLine::query()
-                ->where('company_id', $company->id)
-                ->whereKey((string) $payload['partload_inward_line_id'])
-                ->where('lorry_receipt_id', $lr->id)
-                ->whereNull('deleted_at')
-                ->first();
-
-            if ($inwardLine === null) {
-                throw ValidationException::withMessages([
-                    'partload_inward_line_id' => 'Inward line was not found for this Bilty.',
-                ]);
-            }
-
-            if ($inwardLine->disposition !== PartloadInwardDisposition::Delivery) {
-                throw new PartloadConflictException('Only Delivery-disposition Inward lines can create a DR.');
-            }
-        }
-
         $charges = $this->normalizeCharges($payload, $lr);
 
         try {
@@ -165,8 +185,8 @@ final class PartloadDeliveryReceiptService
                     $allocation = $this->numbers->allocateNext(
                         companyId: $company->id,
                         documentType: DocumentNumberType::PartloadDeliveryReceipt,
-                        scopeType: DocumentNumberScopeType::Branch,
-                        branchId: $branch->id,
+                        scopeType: DocumentNumberScopeType::Company,
+                        branchId: null,
                     );
 
                     $dr = PartloadDeliveryReceipt::query()->create([

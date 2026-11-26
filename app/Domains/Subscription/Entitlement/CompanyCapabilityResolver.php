@@ -10,6 +10,7 @@ use App\Domains\Rbac\PermissionCodes;
 use App\Domains\Subscription\Enums\SubscriptionLifecycleStatus;
 use App\Domains\Subscription\Enums\SubscriptionModule;
 use App\Domains\Subscription\Support\SubscriptionClock;
+use App\Models\AccountingVoucher;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\User;
@@ -87,8 +88,11 @@ final class CompanyCapabilityResolver
             $hasAnyCore = $hasBroker || $hasOwnFleet || $hasPartload;
             $hasAnyCoreRead = $hasBrokerRead || $hasOwnFleetRead || $hasPartloadRead;
 
-            $hasAccounting = $mutationsAllowed && ($hasAnyCore || in_array('accounting', $activeAddons, true));
-            $hasAccountingRead = $historicalViewAllowed && ($hasAnyCoreRead || in_array('accounting', $historicalAddons, true));
+            $hasAccounting = $mutationsAllowed && in_array('accounting', $activeAddons, true);
+            $hasAccountingRead = $historicalViewAllowed && (
+                in_array('accounting', $historicalAddons, true)
+                || $this->hasHistoricalAccountingVouchers($company)
+            );
 
             $isReadOnlyLifecycle = in_array($decision['status'], [
                 SubscriptionLifecycleStatus::PaidGrace,
@@ -130,6 +134,7 @@ final class CompanyCapabilityResolver
                 CompanyCapabilities::PARTLOAD_MAIN_CHALLANS => ['read' => $hasPartloadRead, 'mutate' => $mutationsAllowed && $hasPartload],
                 CompanyCapabilities::PARTLOAD_INWARDS => ['read' => $hasPartloadRead, 'mutate' => $mutationsAllowed && $hasPartload],
                 CompanyCapabilities::PARTLOAD_DELIVERY_RECEIPTS => ['read' => $hasPartloadRead, 'mutate' => $mutationsAllowed && $hasPartload],
+                CompanyCapabilities::PARTLOAD_INVOICES => ['read' => $hasPartloadRead, 'mutate' => $mutationsAllowed && $hasPartload],
 
                 // Vehicle ownership
                 CompanyCapabilities::VEHICLE_OWNERSHIP_OWN => ['read' => $hasOwnFleetRead, 'mutate' => $mutationsAllowed && $hasOwnFleet],
@@ -141,12 +146,12 @@ final class CompanyCapabilityResolver
                 // Shared / Core / Accounting
                 CompanyCapabilities::LR_UNIFIED => ['read' => $hasAnyCoreRead, 'mutate' => $mutationsAllowed && $hasAnyCore],
                 CompanyCapabilities::CUSTOMER_INVOICES => [
-                    'read' => $hasBrokerRead || $hasOwnFleetRead,
-                    'mutate' => $mutationsAllowed && ($hasBroker || $hasOwnFleet),
+                    'read' => $hasBrokerRead || $hasOwnFleetRead || $hasPartloadRead,
+                    'mutate' => $mutationsAllowed && ($hasBroker || $hasOwnFleet || $hasPartload),
                 ],
                 CompanyCapabilities::CUSTOMER_PAYMENTS => [
-                    'read' => $hasBrokerRead || $hasOwnFleetRead,
-                    'mutate' => $mutationsAllowed && ($hasBroker || $hasOwnFleet),
+                    'read' => $hasBrokerRead || $hasOwnFleetRead || $hasPartloadRead,
+                    'mutate' => $mutationsAllowed && ($hasBroker || $hasOwnFleet || $hasPartload),
                 ],
                 CompanyCapabilities::ENQUIRIES => ['read' => $hasAnyCoreRead, 'mutate' => $mutationsAllowed && $hasAnyCore],
                 CompanyCapabilities::ACCOUNTING => ['read' => $hasAccountingRead, 'mutate' => $hasAccounting],
@@ -323,10 +328,12 @@ final class CompanyCapabilityResolver
             'broker_registers' => $canBrokerLr && $perm(PermissionCodes::BROKER_LORRY_HIRE_VIEW),
             'customer_invoices' => $capRead(CompanyCapabilities::CUSTOMER_INVOICES)
                 && (($canOwnFleet && $perm(PermissionCodes::INVOICE_VIEW))
-                    || ($canBrokerLr && $perm(PermissionCodes::BROKER_INVOICE_VIEW))),
+                    || ($canBrokerLr && $perm(PermissionCodes::BROKER_INVOICE_VIEW))
+                    || ($canPartload && ($perm(PermissionCodes::INVOICE_VIEW) || $perm(PermissionCodes::PARTLOAD_DR_VIEW)))),
             'customer_payments' => $capRead(CompanyCapabilities::CUSTOMER_PAYMENTS)
                 && (($canOwnFleet && $perm(PermissionCodes::PAYMENT_VIEW))
-                    || ($canBrokerLr && $perm(PermissionCodes::BROKER_INVOICE_VIEW))),
+                    || ($canBrokerLr && $perm(PermissionCodes::BROKER_INVOICE_VIEW))
+                    || ($canPartload && ($perm(PermissionCodes::PAYMENT_VIEW) || $perm(PermissionCodes::PARTLOAD_DR_VIEW)))),
             'enquiries' => $capRead(CompanyCapabilities::ENQUIRIES) && $perm(PermissionCodes::ENQUIRY_VIEW),
             'ownfleet_vehicle_drivers' => $capRead(CompanyCapabilities::OWNFLEET_VEHICLE_DRIVERS)
                 && ($perm(PermissionCodes::TRIP_VIEW) || $perm(PermissionCodes::PLATFORM_VIEW)),
@@ -335,7 +342,12 @@ final class CompanyCapabilityResolver
             'partload_pending_delivery' => $canPartload && $perm(PermissionCodes::PARTLOAD_INWARD_VIEW),
             'partload_challans' => $canPartload && $perm(PermissionCodes::PARTLOAD_CHALLAN_VIEW),
             'partload_main_challans' => $canPartload && $perm(PermissionCodes::PARTLOAD_CHALLAN_VIEW),
-            'accounting' => $capRead(CompanyCapabilities::ACCOUNTING) && $perm(PermissionCodes::BRANCH_ACCOUNTING_VIEW),
+            'partload_invoices' => $canPartload
+                && $capRead(CompanyCapabilities::PARTLOAD_INVOICES)
+                && ($perm(PermissionCodes::INVOICE_VIEW) || $perm(PermissionCodes::PARTLOAD_DR_VIEW)),
+            'accounting' => $capRead(CompanyCapabilities::ACCOUNTING)
+                && $perm(PermissionCodes::BRANCH_ACCOUNTING_VIEW)
+                && $perm(PermissionCodes::PLATFORM_VIEW_FREIGHT),
 
             // Masters sidebar
             'masters_parties' => $capRead(CompanyCapabilities::MASTERS_PARTIES) && $masterPerm(PermissionCodes::PLATFORM_VIEW),
@@ -350,6 +362,14 @@ final class CompanyCapabilityResolver
             'masters_expense_categories' => $capRead(CompanyCapabilities::OWNFLEET_EXPENSE_CATEGORIES) && $masterPerm(PermissionCodes::PLATFORM_VIEW),
             'masters_package_types' => $capRead(CompanyCapabilities::MASTERS_PACKAGE_TYPES) && $masterPerm(PermissionCodes::PLATFORM_VIEW),
         ];
+    }
+
+    private function hasHistoricalAccountingVouchers(Company $company): bool
+    {
+        return AccountingVoucher::query()
+            ->where('company_id', $company->id)
+            ->whereNull('deleted_at')
+            ->exists();
     }
 
     private static function versionCacheKey(string $companyId): string

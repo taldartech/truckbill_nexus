@@ -12,6 +12,8 @@ use Illuminate\Support\Str;
 
 /**
  * @property Carbon $expense_date
+ * @property Carbon|null $settled_at
+ * @property-read Party|null $vendor
  */
 class TripExpense extends Model
 {
@@ -31,6 +33,9 @@ class TripExpense extends Model
         'amount',
         'payment_mode_id',
         'paid_from_bank_cash_account_id',
+        'vendor_party_id',
+        'is_credit_payable',
+        'settled_at',
         'remarks',
         'is_diesel',
         'diesel_litres',
@@ -48,6 +53,8 @@ class TripExpense extends Model
         return [
             'expense_date' => 'date',
             'amount' => 'decimal:2',
+            'is_credit_payable' => 'boolean',
+            'settled_at' => 'datetime',
             'is_diesel' => 'boolean',
             'diesel_litres' => 'decimal:3',
             'diesel_rate_per_litre' => 'decimal:4',
@@ -90,5 +97,11 @@ class TripExpense extends Model
     public function paidFromAccount(): BelongsTo
     {
         return $this->belongsTo(BankCashAccount::class, 'paid_from_bank_cash_account_id');
+    }
+
+    /** @return BelongsTo<Party, $this> */
+    public function vendor(): BelongsTo
+    {
+        return $this->belongsTo(Party::class, 'vendor_party_id');
     }
 }

@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
 /**
+ * @property array<string, mixed>|null $pricing_breakdown
  * @property CarbonInterface|null $common_renewal_date
  * @property CarbonInterface|null $activated_at
  * @property CarbonInterface|null $paid_through_date

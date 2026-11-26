@@ -5,11 +5,11 @@ namespace App\Domains\Rbac;
 /**
  * Stable permission codes.
  *
- * Platform operations: P2-WS-3.
- * Enquiry / quotation / LR: PO-P4-PERM (register only — no blanket role grants).
+ * Customer operations & modules + Internal Team functional permissions.
  */
 final class PermissionCodes
 {
+    // Customer Common Operations
     public const PLATFORM_VIEW = 'platform.operations.view';
 
     public const PLATFORM_CREATE = 'platform.operations.create';
@@ -28,6 +28,20 @@ final class PermissionCodes
 
     public const PLATFORM_VIEW_FREIGHT = 'platform.operations.view_freight';
 
+    // Customer Masters & Reports
+    public const MASTERS_VIEW = 'masters.view';
+
+    public const MASTERS_CREATE = 'masters.create';
+
+    public const MASTERS_EDIT = 'masters.edit';
+
+    public const MASTERS_MANAGE = 'masters.manage';
+
+    public const REPORTS_VIEW = 'reports.view';
+
+    public const REPORTS_EXPORT = 'reports.export';
+
+    // Customer Enquiries & Quotations
     public const ENQUIRY_VIEW = 'enquiry.view';
 
     public const ENQUIRY_CREATE = 'enquiry.create';
@@ -50,6 +64,7 @@ final class PermissionCodes
 
     public const QUOTATION_BROADCAST = 'quotation.broadcast';
 
+    // Customer Unified Lorry Receipts
     public const LR_VIEW = 'lr.view';
 
     public const LR_CREATE = 'lr.create';
@@ -62,6 +77,7 @@ final class PermissionCodes
 
     public const LR_NUMBER_ADJUST = 'lr.number.adjust';
 
+    // Customer OwnFleet Trips, Invoices & Payments
     public const TRIP_VIEW = 'trip.view';
 
     public const TRIP_CREATE = 'trip.create';
@@ -92,6 +108,7 @@ final class PermissionCodes
 
     public const PAYMENT_CREATE = 'payment.create';
 
+    // Customer Broker
     public const BROKER_LORRY_HIRE_VIEW = 'broker.lorry_hire.view';
 
     public const BROKER_LORRY_HIRE_CREATE = 'broker.lorry_hire.create';
@@ -134,6 +151,7 @@ final class PermissionCodes
 
     public const BROKER_BOOK_BALANCE_VIEW = 'broker.book_balance.view';
 
+    // Customer Partload
     public const PARTLOAD_CHALLAN_VIEW = 'partload.challan.view';
 
     public const PARTLOAD_CHALLAN_CREATE = 'partload.challan.create';
@@ -150,11 +168,77 @@ final class PermissionCodes
 
     public const PARTLOAD_DR_CREATE = 'partload.delivery_receipt.create';
 
+    // Customer Accounting Add-on & Financial Visibility
     public const BRANCH_ACCOUNTING_VIEW = 'branch.accounting.view';
 
     public const BRANCH_ACCOUNTING_VOUCHER_CREATE = 'branch.accounting.voucher.create';
 
     public const BRANCH_ACCOUNTING_REPORT_VIEW = 'branch.accounting.report.view';
+
+    public const BRANCH_ACCOUNTING_APPROVE = 'branch.accounting.approve';
+
+    public const BRANCH_ACCOUNTING_REVERSE = 'branch.accounting.reverse';
+
+    public const BRANCH_ACCOUNTING_MASTER_MANAGE = 'branch.accounting.master.manage';
+
+    public const BRANCH_ACCOUNTING_VIEW_FINANCIAL = 'branch.accounting.view_financial';
+
+    // Internal Team Functional Permissions
+    public const INTERNAL_CRM_VIEW = 'internal.crm.view';
+
+    public const INTERNAL_CRM_CREATE = 'internal.crm.create';
+
+    public const INTERNAL_CRM_EDIT = 'internal.crm.edit';
+
+    public const INTERNAL_CRM_MANAGE = 'internal.crm.manage';
+
+    public const INTERNAL_USERS_VIEW = 'internal.users.view';
+
+    public const INTERNAL_USERS_CREATE = 'internal.users.create';
+
+    public const INTERNAL_USERS_EDIT = 'internal.users.edit';
+
+    public const INTERNAL_USERS_MANAGE = 'internal.users.manage';
+
+    public const INTERNAL_ONBOARDING_VIEW = 'internal.onboarding.view';
+
+    public const INTERNAL_ONBOARDING_MANAGE = 'internal.onboarding.manage';
+
+    public const INTERNAL_MASTERS_VIEW = 'internal.masters.view';
+
+    public const INTERNAL_MASTERS_CREATE = 'internal.masters.create';
+
+    public const INTERNAL_MASTERS_EDIT = 'internal.masters.edit';
+
+    public const INTERNAL_MASTERS_MANAGE = 'internal.masters.manage';
+
+    public const INTERNAL_GST_VIEW = 'internal.gst.view';
+
+    public const INTERNAL_GST_CREATE = 'internal.gst.create';
+
+    public const INTERNAL_GST_EDIT = 'internal.gst.edit';
+
+    public const INTERNAL_GST_MANAGE = 'internal.gst.manage';
+
+    public const INTERNAL_TDS_VIEW = 'internal.tds.view';
+
+    public const INTERNAL_TDS_CREATE = 'internal.tds.create';
+
+    public const INTERNAL_TDS_EDIT = 'internal.tds.edit';
+
+    public const INTERNAL_TDS_MANAGE = 'internal.tds.manage';
+
+    public const INTERNAL_SUBSCRIPTION_BILLING_VIEW = 'internal.subscription_billing.view';
+
+    public const INTERNAL_SUBSCRIPTION_BILLING_MANAGE = 'internal.subscription_billing.manage';
+
+    public const INTERNAL_SETTINGS_VIEW = 'internal.settings.view';
+
+    public const INTERNAL_SETTINGS_MANAGE = 'internal.settings.manage';
+
+    public const INTERNAL_AUDIT_VIEW = 'internal.audit.view';
+
+    public const INTERNAL_AUDIT_EXPORT = 'internal.audit.export';
 
     /**
      * @return list<string>
@@ -175,8 +259,21 @@ final class PermissionCodes
     }
 
     /**
-     * PO-P4-PERM approved Customer/Branch module codes (not auto-assigned to roles).
-     *
+     * @return list<string>
+     */
+    public static function customerMastersAndReportsCatalogue(): array
+    {
+        return [
+            self::MASTERS_VIEW,
+            self::MASTERS_CREATE,
+            self::MASTERS_EDIT,
+            self::MASTERS_MANAGE,
+            self::REPORTS_VIEW,
+            self::REPORTS_EXPORT,
+        ];
+    }
+
+    /**
      * @return list<string>
      */
     public static function customerPhase4Catalogue(): array
@@ -203,8 +300,6 @@ final class PermissionCodes
     }
 
     /**
-     * Phase 5 OwnFleet Trip catalogue (registered; assigned explicitly — no blanket grants).
-     *
      * @return list<string>
      */
     public static function customerPhase5Catalogue(): array
@@ -229,8 +324,6 @@ final class PermissionCodes
     }
 
     /**
-     * Phase 6 Broker catalogue (registered; assigned explicitly — no blanket grants).
-     *
      * @return list<string>
      */
     public static function customerPhase6Catalogue(): array
@@ -261,8 +354,6 @@ final class PermissionCodes
     }
 
     /**
-     * Partload catalogue (registered; assigned explicitly — no blanket grants).
-     *
      * @return list<string>
      */
     public static function customerPartloadCatalogue(): array
@@ -280,8 +371,6 @@ final class PermissionCodes
     }
 
     /**
-     * Branch Accounting catalogue (registered; assigned explicitly).
-     *
      * @return list<string>
      */
     public static function customerAccountingCatalogue(): array
@@ -290,6 +379,47 @@ final class PermissionCodes
             self::BRANCH_ACCOUNTING_VIEW,
             self::BRANCH_ACCOUNTING_VOUCHER_CREATE,
             self::BRANCH_ACCOUNTING_REPORT_VIEW,
+            self::BRANCH_ACCOUNTING_APPROVE,
+            self::BRANCH_ACCOUNTING_REVERSE,
+            self::BRANCH_ACCOUNTING_MASTER_MANAGE,
+            self::BRANCH_ACCOUNTING_VIEW_FINANCIAL,
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function internalTeamCatalogue(): array
+    {
+        return [
+            self::INTERNAL_CRM_VIEW,
+            self::INTERNAL_CRM_CREATE,
+            self::INTERNAL_CRM_EDIT,
+            self::INTERNAL_CRM_MANAGE,
+            self::INTERNAL_USERS_VIEW,
+            self::INTERNAL_USERS_CREATE,
+            self::INTERNAL_USERS_EDIT,
+            self::INTERNAL_USERS_MANAGE,
+            self::INTERNAL_ONBOARDING_VIEW,
+            self::INTERNAL_ONBOARDING_MANAGE,
+            self::INTERNAL_MASTERS_VIEW,
+            self::INTERNAL_MASTERS_CREATE,
+            self::INTERNAL_MASTERS_EDIT,
+            self::INTERNAL_MASTERS_MANAGE,
+            self::INTERNAL_GST_VIEW,
+            self::INTERNAL_GST_CREATE,
+            self::INTERNAL_GST_EDIT,
+            self::INTERNAL_GST_MANAGE,
+            self::INTERNAL_TDS_VIEW,
+            self::INTERNAL_TDS_CREATE,
+            self::INTERNAL_TDS_EDIT,
+            self::INTERNAL_TDS_MANAGE,
+            self::INTERNAL_SUBSCRIPTION_BILLING_VIEW,
+            self::INTERNAL_SUBSCRIPTION_BILLING_MANAGE,
+            self::INTERNAL_SETTINGS_VIEW,
+            self::INTERNAL_SETTINGS_MANAGE,
+            self::INTERNAL_AUDIT_VIEW,
+            self::INTERNAL_AUDIT_EXPORT,
         ];
     }
 }

@@ -44,6 +44,8 @@ type Props = {
         tax_summary?: string;
         fund_transfer: string;
         opening_balances?: string;
+        activation?: string;
+        reconciliation?: string;
     };
 };
 
@@ -109,7 +111,25 @@ export default function AccountingVouchersIndex({
                                             </Link>
                                         </Button>
                                     ) : null}
+                                    {urls.reconciliation ? (
+                                        <Button
+                                            asChild
+                                            variant="outline"
+                                            size="sm"
+                                        >
+                                            <Link href={urls.reconciliation}>
+                                                Reconciliation
+                                            </Link>
+                                        </Button>
+                                    ) : null}
                                 </>
+                            ) : null}
+                            {urls.activation ? (
+                                <Button asChild variant="outline" size="sm">
+                                    <Link href={urls.activation}>
+                                        Activation / Cutover
+                                    </Link>
+                                </Button>
                             ) : null}
                             {permissions.can_create ? (
                                 <>

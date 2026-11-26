@@ -504,6 +504,13 @@ final class EnquiryConversionService
             }
             $data['intended_payee_type'] = $payeeType !== '' ? $payeeType : 'owner';
             $data['intended_payee_party_id'] = $payeePartyId;
+
+            if (filled($payload['from_station_id'] ?? null)) {
+                $data['from_station_id'] = $payload['from_station_id'];
+            }
+            if (filled($payload['to_station_id'] ?? null)) {
+                $data['to_station_id'] = $payload['to_station_id'];
+            }
         }
 
         if ($context === LrWorkflowContext::OwnFleet) {
@@ -519,6 +526,19 @@ final class EnquiryConversionService
             }
             $data['from_station_id'] = $fromStation;
             $data['to_station_id'] = $toStation;
+        }
+
+        if ($context === LrWorkflowContext::Partload) {
+            $fromStation = $payload['from_station_id'] ?? null;
+            $toStation = $payload['to_station_id'] ?? null;
+            if ($fromStation === null || $toStation === null) {
+                throw ValidationException::withMessages(['from_station_id' => 'From and To stations are required for Partload conversion.']);
+            }
+            $data['from_station_id'] = $fromStation;
+            $data['to_station_id'] = $toStation;
+            $data['freight_payment_term'] = filled($payload['freight_payment_term'] ?? null)
+                ? (string) $payload['freight_payment_term']
+                : ($enquiry->customer_party_id !== null ? 'tbb' : 'to_pay');
         }
 
         return $data;

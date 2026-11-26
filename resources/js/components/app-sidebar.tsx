@@ -47,6 +47,7 @@ type PageProps = {
             identity_type?: string | null;
             is_super_admin?: boolean;
         } | null;
+        internal_permissions?: string[];
     };
     workspace: WorkspaceShare;
 };
@@ -57,6 +58,9 @@ export function AppSidebar() {
     const pathname = (page.url || '').split('?')[0];
     const isCustomer = auth.user?.identity_type === 'customer';
     const isSuperAdmin = auth.user?.is_super_admin === true;
+    const internalPerms = auth.internal_permissions ?? [];
+    const hasInternal = (...codes: string[]) =>
+        isSuperAdmin || codes.some((code) => internalPerms.includes(code));
     const activeCompanyId = workspace?.active_company_id ?? null;
     const activeBranchId = workspace?.active_branch_id ?? null;
     const ownsAnyCompany =
@@ -312,6 +316,15 @@ export function AppSidebar() {
                   },
               ]
             : []),
+        ...(nav?.partload_invoices
+            ? [
+                  {
+                      title: 'Partload Invoices',
+                      href: '/partload/invoices',
+                      icon: Receipt,
+                  },
+              ]
+            : []),
         ...(nav?.accounting
             ? [
                   {
@@ -500,41 +513,97 @@ export function AppSidebar() {
                 },
             ] as NavItem[],
         },
-        ...(isSuperAdmin
+        ...(hasInternal(
+            'internal.onboarding.view',
+            'internal.onboarding.manage',
+            'internal.users.view',
+            'internal.users.manage',
+            'internal.crm.view',
+            'internal.crm.manage',
+            'internal.subscription_billing.view',
+            'internal.subscription_billing.manage',
+            'internal.settings.view',
+            'internal.settings.manage',
+        )
             ? [
                   {
                       label: 'Administration',
                       items: [
-                          {
-                              title: 'Companies',
-                              href: admin.companies.index.url(),
-                              icon: Building2,
-                          },
-                          {
-                              title: 'Users',
-                              href: admin.internalUsers.index.url(),
-                              icon: UserCog,
-                          },
-                          {
-                              title: 'CRM Dashboard',
-                              href: '/admin/crm',
-                              icon: LifeBuoy,
-                          },
-                          {
-                              title: 'CRM Leads',
-                              href: '/admin/crm/leads',
-                              icon: LifeBuoy,
-                          },
-                          {
-                              title: 'Support tickets',
-                              href: '/admin/crm/tickets',
-                              icon: Ticket,
-                          },
-                          {
-                              title: 'Subscription invoices',
-                              href: subscriptionInvoices.url(),
-                              icon: CreditCard,
-                          },
+                          ...(hasInternal(
+                              'internal.onboarding.view',
+                              'internal.onboarding.manage',
+                          )
+                              ? [
+                                    {
+                                        title: 'Companies',
+                                        href: admin.companies.index.url(),
+                                        icon: Building2,
+                                    },
+                                ]
+                              : []),
+                          ...(hasInternal(
+                              'internal.users.view',
+                              'internal.users.manage',
+                          )
+                              ? [
+                                    {
+                                        title: 'Users',
+                                        href: admin.internalUsers.index.url(),
+                                        icon: UserCog,
+                                    },
+                                ]
+                              : []),
+                          ...(hasInternal(
+                              'internal.settings.view',
+                              'internal.settings.manage',
+                          )
+                              ? [
+                                    {
+                                        title: 'Roles & Permissions',
+                                        href: '/admin/roles',
+                                        icon: Settings,
+                                    },
+                                ]
+                              : []),
+                          ...(hasInternal(
+                              'internal.crm.view',
+                              'internal.crm.manage',
+                          )
+                              ? [
+                                    {
+                                        title: 'CRM Dashboard',
+                                        href: '/admin/crm',
+                                        icon: LifeBuoy,
+                                    },
+                                    {
+                                        title: 'CRM Leads',
+                                        href: '/admin/crm/leads',
+                                        icon: LifeBuoy,
+                                    },
+                                    {
+                                        title: 'Support tickets',
+                                        href: '/admin/crm/tickets',
+                                        icon: Ticket,
+                                    },
+                                ]
+                              : []),
+                          ...(hasInternal(
+                              'internal.subscription_billing.view',
+                              'internal.subscription_billing.manage',
+                          )
+                              ? [
+                                    {
+                                        title: 'Subscription invoices',
+                                        href: subscriptionInvoices.url(),
+                                        icon: CreditCard,
+                                    },
+                                    {
+                                        title: 'Billing Profile',
+                                        href: '/admin/billing-profile',
+                                        icon: Landmark,
+                                    },
+                                ]
+                              : []),
                       ] as NavItem[],
                   },
               ]

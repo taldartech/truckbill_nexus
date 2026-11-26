@@ -299,8 +299,8 @@ final class LorryHireService
                     $allocation = $this->numbers->allocateNext(
                         companyId: $company->id,
                         documentType: DocumentNumberType::LorryHire,
-                        scopeType: DocumentNumberScopeType::Branch,
-                        branchId: $branch->id,
+                        scopeType: DocumentNumberScopeType::Company,
+                        branchId: null,
                     );
 
                     $hire = LorryHire::query()->create([

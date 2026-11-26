@@ -534,7 +534,7 @@ test('sdk order creation failures are wrapped safely', function () {
         ->toThrow(SubscriptionDomainException::class);
 });
 
-test('verified payment queues a draft invoice for number approval', function () {
+test('verified payment issues an immutable tax invoice automatically', function () {
     ['owner' => $owner, 'company' => $company, 'draft' => $draft] = batchFOwnerDraft();
     $gateway = new FakePaymentGateway;
     $intent = (new PaymentIntentService($gateway))->create(
@@ -559,7 +559,8 @@ test('verified payment queues a draft invoice for number approval', function () 
         ->first();
 
     expect($invoice)->not->toBeNull()
-        ->and($invoice->status)->toBe('awaiting_number_approval')
+        ->and($invoice->status)->toBe('issued')
+        ->and($invoice->approved_number)->not->toBeNull()
         ->and($draft->fresh()->status)->toBe('active');
 });
 

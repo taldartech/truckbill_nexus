@@ -244,13 +244,14 @@ if (! function_exists('brokerCreateLorryHire')) {
 
 if (! function_exists('brokerWorkspace')) {
     /**
+     * @param  list<string>  $addonCodes
      * @return array<string, mixed>
      */
-    function brokerWorkspace(): array
+    function brokerWorkspace(array $addonCodes = []): array
     {
         brokerGrantLorryHirePermissions();
 
-        return tripWorkspace([SubscriptionModule::Broker->value]);
+        return tripWorkspace([SubscriptionModule::Broker->value], $addonCodes);
     }
 }
 

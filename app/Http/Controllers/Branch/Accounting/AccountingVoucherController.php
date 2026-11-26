@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Branch\Accounting;
 
+use App\Domains\Accounting\AccountingReconciliationService;
 use App\Domains\Accounting\AccountingWorkspaceService;
+use App\Domains\Accounting\Enums\AccountingVoucherStatus;
 use App\Domains\Accounting\Enums\AccountingVoucherType;
 use App\Domains\Accounting\Exceptions\AccountingDomainException;
 use App\Domains\Accounting\GlLedgerService;
@@ -10,6 +12,9 @@ use App\Domains\Accounting\VoucherPostingService;
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
+use App\Domains\Subscription\Entitlement\CompanyCapabilities;
+use App\Domains\Subscription\Entitlement\CompanyCapabilityResolver;
+use App\Http\Controllers\Branch\Accounting\Concerns\AuthorizesAccountingPanel;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Controller;
 use App\Models\AccountingVoucher;
@@ -25,6 +30,7 @@ use Inertia\Response;
 
 class AccountingVoucherController extends Controller
 {
+    use AuthorizesAccountingPanel;
     use AuthorizesBranchPanel;
 
     public function __construct(
@@ -33,12 +39,13 @@ class AccountingVoucherController extends Controller
         private readonly AccountingWorkspaceService $workspace,
         private readonly VoucherPostingService $posting,
         private readonly GlLedgerService $ledgerService,
+        private readonly ?AccountingReconciliationService $reconciliation = null,
     ) {}
 
     public function index(Request $request, Company $company, Branch $branch): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertPermission($actor, $company, $branch, PermissionCodes::BRANCH_ACCOUNTING_VIEW);
+        $this->authorizeAccounting($actor, $company, $branch, $this->authorizer, PermissionCodes::BRANCH_ACCOUNTING_VIEW);
         $bootstrap = $this->workspace->bootstrap($company);
 
         $page = $this->workspace->dayBook(
@@ -93,6 +100,8 @@ class AccountingVoucherController extends Controller
                 'tax_summary' => route('branch.accounting.reports.tax-summary', absolute: false),
                 'fund_transfer' => route('branch.accounting.fund-transfers.create', absolute: false),
                 'opening_balances' => route('branch.accounting.opening-balances.create', absolute: false),
+                'activation' => route('branch.accounting.activation.show', absolute: false),
+                'reconciliation' => route('branch.accounting.reports.reconciliation', absolute: false),
             ],
         ]);
     }
@@ -100,7 +109,7 @@ class AccountingVoucherController extends Controller
     public function create(Request $request, Company $company, Branch $branch): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertPermission($actor, $company, $branch, PermissionCodes::BRANCH_ACCOUNTING_VOUCHER_CREATE);
+        $this->authorizeAccounting($actor, $company, $branch, $this->authorizer, PermissionCodes::BRANCH_ACCOUNTING_VOUCHER_CREATE, requireMutation: true);
         $this->workspace->bootstrap($company);
 
         return Inertia::render('accounting/vouchers/create', [
@@ -121,7 +130,7 @@ class AccountingVoucherController extends Controller
     public function store(Request $request, Company $company, Branch $branch): RedirectResponse
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertPermission($actor, $company, $branch, PermissionCodes::BRANCH_ACCOUNTING_VOUCHER_CREATE);
+        $this->authorizeAccounting($actor, $company, $branch, $this->authorizer, PermissionCodes::BRANCH_ACCOUNTING_VOUCHER_CREATE, requireMutation: true);
 
         $validated = $request->validate([
             'voucher_type' => ['required', Rule::enum(AccountingVoucherType::class)],
@@ -162,13 +171,19 @@ class AccountingVoucherController extends Controller
     public function show(Request $request, Company $company, Branch $branch, AccountingVoucher $accountingVoucher): Response
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertPermission($actor, $company, $branch, PermissionCodes::BRANCH_ACCOUNTING_VIEW);
+        $maySeeFreight = $this->authorizeAccounting($actor, $company, $branch, $this->authorizer, PermissionCodes::BRANCH_ACCOUNTING_VIEW);
 
         if ($accountingVoucher->company_id !== $company->id) {
             abort(404);
         }
 
         $accountingVoucher->load(['lines.ledger']);
+        $sourceDocument = ($this->reconciliation ?? app(AccountingReconciliationService::class))
+            ->sourceDocumentDrillDown($company, $accountingVoucher, $maySeeFreight);
+        $isOwner = (int) $actor->id === (int) $company->owner_user_id;
+        $canReverse = $accountingVoucher->status === AccountingVoucherStatus::Posted
+            && app(CompanyCapabilityResolver::class)->allowsMutate($company, CompanyCapabilities::ACCOUNTING)
+            && ($isOwner || $this->authorizer->allowsCustomer($actor, PermissionCodes::BRANCH_ACCOUNTING_REVERSE, $company, $branch));
 
         return Inertia::render('accounting/vouchers/show', [
             'voucher' => [
@@ -176,44 +191,66 @@ class AccountingVoucherController extends Controller
                 'voucher_number' => $accountingVoucher->voucher_number,
                 'voucher_date' => $accountingVoucher->voucher_date->toDateString(),
                 'voucher_type_label' => $accountingVoucher->voucher_type->label(),
+                'status' => $accountingVoucher->status->value,
                 'narration' => $accountingVoucher->narration,
                 'total_debit' => (string) $accountingVoucher->total_debit,
                 'total_credit' => (string) $accountingVoucher->total_credit,
+                'source_document' => $sourceDocument,
                 'lines' => $accountingVoucher->lines->map(fn ($line): array => [
+                    'ledger_id' => $line->gl_ledger_id,
                     'ledger_name' => $line->ledger?->name,
                     'debit_amount' => (string) $line->debit_amount,
                     'credit_amount' => (string) $line->credit_amount,
                     'narration' => $line->narration,
                 ])->values()->all(),
             ],
+            'permissions' => [
+                'can_reverse' => $canReverse,
+            ],
             'urls' => [
                 'index' => route('branch.accounting.vouchers.index', absolute: false),
+                'reverse' => route('branch.accounting.vouchers.reverse', $accountingVoucher, absolute: false),
             ],
         ]);
     }
 
+    public function reverse(Request $request, Company $company, Branch $branch, AccountingVoucher $accountingVoucher): RedirectResponse
+    {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->authorizeAccounting($actor, $company, $branch, $this->authorizer, PermissionCodes::BRANCH_ACCOUNTING_REVERSE, requireMutation: true);
+
+        if ($accountingVoucher->company_id !== $company->id) {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'reason' => ['required', 'string', 'max:500'],
+        ]);
+
+        try {
+            $reversal = $this->posting->reverse($accountingVoucher, $actor, $validated['reason']);
+        } catch (AccountingDomainException $e) {
+            throw ValidationException::withMessages(['reason' => $e->getMessage()]);
+        }
+
+        return redirect()
+            ->route('branch.accounting.vouchers.show', $reversal)
+            ->with('flash.success', 'Reversal voucher '.$reversal->voucher_number.' posted.');
+    }
+
     /**
-     * @return array{can_view: bool, can_create: bool, can_report: bool}
+     * @return array{can_view: bool, can_create: bool, can_report: bool, can_mutate: bool}
      */
     private function permissions(User $actor, Company $company, Branch $branch): array
     {
         $isOwner = (int) $actor->id === (int) $company->owner_user_id;
+        $canMutate = app(CompanyCapabilityResolver::class)->allowsMutate($company, CompanyCapabilities::ACCOUNTING);
 
         return [
             'can_view' => $isOwner || $this->authorizer->allowsCustomer($actor, PermissionCodes::BRANCH_ACCOUNTING_VIEW, $company, $branch),
-            'can_create' => $isOwner || $this->authorizer->allowsCustomer($actor, PermissionCodes::BRANCH_ACCOUNTING_VOUCHER_CREATE, $company, $branch),
+            'can_create' => $canMutate && ($isOwner || $this->authorizer->allowsCustomer($actor, PermissionCodes::BRANCH_ACCOUNTING_VOUCHER_CREATE, $company, $branch)),
             'can_report' => $isOwner || $this->authorizer->allowsCustomer($actor, PermissionCodes::BRANCH_ACCOUNTING_REPORT_VIEW, $company, $branch),
+            'can_mutate' => $canMutate,
         ];
-    }
-
-    private function assertPermission(User $actor, Company $company, Branch $branch, string $code): void
-    {
-        if ((int) $actor->id === (int) $company->owner_user_id) {
-            return;
-        }
-
-        if (! $this->authorizer->allowsCustomer($actor, $code, $company, $branch)) {
-            abort(403);
-        }
     }
 }

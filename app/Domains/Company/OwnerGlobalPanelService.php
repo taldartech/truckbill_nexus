@@ -505,6 +505,7 @@ final class OwnerGlobalPanelService
             'urls' => [
                 'context' => route('workspace.context.company', ['company' => $company]),
                 'subscription' => SafeInternalRedirect::route('owner.subscription'),
+                'purchase' => route('owner.companies.subscription.purchase', ['company' => $company]),
                 'company_settings' => SafeInternalRedirect::route('owner.settings'),
             ],
         ];

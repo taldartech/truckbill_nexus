@@ -8,12 +8,14 @@ use App\Domains\Document\DocumentAttachmentService;
 use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Party\PartyOptionQuery;
+use App\Domains\OwnFleet\Driver\DriverAdvanceService;
 use App\Domains\OwnFleet\Trip\Exceptions\TripAuthorizationException;
 use App\Domains\OwnFleet\Trip\Exceptions\TripConflictException;
 use App\Domains\OwnFleet\Trip\Exceptions\TripDomainException;
 use App\Domains\OwnFleet\Trip\TripExpenseService;
 use App\Domains\OwnFleet\Trip\TripMovementService;
 use App\Domains\OwnFleet\Trip\TripService;
+use App\Domains\OwnFleet\Trip\VendorExpensePaymentService;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
@@ -274,6 +276,7 @@ class TripController extends Controller
         $trip->load([
             'expenses.category',
             'expenses.paymentMode',
+            'expenses.vendor',
             'lorryReceipt.fromStation',
             'lorryReceipt.toStation',
             'lorryReceipt.billingCustomer',
@@ -348,6 +351,8 @@ class TripController extends Controller
             'amount' => ['nullable', 'numeric', 'gt:0'],
             'payment_mode_id' => ['nullable', 'uuid'],
             'paid_from_bank_cash_account_id' => ['nullable', 'uuid'],
+            'vendor_party_id' => ['nullable', 'uuid'],
+            'is_credit_payable' => ['sometimes', 'boolean'],
             'remarks' => ['nullable', 'string', 'max:2000'],
             'is_diesel' => ['sometimes', 'boolean'],
             'diesel_litres' => ['nullable', 'numeric', 'gt:0'],
@@ -846,6 +851,10 @@ class TripController extends Controller
             'planned_diesel_amount' => $this->freightPresentation->presentAmount($expense->planned_diesel_amount, $maySeeFreight),
             'remarks' => $expense->remarks,
             'payment_mode' => $expense->paymentMode?->name,
+            'vendor_party_id' => $expense->vendor_party_id,
+            'vendor_name' => $expense->vendor?->name,
+            'is_credit_payable' => (bool) $expense->is_credit_payable,
+            'settled_at' => $expense->settled_at?->toDateString(),
         ])->all());
     }
 
@@ -854,8 +863,16 @@ class TripController extends Controller
      */
     private function expenseFormOptions(Company $company, Branch $branch): array
     {
+        $vendors = collect([
+            ...app(PartyOptionQuery::class)->forRoles($company, $branch, PartyRoleType::PumpVendor),
+            ...app(PartyOptionQuery::class)->forRoles($company, $branch, PartyRoleType::GeneralVendor),
+            ...app(PartyOptionQuery::class)->forRoles($company, $branch, PartyRoleType::Transporter),
+        ])->unique('id')->sortBy('name')->values()->all();
+
         return [
             'expense_categories' => $this->expenseCategoryOptions($company),
+            'vendors' => $vendors,
+            'drivers' => $this->partyRoleOptions($company, $branch, PartyRoleType::Driver),
             'payment_modes' => PaymentMode::query()->orderBy('sort_order')->get(['id', 'name'])
                 ->map(fn (PaymentMode $mode): array => ['id' => $mode->id, 'name' => $mode->name])
                 ->values()->all(),
@@ -964,6 +981,7 @@ class TripController extends Controller
                 'from_station_name' => $lr?->fromStation?->name,
                 'to_station_name' => $lr?->toStation?->name,
                 'vehicle_registration' => $trip->vehicle?->registration_number,
+                'driver_party_id' => $trip->driver_party_id,
                 'driver_name' => $trip->driver?->name,
                 'starting_odometer' => $trip->starting_odometer,
                 'ending_odometer' => $trip->ending_odometer,
@@ -972,6 +990,8 @@ class TripController extends Controller
             ],
             'expenses' => $this->expenseRows($trip, $maySeeFreight),
             'profit' => $this->profitPayload($trip, $maySeeFreight),
+            'driverAdvances' => app(DriverAdvanceService::class)->summaryForBranch($company, $branch, $actor, tripId: $trip->id, maySeeFreight: $maySeeFreight),
+            'vendorPayables' => app(VendorExpensePaymentService::class)->summaryForBranch($company, $branch, $actor, maySeeFreight: $maySeeFreight),
             'formOptions' => $this->expenseFormOptions($company, $branch),
             'permissions' => $this->tripPermissions($actor, $company, $branch, $maySeeFreight),
             'urls' => [
@@ -981,6 +1001,8 @@ class TripController extends Controller
                 'index' => route('branch.lorry-receipts.index', absolute: false),
                 'add_expense' => route('branch.trips.expenses.store', [$trip], absolute: false),
                 'remove_expense' => route('branch.trips.expenses.destroy', [$trip, 'EXPENSE_ID'], absolute: false),
+                'driver_advance_store' => route('branch.driver-advances.store', absolute: false),
+                'vendor_payment_store' => route('branch.vendor-payments.store', absolute: false),
                 'expense_categories_store' => route('branch.expense-categories.store', absolute: false),
                 'bank_cash_store' => route('branch.bank-cash.store', absolute: false),
                 'documents' => route('branch.documents.index', [

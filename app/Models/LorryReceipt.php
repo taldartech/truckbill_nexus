@@ -22,6 +22,8 @@ use Illuminate\Support\Str;
  * @property Carbon|null $delivered_at
  * @property Carbon|null $cancelled_at
  * @property PartloadFreightPaymentTerm|null $freight_payment_term
+ * @property-read PartloadDeliveryReceipt|null $partloadDeliveryReceipt
+ * @property-read Party|null $billingCustomer
  */
 class LorryReceipt extends Model
 {
@@ -163,5 +165,23 @@ class LorryReceipt extends Model
     public function additionalCharges(): HasMany
     {
         return $this->hasMany(LrAdditionalCharge::class);
+    }
+
+    /** @return HasMany<PartloadChallanLine, $this> */
+    public function partloadChallanLines(): HasMany
+    {
+        return $this->hasMany(PartloadChallanLine::class);
+    }
+
+    /** @return HasMany<PartloadInwardLine, $this> */
+    public function partloadInwardLines(): HasMany
+    {
+        return $this->hasMany(PartloadInwardLine::class);
+    }
+
+    /** @return HasOne<PartloadDeliveryReceipt, $this> */
+    public function partloadDeliveryReceipt(): HasOne
+    {
+        return $this->hasOne(PartloadDeliveryReceipt::class);
     }
 }

@@ -6,6 +6,7 @@ use App\Models\Branch;
 use App\Models\BranchAssignment;
 use App\Models\Company;
 use App\Models\CompanyMembership;
+use App\Models\CompanySubscription;
 use App\Models\Vehicle;
 
 /**
@@ -13,6 +14,83 @@ use App\Models\Vehicle;
  */
 final class CompanyCapacityService
 {
+    /**
+     * Evaluate active capacity including paid extra branches and extra users.
+     *
+     * @return array{
+     *     included_branches: int,
+     *     seats_per_included_branch: int,
+     *     included_seats: int,
+     *     purchased_branches: int,
+     *     purchased_seats: int,
+     *     purchased_storage_bytes: int,
+     *     branch_limit: int,
+     *     seat_limit: int,
+     *     storage_limit_bytes: int,
+     *     owner_is_billable_seat: bool,
+     *     used_branches: int,
+     *     used_billable_seats: int,
+     *     used_vehicles: int,
+     *     available_branch_slots: int,
+     *     available_seat_slots: int,
+     *     available_user_capacity: int,
+     *     pending_note: string
+     * }
+     */
+    public function evaluateForCompany(Company $company): array
+    {
+        [$branches, $seats, $storageBytes] = $this->activePurchasedExtras($company);
+        $base = $this->evaluate($company, $branches, $seats);
+        $defaultStorage = (int) config('subscription.storage.default_allocation_bytes', 0);
+
+        return array_merge($base, [
+            'purchased_storage_bytes' => $storageBytes,
+            'storage_limit_bytes' => $defaultStorage + $storageBytes,
+        ]);
+    }
+
+    /**
+     * @return array{0: int, 1: int, 2: int}
+     */
+    public function activePurchasedExtras(Company $company): array
+    {
+        $active = CompanySubscription::query()
+            ->where('company_id', $company->id)
+            ->where('status', 'active')
+            ->whereNotNull('activated_at')
+            ->whereNull('deleted_at')
+            ->with(['items.addon'])
+            ->orderByDesc('activated_at')
+            ->first();
+
+        if ($active === null) {
+            return [0, 0, 0];
+        }
+
+        $extraBranches = 0;
+        $extraSeats = 0;
+        $extraStorage = 0;
+
+        foreach ($active->items as $item) {
+            $code = $item->code !== '' ? $item->code : ($item->addon !== null ? $item->addon->code : '');
+            $qty = max(1, (int) ($item->quantity ?? 1));
+            if ($code === 'extra_branch') {
+                $extraBranches += $qty;
+            } elseif ($code === 'extra_user') {
+                $extraSeats += $qty;
+            } elseif ($code === 'extra_storage') {
+                $bytesPerUnit = $item->addon !== null ? (int) $item->addon->storage_bytes_per_unit : (5 * 1024 * 1024 * 1024);
+                $extraStorage += $qty * max(0, $bytesPerUnit);
+            }
+        }
+
+        $breakdown = is_array($active->pricing_breakdown) ? $active->pricing_breakdown : [];
+        $extraBranches = max($extraBranches, (int) ($breakdown['purchased_branches'] ?? $breakdown['extra_branches'] ?? 0));
+        $extraSeats = max($extraSeats, (int) ($breakdown['purchased_seats'] ?? $breakdown['extra_seats'] ?? 0));
+
+        return [$extraBranches, $extraSeats, $extraStorage];
+    }
+
     /**
      * @return array{
      *     included_branches: int,

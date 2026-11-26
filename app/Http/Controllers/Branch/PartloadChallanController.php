@@ -301,6 +301,7 @@ class PartloadChallanController extends Controller
             'remark' => $challan->remark,
             'lines' => $challan->lines->map(fn ($line): array => [
                 'id' => $line->id,
+                'lorry_receipt_id' => $line->lorry_receipt_id,
                 'lr_number' => $line->lorryReceipt?->lr_number,
                 'billing_customer_name' => $line->lorryReceipt?->billingCustomer?->name,
                 'to_station_name' => $line->toStation?->name,

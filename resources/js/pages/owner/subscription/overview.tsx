@@ -98,8 +98,8 @@ type Props = {
     payment_gate_note: string;
     links: {
         dashboard: string;
-        catalogue: string;
-        drafts: string;
+        purchase: string;
+        renew_page: string;
         credits: string;
         payments: string;
         invoices: string;
@@ -197,43 +197,27 @@ export default function SubscriptionOverview({
                     <div className="flex flex-wrap gap-2">
                         {canManage ? (
                             <Button asChild size="sm">
-                                <Link href={links.drafts}>
-                                    {subscription
+                                <Link href={links.purchase}>
+                                    {subscription?.status === 'active'
                                         ? 'Add Module / Upgrade'
                                         : 'Subscribe'}
                                 </Link>
                             </Button>
                         ) : null}
                         {canManage && links.checkout ? (
-                            <Button asChild size="sm">
+                            <Button asChild size="sm" variant="secondary">
                                 <Link href={links.checkout}>
-                                    Pay / activate (Test Mode)
+                                    Complete Pending Payment
                                 </Link>
                             </Button>
                         ) : null}
                         {canManage &&
                         subscription?.status === 'active' &&
-                        links.renew ? (
-                            <Form
-                                action={links.renew}
-                                method="post"
-                                className="inline"
-                            >
-                                <input
-                                    type="hidden"
-                                    name="subscription_id"
-                                    value={subscription.id}
-                                />
-                                <Button type="submit" size="sm">
-                                    Renew
-                                </Button>
-                            </Form>
+                        links.renew_page ? (
+                            <Button asChild size="sm" variant="outline">
+                                <Link href={links.renew_page}>Renew</Link>
+                            </Button>
                         ) : null}
-                        <Button asChild variant="outline" size="sm">
-                            <Link href={links.catalogue}>
-                                Catalogue & pricing
-                            </Link>
-                        </Button>
                         <Button asChild variant="outline" size="sm">
                             <Link href={links.invoices}>View Invoices</Link>
                         </Button>
@@ -242,9 +226,6 @@ export default function SubscriptionOverview({
                         </Button>
                         <Button asChild variant="outline" size="sm">
                             <Link href={links.credits}>Credits & quotas</Link>
-                        </Button>
-                        <Button asChild variant="ghost" size="sm">
-                            <Link href={links.drafts}>Draft contracts</Link>
                         </Button>
                     </div>
                     <p className="text-xs text-muted-foreground">
@@ -524,13 +505,11 @@ export default function SubscriptionOverview({
                     </section>
                 ) : (
                     <ShellEmptyState
-                        title="No subscription contract yet"
-                        description="Use the catalogue to calculate pricing and create a draft. Drafts do not activate billing."
+                        title="No active paid subscription yet"
+                        description="Select modules, optional add-ons, and a billing period on the simplified Purchase screen."
                         action={
                             <Button asChild>
-                                <Link href={links.catalogue}>
-                                    Open catalogue
-                                </Link>
+                                <Link href={links.purchase}>Subscribe Now</Link>
                             </Button>
                         }
                     />

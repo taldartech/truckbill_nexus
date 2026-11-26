@@ -23,6 +23,7 @@ class PartloadInwardLine extends Model
     protected $fillable = [
         'id', 'company_id', 'partload_inward_register_id', 'lorry_receipt_id',
         'partload_challan_line_id', 'position', 'packages', 'weight_kg',
+        'shortage_packages', 'shortage_weight_kg', 'is_damaged',
         'disposition', 'remark',
     ];
 
@@ -31,6 +32,9 @@ class PartloadInwardLine extends Model
         return [
             'packages' => 'decimal:3',
             'weight_kg' => 'decimal:3',
+            'shortage_packages' => 'decimal:3',
+            'shortage_weight_kg' => 'decimal:3',
+            'is_damaged' => 'boolean',
             'disposition' => PartloadInwardDisposition::class,
         ];
     }

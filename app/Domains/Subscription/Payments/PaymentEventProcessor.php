@@ -4,11 +4,13 @@ namespace App\Domains\Subscription\Payments;
 
 use App\Domains\Subscription\Billing\SubscriptionInvoiceService;
 use App\Domains\Subscription\Contract\CompanySubscriptionContractService;
+use App\Domains\Subscription\Entitlement\CompanyCapabilityResolver;
 use App\Domains\Subscription\Exceptions\SubscriptionDomainException;
 use App\Domains\Subscription\Lifecycle\SubscriptionLifecycleService;
 use App\Domains\Subscription\Payments\Gateway\FakePaymentGateway;
 use App\Domains\Subscription\Payments\Gateway\PaymentGateway;
 use App\Domains\Subscription\Payments\Gateway\RazorpayTestPaymentGateway;
+use App\Domains\Subscription\Purchase\SubscriptionPurchaseService;
 use App\Domains\Subscription\Support\DecimalMath;
 use App\Models\CompanySubscription;
 use App\Models\PaymentGatewayEvent;
@@ -248,8 +250,14 @@ final class PaymentEventProcessor
 
     public function fulfillPaidIntent(PaymentIntent $intent, string $reference): void
     {
+        $purchaseService = app(SubscriptionPurchaseService::class);
+        $company = $intent->company()->firstOrFail();
+
         if ($intent->company_subscription_id !== null) {
             $subscription = CompanySubscription::query()->whereKey($intent->company_subscription_id)->first();
+            if ($subscription !== null && $subscription->company_id !== $intent->company_id) {
+                throw new SubscriptionDomainException('Subscription contract does not belong to payment company.');
+            }
             if ($subscription !== null) {
                 if (in_array($subscription->status, ['draft', 'pending_payment'], true)) {
                     $paidThrough = CarbonImmutable::parse(
@@ -260,17 +268,30 @@ final class PaymentEventProcessor
                         $paidThrough,
                         remark: 'Activate from verified payment '.$reference,
                     );
+                    $purchaseService->applyVerifiedPaymentModifications($intent, $subscription->fresh() ?? $subscription);
+                } elseif ($subscription->status === 'active' && in_array($intent->purpose, ['upgrade', 'addon_add'], true)) {
+                    $purchaseService->applyVerifiedPaymentModifications($intent, $subscription);
                 } elseif ($subscription->status === 'active' && $intent->purpose === 'renewal') {
+                    $purchaseService->applyVerifiedPaymentModifications($intent, $subscription);
+                    $meta = is_array($intent->meta) ? $intent->meta : [];
+                    $quote = is_array($meta['quote'] ?? null) ? $meta['quote'] : [];
+                    $tenureValue = (string) ($quote['tenure'] ?? $subscription->tenure);
+                    $months = match ($tenureValue) {
+                        'monthly' => 1,
+                        'quarterly' => 3,
+                        'half_yearly' => 6,
+                        default => 12,
+                    };
                     $current = $subscription->paid_through_date
                         ? CarbonImmutable::parse($subscription->paid_through_date->toDateString())
                         : CarbonImmutable::parse($subscription->common_renewal_date?->toDateString() ?? now()->toDateString());
-                    $months = max(1, (int) ($subscription->tenure === 'monthly' ? 1 : ($subscription->tenure === 'quarterly' ? 3 : ($subscription->tenure === 'half_yearly' ? 6 : 12))));
-                    if (in_array($subscription->tenure, ['three_year_full_advance', 'three_year_annual_instalments'], true)) {
-                        $months = 12;
-                    }
+                    $newPaidThrough = filled($quote['service_period_end'] ?? null)
+                        ? CarbonImmutable::parse((string) $quote['service_period_end'])
+                        : $current->addMonthsNoOverflow($months);
+
                     $this->lifecycle->extendAfterVerifiedRenewal(
                         $subscription,
-                        $current->addMonthsNoOverflow($months),
+                        $newPaidThrough,
                         remark: 'Renew from verified payment '.$reference,
                     );
                 }
@@ -281,7 +302,6 @@ final class PaymentEventProcessor
             $ledgerType = $intent->purpose === 'credit_topup_broker' ? 'broker' : 'partload';
             $meta = $intent->meta ?? [];
             $units = (string) ($meta['credit_units'] ?? $intent->amount);
-            $company = $intent->company()->firstOrFail();
             $ledger = $this->contracts->ensureCreditLedger($company, $ledgerType);
             $this->contracts->appendCreditEntry(
                 $ledger,
@@ -292,9 +312,11 @@ final class PaymentEventProcessor
             );
         }
 
-        // Payment activation is independent of invoice-number approval / email (Rules §15).
+        CompanyCapabilityResolver::invalidate($company);
+
+        // Automatically generate immutable subscription tax invoice after verified payment.
         try {
-            $this->invoices->ensureDraftQueuedAfterPayment($intent);
+            $this->invoices->issueTaxInvoiceFromPayment($intent);
         } catch (Throwable $e) {
             Log::warning('subscription.invoice_after_payment_failed', [
                 'payment_intent_id' => $intent->id,

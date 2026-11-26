@@ -40,7 +40,7 @@ afterEach(function () {
 });
 
 test('lorry hire recognition posts transporter expense and payable', function () {
-    $ctx = brokerWorkspace();
+    $ctx = brokerWorkspace(['accounting']);
     $hire = brokerCreateLorryHire($ctx);
 
     $link = AccountingPostingLink::query()
@@ -59,7 +59,7 @@ test('lorry hire recognition posts transporter expense and payable', function ()
 });
 
 test('broker invoice issue and payment post sales and receipt vouchers', function () {
-    $ctx = brokerWorkspace();
+    $ctx = brokerWorkspace(['accounting']);
     brokerGrantInvoicePermissions();
     brokerGrantDeliveryAdjustmentPermissions();
 
@@ -111,7 +111,7 @@ test('broker invoice issue and payment post sales and receipt vouchers', functio
 });
 
 test('paid transporter voucher posts payment against transporter payable', function () {
-    $ctx = brokerWorkspace();
+    $ctx = brokerWorkspace(['accounting']);
     brokerGrantVoucherPermissions();
     $hire = brokerCreateLorryHire($ctx);
 
@@ -155,7 +155,7 @@ test('paid transporter voucher posts payment against transporter payable', funct
 });
 
 test('partload challan dispatch and delivery receipt post movement and collection vouchers', function () {
-    $ctx = partloadWorkspace();
+    $ctx = partloadWorkspace(['accounting']);
     $a = partloadCreateBilty($ctx);
     $b = partloadCreateBilty($ctx);
 

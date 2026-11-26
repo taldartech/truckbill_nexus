@@ -2,6 +2,7 @@
 
 namespace App\Domains\OwnFleet\Invoice;
 
+use App\Domains\Accounting\OperationalAccountingPoster;
 use App\Domains\Company\MasterDataVisibilityResolver;
 use App\Domains\Consignment\Enums\LrStatus;
 use App\Domains\Consignment\Enums\LrWorkflowContext;
@@ -62,6 +63,7 @@ final class TripInvoiceService
         private readonly EffectiveGstConfigurationResolver $gstResolver = new EffectiveGstConfigurationResolver,
         private readonly MasterDataVisibilityResolver $visibility = new MasterDataVisibilityResolver,
         private readonly TripInvoiceTdsResolver $tdsResolver = new TripInvoiceTdsResolver,
+        private readonly OperationalAccountingPoster $accounting = new OperationalAccountingPoster,
     ) {}
 
     /**
@@ -200,8 +202,8 @@ final class TripInvoiceService
             throw ValidationException::withMessages(['cancellation_remark' => 'Cancellation reason is required.']);
         }
 
-        return $this->auditedTransaction->run(function () use ($invoice, $company, $branch, $remark): TripInvoice {
-            return $this->withTenant($company, $branch, function () use ($invoice, $remark): TripInvoice {
+        return $this->auditedTransaction->run(function () use ($invoice, $company, $branch, $actor, $remark): TripInvoice {
+            return $this->withTenant($company, $branch, function () use ($invoice, $actor, $remark): TripInvoice {
                 $locked = TripInvoice::query()->whereKey($invoice->id)->whereNull('deleted_at')->lockForUpdate()->firstOrFail();
 
                 if ($locked->status !== TripInvoiceStatus::Pending) {
@@ -232,6 +234,8 @@ final class TripInvoiceService
                     before: $before,
                     after: $locked->fresh()?->toArray(),
                 );
+
+                $this->accounting->postTripInvoiceCancelled($locked, $actor, $remark);
 
                 return $locked->fresh(['lines', 'charges', 'payments', 'billingCustomer']) ?? $locked;
             });
@@ -533,7 +537,10 @@ final class TripInvoiceService
                     after: $invoice->fresh(['lines', 'charges'])?->toArray(),
                 );
 
-                return $invoice->fresh(['lines', 'charges', 'payments', 'billingCustomer']) ?? $invoice;
+                $fresh = $invoice->fresh(['lines', 'charges', 'payments', 'billingCustomer']) ?? $invoice;
+                $this->accounting->postTripInvoiceIssued($fresh, $actor);
+
+                return $fresh;
             });
         });
     }

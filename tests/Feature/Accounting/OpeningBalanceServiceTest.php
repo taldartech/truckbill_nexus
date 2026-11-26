@@ -26,7 +26,7 @@ afterEach(function () {
 });
 
 test('opening balance dry-run and post are balanced and idempotent', function () {
-    $ctx = tripWorkspace(['broker']);
+    $ctx = tripWorkspace(['broker'], ['accounting']);
     tripGrant('customer.admin', PermissionCodes::BRANCH_ACCOUNTING_VOUCHER_CREATE);
 
     app(ChartOfAccountsBootstrapService::class)->ensureDefaults($ctx['company']);

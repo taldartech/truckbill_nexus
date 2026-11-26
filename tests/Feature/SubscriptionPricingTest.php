@@ -166,7 +166,7 @@ test('catalogue seeder is idempotent with configurable starting prices', functio
     (new SubscriptionCatalogueSeeder)->run();
 
     expect(SubscriptionPlan::query()->count())->toBe(11)
-        ->and(SubscriptionAddon::query()->count())->toBe(12)
+        ->and(SubscriptionAddon::query()->count())->toBe(17)
         ->and(SubscriptionCatalogueVersion::query()->where('code', 'v2026-initial')->count())->toBe(1);
 });
 

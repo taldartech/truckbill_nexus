@@ -247,8 +247,8 @@ final class BrokerInvoiceService
                     $allocation = $this->numbers->allocateNext(
                         companyId: $company->id,
                         documentType: DocumentNumberType::BrokerInvoice,
-                        scopeType: DocumentNumberScopeType::Branch,
-                        branchId: $branch->id,
+                        scopeType: DocumentNumberScopeType::Company,
+                        branchId: null,
                     );
                 } catch (DocumentNumberConflictException $e) {
                     throw new BrokerConflictException($e->getMessage(), previous: $e);
@@ -449,8 +449,8 @@ final class BrokerInvoiceService
             throw ValidationException::withMessages(['cancellation_remark' => 'Cancellation reason is required.']);
         }
 
-        return $this->auditedTransaction->run(function () use ($invoice, $company, $branch, $reason): BrokerInvoice {
-            return $this->withTenant($company, $branch, function () use ($invoice, $reason): BrokerInvoice {
+        return $this->auditedTransaction->run(function () use ($invoice, $company, $branch, $actor, $reason): BrokerInvoice {
+            return $this->withTenant($company, $branch, function () use ($invoice, $actor, $reason): BrokerInvoice {
                 $locked = BrokerInvoice::query()
                     ->whereKey($invoice->id)
                     ->whereNull('deleted_at')
@@ -499,6 +499,8 @@ final class BrokerInvoiceService
                     before: $before,
                     after: $locked->fresh(['lines'])?->toArray(),
                 );
+
+                $this->accounting->postBrokerInvoiceCancelled($locked, $actor, $reason);
 
                 return $locked->fresh(['lines', 'payments', 'billingCustomer']) ?? $locked;
             });

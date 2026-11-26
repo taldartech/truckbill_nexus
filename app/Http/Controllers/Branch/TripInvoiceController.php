@@ -20,6 +20,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\BrokerInvoicePayment;
 use App\Models\Company;
+use App\Models\PartloadInvoicePayment;
 use App\Models\PaymentMode;
 use App\Models\TripInvoice;
 use App\Models\TripInvoiceCharge;
@@ -328,8 +329,10 @@ class TripInvoiceController extends Controller
             && $this->authorizer->allowsCustomer($actor, PermissionCodes::PAYMENT_VIEW, $company, $branch);
         $canBrokerPayments = $this->capabilities->allowsRead($company, CompanyCapabilities::BROKER_INVOICES)
             && $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_INVOICE_VIEW, $company, $branch);
+        $canPartloadPayments = $this->capabilities->allowsRead($company, CompanyCapabilities::PARTLOAD_INVOICES)
+            && $this->authorizer->allowsCustomer($actor, PermissionCodes::INVOICE_VIEW, $company, $branch);
 
-        if (! $canOwnFleetPayments && ! $canBrokerPayments) {
+        if (! $canOwnFleetPayments && ! $canBrokerPayments && ! $canPartloadPayments) {
             abort(403, 'Not authorized to view customer invoice payments.');
         }
 
@@ -392,6 +395,41 @@ class TripInvoiceController extends Controller
                 ]);
 
             $rows = $rows->merge($brokerRows);
+        }
+
+        if ($canPartloadPayments) {
+            $partloadRows = PartloadInvoicePayment::query()
+                ->where('company_id', $company->id)
+                ->whereNull('deleted_at')
+                ->whereHas('invoice', fn ($q) => $q->where('branch_id', $branch->id)->whereNull('deleted_at'))
+                ->with(['invoice'])
+                ->orderByDesc('payment_date')
+                ->limit(200)
+                ->get()
+                ->map(fn (PartloadInvoicePayment $payment): array => [
+                    'id' => 'partload:'.$payment->id,
+                    'payment_date' => $payment->payment_date->format('d-m-Y'),
+                    'invoice_number' => $payment->invoice?->invoice_number,
+                    'invoice_id' => $payment->partload_invoice_id,
+                    'source' => 'partload',
+                    'source_label' => 'Partload',
+                    'amount_received' => $this->freightPresentation->presentAmount($payment->amount_received, $maySeeFreight),
+                    'tds_amount' => $this->freightPresentation->presentAmount($payment->tds_amount, $maySeeFreight),
+                    'settlement_amount' => $this->freightPresentation->presentAmount(
+                        bcadd(
+                            number_format((float) $payment->amount_received, 2, '.', ''),
+                            bcadd(number_format((float) $payment->tds_amount, 2, '.', ''), number_format((float) $payment->deduction_amount, 2, '.', ''), 2),
+                            2,
+                        ),
+                        $maySeeFreight,
+                    ),
+                    'payment_mode' => $payment->payment_mode,
+                    'invoice_show_url' => $payment->invoice
+                        ? route('branch.partload.invoices.show', [$payment->invoice], absolute: false)
+                        : null,
+                ]);
+
+            $rows = $rows->merge($partloadRows);
         }
 
         $sorted = $rows

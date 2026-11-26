@@ -3,17 +3,51 @@ import { useEffect, useRef, useState } from 'react';
 import { CompanyOwnerPageShell } from '@/components/owner/owner-page-header';
 import { Button } from '@/components/ui/button';
 
+type QuoteLineItem = {
+    description?: string;
+    name?: string;
+    amount?: string;
+};
+
 type Props = {
     company: { id: string; name: string; status: string };
     ownerPanelScope: string;
     test_mode_banner: string;
     gateway: string;
     public_key: string | null;
-    subscription: {
+    subscription: null | {
         id: string;
         status: string;
         discounted_annual_total: string;
         items: { name: string; module: string | null }[];
+    };
+    quote?: null | {
+        tenure_label?: string;
+        service_period_start?: string;
+        service_period_end?: string;
+        common_renewal_date?: string;
+        line_items?: QuoteLineItem[];
+        subtotal_amount?: string;
+        discount_amount?: string;
+        taxable_amount?: string;
+        gst?: {
+            configured?: boolean;
+            rate_percent?: string;
+            cgst_amount?: string;
+            sgst_amount?: string;
+            igst_amount?: string;
+            is_inter_state?: boolean;
+        };
+        total_payable?: string;
+    };
+    customerBilling?: {
+        legal_name?: string;
+        registered_address?: string | null;
+        city?: string | null;
+        state?: string | null;
+        pin_code?: string | null;
+        gstin?: string | null;
+        pan?: string | null;
     };
     payment: {
         id: string;
@@ -53,6 +87,8 @@ export default function SubscriptionCheckout({
     gateway,
     public_key,
     subscription,
+    quote,
+    customerBilling,
     payment,
     prefill,
     allow_fake_simulate = false,
@@ -132,7 +168,7 @@ export default function SubscriptionCheckout({
                 key: public_key,
                 currency: payment.currency,
                 name: 'TruckBill',
-                description: `Test Mode · ${payment.purpose}`,
+                description: `Subscription · ${payment.purpose}`,
                 order_id: payment.gateway_order_id,
                 prefill: {
                     name: prefill.name,
@@ -212,14 +248,22 @@ export default function SubscriptionCheckout({
     };
 
     const alertMessage = errors?.checkout || scriptError || localError;
+    const lineItems =
+        quote?.line_items && quote.line_items.length > 0
+            ? quote.line_items
+            : (subscription?.items ?? []).map((item) => ({
+                  name: item.name,
+                  description: `${item.name}${item.module ? ` (${item.module})` : ''}`,
+                  amount: undefined,
+              }));
 
     return (
         <>
-            <Head title={`Checkout · ${company.name}`} />
+            <Head title={`Review & Pay · ${company.name}`} />
             <CompanyOwnerPageShell
                 company={company}
                 ownerPanelScope={ownerPanelScope}
-                section="Checkout"
+                section="Review & Pay"
             >
                 <p
                     role="status"
@@ -241,22 +285,27 @@ export default function SubscriptionCheckout({
                         {alertMessage}
                     </p>
                 ) : null}
-                <section className="grid gap-4 rounded-xl border border-border p-4 lg:grid-cols-2">
-                    <div>
-                        <h2 className="font-semibold">Order summary</h2>
-                        <dl className="mt-3 space-y-2 text-sm">
+
+                <section className="grid gap-4 rounded-xl border border-border bg-card p-4 lg:grid-cols-2">
+                    <div className="space-y-3">
+                        <h2 className="font-semibold">Order & Tax Summary</h2>
+                        <dl className="space-y-1.5 text-sm">
                             <div className="flex justify-between gap-4">
                                 <dt className="text-muted-foreground">
                                     Purpose
                                 </dt>
-                                <dd>{payment.purpose}</dd>
+                                <dd className="capitalize">
+                                    {payment.purpose.replaceAll('_', ' ')}
+                                </dd>
                             </div>
-                            <div className="flex justify-between gap-4">
-                                <dt className="text-muted-foreground">
-                                    Gateway
-                                </dt>
-                                <dd>{gateway}</dd>
-                            </div>
+                            {quote?.tenure_label ? (
+                                <div className="flex justify-between gap-4">
+                                    <dt className="text-muted-foreground">
+                                        Period
+                                    </dt>
+                                    <dd>{quote.tenure_label}</dd>
+                                </div>
+                            ) : null}
                             <div className="flex justify-between gap-4">
                                 <dt className="text-muted-foreground">
                                     Order ID
@@ -265,33 +314,89 @@ export default function SubscriptionCheckout({
                                     {payment.gateway_order_id || '—'}
                                 </dd>
                             </div>
-                            <div className="flex justify-between gap-4">
-                                <dt className="text-muted-foreground">
-                                    Payable
-                                </dt>
-                                <dd className="text-lg font-semibold">
+                            {quote?.taxable_amount ? (
+                                <div className="flex justify-between gap-4">
+                                    <dt className="text-muted-foreground">
+                                        Taxable Value
+                                    </dt>
+                                    <dd>
+                                        {payment.currency}{' '}
+                                        {quote.taxable_amount}
+                                    </dd>
+                                </div>
+                            ) : null}
+                            {quote?.gst?.configured ? (
+                                <div className="flex justify-between gap-4">
+                                    <dt className="text-muted-foreground">
+                                        GST ({quote.gst.rate_percent}%)
+                                    </dt>
+                                    <dd>
+                                        {quote.gst.is_inter_state
+                                            ? `IGST ₹${quote.gst.igst_amount}`
+                                            : `CGST ₹${quote.gst.cgst_amount} + SGST ₹${quote.gst.sgst_amount}`}
+                                    </dd>
+                                </div>
+                            ) : null}
+                            <div className="flex justify-between gap-4 border-t border-border pt-2">
+                                <dt className="font-semibold">Total Payable</dt>
+                                <dd className="text-lg font-bold">
                                     {payment.currency} {payment.amount}
                                 </dd>
                             </div>
                         </dl>
+
+                        {customerBilling?.legal_name ? (
+                            <div className="rounded-lg border border-border/80 bg-muted/20 p-3 text-xs">
+                                <p className="font-semibold">
+                                    Billed To: {customerBilling.legal_name}
+                                </p>
+                                <p className="text-muted-foreground">
+                                    {[
+                                        customerBilling.registered_address,
+                                        customerBilling.city,
+                                        customerBilling.state,
+                                        customerBilling.pin_code,
+                                    ]
+                                        .filter(Boolean)
+                                        .join(', ') ||
+                                        'Registered office not set'}
+                                </p>
+                                <p className="font-mono text-muted-foreground">
+                                    GSTIN:{' '}
+                                    {customerBilling.gstin || 'Unregistered'}
+                                    {customerBilling.pan
+                                        ? ` · PAN: ${customerBilling.pan}`
+                                        : ''}
+                                </p>
+                            </div>
+                        ) : null}
                     </div>
-                    <div>
-                        <h2 className="font-semibold">Contract items</h2>
-                        <ul className="mt-3 space-y-2 text-sm">
-                            {subscription.items.map((item, index) => (
-                                <li key={`${item.name}-${index}`}>
-                                    {item.name}
-                                    {item.module ? ` (${item.module})` : ''}
+
+                    <div className="space-y-3">
+                        <h2 className="font-semibold">Subscription Items</h2>
+                        <ul className="space-y-2 text-sm">
+                            {lineItems.map((item, index) => (
+                                <li
+                                    key={`${item.description || item.name}-${index}`}
+                                    className="flex justify-between gap-2 border-b border-border/60 pb-1.5"
+                                >
+                                    <span>{item.description || item.name}</span>
+                                    {item.amount ? (
+                                        <span className="font-medium">
+                                            ₹{item.amount}
+                                        </span>
+                                    ) : null}
                                 </li>
                             ))}
                         </ul>
-                        <p className="mt-4 text-sm text-muted-foreground">
-                            Browser success is not trusted. The server verifies
-                            the signature and captured payment status before
-                            activation.
+                        <p className="text-xs text-muted-foreground">
+                            Entitlements activate and your immutable GST tax
+                            invoice is generated only after authoritative server
+                            verification.
                         </p>
                     </div>
                 </section>
+
                 <div className="flex flex-wrap gap-3">
                     {gateway === 'razorpay_test' && public_key ? (
                         <Button
@@ -321,21 +426,14 @@ export default function SubscriptionCheckout({
                                 value={payment.id}
                             />
                             <Button type="submit">
-                                Simulate verified capture (fake gateway)
+                                Simulate Verified Capture
                             </Button>
                         </Form>
                     ) : null}
                     <Button asChild variant="outline">
-                        <Link href={links.overview}>Cancel</Link>
+                        <Link href={links.overview}>Back to Purchase</Link>
                     </Button>
                 </div>
-                {gateway === 'razorpay_test' && !public_key ? (
-                    <p className="text-sm text-muted-foreground">
-                        Razorpay Test Mode credentials are incomplete. Set
-                        RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, and
-                        RAZORPAY_WEBHOOK_SECRET (Test Mode only).
-                    </p>
-                ) : null}
             </CompanyOwnerPageShell>
         </>
     );

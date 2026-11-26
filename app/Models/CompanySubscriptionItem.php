@@ -8,6 +8,9 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Str;
 
+/**
+ * @property-read SubscriptionAddon|null $addon
+ */
 class CompanySubscriptionItem extends Model
 {
     /** @use HasFactory<CompanySubscriptionItemFactory> */
@@ -29,6 +32,7 @@ class CompanySubscriptionItem extends Model
         'name',
         'annual_price_snapshot',
         'capacity_units_snapshot',
+        'quantity',
     ];
 
     protected function casts(): array
@@ -36,6 +40,7 @@ class CompanySubscriptionItem extends Model
         return [
             'annual_price_snapshot' => 'decimal:2',
             'capacity_units_snapshot' => 'integer',
+            'quantity' => 'integer',
         ];
     }
 

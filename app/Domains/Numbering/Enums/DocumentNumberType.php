@@ -15,4 +15,5 @@ enum DocumentNumberType: string
     case PartloadMainChallan = 'partload_main_challan';
     case PartloadInward = 'partload_inward';
     case PartloadDeliveryReceipt = 'partload_delivery_receipt';
+    case PartloadInvoice = 'partload_invoice';
 }

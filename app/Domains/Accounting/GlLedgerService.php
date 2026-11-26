@@ -3,6 +3,9 @@
 namespace App\Domains\Accounting;
 
 use App\Domains\Accounting\Enums\AccountNature;
+use App\Domains\Accounting\Exceptions\AccountingDomainException;
+use App\Domains\Subscription\Entitlement\CompanyCapabilities;
+use App\Domains\Subscription\Entitlement\CompanyCapabilityResolver;
 use App\Models\AccountGroup;
 use App\Models\Company;
 use App\Models\GlLedger;
@@ -28,6 +31,10 @@ final class GlLedgerService
      */
     public function create(Company $company, User $actor, array $payload): GlLedger
     {
+        if (! app(CompanyCapabilityResolver::class)->allowsMutate($company, CompanyCapabilities::ACCOUNTING)) {
+            throw new AccountingDomainException('Accounting add-on entitlement is required to manage ledgers.');
+        }
+
         $this->coa->ensureDefaults($company);
 
         $name = trim((string) $payload['name']);

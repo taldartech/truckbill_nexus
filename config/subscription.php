@@ -18,6 +18,7 @@ return [
 
     'trial' => [
         'days' => (int) env('SUBSCRIPTION_TRIAL_DAYS', 15),
+        'include_accounting' => (bool) env('SUBSCRIPTION_TRIAL_INCLUDE_ACCOUNTING', false),
         'reminder_days_before_expiry' => [7, 3, 1],
     ],
 

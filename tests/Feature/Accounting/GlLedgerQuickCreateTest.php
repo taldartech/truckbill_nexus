@@ -27,7 +27,7 @@ afterEach(function () {
 });
 
 test('gl ledger service creates ledger under account group', function () {
-    $ctx = tripWorkspace(['broker']);
+    $ctx = tripWorkspace(['broker'], ['accounting']);
     tripGrant('customer.admin', PermissionCodes::BRANCH_ACCOUNTING_VOUCHER_CREATE);
 
     $service = app(GlLedgerService::class);
@@ -51,7 +51,7 @@ test('gl ledger service creates ledger under account group', function () {
 });
 
 test('ledger quick create endpoint returns created ledger json', function () {
-    $ctx = tripWorkspace(['broker']);
+    $ctx = tripWorkspace(['broker'], ['accounting']);
     tripGrant('customer.admin', PermissionCodes::BRANCH_ACCOUNTING_VOUCHER_CREATE);
     tripGrant('customer.admin', PermissionCodes::BRANCH_ACCOUNTING_VIEW);
     tripActivate($ctx['company'], $ctx['branch']);

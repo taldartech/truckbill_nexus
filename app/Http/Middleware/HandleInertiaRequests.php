@@ -7,6 +7,7 @@ use App\Domains\Company\WorkspaceNavigationService;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
 use App\Domains\Rbac\PermissionAuthorizer;
+use App\Domains\Rbac\PermissionResolver;
 use App\Domains\Subscription\Entitlement\CompanyCapabilities;
 use App\Domains\Subscription\Entitlement\CompanyCapabilityResolver;
 use App\Models\Branch;
@@ -67,6 +68,9 @@ class HandleInertiaRequests extends Middleware
                 'can_manage_geography' => $user !== null && $user->isInternal() && $user->isActive(),
                 // Quick-add on forms (Owners + Internal). Distinct from master administration.
                 'can_quick_create_geography' => $user !== null && $user->isActive(),
+                'internal_permissions' => $user !== null && $user->isInternal() && $user->isActive() && ! $user->isSuperAdmin()
+                    ? app(PermissionResolver::class)->codesForInternal($user)
+                    : [],
             ],
             'flash' => [
                 'success' => $request->session()->get('success'),

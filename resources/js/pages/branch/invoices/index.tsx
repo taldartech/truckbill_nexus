@@ -39,6 +39,7 @@ type Props = {
     permissions: {
         can_create_own_fleet: boolean;
         can_create_broker: boolean;
+        can_create_partload?: boolean;
         can_view_freight: boolean;
     };
     sourceOptions: Array<{ value: string; label: string }>;
@@ -71,7 +72,9 @@ export default function CustomerInvoicesIndex({
     );
 
     const canCreate =
-        permissions.can_create_own_fleet || permissions.can_create_broker;
+        permissions.can_create_own_fleet ||
+        permissions.can_create_broker ||
+        Boolean(permissions.can_create_partload);
 
     const columns = useMemo<DataTableColumn<InvoiceRow>[]>(
         () => [

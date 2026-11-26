@@ -43,6 +43,7 @@ export type WorkspaceNavigation = {
     partload_pending_delivery: boolean;
     partload_challans: boolean;
     partload_main_challans: boolean;
+    partload_invoices?: boolean;
     accounting: boolean;
     masters_parties: boolean;
     masters_vehicles: boolean;

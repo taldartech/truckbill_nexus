@@ -40,6 +40,7 @@ function customerCatalogueCodes(): array
 {
     return array_values(array_unique(array_merge(
         PermissionCodes::customerPlatformCatalogue(),
+        PermissionCodes::customerMastersAndReportsCatalogue(),
         PermissionCodes::customerPhase4Catalogue(),
         PermissionCodes::customerPhase5Catalogue(),
         PermissionCodes::customerPhase6Catalogue(),
@@ -57,7 +58,7 @@ function permissionCodesClassCustomerConstants(): array
     $codes = [];
 
     foreach ($constants as $value) {
-        if (is_string($value) && str_contains($value, '.')) {
+        if (is_string($value) && str_contains($value, '.') && ! str_starts_with($value, 'internal.')) {
             $codes[] = $value;
         }
     }
@@ -93,8 +94,8 @@ test('every PermissionCodes customer constant is registered in Permission Master
     $fromClass = permissionCodesClassCustomerConstants();
     $fromCatalogues = customerCatalogueCodes();
 
-    expect($fromClass)->toHaveCount(73)
-        ->and($fromCatalogues)->toHaveCount(73)
+    expect($fromClass)->toHaveCount(83)
+        ->and($fromCatalogues)->toHaveCount(83)
         ->and($fromClass)->toEqualCanonicalizing($fromCatalogues);
 
     foreach ($fromCatalogues as $code) {

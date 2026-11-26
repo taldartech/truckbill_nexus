@@ -8,62 +8,105 @@ use App\Models\Company;
 use App\Models\SubscriptionInvoice;
 use App\Models\User;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 
 /**
- * Non-production subscription invoice HTML document + email dispatch.
- * No PDF package dependency (PO-P1-DEPS). Not a legally operative tax invoice (issuer/GST Pending).
- * Email failures must not reverse payment or number approval.
+ * Renders immutable Subscription Tax Invoices and Credit Notes from stored snapshots.
+ * Uses PlatformBillingProfile snapshot configured in Admin/CRM (never hardcodes supplier info).
  */
 final class SubscriptionInvoiceDocumentService
 {
     public function __construct(
         private readonly SubscriptionInvoiceService $invoices = new SubscriptionInvoiceService,
+        private readonly PlatformBillingProfileService $billingProfiles = new PlatformBillingProfileService,
     ) {}
 
     /**
-     * @return array{
-     *     sample_banner: string,
-     *     company: array{id: string, name: string},
-     *     invoice: array<string, mixed>,
-     *     line_items: list<array<string, mixed>>,
-     *     payment_reference: string|null,
-     *     totals: array{amount: string, currency: string}
-     * }
+     * @return array<string, mixed>
      */
     public function presentation(SubscriptionInvoice $invoice): array
     {
         $company = Company::query()->whereKey($invoice->company_id)->firstOrFail();
+
+        $supplier = is_array($invoice->supplier_snapshot) ? $invoice->supplier_snapshot : null;
+        $customer = is_array($invoice->customer_snapshot)
+            ? $invoice->customer_snapshot
+            : $this->billingProfiles->customerSnapshot($company);
+
         $lineItems = is_array($invoice->line_items) ? $invoice->line_items : [];
         if ($lineItems === []) {
             $lineItems = [[
-                'description' => 'Subscription charges (itemized breakdown pending issuer validation)',
-                'amount' => (string) $invoice->amount,
+                'description' => 'TruckBill Subscription Charges',
+                'quantity' => 1,
+                'amount' => (string) ($invoice->taxable_amount ?: $invoice->amount),
                 'currency' => $invoice->currency,
             ]];
         }
 
+        $number = (string) ($invoice->invoice_number ?? $invoice->approved_number ?? $invoice->proposed_number ?? $invoice->id);
+        $hasSupplierProfile = $supplier !== null && filled($supplier['legal_name'] ?? null);
+
+        $logoDataUri = null;
+        if ($hasSupplierProfile && filled($supplier['logo_path'] ?? null)) {
+            $logoPath = (string) $supplier['logo_path'];
+            if (Storage::disk('local')->exists($logoPath)) {
+                $mime = Storage::disk('local')->mimeType($logoPath) ?: 'image/png';
+                $raw = Storage::disk('local')->get($logoPath);
+                if ($raw !== null) {
+                    $logoDataUri = 'data:'.$mime.';base64,'.base64_encode($raw);
+                }
+            }
+        }
+
         return [
-            'sample_banner' => 'SAMPLE / NON-PRODUCTION — Not a legally operative tax invoice. Issuer and GST details remain Pending validation (TB-TAX).',
+            'configured' => $hasSupplierProfile,
+            'document_title' => $invoice->document_type === 'credit_note'
+                ? 'Tax Credit Note'
+                : ($hasSupplierProfile && filled($supplier['gstin'] ?? null) ? 'Tax Invoice' : 'Subscription Invoice'),
+            'banner' => $hasSupplierProfile
+                ? null
+                : 'Supplier billing profile was not configured at issuance. Configure Platform Billing Profile in Admin/CRM for complete tax particulars.',
+            'supplier' => $supplier,
+            'supplier_logo_data_uri' => $logoDataUri,
+            'customer' => $customer,
             'company' => [
                 'id' => $company->id,
-                'name' => $company->name,
+                'name' => $customer['legal_name'] ?? $company->name,
             ],
             'invoice' => [
                 'id' => $invoice->id,
+                'document_type' => $invoice->document_type,
+                'invoice_number' => $number,
+                'original_invoice_id' => $invoice->original_invoice_id,
                 'status' => $invoice->status,
                 'proposed_number' => $invoice->proposed_number,
                 'approved_number' => $invoice->approved_number,
                 'financial_year' => $invoice->financial_year,
-                'amount' => (string) $invoice->amount,
-                'currency' => $invoice->currency,
+                'purchase_type' => $invoice->purchase_type,
+                'sac_code' => $invoice->sac_code ?? ($supplier['sac_code'] ?? '998314'),
+                'service_period_start' => $invoice->service_period_start?->toDateString(),
+                'service_period_end' => $invoice->service_period_end?->toDateString(),
+                'place_of_supply_state' => $invoice->place_of_supply_state,
+                'place_of_supply_code' => $invoice->place_of_supply_code,
+                'is_inter_state' => (bool) $invoice->is_inter_state,
+                'credit_note_reason' => $invoice->credit_note_reason,
+                'issued_at' => ($invoice->issued_at ?? $invoice->approved_at ?? $invoice->created_at)?->toDateString(),
                 'email_status' => $invoice->email_status,
-                'approved_at' => $invoice->approved_at?->toIso8601String(),
                 'emailed_at' => $invoice->emailed_at?->toIso8601String(),
                 'created_at' => $invoice->created_at?->toIso8601String(),
             ],
             'line_items' => array_values($lineItems),
-            'payment_reference' => $invoice->payment_intent_id,
+            'pricing_snapshot' => $invoice->pricing_snapshot,
+            'payment_reference' => $invoice->payment_reference ?? $invoice->payment_intent_id,
             'totals' => [
+                'subtotal_amount' => (string) ($invoice->subtotal_amount ?: $invoice->amount),
+                'discount_amount' => (string) ($invoice->discount_amount ?? '0.00'),
+                'taxable_amount' => (string) ($invoice->taxable_amount ?: $invoice->amount),
+                'gst_rate_percent' => (string) ($invoice->gst_rate_percent ?? '0.00'),
+                'cgst_amount' => (string) ($invoice->cgst_amount ?? '0.00'),
+                'sgst_amount' => (string) ($invoice->sgst_amount ?? '0.00'),
+                'igst_amount' => (string) ($invoice->igst_amount ?? '0.00'),
+                'total_tax_amount' => (string) ($invoice->total_tax_amount ?? '0.00'),
                 'amount' => (string) $invoice->amount,
                 'currency' => $invoice->currency,
             ],
@@ -73,68 +116,154 @@ final class SubscriptionInvoiceDocumentService
     public function renderHtml(SubscriptionInvoice $invoice): string
     {
         $data = $this->presentation($invoice);
+        $inv = $data['invoice'];
+        $sup = $data['supplier'];
+        $cus = $data['customer'];
+        $totals = $data['totals'];
+        $cur = e((string) $totals['currency']);
+
         $lines = '';
-        foreach ($data['line_items'] as $item) {
-            $desc = e((string) ($item['description'] ?? $item['name'] ?? 'Line item'));
-            $amt = e((string) ($item['amount'] ?? ''));
-            $cur = e((string) ($item['currency'] ?? $data['totals']['currency']));
-            $lines .= "<tr><td style=\"padding:8px;border-bottom:1px solid #ddd;\">{$desc}</td>"
-                ."<td style=\"padding:8px;border-bottom:1px solid #ddd;text-align:right;\">{$cur} {$amt}</td></tr>";
+        foreach ($data['line_items'] as $idx => $item) {
+            $sr = $idx + 1;
+            $desc = e((string) ($item['description'] ?? $item['name'] ?? 'Subscription Item'));
+            $qty = e((string) ($item['quantity'] ?? 1));
+            $sac = e((string) ($item['sac_code'] ?? $inv['sac_code'] ?? '998314'));
+            $amt = e((string) ($item['amount'] ?? '0.00'));
+            $lines .= "<tr><td>{$sr}</td><td>{$desc}</td><td>{$sac}</td><td class=\"r\">{$qty}</td><td class=\"r\">{$cur} {$amt}</td></tr>";
         }
 
-        $number = e((string) ($data['invoice']['approved_number'] ?? $data['invoice']['proposed_number'] ?? 'DRAFT'));
-        $status = e((string) $data['invoice']['status']);
-        $company = e($data['company']['name']);
-        $fy = e((string) $data['invoice']['financial_year']);
+        $bannerHtml = $data['banner']
+            ? '<div class="banner">'.e((string) $data['banner']).'</div>'
+            : '';
+
+        $logoHtml = $data['supplier_logo_data_uri']
+            ? '<img src="'.e((string) $data['supplier_logo_data_uri']).'" alt="Supplier Logo" style="max-height:56px;max-width:180px;object-fit:contain;margin-bottom:8px;">'
+            : '';
+
+        $supplierBlock = $sup !== null
+            ? '<strong>'.e((string) ($sup['legal_name'] ?? '')).'</strong>'
+              .(filled($sup['trade_name'] ?? null) ? '<br>Trade Name: '.e((string) $sup['trade_name']) : '')
+              .'<br>'.nl2br(e((string) ($sup['registered_address'] ?? '')))
+              .'<br>'.e(trim(($sup['city'] ?? '').', '.($sup['state_name'] ?? '').' - '.($sup['pin_code'] ?? '')))
+              .(filled($sup['gstin'] ?? null) ? '<br>GSTIN: <strong>'.e((string) $sup['gstin']).'</strong>' : '')
+              .(filled($sup['pan'] ?? null) ? ' · PAN: '.e((string) $sup['pan']) : '')
+              .'<br>Contact: '.e((string) ($sup['contact_number'] ?? '')).' · '.e((string) ($sup['email'] ?? ''))
+            : '<em>Platform billing profile not configured</em>';
+
+        $customerAddress = implode(', ', array_filter([
+            $cus['registered_address'] ?? null,
+            $cus['city'] ?? null,
+            $cus['state'] ?? null,
+            $cus['pin_code'] ?? null,
+        ]));
+
+        $customerBlock = '<strong>'.e((string) ($cus['legal_name'] ?? '')).'</strong>'
+            .($customerAddress !== '' ? '<br>'.e($customerAddress) : '')
+            .(filled($cus['gstin'] ?? null) ? '<br>GSTIN: <strong>'.e((string) $cus['gstin']).'</strong>' : '<br>GSTIN: Unregistered')
+            .(filled($cus['pan'] ?? null) ? ' · PAN: '.e((string) $cus['pan']) : '')
+            .(filled($cus['contact_number'] ?? null) || filled($cus['email'] ?? null)
+                ? '<br>Contact: '.e(trim(($cus['contact_number'] ?? '').' '.($cus['email'] ?? '')))
+                : '');
+
+        $taxRows = '';
+        if ((float) $totals['igst_amount'] > 0) {
+            $taxRows .= "<tr><td colspan=\"4\" class=\"r\">IGST ({$totals['gst_rate_percent']}%)</td><td class=\"r\">{$cur} {$totals['igst_amount']}</td></tr>";
+        } else {
+            if ((float) $totals['cgst_amount'] > 0 || (float) $totals['sgst_amount'] > 0) {
+                $halfRate = number_format(((float) $totals['gst_rate_percent']) / 2, 2);
+                $taxRows .= "<tr><td colspan=\"4\" class=\"r\">CGST ({$halfRate}%)</td><td class=\"r\">{$cur} {$totals['cgst_amount']}</td></tr>";
+                $taxRows .= "<tr><td colspan=\"4\" class=\"r\">SGST ({$halfRate}%)</td><td class=\"r\">{$cur} {$totals['sgst_amount']}</td></tr>";
+            }
+        }
+
+        $bankHtml = '';
+        if ($sup !== null && (filled($sup['bank_name'] ?? null) || filled($sup['bank_account_number'] ?? null))) {
+            $bankHtml = '<div class="box" style="margin-top:16px;"><strong>Bank Details</strong><br>'
+                .'Bank: '.e((string) ($sup['bank_name'] ?? '—'))
+                .' · A/c Name: '.e((string) ($sup['bank_account_name'] ?? '—'))
+                .' · A/c No: '.e((string) ($sup['bank_account_number'] ?? '—'))
+                .' · IFSC: '.e((string) ($sup['bank_ifsc'] ?? '—'))
+                .(filled($sup['bank_branch'] ?? null) ? ' · Branch: '.e((string) $sup['bank_branch']) : '')
+                .'</div>';
+        }
+
+        $title = e((string) $data['document_title']);
+        $number = e((string) $inv['invoice_number']);
+        $issuedDate = e((string) ($inv['issued_at'] ?? '—'));
+        $period = ($inv['service_period_start'] && $inv['service_period_end'])
+            ? e((string) $inv['service_period_start'].' to '.(string) $inv['service_period_end'])
+            : e((string) ($inv['financial_year'] ?? '—'));
+        $pos = e(trim(($inv['place_of_supply_state'] ?? '—').($inv['place_of_supply_code'] ? ' ('.$inv['place_of_supply_code'].')' : '')));
         $payRef = e((string) ($data['payment_reference'] ?? '—'));
-        $total = e($data['totals']['currency'].' '.$data['totals']['amount']);
-        $banner = e($data['sample_banner']);
+        $reasonBlock = filled($inv['credit_note_reason'] ?? null)
+            ? '<p><strong>Credit Note Reason:</strong> '.e((string) $inv['credit_note_reason']).'</p>'
+            : '';
 
         return <<<HTML
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>Subscription invoice {$number}</title>
+  <title>{$title} {$number}</title>
   <style>
-    body { font-family: ui-sans-serif, system-ui, sans-serif; margin: 2rem; color: #111; }
-    .banner { background: #fff3cd; border: 1px solid #ffc107; padding: 0.75rem 1rem; margin-bottom: 1.5rem; font-size: 0.9rem; }
-    h1 { font-size: 1.5rem; margin: 0 0 0.5rem; }
-    table { width: 100%; border-collapse: collapse; margin-top: 1.5rem; }
-    .meta td { padding: 0.25rem 0.5rem 0.25rem 0; }
-    @media print { .no-print { display: none; } }
+    body { font-family: ui-sans-serif, system-ui, sans-serif; margin: 2rem; color: #111; line-height: 1.45; font-size: 13px; }
+    .banner { background: #fff3cd; border: 1px solid #ffc107; padding: 0.75rem 1rem; margin-bottom: 1rem; }
+    .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #111; padding-bottom: 12px; margin-bottom: 16px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+    .box { border: 1px solid #d4d4d8; border-radius: 6px; padding: 12px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+    th, td { padding: 8px; border-bottom: 1px solid #e4e4e7; text-align: left; }
+    th { background: #f4f4f5; font-weight: 600; }
+    .r { text-align: right; }
+    tfoot td { font-weight: 600; }
+    .grand td { font-size: 15px; font-weight: 700; border-top: 2px solid #111; }
+    @media print { .no-print { display: none; } body { margin: 0.75rem; } }
   </style>
 </head>
 <body>
-  <div class="banner">{$banner}</div>
-  <h1>TruckBill subscription invoice</h1>
-  <p class="no-print"><button onclick="window.print()">Print / Save as PDF</button></p>
-  <table class="meta">
-    <tr><td>Company</td><td><strong>{$company}</strong></td></tr>
-    <tr><td>Invoice number</td><td><strong>{$number}</strong></td></tr>
-    <tr><td>Status</td><td>{$status}</td></tr>
-    <tr><td>Financial year</td><td>{$fy}</td></tr>
-    <tr><td>Payment reference</td><td>{$payRef}</td></tr>
-  </table>
+  {$bannerHtml}
+  <div class="header">
+    <div>
+      {$logoHtml}
+      <h1 style="margin:0;font-size:20px;">{$title}</h1>
+      <p style="margin:4px 0 0;color:#52525b;">Invoice No: <strong>{$number}</strong> · Date: {$issuedDate}</p>
+    </div>
+    <div style="text-align:right;">
+      <p class="no-print" style="margin:0 0 8px;"><button onclick="window.print()">Print / Save as PDF</button></p>
+      <p style="margin:0;">Financial Year: <strong>{$inv['financial_year']}</strong></p>
+      <p style="margin:2px 0 0;">Service Period: {$period}</p>
+      <p style="margin:2px 0 0;">Place of Supply: {$pos}</p>
+      <p style="margin:2px 0 0;">Payment Ref: {$payRef}</p>
+    </div>
+  </div>
+  {$reasonBlock}
+  <div class="grid">
+    <div class="box"><div style="font-size:11px;text-transform:uppercase;color:#71717a;margin-bottom:4px;">Supplier</div>{$supplierBlock}</div>
+    <div class="box"><div style="font-size:11px;text-transform:uppercase;color:#71717a;margin-bottom:4px;">Billed To (Customer Company)</div>{$customerBlock}</div>
+  </div>
   <table>
-    <thead><tr><th style="text-align:left;padding:8px;border-bottom:2px solid #111;">Description</th>
-    <th style="text-align:right;padding:8px;border-bottom:2px solid #111;">Amount</th></tr></thead>
+    <thead>
+      <tr><th>#</th><th>Description</th><th>SAC</th><th class="r">Qty</th><th class="r">Amount</th></tr>
+    </thead>
     <tbody>{$lines}</tbody>
-    <tfoot><tr><td style="padding:12px 8px;font-weight:bold;">Total</td>
-    <td style="padding:12px 8px;text-align:right;font-weight:bold;">{$total}</td></tr></tfoot>
+    <tfoot>
+      <tr><td colspan="4" class="r">Subtotal</td><td class="r">{$cur} {$totals['subtotal_amount']}</td></tr>
+      <tr><td colspan="4" class="r">Discounts</td><td class="r">- {$cur} {$totals['discount_amount']}</td></tr>
+      <tr><td colspan="4" class="r">Taxable Value</td><td class="r">{$cur} {$totals['taxable_amount']}</td></tr>
+      {$taxRows}
+      <tr class="grand"><td colspan="4" class="r">Grand Total</td><td class="r">{$cur} {$totals['amount']}</td></tr>
+    </tfoot>
   </table>
+  {$bankHtml}
 </body>
 </html>
 HTML;
     }
 
-    /**
-     * Dispatch sample invoice email to company owner. Does not reverse approval on failure.
-     */
     public function dispatchEmail(SubscriptionInvoice $invoice, ?User $recipient = null): SubscriptionInvoice
     {
         if (! in_array($invoice->status, ['approved', 'issued', 'emailed'], true)) {
-            throw new SubscriptionDomainException('Invoice must be approved before email dispatch.');
+            throw new SubscriptionDomainException('Invoice must be issued before email dispatch.');
         }
 
         $company = Company::query()->whereKey($invoice->company_id)->firstOrFail();
@@ -147,7 +276,7 @@ HTML;
             $html = $this->renderHtml($invoice);
             Mail::to($owner->email)->send(new SubscriptionInvoiceMail(
                 companyName: $company->name,
-                invoiceNumber: (string) ($invoice->approved_number ?? $invoice->proposed_number ?? $invoice->id),
+                invoiceNumber: (string) ($invoice->invoice_number ?? $invoice->approved_number ?? $invoice->proposed_number ?? $invoice->id),
                 htmlBody: $html,
             ));
 

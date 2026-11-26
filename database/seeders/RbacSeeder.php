@@ -23,12 +23,14 @@ class RbacSeeder extends Seeder
     {
         DB::transaction(function (): void {
             $this->seedCustomerPlatformPermissions();
+            $this->seedCustomerMastersAndReportsPermissions();
             $this->seedCustomerPhase4Permissions();
             $this->seedCustomerPhase5Permissions();
             $this->seedCustomerPhase5InvoicePermissions();
             $this->seedCustomerPhase6Permissions();
             $this->seedCustomerPartloadPermissions();
             $this->seedCustomerAccountingPermissions();
+            $this->seedInternalTeamPermissions();
             $this->seedInternalRoles();
             $this->seedCustomerDefaultRoles();
             $this->seedCustomerDefaultMatrix();
@@ -175,12 +177,84 @@ class RbacSeeder extends Seeder
         $definitions = [
             [PermissionCodes::BRANCH_ACCOUNTING_VIEW, 'accounting', 'workspace', 'View Accounting', 'View branch accounting workspace'],
             [PermissionCodes::BRANCH_ACCOUNTING_VOUCHER_CREATE, 'accounting', 'voucher', 'Create Accounting Vouchers', 'Create manual accounting vouchers'],
-            [PermissionCodes::BRANCH_ACCOUNTING_REPORT_VIEW, 'accounting', 'report', 'View Accounting Reports', 'View Day Book, Ledger, Trial Balance'],
+            [PermissionCodes::BRANCH_ACCOUNTING_REPORT_VIEW, 'accounting', 'report', 'View Accounting Reports', 'View Day Book, Ledger, Trial Balance, P&L, Balance Sheet'],
+            [PermissionCodes::BRANCH_ACCOUNTING_APPROVE, 'accounting', 'voucher', 'Approve Accounting Entries', 'Approve opening balances and accounting reconciliations'],
+            [PermissionCodes::BRANCH_ACCOUNTING_REVERSE, 'accounting', 'voucher', 'Reverse Accounting Vouchers', 'Reverse posted accounting vouchers via controlled entries'],
+            [PermissionCodes::BRANCH_ACCOUNTING_MASTER_MANAGE, 'accounting', 'masters', 'Manage Accounting Ledgers & Groups', 'Create and manage account groups and ledgers'],
+            [PermissionCodes::BRANCH_ACCOUNTING_VIEW_FINANCIAL, 'accounting', 'financial', 'View Financial Statements', 'View sensitive financial statements and profit/loss'],
         ];
 
         foreach ($definitions as [$code, $module, $submodule, $name, $description]) {
             $this->upsertPermission(
                 domain: PermissionDomain::Customer,
+                module: $module,
+                submodule: $submodule,
+                name: $name,
+                code: $code,
+                description: $description,
+            );
+        }
+    }
+
+    private function seedCustomerMastersAndReportsPermissions(): void
+    {
+        $definitions = [
+            [PermissionCodes::MASTERS_VIEW, 'masters', 'general', 'View Masters', 'View Party, Vehicle, Bank/Cash, Station and Goods masters'],
+            [PermissionCodes::MASTERS_CREATE, 'masters', 'general', 'Create Masters', 'Create operational master records'],
+            [PermissionCodes::MASTERS_EDIT, 'masters', 'general', 'Edit Masters', 'Edit operational master records'],
+            [PermissionCodes::MASTERS_MANAGE, 'masters', 'general', 'Manage Masters', 'Deactivate/manage operational master configurations'],
+            [PermissionCodes::REPORTS_VIEW, 'reports', 'general', 'View Operational Reports', 'View branch operational and outstanding reports'],
+            [PermissionCodes::REPORTS_EXPORT, 'reports', 'general', 'Export Operational Reports', 'Export branch operational and outstanding reports'],
+        ];
+
+        foreach ($definitions as [$code, $module, $submodule, $name, $description]) {
+            $this->upsertPermission(
+                domain: PermissionDomain::Customer,
+                module: $module,
+                submodule: $submodule,
+                name: $name,
+                code: $code,
+                description: $description,
+            );
+        }
+    }
+
+    private function seedInternalTeamPermissions(): void
+    {
+        $definitions = [
+            [PermissionCodes::INTERNAL_CRM_VIEW, 'crm', 'leads', 'View CRM', 'View CRM dashboard, leads and support tickets'],
+            [PermissionCodes::INTERNAL_CRM_CREATE, 'crm', 'leads', 'Create CRM Records', 'Create CRM leads and support tickets'],
+            [PermissionCodes::INTERNAL_CRM_EDIT, 'crm', 'leads', 'Edit CRM Records', 'Edit CRM leads and support tickets'],
+            [PermissionCodes::INTERNAL_CRM_MANAGE, 'crm', 'leads', 'Manage CRM', 'Assign, transition and manage CRM workflows'],
+            [PermissionCodes::INTERNAL_USERS_VIEW, 'internal_users', 'users', 'View Internal Users', 'View internal staff register and role assignments'],
+            [PermissionCodes::INTERNAL_USERS_CREATE, 'internal_users', 'users', 'Create Internal Users', 'Create new internal staff accounts'],
+            [PermissionCodes::INTERNAL_USERS_EDIT, 'internal_users', 'users', 'Edit Internal Users', 'Modify internal staff details and role assignments'],
+            [PermissionCodes::INTERNAL_USERS_MANAGE, 'internal_users', 'users', 'Manage Internal User Lifecycle', 'Deactivate or reactivate internal users (never last Super Admin)'],
+            [PermissionCodes::INTERNAL_ONBOARDING_VIEW, 'customer_onboarding', 'companies', 'View Customer Onboarding', 'View customer companies and onboarding lifecycle'],
+            [PermissionCodes::INTERNAL_ONBOARDING_MANAGE, 'customer_onboarding', 'companies', 'Manage Customer Onboarding', 'Activate/deactivate companies, ownership transfers and invitations'],
+            [PermissionCodes::INTERNAL_MASTERS_VIEW, 'platform_masters', 'locations', 'View Platform Masters', 'View State and City platform masters'],
+            [PermissionCodes::INTERNAL_MASTERS_CREATE, 'platform_masters', 'locations', 'Create Platform Masters', 'Create State and City platform masters'],
+            [PermissionCodes::INTERNAL_MASTERS_EDIT, 'platform_masters', 'locations', 'Edit Platform Masters', 'Edit State and City platform masters'],
+            [PermissionCodes::INTERNAL_MASTERS_MANAGE, 'platform_masters', 'locations', 'Manage Platform Masters', 'Toggle active status on State and City platform masters'],
+            [PermissionCodes::INTERNAL_GST_VIEW, 'gst', 'rates', 'View GST Rates', 'View GST rate master'],
+            [PermissionCodes::INTERNAL_GST_CREATE, 'gst', 'rates', 'Create GST Rates', 'Create GST rate entries'],
+            [PermissionCodes::INTERNAL_GST_EDIT, 'gst', 'rates', 'Edit GST Rates', 'Edit GST rate entries'],
+            [PermissionCodes::INTERNAL_GST_MANAGE, 'gst', 'rates', 'Manage GST Rates', 'Deactivate/manage GST rate entries'],
+            [PermissionCodes::INTERNAL_TDS_VIEW, 'tds', 'rules', 'View TDS Rules', 'View TDS rule master'],
+            [PermissionCodes::INTERNAL_TDS_CREATE, 'tds', 'rules', 'Create TDS Rules', 'Create TDS rule entries'],
+            [PermissionCodes::INTERNAL_TDS_EDIT, 'tds', 'rules', 'Edit TDS Rules', 'Edit TDS rule entries'],
+            [PermissionCodes::INTERNAL_TDS_MANAGE, 'tds', 'rules', 'Manage TDS Rules', 'Deactivate/manage TDS rule entries'],
+            [PermissionCodes::INTERNAL_SUBSCRIPTION_BILLING_VIEW, 'subscription_billing', 'billing', 'View Subscription Billing', 'View platform billing profile and subscription invoices'],
+            [PermissionCodes::INTERNAL_SUBSCRIPTION_BILLING_MANAGE, 'subscription_billing', 'billing', 'Manage Subscription Billing', 'Configure platform billing profile, approve numbers and issue credit notes'],
+            [PermissionCodes::INTERNAL_SETTINGS_VIEW, 'system_settings', 'roles', 'View System Settings & RBAC', 'View centralized Internal and Customer role definitions'],
+            [PermissionCodes::INTERNAL_SETTINGS_MANAGE, 'system_settings', 'roles', 'Manage System Settings & RBAC', 'Create/edit roles and configure permissions within authority ceiling'],
+            [PermissionCodes::INTERNAL_AUDIT_VIEW, 'audit', 'logs', 'View Platform Audit', 'View platform audit trails and role change logs'],
+            [PermissionCodes::INTERNAL_AUDIT_EXPORT, 'audit', 'logs', 'Export Platform Audit', 'Export platform audit trails'],
+        ];
+
+        foreach ($definitions as [$code, $module, $submodule, $name, $description]) {
+            $this->upsertPermission(
+                domain: PermissionDomain::Internal,
                 module: $module,
                 submodule: $submodule,
                 name: $name,

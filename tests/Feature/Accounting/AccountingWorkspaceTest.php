@@ -24,7 +24,7 @@ afterEach(function () {
 });
 
 test('workspace day book ledger statement and trial balance reconcile after manual voucher', function () {
-    $ctx = tripWorkspace(['broker']);
+    $ctx = tripWorkspace(['broker'], ['accounting']);
     foreach ([
         PermissionCodes::BRANCH_ACCOUNTING_VIEW,
         PermissionCodes::BRANCH_ACCOUNTING_VOUCHER_CREATE,

@@ -12,14 +12,18 @@ import { formatDisplayDateSmart } from '@/lib/dates';
 
 type InvoiceRow = {
     id: string;
+    document_type?: string;
     status: string;
+    invoice_number?: string | null;
     proposed_number: string | null;
     approved_number: string | null;
     financial_year: string;
+    taxable_amount?: string;
+    total_tax_amount?: string;
     amount: string;
     currency: string;
+    issued_at?: string | null;
     email_status: string | null;
-    approved_at: string | null;
     created_at: string | null;
     preview_url: string;
     download_url: string;
@@ -31,7 +35,7 @@ type Props = {
     ownerPanelScope: string;
     issuer_note: string;
     invoices: InvoiceRow[];
-    links: { overview: string };
+    links: { overview: string; payments?: string };
 };
 
 export default function SubscriptionInvoices({
@@ -45,11 +49,22 @@ export default function SubscriptionInvoices({
         () => [
             {
                 id: 'number',
-                header: 'Number',
+                header: 'Invoice Number',
                 priority: 0,
                 className: 'font-mono text-xs',
                 cell: (row) =>
-                    row.approved_number || row.proposed_number || '—',
+                    row.invoice_number ||
+                    row.approved_number ||
+                    row.proposed_number ||
+                    '—',
+            },
+            {
+                id: 'type',
+                header: 'Type',
+                priority: 2,
+                className: 'capitalize text-xs',
+                cell: (row) =>
+                    (row.document_type || 'tax_invoice').replaceAll('_', ' '),
             },
             {
                 id: 'status',
@@ -58,29 +73,32 @@ export default function SubscriptionInvoices({
                 cell: (row) => row.status,
             },
             {
-                id: 'fy',
-                header: 'FY',
+                id: 'taxable',
+                header: 'Taxable',
                 priority: 2,
-                cell: (row) => row.financial_year,
+                cell: (row) =>
+                    `${row.currency} ${row.taxable_amount || row.amount}`,
+            },
+            {
+                id: 'tax',
+                header: 'GST',
+                priority: 2,
+                cell: (row) =>
+                    `${row.currency} ${row.total_tax_amount || '0.00'}`,
             },
             {
                 id: 'amount',
-                header: 'Amount',
-                priority: 2,
+                header: 'Grand Total',
+                priority: 1,
                 cell: (row) => `${row.currency} ${row.amount}`,
             },
             {
-                id: 'email',
-                header: 'Email',
-                priority: 3,
-                cell: (row) => row.email_status || '—',
-            },
-            {
-                id: 'created',
-                header: 'Created',
+                id: 'issued',
+                header: 'Issued Date',
                 priority: 3,
                 className: 'text-xs text-muted-foreground',
-                cell: (row) => formatDisplayDateSmart(row.created_at),
+                cell: (row) =>
+                    formatDisplayDateSmart(row.issued_at || row.created_at),
             },
         ],
         [],
@@ -95,27 +113,34 @@ export default function SubscriptionInvoices({
                 section="Subscription invoices"
             >
                 <p className="text-sm text-muted-foreground">{issuer_note}</p>
-                <Button asChild variant="outline" className="w-fit">
-                    <Link href={links.overview}>Back to subscription</Link>
-                </Button>
+                <div className="flex flex-wrap gap-2">
+                    <Button asChild variant="outline">
+                        <Link href={links.overview}>Back to subscription</Link>
+                    </Button>
+                    {links.payments ? (
+                        <Button asChild variant="outline">
+                            <Link href={links.payments}>Payment History</Link>
+                        </Button>
+                    ) : null}
+                </div>
                 <ResponsiveDataTable
                     caption="Subscription invoices"
                     columns={columns}
                     rows={invoices}
                     rowKey={(row) => row.id}
                     emptyTitle="No subscription invoices yet"
-                    emptyDescription="Invoices appear here after billing events."
+                    emptyDescription="Invoices generate automatically after verified payment."
                     actions={(invoice) => (
                         <div className="flex justify-end gap-1">
                             <AppIconAction
                                 icon={Eye}
-                                label="Preview invoice"
+                                label="View invoice"
                                 href={invoice.preview_url}
                                 variant="info"
                             />
                             <AppIconAction
                                 icon={Download}
-                                label="Download HTML"
+                                label="Download / Print"
                                 href={invoice.download_url}
                                 variant="outline"
                             />

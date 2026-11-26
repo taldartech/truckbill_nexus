@@ -41,6 +41,7 @@ use App\Domains\OwnFleet\Trip\TripService;
 use App\Domains\Rbac\Enums\PermissionDomain;
 use App\Domains\Rbac\PermissionCodes;
 use App\Domains\Rbac\RoleAssignmentService;
+use App\Domains\Subscription\Billing\PlatformBillingProfileService;
 use App\Domains\Subscription\Contract\CompanySubscriptionContractService;
 use App\Domains\Subscription\Enums\SubscriptionTenure;
 use App\Domains\Subscription\Lifecycle\SubscriptionLifecycleService;
@@ -62,9 +63,11 @@ use App\Models\OwnerCatalogueItem;
 use App\Models\OwnerTyreLayout;
 use App\Models\Party;
 use App\Models\Permission;
+use App\Models\PlatformBillingProfile;
 use App\Models\Role;
 use App\Models\RolePermission;
 use App\Models\Station;
+use App\Models\SubscriptionAddon;
 use App\Models\SubscriptionCatalogueVersion;
 use App\Models\SubscriptionPlan;
 use App\Models\TransporterVoucher;
@@ -149,6 +152,9 @@ class LocalDemoWorkspaceSeeder extends Seeder
         }
 
         $this->call(RbacSeeder::class);
+        $this->call(IndiaGeographySeeder::class);
+        $this->call(PaymentModeSeeder::class);
+        $this->call(GstRateSeeder::class);
         $this->call(SubscriptionCatalogueSeeder::class);
         $this->call(TdsReferenceRulesSeeder::class);
 
@@ -223,6 +229,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
         $this->ensureCustomerUser(self::NO_ACCESS_EMAIL, 'Demo No Access', $password);
 
         $sa = $this->ensureSuperAdminUser('sa.demo.lifecycle@demo.test', 'Demo Lifecycle SA', $password);
+        $this->ensureDemoPlatformBillingProfile($sa);
         $this->seedCrmFixtures($sa, $password);
 
         Auth::logout();
@@ -559,7 +566,8 @@ class LocalDemoWorkspaceSeeder extends Seeder
         $modules = $companyName === self::COMPANY_A_NAME
             ? ['broker', 'ownfleet', 'partload']
             : ['broker', 'ownfleet'];
-        $this->ensureActiveSubscription($contracts, $owner, $company, $modules);
+        $addonCodes = $companyName === self::COMPANY_A_NAME ? ['accounting'] : [];
+        $this->ensureActiveSubscription($contracts, $owner, $company, $modules, $addonCodes);
 
         if ($companyName === self::COMPANY_A_NAME) {
             $this->ensureExtendedPartyFixtures($parties, $owner, $company, $head);
@@ -1397,12 +1405,14 @@ class LocalDemoWorkspaceSeeder extends Seeder
 
     /**
      * @param  list<string>  $modules  SubscriptionModule values (broker|ownfleet|partload)
+     * @param  list<string>  $addonCodes
      */
     private function ensureActiveSubscription(
         CompanySubscriptionContractService $contracts,
         User $owner,
         Company $company,
         array $modules,
+        array $addonCodes = [],
     ): void {
         $hasActive = CompanySubscription::query()
             ->where('company_id', $company->id)
@@ -1436,12 +1446,25 @@ class LocalDemoWorkspaceSeeder extends Seeder
             return;
         }
 
+        $addonIds = [];
+        foreach ($addonCodes as $code) {
+            $addon = SubscriptionAddon::query()
+                ->where('catalogue_version_id', $catalogue->id)
+                ->where('code', $code)
+                ->where('is_active', true)
+                ->first();
+            if ($addon !== null) {
+                $addonIds[] = (string) $addon->id;
+            }
+        }
+
         $paidThrough = CarbonImmutable::now()->addYear();
         $draft = $contracts->createDraftContract(
             actor: $owner,
             company: $company,
             catalogue: $catalogue,
             planIds: $planIds,
+            addonIds: $addonIds,
             tenure: SubscriptionTenure::Yearly,
             commonRenewalDate: $paidThrough,
             remark: 'Local demo: subscription draft for activation',
@@ -1454,6 +1477,33 @@ class LocalDemoWorkspaceSeeder extends Seeder
                 $owner,
                 'Local demo: activate verified subscription fixture',
             );
+    }
+
+    private function ensureDemoPlatformBillingProfile(User $sa): void
+    {
+        if (PlatformBillingProfile::currentActive() !== null) {
+            return;
+        }
+
+        app(PlatformBillingProfileService::class)->upsert($sa, [
+            'legal_name' => 'Taldar Tech Consultancy Demo Pvt Ltd',
+            'trade_name' => 'TruckBill Platform',
+            'registered_address' => '101 Tech Park, Baner Road',
+            'state_name' => 'Maharashtra',
+            'state_code' => '27',
+            'city' => 'Pune',
+            'pin_code' => '411045',
+            'gstin' => '27AABCT1234E1Z5',
+            'pan' => 'AABCT1234E',
+            'contact_number' => '+919800000001',
+            'email' => 'billing@truckbill.demo.test',
+            'gst_rate_percent' => '18.00',
+            'sac_code' => '998314',
+            'invoice_prefix' => 'TBINV',
+            'invoice_next_sequence' => 1,
+            'credit_note_prefix' => 'TBCN',
+            'credit_note_next_sequence' => 1,
+        ]);
     }
 
     private function ensureExtendedPartyFixtures(

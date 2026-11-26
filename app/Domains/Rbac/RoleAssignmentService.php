@@ -43,7 +43,18 @@ final class RoleAssignmentService
      */
     public function createInternalUser(User $actor, array $attributes, ?Role $ordinaryRole = null): User
     {
-        $this->assertSuperAdmin($actor);
+        $isSuperAdminTarget = ($attributes['is_super_admin'] ?? false) === true;
+        if ($isSuperAdminTarget) {
+            $this->assertSuperAdmin($actor);
+        } else {
+            $internalAuth = new InternalAuthorization;
+            if (! $internalAuth->allows($actor, PermissionCodes::INTERNAL_USERS_CREATE)
+                && ! $internalAuth->allows($actor, PermissionCodes::INTERNAL_USERS_MANAGE)) {
+                throw new RbacAuthorizationException(
+                    'Only an active Super Admin or permitted Internal User Manager may create Internal users.'
+                );
+            }
+        }
 
         if (($attributes['is_super_admin'] ?? false) === true && $ordinaryRole !== null) {
             throw new RbacDomainException('Super Admin privilege is not an ordinary Internal role assignment.');

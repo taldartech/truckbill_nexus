@@ -2,6 +2,7 @@
 
 namespace App\Domains\Partload\MainChallan;
 
+use App\Domains\Accounting\OperationalAccountingPoster;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
 use App\Domains\Numbering\DocumentNumberAllocator;
@@ -54,6 +55,7 @@ final class PartloadMainChallanService
         private readonly SubscriptionEntitlementGate $entitlementGate = new SubscriptionEntitlementGate,
         private readonly DocumentNumberAllocator $numbers = new DocumentNumberAllocator,
         private readonly PartloadChallanService $challans = new PartloadChallanService,
+        private readonly OperationalAccountingPoster $accounting = new OperationalAccountingPoster,
     ) {}
 
     /**
@@ -205,8 +207,8 @@ final class PartloadMainChallanService
                     $allocation = $this->numbers->allocateNext(
                         companyId: $company->id,
                         documentType: DocumentNumberType::PartloadMainChallan,
-                        scopeType: DocumentNumberScopeType::Branch,
-                        branchId: $branch->id,
+                        scopeType: DocumentNumberScopeType::Company,
+                        branchId: null,
                     );
 
                     $aggregates = $this->aggregateChallans($challans);
@@ -420,7 +422,10 @@ final class PartloadMainChallanService
             after: ['status' => PartloadMainChallanStatus::Dispatched->value],
         );
 
-        return $locked->fresh(['lines.challan', 'fromStation', 'toStation', 'vehicle', 'driver']) ?? $locked;
+        $dispatched = $locked->fresh(['lines.challan', 'fromStation', 'toStation', 'vehicle', 'driver']) ?? $locked;
+        $this->accounting->postPartloadMainChallanDispatched($dispatched, $actor);
+
+        return $dispatched;
     }
 
     /**

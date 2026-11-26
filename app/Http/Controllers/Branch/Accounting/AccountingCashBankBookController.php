@@ -7,17 +7,18 @@ use App\Domains\Accounting\SystemLedgerResolver;
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
+use App\Http\Controllers\Branch\Accounting\Concerns\AuthorizesAccountingPanel;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Company;
-use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class AccountingCashBankBookController extends Controller
 {
+    use AuthorizesAccountingPanel;
     use AuthorizesBranchPanel;
 
     public function __construct(
@@ -45,7 +46,7 @@ class AccountingCashBankBookController extends Controller
         string $title,
     ): Response {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertPermission($actor, $company, $branch, PermissionCodes::BRANCH_ACCOUNTING_REPORT_VIEW);
+        $this->authorizeAccounting($actor, $company, $branch, $this->authorizer, PermissionCodes::BRANCH_ACCOUNTING_REPORT_VIEW);
         $this->workspace->bootstrap($company);
 
         $from = $request->string('from_date')->toString() ?: null;
@@ -75,16 +76,5 @@ class AccountingCashBankBookController extends Controller
                 'trial_balance' => route('branch.accounting.reports.trial-balance', absolute: false),
             ],
         ]);
-    }
-
-    private function assertPermission(User $actor, Company $company, Branch $branch, string $code): void
-    {
-        if ((int) $actor->id === (int) $company->owner_user_id) {
-            return;
-        }
-
-        if (! $this->authorizer->allowsCustomer($actor, $code, $company, $branch)) {
-            abort(403);
-        }
     }
 }

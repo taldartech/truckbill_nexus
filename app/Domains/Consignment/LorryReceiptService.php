@@ -2,6 +2,7 @@
 
 namespace App\Domains\Consignment;
 
+use App\Domains\Accounting\OperationalAccountingPoster;
 use App\Domains\Broker\Enums\LorryHireStatus;
 use App\Domains\Company\MasterDataVisibilityResolver;
 use App\Domains\Consignment\Dependency\CompositeLrDependencyGuard;
@@ -65,6 +66,7 @@ final class LorryReceiptService
         private readonly CoreModuleEntitlementResolver $entitlements = new CoreModuleEntitlementResolver,
         private readonly SubscriptionEntitlementGate $entitlementGate = new SubscriptionEntitlementGate,
         private readonly LrFinancialImmutabilityService $financialImmutability = new LrFinancialImmutabilityService,
+        private readonly OperationalAccountingPoster $accounting = new OperationalAccountingPoster,
     ) {}
 
     private function dependencyGuard(): CompositeLrDependencyGuard
@@ -224,7 +226,10 @@ final class LorryReceiptService
                     ],
                 );
 
-                return $lr->fresh(['goodsRows', 'ewayBills', 'additionalCharges']) ?? $lr;
+                $fresh = $lr->fresh(['goodsRows', 'ewayBills', 'additionalCharges']) ?? $lr;
+                $this->accounting->postPartloadPaidBooking($fresh, $actor);
+
+                return $fresh;
             });
         });
     }
@@ -341,8 +346,8 @@ final class LorryReceiptService
             );
         }
 
-        return $this->auditedTransaction->run(function () use ($company, $branch, $lorryReceipt, $remark): LorryReceipt {
-            return $this->withTenant($company, $branch, function () use ($lorryReceipt, $remark): LorryReceipt {
+        return $this->auditedTransaction->run(function () use ($company, $branch, $lorryReceipt, $actor, $remark): LorryReceipt {
+            return $this->withTenant($company, $branch, function () use ($lorryReceipt, $actor, $remark): LorryReceipt {
                 $before = ['status' => $lorryReceipt->status->value];
 
                 $lorryReceipt->forceFill([
@@ -362,7 +367,10 @@ final class LorryReceiptService
                     cancellationAt: $lorryReceipt->cancelled_at,
                 );
 
-                return $lorryReceipt->fresh() ?? $lorryReceipt;
+                $fresh = $lorryReceipt->fresh() ?? $lorryReceipt;
+                $this->accounting->postPartloadPaidBookingCancelled($fresh, $actor, $remark);
+
+                return $fresh;
             });
         });
     }

@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Owner;
 
 use App\Domains\Company\CompanyAccessService;
+use App\Domains\Subscription\Billing\PlatformBillingProfileService;
 use App\Domains\Subscription\Billing\SubscriptionInvoiceDocumentService;
 use App\Domains\Subscription\Capacity\CompanyCapacityService;
-use App\Domains\Subscription\Contract\CompanySubscriptionContractService;
 use App\Domains\Subscription\Entitlement\SubscriptionEntitlementGate;
 use App\Domains\Subscription\Enums\SubscriptionTenure;
 use App\Domains\Subscription\Exceptions\SubscriptionDomainException;
@@ -16,7 +16,7 @@ use App\Domains\Subscription\Payments\Gateway\PaymentGateway;
 use App\Domains\Subscription\Payments\Gateway\PaymentGatewayAuthorization;
 use App\Domains\Subscription\Payments\Gateway\RazorpayTestPaymentGateway;
 use App\Domains\Subscription\Payments\PaymentIntentService;
-use App\Domains\Subscription\Pricing\SubscriptionPricingCalculator;
+use App\Domains\Subscription\Purchase\SubscriptionPurchaseService;
 use App\Domains\Subscription\Quota\QuotaAllocationService;
 use App\Domains\Subscription\Storage\StorageReconciliationService;
 use App\Http\Controllers\Controller;
@@ -32,18 +32,20 @@ use App\Models\SubscriptionCreditEntry;
 use App\Models\SubscriptionCreditLedger;
 use App\Models\SubscriptionInvoice;
 use App\Models\SubscriptionPlan;
+use App\Models\User;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Owner subscription overview, catalogue pricing, drafts and credits (PO-P3-UI-AUTH).
- * Live Razorpay checkout remains gated (PO-P3-PAY / G-PAY). Confirmed entitlement rules only.
+ * Owner Subscription Overview, Single-Screen Purchase/Upgrade/Renewal, Checkout, Payments & Invoices.
  */
 class OwnerSubscriptionController extends Controller
 {
@@ -51,12 +53,12 @@ class OwnerSubscriptionController extends Controller
 
     public function __construct(
         private readonly CompanyAccessService $access,
-        private readonly SubscriptionPricingCalculator $pricing,
-        private readonly CompanySubscriptionContractService $contracts,
         private readonly PaymentIntentService $paymentIntents,
         private readonly CheckoutVerificationService $checkout,
         private readonly PaymentGateway $gateway,
         private readonly PaymentGatewayAuthorization $paymentAuth,
+        private readonly SubscriptionPurchaseService $purchase = new SubscriptionPurchaseService,
+        private readonly PlatformBillingProfileService $billingProfiles = new PlatformBillingProfileService,
         private readonly SubscriptionEntitlementGate $entitlements = new SubscriptionEntitlementGate,
         private readonly SubscriptionLifecycleService $lifecycle = new SubscriptionLifecycleService,
         private readonly CompanyCapacityService $capacity = new CompanyCapacityService,
@@ -65,14 +67,120 @@ class OwnerSubscriptionController extends Controller
         private readonly SubscriptionInvoiceDocumentService $invoiceDocuments = new SubscriptionInvoiceDocumentService,
     ) {}
 
+    /**
+     * Global Purchase screen — Company selected explicitly (independent of WorkspaceSession).
+     */
+    public function purchaseGlobal(Request $request): Response|RedirectResponse
+    {
+        $user = $this->authorizeOwnerIdentity($request);
+
+        $ownedCompanies = Company::query()
+            ->where('owner_user_id', $user->id)
+            ->whereNull('deleted_at')
+            ->orderBy('name')
+            ->get();
+
+        if ($ownedCompanies->isEmpty()) {
+            return redirect()
+                ->route('owner.companies.create')
+                ->with('info', 'Create a company before purchasing a subscription.');
+        }
+
+        $requestedId = $request->query('company');
+        $company = null;
+        if (is_string($requestedId) && $requestedId !== '') {
+            $company = $ownedCompanies->firstWhere('id', $requestedId);
+            if ($company === null) {
+                abort(403, 'You do not own the selected company.');
+            }
+        } else {
+            $company = $ownedCompanies->first(fn (Company $c): bool => $c->isActive()) ?? $ownedCompanies->first();
+        }
+
+        return $this->renderPurchase($request, $company, $ownedCompanies);
+    }
+
+    /**
+     * Explicit-Company Purchase / Upgrade / Renewal screen.
+     */
+    public function purchaseForCompany(Request $request, Company $company): Response
+    {
+        $user = $this->authorizeOwnerIdentity($request);
+        if (! $company->isOwnedBy($user)) {
+            abort(403, 'Owner Panel access denied.');
+        }
+
+        $ownedCompanies = Company::query()
+            ->where('owner_user_id', $user->id)
+            ->whereNull('deleted_at')
+            ->orderBy('name')
+            ->get();
+
+        return $this->renderPurchase($request, $company, $ownedCompanies);
+    }
+
+    /**
+     * Authoritative live pricing quote JSON endpoint.
+     */
+    public function quote(Request $request, Company $company): JsonResponse
+    {
+        $this->authorizeOwnerPanel($request, $company, $this->access);
+
+        $validated = $request->validate([
+            'plan_ids' => ['nullable', 'array'],
+            'plan_ids.*' => ['uuid'],
+            'addon_ids' => ['nullable', 'array'],
+            'addon_ids.*' => ['uuid'],
+            'addon_quantities' => ['nullable', 'array'],
+            'addon_quantities.*' => ['integer', 'min:0', 'max:500'],
+            'tenure' => ['nullable', Rule::enum(SubscriptionTenure::class)],
+            'mode' => ['nullable', Rule::in(['initial', 'upgrade', 'renewal'])],
+        ]);
+
+        try {
+            $quote = $this->purchase->quote($company, $validated);
+        } catch (SubscriptionDomainException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json($quote);
+    }
+
+    /**
+     * Initiate subscription purchase / upgrade / renewal and redirect to server-verified checkout.
+     */
+    public function storePurchase(Request $request, Company $company): RedirectResponse
+    {
+        ['user' => $user] = $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
+
+        $validated = $request->validate([
+            'plan_ids' => ['nullable', 'array'],
+            'plan_ids.*' => ['uuid'],
+            'addon_ids' => ['nullable', 'array'],
+            'addon_ids.*' => ['uuid'],
+            'addon_quantities' => ['nullable', 'array'],
+            'addon_quantities.*' => ['integer', 'min:0', 'max:500'],
+            'tenure' => ['nullable', Rule::enum(SubscriptionTenure::class)],
+            'mode' => ['nullable', Rule::in(['initial', 'upgrade', 'renewal'])],
+        ]);
+
+        try {
+            $result = $this->purchase->initiateCheckout($user, $company, $validated, $this->paymentIntents);
+        } catch (SubscriptionDomainException $e) {
+            return back()->withErrors(['purchase' => $e->getMessage()]);
+        }
+
+        return redirect()->route('owner.companies.subscription.checkout', [
+            'company' => $company,
+            'intent' => $result['intent'],
+        ]);
+    }
+
     public function overview(Request $request, Company $company): Response
     {
         ['scope' => $scope] = $this->authorizeOwnerPanel($request, $company, $this->access);
 
-        $catalogue = SubscriptionCatalogueVersion::query()
-            ->where('is_active', true)
-            ->orderByDesc('effective_from')
-            ->first();
+        $catalogue = $this->activeCatalogue();
 
         $subscriptions = CompanySubscription::query()
             ->where('company_id', $company->id)
@@ -81,7 +189,7 @@ class OwnerSubscriptionController extends Controller
             ->limit(20)
             ->get();
 
-        $activeOrDraft = $subscriptions->first(fn (CompanySubscription $s): bool => in_array($s->status, ['active', 'draft', 'pending_payment'], true));
+        $activeOrDraft = $subscriptions->first(fn (CompanySubscription $s): bool => in_array($s->status, ['active', 'pending_payment', 'draft'], true));
         $active = $subscriptions->first(fn (CompanySubscription $s): bool => $s->status === 'active');
 
         $ledgers = SubscriptionCreditLedger::query()
@@ -91,10 +199,11 @@ class OwnerSubscriptionController extends Controller
 
         $entitlement = $this->entitlements->evaluate($company);
         $effective = $this->lifecycle->effectiveStatus($company);
-        [$purchasedBranches, $purchasedSeats] = $this->purchasedCapacityFromSubscription($active);
+        [$purchasedBranches, $purchasedSeats, $extraStorageBytes] = $this->capacity->activePurchasedExtras($company);
         $capacity = $this->capacity->evaluate($company, $purchasedBranches, $purchasedSeats);
         $vehicleCapacity = $this->vehicleCapacityFromSubscription($active);
-        $allocationBytes = (int) config('subscription.storage.default_allocation_bytes', 0);
+        $baseStorage = (int) config('subscription.storage.default_allocation_bytes', 0);
+        $allocationBytes = ($baseStorage > 0 || $extraStorageBytes > 0) ? ($baseStorage + $extraStorageBytes) : 0;
         $storage = $this->storage->reconcile($company, $allocationBytes > 0 ? $allocationBytes : null);
         $quotaCounters = CompanyQuotaCounter::query()
             ->where('company_id', $company->id)
@@ -113,7 +222,6 @@ class OwnerSubscriptionController extends Controller
             'canManage' => $scope === CompanyAccessService::OWNER_PANEL_FULL,
             'catalogue' => $catalogue === null ? null : [
                 'id' => $catalogue->id,
-                'code' => $catalogue->code,
                 'name' => $catalogue->name,
                 'effective_from' => $catalogue->effective_from?->toDateString(),
             ],
@@ -165,17 +273,17 @@ class OwnerSubscriptionController extends Controller
                 'unit' => $this->creditUnitLabel($ledger->ledger_type),
             ])->values()->all(),
             'entitlement_note' => 'Branch changes remain limited while a paid subscription is in grace or restricted status.',
-            'payment_gate_note' => 'Checkout uses Razorpay test mode in this environment. Live charges are not enabled yet.',
+            'payment_gate_note' => 'Checkout uses Razorpay Test Mode in this environment. Live charges are not enabled.',
             'links' => [
                 'dashboard' => route('owner.home'),
-                'catalogue' => route('owner.subscription.catalogue'),
-                'drafts' => route('owner.subscription.drafts'),
+                'purchase' => route('owner.companies.subscription.purchase', $company),
+                'renew_page' => route('owner.companies.subscription.purchase', ['company' => $company, 'mode' => 'renewal']),
                 'credits' => route('owner.subscription.credits'),
                 'payments' => route('owner.subscription.payments'),
                 'invoices' => route('owner.subscription.invoices'),
                 'cancel' => route('owner.subscription.cancel'),
                 'withdraw_cancel' => route('owner.subscription.cancel.withdraw'),
-                'checkout' => $activeOrDraft !== null
+                'checkout' => ($activeOrDraft !== null && in_array($activeOrDraft->status, ['draft', 'pending_payment'], true))
                     ? route('owner.subscription.checkout', $activeOrDraft)
                     : null,
                 'renew' => route('owner.subscription.renew'),
@@ -185,6 +293,32 @@ class OwnerSubscriptionController extends Controller
         ]);
     }
 
+    /**
+     * Explicit-company Checkout Review & Pay screen bound to a PaymentIntent.
+     */
+    public function checkoutIntent(Request $request, Company $company, PaymentIntent $intent): Response|RedirectResponse
+    {
+        ['user' => $user, 'scope' => $scope] = $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
+        if ($intent->company_id !== $company->id) {
+            abort(404);
+        }
+
+        if ($intent->status === 'paid') {
+            return redirect()
+                ->route('owner.subscription.invoices')
+                ->with('success', 'This payment has already been verified and fulfilled.');
+        }
+
+        $subscription = $intent->company_subscription_id !== null
+            ? CompanySubscription::query()->whereKey($intent->company_subscription_id)->with('items')->first()
+            : null;
+
+        return $this->renderCheckout($user, $company, $scope, $intent, $subscription);
+    }
+
+    /**
+     * Legacy / direct checkout route for a subscription contract (reuses single checkout pipeline).
+     */
     public function checkout(Request $request, CompanySubscription $subscription, Company $company): Response|RedirectResponse
     {
         ['user' => $user, 'scope' => $scope] = $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
@@ -217,50 +351,67 @@ class OwnerSubscriptionController extends Controller
             $subscription->forceFill(['status' => 'pending_payment'])->save();
         }
 
-        $mode = $this->gateway->name();
-        $publicKey = null;
-        $allowFakeSimulate = app()->environment('testing');
+        return $this->renderCheckout($user, $company, $scope, $intent, $subscription->load('items'));
+    }
 
-        if ($mode === 'fake' && ! $allowFakeSimulate) {
-            return redirect()
-                ->route('owner.subscription')
-                ->withErrors([
-                    'checkout' => 'Razorpay Test Mode credentials are required for Owner checkout. Configure RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, and RAZORPAY_WEBHOOK_SECRET (rzp_test_* only).',
-                ]);
+    public function verifyCheckoutIntent(Request $request, Company $company, PaymentIntent $intent): RedirectResponse
+    {
+        ['user' => $user] = $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
+        if ($intent->company_id !== $company->id) {
+            abort(404);
         }
 
-        if ($this->gateway instanceof RazorpayTestPaymentGateway) {
-            $publicKey = $this->gateway->publicKeyId();
-        }
-
-        return Inertia::render('owner/subscription/checkout', [
-            'company' => $this->companyPayload($company),
-            'ownerPanelScope' => $scope,
-            'test_mode_banner' => 'Razorpay Test Mode — No Real Money Will Be Charged',
-            'gateway' => $mode,
-            'public_key' => $publicKey,
-            'subscription' => $this->subscriptionPayload($subscription->load('items')),
-            'payment' => [
-                'id' => $intent->id,
-                'purpose' => $intent->purpose,
-                'amount' => (string) $intent->amount,
-                'currency' => $intent->currency,
-                'status' => $intent->status,
-                'gateway_order_id' => $intent->gateway_order_id,
-            ],
-            'prefill' => [
-                'name' => $user->name,
-                'email' => $user->email,
-            ],
-            'allow_fake_simulate' => $allowFakeSimulate,
-            'links' => [
-                'overview' => route('owner.subscription'),
-                'verify' => route('owner.subscription.checkout.verify', $subscription),
-                'simulate' => $allowFakeSimulate
-                    ? route('owner.subscription.checkout.simulate', $subscription)
-                    : null,
-            ],
+        $validated = $request->validate([
+            'razorpay_order_id' => ['required', 'string'],
+            'razorpay_payment_id' => ['required', 'string'],
+            'razorpay_signature' => ['required', 'string'],
         ]);
+
+        try {
+            $this->checkout->verifyOwnerCallback($user, $company, $intent, $validated);
+        } catch (SubscriptionDomainException $e) {
+            return redirect()
+                ->route('owner.companies.subscription.checkout', [$company, $intent])
+                ->withErrors(['checkout' => $e->getMessage()]);
+        }
+
+        return redirect()
+            ->route('owner.companies.subscription.purchase', $company)
+            ->with('success', 'Payment verified. Subscription activated and tax invoice generated.');
+    }
+
+    public function simulateCheckoutIntent(Request $request, Company $company, PaymentIntent $intent): RedirectResponse
+    {
+        ['user' => $user] = $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
+        if ($intent->company_id !== $company->id) {
+            abort(404);
+        }
+
+        if (! app()->environment('testing')) {
+            abort(403, 'Fake payment simulation is restricted to the testing environment.');
+        }
+
+        if (! $this->gateway instanceof FakePaymentGateway) {
+            abort(403, 'Simulate capture is only available with the fake gateway.');
+        }
+
+        $paymentId = 'pay_fake_'.strtolower(str()->random(10));
+        $orderId = (string) $intent->gateway_order_id;
+        $signature = hash_hmac('sha256', $orderId.'|'.$paymentId, $this->gateway->secret());
+
+        try {
+            $this->checkout->verifyOwnerCallback($user, $company, $intent, [
+                'order_id' => $orderId,
+                'payment_id' => $paymentId,
+                'signature' => $signature,
+            ]);
+        } catch (SubscriptionDomainException $e) {
+            return back()->withErrors(['checkout' => $e->getMessage()]);
+        }
+
+        return redirect()
+            ->route('owner.companies.subscription.purchase', $company)
+            ->with('success', 'Payment verified and subscription updated.');
     }
 
     public function verifyCheckout(Request $request, CompanySubscription $subscription, Company $company): RedirectResponse
@@ -293,9 +444,6 @@ class OwnerSubscriptionController extends Controller
             ->with('success', 'Payment verified. Subscription updated from server-side verification.');
     }
 
-    /**
-     * Deterministic fake-gateway capture for local/CI when Razorpay credentials are absent.
-     */
     public function simulateCheckout(Request $request, CompanySubscription $subscription, Company $company): RedirectResponse
     {
         ['user' => $user] = $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
@@ -341,330 +489,10 @@ class OwnerSubscriptionController extends Controller
     {
         $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
 
-        $validated = $request->validate([
-            'subscription_id' => ['required', 'uuid'],
+        return redirect()->route('owner.companies.subscription.purchase', [
+            'company' => $company,
+            'mode' => 'renewal',
         ]);
-
-        $subscription = CompanySubscription::query()->whereKey($validated['subscription_id'])->firstOrFail();
-        $this->assertCompanySubscription($company, $subscription);
-
-        if ($subscription->status !== 'active') {
-            return back()->withErrors(['subscription_id' => 'Only active subscriptions can be renewed.']);
-        }
-
-        return redirect()->route('owner.subscription.checkout', $subscription);
-    }
-
-    public function catalogue(Request $request, Company $company): Response
-    {
-        ['user' => $user, 'scope' => $scope] = $this->authorizeOwnerPanel($request, $company, $this->access);
-
-        $catalogue = $this->activeCatalogue();
-        $plans = $catalogue === null
-            ? collect()
-            : SubscriptionPlan::query()
-                ->where('catalogue_version_id', $catalogue->id)
-                ->where('is_active', true)
-                ->orderBy('module')
-                ->orderBy('annual_price')
-                ->get();
-        $addons = $catalogue === null
-            ? collect()
-            : SubscriptionAddon::query()
-                ->where('catalogue_version_id', $catalogue->id)
-                ->where('is_active', true)
-                ->orderBy('name')
-                ->get();
-
-        $selectedPlanIds = array_values(array_filter((array) $request->input('plan_ids', [])));
-        $tenureValue = (string) $request->input('tenure', SubscriptionTenure::Yearly->value);
-        $tenure = SubscriptionTenure::tryFrom($tenureValue) ?? SubscriptionTenure::Yearly;
-        $renewalEligible = $request->boolean('renewal_eligible');
-        $couponPercent = $request->filled('coupon_percent') ? (string) $request->input('coupon_percent') : null;
-        $couponFixed = $request->filled('coupon_fixed') ? (string) $request->input('coupon_fixed') : null;
-
-        $breakdown = null;
-        if ($selectedPlanIds !== [] && $catalogue !== null) {
-            $selectedPlans = $plans->whereIn('id', $selectedPlanIds);
-            if ($selectedPlans->count() === count(array_unique($selectedPlanIds))) {
-                $prices = array_values($selectedPlans->pluck('annual_price')->map(fn ($p) => (string) $p)->all());
-                $breakdown = $this->pricing->calculate(
-                    coreModuleAnnualPrices: $prices,
-                    tenure: $tenure,
-                    renewalEligible: $renewalEligible,
-                    couponPercent: $couponPercent,
-                    couponFixed: $couponFixed,
-                );
-                $breakdown['display_list_prices'] = $selectedPlans->map(fn (SubscriptionPlan $plan): array => [
-                    'id' => $plan->id,
-                    'code' => $plan->code,
-                    'catalogue_annual' => (string) $plan->annual_price,
-                    'display_list' => $this->pricing->displayListPrice((string) $plan->annual_price),
-                ])->values()->all();
-            }
-        }
-
-        return Inertia::render('owner/subscription/catalogue', [
-            'company' => $this->companyPayload($company),
-            'ownerPanelScope' => $scope,
-            'canManage' => $scope === CompanyAccessService::OWNER_PANEL_FULL && $company->isOwnedBy($user),
-            'catalogue' => $catalogue === null ? null : [
-                'id' => $catalogue->id,
-                'code' => $catalogue->code,
-                'name' => $catalogue->name,
-            ],
-            'plans' => $plans->map(fn (SubscriptionPlan $plan): array => [
-                'id' => $plan->id,
-                'module' => $plan->module,
-                'code' => $plan->code,
-                'name' => $plan->name,
-                'annual_price' => (string) $plan->annual_price,
-                'display_list_price' => $this->pricing->displayListPrice((string) $plan->annual_price),
-                'capacity_units' => $plan->capacity_units,
-            ])->values()->all(),
-            'addons' => $addons->map(fn (SubscriptionAddon $addon): array => [
-                'id' => $addon->id,
-                'code' => $addon->code,
-                'name' => $addon->name,
-                'annual_price' => (string) $addon->annual_price,
-            ])->values()->all(),
-            'tenureOptions' => collect(SubscriptionTenure::cases())->map(fn (SubscriptionTenure $t): array => [
-                'value' => $t->value,
-                'label' => str_replace('_', ' ', ucfirst($t->value)),
-                'months' => $t->months(),
-                'discount_percent' => $t->discountPercent(),
-            ])->values()->all(),
-            'selection' => [
-                'plan_ids' => $selectedPlanIds,
-                'tenure' => $tenure->value,
-                'renewal_eligible' => $renewalEligible,
-                'coupon_percent' => $couponPercent,
-                'coupon_fixed' => $couponFixed,
-            ],
-            'breakdown' => $breakdown,
-            'gst_note' => 'GST presentation follows confirmed catalogue pricing; internal tax administration UI is not in this scope.',
-            'links' => [
-                'overview' => route('owner.subscription'),
-                'calculate' => route('owner.subscription.catalogue'),
-                'create_draft' => route('owner.subscription.drafts.store'),
-                'drafts' => route('owner.subscription.drafts'),
-            ],
-        ]);
-    }
-
-    public function drafts(Request $request, Company $company): Response
-    {
-        ['scope' => $scope] = $this->authorizeOwnerPanel($request, $company, $this->access);
-
-        $drafts = CompanySubscription::query()
-            ->where('company_id', $company->id)
-            ->where('status', 'draft')
-            ->with(['items', 'snapshots'])
-            ->orderByDesc('created_at')
-            ->get();
-
-        return Inertia::render('owner/subscription/drafts', [
-            'company' => $this->companyPayload($company),
-            'ownerPanelScope' => $scope,
-            'canManage' => $scope === CompanyAccessService::OWNER_PANEL_FULL,
-            'drafts' => $drafts->map(fn (CompanySubscription $draft): array => $this->subscriptionPayload($draft, includeSnapshots: true))->values()->all(),
-            'activation_note' => 'Draft contracts do not activate a subscription. Live payment and issuance remain gated (PO-P3-PAY).',
-            'links' => [
-                'overview' => route('owner.subscription'),
-                'catalogue' => route('owner.subscription.catalogue'),
-                'store' => route('owner.subscription.drafts.store'),
-            ],
-            'editLinks' => $drafts->mapWithKeys(fn (CompanySubscription $draft): array => [
-                $draft->id => route('owner.subscription.drafts.edit', $draft),
-            ])->all(),
-        ]);
-    }
-
-    public function storeDraft(Request $request, Company $company): RedirectResponse
-    {
-        ['user' => $user] = $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
-
-        $validated = $request->validate([
-            'catalogue_version_id' => ['required', 'uuid'],
-            'plan_ids' => ['required', 'array', 'min:1'],
-            'plan_ids.*' => ['uuid'],
-            'addon_ids' => ['nullable', 'array'],
-            'addon_ids.*' => ['uuid'],
-            'tenure' => ['required', Rule::enum(SubscriptionTenure::class)],
-            'common_renewal_date' => ['required', 'date'],
-            'renewal_eligible' => ['sometimes', 'boolean'],
-            'remark' => ['nullable', 'string', 'max:1000'],
-        ]);
-
-        $catalogue = SubscriptionCatalogueVersion::query()->whereKey($validated['catalogue_version_id'])->firstOrFail();
-
-        try {
-            $draft = $this->contracts->createDraftContract(
-                actor: $user,
-                company: $company,
-                catalogue: $catalogue,
-                planIds: $validated['plan_ids'],
-                tenure: SubscriptionTenure::from($validated['tenure']),
-                commonRenewalDate: CarbonImmutable::parse($validated['common_renewal_date']),
-                renewalEligible: (bool) ($validated['renewal_eligible'] ?? false),
-                addonIds: $validated['addon_ids'] ?? [],
-                remark: $validated['remark'] ?? 'Create subscription draft contract',
-            );
-        } catch (SubscriptionDomainException $e) {
-            abort(403, $e->getMessage());
-        }
-
-        return redirect()
-            ->route('owner.subscription.drafts')
-            ->with('success', 'Draft contract created (not activated).');
-    }
-
-    public function editDraft(Request $request, CompanySubscription $subscription, Company $company): Response
-    {
-        ['user' => $user, 'scope' => $scope] = $this->authorizeOwnerPanel($request, $company, $this->access);
-        $this->assertCompanySubscription($company, $subscription);
-
-        if ($subscription->status !== 'draft') {
-            abort(403, 'Only draft contracts may be edited.');
-        }
-
-        $subscription->load(['items', 'snapshots']);
-
-        $catalogue = SubscriptionCatalogueVersion::query()
-            ->whereKey($subscription->catalogue_version_id)
-            ->firstOrFail();
-
-        $plans = SubscriptionPlan::query()
-            ->where('catalogue_version_id', $catalogue->id)
-            ->where('is_active', true)
-            ->orderBy('module')
-            ->orderBy('annual_price')
-            ->get();
-
-        $addons = SubscriptionAddon::query()
-            ->where('catalogue_version_id', $catalogue->id)
-            ->where('is_active', true)
-            ->orderBy('name')
-            ->get();
-
-        $selectedPlanIds = array_values(array_filter((array) $request->input(
-            'plan_ids',
-            $subscription->items->where('item_type', 'plan')->pluck('plan_id')->filter()->values()->all(),
-        )));
-        $selectedAddonIds = array_values(array_filter((array) $request->input(
-            'addon_ids',
-            $subscription->items->where('item_type', 'addon')->pluck('addon_id')->filter()->values()->all(),
-        )));
-        $tenureValue = (string) $request->input('tenure', $subscription->tenure);
-        $tenure = SubscriptionTenure::tryFrom($tenureValue) ?? SubscriptionTenure::from((string) $subscription->tenure);
-        $renewalEligible = $request->has('renewal_eligible')
-            ? $request->boolean('renewal_eligible')
-            : (bool) $subscription->renewal_eligible;
-
-        $previewBreakdown = null;
-        if ($selectedPlanIds !== []) {
-            $selectedPlans = $plans->whereIn('id', $selectedPlanIds);
-            if ($selectedPlans->count() === count(array_unique($selectedPlanIds))) {
-                $prices = array_values($selectedPlans->pluck('annual_price')->map(fn ($p) => (string) $p)->all());
-                $previewBreakdown = $this->pricing->calculate(
-                    coreModuleAnnualPrices: $prices,
-                    tenure: $tenure,
-                    renewalEligible: $renewalEligible,
-                );
-            }
-        }
-
-        $canManage = $scope === CompanyAccessService::OWNER_PANEL_FULL && $company->isOwnedBy($user);
-
-        return Inertia::render('owner/subscription/draft-edit', [
-            'company' => $this->companyPayload($company),
-            'ownerPanelScope' => $scope,
-            'canManage' => $canManage,
-            'catalogue' => [
-                'id' => $catalogue->id,
-                'code' => $catalogue->code,
-                'name' => $catalogue->name,
-            ],
-            'draft' => $this->subscriptionPayload($subscription, includeSnapshots: true),
-            'plans' => $plans->map(fn (SubscriptionPlan $plan): array => [
-                'id' => $plan->id,
-                'module' => $plan->module,
-                'code' => $plan->code,
-                'name' => $plan->name,
-                'annual_price' => (string) $plan->annual_price,
-                'display_list_price' => $this->pricing->displayListPrice((string) $plan->annual_price),
-                'capacity_units' => $plan->capacity_units,
-            ])->values()->all(),
-            'addons' => $addons->map(fn (SubscriptionAddon $addon): array => [
-                'id' => $addon->id,
-                'code' => $addon->code,
-                'name' => $addon->name,
-                'annual_price' => (string) $addon->annual_price,
-            ])->values()->all(),
-            'tenureOptions' => collect(SubscriptionTenure::cases())->map(fn (SubscriptionTenure $t): array => [
-                'value' => $t->value,
-                'label' => str_replace('_', ' ', ucfirst($t->value)),
-                'months' => $t->months(),
-                'discount_percent' => $t->discountPercent(),
-            ])->values()->all(),
-            'selection' => [
-                'plan_ids' => $selectedPlanIds,
-                'addon_ids' => $selectedAddonIds,
-                'tenure' => $tenure->value,
-                'renewal_eligible' => $renewalEligible,
-                'common_renewal_date' => $request->input(
-                    'common_renewal_date',
-                    $subscription->common_renewal_date?->toDateString(),
-                ),
-            ],
-            'before_breakdown' => $subscription->pricing_breakdown,
-            'preview_breakdown' => $previewBreakdown,
-            'edit_note' => 'Editing updates the draft only. Catalogue version is locked to this draft. Payment and activation remain gated (PO-P3-PAY).',
-            'links' => [
-                'drafts' => route('owner.subscription.drafts'),
-                'preview' => route('owner.subscription.drafts.edit', $subscription),
-                'update' => route('owner.subscription.drafts.update', $subscription),
-                'overview' => route('owner.subscription'),
-            ],
-        ]);
-    }
-
-    public function updateDraft(Request $request, CompanySubscription $subscription, Company $company): RedirectResponse
-    {
-        ['user' => $user] = $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
-        $this->assertCompanySubscription($company, $subscription);
-
-        $validated = $request->validate([
-            'plan_ids' => ['required', 'array', 'min:1'],
-            'plan_ids.*' => ['uuid'],
-            'addon_ids' => ['nullable', 'array'],
-            'addon_ids.*' => ['uuid'],
-            'tenure' => ['required', Rule::enum(SubscriptionTenure::class)],
-            'common_renewal_date' => ['required', 'date'],
-            'renewal_eligible' => ['sometimes', 'boolean'],
-            'expected_snapshot_count' => ['required', 'integer', 'min:0'],
-            'remark' => ['nullable', 'string', 'max:1000'],
-        ]);
-
-        try {
-            $updated = $this->contracts->updateDraftContract(
-                actor: $user,
-                subscription: $subscription,
-                planIds: $validated['plan_ids'],
-                tenure: SubscriptionTenure::from($validated['tenure']),
-                commonRenewalDate: CarbonImmutable::parse($validated['common_renewal_date']),
-                renewalEligible: (bool) ($validated['renewal_eligible'] ?? false),
-                addonIds: $validated['addon_ids'] ?? [],
-                remark: $validated['remark'] ?? 'Update subscription draft contract',
-                expectedSnapshotCount: (int) $validated['expected_snapshot_count'],
-            );
-        } catch (SubscriptionDomainException $e) {
-            abort(403, $e->getMessage());
-        }
-
-        return redirect()
-            ->route('owner.subscription.drafts.edit', $updated)
-            ->with('success', 'Draft contract updated (not activated).');
     }
 
     public function requestCancellation(Request $request, Company $company): RedirectResponse
@@ -723,24 +551,41 @@ class OwnerSubscriptionController extends Controller
             ->limit(100)
             ->get();
 
+        $invoicesByIntent = SubscriptionInvoice::query()
+            ->where('company_id', $company->id)
+            ->whereNotNull('payment_intent_id')
+            ->get()
+            ->keyBy('payment_intent_id');
+
         return Inertia::render('owner/subscription/payments', [
             'company' => $this->companyPayload($company),
             'ownerPanelScope' => $scope,
-            'gate_note' => 'Live Razorpay checkout is not enabled. This list shows company-scoped payment intents including simulated records. PO-P3-PAY / G-PAY required for Test Mode charges.',
-            'payments' => $intents->map(fn (PaymentIntent $intent): array => [
-                'id' => $intent->id,
-                'purpose' => $intent->purpose,
-                'amount' => (string) $intent->amount,
-                'currency' => $intent->currency,
-                'status' => $intent->status,
-                'verification_status' => $intent->verification_status,
-                'gateway' => $intent->gateway,
-                'gateway_order_id' => $intent->gateway_order_id,
-                'gateway_payment_id' => $intent->gateway_payment_id,
-                'created_at' => $intent->created_at?->toIso8601String(),
-            ])->values()->all(),
+            'gate_note' => 'Payments are verified on the server before entitlement activation. Razorpay Test Mode active when configured.',
+            'payments' => $intents->map(function (PaymentIntent $intent) use ($invoicesByIntent): array {
+                $invoice = $invoicesByIntent->get($intent->id);
+
+                return [
+                    'id' => $intent->id,
+                    'purpose' => $intent->purpose,
+                    'amount' => (string) $intent->amount,
+                    'currency' => $intent->currency,
+                    'status' => $intent->status,
+                    'verification_status' => $intent->verification_status,
+                    'gateway' => $intent->gateway,
+                    'gateway_order_id' => $intent->gateway_order_id,
+                    'gateway_payment_id' => $intent->gateway_payment_id,
+                    'invoice_number' => $invoice !== null
+                        ? ($invoice->invoice_number ?? $invoice->approved_number ?? $invoice->proposed_number)
+                        : null,
+                    'invoice_url' => $invoice !== null ? route('owner.subscription.invoices.show', $invoice) : null,
+                    'invoice_download_url' => $invoice !== null ? route('owner.subscription.invoices.download', $invoice) : null,
+                    'created_at' => $intent->created_at?->toIso8601String(),
+                ];
+            })->values()->all(),
             'links' => [
                 'overview' => route('owner.subscription'),
+                'purchase' => route('owner.companies.subscription.purchase', $company),
+                'invoices' => route('owner.subscription.invoices'),
             ],
         ]);
     }
@@ -751,6 +596,7 @@ class OwnerSubscriptionController extends Controller
 
         $invoices = SubscriptionInvoice::query()
             ->where('company_id', $company->id)
+            ->orderByDesc('issued_at')
             ->orderByDesc('created_at')
             ->limit(100)
             ->get();
@@ -758,15 +604,21 @@ class OwnerSubscriptionController extends Controller
         return Inertia::render('owner/subscription/invoices', [
             'company' => $this->companyPayload($company),
             'ownerPanelScope' => $scope,
-            'issuer_note' => 'SAMPLE / NON-PRODUCTION invoices only. Legally operative tax invoices require validated issuer/GST (Pending). Approved numbers are immutable. Email failure never reverses payment or number approval.',
+            'issuer_note' => 'Issued subscription tax invoices and credit notes store immutable supplier, customer, tax, and subscription snapshots.',
             'invoices' => $invoices->map(fn (SubscriptionInvoice $invoice): array => [
                 'id' => $invoice->id,
+                'document_type' => $invoice->document_type,
                 'status' => $invoice->status,
+                'invoice_number' => $invoice->invoice_number ?? $invoice->approved_number ?? $invoice->proposed_number,
                 'proposed_number' => $invoice->proposed_number,
                 'approved_number' => $invoice->approved_number,
                 'financial_year' => $invoice->financial_year,
+                'taxable_amount' => (string) ($invoice->taxable_amount ?: $invoice->amount),
+                'total_tax_amount' => (string) ($invoice->total_tax_amount ?? '0.00'),
                 'amount' => (string) $invoice->amount,
                 'currency' => $invoice->currency,
+                'issued_at' => ($invoice->issued_at ?? $invoice->approved_at ?? $invoice->created_at)?->toDateString(),
+                'payment_reference' => $invoice->payment_reference ?? $invoice->payment_intent_id,
                 'email_status' => $invoice->email_status,
                 'approved_at' => $invoice->approved_at?->toIso8601String(),
                 'created_at' => $invoice->created_at?->toIso8601String(),
@@ -778,6 +630,7 @@ class OwnerSubscriptionController extends Controller
             ])->values()->all(),
             'links' => [
                 'overview' => route('owner.subscription'),
+                'payments' => route('owner.subscription.payments'),
             ],
         ]);
     }
@@ -807,11 +660,12 @@ class OwnerSubscriptionController extends Controller
         $this->assertCompanyInvoice($company, $invoice);
 
         $html = $this->invoiceDocuments->renderHtml($invoice);
+        $number = (string) ($invoice->invoice_number ?? $invoice->approved_number ?? $invoice->proposed_number ?? $invoice->id);
+        $safe = preg_replace('/[^A-Za-z0-9._-]+/', '-', $number) ?: $invoice->id;
 
         return response($html, 200, [
             'Content-Type' => 'text/html; charset=UTF-8',
-            'Content-Disposition' => 'inline; filename="subscription-invoice-'.$invoice->id.'.html"',
-            'X-TruckBill-Invoice-Sample' => 'non-production',
+            'Content-Disposition' => 'inline; filename="subscription-invoice-'.$safe.'.html"',
         ]);
     }
 
@@ -827,11 +681,11 @@ class OwnerSubscriptionController extends Controller
         }
 
         if ($result->email_status === 'sent') {
-            return back()->with('success', 'Sample invoice email dispatched. Delivery does not affect payment or number approval.');
+            return back()->with('success', 'Subscription invoice email dispatched.');
         }
 
         return back()->withErrors([
-            'email' => 'Email dispatch failed: '.($result->email_failure_reason ?? 'unknown').'. Approval and payment remain unchanged.',
+            'email' => 'Email dispatch failed: '.($result->email_failure_reason ?? 'unknown').'. Invoice issuance and payment remain unchanged.',
         ]);
     }
 
@@ -876,9 +730,197 @@ class OwnerSubscriptionController extends Controller
                 'created_at' => $entry->created_at?->toIso8601String(),
             ])->values()->all(),
             'quotas' => $this->quotaPayloads($quotaCounters, consumedKey: true),
-            'presentation_note' => 'Credits are non-cash balances in their ledger units. They are never shown as a generic ₹ cash wallet. Broker/Partload quotas are server-calculated; LR/Bilty operational gates remain Phase 4+',
+            'presentation_note' => 'Credits are non-cash balances in their ledger units.',
             'links' => [
                 'overview' => route('owner.subscription'),
+            ],
+        ]);
+    }
+
+    /**
+     * @param  Collection<int, Company>  $ownedCompanies
+     */
+    private function renderPurchase(Request $request, Company $company, $ownedCompanies): Response
+    {
+        $this->authorizeOwnerPanel($request, $company, $this->access);
+
+        $catalogue = $this->activeCatalogue();
+        $plans = $catalogue === null
+            ? collect()
+            : SubscriptionPlan::query()
+                ->where('catalogue_version_id', $catalogue->id)
+                ->where('is_active', true)
+                ->orderBy('module')
+                ->orderBy('sort_order')
+                ->orderBy('annual_price')
+                ->get();
+
+        $addons = $catalogue === null
+            ? collect()
+            : SubscriptionAddon::query()
+                ->where('catalogue_version_id', $catalogue->id)
+                ->where('is_active', true)
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get();
+
+        $activeSub = CompanySubscription::query()
+            ->where('company_id', $company->id)
+            ->where('status', 'active')
+            ->whereNotNull('activated_at')
+            ->whereNull('deleted_at')
+            ->with('items')
+            ->orderByDesc('activated_at')
+            ->first();
+
+        $modeParam = (string) $request->query('mode', '');
+        $defaultMode = ($activeSub !== null && $modeParam === 'renewal')
+            ? 'renewal'
+            : ($activeSub !== null ? 'upgrade' : 'initial');
+
+        $defaultPlanIds = [];
+        if ($defaultMode === 'renewal') {
+            $defaultPlanIds = array_values(
+                $activeSub->items
+                    ->where('item_type', 'plan')
+                    ->pluck('plan_id')
+                    ->filter()
+                    ->map(fn (mixed $id): string => (string) $id)
+                    ->all()
+            );
+        }
+
+        $initialQuote = $catalogue !== null
+            ? $this->purchase->quote($company, [
+                'plan_ids' => $defaultPlanIds,
+                'mode' => $defaultMode,
+                'tenure' => $activeSub !== null ? ($activeSub->tenure ?? SubscriptionTenure::Yearly->value) : SubscriptionTenure::Yearly->value,
+            ])
+            : null;
+
+        $entitlement = $this->entitlements->evaluate($company);
+        $effective = $this->lifecycle->effectiveStatus($company);
+
+        $subscribedPlanIds = $activeSub !== null
+            ? $activeSub->items->where('item_type', 'plan')->pluck('plan_id')->filter()->values()->all()
+            : [];
+        $subscribedAddonCodes = $activeSub !== null
+            ? $activeSub->items->where('item_type', 'addon')->pluck('code')->filter()->values()->all()
+            : [];
+
+        return Inertia::render('owner/subscription/purchase', [
+            'company' => $this->companyPayload($company),
+            'companyOptions' => $ownedCompanies->map(fn (Company $c): array => [
+                'id' => $c->id,
+                'name' => $c->name,
+                'status' => $c->isActive() ? 'Active' : 'Deactivated',
+                'purchase_url' => route('owner.companies.subscription.purchase', $c),
+            ])->values()->all(),
+            'canManage' => $company->isActive(),
+            'lifecycle' => [
+                'status' => $entitlement['status']->value,
+                'trial_ends_at' => $effective['trial_ends_at'] ?? null,
+                'common_renewal_date' => $activeSub?->common_renewal_date?->toDateString(),
+            ],
+            'plans' => $plans->map(fn (SubscriptionPlan $p): array => [
+                'id' => $p->id,
+                'module' => $p->module,
+                'name' => $p->name,
+                'annual_price' => (string) $p->annual_price,
+                'capacity_units' => $p->capacity_units,
+                'subscribed' => in_array($p->id, $subscribedPlanIds, true),
+            ])->values()->all(),
+            'addons' => $addons->map(fn (SubscriptionAddon $a): array => [
+                'id' => $a->id,
+                'code' => $a->code,
+                'name' => $a->name,
+                'annual_price' => (string) $a->annual_price,
+                'unit_label' => $a->unit_label,
+                'is_quantifiable' => (bool) $a->is_quantifiable,
+                'credit_units_per_unit' => $a->credit_units_per_unit,
+                'storage_bytes_per_unit' => $a->storage_bytes_per_unit,
+                'subscribed' => ! $a->is_quantifiable && in_array($a->code, $subscribedAddonCodes, true),
+            ])->values()->all(),
+            'tenureOptions' => collect(SubscriptionTenure::cases())->map(fn (SubscriptionTenure $t): array => [
+                'value' => $t->value,
+                'label' => match ($t) {
+                    SubscriptionTenure::Monthly => 'Monthly',
+                    SubscriptionTenure::Quarterly => 'Quarterly',
+                    SubscriptionTenure::HalfYearly => 'Half-Yearly',
+                    SubscriptionTenure::Yearly => 'Yearly',
+                    SubscriptionTenure::ThreeYearFullAdvance => '3-Year Full Advance',
+                    SubscriptionTenure::ThreeYearAnnualInstalments => '3-Year Annual Instalments',
+                },
+                'months' => $t->months(),
+                'discount_percent' => $t->discountPercent(),
+            ])->values()->all(),
+            'initialQuote' => $initialQuote,
+            'customerBilling' => $this->billingProfiles->customerSnapshot($company),
+            'links' => [
+                'quote' => route('owner.companies.subscription.quote', $company),
+                'purchase' => route('owner.companies.subscription.store', $company),
+                'company_settings' => route('owner.companies.index'),
+                'payments' => route('owner.subscription.payments'),
+                'invoices' => route('owner.subscription.invoices'),
+                'subscriptions' => route('owner.subscriptions.index'),
+            ],
+        ]);
+    }
+
+    private function renderCheckout(
+        User $user,
+        Company $company,
+        string $scope,
+        PaymentIntent $intent,
+        ?CompanySubscription $subscription,
+    ): Response|RedirectResponse {
+        $mode = $this->gateway->name();
+        $publicKey = null;
+        $allowFakeSimulate = app()->environment('testing');
+
+        if ($mode === 'fake' && ! $allowFakeSimulate) {
+            return redirect()
+                ->route('owner.companies.subscription.purchase', $company)
+                ->withErrors([
+                    'purchase' => 'Razorpay Test Mode credentials are required for Owner checkout. Configure RAZORPAY_KEY_ID, RAZORPAY_KEY_SECRET, and RAZORPAY_WEBHOOK_SECRET (rzp_test_* only).',
+                ]);
+        }
+
+        if ($this->gateway instanceof RazorpayTestPaymentGateway) {
+            $publicKey = $this->gateway->publicKeyId();
+        }
+
+        $meta = is_array($intent->meta) ? $intent->meta : [];
+        $quote = is_array($meta['quote'] ?? null) ? $meta['quote'] : null;
+
+        return Inertia::render('owner/subscription/checkout', [
+            'company' => $this->companyPayload($company),
+            'ownerPanelScope' => $scope,
+            'test_mode_banner' => 'Razorpay Test Mode — No Real Money Will Be Charged',
+            'gateway' => $mode,
+            'public_key' => $publicKey,
+            'subscription' => $subscription === null ? null : $this->subscriptionPayload($subscription),
+            'quote' => $quote,
+            'customerBilling' => $quote['customer_snapshot'] ?? $this->billingProfiles->customerSnapshot($company),
+            'payment' => [
+                'id' => $intent->id,
+                'purpose' => $intent->purpose,
+                'amount' => (string) $intent->amount,
+                'currency' => $intent->currency,
+                'status' => $intent->status,
+                'gateway_order_id' => $intent->gateway_order_id,
+            ],
+            'prefill' => [
+                'name' => $user->name,
+                'email' => $user->email,
+            ],
+            'allow_fake_simulate' => $allowFakeSimulate,
+            'links' => [
+                'overview' => route('owner.companies.subscription.purchase', $company),
+                'verify' => route('owner.companies.subscription.checkout.verify', [$company, $intent]),
+                'simulate' => $allowFakeSimulate
+                    ? route('owner.companies.subscription.checkout.simulate', [$company, $intent])
+                    : null,
             ],
         ]);
     }
@@ -912,9 +954,6 @@ class OwnerSubscriptionController extends Controller
             'cancellation_requested_at' => $subscription->cancellation_requested_at?->toIso8601String(),
             'cancellation_effective_on' => $subscription->cancellation_effective_on?->toDateString(),
             'updated_at' => $subscription->updated_at?->toIso8601String(),
-            'snapshot_count' => $subscription->relationLoaded('snapshots')
-                ? $subscription->snapshots->count()
-                : $subscription->snapshots()->count(),
             'items' => $subscription->relationLoaded('items')
                 ? $subscription->items->map(fn ($item): array => [
                     'id' => $item->id,
@@ -924,6 +963,7 @@ class OwnerSubscriptionController extends Controller
                     'module' => $item->module,
                     'code' => $item->code,
                     'name' => $item->name,
+                    'quantity' => (int) ($item->quantity ?? 1),
                     'annual_price_snapshot' => (string) $item->annual_price_snapshot,
                     'capacity_units_snapshot' => $item->capacity_units_snapshot,
                 ])->values()->all()
@@ -1019,23 +1059,6 @@ class OwnerSubscriptionController extends Controller
         }
 
         return null;
-    }
-
-    /**
-     * @return array{0: int, 1: int}
-     */
-    private function purchasedCapacityFromSubscription(?CompanySubscription $subscription): array
-    {
-        if ($subscription === null) {
-            return [0, 0];
-        }
-
-        $raw = $subscription->getAttribute('pricing_breakdown');
-        $breakdown = is_array($raw) ? $raw : [];
-        $branches = (int) ($breakdown['purchased_branches'] ?? $breakdown['extra_branches'] ?? 0);
-        $seats = (int) ($breakdown['purchased_seats'] ?? $breakdown['extra_seats'] ?? 0);
-
-        return [max(0, $branches), max(0, $seats)];
     }
 
     private function vehicleCapacityFromSubscription(?CompanySubscription $subscription): ?int

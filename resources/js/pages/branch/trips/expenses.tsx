@@ -48,6 +48,10 @@ type ExpenseRow = {
     planned_diesel_amount?: string | null;
     remarks: string | null;
     payment_mode?: string | null;
+    vendor_party_id?: string | null;
+    vendor_name?: string | null;
+    is_credit_payable?: boolean;
+    settled_at?: string | null;
 };
 
 type TripSummary = {
@@ -59,6 +63,7 @@ type TripSummary = {
     from_station_name: string | null;
     to_station_name: string | null;
     vehicle_registration: string | null;
+    driver_party_id?: string | null;
     driver_name: string | null;
     starting_odometer: string | null;
     ending_odometer: string | null;
@@ -68,14 +73,64 @@ type TripSummary = {
 
 type FormOptions = {
     expense_categories: Array<{ id: string; name: string }>;
+    vendors?: Array<{ id: string; name: string }>;
+    drivers?: Array<{ id: string; name: string }>;
     payment_modes: Array<{ id: string; name: string }>;
     bank_cash_accounts: Array<{ id: string; name: string }>;
+};
+
+type DriverAdvanceSummary = {
+    entries: Array<{
+        id: string;
+        entry_date: string;
+        driver_party_id: string;
+        driver_name: string | null;
+        entry_type: string;
+        amount: string | null;
+        payment_mode: string;
+        reference: string | null;
+        remark: string | null;
+    }>;
+    driver_balances: Array<{
+        driver_party_id: string;
+        driver_name: string;
+        advances: string | null;
+        settlements: string | null;
+        recoveries: string | null;
+        net_balance: string | null;
+    }>;
+    total_outstanding: string | null;
+};
+
+type VendorPayablesSummary = {
+    unpaid_expenses: Array<{
+        id: string;
+        trip_id: string;
+        trip_number: string | null;
+        vendor_party_id: string;
+        vendor_name: string | null;
+        category_name: string | null;
+        expense_date: string;
+        amount: string | null;
+        paid_amount: string | null;
+        remaining_amount: string | null;
+    }>;
+    vendor_balances: Array<{
+        vendor_party_id: string;
+        vendor_name: string;
+        billed: string | null;
+        paid: string | null;
+        balance_due: string | null;
+    }>;
+    total_balance_due: string | null;
 };
 
 type Props = {
     trip: TripSummary;
     expenses: ExpenseRow[];
     profit: TripProfitProps;
+    driverAdvances?: DriverAdvanceSummary;
+    vendorPayables?: VendorPayablesSummary;
     formOptions: FormOptions;
     permissions: {
         can_edit: boolean;
@@ -90,6 +145,8 @@ type Props = {
         index: string;
         add_expense: string;
         remove_expense: string;
+        driver_advance_store?: string;
+        vendor_payment_store?: string;
         expense_categories_store?: string;
         bank_cash_store?: string;
         documents: string;
@@ -132,6 +189,8 @@ export default function TripExpensesWorkspace({
     trip,
     expenses,
     profit,
+    driverAdvances,
+    vendorPayables,
     formOptions,
     permissions,
     urls,
@@ -145,6 +204,8 @@ export default function TripExpensesWorkspace({
     const errors = page.props.errors;
     const [docsOpen, setDocsOpen] = useState(false);
     const [isDiesel, setIsDiesel] = useState(false);
+    const [isCreditPayable, setIsCreditPayable] = useState(false);
+    const [vendorPartyId, setVendorPartyId] = useState('');
     const [expenseCategories, setExpenseCategories] = useState(
         () => formOptions.expense_categories,
     );
@@ -324,6 +385,14 @@ export default function TripExpensesWorkspace({
                                                         '—'}
                                                     {expense.is_diesel
                                                         ? ' · Diesel'
+                                                        : ''}
+                                                    {expense.vendor_name
+                                                        ? ` · ${expense.vendor_name}`
+                                                        : ''}
+                                                    {expense.is_credit_payable
+                                                        ? expense.settled_at
+                                                            ? ' · Credit (Settled)'
+                                                            : ' · Credit Payable'
                                                         : ''}
                                                     {expense.payment_mode
                                                         ? ` · ${expense.payment_mode}`
@@ -549,6 +618,75 @@ export default function TripExpensesWorkspace({
                                                         </select>
                                                     </div>
 
+                                                    <div className="space-y-1.5">
+                                                        <Label
+                                                            htmlFor="vendor_party_id"
+                                                            required={
+                                                                isCreditPayable
+                                                            }
+                                                        >
+                                                            Vendor / Fuel Pump
+                                                        </Label>
+                                                        <select
+                                                            id="vendor_party_id"
+                                                            name="vendor_party_id"
+                                                            required={
+                                                                isCreditPayable
+                                                            }
+                                                            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                                            value={
+                                                                vendorPartyId
+                                                            }
+                                                            onChange={(event) =>
+                                                                setVendorPartyId(
+                                                                    event.target
+                                                                        .value,
+                                                                )
+                                                            }
+                                                        >
+                                                            <option value="">
+                                                                Optional
+                                                            </option>
+                                                            {(
+                                                                formOptions.vendors ??
+                                                                []
+                                                            ).map((vendor) => (
+                                                                <option
+                                                                    key={
+                                                                        vendor.id
+                                                                    }
+                                                                    value={
+                                                                        vendor.id
+                                                                    }
+                                                                >
+                                                                    {
+                                                                        vendor.name
+                                                                    }
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+
+                                                    <label className="flex items-center gap-2 text-sm md:col-span-2">
+                                                        <input
+                                                            type="checkbox"
+                                                            name="is_credit_payable"
+                                                            value="1"
+                                                            checked={
+                                                                isCreditPayable
+                                                            }
+                                                            onChange={(event) =>
+                                                                setIsCreditPayable(
+                                                                    event.target
+                                                                        .checked,
+                                                                )
+                                                            }
+                                                        />
+                                                        Credit Payable (accrue
+                                                        liability to vendor and
+                                                        pay later)
+                                                    </label>
+
                                                     <label className="flex items-center gap-2 text-sm md:col-span-2">
                                                         <input
                                                             type="checkbox"
@@ -684,6 +822,327 @@ export default function TripExpensesWorkspace({
                                                     >
                                                         Save expense
                                                     </Button>
+                                                </>
+                                            )}
+                                        </Form>
+                                    </LrfSection>
+                                ) : null}
+
+                                {mutable &&
+                                permissions.can_view_freight &&
+                                urls.driver_advance_store ? (
+                                    <LrfSection
+                                        step={3}
+                                        title="Driver advances & settlement"
+                                        description="Issue trip advance, record expense settlement, or capture driver cash recovery."
+                                        tone="goods"
+                                    >
+                                        <Form
+                                            action={urls.driver_advance_store}
+                                            method="post"
+                                            className="grid gap-3 md:grid-cols-3"
+                                        >
+                                            {({ processing }) => (
+                                                <>
+                                                    <input
+                                                        type="hidden"
+                                                        name="trip_id"
+                                                        value={trip.id}
+                                                    />
+                                                    <div className="space-y-1.5">
+                                                        <Label
+                                                            htmlFor="adv_driver_party_id"
+                                                            required
+                                                        >
+                                                            Driver
+                                                        </Label>
+                                                        <select
+                                                            id="adv_driver_party_id"
+                                                            name="driver_party_id"
+                                                            defaultValue={
+                                                                trip.driver_party_id ??
+                                                                ''
+                                                            }
+                                                            required
+                                                            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                                        >
+                                                            <option value="">
+                                                                Select driver
+                                                            </option>
+                                                            {(
+                                                                formOptions.drivers ??
+                                                                []
+                                                            ).map((driver) => (
+                                                                <option
+                                                                    key={
+                                                                        driver.id
+                                                                    }
+                                                                    value={
+                                                                        driver.id
+                                                                    }
+                                                                >
+                                                                    {
+                                                                        driver.name
+                                                                    }
+                                                                </option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                    <div className="space-y-1.5">
+                                                        <Label
+                                                            htmlFor="adv_entry_type"
+                                                            required
+                                                        >
+                                                            Entry Type
+                                                        </Label>
+                                                        <select
+                                                            id="adv_entry_type"
+                                                            name="entry_type"
+                                                            defaultValue="advance"
+                                                            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                                        >
+                                                            <option value="advance">
+                                                                Advance Paid
+                                                            </option>
+                                                            <option value="settlement">
+                                                                Expense
+                                                                Settlement
+                                                            </option>
+                                                            <option value="recovery">
+                                                                Cash Recovery
+                                                            </option>
+                                                        </select>
+                                                    </div>
+                                                    <div className="space-y-1.5">
+                                                        <Label
+                                                            htmlFor="adv_amount"
+                                                            required
+                                                        >
+                                                            Amount
+                                                        </Label>
+                                                        <Input
+                                                            id="adv_amount"
+                                                            name="amount"
+                                                            type="number"
+                                                            step="0.01"
+                                                            min="0.01"
+                                                            required
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1.5">
+                                                        <Label htmlFor="adv_bank_cash_account_id">
+                                                            Bank / Cash Account
+                                                        </Label>
+                                                        <select
+                                                            id="adv_bank_cash_account_id"
+                                                            name="bank_cash_account_id"
+                                                            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                                            defaultValue=""
+                                                        >
+                                                            <option value="">
+                                                                Adjustment /
+                                                                None
+                                                            </option>
+                                                            {bankCashAccounts.map(
+                                                                (account) => (
+                                                                    <option
+                                                                        key={
+                                                                            account.id
+                                                                        }
+                                                                        value={
+                                                                            account.id
+                                                                        }
+                                                                    >
+                                                                        {
+                                                                            account.name
+                                                                        }
+                                                                    </option>
+                                                                ),
+                                                            )}
+                                                        </select>
+                                                    </div>
+                                                    <div className="space-y-1.5 md:col-span-2">
+                                                        <Label htmlFor="adv_remark">
+                                                            Remark
+                                                        </Label>
+                                                        <Input
+                                                            id="adv_remark"
+                                                            name="remark"
+                                                            placeholder="Optional advance/settlement note"
+                                                        />
+                                                    </div>
+                                                    <div className="md:col-span-3">
+                                                        <Button
+                                                            type="submit"
+                                                            variant="secondary"
+                                                            disabled={
+                                                                processing
+                                                            }
+                                                        >
+                                                            Record Driver Entry
+                                                        </Button>
+                                                    </div>
+                                                </>
+                                            )}
+                                        </Form>
+                                        {driverAdvances &&
+                                        driverAdvances.entries.length > 0 ? (
+                                            <ul className="mt-3 divide-y rounded-md border text-xs">
+                                                {driverAdvances.entries.map(
+                                                    (entry) => (
+                                                        <li
+                                                            key={entry.id}
+                                                            className="flex items-center justify-between px-3 py-2"
+                                                        >
+                                                            <span>
+                                                                {
+                                                                    entry.entry_date
+                                                                }{' '}
+                                                                ·{' '}
+                                                                {entry.driver_name ??
+                                                                    'Driver'}{' '}
+                                                                (
+                                                                {
+                                                                    entry.entry_type
+                                                                }
+                                                                )
+                                                            </span>
+                                                            <span className="font-medium">
+                                                                ₹{entry.amount}
+                                                            </span>
+                                                        </li>
+                                                    ),
+                                                )}
+                                            </ul>
+                                        ) : null}
+                                    </LrfSection>
+                                ) : null}
+
+                                {mutable &&
+                                permissions.can_view_freight &&
+                                urls.vendor_payment_store &&
+                                vendorPayables &&
+                                vendorPayables.unpaid_expenses.length > 0 ? (
+                                    <LrfSection
+                                        step={4}
+                                        title="Credit vendor payables"
+                                        description="Settle unpaid fuel pump or vendor credit expenses."
+                                        tone="optional"
+                                    >
+                                        <Form
+                                            action={urls.vendor_payment_store}
+                                            method="post"
+                                            className="grid gap-3 md:grid-cols-3"
+                                        >
+                                            {({ processing }) => (
+                                                <>
+                                                    <div className="space-y-1.5">
+                                                        <Label
+                                                            htmlFor="vp_vendor_party_id"
+                                                            required
+                                                        >
+                                                            Vendor
+                                                        </Label>
+                                                        <select
+                                                            id="vp_vendor_party_id"
+                                                            name="vendor_party_id"
+                                                            required
+                                                            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                                        >
+                                                            <option value="">
+                                                                Select vendor
+                                                            </option>
+                                                            {vendorPayables.vendor_balances
+                                                                .filter(
+                                                                    (v) =>
+                                                                        Number(
+                                                                            v.balance_due ??
+                                                                                0,
+                                                                        ) > 0,
+                                                                )
+                                                                .map((v) => (
+                                                                    <option
+                                                                        key={
+                                                                            v.vendor_party_id
+                                                                        }
+                                                                        value={
+                                                                            v.vendor_party_id
+                                                                        }
+                                                                    >
+                                                                        {
+                                                                            v.vendor_name
+                                                                        }{' '}
+                                                                        (Due ₹
+                                                                        {
+                                                                            v.balance_due
+                                                                        }
+                                                                        )
+                                                                    </option>
+                                                                ))}
+                                                        </select>
+                                                    </div>
+                                                    <div className="space-y-1.5">
+                                                        <Label
+                                                            htmlFor="vp_amount"
+                                                            required
+                                                        >
+                                                            Payment Amount
+                                                        </Label>
+                                                        <Input
+                                                            id="vp_amount"
+                                                            name="amount"
+                                                            type="number"
+                                                            step="0.01"
+                                                            min="0.01"
+                                                            required
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1.5">
+                                                        <Label
+                                                            htmlFor="vp_bank_cash_account_id"
+                                                            required
+                                                        >
+                                                            Bank / Cash Account
+                                                        </Label>
+                                                        <select
+                                                            id="vp_bank_cash_account_id"
+                                                            name="bank_cash_account_id"
+                                                            required
+                                                            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                                            defaultValue={
+                                                                bankCashAccounts[0]
+                                                                    ?.id ?? ''
+                                                            }
+                                                        >
+                                                            {bankCashAccounts.map(
+                                                                (account) => (
+                                                                    <option
+                                                                        key={
+                                                                            account.id
+                                                                        }
+                                                                        value={
+                                                                            account.id
+                                                                        }
+                                                                    >
+                                                                        {
+                                                                            account.name
+                                                                        }
+                                                                    </option>
+                                                                ),
+                                                            )}
+                                                        </select>
+                                                    </div>
+                                                    <div className="space-y-1.5 md:col-span-3">
+                                                        <Button
+                                                            type="submit"
+                                                            variant="secondary"
+                                                            disabled={
+                                                                processing
+                                                            }
+                                                        >
+                                                            Pay Vendor Balance
+                                                        </Button>
+                                                    </div>
                                                 </>
                                             )}
                                         </Form>

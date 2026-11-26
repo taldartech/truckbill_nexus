@@ -4,6 +4,7 @@ namespace App\Domains\OwnFleet\Trip;
 
 use App\Domains\Accounting\OperationalAccountingPoster;
 use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
+use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\OwnFleet\Enums\TripStatus;
 use App\Domains\OwnFleet\Trip\Exceptions\TripAuthorizationException;
 use App\Domains\OwnFleet\Trip\Exceptions\TripDomainException;
@@ -13,6 +14,8 @@ use App\Models\BankCashAccount;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\OwnerCatalogueItem;
+use App\Models\Party;
+use App\Models\PartyRole;
 use App\Models\PaymentMode;
 use App\Models\Trip;
 use App\Models\TripExpense;
@@ -87,14 +90,18 @@ final class TripExpenseService
         $company = Company::query()->findOrFail($trip->company_id);
         $branch = Branch::query()->findOrFail($trip->branch_id);
 
-        $this->auditedTransaction->run(function () use ($trip, $company, $branch, $expense): void {
-            $this->withTenant($company, $branch, function () use ($trip, $expense): void {
+        $this->auditedTransaction->run(function () use ($trip, $actor, $company, $branch, $expense): void {
+            $this->withTenant($company, $branch, function () use ($trip, $actor, $expense): void {
                 $locked = Trip::query()->whereKey($trip->id)->whereNull('deleted_at')->lockForUpdate()->firstOrFail();
                 $this->assertTripAllowsExpenses($locked);
 
                 $row = TripExpense::query()->whereKey($expense->id)->whereNull('deleted_at')->lockForUpdate()->first();
                 if ($row === null) {
                     throw new TripDomainException('Expense not found.');
+                }
+
+                if ($row->settled_at !== null) {
+                    throw new TripDomainException('Settled vendor expenses cannot be deleted.');
                 }
 
                 $before = $row->toArray();
@@ -108,6 +115,8 @@ final class TripExpenseService
                     before: $before,
                     after: null,
                 );
+
+                $this->accounting->postTripExpenseDeleted($row, $actor);
             });
         });
     }
@@ -253,14 +262,31 @@ final class TripExpenseService
             throw ValidationException::withMessages(['expense_date' => 'Expense date is required.']);
         }
 
-        $paymentModeId = filled($payload['payment_mode_id'] ?? null) ? (string) $payload['payment_mode_id'] : null;
+        $isCreditPayable = (bool) ($payload['is_credit_payable'] ?? false);
+        $vendorPartyId = filled($payload['vendor_party_id'] ?? null)
+            ? (string) $payload['vendor_party_id']
+            : null;
+        if ($isCreditPayable && $vendorPartyId === null) {
+            throw ValidationException::withMessages([
+                'vendor_party_id' => 'Vendor is required for credit payable expenses.',
+            ]);
+        }
+        if ($vendorPartyId !== null) {
+            $this->assertVendorParty($company, $vendorPartyId);
+        }
+
+        $paymentModeId = $isCreditPayable
+            ? null
+            : (filled($payload['payment_mode_id'] ?? null) ? (string) $payload['payment_mode_id'] : null);
         if ($paymentModeId !== null && ! PaymentMode::query()->whereKey($paymentModeId)->exists()) {
             throw ValidationException::withMessages(['payment_mode_id' => 'Payment mode is invalid.']);
         }
 
-        $paidFromId = filled($payload['paid_from_bank_cash_account_id'] ?? null)
-            ? (string) $payload['paid_from_bank_cash_account_id']
-            : null;
+        $paidFromId = $isCreditPayable
+            ? null
+            : (filled($payload['paid_from_bank_cash_account_id'] ?? null)
+                ? (string) $payload['paid_from_bank_cash_account_id']
+                : null);
         if ($paidFromId !== null) {
             $account = BankCashAccount::query()
                 ->where('company_id', $company->id)
@@ -301,6 +327,8 @@ final class TripExpenseService
                 'amount' => $amount,
                 'payment_mode_id' => $paymentModeId,
                 'paid_from_bank_cash_account_id' => $paidFromId,
+                'vendor_party_id' => $vendorPartyId,
+                'is_credit_payable' => $isCreditPayable,
                 'remarks' => $remarks,
                 'is_diesel' => true,
                 'diesel_litres' => $litres,
@@ -321,6 +349,8 @@ final class TripExpenseService
             'amount' => $amount,
             'payment_mode_id' => $paymentModeId,
             'paid_from_bank_cash_account_id' => $paidFromId,
+            'vendor_party_id' => $vendorPartyId,
+            'is_credit_payable' => $isCreditPayable,
             'remarks' => $remarks,
             'is_diesel' => false,
             'diesel_litres' => null,
@@ -331,6 +361,36 @@ final class TripExpenseService
             'planned_diesel_amount' => null,
             'planned_efficiency' => null,
         ];
+    }
+
+    private function assertVendorParty(Company $company, string $partyId): void
+    {
+        $party = Party::query()
+            ->whereKey($partyId)
+            ->where('company_id', $company->id)
+            ->whereNull('deleted_at')
+            ->first();
+
+        if ($party === null) {
+            throw ValidationException::withMessages([
+                'vendor_party_id' => 'Selected vendor is not available.',
+            ]);
+        }
+
+        $hasVendorRole = PartyRole::query()
+            ->where('party_id', $party->id)
+            ->whereIn('role', [
+                PartyRoleType::GeneralVendor->value,
+                PartyRoleType::PumpVendor->value,
+                PartyRoleType::Transporter->value,
+            ])
+            ->exists();
+
+        if (! $hasVendorRole) {
+            throw ValidationException::withMessages([
+                'vendor_party_id' => 'Selected party must carry a vendor or transporter role.',
+            ]);
+        }
     }
 
     private function assertExpenseCategory(Company $company, string $categoryId): void

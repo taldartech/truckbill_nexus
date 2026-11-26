@@ -6,6 +6,8 @@ use App\Domains\Accounting\Enums\AccountingPostingStatus;
 use App\Domains\Accounting\Enums\AccountingVoucherStatus;
 use App\Domains\Accounting\Enums\AccountingVoucherType;
 use App\Domains\Accounting\Exceptions\AccountingDomainException;
+use App\Domains\Subscription\Entitlement\CompanyCapabilities;
+use App\Domains\Subscription\Entitlement\CompanyCapabilityResolver;
 use App\Models\AccountingPostingLink;
 use App\Models\AccountingVoucher;
 use App\Models\AccountingVoucherLine;
@@ -59,7 +61,13 @@ final class VoucherPostingService
         array $header,
         array $lines,
         ?Branch $branch = null,
+        bool $allowControlledCorrection = false,
     ): AccountingVoucher {
+        if (! $allowControlledCorrection
+            && ! app(CompanyCapabilityResolver::class)->allowsMutate($company, CompanyCapabilities::ACCOUNTING)) {
+            throw new AccountingDomainException('Accounting add-on entitlement is required to post accounting vouchers.');
+        }
+
         $type = $header['voucher_type'] instanceof AccountingVoucherType
             ? $header['voucher_type']
             : AccountingVoucherType::from((string) $header['voucher_type']);
@@ -227,14 +235,21 @@ final class VoucherPostingService
         AccountingVoucher $voucher,
         User $actor,
         string $remark,
+        bool $allowControlledCorrection = false,
     ): AccountingVoucher {
         if ($voucher->status !== AccountingVoucherStatus::Posted) {
             throw new AccountingDomainException('Only posted vouchers can be reversed.');
         }
 
+        $company = Company::query()->findOrFail($voucher->company_id);
+        if (! $allowControlledCorrection
+            && ! app(CompanyCapabilityResolver::class)->allowsMutate($company, CompanyCapabilities::ACCOUNTING)) {
+            throw new AccountingDomainException('Accounting add-on entitlement is required to reverse accounting vouchers.');
+        }
+
         $voucher->loadMissing('lines');
         $period = $this->periods->periodForDate(
-            Company::query()->findOrFail($voucher->company_id),
+            $company,
             $voucher->voucher_date->toDateString(),
         );
         $this->periods->assertOpenForPosting($period);
@@ -249,8 +264,6 @@ final class VoucherPostingService
 
         $reversalLines = array_values($reversalLines);
 
-        $company = Company::query()->findOrFail($voucher->company_id);
-
         $reversal = $this->postManual(
             $company,
             $actor,
@@ -264,6 +277,7 @@ final class VoucherPostingService
                 'posting_purpose' => 'reversal',
             ],
             $reversalLines,
+            allowControlledCorrection: $allowControlledCorrection,
         );
 
         return $this->audited->run(function () use ($voucher, $reversal, $remark, $company): AccountingVoucher {

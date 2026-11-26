@@ -252,7 +252,7 @@ test('owner cannot manage another company memberships and audit is company scope
 
     $this->post(route('owner.users.invite'), [
         'email' => 'cross@example.com',
-    ])->assertRedirect(route('owner.users.all', ['company' => $company->id]));
+    ])->assertRedirect(route('owner.users.all', ['company' => $companyA->id]));
 
     expect(Invitation::query()->where('email', 'cross@example.com')->value('company_id'))->toBe($companyA->id);
 
