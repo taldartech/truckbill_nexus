@@ -22,7 +22,6 @@ class Station extends Model
     protected $fillable = [
         'id',
         'owner_user_id',
-        'code',
         'name',
         'state',
         'state_id',

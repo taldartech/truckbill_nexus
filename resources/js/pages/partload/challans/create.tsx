@@ -17,7 +17,8 @@ import { Label } from '@/components/ui/label';
 type StationOption = {
     id: string;
     name?: string | null;
-    code?: string | null;
+    city?: string | null;
+    state?: string | null;
 };
 
 type PartyOption = {
@@ -520,7 +521,6 @@ export default function PartloadChallanCreate({
                                       {
                                           id: station.id,
                                           name: station.name,
-                                          code: station.code,
                                       },
                                   ],
                         );

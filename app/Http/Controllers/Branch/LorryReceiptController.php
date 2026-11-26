@@ -705,7 +705,7 @@ class LorryReceiptController extends Controller
             ->whereNull('deleted_at')
             ->orderBy('name')
             ->limit(300)
-            ->get(['id', 'name', 'code']);
+            ->get(['id', 'name', 'city', 'state']);
 
         $goodsTypes = OwnerCatalogueItem::query()
             ->where('owner_user_id', $company->owner_user_id)
@@ -766,7 +766,8 @@ class LorryReceiptController extends Controller
             'stations' => $stations->map(fn (Station $station): array => [
                 'id' => $station->id,
                 'name' => $station->name,
-                'code' => $station->code,
+                'city' => $station->city,
+                'state' => $station->state,
             ])->values()->all(),
             'goodsTypes' => $goodsTypes->map(fn (OwnerCatalogueItem $item): array => [
                 'id' => $item->id,

@@ -21,7 +21,7 @@ afterEach(function (): void {
     TenantContextHolder::clear();
 });
 
-it('creates station via json quick-create and derives code from name', function (): void {
+it('creates station via json quick-create without code', function (): void {
     $owner = User::factory()->customer()->create([
         'password' => Hash::make('owner-secret'),
     ]);
@@ -39,9 +39,10 @@ it('creates station via json quick-create and derives code from name', function 
     ]);
 
     $response->assertCreated()
-        ->assertJsonPath('data.name', 'Andheri Hub');
+        ->assertJsonPath('data.name', 'Andheri Hub')
+        ->assertJsonMissingPath('data.code');
 
     $station = Station::query()->findOrFail($response->json('data.id'));
-    expect($station->code)->toBe('ANDHERI-HUB')
-        ->and($station->name)->toBe('Andheri Hub');
+    expect($station->name)->toBe('Andheri Hub');
+    expect($station->getAttributes())->not->toHaveKey('code');
 });

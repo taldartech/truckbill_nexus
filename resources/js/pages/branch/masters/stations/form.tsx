@@ -13,7 +13,6 @@ import { readCanQuickCreateGeography } from '@/lib/geography-permissions';
 
 type Station = {
     id: string;
-    code: string;
     name: string;
     state: string | null;
     city: string | null;
@@ -72,25 +71,10 @@ export default function StationForm({ mode, station, links }: Props) {
                             <LrfSection
                                 step={1}
                                 title="Station details"
-                                description="Code, name, and location."
+                                description="Name and geography."
                                 tone="receipt"
                             >
                                 <div className="grid gap-3 md:grid-cols-2">
-                                    {mode === 'create' ? (
-                                        <div className="space-y-2">
-                                            <Label htmlFor="code">Code</Label>
-                                            <Input
-                                                id="code"
-                                                name="code"
-                                                required
-                                            />
-                                            <InputError message={errors.code} />
-                                        </div>
-                                    ) : (
-                                        <p className="text-sm text-muted-foreground">
-                                            Code: {station?.code}
-                                        </p>
-                                    )}
                                     <div className="space-y-2">
                                         <Label htmlFor="name">Name</Label>
                                         <Input

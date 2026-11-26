@@ -19,7 +19,6 @@ use App\Models\StationDefaultTransporter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -74,7 +73,6 @@ class StationController extends Controller
 
                     return [
                         'id' => $station->id,
-                        'code' => $station->code,
                         'name' => $station->name,
                         'state' => $station->state,
                         'city' => $station->city,
@@ -91,13 +89,12 @@ class StationController extends Controller
             'links' => [
                 'hub' => route('branch.masters.index'),
                 'index' => route('branch.stations.index'),
-                'create' => route('branch.stations.create'),
                 'store' => route('branch.stations.store'),
             ],
         ]);
     }
 
-    public function create(Request $request, Company $company, Branch $branch): Response
+    public function create(Request $request, Company $company, Branch $branch): RedirectResponse
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $permissions = $this->masterPermissions($actor, $company, $branch, $this->access, $this->authorizer);
@@ -106,18 +103,7 @@ class StationController extends Controller
             abort(403, 'Only the company owner may create stations.');
         }
 
-        return Inertia::render('branch/masters/stations/form', [
-            'company' => $this->companyPayload($company),
-            'branch' => $this->branchPayload($branch),
-            'permissions' => $permissions,
-            'mode' => 'create',
-            'station' => null,
-            'links' => [
-                'hub' => route('branch.masters.index'),
-                'index' => route('branch.stations.index'),
-                'store' => route('branch.stations.store'),
-            ],
-        ]);
+        return redirect()->route('branch.stations.index');
     }
 
     public function store(Request $request, Company $company, Branch $branch): RedirectResponse|JsonResponse
@@ -125,20 +111,12 @@ class StationController extends Controller
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
 
         $validated = $request->validate([
-            'code' => ['nullable', 'string', 'max:32'],
             'name' => ['required', 'string', 'max:255'],
             ...$this->geographyValidationRules(false),
             'is_active' => ['sometimes', 'boolean'],
             'remark' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        $code = strtoupper(trim((string) ($validated['code'] ?? '')));
-        if ($code === '') {
-            $slug = strtoupper((string) preg_replace('/[^A-Za-z0-9]+/', '-', Str::ascii(trim((string) $validated['name']))));
-            $slug = trim($slug, '-');
-            $code = Str::limit($slug !== '' ? $slug : 'STN', 32, '');
-        }
-        $validated['code'] = $code;
         $validated = $this->withResolvedGeography($validated);
 
         try {
@@ -152,7 +130,6 @@ class StationController extends Controller
                 'data' => [
                     'id' => $station->id,
                     'name' => $station->name,
-                    'code' => $station->code,
                 ],
             ], 201);
         }
@@ -190,7 +167,6 @@ class StationController extends Controller
             'canManageOwnerStations' => $permissions['is_owner'],
             'station' => [
                 'id' => $station->id,
-                'code' => $station->code,
                 'name' => $station->name,
                 'state' => $station->state,
                 'state_id' => $station->state_id,
@@ -242,7 +218,6 @@ class StationController extends Controller
             'mode' => 'edit',
             'station' => [
                 'id' => $station->id,
-                'code' => $station->code,
                 'name' => $station->name,
                 'state' => $station->state,
                 'state_id' => $station->state_id,

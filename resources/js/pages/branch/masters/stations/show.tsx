@@ -23,7 +23,6 @@ type Props = {
     permissions: { can_edit: boolean; can_delete: boolean };
     station: {
         id: string;
-        code: string;
         name: string;
         state: string | null;
         city: string | null;
@@ -118,8 +117,7 @@ export default function StationShow({
                     }
                 >
                     <FbInfoGrid>
-                        <FbInfoItem label="Code" value={station.code} accent />
-                        <FbInfoItem label="State" value={station.state} />
+                        <FbInfoItem label="State" value={station.state} accent />
                         <FbInfoItem label="City" value={station.city} />
                         <FbInfoItem
                             label="Default transporter"

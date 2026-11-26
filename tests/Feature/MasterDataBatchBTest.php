@@ -181,7 +181,6 @@ test('station is owner-shared across companies and isolated across owners', func
     $service = app(StationService::class);
 
     $station = $service->create($owner, $company, [
-        'code' => 'pune',
         'name' => 'Pune Hub',
         'city' => 'Pune',
     ]);

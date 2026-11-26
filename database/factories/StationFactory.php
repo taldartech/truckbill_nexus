@@ -20,7 +20,6 @@ class StationFactory extends Factory
     {
         return [
             'owner_user_id' => User::factory()->customer(),
-            'code' => strtoupper(fake()->unique()->bothify('ST###')),
             'name' => fake()->city().' Station',
             'state' => 'Maharashtra',
             'city' => fake()->city(),

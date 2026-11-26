@@ -41,25 +41,18 @@ final class StationService
         $branch = $this->access->resolveActorBranch($actor, $company);
         $this->access->assertCanMutate($actor, $company, $branch);
 
-        $code = strtoupper(trim((string) ($attributes['code'] ?? '')));
         $name = trim((string) ($attributes['name'] ?? ''));
-        if ($code === '' || $name === '') {
+        if ($name === '') {
             throw ValidationException::withMessages([
-                'code' => $code === '' ? 'Station code is required.' : null,
-                'name' => $name === '' ? 'Station name is required.' : null,
+                'name' => 'Station name is required.',
             ]);
         }
 
-        if (Station::query()->where('owner_user_id', $actor->id)->where('code', $code)->exists()) {
-            throw ValidationException::withMessages(['code' => 'Station code already exists for this owner.']);
-        }
-
-        return $this->auditedTransaction->run(function () use ($actor, $company, $branch, $attributes, $code, $name, $remark): Station {
-            return $this->access->withTenant($actor, $company, $branch, function () use ($actor, $attributes, $code, $name, $remark): Station {
+        return $this->auditedTransaction->run(function () use ($actor, $company, $branch, $attributes, $name, $remark): Station {
+            return $this->access->withTenant($actor, $company, $branch, function () use ($actor, $attributes, $name, $remark): Station {
                 $station = Station::query()->create([
                     'id' => (string) Str::uuid(),
                     'owner_user_id' => $actor->id,
-                    'code' => $code,
                     'name' => $name,
                     'state' => $attributes['state'] ?? null,
                     'state_id' => $attributes['state_id'] ?? null,
@@ -222,7 +215,7 @@ final class StationService
             ->orderBy('name');
 
         if ($query !== null && trim($query) !== '') {
-            CaseInsensitiveLike::whereAnyContains($builder, ['name', 'code', 'city'], $query);
+            CaseInsensitiveLike::whereAnyContains($builder, ['name', 'city', 'state'], $query);
         }
 
         return $builder->paginate($perPage);

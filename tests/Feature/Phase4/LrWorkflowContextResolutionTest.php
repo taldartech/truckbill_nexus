@@ -173,13 +173,11 @@ function lrContextWorkspace(): array
     $fromStation = Station::factory()->create([
         'owner_user_id' => $owner->id,
         'name' => 'Mumbai Hub',
-        'code' => 'MUM1',
         'is_active' => true,
     ]);
     $toStation = Station::factory()->create([
         'owner_user_id' => $owner->id,
         'name' => 'Pune Hub',
-        'code' => 'PUN1',
         'is_active' => true,
     ]);
 

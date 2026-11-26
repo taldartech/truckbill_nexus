@@ -35,7 +35,7 @@ type Props = {
         weight_kg: string;
         amount: string;
     };
-    stationOptions: Array<{ id: string; name: string; code: string | null }>;
+    stationOptions: Array<{ id: string; name: string }>;
     urls: {
         index: string;
         challans: string;

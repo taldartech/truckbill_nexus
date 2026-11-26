@@ -1244,11 +1244,9 @@ class LocalDemoWorkspaceSeeder extends Seeder
 
     private function ensureStation(User $owner, string $fixtureKey, string $name): Station
     {
-        $code = strtoupper(substr(md5($fixtureKey), 0, 6));
-
         $existing = Station::query()
             ->where('owner_user_id', $owner->id)
-            ->where('code', $code)
+            ->where('name', $name)
             ->first();
 
         if ($existing !== null) {
@@ -1259,7 +1257,6 @@ class LocalDemoWorkspaceSeeder extends Seeder
             'id' => (string) Str::uuid(),
             'owner_user_id' => $owner->id,
             'name' => $name,
-            'code' => $code,
             'state' => 'Maharashtra',
             'city' => 'Demo City',
             'is_active' => true,

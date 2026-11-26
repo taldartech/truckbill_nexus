@@ -57,7 +57,12 @@ import {
 } from '@/pages/branch/lorry-receipts/lr-form-sections';
 
 type Option = { value: string; label: string };
-type NamedOption = { id: string; name: string; code?: string };
+type NamedOption = {
+    id: string;
+    name: string;
+    city?: string | null;
+    state?: string | null;
+};
 type VehicleOption = VehicleSelectOption;
 
 type GoodsRow = {
@@ -3372,7 +3377,6 @@ export default function LrForm({
                                     {
                                         id: station.id,
                                         name: station.name,
-                                        code: station.code ?? undefined,
                                     },
                                 ];
                             });

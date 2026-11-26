@@ -21,25 +21,24 @@ import { useMemo, useState } from 'react';
 export type QuickCreatedStation = {
     id: string;
     name: string;
-    code?: string | null;
 };
 
 type Draft = {
     name: string;
-    code: string;
     state_id: string;
     city_id: string;
     state: string;
     city: string;
+    is_active: boolean;
 };
 
 const EMPTY: Draft = {
     name: '',
-    code: '',
     state_id: '',
     city_id: '',
     state: '',
     city: '',
+    is_active: true,
 };
 
 type Props = {
@@ -47,6 +46,8 @@ type Props = {
     onOpenChange: (open: boolean) => void;
     storeUrl: string;
     onCreated: (station: QuickCreatedStation) => void;
+    /** Show active toggle (station register). Operational quick-add keeps default active. */
+    showActiveToggle?: boolean;
 };
 
 function parseCreatedStation(json: unknown): QuickCreatedStation | null {
@@ -62,7 +63,6 @@ function parseCreatedStation(json: unknown): QuickCreatedStation | null {
     return {
         id: payload.data.id,
         name: payload.data.name,
-        code: payload.data.code ?? null,
     };
 }
 
@@ -71,6 +71,7 @@ export function QuickCreateStationSheet({
     onOpenChange,
     storeUrl,
     onCreated,
+    showActiveToggle = false,
 }: Props) {
     const canQuickCreateGeography = readCanQuickCreateGeography(
         usePage().props,
@@ -84,14 +85,18 @@ export function QuickCreateStationSheet({
     const reviewFields = useMemo<FieldReview[]>(
         () => [
             { label: 'Name', value: draft.name },
-            {
-                label: 'Code',
-                value: draft.code.trim() !== '' ? draft.code : 'Auto from name',
-            },
             { label: 'State', value: draft.state || '—' },
             { label: 'City', value: draft.city || '—' },
+            ...(showActiveToggle
+                ? [
+                      {
+                          label: 'Status',
+                          value: draft.is_active ? 'Active' : 'Inactive',
+                      },
+                  ]
+                : []),
         ],
-        [draft],
+        [draft, showActiveToggle],
     );
 
     const reset = () => {
@@ -127,11 +132,8 @@ export function QuickCreateStationSheet({
 
         const payload: Record<string, string | boolean> = {
             name: draft.name.trim(),
-            is_active: true,
+            is_active: showActiveToggle ? draft.is_active : true,
         };
-        if (draft.code.trim() !== '') {
-            payload.code = draft.code.trim();
-        }
         if (draft.state_id !== '') {
             payload.state_id = draft.state_id;
         }
@@ -205,9 +207,8 @@ export function QuickCreateStationSheet({
                     <SheetHeader>
                         <SheetTitle>Add Station</SheetTitle>
                         <SheetDescription>
-                            Create a station without leaving this form. Code is
-                            optional and will be derived from the name when
-                            blank.
+                            Create a station with name and geography. Station ID
+                            is assigned automatically.
                         </SheetDescription>
                     </SheetHeader>
 
@@ -242,22 +243,6 @@ export function QuickCreateStationSheet({
                             <InputError message={firstError('name')} />
                         </div>
 
-                        <div className="space-y-1">
-                            <Label htmlFor="station-code">Code</Label>
-                            <Input
-                                id="station-code"
-                                value={draft.code}
-                                onChange={(event) =>
-                                    setDraft((current) => ({
-                                        ...current,
-                                        code: event.target.value,
-                                    }))
-                                }
-                                placeholder="Optional"
-                            />
-                            <InputError message={firstError('code')} />
-                        </div>
-
                         <StateCityFields
                             canQuickCreate={canQuickCreateGeography}
                             stateId={draft.state_id}
@@ -276,6 +261,22 @@ export function QuickCreateStationSheet({
                                 }))
                             }
                         />
+
+                        {showActiveToggle ? (
+                            <label className="flex items-center gap-2 text-sm">
+                                <input
+                                    type="checkbox"
+                                    checked={draft.is_active}
+                                    onChange={(event) =>
+                                        setDraft((current) => ({
+                                            ...current,
+                                            is_active: event.target.checked,
+                                        }))
+                                    }
+                                />
+                                Active
+                            </label>
+                        ) : null}
 
                         <SheetFooter className="gap-2 sm:justify-end">
                             <Button
