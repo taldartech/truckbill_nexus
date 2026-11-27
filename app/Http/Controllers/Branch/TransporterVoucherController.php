@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Branch;
 
+use App\Domains\Broker\Enums\BrokerAdjustmentType;
 use App\Domains\Broker\Enums\VoucherPaymentMode;
 use App\Domains\Broker\Enums\VoucherPaymentType;
 use App\Domains\Broker\Enums\VoucherStatus;
@@ -9,9 +10,9 @@ use App\Domains\Broker\Exceptions\BrokerAuthorizationException;
 use App\Domains\Broker\Exceptions\BrokerConflictException;
 use App\Domains\Broker\Exceptions\BrokerDomainException;
 use App\Domains\Broker\LorryHire\LorryHireCalculationService;
-use App\Domains\Broker\Voucher\BulkVoucherService;
 use App\Domains\Broker\Voucher\TransporterBookBalanceService;
 use App\Domains\Broker\Voucher\TransporterVoucherService;
+use App\Domains\Broker\Voucher\VoucherPaymentService;
 use App\Domains\Broker\Voucher\VoucherPayoutExportService;
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Rbac\PermissionAuthorizer;
@@ -28,6 +29,7 @@ use App\Support\Presentation\FreightAmountPresentation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -42,7 +44,7 @@ class TransporterVoucherController extends Controller
         private readonly CompanyAccessService $access,
         private readonly PermissionAuthorizer $authorizer,
         private readonly TransporterVoucherService $vouchers,
-        private readonly BulkVoucherService $bulkVouchers,
+        private readonly VoucherPaymentService $voucherPayments,
         private readonly LorryHireCalculationService $hireCalculations,
         private readonly TransporterBookBalanceService $bookBalances,
         private readonly FreightAmountPresentation $freightPresentation,
@@ -83,8 +85,7 @@ class TransporterVoucherController extends Controller
             ],
             'urls' => [
                 'index' => route('branch.broker.vouchers.index', absolute: false),
-                'create' => route('branch.broker.vouchers.create', absolute: false),
-                'bulk' => route('branch.broker.vouchers.bulk.create', absolute: false),
+                'lorry_hires' => route('branch.broker.lorry-hires.index', absolute: false),
                 'export_payout' => route('branch.broker.vouchers.export-payout', absolute: false),
             ],
         ]);
@@ -107,79 +108,69 @@ class TransporterVoucherController extends Controller
         }
     }
 
-    public function create(Request $request, Company $company, Branch $branch): Response
+    /**
+     * Voucher Payment modal facts for one or more Lorry Hires of the same Payee and Truck.
+     */
+    public function paymentContext(Request $request, Company $company, Branch $branch): JsonResponse
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertPermission($actor, $company, $branch, PermissionCodes::BROKER_VOUCHER_CREATE);
 
-        $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
-        $selectedHireId = $request->string('lorry_hire_id')->toString() ?: null;
+        $validated = $request->validate([
+            'hire_ids' => ['required', 'array', 'min:1', 'max:100'],
+            'hire_ids.*' => ['required', 'uuid', 'distinct'],
+        ]);
 
-        return Inertia::render('broker/vouchers/create', $this->voucherFormProps(
-            $actor,
-            $company,
-            $branch,
-            $maySeeFreight,
-            $selectedHireId,
-        ));
-    }
-
-    public function bulkCreate(Request $request, Company $company, Branch $branch): Response
-    {
-        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertPermission($actor, $company, $branch, PermissionCodes::BROKER_VOUCHER_BULK);
+        try {
+            $hires = $this->voucherPayments->payableHires($company, $branch, $validated['hire_ids']);
+        } catch (BrokerConflictException|BrokerDomainException $e) {
+            throw ValidationException::withMessages(['hire_ids' => $e->getMessage()]);
+        }
 
         $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
-        $hireIds = array_values(array_filter(
-            array_map('strval', (array) $request->input('hire_ids', [])),
-            static fn (string $id): bool => $id !== '',
-        ));
 
-        return Inertia::render('broker/vouchers/bulk', array_merge(
-            $this->voucherFormProps(
-                $actor,
-                $company,
-                $branch,
-                $maySeeFreight,
-                null,
-                $hireIds,
-            ),
-            [
-                'initialSelectedHireIds' => $hireIds,
-            ],
-        ));
+        return response()->json($this->paymentContextPayload($actor, $company, $branch, $hires, $maySeeFreight));
     }
 
     public function store(Request $request, Company $company, Branch $branch): RedirectResponse
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertPermission($actor, $company, $branch, PermissionCodes::BROKER_VOUCHER_CREATE);
+
         $validated = $request->validate([
-            'lorry_hire_id' => ['required', 'uuid'],
-            'amount' => ['required', 'numeric', 'min:0.01'],
+            'lines' => ['required', 'array', 'min:1', 'max:100'],
+            'lines.*.lorry_hire_id' => ['required', 'uuid', 'distinct'],
+            'lines.*.amount' => ['required', 'numeric', 'min:0.01', 'max:999999999.99'],
             'payment_type' => ['required', Rule::enum(VoucherPaymentType::class)],
             'payment_mode' => ['required', Rule::enum(VoucherPaymentMode::class)],
+            'voucher_date' => ['required', 'date'],
             'bank_cash_account_id' => ['nullable', 'uuid'],
-            'cash_reference' => ['nullable', 'string', 'max:128'],
-            'pump_reference' => ['nullable', 'string', 'max:128'],
+            'pump_reference' => ['nullable', 'string', 'max:128', Rule::requiredIf(fn (): bool => $request->input('payment_mode') === VoucherPaymentMode::PaidToPump->value)],
             'remark' => ['nullable', 'string', 'max:2000'],
+            'confirm_duplicate' => ['sometimes', 'boolean'],
+        ], [
+            'lines.*.amount.required' => 'Enter the payment amount.',
+            'lines.*.amount.min' => 'Payment amount must be greater than zero.',
+            'pump_reference.required' => 'Enter the Pump Name for Paid to Pump.',
         ]);
 
-        $hire = LorryHire::query()
-            ->where('company_id', $company->id)
-            ->where('branch_id', $branch->id)
-            ->whereKey($validated['lorry_hire_id'])
-            ->whereNull('deleted_at')
-            ->firstOrFail();
-
         try {
-            $voucher = $this->vouchers->createForLorryHire($hire, $actor, $validated);
+            $created = $this->voucherPayments->record($company, $branch, $actor, $validated['lines'], [
+                'payment_type' => $validated['payment_type'],
+                'payment_mode' => $validated['payment_mode'],
+                'voucher_date' => $validated['voucher_date'],
+                'bank_cash_account_id' => $validated['bank_cash_account_id'] ?? null,
+                'pump_reference' => $validated['pump_reference'] ?? null,
+                'remark' => $validated['remark'] ?? null,
+                'confirm_duplicate' => $request->boolean('confirm_duplicate'),
+            ]);
         } catch (BrokerAuthorizationException|BrokerConflictException|BrokerDomainException $e) {
-            throw ValidationException::withMessages(['amount' => $e->getMessage()]);
+            throw ValidationException::withMessages(['lines' => $e->getMessage()]);
         }
 
-        return redirect()
-            ->route('branch.broker.vouchers.show', [$voucher])
-            ->with('success', 'Transporter voucher created.');
+        $count = count($created);
+
+        return back()->with('success', $count === 1 ? 'Voucher payment recorded.' : $count.' voucher payments recorded.');
     }
 
     public function show(Request $request, TransporterVoucher $voucher, Company $company, Branch $branch): Response
@@ -226,66 +217,6 @@ class TransporterVoucherController extends Controller
         return redirect()
             ->route('branch.broker.vouchers.show', [$voucher])
             ->with('success', 'Voucher status updated.');
-    }
-
-    public function bulkPreview(Request $request, Company $company, Branch $branch): JsonResponse
-    {
-        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-
-        $validated = $request->validate([
-            'lines' => ['required', 'array', 'min:1'],
-            'lines.*.lorry_hire_id' => ['required', 'uuid'],
-            'lines.*.amount' => ['required', 'numeric', 'min:0.01'],
-            'payment_type' => ['required', Rule::enum(VoucherPaymentType::class)],
-            'payment_mode' => ['required', Rule::enum(VoucherPaymentMode::class)],
-        ]);
-
-        try {
-            return response()->json($this->bulkVouchers->preview(
-                $company,
-                $branch,
-                $actor,
-                $validated['lines'],
-                $validated,
-            ));
-        } catch (BrokerAuthorizationException|BrokerConflictException|BrokerDomainException $e) {
-            throw ValidationException::withMessages(['lines' => $e->getMessage()]);
-        }
-    }
-
-    public function bulkStore(Request $request, Company $company, Branch $branch): RedirectResponse
-    {
-        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
-
-        $validated = $request->validate([
-            'lines' => ['required', 'array', 'min:1'],
-            'lines.*.lorry_hire_id' => ['required', 'uuid'],
-            'lines.*.amount' => ['required', 'numeric', 'min:0.01'],
-            'payment_type' => ['required', Rule::enum(VoucherPaymentType::class)],
-            'payment_mode' => ['required', Rule::enum(VoucherPaymentMode::class)],
-            'bank_cash_account_id' => ['nullable', 'uuid'],
-            'cash_reference' => ['nullable', 'string', 'max:128'],
-            'pump_reference' => ['nullable', 'string', 'max:128'],
-            'remark' => ['nullable', 'string', 'max:2000'],
-        ]);
-
-        try {
-            $created = $this->bulkVouchers->createBulk(
-                $company,
-                $branch,
-                $actor,
-                $validated['lines'],
-                $validated,
-            );
-        } catch (BrokerAuthorizationException|BrokerConflictException|BrokerDomainException $e) {
-            throw ValidationException::withMessages(['lines' => $e->getMessage()]);
-        }
-
-        $first = $created[0] ?? null;
-
-        return redirect()
-            ->route('branch.broker.vouchers.show', [$first])
-            ->with('success', count($created).' transporter vouchers created.');
     }
 
     private function assertVoucher(TransporterVoucher $voucher, Company $company, Branch $branch): void
@@ -344,30 +275,19 @@ class TransporterVoucherController extends Controller
      */
     private function paymentModeOptions(): array
     {
-        return array_values(collect(VoucherPaymentMode::cases())->map(fn (VoucherPaymentMode $mode): array => [
-            'value' => $mode->value,
-            'label' => match ($mode) {
-                VoucherPaymentMode::Bank => 'Bank',
-                VoucherPaymentMode::Cash => 'Cash',
-                VoucherPaymentMode::PaidToPump => 'Paid to Pump',
-                VoucherPaymentMode::AdjustInAdvance => 'Adjust in Advance',
-            },
-        ])->all());
+        return $this->enumOptions(VoucherPaymentMode::cases());
     }
 
     /**
+     * @param  list<VoucherPaymentMode>|list<VoucherPaymentType>  $cases
      * @return list<array{value: string, label: string}>
      */
-    private function paymentTypeOptions(): array
+    private function enumOptions(array $cases): array
     {
-        return array_values(collect(VoucherPaymentType::cases())->map(fn (VoucherPaymentType $type): array => [
-            'value' => $type->value,
-            'label' => match ($type) {
-                VoucherPaymentType::Advance => 'Advance',
-                VoucherPaymentType::Final => 'Final',
-                VoucherPaymentType::Partial => 'Partial',
-            },
-        ])->all());
+        return array_map(fn (VoucherPaymentMode|VoucherPaymentType $case): array => [
+            'value' => $case->value,
+            'label' => $case->label(),
+        ], $cases);
     }
 
     private function nextStatus(VoucherStatus $current): ?string
@@ -405,107 +325,62 @@ class TransporterVoucherController extends Controller
     }
 
     /**
+     * @param  Collection<string, LorryHire>  $hires
      * @return array<string, mixed>
      */
-    /**
-     * @param  list<string>  $ensureHireIds
-     */
-    /**
-     * @param  list<string>  $ensureHireIds
-     * @return array<string, mixed>
-     */
-    private function voucherFormProps(
+    private function paymentContextPayload(
         User $actor,
         Company $company,
         Branch $branch,
+        Collection $hires,
         bool $maySeeFreight,
-        ?string $selectedHireId,
-        array $ensureHireIds = [],
     ): array {
-        $hires = LorryHire::query()
-            ->where('company_id', $company->id)
-            ->where('branch_id', $branch->id)
-            ->whereNull('deleted_at')
-            ->with([
-                'lorryReceipt.billingCustomer',
-                'lorryReceipt.consignor',
-                'lorryReceipt.consignee',
-                'vehicle',
-                'transporter',
-            ])
-            ->orderByDesc('created_at')
-            ->limit(100)
-            ->get();
-
-        $missingIds = [];
-        if ($selectedHireId !== null) {
-            $missingIds[] = $selectedHireId;
-        }
-        foreach ($ensureHireIds as $hireId) {
-            $missingIds[] = $hireId;
-        }
-        $missingIds = array_values(array_unique(array_filter(
-            $missingIds,
-            static fn (string $id): bool => ! $hires->contains(fn (LorryHire $hire): bool => $hire->id === $id),
-        )));
-
-        if ($missingIds !== []) {
-            $extra = LorryHire::query()
-                ->where('company_id', $company->id)
-                ->where('branch_id', $branch->id)
-                ->whereNull('deleted_at')
-                ->whereIn('id', $missingIds)
-                ->with([
-                    'lorryReceipt.billingCustomer',
-                    'lorryReceipt.consignor',
-                    'lorryReceipt.consignee',
-                    'vehicle',
-                    'transporter',
-                ])
-                ->get();
-            $hires = $extra->concat($hires)->unique('id')->values();
-            if ($selectedHireId !== null && ! $hires->contains(fn (LorryHire $hire): bool => $hire->id === $selectedHireId)) {
-                $selectedHireId = null;
-            }
-        }
+        $first = $hires->first();
+        $transporter = $first?->transporter;
+        $amount = fn (mixed $value): ?string => $this->freightPresentation->presentAmount($value, $maySeeFreight);
 
         return [
-            'selectedLorryHireId' => $selectedHireId,
-            'eligibleLorryHires' => $hires->map(function (LorryHire $hire) use ($company, $branch, $maySeeFreight): array {
-                $allocatable = $this->vouchers->allocatableAmount($hire);
+            'payee' => [
+                'name' => $transporter?->name,
+                'short_name' => $transporter?->short_name,
+                'beneficiary_id' => $transporter?->bank_beneficiary_id,
+                'tds_percent' => $first?->tds_percent,
+            ],
+            'vehicle_registration' => $first?->vehicle?->registration_number,
+            'book_balance' => $amount($this->bookBalances->availableBalance($company, $branch, (string) $first?->transporter_party_id)),
+            'hires' => $hires->values()->map(function (LorryHire $hire) use ($amount): array {
                 $summary = $this->hireCalculations->summarize($hire);
-                $bookBalance = $hire->transporter_party_id !== null
-                    ? $this->bookBalances->runningBalanceForTransporter(
-                        $company,
-                        $branch,
-                        (string) $hire->transporter_party_id,
-                    )
-                    : '0.00';
 
                 return [
                     'id' => $hire->id,
                     'hire_number' => $hire->hire_number,
                     'lr_number' => $hire->lorryReceipt?->lr_number,
-                    'transporter_name' => $hire->transporter?->name,
-                    'vehicle_registration' => $hire->vehicle?->registration_number,
-                    'billing_customer_name' => $hire->lorryReceipt?->billingCustomer?->name,
-                    'consignor_name' => $hire->lorryReceipt?->consignor?->name,
-                    'consignee_name' => $hire->lorryReceipt?->consignee?->name,
-                    'outstanding_amount' => $this->freightPresentation->presentAmount($summary['outstanding_amount'], $maySeeFreight),
-                    'balance_due' => $this->freightPresentation->presentAmount($summary['balance_due'], $maySeeFreight),
-                    'negative_adjusted_amount' => $this->freightPresentation->presentAmount($summary['negative_adjusted_amount'], $maySeeFreight),
-                    'remaining_payable' => $this->freightPresentation->presentAmount($summary['remaining_payable'], $maySeeFreight),
-                    'reserved_voucher_amount' => $this->freightPresentation->presentAmount($summary['reserved_voucher_amount'], $maySeeFreight),
-                    'book_balance' => $this->freightPresentation->presentAmount($bookBalance, $maySeeFreight),
-                    'allocatable_amount' => $this->freightPresentation->presentAmount($allocatable, $maySeeFreight),
-                    'net_payable' => $this->freightPresentation->presentAmount($summary['net_payable'], $maySeeFreight),
-                    'freight_total' => $this->freightPresentation->presentAmount($summary['freight_total'], $maySeeFreight),
-                    'tds_amount' => $this->freightPresentation->presentAmount($summary['tds_amount'], $maySeeFreight),
+                    'freight_total' => $amount($summary['freight_total']),
+                    'paid_amount' => $amount($hire->paid_amount ?? '0'),
+                    'reserved_amount' => $amount($summary['reserved_voucher_amount']),
+                    'remaining_payable' => $amount($summary['remaining_payable']),
+                    'shortage_damage_amount' => $amount($hire->adjustments
+                        ->filter(fn ($row): bool => in_array($row->type, [BrokerAdjustmentType::Shortage, BrokerAdjustmentType::Damage], true))
+                        ->sum(fn ($row): float => (float) $row->amount)),
                 ];
-            })->values()->all(),
-            'paymentTypeOptions' => $this->paymentTypeOptions(),
-            'paymentModeOptions' => $this->paymentModeOptions(),
-            'bankCashAccounts' => BankCashAccount::query()
+            })->all(),
+            'previous_payments' => $hires
+                ->flatMap(fn (LorryHire $hire) => $hire->vouchers->map(fn (TransporterVoucher $voucher): array => [
+                    'id' => $voucher->id,
+                    'voucher_number' => $voucher->voucher_number,
+                    'hire_number' => $hire->hire_number,
+                    'voucher_date' => $voucher->voucher_date?->format('d-m-Y'),
+                    'payment_type' => $voucher->payment_type->label(),
+                    'payment_mode' => $voucher->payment_mode?->label(),
+                    'amount' => $amount($voucher->amount),
+                    'status' => $voucher->status->value,
+                ]))
+                ->sortByDesc('voucher_date')
+                ->values()
+                ->all(),
+            'payment_type_options' => $this->enumOptions(VoucherPaymentType::cases()),
+            'payment_mode_options' => $this->enumOptions(VoucherPaymentMode::cases()),
+            'bank_cash_accounts' => BankCashAccount::query()
                 ->where('company_id', $company->id)
                 ->where(function ($query) use ($branch): void {
                     $query->whereNull('branch_id')->orWhere('branch_id', $branch->id);
@@ -516,26 +391,12 @@ class TransporterVoucherController extends Controller
                 ->map(fn (BankCashAccount $account): array => ['id' => $account->id, 'name' => $account->name])
                 ->values()
                 ->all(),
-            'permissions' => array_merge(
-                $this->voucherPermissions($actor, $company, $branch, $maySeeFreight),
-                [
-                    'can_create_bank_cash' => $this->masterPermissions(
-                        $actor,
-                        $company,
-                        $branch,
-                        $this->access,
-                        $this->authorizer,
-                    )['can_create'],
-                ],
-            ),
-            'urls' => [
-                'store' => route('branch.broker.vouchers.store', absolute: false),
-                'index' => route('branch.broker.vouchers.index', absolute: false),
-                'create' => route('branch.broker.vouchers.create', absolute: false),
-                'bulk' => route('branch.broker.vouchers.bulk.create', absolute: false),
-                'bulk_preview' => route('branch.broker.vouchers.bulk.preview', absolute: false),
-                'bulk_store' => route('branch.broker.vouchers.bulk.store', absolute: false),
-                'bank_cash_store' => route('branch.bank-cash.store', absolute: false),
+            'today' => $this->vouchers->defaultVoucherDate($company),
+            'bank_cash_store_url' => route('branch.bank-cash.store', absolute: false),
+            'permissions' => [
+                'can_bulk' => $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_VOUCHER_BULK, $company, $branch),
+                'can_view_freight' => $maySeeFreight,
+                'can_create_bank_cash' => $this->masterPermissions($actor, $company, $branch, $this->access, $this->authorizer)['can_create'],
             ],
         ];
     }

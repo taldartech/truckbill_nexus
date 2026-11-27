@@ -81,11 +81,11 @@ if (! function_exists('brokerDeliverLr')) {
                 'lorry_receipt_ids' => [$lr->id],
                 'memo_number' => $memoNumber,
             ]);
+        } else {
+            $delivery->recordDelivery($lr->fresh(), $ctx['member'], [
+                'delivery_date' => now()->toDateString(),
+            ]);
         }
-
-        $delivery->recordDelivery($lr->fresh(), $ctx['member'], [
-            'delivery_date' => now()->toDateString(),
-        ]);
 
         return $lr->fresh(['delivery', 'lorryHire']);
     }

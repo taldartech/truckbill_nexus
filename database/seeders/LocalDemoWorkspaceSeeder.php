@@ -4,12 +4,14 @@ namespace Database\Seeders;
 
 use App\Domains\Broker\Adjustment\BrokerAdjustmentService;
 use App\Domains\Broker\Delivery\BrokerDeliveryService;
+use App\Domains\Broker\Enums\BookBalanceEntryType;
 use App\Domains\Broker\Enums\VoucherPaymentMode;
 use App\Domains\Broker\Enums\VoucherPaymentType;
 use App\Domains\Broker\Enums\VoucherStatus;
 use App\Domains\Broker\Invoice\BrokerInvoiceService;
 use App\Domains\Broker\LinkedBilty\LinkedBiltyGroupService;
 use App\Domains\Broker\LorryHire\LorryHireService;
+use App\Domains\Broker\Voucher\TransporterBookBalanceService;
 use App\Domains\Broker\Voucher\TransporterVoucherService;
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Company\CompanyWorkspaceService;
@@ -2011,7 +2013,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
         $existing = LorryReceipt::query()
             ->where('company_id', $company->id)
             ->where('branch_id', $branch->id)
-            ->where('from_text', 'like', '%'.$fixtureKey.'%')
+            ->where('external_gr_number', $fixtureKey)
             ->whereNull('deleted_at')
             ->first();
 
@@ -2028,6 +2030,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
             'number_mode' => 'auto',
             'lr_date' => CarbonImmutable::now()->subDays($index)->toDateString(),
             'from_text' => 'Demo From '.$fixtureKey,
+            'external_gr_number' => $fixtureKey,
             'to_text' => 'Demo To '.$fixtureKey,
             'consignor_party_id' => $consignor->id,
             'consignee_party_id' => $consignee->id,
@@ -2309,7 +2312,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
         if (LorryHire::query()
             ->where('company_id', $company->id)
             ->where('branch_id', $branch->id)
-            ->whereHas('lorryReceipt', fn ($query) => $query->where('from_text', 'like', '%'.$fixtureRoot.':active%'))
+            ->whereHas('lorryReceipt', fn ($query) => $query->where('external_gr_number', $fixtureRoot.':active'))
             ->exists()) {
             return;
         }
@@ -2383,7 +2386,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
         $pendingLr = LorryReceipt::query()
             ->where('company_id', $company->id)
             ->where('branch_id', $branch->id)
-            ->where('from_text', $pendingFrom)
+            ->where('external_gr_number', $pendingFrom)
             ->whereNull('deleted_at')
             ->first();
 
@@ -2397,6 +2400,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
                 'number_mode' => 'auto',
                 'lr_date' => CarbonImmutable::now()->subDays(3)->toDateString(),
                 'from_text' => $pendingFrom,
+                'external_gr_number' => $pendingFrom,
                 'to_text' => 'Demo Broker pending destination',
                 'consignor_party_id' => $consignor->id,
                 'consignee_party_id' => $consignee->id,
@@ -2436,7 +2440,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
         $activeLr = LorryReceipt::query()
             ->where('company_id', $company->id)
             ->where('branch_id', $branch->id)
-            ->where('from_text', $activeFrom)
+            ->where('external_gr_number', $activeFrom)
             ->whereNull('deleted_at')
             ->first();
 
@@ -2450,6 +2454,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
                 'number_mode' => 'auto',
                 'lr_date' => CarbonImmutable::now()->subDays(2)->toDateString(),
                 'from_text' => $activeFrom,
+                'external_gr_number' => $activeFrom,
                 'to_text' => 'Demo Broker active destination',
                 'consignor_party_id' => $consignor->id,
                 'consignee_party_id' => $consignee->id,
@@ -2521,6 +2526,15 @@ class LocalDemoWorkspaceSeeder extends Seeder
             ]);
         }
 
+        app(TransporterBookBalanceService::class)->createSignedEntry($company, $branch, $owner, [
+            'transporter_party_id' => $activeHire->transporter_party_id,
+            'amount' => '10000.00',
+            'entry_type' => BookBalanceEntryType::AdvanceAdjustment,
+            'source_type' => 'local_demo_book_balance',
+            'source_id' => $activeHire->id,
+            'remark' => 'Demo transporter Book Balance',
+        ]);
+
         if (! TransporterVoucher::query()
             ->where('company_id', $company->id)
             ->where('lorry_hire_id', $activeHire->id)
@@ -2538,13 +2552,14 @@ class LocalDemoWorkspaceSeeder extends Seeder
         if ($activeLr->delivery === null) {
             $deliveries->assignMemoPod($company, $branch, $owner, [
                 'lorry_receipt_ids' => [$activeLr->id],
-                'memo_number' => 'DEMO-MEMO-'.$company->id,
-                'pod_number' => 'DEMO-POD-'.$company->id,
+                'memo_number' => 'DEMO-MEMO-'.$activeLr->id,
+                'memo_date' => CarbonImmutable::now()->subDay()->toDateString(),
             ]);
         }
 
+        $activeLr = $activeLr->fresh();
         if ($activeLr->delivered_at === null) {
-            $deliveries->recordDelivery($activeLr->fresh(), $owner, [
+            $deliveries->recordDelivery($activeLr, $owner, [
                 'delivery_date' => CarbonImmutable::now()->subDay()->toDateString(),
             ]);
         }
@@ -2569,7 +2584,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
         if (! LinkedBiltyGroup::query()
             ->where('company_id', $company->id)
             ->where('branch_id', $branch->id)
-            ->whereHas('members.lorryReceipt', fn ($query) => $query->where('from_text', 'like', '%'.$linkedMarker.'%'))
+            ->whereHas('members.lorryReceipt', fn ($query) => $query->where('external_gr_number', 'like', $linkedMarker.':%'))
             ->exists()) {
             $linkedOne = $lorryReceipts->create($company, $branch, $owner, [
                 'workflow_context' => LrWorkflowContext::Broker->value,
@@ -2580,6 +2595,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
                 'number_mode' => 'auto',
                 'lr_date' => CarbonImmutable::now()->subDay()->toDateString(),
                 'from_text' => $linkedMarker.':a',
+                'external_gr_number' => $linkedMarker.':a',
                 'to_text' => 'Linked demo A',
                 'consignor_party_id' => $consignor->id,
                 'consignee_party_id' => $consignee->id,
@@ -2603,6 +2619,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
                 'number_mode' => 'auto',
                 'lr_date' => CarbonImmutable::now()->subDay()->toDateString(),
                 'from_text' => $linkedMarker.':b',
+                'external_gr_number' => $linkedMarker.':b',
                 'to_text' => 'Linked demo B',
                 'consignor_party_id' => $consignor->id,
                 'consignee_party_id' => $consignee->id,

@@ -1,16 +1,15 @@
 import { expect, test } from '@playwright/test';
 import {
     addBrokerLorryHireAdjustment,
-    assignMemoAndDeliverLr,
+    assignMemoPodFromRegister,
     assertTransporterBookBalanceHasActivity,
-    createAdjustInAdvanceVoucher,
     createBrokerCustomerInvoice,
     createBrokerLrViaUi,
     createLorryHireFromLr,
     loginAndEnterBrokerBranch,
     openBrokerInvoicePrintPreview,
     recordBrokerInvoicePayments,
-    uploadPodIfAvailable,
+    recordVoucherPaymentFromHire,
 } from '../fixtures/broker-workflow';
 
 test.describe('Broker complete workflow', () => {
@@ -37,17 +36,11 @@ test.describe('Broker complete workflow', () => {
         const hire = await createLorryHireFromLr(page);
         expect(hire.hireNumber.length).toBeGreaterThan(0);
 
-        const voucherNumber = await createAdjustInAdvanceVoucher(
-            page,
-            hire.hireNumber,
-            '2000',
-        );
-        expect(voucherNumber.length).toBeGreaterThan(0);
+        await recordVoucherPaymentFromHire(page, hire.hirePath, '2000');
 
         await assertTransporterBookBalanceHasActivity(page);
 
-        await assignMemoAndDeliverLr(page, lr.lrNumber!, memoNumber);
-        await uploadPodIfAvailable(page, lr.lrNumber!);
+        await assignMemoPodFromRegister(page, hire.hireNumber, memoNumber);
 
         await page.goto(hire.hirePath);
         await addBrokerLorryHireAdjustment(page, '500');

@@ -104,11 +104,27 @@ final class BrokerDeliveryService
     }
 
     /**
+     * Bilties a Memo / POD modal may open: same billing customer, In Progress with an active hire, no memo yet.
+     *
+     * @param  list<string>  $lorryReceiptIds
+     * @return Collection<int, LorryReceipt>
+     */
+    public function memoCandidates(Company $company, Branch $branch, array $lorryReceiptIds): Collection
+    {
+        $this->ensureTenantMatches($company, $branch);
+
+        return $this->resolveMemoCandidates($company, $branch, $lorryReceiptIds, lock: false);
+    }
+
+    /**
+     * Legacy "Memo / POD": one customer-facing reference shared by the selected Bilties; assigning it delivers them.
+     * Document uploads are optional evidence and never decide the delivery status.
+     *
      * @param  array{
      *     lorry_receipt_ids: list<string>,
      *     memo_number: string,
-     *     pod_number?: string|null,
-     *     remarks?: string|null
+     *     memo_date?: string|null,
+     *     pod_documents?: array<string, UploadedFile>
      * }  $payload
      * @return Collection<int, BrokerDelivery>
      */
@@ -118,107 +134,151 @@ final class BrokerDeliveryService
         $this->assertCanManage($actor, $company, $branch);
         $this->assertBrokerEntitled($company);
 
-        $ids = array_values(array_unique(array_map('strval', $payload['lorry_receipt_ids'])));
-        if ($ids === []) {
-            throw ValidationException::withMessages([
-                'lorry_receipt_ids' => 'Select at least one Lorry Receipt.',
-            ]);
-        }
-
         $memoNumber = trim($payload['memo_number']);
         if ($memoNumber === '') {
-            throw ValidationException::withMessages([
-                'memo_number' => 'Memo number is required.',
-            ]);
+            throw ValidationException::withMessages(['memo_number' => 'Enter the Memo / POD number.']);
         }
 
-        /** @var Collection<int, LorryReceipt> $receipts */
-        $receipts = LorryReceipt::query()
+        $timezone = $company->timezone ?: 'Asia/Kolkata';
+        $today = CarbonImmutable::now($timezone)->startOfDay();
+        $memoDate = filled($payload['memo_date'] ?? null)
+            ? CarbonImmutable::parse((string) $payload['memo_date'], $timezone)->startOfDay()
+            : $today;
+        if ($memoDate->greaterThan($today)) {
+            throw ValidationException::withMessages(['memo_date' => 'The memo date cannot be in the future.']);
+        }
+
+        $documents = $payload['pod_documents'] ?? [];
+
+        return $this->auditedTransaction->run(function () use ($company, $branch, $actor, $payload, $memoNumber, $memoDate, $documents): Collection {
+            return $this->withTenant($company, $branch, function () use ($company, $branch, $actor, $payload, $memoNumber, $memoDate, $documents): Collection {
+                $receipts = $this->resolveMemoCandidates($company, $branch, $payload['lorry_receipt_ids'], lock: true);
+                $this->assertMemoNumberAvailable($company, $memoNumber, (string) $receipts->first()?->billing_customer_party_id);
+
+                return $receipts->map(function (LorryReceipt $receipt) use ($company, $branch, $actor, $memoNumber, $memoDate, $documents): BrokerDelivery {
+                    $delivery = $this->deliverWithMemo($company, $branch, $actor, $receipt, $memoNumber, $memoDate);
+
+                    if (isset($documents[$receipt->id])) {
+                        $this->documents->uploadAndAttach(
+                            $actor,
+                            $company,
+                            $branch,
+                            DocumentParentTypes::BROKER_DELIVERY,
+                            $delivery->id,
+                            $documents[$receipt->id],
+                            documentType: DocumentTypeCatalog::POD,
+                            remark: 'Attach POD for memo '.$memoNumber.' LR '.$receipt->lr_number,
+                        );
+                    }
+
+                    return $delivery;
+                })->values();
+            });
+        });
+    }
+
+    /**
+     * @param  list<string>  $lorryReceiptIds
+     * @return Collection<int, LorryReceipt>
+     */
+    private function resolveMemoCandidates(Company $company, Branch $branch, array $lorryReceiptIds, bool $lock): Collection
+    {
+        $ids = array_values(array_unique(array_map('strval', $lorryReceiptIds)));
+        if ($ids === []) {
+            throw ValidationException::withMessages(['lorry_receipt_ids' => 'Select at least one Bilty.']);
+        }
+
+        $query = LorryReceipt::query()
             ->where('company_id', $company->id)
             ->where('branch_id', $branch->id)
             ->whereIn('id', $ids)
             ->whereNull('deleted_at')
-            ->with(['lorryHire', 'delivery'])
-            ->get();
+            ->with(['lorryHire.adjustments', 'delivery', 'billingCustomer', 'vehicle'])
+            ->orderBy('lr_date');
+        if ($lock) {
+            $query->lockForUpdate();
+        }
+        $receipts = $query->get();
 
         if ($receipts->count() !== count($ids)) {
-            throw new BrokerDomainException('One or more Lorry Receipts were not found.');
+            throw new BrokerDomainException('One or more Bilties were not found.');
         }
 
         $this->assertSameBillingCustomer($receipts);
 
         foreach ($receipts as $receipt) {
             $this->assertEligibleForDelivery($receipt);
+            if ($receipt->lorryHire === null || $receipt->lorryHire->status === LorryHireStatus::Cancelled) {
+                throw new BrokerConflictException('Bilty '.$receipt->lr_number.' needs an active Lorry Hire.');
+            }
+            if (filled($receipt->delivery?->memo_number)) {
+                throw new BrokerConflictException('Bilty '.$receipt->lr_number.' already has Memo / POD '.$receipt->delivery->memo_number.'.');
+            }
         }
 
-        $podNumber = filled($payload['pod_number'] ?? null) ? trim((string) $payload['pod_number']) : null;
-        $remarks = filled($payload['remarks'] ?? null) ? trim((string) $payload['remarks']) : null;
+        return $receipts;
+    }
 
-        return $this->auditedTransaction->run(function () use ($company, $branch, $actor, $receipts, $memoNumber, $podNumber, $remarks): Collection {
-            return $this->withTenant($company, $branch, function () use ($company, $branch, $actor, $receipts, $memoNumber, $podNumber, $remarks): Collection {
-                $saved = collect();
+    /**
+     * One memo number belongs to one customer, and an invoiced memo cannot take more Bilties (legacy rules).
+     */
+    private function assertMemoNumberAvailable(Company $company, string $memoNumber, string $customerId): void
+    {
+        $usages = BrokerDelivery::query()
+            ->where('company_id', $company->id)
+            ->where('memo_number', $memoNumber)
+            ->whereNull('deleted_at')
+            ->with('lorryReceipt:id,billing_customer_party_id,status')
+            ->get();
 
-                foreach ($receipts as $receipt) {
-                    $hire = $receipt->lorryHire;
-                    if ($hire === null) {
-                        throw new BrokerConflictException('Each selected LR must have an active Lorry Hire.');
-                    }
+        if ($usages->contains(fn (BrokerDelivery $row): bool => $row->lorryReceipt?->billing_customer_party_id !== $customerId)) {
+            throw ValidationException::withMessages(['memo_number' => 'This Memo / POD number is already used by another customer.']);
+        }
 
-                    $delivery = $receipt->delivery;
-                    if ($delivery === null) {
-                        $delivery = BrokerDelivery::query()->create([
-                            'id' => (string) Str::uuid(),
-                            'company_id' => $company->id,
-                            'branch_id' => $branch->id,
-                            'lorry_receipt_id' => $receipt->id,
-                            'lorry_hire_id' => $hire->id,
-                            'status' => BrokerDeliveryStatus::MemoAssigned->value,
-                            'memo_number' => $memoNumber,
-                            'pod_number' => $podNumber,
-                            'remarks' => $remarks,
-                            'created_by_user_id' => $actor->id,
-                        ]);
-                    } else {
-                        if ($delivery->status === BrokerDeliveryStatus::Delivered) {
-                            throw new BrokerConflictException('Cannot reassign memo for a delivered LR '.$receipt->lr_number.'.');
-                        }
+        if ($usages->contains(fn (BrokerDelivery $row): bool => $row->lorryReceipt?->status === LrStatus::Invoiced)) {
+            throw ValidationException::withMessages(['memo_number' => 'An invoice is already generated on this Memo / POD number. Choose a unique one.']);
+        }
+    }
 
-                        $before = $delivery->only(['memo_number', 'pod_number', 'status']);
-                        $delivery->forceFill([
-                            'memo_number' => $memoNumber,
-                            'pod_number' => $podNumber,
-                            'status' => BrokerDeliveryStatus::MemoAssigned->value,
-                            'remarks' => $remarks,
-                            'lorry_hire_id' => $hire->id,
-                        ])->save();
+    private function deliverWithMemo(
+        Company $company,
+        Branch $branch,
+        User $actor,
+        LorryReceipt $receipt,
+        string $memoNumber,
+        CarbonImmutable $memoDate,
+    ): BrokerDelivery {
+        $delivery = $receipt->delivery ?? new BrokerDelivery([
+            'id' => (string) Str::uuid(),
+            'company_id' => $company->id,
+            'branch_id' => $branch->id,
+            'lorry_receipt_id' => $receipt->id,
+            'created_by_user_id' => $actor->id,
+        ]);
+        $before = $delivery->exists ? $delivery->only(['memo_number', 'status', 'delivery_date']) : null;
 
-                        $this->audit->write(
-                            AuditAction::Updated,
-                            BrokerDelivery::class,
-                            $delivery->id,
-                            remark: 'Assign delivery memo '.$memoNumber,
-                            before: $before,
-                            after: $delivery->only(['memo_number', 'pod_number', 'status']),
-                        );
-                    }
+        $delivery->forceFill([
+            'lorry_hire_id' => $receipt->lorryHire?->id,
+            'memo_number' => $memoNumber,
+            'status' => BrokerDeliveryStatus::Delivered->value,
+            'delivery_date' => $memoDate,
+        ])->save();
 
-                    if ($delivery->wasRecentlyCreated) {
-                        $this->audit->write(
-                            AuditAction::Created,
-                            BrokerDelivery::class,
-                            $delivery->id,
-                            remark: 'Assign delivery memo '.$memoNumber.' for LR '.$receipt->lr_number,
-                            before: null,
-                            after: $delivery->toArray(),
-                        );
-                    }
+        $receipt->forceFill([
+            'status' => LrStatus::Delivered,
+            'delivered_at' => $memoDate->setTimezone('UTC'),
+        ])->save();
 
-                    $saved->push($delivery->fresh() ?? $delivery);
-                }
+        $this->audit->write(
+            $before === null ? AuditAction::Created : AuditAction::Updated,
+            BrokerDelivery::class,
+            $delivery->id,
+            remark: 'Memo / POD '.$memoNumber.' delivered LR '.$receipt->lr_number,
+            before: $before,
+            after: $delivery->only(['memo_number', 'status', 'delivery_date']),
+        );
 
-                return $saved;
-            });
-        });
+        return $delivery;
     }
 
     /**

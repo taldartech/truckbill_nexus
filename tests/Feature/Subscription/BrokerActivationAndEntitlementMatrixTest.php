@@ -427,11 +427,10 @@ test('broker purchase activates immediately without invoice approval and restore
     $hire = LorryHire::query()->where('company_id', $company->id)->where('lorry_receipt_id', $lr->id)->firstOrFail();
 
     $this->post(route('branch.broker.vouchers.store'), [
-        'lorry_hire_id' => $hire->id,
-        'amount' => 5000,
+        'lines' => [['lorry_hire_id' => $hire->id, 'amount' => 5000]],
         'payment_type' => 'advance',
         'payment_mode' => 'cash',
-        'cash_reference' => 'CASH-001',
+        'voucher_date' => now()->toDateString(),
     ])->assertRedirect();
 
     expect(TransporterVoucher::query()->where('company_id', $company->id)->where('lorry_hire_id', $hire->id)->exists())->toBeTrue();

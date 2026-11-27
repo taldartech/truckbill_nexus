@@ -27,7 +27,7 @@ type VoucherRow = {
 
 type Props = {
     filters: { status: string; payment_mode: string };
-    permissions: { can_create: boolean; can_bulk?: boolean };
+    permissions: { can_create: boolean };
     statusOptions: Array<{ value: string; label: string }>;
     paymentModeOptions: Array<{ value: string; label: string }>;
     vouchers: {
@@ -41,8 +41,7 @@ type Props = {
     };
     urls: {
         index: string;
-        create: string;
-        bulk?: string;
+        lorry_hires: string;
         export_payout?: string;
     };
 };
@@ -81,22 +80,14 @@ export default function VouchersIndex({
                                     Export bank payout
                                 </a>
                             ) : null}
-                            {permissions.can_bulk && urls.bulk ? (
-                                <Link
-                                    href={urls.bulk}
-                                    className="app-index-header-btn"
-                                >
-                                    <Plus className="h-3.5 w-3.5" />
-                                    Bulk payment
-                                </Link>
-                            ) : null}
                             {permissions.can_create ? (
                                 <Link
-                                    href={urls.create}
+                                    href={urls.lorry_hires}
                                     className="app-index-header-btn"
+                                    title="Select Lorry Hires on the Good Hires register to record a Voucher Payment"
                                 >
                                     <Plus className="h-3.5 w-3.5" />
-                                    Create voucher
+                                    Record payment
                                 </Link>
                             ) : null}
                         </div>

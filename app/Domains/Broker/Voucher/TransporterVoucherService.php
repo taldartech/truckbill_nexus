@@ -28,6 +28,7 @@ use App\Models\User;
 use App\Support\Audit\AuditAction;
 use App\Support\Audit\AuditedTransaction;
 use App\Support\Audit\AuditWriter;
+use App\Support\Presentation\Money;
 use App\Support\Tenant\TenantContext;
 use App\Support\Tenant\TenantContextHolder;
 use Carbon\CarbonImmutable;
@@ -129,6 +130,7 @@ final class TransporterVoucherService
      *     pump_reference?: string|null,
      *     remark?: string|null,
      *     linked_bilty_group_id?: string|null,
+     *     confirm_duplicate?: bool,
      * }  $payload
      */
     public function createForLorryHire(
@@ -158,7 +160,7 @@ final class TransporterVoucherService
         $status = $this->defaultStatusForMode($paymentMode);
         $voucherDate = filled($payload['voucher_date'] ?? null)
             ? CarbonImmutable::parse((string) $payload['voucher_date'])->startOfDay()
-            : CarbonImmutable::now($this->companyTimezone($company))->startOfDay();
+            : CarbonImmutable::parse($this->defaultVoucherDate($company));
 
         try {
             return $this->auditedTransaction->run(function () use (
@@ -191,7 +193,21 @@ final class TransporterVoucherService
                         ->lockForUpdate()
                         ->firstOrFail();
 
-                    $this->assertAmountWithinOutstanding($lockedHire, $amount, $status);
+                    $this->assertAmountWithinRemainingPayable($lockedHire, $amount);
+
+                    if ($paymentMode === VoucherPaymentMode::AdjustInAdvance) {
+                        $this->bookBalance->lockTransporter($company, (string) $lockedHire->transporter_party_id);
+                        $this->bookBalance->assertAdjustmentWithinBalance(
+                            $company,
+                            $branch,
+                            (string) $lockedHire->transporter_party_id,
+                            $amount,
+                        );
+                    }
+
+                    if (! ($payload['confirm_duplicate'] ?? false)) {
+                        $this->assertNotDuplicate($lockedHire, $amount, $paymentMode, $voucherDate);
+                    }
 
                     $allocation = $this->numbers->allocateNext(
                         companyId: $company->id,
@@ -357,28 +373,46 @@ final class TransporterVoucherService
     }
 
     /**
+     * Pending and In Progress vouchers reserve capacity, so the cap is the summary's remaining payable.
+     *
      * @param  numeric-string  $amount
      */
-    private function assertAmountWithinOutstanding(LorryHire $hire, string $amount, VoucherStatus $status): void
+    private function assertAmountWithinRemainingPayable(LorryHire $hire, string $amount): void
     {
-        $hire->loadMissing(['adjustments', 'vouchers', 'bookBalanceEntries']);
-        $summary = $this->calculations->summarize($hire);
-        $outstanding = $this->money($summary['outstanding_amount']);
-
-        // Pending vouchers reserve capacity against unpaid outstanding.
-        $reserved = '0.00';
-        foreach ($hire->vouchers as $voucher) {
-            if ($voucher->status !== VoucherStatus::Paid) {
-                $reserved = bcadd($reserved, $this->money($voucher->amount), 2);
-            }
+        $remaining = $this->allocatableAmount($hire);
+        if (bccomp($amount, $remaining, 2) === 1) {
+            throw new BrokerConflictException(
+                'Payment amount cannot exceed the remaining payable of '.Money::inr($remaining)
+                .' for Lorry Hire '.$hire->hire_number.'.',
+            );
         }
+    }
 
-        $available = bcsub($outstanding, $reserved, 2);
-        if (bccomp($this->money($amount), $available, 2) > 0) {
-            throw new BrokerConflictException('Voucher amount would overpay the Lorry Hire outstanding balance.');
+    /**
+     * A same-day voucher with identical amount and mode is treated as an accidental repeat unless confirmed.
+     *
+     * @param  numeric-string  $amount
+     */
+    private function assertNotDuplicate(
+        LorryHire $hire,
+        string $amount,
+        VoucherPaymentMode $mode,
+        CarbonImmutable $voucherDate,
+    ): void {
+        $exists = TransporterVoucher::query()
+            ->where('lorry_hire_id', $hire->id)
+            ->where('amount', $amount)
+            ->where('payment_mode', $mode->value)
+            ->whereDate('voucher_date', $voucherDate->toDateString())
+            ->whereNull('deleted_at')
+            ->exists();
+
+        if ($exists) {
+            throw ValidationException::withMessages([
+                'confirm_duplicate' => 'A '.Money::inr($amount).' '.$mode->label().' voucher was already recorded for Lorry Hire '
+                    .$hire->hire_number.' on '.$voucherDate->format('d-m-Y').'. Confirm to record it again.',
+            ]);
         }
-
-        unset($status);
     }
 
     /**
@@ -387,18 +421,8 @@ final class TransporterVoucherService
     public function allocatableAmount(LorryHire $hire): string
     {
         $hire->loadMissing(['adjustments', 'vouchers', 'bookBalanceEntries']);
-        $summary = $this->calculations->summarize($hire);
 
-        $reserved = '0.00';
-        foreach ($hire->vouchers as $voucher) {
-            if ($voucher->status !== VoucherStatus::Paid) {
-                $reserved = bcadd($reserved, $this->money($voucher->amount), 2);
-            }
-        }
-
-        $room = bcsub($this->money($summary['outstanding_amount']), $reserved, 2);
-
-        return bccomp($room, '0', 2) === -1 ? '0.00' : $room;
+        return $this->calculations->summarize($hire)['remaining_payable'];
     }
 
     /**
@@ -444,6 +468,14 @@ final class TransporterVoucherService
         if ($branch->company_id !== $company->id) {
             throw new BrokerDomainException('Branch does not belong to company.');
         }
+    }
+
+    /**
+     * Today in the company timezone; the Voucher Payment date default.
+     */
+    public function defaultVoucherDate(Company $company): string
+    {
+        return CarbonImmutable::now($this->companyTimezone($company))->toDateString();
     }
 
     private function companyTimezone(Company $company): string

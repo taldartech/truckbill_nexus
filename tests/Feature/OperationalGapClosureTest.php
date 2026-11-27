@@ -115,10 +115,14 @@ test('enquiry lifecycle converts cleanly into broker bilty without duplicate re-
     );
     ['transporter' => $transporter, 'vehicle' => $marketVehicle] = brokerCreateTransporterAndMarketVehicle($ctx);
 
+    $origin = geographyIdsFor('Maharashtra', 'Mumbai City');
+    $destination = geographyIdsFor('Maharashtra', 'Pune');
     $enquiry = app(EnquiryService::class)->createManual($ctx['company'], $ctx['branch'], $ctx['member'], [
         'customer_party_id' => $customer->id,
-        'pickup_location' => $ctx['fromStation']->name,
-        'delivery_location' => $ctx['toStation']->name,
+        'from_state_id' => $origin['state_id'],
+        'from_city_id' => $origin['city_id'],
+        'to_state_id' => $destination['state_id'],
+        'to_city_id' => $destination['city_id'],
         'vehicle_type_id' => $truckType->id,
         'vehicle_quantity' => 1,
         'goods' => [[

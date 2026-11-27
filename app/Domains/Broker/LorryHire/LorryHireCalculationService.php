@@ -2,6 +2,7 @@
 
 namespace App\Domains\Broker\LorryHire;
 
+use App\Domains\Broker\Enums\BookBalanceEntryType;
 use App\Domains\Broker\Enums\BrokerAdjustmentType;
 use App\Domains\Broker\Enums\VoucherStatus;
 use App\Domains\Consignment\Enums\FreightRateSemantics;
@@ -209,8 +210,12 @@ final class LorryHireCalculationService
             }
         }
 
+        // An Adjust in Advance voucher already settles the hire; its Book Balance debit only moves the transporter advance.
         $bookDelta = '0.00';
         foreach ($bookEntries as $entry) {
+            if ($entry->entry_type === BookBalanceEntryType::AdjustInAdvanceVoucher) {
+                continue;
+            }
             $bookDelta = bcadd($bookDelta, $this->money($entry->amount), 2);
         }
 

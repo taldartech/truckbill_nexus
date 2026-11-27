@@ -578,40 +578,30 @@ test.describe
         await expect(page).toHaveURL(/\/broker\/lorry-hires\/[0-9a-f-]+$/, {
             timeout: 20_000,
         });
-        const hireIdMatch = page
-            .url()
-            .match(/\/broker\/lorry-hires\/([0-9a-f-]+)$/);
-        expect(hireIdMatch).not.toBeNull();
-        const hireId = hireIdMatch![1];
 
-        // 5. Record Transporter Voucher Payment
-        await page.goto(`/broker/vouchers/create?lorry_hire_id=${hireId}`, {
-            waitUntil: 'networkidle',
-        });
-        const selectedHire = await page
-            .locator('#lorry_hire_id-trigger')
-            .innerText()
-            .catch(() => '');
-        if (!selectedHire || /Search hire/i.test(selectedHire)) {
-            await page.locator('#lorry_hire_id-trigger').click();
-            await page.getByRole('listbox').getByRole('option').first().click();
-        }
-        await page.locator('#payment_mode').selectOption('cash');
-        await page.locator('#amount').fill('5000');
+        // 5. Record Transporter Voucher Payment from the Lorry Hire modal
+        await page.getByRole('button', { name: 'Voucher Payment' }).click();
+        const paymentDialog = page.getByRole('dialog');
+        await expect(
+            paymentDialog.getByText('Book Balance').first(),
+        ).toBeVisible({ timeout: 15_000 });
+        await paymentDialog
+            .locator('#voucher_payment_mode')
+            .selectOption('cash');
+        await paymentDialog
+            .getByLabel(/Payment amount for/)
+            .first()
+            .fill('5000');
+        await paymentDialog
+            .getByRole('button', { name: 'Review payment' })
+            .click();
         await page
-            .getByRole('button', { name: 'Save voucher', exact: true })
+            .getByRole('button', { name: 'Record payment', exact: true })
             .click();
 
-        const voucherDialog = page.getByRole('dialog');
-        await expect(voucherDialog).toBeVisible({ timeout: 10_000 });
-        await voucherDialog
-            .getByRole('button', { name: /Confirm create|Confirm save/i })
-            .click();
-
-        await expect(page).toHaveURL(/\/broker\/vouchers\/[0-9a-f-]+$/, {
-            timeout: 20_000,
-        });
-        await expect(page.getByText(/5,?000\.00|5000/).first()).toBeVisible();
+        await expect(
+            page.getByText('Voucher payment recorded.').first(),
+        ).toBeVisible({ timeout: 20_000 });
     });
 
     test('ownfleet, partload, and accounting add-on companies expose exact module navigation for owner without branch role', async ({

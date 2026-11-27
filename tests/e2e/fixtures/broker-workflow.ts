@@ -385,60 +385,37 @@ export async function createLorryHireFromLr(
     return { hireNumber, hirePath };
 }
 
-export async function createAdjustInAdvanceVoucher(
+const POD_PNG = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+    'base64',
+);
+
+/** Records a voucher payment from the Lorry Hire page through the Voucher Payment modal. */
+export async function recordVoucherPaymentFromHire(
     page: Page,
-    hireNumber: string,
+    hirePath: string,
     amount: string,
-): Promise<string> {
-    await page.goto('/broker/vouchers/create');
-    await expect(
-        page.getByRole('heading', {
-            name: /Add Voucher Payment|Create Transporter Voucher/i,
-        }),
-    ).toBeVisible();
-
-    const hireSelect = page.locator('#lorry_hire_id');
-    const hireTrigger = page.locator('#lorry_hire_id-trigger');
-    const option = hireSelect
-        .locator('option[value]:not([value=""])')
-        .filter({ hasText: hireNumber })
-        .first();
-    let hireId = await option.getAttribute('value');
-    if (!hireId && (await hireTrigger.count()) > 0) {
-        await hireTrigger.click();
-        const live = page
-            .getByRole('listbox')
-            .getByRole('option')
-            .filter({ hasText: hireNumber })
-            .first();
-        await expect(live).toBeVisible({ timeout: 10_000 });
-        await live.click();
-        hireId = await hireSelect.inputValue();
-    } else if (hireId) {
-        await hireSelect.selectOption(hireId);
-    }
-    if (!hireId) {
-        throw new Error(
-            `Lorry hire ${hireNumber} not in voucher eligible list.`,
-        );
-    }
-
-    await page.locator('#amount').fill(amount);
-    await page.locator('#payment_mode').selectOption('adjust_in_advance');
-    await page.locator('#remark').fill('E2E adjust in advance voucher');
-
-    await page.getByRole('button', { name: 'Save voucher' }).click();
-    await confirmFormDialog(page);
-    await expect(page).toHaveURL(/\/broker\/vouchers\/[0-9a-f-]+$/, {
-        timeout: 30_000,
+): Promise<void> {
+    await page.goto(hirePath);
+    await page.getByRole('button', { name: 'Voucher Payment' }).click();
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.getByText('Book Balance').first()).toBeVisible({
+        timeout: 15_000,
     });
-    const heading = await page
-        .getByRole('heading', { level: 1 })
-        .filter({ hasText: /Voucher/i })
+
+    await dialog
+        .getByLabel(/Payment amount for/)
         .first()
-        .innerText({ timeout: 15_000 });
-    const match = heading.match(/Voucher\s+(.+)$/i);
-    return match?.[1]?.trim() ?? heading.trim();
+        .fill(amount);
+    await dialog.locator('#voucher_payment_mode').selectOption('cash');
+    await dialog.getByRole('button', { name: 'Review payment' }).click();
+    await page
+        .getByRole('button', { name: 'Record payment', exact: true })
+        .click();
+
+    await expect(
+        page.getByText('Voucher payment recorded.').first(),
+    ).toBeVisible({ timeout: 20_000 });
 }
 
 export async function assertTransporterBookBalanceHasActivity(
@@ -464,90 +441,42 @@ export async function assertTransporterBookBalanceHasActivity(
     });
 }
 
-export async function assignMemoAndDeliverLr(
+/** Assigns a Memo / POD (with a POD file) from the Good Hires register; legacy marks the Bilty delivered. */
+export async function assignMemoPodFromRegister(
     page: Page,
-    lrNumber: string,
+    hireNumber: string,
     memoNumber: string,
 ): Promise<void> {
-    await page.goto('/broker/deliveries');
-    await expect(
-        page
-            .getByText(/Bulk memo\s*\/\s*POD assignment|Eligible bilties/i)
-            .first(),
-    ).toBeVisible({ timeout: 15_000 });
-
+    await page.goto('/broker/lorry-hires?pending_memo=1');
     const checkbox = page.getByRole('checkbox', {
-        name: `Select ${lrNumber}`,
+        name: `Select hire ${hireNumber}`,
     });
     await expect(checkbox).toBeVisible({ timeout: 20_000 });
     await checkbox.check();
+    await page.getByRole('button', { name: 'Memo / POD', exact: true }).click();
 
-    await page.locator('#memo_number').fill(memoNumber);
-    await page.locator('#pod_number').fill(`POD-${memoNumber}`);
-    await page.getByRole('button', { name: 'Assign memo to selected' }).click();
-    await confirmFormDialog(page);
-
-    const eligibleRow = page
-        .locator('table tbody tr')
-        .filter({
-            has: page.getByRole('cell', { name: lrNumber, exact: true }),
-        })
-        .first();
-    await expect(eligibleRow.getByText(memoNumber)).toBeVisible({
-        timeout: 20_000,
+    const dialog = page.getByRole('dialog');
+    await expect(dialog.locator('#memo_number')).toBeVisible({
+        timeout: 15_000,
     });
-
-    await eligibleRow.getByRole('button', { name: 'Deliver' }).click();
-    await confirmFormDialog(page);
-
-    const recentItem = page
-        .locator('li')
-        .filter({ hasText: lrNumber })
-        .filter({ hasText: memoNumber })
-        .first();
-    await expect(recentItem.getByText(/delivered/i).first()).toBeVisible({
-        timeout: 20_000,
-    });
-}
-
-export async function uploadPodIfAvailable(
-    page: Page,
-    lrNumber: string,
-): Promise<void> {
-    const recentBlock = page
-        .locator('li')
-        .filter({ hasText: lrNumber })
-        .first();
-    if ((await recentBlock.count()) === 0) {
-        return;
-    }
-    const uploadButton = recentBlock.getByRole('button', {
-        name: 'Upload POD file',
-    });
-    if ((await uploadButton.count()) === 0) {
-        return;
-    }
-    const fileChooserPromise = page.waitForEvent('filechooser');
-    await uploadButton.click();
-    const fileChooser = await fileChooserPromise;
-    await fileChooser.setFiles({
-        name: 'e2e-pod.png',
-        mimeType: 'image/png',
-        buffer: Buffer.from(
-            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
-            'base64',
-        ),
-    });
-    await recentBlock
-        .locator('form')
-        .getByRole('button', { name: 'Upload POD', exact: true })
+    await dialog.locator('#memo_number').fill(memoNumber);
+    await dialog
+        .getByLabel(/POD document for/)
+        .first()
+        .setInputFiles({
+            name: 'e2e-pod.png',
+            mimeType: 'image/png',
+            buffer: POD_PNG,
+        });
+    await dialog.getByRole('button', { name: 'Review Memo / POD' }).click();
+    await page
+        .getByRole('button', { name: 'Assign Memo / POD', exact: true })
         .click();
-    await confirmFormDialog(page);
+
     await expect(
-        recentBlock.getByRole('button', { name: /Documents/i }),
-    ).toBeVisible({
-        timeout: 20_000,
-    });
+        page.getByText(`Memo / POD ${memoNumber} assigned`).first(),
+    ).toBeVisible({ timeout: 20_000 });
+    await expect(checkbox).toHaveCount(0);
 }
 
 export async function addBrokerLorryHireAdjustment(

@@ -1,5 +1,6 @@
 <?php
 
+use App\Domains\Broker\Enums\BookBalanceEntryType;
 use App\Domains\Broker\LorryHire\LorryHireCalculationService;
 use App\Domains\OwnFleet\Invoice\TripInvoiceService;
 use App\Models\BrokerInvoice;
@@ -100,6 +101,9 @@ if (! function_exists('assertLorryHirePayableInvariant')) {
         $bookDelta = '0.00';
         $hire->loadMissing('bookBalanceEntries');
         foreach ($hire->bookBalanceEntries as $entry) {
+            if ($entry->entry_type === BookBalanceEntryType::AdjustInAdvanceVoucher) {
+                continue;
+            }
             $bookDelta = bcadd($bookDelta, (string) $entry->amount, 2);
         }
 

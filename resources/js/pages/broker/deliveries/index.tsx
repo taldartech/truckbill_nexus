@@ -1,5 +1,5 @@
-import { Head, useForm } from '@inertiajs/react';
-import { useMemo, useRef, useState } from 'react';
+import { Head, Link, useForm } from '@inertiajs/react';
+import { useRef, useState } from 'react';
 import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
 import type { FieldReview } from '@/components/form-confirmation/types';
 import {
@@ -41,7 +41,7 @@ type Props = {
         meta: { total: number };
     };
     recentDeliveries: RecentRow[];
-    urls: { index: string; memo: string };
+    urls: { index: string; lorry_hires: string };
 };
 
 export default function DeliveriesIndex({
@@ -50,91 +50,11 @@ export default function DeliveriesIndex({
     recentDeliveries,
     urls,
 }: Props) {
-    const [selected, setSelected] = useState<string[]>([]);
     const [docsFor, setDocsFor] = useState<RecentRow | null>(null);
-    const memoSubmitAllowed = useRef(false);
-    const [memoConfirmOpen, setMemoConfirmOpen] = useState(false);
-    const [memoReviewFields, setMemoReviewFields] = useState<FieldReview[]>([]);
-    const memoForm = useForm({
-        lorry_receipt_ids: [] as string[],
-        memo_number: '',
-        pod_number: '',
-        remarks: '',
-    });
     const podForm = useForm<{ file: File | null; label: string }>({
         file: null,
         label: '',
     });
-
-    const selectedCustomer = useMemo(() => {
-        if (selected.length === 0) {
-            return null;
-        }
-        const first = eligible.data.find((row) => row.id === selected[0]);
-        return first?.billing_customer_party_id ?? null;
-    }, [eligible.data, selected]);
-
-    const toggle = (id: string, billingCustomerId: string | null) => {
-        setSelected((current) => {
-            if (current.includes(id)) {
-                return current.filter((rowId) => rowId !== id);
-            }
-            if (
-                selectedCustomer !== null &&
-                billingCustomerId !== selectedCustomer
-            ) {
-                return current;
-            }
-            return [...current, id];
-        });
-    };
-
-    const submitMemo = (event: React.FormEvent) => {
-        event.preventDefault();
-        if (!memoSubmitAllowed.current) {
-            const customerName =
-                eligible.data.find((row) => selected.includes(row.id))
-                    ?.billing_customer_name ?? '—';
-            const selectedRows = eligible.data.filter((row) =>
-                selected.includes(row.id),
-            );
-            setMemoReviewFields([
-                { label: 'Billing customer', value: customerName },
-                { label: 'Bilties selected', value: String(selected.length) },
-                {
-                    label: 'Bilty numbers',
-                    value:
-                        selectedRows
-                            .map((row) => row.lr_number)
-                            .filter(Boolean)
-                            .join(', ') || '—',
-                },
-                {
-                    label: 'Memo number',
-                    value: memoForm.data.memo_number || '—',
-                },
-                {
-                    label: 'POD number',
-                    value: memoForm.data.pod_number || '—',
-                },
-                {
-                    label: 'Remarks',
-                    value: memoForm.data.remarks || '—',
-                },
-            ]);
-            setMemoConfirmOpen(true);
-            return;
-        }
-        memoSubmitAllowed.current = false;
-        memoForm.setData('lorry_receipt_ids', selected);
-        memoForm.post(urls.memo, {
-            preserveScroll: true,
-            onSuccess: () => {
-                setSelected([]);
-                memoForm.reset();
-            },
-        });
-    };
 
     const podSubmitAllowed = useRef(false);
     const [podConfirmOpen, setPodConfirmOpen] = useState(false);
@@ -180,119 +100,55 @@ export default function DeliveriesIndex({
         <>
             <Head title="Broker Delivery & Memo" />
             <AppIndexPage className="space-y-3">
-                {permissions.can_manage ? (
-                    <AppIndexListCard title="Bulk memo / POD assignment">
-                        <form
-                            id="broker-memo-assign-form"
-                            onSubmit={submitMemo}
-                            className="p-4"
+                <AppIndexListCard title="Bilties awaiting delivery">
+                    <p className="border-b border-[#e5e7eb] bg-[#f8fafc] px-4 py-2 text-sm text-slate-600">
+                        Assign a Memo / POD from the{' '}
+                        <Link
+                            href={urls.lorry_hires}
+                            className="font-medium text-[#1d4ed8] underline"
                         >
-                            <p className="text-xs text-muted-foreground">
-                                Select LRs with the same billing customer ({' '}
-                                {selected.length} selected).
-                            </p>
-                            <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                                <div>
-                                    <Label htmlFor="memo_number">
-                                        Memo number
-                                    </Label>
-                                    <Input
-                                        id="memo_number"
-                                        value={memoForm.data.memo_number}
-                                        onChange={(e) =>
-                                            memoForm.setData(
-                                                'memo_number',
-                                                e.target.value,
-                                            )
-                                        }
-                                        required
-                                    />
-                                </div>
-                                <div>
-                                    <Label htmlFor="pod_number">
-                                        POD number
-                                    </Label>
-                                    <Input
-                                        id="pod_number"
-                                        value={memoForm.data.pod_number}
-                                        onChange={(e) =>
-                                            memoForm.setData(
-                                                'pod_number',
-                                                e.target.value,
-                                            )
-                                        }
-                                    />
-                                </div>
-                                <div className="sm:col-span-2">
-                                    <Label htmlFor="remarks">Remarks</Label>
-                                    <Input
-                                        id="remarks"
-                                        value={memoForm.data.remarks}
-                                        onChange={(e) =>
-                                            memoForm.setData(
-                                                'remarks',
-                                                e.target.value,
-                                            )
-                                        }
-                                    />
-                                </div>
-                            </div>
-                            <Button
-                                type="submit"
-                                className="mt-4 bg-[#2FB36F] text-white hover:bg-[#279960]"
-                                disabled={
-                                    selected.length === 0 || memoForm.processing
-                                }
-                            >
-                                Assign memo to selected
-                            </Button>
-                        </form>
-                    </AppIndexListCard>
-                ) : null}
-
-                <AppIndexListCard title="Eligible bilties for memo">
-                    <p className="border-b border-[#e5e7eb] bg-[#f8fafc] px-4 py-2 text-xs text-muted-foreground">
-                        Assign one memo to multiple Broker LRs for the same
-                        billing customer, then record delivery and upload POD
-                        files.
+                            Good Hires register
+                        </Link>{' '}
+                        (select Bilties, then Memo / POD); it marks them
+                        delivered. Use Deliver below only for a Bilty delivered
+                        without a memo.
                     </p>
                     <div className="overflow-x-auto">
                         <table className="app-index-table min-w-full text-sm">
                             <thead>
                                 <tr>
-                                    {permissions.can_manage ? (
-                                        <th className="w-10 px-4 py-3"> </th>
-                                    ) : null}
                                     <th className="px-4 py-3">LR</th>
+                                    <th className="px-4 py-3">Date</th>
                                     <th className="px-4 py-3">
                                         Billing customer
                                     </th>
                                     <th className="px-4 py-3">Memo</th>
                                     <th className="px-4 py-3">Status</th>
                                     {permissions.can_manage ? (
-                                        <th className="px-4 py-3">Complete</th>
+                                        <th className="px-4 py-3">
+                                            Deliver without memo
+                                        </th>
                                     ) : null}
                                 </tr>
                             </thead>
                             <tbody>
+                                {eligible.data.length === 0 ? (
+                                    <tr>
+                                        <td
+                                            colSpan={
+                                                permissions.can_manage ? 6 : 5
+                                            }
+                                            className="px-4 py-6 text-center text-sm text-muted-foreground"
+                                        >
+                                            No Bilties are awaiting delivery.
+                                        </td>
+                                    </tr>
+                                ) : null}
                                 {eligible.data.map((row) => (
                                     <EligibleRowView
                                         key={row.id}
                                         row={row}
                                         canManage={permissions.can_manage}
-                                        checked={selected.includes(row.id)}
-                                        disabled={
-                                            selectedCustomer !== null &&
-                                            row.billing_customer_party_id !==
-                                                selectedCustomer &&
-                                            !selected.includes(row.id)
-                                        }
-                                        onToggle={() =>
-                                            toggle(
-                                                row.id,
-                                                row.billing_customer_party_id,
-                                            )
-                                        }
                                     />
                                 ))}
                             </tbody>
@@ -432,25 +288,6 @@ export default function DeliveriesIndex({
             ) : null}
 
             <FormConfirmationDialog
-                open={memoConfirmOpen}
-                onOpenChange={setMemoConfirmOpen}
-                mode="create"
-                title="Assign this memo?"
-                description="Review customer, selected Bilties, and memo details before submitting."
-                fields={memoReviewFields}
-                onConfirm={() => {
-                    memoSubmitAllowed.current = true;
-                    setMemoConfirmOpen(false);
-                    window.setTimeout(() => {
-                        const formElement = document.getElementById(
-                            'broker-memo-assign-form',
-                        ) as HTMLFormElement | null;
-                        formElement?.requestSubmit();
-                    }, 0);
-                }}
-            />
-
-            <FormConfirmationDialog
                 open={podConfirmOpen}
                 onOpenChange={(open) => {
                     setPodConfirmOpen(open);
@@ -483,19 +320,12 @@ export default function DeliveriesIndex({
 function EligibleRowView({
     row,
     canManage,
-    checked,
-    disabled,
-    onToggle,
 }: {
     row: EligibleRow;
     canManage: boolean;
-    checked: boolean;
-    disabled: boolean;
-    onToggle: () => void;
 }) {
     const completeForm = useForm({
         delivery_date: new Date().toISOString().slice(0, 10),
-        remarks: '',
     });
     const deliverAllowed = useRef(false);
     const [deliverConfirmOpen, setDeliverConfirmOpen] = useState(false);
@@ -503,18 +333,8 @@ function EligibleRowView({
 
     return (
         <tr className="border-t border-border">
-            {canManage ? (
-                <td className="px-4 py-3">
-                    <input
-                        type="checkbox"
-                        checked={checked}
-                        disabled={disabled}
-                        onChange={onToggle}
-                        aria-label={`Select ${row.lr_number}`}
-                    />
-                </td>
-            ) : null}
             <td className="px-4 py-3 font-medium">{row.lr_number}</td>
+            <td className="px-4 py-3">{row.lr_date ?? '—'}</td>
             <td className="px-4 py-3">{row.billing_customer_name ?? '—'}</td>
             <td className="px-4 py-3">{row.memo_number ?? '—'}</td>
             <td className="px-4 py-3">
@@ -526,97 +346,85 @@ function EligibleRowView({
             </td>
             {canManage ? (
                 <td className="px-4 py-3">
-                    {row.memo_number ? (
-                        <>
-                            <form
-                                id={`deliver-${row.id}`}
-                                className="flex flex-wrap items-center gap-2"
-                                onSubmit={(event) => {
-                                    event.preventDefault();
-                                    if (!deliverAllowed.current) {
-                                        setDeliverFields([
-                                            {
-                                                label: 'Bilty No.',
-                                                value: row.lr_number,
-                                            },
-                                            {
-                                                label: 'Customer',
-                                                value:
-                                                    row.billing_customer_name ??
-                                                    '—',
-                                            },
-                                            {
-                                                label: 'Memo number',
-                                                value: row.memo_number ?? '—',
-                                            },
-                                            {
-                                                label: 'Delivery date',
-                                                value:
-                                                    completeForm.data
-                                                        .delivery_date || '—',
-                                            },
-                                            {
-                                                label: 'Remarks',
-                                                value:
-                                                    completeForm.data.remarks.trim() ||
-                                                    '—',
-                                            },
-                                        ]);
-                                        setDeliverConfirmOpen(true);
-                                        return;
-                                    }
-                                    deliverAllowed.current = false;
-                                    completeForm.post(row.urls.complete, {
-                                        preserveScroll: true,
-                                    });
-                                }}
-                            >
-                                <Input
-                                    type="date"
-                                    value={completeForm.data.delivery_date}
-                                    onChange={(e) =>
-                                        completeForm.setData(
-                                            'delivery_date',
-                                            e.target.value,
-                                        )
-                                    }
-                                    required
-                                    className="w-auto"
-                                />
-                                <Button
-                                    type="submit"
-                                    size="sm"
-                                    disabled={completeForm.processing}
-                                >
-                                    Deliver
-                                </Button>
-                            </form>
-                            <FormConfirmationDialog
-                                open={deliverConfirmOpen}
-                                onOpenChange={setDeliverConfirmOpen}
-                                mode="create"
-                                title="Record this delivery?"
-                                description="Confirm Bilty, memo, and delivery date before completing."
-                                fields={deliverFields}
-                                processing={completeForm.processing}
-                                onConfirm={() => {
-                                    deliverAllowed.current = true;
-                                    setDeliverConfirmOpen(false);
-                                    window.setTimeout(() => {
-                                        const formElement =
-                                            document.getElementById(
-                                                `deliver-${row.id}`,
-                                            ) as HTMLFormElement | null;
-                                        formElement?.requestSubmit();
-                                    }, 0);
-                                }}
+                    <>
+                        <form
+                            id={`deliver-${row.id}`}
+                            className="flex flex-wrap items-center gap-2"
+                            onSubmit={(event) => {
+                                event.preventDefault();
+                                if (!deliverAllowed.current) {
+                                    setDeliverFields([
+                                        {
+                                            label: 'Bilty No.',
+                                            value: row.lr_number,
+                                        },
+                                        {
+                                            label: 'Customer',
+                                            value:
+                                                row.billing_customer_name ??
+                                                '—',
+                                        },
+                                        {
+                                            label: 'Memo number',
+                                            value: row.memo_number ?? '—',
+                                        },
+                                        {
+                                            label: 'Delivery date',
+                                            value:
+                                                completeForm.data
+                                                    .delivery_date || '—',
+                                        },
+                                    ]);
+                                    setDeliverConfirmOpen(true);
+                                    return;
+                                }
+                                deliverAllowed.current = false;
+                                completeForm.post(row.urls.complete, {
+                                    preserveScroll: true,
+                                });
+                            }}
+                        >
+                            <Input
+                                type="date"
+                                value={completeForm.data.delivery_date}
+                                onChange={(e) =>
+                                    completeForm.setData(
+                                        'delivery_date',
+                                        e.target.value,
+                                    )
+                                }
+                                required
+                                aria-label={`Delivery date for ${row.lr_number}`}
+                                className="w-auto"
                             />
-                        </>
-                    ) : (
-                        <span className="text-xs text-muted-foreground">
-                            Assign memo first
-                        </span>
-                    )}
+                            <Button
+                                type="submit"
+                                size="sm"
+                                disabled={completeForm.processing}
+                            >
+                                Deliver
+                            </Button>
+                        </form>
+                        <FormConfirmationDialog
+                            open={deliverConfirmOpen}
+                            onOpenChange={setDeliverConfirmOpen}
+                            mode="create"
+                            title="Deliver without Memo / POD?"
+                            description="This delivery status cannot be changed again. A Memo / POD can no longer group this Bilty for invoicing."
+                            fields={deliverFields}
+                            processing={completeForm.processing}
+                            onConfirm={() => {
+                                deliverAllowed.current = true;
+                                setDeliverConfirmOpen(false);
+                                window.setTimeout(() => {
+                                    const formElement = document.getElementById(
+                                        `deliver-${row.id}`,
+                                    ) as HTMLFormElement | null;
+                                    formElement?.requestSubmit();
+                                }, 0);
+                            }}
+                        />
+                    </>
                 </td>
             ) : null}
         </tr>

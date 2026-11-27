@@ -192,10 +192,10 @@ test('viewer and operator forged broker lorry hire and voucher writes are denied
 
     rbacHttpAs($operator, $ctx);
     $voucherResponse = test()->post(route('branch.broker.vouchers.store'), [
-        'lorry_hire_id' => $hire->id,
-        'amount' => '100.00',
+        'lines' => [['lorry_hire_id' => $hire->id, 'amount' => '100.00']],
         'payment_type' => 'advance',
         'payment_mode' => 'cash',
+        'voucher_date' => now()->toDateString(),
     ]);
     expect(in_array($voucherResponse->status(), [403, 302, 422], true))->toBeTrue()
         ->and(TransporterVoucher::query()->count())->toBe($voucherCount);

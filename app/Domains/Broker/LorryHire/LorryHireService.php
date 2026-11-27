@@ -72,6 +72,7 @@ final class LorryHireService
         Branch $branch,
         ?string $status = null,
         int $perPage = 15,
+        bool $pendingMemo = false,
     ): LengthAwarePaginator {
         $this->ensureTenantMatches($company, $branch);
 
@@ -83,6 +84,7 @@ final class LorryHireService
                 'lorryReceipt.billingCustomer',
                 'lorryReceipt.fromStation',
                 'lorryReceipt.toStation',
+                'lorryReceipt.delivery',
                 'vehicle',
                 'transporter',
                 'goodsLines',
@@ -91,6 +93,14 @@ final class LorryHireService
 
         if (filled($status)) {
             $builder->where('status', $status);
+        }
+
+        if ($pendingMemo) {
+            $builder->where('status', '!=', LorryHireStatus::Cancelled->value)
+                ->whereHas('lorryReceipt', fn ($receipt) => $receipt->whereDoesntHave(
+                    'delivery',
+                    fn ($delivery) => $delivery->whereNotNull('memo_number')->whereNull('deleted_at'),
+                ));
         }
 
         return $builder->paginate($perPage);

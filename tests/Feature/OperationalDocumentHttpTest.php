@@ -158,7 +158,6 @@ test('broker POD upload via dedicated route and generic document route', functio
     app(BrokerDeliveryService::class)->assignMemoPod($ctx['company'], $ctx['branch'], $ctx['member'], [
         'lorry_receipt_ids' => [$hire->lorry_receipt_id],
         'memo_number' => 'MEMO-POD-HTTP',
-        'pod_number' => 'POD-HTTP-1',
     ]);
 
     $hire->lorryReceipt->load('delivery');

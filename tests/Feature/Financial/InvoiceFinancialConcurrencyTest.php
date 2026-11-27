@@ -14,8 +14,8 @@ use App\Domains\Broker\Exceptions\BrokerConflictException;
 use App\Domains\Broker\Invoice\BrokerInvoiceService;
 use App\Domains\Broker\LinkedBilty\LinkedBiltyGroupService;
 use App\Domains\Broker\LorryHire\LorryHireService;
-use App\Domains\Broker\Voucher\BulkVoucherService;
 use App\Domains\Broker\Voucher\TransporterVoucherService;
+use App\Domains\Broker\Voucher\VoucherPaymentService;
 use App\Domains\Consignment\Enums\FreightRateType;
 use App\Domains\OwnFleet\Invoice\Exceptions\TripInvoiceConflictException;
 use App\Domains\OwnFleet\Invoice\TripInvoicePaymentService;
@@ -29,6 +29,7 @@ use Database\Seeders\SubscriptionCatalogueSeeder;
 use Database\Seeders\TdsReferenceRulesSeeder;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 
 require_once __DIR__.'/../../Support/OwnFleetTripHelpers.php';
 require_once __DIR__.'/../../Support/BrokerLorryHireHelpers.php';
@@ -165,6 +166,7 @@ test('concurrent voucher reservations cannot exceed lorry hire outstanding', fun
             'amount' => bcsub($outstanding, $half, 2),
             'payment_type' => VoucherPaymentType::Partial->value,
             'payment_mode' => VoucherPaymentMode::Cash->value,
+            'confirm_duplicate' => true,
         ]);
 
         expect(fn () => $voucherService->createForLorryHire($hire->fresh(), $ctx['member'], [
@@ -216,10 +218,10 @@ test('linked bilty group payment allocation stays consistent when vouchers are s
         'lorry_receipt_ids' => [$lrOne->id, $lrTwo->id],
     ]);
 
-    $bulk = app(BulkVoucherService::class);
+    $bulk = app(VoucherPaymentService::class);
 
     DB::transaction(function () use ($bulk, $ctx, $hireA, $hireB): void {
-        $bulk->createBulk(
+        $bulk->record(
             $ctx['company'],
             $ctx['branch'],
             $ctx['member'],
@@ -233,7 +235,7 @@ test('linked bilty group payment allocation stays consistent when vouchers are s
             ],
         );
 
-        expect(fn () => $bulk->createBulk(
+        expect(fn () => $bulk->record(
             $ctx['company'],
             $ctx['branch'],
             $ctx['member'],
@@ -244,7 +246,7 @@ test('linked bilty group payment allocation stays consistent when vouchers are s
                 'payment_type' => VoucherPaymentType::Final->value,
                 'payment_mode' => VoucherPaymentMode::Cash->value,
             ],
-        ))->toThrow(BrokerConflictException::class);
+        ))->toThrow(ValidationException::class, 'Payment amount cannot exceed the remaining payable');
     });
 
     expect($group->refresh()->id)->not->toBeEmpty();

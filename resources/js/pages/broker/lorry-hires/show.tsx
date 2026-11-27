@@ -1,5 +1,6 @@
 import { Head, useForm } from '@inertiajs/react';
 import { AppIconAction } from '@/components/app-icon-action';
+import { VoucherPaymentDialog } from '@/components/broker/voucher-payment-dialog';
 import {
     FbDetailCard,
     FbDetailLayout,
@@ -119,13 +120,15 @@ type Props = {
         can_create_adjustment?: boolean;
         can_view_adjustment?: boolean;
         can_manage_delivery?: boolean;
+        can_pay?: boolean;
     };
     urls: {
         index: string;
         lr_show: string;
         adjustment_store: string;
         deliveries: string;
-        voucher_create?: string | null;
+        payment_context: string | null;
+        voucher_store: string | null;
         cancel: string | null;
     };
 };
@@ -139,6 +142,22 @@ export default function LorryHireShow({
     permissions,
     urls,
 }: Props) {
+    const [paymentOpen, setPaymentOpen] = useState(
+        () =>
+            Boolean(permissions.can_pay) &&
+            typeof window !== 'undefined' &&
+            new URLSearchParams(window.location.search).get('pay') === '1',
+    );
+    const closePayment = (open: boolean) => {
+        setPaymentOpen(open);
+        if (!open && window.location.search.includes('pay=1')) {
+            window.history.replaceState(
+                window.history.state,
+                '',
+                window.location.pathname,
+            );
+        }
+    };
     const adjustmentSubmitAllowed = useRef(false);
     const cancelSubmitAllowed = useRef(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
@@ -375,12 +394,13 @@ export default function LorryHireShow({
                                             variant="info"
                                             size="sm"
                                         />
-                                        {urls.voucher_create &&
-                                        lorryHire.status !== 'cancelled' ? (
+                                        {permissions.can_pay ? (
                                             <AppIconAction
                                                 icon={Wallet}
-                                                label="Record voucher"
-                                                href={urls.voucher_create}
+                                                label="Voucher Payment"
+                                                onClick={() =>
+                                                    setPaymentOpen(true)
+                                                }
                                                 variant="default"
                                                 size="sm"
                                             />
@@ -1037,6 +1057,21 @@ export default function LorryHireShow({
                     confirmLabel={confirmLabel}
                     onConfirm={handleConfirmDialog}
                 />
+
+                {permissions.can_pay &&
+                urls.payment_context &&
+                urls.voucher_store ? (
+                    <VoucherPaymentDialog
+                        open={paymentOpen}
+                        onOpenChange={closePayment}
+                        hireIds={[lorryHire.id]}
+                        prefillAmounts={false}
+                        urls={{
+                            payment_context: urls.payment_context,
+                            voucher_store: urls.voucher_store,
+                        }}
+                    />
+                ) : null}
             </FbDetailPage>
         </>
     );

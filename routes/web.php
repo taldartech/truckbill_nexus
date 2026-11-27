@@ -323,6 +323,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::middleware('company.capability:broker.deliveries')->group(function () {
             Route::get('/broker/deliveries', [BrokerDeliveryController::class, 'index'])->name('branch.broker.deliveries.index');
+            Route::get('/broker/deliveries/memo-context', [BrokerDeliveryController::class, 'memoContext'])->name('branch.broker.deliveries.memo-context');
             Route::post('/broker/deliveries/memo', [BrokerDeliveryController::class, 'assignMemo'])->name('branch.broker.deliveries.memo');
             Route::post('/broker/deliveries/{lorryReceipt}/complete', [BrokerDeliveryController::class, 'complete'])->name('branch.broker.deliveries.complete');
             Route::post('/broker/deliveries/{brokerDelivery}/pod', [BrokerDeliveryController::class, 'attachPod'])->name('branch.broker.deliveries.pod');
@@ -330,12 +331,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::middleware('company.capability:broker.vouchers')->group(function () {
             Route::get('/broker/vouchers', [TransporterVoucherController::class, 'index'])->name('branch.broker.vouchers.index');
-            Route::get('/broker/vouchers/create', [TransporterVoucherController::class, 'create'])->name('branch.broker.vouchers.create');
             Route::get('/broker/vouchers/export-payout', [TransporterVoucherController::class, 'exportPayout'])->name('branch.broker.vouchers.export-payout');
-            Route::get('/broker/vouchers/bulk', [TransporterVoucherController::class, 'bulkCreate'])->name('branch.broker.vouchers.bulk.create');
+            Route::get('/broker/vouchers/payment-context', [TransporterVoucherController::class, 'paymentContext'])->name('branch.broker.vouchers.payment-context');
             Route::post('/broker/vouchers', [TransporterVoucherController::class, 'store'])->name('branch.broker.vouchers.store');
-            Route::post('/broker/vouchers/bulk/preview', [TransporterVoucherController::class, 'bulkPreview'])->name('branch.broker.vouchers.bulk.preview');
-            Route::post('/broker/vouchers/bulk', [TransporterVoucherController::class, 'bulkStore'])->name('branch.broker.vouchers.bulk.store');
             Route::get('/broker/vouchers/{voucher}', [TransporterVoucherController::class, 'show'])->name('branch.broker.vouchers.show');
             Route::post('/broker/vouchers/{voucher}/status', [TransporterVoucherController::class, 'updateStatus'])->name('branch.broker.vouchers.status');
         });

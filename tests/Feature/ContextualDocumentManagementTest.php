@@ -302,7 +302,7 @@ test('supporting document does not mark broker POD received and POD uploads stay
 
     $delivery->refresh();
     expect($delivery->status)->toBe($statusBefore)
-        ->and($delivery->status)->toBe(BrokerDeliveryStatus::MemoAssigned)
+        ->and($delivery->status)->toBe(BrokerDeliveryStatus::Delivered)
         ->and($delivery->pod_number)->toBeNull()
         ->and(DocumentAttachment::query()
             ->where('parent_id', $delivery->id)

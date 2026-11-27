@@ -114,7 +114,7 @@ Legacy hire math uses **float** `weight × trFrRate` (`FreightBookingCalculation
 | ------------------- | --------------------------------------- | --------------------------------------------------------------- |
 | LR store            | `LorryReceiptController::store`         | `LorryReceiptController::store` → `LorryReceiptService::create` |
 | Hire store          | `FreightBookingController::store`       | `LorryHireController::storeFromLorryReceipt`                    |
-| Voucher bulk        | `VoucherPaymentController::bulkPayment` | `TransporterVoucherController` + `BulkVoucherService`           |
+| Voucher bulk        | `VoucherPaymentController::bulkPayment` | `TransporterVoucherController` + `VoucherPaymentService`        |
 | Linked LR at create | `LorryReceiptController::createLinked`  | `LinkedBiltyGroupController` (post-hire)                        |
 
 ---

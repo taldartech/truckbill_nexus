@@ -1,10 +1,13 @@
 <?php
 
 use App\Domains\Broker\Adjustment\BrokerAdjustmentService;
+use App\Domains\Broker\Enums\BookBalanceEntryType;
 use App\Domains\Broker\Enums\VoucherPaymentMode;
 use App\Domains\Broker\Enums\VoucherPaymentType;
+use App\Domains\Broker\Enums\VoucherStatus;
 use App\Domains\Broker\Invoice\BrokerInvoiceService;
 use App\Domains\Broker\LorryHire\LorryHireCalculationService;
+use App\Domains\Broker\Voucher\TransporterBookBalanceService;
 use App\Domains\Broker\Voucher\TransporterVoucherService;
 use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\OwnFleet\Invoice\TripInvoicePaymentService;
@@ -17,6 +20,7 @@ use Database\Seeders\RbacSeeder;
 use Database\Seeders\SubscriptionCatalogueSeeder;
 use Database\Seeders\TdsReferenceRulesSeeder;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 
 require_once __DIR__.'/../../Support/OwnFleetTripHelpers.php';
 require_once __DIR__.'/../../Support/BrokerLorryHireHelpers.php';
@@ -167,8 +171,16 @@ test('adjust in advance voucher book entry reconciles with hire outstanding', fu
     $ctx = brokerWorkspace();
     tripActivate($ctx['company'], $ctx['branch']);
     $hire = brokerCreateLorryHire($ctx);
+    app(TransporterBookBalanceService::class)->createSignedEntry($ctx['company'], $ctx['branch'], $ctx['member'], [
+        'transporter_party_id' => $hire->transporter_party_id,
+        'amount' => '500.00',
+        'entry_type' => BookBalanceEntryType::AdvanceAdjustment->value,
+        'source_type' => 'test_seed',
+        'source_id' => (string) Str::uuid(),
+    ]);
+    $netPayable = app(LorryHireCalculationService::class)->summarize($hire->fresh())['net_payable'];
 
-    $voucher = app(TransporterVoucherService::class)->createForLorryHire($hire, $ctx['member'], [
+    $voucher = app(TransporterVoucherService::class)->createForLorryHire($hire->fresh(), $ctx['member'], [
         'amount' => '150.00',
         'payment_type' => VoucherPaymentType::Advance->value,
         'payment_mode' => VoucherPaymentMode::AdjustInAdvance->value,
@@ -180,4 +192,9 @@ test('adjust in advance voucher book entry reconciles with hire outstanding', fu
 
     expect((string) $entry->amount)->toBe('-150.00');
     assertLorryHirePayableInvariant($hire->fresh());
+
+    app(TransporterVoucherService::class)->transitionStatus($voucher, $ctx['member'], VoucherStatus::Paid);
+
+    assertLorryHirePayableInvariant($hire->fresh());
+    expect((string) $hire->fresh()->outstanding_amount)->toBe(bcsub($netPayable, '150.00', 2));
 });

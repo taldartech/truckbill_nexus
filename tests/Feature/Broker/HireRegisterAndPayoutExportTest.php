@@ -29,7 +29,7 @@ afterEach(function () {
     TenantContextHolder::clear();
 });
 
-test('lorry hire index exposes voucher create and bulk pay for outstanding active hires', function () {
+test('lorry hire index exposes voucher payment selection for outstanding active hires', function () {
     $ctx = brokerWorkspace();
     tripActivate($ctx['company'], $ctx['branch']);
     $hire = brokerCreateLorryHire($ctx);
@@ -45,37 +45,10 @@ test('lorry hire index exposes voucher create and bulk pay for outstanding activ
             ->component('broker/lorry-hires/index')
             ->where('permissions.can_create_voucher', true)
             ->where('permissions.can_bulk_voucher', true)
-            ->where('urls.bulk_voucher', route('branch.broker.vouchers.bulk.create', absolute: false))
+            ->where('urls.payment_context', route('branch.broker.vouchers.payment-context', absolute: false))
+            ->where('urls.voucher_store', route('branch.broker.vouchers.store', absolute: false))
             ->where('lorryHires.data.0.id', $hire->id)
-            ->where('lorryHires.data.0.selectable_for_bulk', true)
-            ->where(
-                'lorryHires.data.0.urls.voucher_create',
-                route('branch.broker.vouchers.create', [
-                    'lorry_hire_id' => $hire->id,
-                ], absolute: false),
-            ));
-});
-
-test('bulk voucher create preselects hire ids from hire register', function () {
-    $ctx = brokerWorkspace();
-    tripActivate($ctx['company'], $ctx['branch']);
-    $hire = brokerCreateLorryHire($ctx);
-
-    $this->flushSession();
-    $this->actingAs($ctx['member']);
-    session()->forget(WebSessionService::SESSION_VERSION_KEY);
-    seedBranchSession($ctx['company'], $ctx['branch']);
-
-    $this->get(route('branch.broker.vouchers.bulk.create', [
-        'hire_ids' => [$hire->id],
-    ]))
-        ->assertOk()
-        ->assertInertia(fn ($page) => $page
-            ->component('broker/vouchers/bulk')
-            ->where('initialSelectedHireIds.0', $hire->id)
-            ->has('eligibleLorryHires', fn ($hires) => $hires
-                ->where('0.id', $hire->id)
-                ->etc()));
+            ->where('lorryHires.data.0.payable', true));
 });
 
 test('bank payout export streams csv for pending bank vouchers', function () {

@@ -371,8 +371,6 @@ test('duplicate hire http recovery preserves create-and-record-voucher destinati
             'redirect_to_voucher' => true,
         ]));
 
-    $response->assertRedirect(route('branch.broker.vouchers.create', [
-        'lorry_hire_id' => $first->id,
-    ]));
+    $response->assertRedirect(route('branch.broker.lorry-hires.show', [$first, 'pay' => 1]));
     expect(LorryHire::query()->where('lorry_receipt_id', $lr->id)->whereNull('deleted_at')->count())->toBe(1);
 });

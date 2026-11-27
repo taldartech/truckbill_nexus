@@ -53,7 +53,7 @@
 | B2-OF-03  | P2       | Truck-owner declaration missing banner   | **Aligned**  | Amber banner when selected market vehicle owner transporter declaration is incomplete                                                |
 | B2-OF-04  | P2       | Hire multi E-way + GST portal link       | **Aligned**  | Hire create shows LR E-Way Bills + GST portal link (EWB remains on Bilty; intentional)                                               |
 | B2-OF-05  | P3       | Ops-first sidebar label polish           | **Aligned**  | Branch Operations reordered: Bilty → Hire → Vouchers → Invoices → Delivery → Linked → Balances → Enquiry                             |
-| B2-OF-06  | P1       | Hire Create & Record Voucher             | **Aligned**  | Confirmation secondary CTA + `redirect_to_voucher` → voucher create with hire id                                                     |
+| B2-OF-06  | P1       | Hire Create & Record Voucher             | **Aligned**  | Confirmation secondary CTA + `redirect_to_voucher` → Lorry Hire page opens the Voucher Payment modal (`?pay=1`)                      |
 
 ## Closed by Batch 1 (do not re-open)
 

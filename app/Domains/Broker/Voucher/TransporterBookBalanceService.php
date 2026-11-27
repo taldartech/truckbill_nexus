@@ -12,11 +12,13 @@ use App\Domains\Subscription\Entitlement\SubscriptionEntitlementGate;
 use App\Domains\Subscription\Enums\SubscriptionModule;
 use App\Models\Branch;
 use App\Models\Company;
+use App\Models\Party;
 use App\Models\TransporterBookBalanceEntry;
 use App\Models\User;
 use App\Support\Audit\AuditAction;
 use App\Support\Audit\AuditedTransaction;
 use App\Support\Audit\AuditWriter;
+use App\Support\Presentation\Money;
 use App\Support\Tenant\TenantContext;
 use App\Support\Tenant\TenantContextHolder;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
@@ -204,6 +206,58 @@ final class TransporterBookBalanceService
         }
 
         return $total;
+    }
+
+    /**
+     * Book Balance an Adjust in Advance voucher may consume; never negative.
+     *
+     * @return numeric-string
+     */
+    public function availableBalance(Company $company, Branch $branch, string $transporterPartyId): string
+    {
+        $running = $this->runningBalanceForTransporter($company, $branch, $transporterPartyId);
+
+        return bccomp($running, '0', 2) === 1 ? $running : '0.00';
+    }
+
+    /**
+     * Serializes Book Balance consumption for a transporter until the surrounding transaction ends.
+     */
+    public function lockTransporter(Company $company, string $transporterPartyId): void
+    {
+        Party::query()
+            ->where('company_id', $company->id)
+            ->whereKey($transporterPartyId)
+            ->lockForUpdate()
+            ->first(['id']);
+    }
+
+    /**
+     * Rejects an adjustment above the available Book Balance. Call inside the transaction after lockTransporter().
+     *
+     * @param  numeric-string  $amount
+     */
+    public function assertAdjustmentWithinBalance(
+        Company $company,
+        Branch $branch,
+        string $transporterPartyId,
+        string $amount,
+        string $field = 'amount',
+    ): void {
+        $available = $this->availableBalance($company, $branch, $transporterPartyId);
+        if (bccomp($amount, $available, 2) === 1) {
+            throw ValidationException::withMessages([
+                $field => self::exceedsBalanceMessage('Adjustment amount', $available),
+            ]);
+        }
+    }
+
+    /**
+     * @param  numeric-string  $available
+     */
+    public static function exceedsBalanceMessage(string $subject, string $available): string
+    {
+        return $subject.' cannot exceed the available Book Balance of '.Money::inr($available).'.';
     }
 
     public function assertCanViewBookBalance(User $actor, Company $company, Branch $branch): void

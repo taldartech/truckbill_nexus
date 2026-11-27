@@ -20,28 +20,28 @@
 
 ## Operations spine
 
-| Workflow step         | Legacy view / route                           | Nexus page(s)                                    | Route name(s) (Nexus)                      | Parity      | Notes                                          |
-| --------------------- | --------------------------------------------- | ------------------------------------------------ | ------------------------------------------ | ----------- | ---------------------------------------------- |
-| Dashboard             | `dashboard`                                   | `operations/dashboard` (branch)                  | `operations`                               | Partial     | Unified ops dashboard vs legacy KPI cards      |
-| Enquiry               | _(not in legacy sidebar)_                     | `branch/enquiries/{index,create,show}`           | `branch.enquiries.*`                       | Nexus-only  | Pre-LR capture in Nexus                        |
-| Bilty list            | `lorry_receipts/index`                        | `branch/lorry-receipts/index`                    | `branch.lorry-receipts.index`              | Improved    | Register + broker context filter               |
-| Bilty create          | `lorry_receipts/create`                       | `branch/lorry-receipts/create` + `lr-form.tsx`   | `branch.lorry-receipts.create`             | Partial     | MT weights, confirmation density; freeze rules |
-| Bilty edit            | `lorry_receipts/{id}/edit`                    | `branch/lorry-receipts/edit`                     | `branch.lorry-receipts.edit`               | Partial     | Financial freeze vs legacy open edit           |
-| Lorry Hire list       | `freight_bookings/index`                      | `broker/lorry-hires/index`                       | `branch.broker.lorry-hires.index`          | Equivalent  |                                                |
-| Lorry Hire create     | From LR / booking store                       | `broker/lorry-hires/create`                      | `branch.broker.lorry-hires.create-from-lr` | Partial     | Payee chip + margin warning shipped            |
-| Lorry Hire show       | `freight_bookings/show`                       | `broker/lorry-hires/show`                        | `branch.broker.lorry-hires.show`           | Partial     | Record voucher CTA; settlement PDF deferred    |
-| Voucher list          | `voucher_payments/index`                      | `broker/vouchers/index`                          | `branch.broker.vouchers.index`             | Partial     | No legacy export-payout file in Nexus          |
-| Voucher create        | `voucher_payments/create`                     | `broker/vouchers/create`                         | `branch.broker.vouchers.create`            | Improved    | Hire preselect + context panel                 |
-| Voucher show          | `voucher_payments/{voucherNumber}`            | `broker/vouchers/show`                           | `branch.broker.vouchers.show`              | Partial     | Show density vs legacy                         |
-| Daily payments        | `daily-payments`                              | `broker/daily-payments/index`                    | `branch.broker.daily-payments.index`       | Partial     |                                                |
-| Book balance          | Transporter balance in legacy hire/voucher UX | `broker/transporter-balances/index`              | `branch.broker.transporter-balances.index` | Partial     | Remote party search wired (B2-PS-03 partial)   |
-| Delivery / Memo       | Memo bulk on `freight_bookings`               | `broker/deliveries/index`                        | `branch.broker.deliveries.*`               | Partial     | Memo assign + complete + POD attach            |
-| Linked bilty          | `lorry_receipts/create-linked`                | `broker/linked-bilties/{index,create,show}`      | `branch.broker.linked-bilties.*`           | Intentional | Post-hire grouping, not at LR create           |
-| Broker invoice list   | `invoices/index`                              | `broker/invoices/index`                          | `branch.broker.invoices.index`             | Partial     |                                                |
-| Broker invoice create | `invoices/create`                             | `broker/invoices/create`                         | `branch.broker.invoices.create`            | Partial     | No custom invoice (**PO-LGC-001**)             |
-| Broker invoice show   | `invoices/show`                               | `broker/invoices/show` + print                   | `branch.broker.invoices.show`              | Partial     | Cancel/reissue vs legacy edit                  |
-| Customer receipt      | `invoices/{invoice}/payments`                 | Unified `payments` + broker invoice payment form | `branch.broker.invoices.payments.store`    | Partial     | Unified `/payments` nav entry                  |
-| Registers / reports   | `reports/*` (22 routes)                       | `broker/registers/index` (hub)                   | `branch.broker.registers.index`            | Deferred    | Phase 11 full report suite                     |
+| Workflow step         | Legacy view / route                             | Nexus page(s)                                                             | Route name(s) (Nexus)                              | Parity      | Notes                                                             |
+| --------------------- | ----------------------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------- | ----------- | ----------------------------------------------------------------- |
+| Dashboard             | `dashboard`                                     | `operations/dashboard` (branch)                                           | `operations`                                       | Partial     | Unified ops dashboard vs legacy KPI cards                         |
+| Enquiry               | _(not in legacy sidebar)_                       | `branch/enquiries/{index,create,show}`                                    | `branch.enquiries.*`                               | Nexus-only  | Pre-LR capture in Nexus                                           |
+| Bilty list            | `lorry_receipts/index`                          | `branch/lorry-receipts/index`                                             | `branch.lorry-receipts.index`                      | Improved    | Register + broker context filter                                  |
+| Bilty create          | `lorry_receipts/create`                         | `branch/lorry-receipts/create` + `lr-form.tsx`                            | `branch.lorry-receipts.create`                     | Partial     | MT weights, confirmation density; freeze rules                    |
+| Bilty edit            | `lorry_receipts/{id}/edit`                      | `branch/lorry-receipts/edit`                                              | `branch.lorry-receipts.edit`                       | Partial     | Financial freeze vs legacy open edit                              |
+| Lorry Hire list       | `freight_bookings/index`                        | `broker/lorry-hires/index`                                                | `branch.broker.lorry-hires.index`                  | Equivalent  |                                                                   |
+| Lorry Hire create     | From LR / booking store                         | `broker/lorry-hires/create`                                               | `branch.broker.lorry-hires.create-from-lr`         | Partial     | Payee chip + margin warning shipped                               |
+| Lorry Hire show       | `freight_bookings/show`                         | `broker/lorry-hires/show`                                                 | `branch.broker.lorry-hires.show`                   | Partial     | Record voucher CTA; settlement PDF deferred                       |
+| Voucher list          | `voucher_payments/index`                        | `broker/vouchers/index`                                                   | `branch.broker.vouchers.index`                     | Partial     | No legacy export-payout file in Nexus                             |
+| Voucher payment       | `#voucherPaymentModal` (Good Hires / hire show) | Voucher Payment modal on `broker/lorry-hires/index` + `show`              | `branch.broker.vouchers.payment-context` / `store` | Aligned     | Single + bulk modal; Book Balance cap; no standalone page         |
+| Voucher show          | `voucher_payments/{voucherNumber}`              | `broker/vouchers/show`                                                    | `branch.broker.vouchers.show`                      | Partial     | Show density vs legacy                                            |
+| Daily payments        | `daily-payments`                                | `broker/daily-payments/index`                                             | `branch.broker.daily-payments.index`               | Partial     |                                                                   |
+| Book balance          | Transporter balance in legacy hire/voucher UX   | `broker/transporter-balances/index`                                       | `branch.broker.transporter-balances.index`         | Partial     | Remote party search wired (B2-PS-03 partial)                      |
+| Delivery / Memo       | Memo bulk on `freight_bookings`                 | Memo / POD modal on `broker/lorry-hires/index`; `broker/deliveries/index` | `branch.broker.deliveries.*`                       | Aligned     | Bulk Memo / POD marks Delivered; deliver without memo; POD attach |
+| Linked bilty          | `lorry_receipts/create-linked`                  | `broker/linked-bilties/{index,create,show}`                               | `branch.broker.linked-bilties.*`                   | Intentional | Post-hire grouping, not at LR create                              |
+| Broker invoice list   | `invoices/index`                                | `broker/invoices/index`                                                   | `branch.broker.invoices.index`                     | Partial     |                                                                   |
+| Broker invoice create | `invoices/create`                               | `broker/invoices/create`                                                  | `branch.broker.invoices.create`                    | Partial     | No custom invoice (**PO-LGC-001**)                                |
+| Broker invoice show   | `invoices/show`                                 | `broker/invoices/show` + print                                            | `branch.broker.invoices.show`                      | Partial     | Cancel/reissue vs legacy edit                                     |
+| Customer receipt      | `invoices/{invoice}/payments`                   | Unified `payments` + broker invoice payment form                          | `branch.broker.invoices.payments.store`            | Partial     | Unified `/payments` nav entry                                     |
+| Registers / reports   | `reports/*` (22 routes)                         | `broker/registers/index` (hub)                                            | `branch.broker.registers.index`                    | Deferred    | Phase 11 full report suite                                        |
 
 ---
 
@@ -70,11 +70,11 @@
 
 ## Deep links and query contracts
 
-| Operator action (legacy habit) | Nexus equivalent                                                              | Evidence                                     |
-| ------------------------------ | ----------------------------------------------------------------------------- | -------------------------------------------- |
-| Pay hire from booking screen   | Hire show → **Record voucher** → `/broker/vouchers/create?lorry_hire_id={id}` | `lorry-hires/show.tsx`, voucher `create.tsx` |
-| Create hire from LR            | LR show/register → create hire route                                          | `branch.broker.lorry-hires.create-from-lr`   |
-| Linked LR at create time       | Create Linked Bilty group after hires exist                                   | `linked-bilties/create.tsx`                  |
+| Operator action (legacy habit) | Nexus equivalent                                                               | Evidence                                                               |
+| ------------------------------ | ------------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| Pay hire from booking screen   | Hire show → **Voucher Payment** modal (Create & Record Voucher opens `?pay=1`) | `lorry-hires/show.tsx`, `components/broker/voucher-payment-dialog.tsx` |
+| Create hire from LR            | LR show/register → create hire route                                           | `branch.broker.lorry-hires.create-from-lr`                             |
+| Linked LR at create time       | Create Linked Bilty group after hires exist                                    | `linked-bilties/create.tsx`                                            |
 
 ---
 

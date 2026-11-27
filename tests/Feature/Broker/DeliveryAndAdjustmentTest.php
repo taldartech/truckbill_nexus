@@ -3,17 +3,21 @@
 use App\Domains\Broker\Adjustment\BrokerAdjustmentService;
 use App\Domains\Broker\Delivery\BrokerDeliveryService;
 use App\Domains\Broker\Enums\BrokerAdjustmentType;
+use App\Domains\Broker\Enums\BrokerDeliveryStatus;
 use App\Domains\Broker\Exceptions\BrokerConflictException;
+use App\Domains\Broker\Invoice\BrokerInvoiceService;
 use App\Domains\Broker\LorryHire\LorryHireCalculationService;
 use App\Domains\Broker\LorryHire\LorryHireService;
 use App\Domains\Consignment\Enums\FreightRateType;
 use App\Domains\Consignment\Enums\LrStatus;
 use App\Models\BrokerAdjustment;
 use App\Support\Tenant\TenantContextHolder;
+use Carbon\CarbonImmutable;
 use Database\Seeders\RbacSeeder;
 use Database\Seeders\SubscriptionCatalogueSeeder;
 use Database\Seeders\TdsReferenceRulesSeeder;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Validation\ValidationException;
 
 require_once __DIR__.'/../../Support/BrokerLorryHireHelpers.php';
 
@@ -48,14 +52,92 @@ test('memo bulk assign for same billing customer succeeds', function () {
     app(BrokerDeliveryService::class)->assignMemoPod($ctx['company'], $ctx['branch'], $ctx['member'], [
         'lorry_receipt_ids' => [$hireA->lorry_receipt_id, $hireB->lorry_receipt_id],
         'memo_number' => 'MEMO-9001',
-        'pod_number' => 'POD-9001',
+        'memo_date' => now()->subDay()->toDateString(),
     ]);
 
-    $hireA->lorryReceipt->load('delivery');
-    $hireB->lorryReceipt->load('delivery');
+    foreach ([$hireA, $hireB] as $hire) {
+        $lr = $hire->lorryReceipt->fresh('delivery');
+        expect($lr->delivery?->memo_number)->toBe('MEMO-9001')
+            ->and($lr->delivery?->status)->toBe(BrokerDeliveryStatus::Delivered)
+            ->and($lr->delivery?->delivery_date?->toDateString())->toBe(now()->subDay()->toDateString())
+            ->and($lr->status)->toBe(LrStatus::Delivered);
+    }
 
-    expect($hireA->lorryReceipt->delivery?->memo_number)->toBe('MEMO-9001')
-        ->and($hireB->lorryReceipt->delivery?->memo_number)->toBe('MEMO-9001');
+    $eligible = app(BrokerInvoiceService::class)->listEligibleLorryReceipts($ctx['company'], $ctx['branch'], $customer->id);
+    expect($eligible['with_memo']->pluck('id')->all())
+        ->toEqualCanonicalizing([$hireA->lorry_receipt_id, $hireB->lorry_receipt_id]);
+});
+
+test('memo assignment rejects a bilty that already has a memo and keeps the original', function () {
+    $ctx = brokerWorkspace();
+    tripActivate($ctx['company'], $ctx['branch']);
+    $hire = brokerCreateLorryHire($ctx);
+    brokerSetBillingCustomer($hire->lorryReceipt, $ctx);
+    $service = app(BrokerDeliveryService::class);
+
+    $service->assignMemoPod($ctx['company'], $ctx['branch'], $ctx['member'], [
+        'lorry_receipt_ids' => [$hire->lorry_receipt_id],
+        'memo_number' => 'MEMO-FIRST',
+    ]);
+
+    expect(fn () => $service->assignMemoPod($ctx['company'], $ctx['branch'], $ctx['member'], [
+        'lorry_receipt_ids' => [$hire->lorry_receipt_id],
+        'memo_number' => 'MEMO-SECOND',
+    ]))->toThrow(BrokerConflictException::class);
+
+    expect($hire->lorryReceipt->fresh('delivery')->delivery?->memo_number)->toBe('MEMO-FIRST');
+});
+
+test('a memo number belongs to one customer', function () {
+    $ctx = brokerWorkspace();
+    tripActivate($ctx['company'], $ctx['branch']);
+    $hireA = brokerCreateLorryHire($ctx);
+    brokerSetBillingCustomer($hireA->lorryReceipt, $ctx);
+    $hireB = brokerCreateLorryHire($ctx);
+    brokerSetBillingCustomer($hireB->lorryReceipt, $ctx);
+    $service = app(BrokerDeliveryService::class);
+
+    $service->assignMemoPod($ctx['company'], $ctx['branch'], $ctx['member'], [
+        'lorry_receipt_ids' => [$hireA->lorry_receipt_id],
+        'memo_number' => 'MEMO-SHARED',
+    ]);
+
+    expect(fn () => $service->assignMemoPod($ctx['company'], $ctx['branch'], $ctx['member'], [
+        'lorry_receipt_ids' => [$hireB->lorry_receipt_id],
+        'memo_number' => 'MEMO-SHARED',
+    ]))->toThrow(ValidationException::class, 'This Memo / POD number is already used by another customer.');
+});
+
+test('memo date cannot be in the future', function () {
+    $ctx = brokerWorkspace();
+    tripActivate($ctx['company'], $ctx['branch']);
+    $hire = brokerCreateLorryHire($ctx);
+    brokerSetBillingCustomer($hire->lorryReceipt, $ctx);
+
+    expect(fn () => app(BrokerDeliveryService::class)->assignMemoPod($ctx['company'], $ctx['branch'], $ctx['member'], [
+        'lorry_receipt_ids' => [$hire->lorry_receipt_id],
+        'memo_number' => 'MEMO-FUTURE',
+        'memo_date' => now()->addDays(2)->toDateString(),
+    ]))->toThrow(ValidationException::class, 'The memo date cannot be in the future.');
+
+    expect($hire->lorryReceipt->fresh()->status)->toBe(LrStatus::InProgress);
+});
+
+test('memo date of today in the company timezone is accepted late in the evening', function () {
+    $ctx = brokerWorkspace();
+    tripActivate($ctx['company'], $ctx['branch']);
+    $hire = brokerCreateLorryHire($ctx);
+    brokerSetBillingCustomer($hire->lorryReceipt, $ctx);
+    $timezone = $ctx['company']->timezone ?: 'Asia/Kolkata';
+    $this->travelTo(CarbonImmutable::parse('2026-11-27 23:30', $timezone));
+
+    app(BrokerDeliveryService::class)->assignMemoPod($ctx['company'], $ctx['branch'], $ctx['member'], [
+        'lorry_receipt_ids' => [$hire->lorry_receipt_id],
+        'memo_number' => 'MEMO-LATE',
+        'memo_date' => '2026-11-27',
+    ]);
+
+    expect($hire->lorryReceipt->fresh('delivery')->delivery?->delivery_date?->toDateString())->toBe('2026-11-27');
 });
 
 test('memo bulk assign rejects different billing customers', function () {
