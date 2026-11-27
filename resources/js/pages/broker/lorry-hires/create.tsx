@@ -434,18 +434,18 @@ export default function LorryHireCreate({
         setConfirmOpen(true);
     };
 
-    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    const handleBeforeSubmit = (): boolean => {
         if (!submitAllowed.current) {
-            event.preventDefault();
             if (!submissionLock.current && !formProcessing && !submitting) {
                 openConfirmation();
             }
-            return;
+            return false;
         }
-        // One deliberate confirmation → one native submit; keep lock until response.
+        // One deliberate confirmation → one submit; keep lock until response.
         submitAllowed.current = false;
         submissionLock.current = true;
         setSubmitting(true);
+        return true;
     };
 
     const submitAfterConfirm = (continueToVoucher: boolean) => {
@@ -626,7 +626,7 @@ export default function LorryHireCreate({
                     action={urls.store}
                     method="post"
                     className="grid w-full gap-3"
-                    onSubmit={handleSubmit}
+                    onBefore={handleBeforeSubmit}
                 >
                     {({ processing, errors }) => (
                         <>

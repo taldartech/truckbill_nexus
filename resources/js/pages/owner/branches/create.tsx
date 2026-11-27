@@ -296,12 +296,13 @@ export default function OwnerBranchesCreate({
                         action={links.store}
                         method="post"
                         className="space-y-6"
-                        onSubmit={(event) => {
+                        onBefore={() => {
                             if (!submitAllowed.current) {
-                                event.preventDefault();
                                 openConfirmation();
+                                return false;
                             }
                             submitAllowed.current = false;
+                            return true;
                         }}
                     >
                         {({ processing, errors: formErrors }) => (

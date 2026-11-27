@@ -87,33 +87,26 @@ export function useFlashToast(): void {
 
         const offHttp = router.on('httpException', (event) => {
             const detail = (event as CustomEvent).detail as {
-                response?: Response;
-                status?: number;
+                response?: { status?: number };
             };
-            const status =
-                detail.status ??
-                (detail.response instanceof Response
-                    ? detail.response.status
-                    : undefined);
+            const message = httpFailureMessage(detail.response?.status);
 
-            if (status === 409) {
+            if (message !== null) {
+                event.preventDefault();
+                toast.error(message);
+            }
+        });
+
+        const offValidation = router.on('error', (event) => {
+            const errors = (event as CustomEvent).detail?.errors as
+                | Record<string, string>
+                | undefined;
+
+            if (errors && Object.keys(errors).length > 0) {
                 toast.error(
-                    'Workspace context changed in another tab. Reload the page and try again.',
+                    'The form was not saved. Review the highlighted fields.',
+                    { id: 'form-validation-failed' },
                 );
-            } else if (status === 403) {
-                toast.error(
-                    'You do not have permission to perform this action.',
-                );
-            } else if (status === 401) {
-                toast.error('Your session has expired. Please sign in again.');
-            } else if (status === 419) {
-                toast.error(
-                    'Your session expired. Refresh the page and try again.',
-                );
-            } else if (status === 404) {
-                toast.error('This record is no longer available.');
-            } else if (status !== undefined && status >= 500) {
-                toast.error('Something went wrong. Please try again.');
             }
         });
 
@@ -125,7 +118,31 @@ export function useFlashToast(): void {
             offSuccess();
             offFlash();
             offHttp();
+            offValidation();
             offNetwork();
         };
     }, []);
+}
+
+function httpFailureMessage(status: number | undefined): string | null {
+    if (status === 409) {
+        return 'Workspace context changed in another tab. Reload the page and try again.';
+    }
+    if (status === 403) {
+        return 'You do not have permission to perform this action.';
+    }
+    if (status === 401) {
+        return 'Your session has expired. Please sign in again.';
+    }
+    if (status === 419) {
+        return 'Your session expired. Refresh the page and try again.';
+    }
+    if (status === 404) {
+        return 'This record is no longer available.';
+    }
+    if (status !== undefined && status >= 500) {
+        return 'Something went wrong. Please try again.';
+    }
+
+    return null;
 }

@@ -95,6 +95,7 @@ use App\\Models\\State;
 use App\\Models\\SubscriptionAddon;
 use App\\Models\\SubscriptionCatalogueVersion;
 use App\\Models\\SubscriptionPlan;
+use App\\Models\\SubscriptionTaxSetting;
 use App\\Models\\User;
 use App\\Support\\Tenant\\TenantContext;
 use App\\Support\\Tenant\\TenantContextHolder;
@@ -139,10 +140,10 @@ PlatformBillingProfile::query()->create([
     'state_name' => 'Maharashtra',
     'pin_code' => '411001',
     'gstin' => '27AAACT1234A1Z5',
-    'gst_rate_id' => $gst18->id,
-    'gst_rate_percent' => $gst18->rate_percent,
     'is_active' => true,
 ]);
+SubscriptionTaxSetting::query()->delete();
+SubscriptionTaxSetting::query()->create(['gst_rate_id' => $gst18->id, 'gst_rate_percent' => '18.00']);
 
 $pw = Hash::make('${E2E_PASSWORD}');
 $owner = User::factory()->customer()->create([

@@ -410,13 +410,17 @@ function PaymentsPanel({
                     action={urls.payment}
                     method="post"
                     className="grid max-w-xl gap-3 rounded-lg border border-border p-4"
-                    onSubmit={(event) => {
+                    onBefore={() => {
                         if (!submitAllowed.current) {
-                            event.preventDefault();
-                            openConfirmation(event.currentTarget);
-                            return;
+                            openConfirmation(
+                                document.getElementById(
+                                    'broker-invoice-payment-form',
+                                ) as HTMLFormElement,
+                            );
+                            return false;
                         }
                         submitAllowed.current = false;
+                        return true;
                     }}
                 >
                     {({ processing, errors }) => (

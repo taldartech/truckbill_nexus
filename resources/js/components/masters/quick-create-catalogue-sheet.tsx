@@ -155,12 +155,23 @@ export function QuickCreateCatalogueSheet({
             } | null;
 
             if (!response.ok) {
-                if (json?.errors) {
-                    setErrors(json.errors);
-                }
+                const fieldErrors = json?.errors ?? {};
+                setErrors(fieldErrors);
+                const unmapped = Object.entries(fieldErrors)
+                    .filter(
+                        ([key]) =>
+                            key !== 'name' && !(usesCode && key === 'code'),
+                    )
+                    .flatMap(([, value]) =>
+                        Array.isArray(value) ? value : [value],
+                    );
                 setFormError(
-                    json?.message ??
-                        'Could not create catalogue item. Check the form and try again.',
+                    unmapped.length > 0
+                        ? unmapped.join(' ')
+                        : Object.keys(fieldErrors).length > 0
+                          ? null
+                          : (json?.message ??
+                            'Could not create catalogue item. Check the form and try again.'),
                 );
                 setConfirmOpen(false);
                 setProcessing(false);

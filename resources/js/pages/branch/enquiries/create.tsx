@@ -94,13 +94,16 @@ export default function BranchEnquiryCreate({
         setConfirmOpen(true);
     };
 
-    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    const handleBeforeSubmit = (): boolean => {
         if (!submitAllowed.current) {
-            event.preventDefault();
-            openConfirmation(event.currentTarget);
-            return;
+            const form = document.getElementById('enquiry-create-form');
+            if (form instanceof HTMLFormElement) {
+                openConfirmation(form);
+            }
+            return false;
         }
         submitAllowed.current = false;
+        return true;
     };
 
     const handleConfirm = () => {
@@ -128,7 +131,7 @@ export default function BranchEnquiryCreate({
                     action={urls.store}
                     method="post"
                     className="space-y-3"
-                    onSubmit={handleSubmit}
+                    onBefore={handleBeforeSubmit}
                 >
                     {({ processing }) => (
                         <>

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,17 +34,22 @@ export function QuickCreateLedgerSheet({
         accountGroups[0]?.id ?? '',
     );
     const [error, setError] = useState<string | null>(null);
+    const [fieldErrors, setFieldErrors] = useState<
+        Partial<Record<'name' | 'account_group_id', string>>
+    >({});
     const [processing, setProcessing] = useState(false);
 
     const reset = () => {
         setName('');
         setAccountGroupId(accountGroups[0]?.id ?? '');
         setError(null);
+        setFieldErrors({});
     };
 
     const submit = async () => {
         setProcessing(true);
         setError(null);
+        setFieldErrors({});
         try {
             const token = (
                 document.querySelector(
@@ -69,12 +75,15 @@ export function QuickCreateLedgerSheet({
                 errors?: Record<string, string[]>;
             };
             if (!response.ok) {
-                const firstError =
-                    json.errors?.name?.[0] ??
-                    json.errors?.account_group_id?.[0] ??
-                    json.message ??
-                    'Unable to create ledger.';
-                setError(firstError);
+                const nameError = json.errors?.name?.[0];
+                const groupError = json.errors?.account_group_id?.[0];
+                setFieldErrors({
+                    name: nameError,
+                    account_group_id: groupError,
+                });
+                if (!nameError && !groupError) {
+                    setError(json.message ?? 'Unable to create ledger.');
+                }
                 return;
             }
             if (json.data) {
@@ -115,7 +124,17 @@ export function QuickCreateLedgerSheet({
                             id="quick-ledger-name"
                             value={name}
                             onChange={(event) => setName(event.target.value)}
+                            aria-invalid={fieldErrors.name ? true : undefined}
+                            aria-describedby={
+                                fieldErrors.name
+                                    ? 'quick-ledger-name-error'
+                                    : undefined
+                            }
                             autoFocus
+                        />
+                        <InputError
+                            id="quick-ledger-name-error"
+                            message={fieldErrors.name}
                         />
                     </div>
                     <div className="space-y-1">
@@ -126,6 +145,14 @@ export function QuickCreateLedgerSheet({
                             id="quick-ledger-group"
                             className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
                             value={accountGroupId}
+                            aria-invalid={
+                                fieldErrors.account_group_id ? true : undefined
+                            }
+                            aria-describedby={
+                                fieldErrors.account_group_id
+                                    ? 'quick-ledger-group-error'
+                                    : undefined
+                            }
                             onChange={(event) =>
                                 setAccountGroupId(event.target.value)
                             }
@@ -136,9 +163,15 @@ export function QuickCreateLedgerSheet({
                                 </option>
                             ))}
                         </select>
+                        <InputError
+                            id="quick-ledger-group-error"
+                            message={fieldErrors.account_group_id}
+                        />
                     </div>
                     {error ? (
-                        <p className="text-sm text-destructive">{error}</p>
+                        <p role="alert" className="text-sm text-destructive">
+                            {error}
+                        </p>
                     ) : null}
                 </div>
                 <SheetFooter>

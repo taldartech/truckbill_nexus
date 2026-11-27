@@ -501,8 +501,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/parties/{party}', [PartyController::class, 'show'])->name('branch.parties.show');
             Route::get('/parties/{party}/edit', [PartyController::class, 'edit'])->name('branch.parties.edit');
             Route::patch('/parties/{party}', [PartyController::class, 'update'])->name('branch.parties.update');
-            Route::post('/parties/{party}/roles', [PartyController::class, 'assignRole'])->name('branch.parties.roles.assign');
-            Route::post('/parties/{party}/roles/{partyRole}/remove', [PartyController::class, 'removeRole'])->name('branch.parties.roles.remove');
             Route::delete('/parties/{party}', [PartyController::class, 'destroy'])->name('branch.parties.destroy');
         });
 

@@ -1,6 +1,7 @@
 import { Form, Head, Link } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 import { AppIndexListCard, AppIndexPage } from '@/components/app-index-page';
+import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -154,6 +155,13 @@ export default function AccountingOpeningBalanceCreate({
                                                         </option>
                                                     ))}
                                                 </select>
+                                                <InputError
+                                                    message={
+                                                        errors[
+                                                            `lines.${index}.gl_ledger_id`
+                                                        ]
+                                                    }
+                                                />
                                             </div>
                                             <div className="space-y-1">
                                                 <Label>Debit</Label>
@@ -170,6 +178,13 @@ export default function AccountingOpeningBalanceCreate({
                                                                     .value,
                                                             credit_amount: '',
                                                         })
+                                                    }
+                                                />
+                                                <InputError
+                                                    message={
+                                                        errors[
+                                                            `lines.${index}.debit_amount`
+                                                        ]
                                                     }
                                                 />
                                             </div>
@@ -190,6 +205,13 @@ export default function AccountingOpeningBalanceCreate({
                                                         })
                                                     }
                                                 />
+                                                <InputError
+                                                    message={
+                                                        errors[
+                                                            `lines.${index}.credit_amount`
+                                                        ]
+                                                    }
+                                                />
                                             </div>
                                             <input
                                                 type="hidden"
@@ -197,6 +219,13 @@ export default function AccountingOpeningBalanceCreate({
                                                 value={
                                                     line.narration ||
                                                     'Opening balance'
+                                                }
+                                            />
+                                            <InputError
+                                                message={
+                                                    errors[
+                                                        `lines.${index}.narration`
+                                                    ]
                                                 }
                                             />
                                         </div>

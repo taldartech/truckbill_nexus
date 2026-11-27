@@ -1417,13 +1417,16 @@ export default function LrForm({
         setConfirmOpen(true);
     };
 
-    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    const handleBeforeSubmit = (): boolean => {
         if (!submitAllowed.current) {
-            event.preventDefault();
-            openConfirmation(event.currentTarget);
-            return;
+            const form = document.getElementById('lorry-receipt-form');
+            if (form instanceof HTMLFormElement) {
+                openConfirmation(form);
+            }
+            return false;
         }
         submitAllowed.current = false;
+        return true;
     };
 
     const submitAfterConfirm = (continuation: 'none' | 'hire' | 'trip') => {
@@ -1525,7 +1528,7 @@ export default function LrForm({
                     action={action}
                     method={method}
                     className="w-full space-y-3"
-                    onSubmit={handleSubmit}
+                    onBefore={handleBeforeSubmit}
                 >
                     {({ errors, processing }) => (
                         <>
@@ -2459,6 +2462,13 @@ export default function LrForm({
                                                                     ),
                                                                 )}
                                                             </select>
+                                                            <InputError
+                                                                message={
+                                                                    errors[
+                                                                        `goods.${index}.goods_type_id`
+                                                                    ]
+                                                                }
+                                                            />
                                                         </div>
                                                         <div className="space-y-1">
                                                             <div className="flex items-center justify-between gap-2">
@@ -2525,6 +2535,13 @@ export default function LrForm({
                                                                     ),
                                                                 )}
                                                             </select>
+                                                            <InputError
+                                                                message={
+                                                                    errors[
+                                                                        `goods.${index}.package_type_id`
+                                                                    ]
+                                                                }
+                                                            />
                                                         </div>
                                                         <div className="space-y-1">
                                                             <Label
@@ -2556,6 +2573,13 @@ export default function LrForm({
                                                                         },
                                                                         'package_count',
                                                                     )
+                                                                }
+                                                            />
+                                                            <InputError
+                                                                message={
+                                                                    errors[
+                                                                        `goods.${index}.package_count`
+                                                                    ]
                                                                 }
                                                             />
                                                         </div>
@@ -2625,6 +2649,13 @@ export default function LrForm({
                                                                     )
                                                                 }
                                                                 aria-label={`Actual weight MT row ${index + 1}`}
+                                                            />
+                                                            <InputError
+                                                                message={
+                                                                    errors[
+                                                                        `goods.${index}.actual_weight`
+                                                                    ]
+                                                                }
                                                             />
                                                         </div>
                                                         <div className="space-y-1">
@@ -2696,6 +2727,13 @@ export default function LrForm({
                                                                     )
                                                                 }
                                                                 aria-label={`Charged weight MT row ${index + 1}`}
+                                                            />
+                                                            <InputError
+                                                                message={
+                                                                    errors[
+                                                                        `goods.${index}.charged_weight`
+                                                                    ]
+                                                                }
                                                             />
                                                         </div>
                                                     </div>
@@ -2769,6 +2807,13 @@ export default function LrForm({
                                                                             ),
                                                                         )}
                                                                     </select>
+                                                                    <InputError
+                                                                        message={
+                                                                            errors[
+                                                                                `goods.${index}.freight_rate_type`
+                                                                            ]
+                                                                        }
+                                                                    />
                                                                 </div>
                                                                 <div className="space-y-1">
                                                                     <Label
@@ -2803,6 +2848,13 @@ export default function LrForm({
                                                                             )
                                                                         }
                                                                         required
+                                                                    />
+                                                                    <InputError
+                                                                        message={
+                                                                            errors[
+                                                                                `goods.${index}.freight_rate`
+                                                                            ]
+                                                                        }
                                                                     />
                                                                 </div>
                                                                 <div className="space-y-1">
@@ -2846,6 +2898,13 @@ export default function LrForm({
                                                                     )
                                                                 }
                                                             />
+                                                            <InputError
+                                                                message={
+                                                                    errors[
+                                                                        `goods.${index}.goods_value`
+                                                                    ]
+                                                                }
+                                                            />
                                                         </div>
                                                         <div className="space-y-1 md:col-span-2 xl:col-span-2">
                                                             <Label className="flex items-center gap-1 text-xs">
@@ -2874,6 +2933,13 @@ export default function LrForm({
                                                                         },
                                                                         'other',
                                                                     )
+                                                                }
+                                                            />
+                                                            <InputError
+                                                                message={
+                                                                    errors[
+                                                                        `goods.${index}.goods_description`
+                                                                    ]
                                                                 }
                                                             />
                                                         </div>

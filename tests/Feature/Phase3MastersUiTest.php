@@ -4,11 +4,13 @@ require_once __DIR__.'/../Support/VehicleMasterFixtures.php';
 
 use App\Domains\Company\CompanyWorkspaceService;
 use App\Domains\Master\Party\Enums\PartyRoleType;
+use App\Domains\Master\Party\PartyService;
 use App\Domains\Rbac\Enums\PermissionDomain;
 use App\Domains\Rbac\RoleAssignmentService;
 use App\Models\BankCashAccount;
 use App\Models\Party;
 use App\Models\Role;
+use App\Models\State;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Support\Tenant\TenantContextHolder;
@@ -149,6 +151,24 @@ test('party create edit detail soft-delete workflow through inertia', function (
     expect($party->fresh()->trashed())->toBeTrue();
 });
 
+test('party create treats unspecified gst applicability as the role default', function () {
+    ['owner' => $owner, 'company' => $company, 'branch' => $branch] = uiMastersWorkspace();
+    uiActingAsCustomer($owner);
+    enterBranchWorkspace($company, $branch)->assertRedirect();
+
+    $this->post(route('branch.parties.store'), [
+        'name' => 'Unspecified GST Party',
+        'contact_number' => '9000055555',
+        'state' => 'MH',
+        'city' => 'Pune',
+        'is_gst_applicable' => '',
+        'roles' => [['role' => PartyRoleType::Customer->value, 'attributes' => []]],
+    ])->assertSessionHasNoErrors()->assertRedirect();
+
+    $party = Party::query()->where('company_id', $company->id)->where('name', 'Unspecified GST Party')->firstOrFail();
+    expect($party->is_gst_applicable)->toBeTrue();
+});
+
 test('viewer cannot create parties and cross-company party urls are isolated', function () {
     [
         'company' => $company,
@@ -277,4 +297,95 @@ test('goods types master renders without payment modes and legacy catalogues red
             ->component('branch/masters/catalogue-type/index')
             ->missing('paymentModes')
             ->where('canManageOwnerCatalogues', true));
+});
+
+test('party register filters by contact person, state, city and deleted status', function () {
+    ['owner' => $owner, 'company' => $company, 'branch' => $branch] = uiMastersWorkspace();
+    uiActingAsCustomer($owner);
+    enterBranchWorkspace($company, $branch)->assertRedirect();
+    $maharashtra = State::query()->where('gst_code', '27')->firstOrFail();
+    $service = app(PartyService::class);
+
+    $pune = $service->create($owner, $company, null, [
+        'name' => 'Pune Traders', 'contact_person' => 'Asha Kulkarni', 'contact_number' => '9000000001',
+        'gstin' => '27ABCDE1234F1Z5', 'state' => $maharashtra->name, 'state_id' => $maharashtra->id, 'city' => 'Pune',
+    ], [['role' => PartyRoleType::Customer->value, 'attributes' => []]]);
+    $service->create($owner, $company, null, [
+        'name' => 'Surat Mills', 'contact_number' => '9000000002', 'state' => 'Gujarat', 'city' => 'Surat',
+    ], [['role' => PartyRoleType::Consignee->value, 'attributes' => []]]);
+    $gone = $service->create($owner, $company, null, [
+        'name' => 'Closed Co', 'contact_number' => '9000000003', 'state' => $maharashtra->name, 'city' => 'Nagpur',
+    ], [['role' => PartyRoleType::Customer->value, 'attributes' => []]]);
+    $service->softDelete($owner, $gone, 'Closed business');
+
+    $this->get(route('branch.parties.index', ['q' => 'asha']))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('branch/masters/parties/index')
+            ->has('parties.data', 1)
+            ->where('parties.data.0.id', $pune->id)
+            ->where('parties.data.0.contact_person', 'Asha Kulkarni')
+            ->where('parties.data.0.gstin', '27ABCDE1234F1Z5')
+            ->where('parties.data.0.status', 'active')
+            ->has('stateOptions'));
+
+    $this->get(route('branch.parties.index', ['state_id' => $maharashtra->id]))
+        ->assertInertia(fn ($page) => $page->has('parties.data', 1)->where('parties.data.0.name', 'Pune Traders'));
+
+    $this->get(route('branch.parties.index', ['city' => 'sur']))
+        ->assertInertia(fn ($page) => $page->has('parties.data', 1)->where('parties.data.0.name', 'Surat Mills'));
+
+    $this->get(route('branch.parties.index', ['status' => 'deleted']))
+        ->assertInertia(fn ($page) => $page
+            ->has('parties.data', 1)
+            ->where('parties.data.0.name', 'Closed Co')
+            ->where('parties.data.0.status', 'deleted'));
+
+    $this->get(route('branch.parties.index', ['status' => 'archived']))->assertSessionHasErrors('status');
+});
+
+test('party show presents role-driven sections without internal identifiers', function () {
+    ['owner' => $owner, 'company' => $company, 'branch' => $branch] = uiMastersWorkspace();
+    uiActingAsCustomer($owner);
+    enterBranchWorkspace($company, $branch)->assertRedirect();
+    $service = app(PartyService::class);
+
+    $customer = $service->create($owner, $company, null, [
+        'name' => 'Plain Customer', 'contact_number' => '9000000011', 'state' => 'Maharashtra', 'city' => 'Pune',
+    ], [['role' => PartyRoleType::Customer->value, 'attributes' => []]]);
+
+    $this->get(route('branch.parties.show', $customer))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('branch/masters/parties/show')
+            ->where('party.roles', ['Customer'])
+            ->where('party.sections.0.key', 'basic')
+            ->where('party.sections.1.key', 'business')
+            ->has('party.sections', 2)
+            ->missing('party.id')
+            ->missing('roleOptions')
+            ->missing('links.assign_role'));
+
+    $driver = $service->create($owner, $company, null, [
+        'name' => 'Ravi Driver', 'contact_number' => '9000000012',
+    ], [[
+        'role' => PartyRoleType::Driver->value,
+        'attributes' => [
+            'driver_type' => 'permanent',
+            'license_number' => 'MH1220200001234',
+            'aadhaar' => '123412341234',
+            'bank_name' => 'State Bank',
+            'bank_account_number' => '000123456789',
+        ],
+    ]]);
+
+    $this->get(route('branch.parties.show', $driver))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('party.roles', ['Driver'])
+            ->where('party.sections.0.key', 'basic')
+            ->where('party.sections.1.key', 'driver')
+            ->where('party.sections.1.items.2.value', 'XXXX XXXX 1234')
+            ->where('party.sections.2.key', 'bank')
+            ->has('party.sections', 3));
 });

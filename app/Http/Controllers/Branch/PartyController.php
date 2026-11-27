@@ -28,8 +28,10 @@ use App\Models\Branch;
 use App\Models\Company;
 use App\Models\Party;
 use App\Models\PartyRole;
+use App\Models\State;
 use App\Models\User;
 use App\Support\Presentation\FreightAmountPresentation;
+use App\Support\Presentation\PartyProfilePresentation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -55,6 +57,7 @@ class PartyController extends Controller
         private readonly TransporterTdsCalculationService $transporterTds,
         private readonly TransporterBookBalanceService $bookBalances = new TransporterBookBalanceService,
         private readonly FreightAmountPresentation $freightPresentation = new FreightAmountPresentation,
+        private readonly PartyProfilePresentation $profilePresentation = new PartyProfilePresentation,
         private readonly ?CompanyCapabilityResolver $capabilities = null,
     ) {}
 
@@ -71,7 +74,7 @@ class PartyController extends Controller
         return array_map(
             fn (PartyRoleType $role): array => [
                 'value' => $role->value,
-                'label' => str_replace('_', ' ', ucfirst($role->value)),
+                'label' => $role->label(),
             ],
             $this->capabilities()->allowedPartyRoles($company),
         );
@@ -102,14 +105,27 @@ class PartyController extends Controller
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $permissions = $this->masterPermissions($actor, $company, $branch, $this->access, $this->authorizer);
 
+        $filters = $request->validate([
+            'q' => ['nullable', 'string', 'max:120'],
+            'role' => ['nullable', Rule::enum(PartyRoleType::class)],
+            'state_id' => ['nullable', 'uuid'],
+            'city' => ['nullable', 'string', 'max:120'],
+            'status' => ['nullable', Rule::in(['active', 'deleted'])],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+        $status = $filters['status'] ?? 'active';
+
         try {
             $page = $this->parties->search(
                 actor: $actor,
                 company: $company,
                 branch: $branch,
-                query: $request->string('q')->toString() ?: null,
-                role: $request->string('role')->toString() ?: null,
-                perPage: min(100, max(1, (int) $request->input('per_page', 15))),
+                query: $filters['q'] ?? null,
+                role: $filters['role'] ?? null,
+                perPage: (int) ($filters['per_page'] ?? 15),
+                stateId: $filters['state_id'] ?? null,
+                city: $filters['city'] ?? null,
+                deleted: $status === 'deleted',
             );
         } catch (PartyDomainException $e) {
             abort(403, $e->getMessage());
@@ -124,10 +140,19 @@ class PartyController extends Controller
             'branch' => $this->branchPayload($branch),
             'permissions' => $permissions,
             'filters' => [
-                'q' => $request->string('q')->toString(),
-                'role' => $request->string('role')->toString(),
+                'q' => $filters['q'] ?? '',
+                'role' => $filters['role'] ?? '',
+                'state_id' => $filters['state_id'] ?? '',
+                'city' => $filters['city'] ?? '',
+                'status' => $status,
             ],
             'roleOptions' => $this->partyRoleOptions($company),
+            'stateOptions' => State::query()
+                ->where('is_active', true)
+                ->orderBy('name')
+                ->get(['id', 'name'])
+                ->map(fn (State $state): array => ['value' => $state->id, 'label' => $state->name])
+                ->all(),
             'parties' => [
                 'data' => collect($page->items())->map(fn (Party $party): array => $this->partyListPayload($party))->values()->all(),
                 'meta' => [
@@ -379,7 +404,7 @@ class PartyController extends Controller
             'email' => ['nullable', 'email', 'max:255'],
             'gstin' => ['nullable', 'string', 'max:20'],
             'pan' => ['nullable', 'string', 'max:20'],
-            'is_gst_applicable' => ['sometimes', 'boolean'],
+            'is_gst_applicable' => ['sometimes', 'nullable', 'boolean'],
             ...$this->geographyValidationRules(false),
             'address' => ['nullable', 'string', 'max:2000'],
             'roles' => ['required', 'array', 'min:1'],
@@ -469,9 +494,16 @@ class PartyController extends Controller
             'company' => $this->companyPayload($company),
             'branch' => $this->branchPayload($branch),
             'permissions' => $permissions,
-            'party' => $this->partyDetailPayload($party),
+            'party' => [
+                'name' => $party->name,
+                'roles' => $party->roles
+                    ->filter(fn (PartyRole $role): bool => $role->deactivated_at === null)
+                    ->map(fn (PartyRole $role): string => PartyRoleType::from((string) $role->role)->label())
+                    ->values()
+                    ->all(),
+                'sections' => $this->profilePresentation->sections($party),
+            ],
             'bookBalance' => $bookBalance,
-            'roleOptions' => $this->partyRoleOptions($company),
             'documentDrawer' => $this->documentDrawerPayload(
                 $actor,
                 $company,
@@ -484,9 +516,6 @@ class PartyController extends Controller
             'links' => array_merge($this->branchMasterNavLinks(), [
                 'index' => route('branch.parties.index', absolute: false),
                 'edit' => route('branch.parties.edit', [$party], absolute: false),
-                'update' => route('branch.parties.update', [$party], absolute: false),
-                'assign_role' => route('branch.parties.roles.assign', [$party], absolute: false),
-                'destroy' => route('branch.parties.destroy', [$party], absolute: false),
                 'documents' => route('branch.documents.index', [
                     'company' => $company,
                     'branch' => $branch,
@@ -539,7 +568,7 @@ class PartyController extends Controller
             'email' => ['nullable', 'email', 'max:255'],
             'gstin' => ['nullable', 'string', 'max:20'],
             'pan' => ['nullable', 'string', 'max:20'],
-            'is_gst_applicable' => ['sometimes', 'boolean'],
+            'is_gst_applicable' => ['sometimes', 'nullable', 'boolean'],
             ...$this->geographyValidationRules(false),
             'address' => ['nullable', 'string', 'max:2000'],
             'roles' => ['sometimes', 'array', 'min:1'],
@@ -579,72 +608,6 @@ class PartyController extends Controller
             ->with('success', 'Party updated.');
     }
 
-    public function assignRole(Request $request, Party $party, Company $company, Branch $branch): RedirectResponse|JsonResponse
-    {
-        $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertParty($company, $branch, $party);
-
-        /** @var User $actor */
-        $actor = $request->user();
-
-        $validated = $request->validate([
-            'role' => ['required', Rule::enum(PartyRoleType::class)],
-            'attributes' => ['nullable', 'array'],
-            'remark' => ['required', 'string', 'max:1000'],
-        ]);
-
-        $this->assertPartyRolesAllowed($company, [['role' => (string) $validated['role'], 'attributes' => []]]);
-
-        try {
-            $role = $this->parties->assignRole(
-                $actor,
-                $party,
-                PartyRoleType::from($validated['role']),
-                $validated['attributes'] ?? [],
-                $validated['remark'],
-            );
-        } catch (PartyDomainException $e) {
-            abort(403, $e->getMessage());
-        }
-
-        if ($request->expectsJson()) {
-            return response()->json(['data' => $role], 201);
-        }
-
-        return back()->with('success', 'Role assigned.');
-    }
-
-    public function removeRole(Request $request, Party $party, PartyRole $partyRole, Company $company, Branch $branch): RedirectResponse|JsonResponse
-    {
-        $this->activateBranchPanel($request, $company, $branch, $this->access);
-        $this->assertParty($company, $branch, $party);
-
-        if ($partyRole->party_id !== $party->id || $partyRole->company_id !== $company->id) {
-            abort(404);
-        }
-
-        /** @var User $actor */
-        $actor = $request->user();
-
-        $validated = $request->validate([
-            'remark' => ['required', 'string', 'max:1000'],
-        ]);
-
-        try {
-            $role = $this->parties->removeRole($actor, $partyRole, $validated['remark']);
-        } catch (PartyDomainException $e) {
-            abort(403, $e->getMessage());
-        } catch (ValidationException $e) {
-            throw $e;
-        }
-
-        if ($request->expectsJson()) {
-            return response()->json(['data' => $role]);
-        }
-
-        return back()->with('success', 'Role removed.');
-    }
-
     public function destroy(Request $request, Party $party, Company $company, Branch $branch): RedirectResponse|JsonResponse
     {
         $this->activateBranchPanel($request, $company, $branch, $this->access);
@@ -680,11 +643,14 @@ class PartyController extends Controller
         return [
             'id' => $party->id,
             'name' => $party->name,
+            'contact_person' => $party->contact_person,
             'contact_number' => $party->contact_number,
             'email' => $party->email,
+            'gstin' => $party->gstin,
             'city' => $party->city,
             'state' => $party->state,
             'scope' => $party->branch_id === null ? 'shared' : 'branch',
+            'status' => $party->trashed() ? 'deleted' : 'active',
             'roles' => $party->roles->pluck('role')->values()->all(),
         ];
     }
@@ -743,6 +709,10 @@ class PartyController extends Controller
     private function normalizePartyAttributes(array $validated): array
     {
         $attributes = collect($validated)->except(['roles', 'remark'])->all();
+
+        if (array_key_exists('is_gst_applicable', $attributes) && $attributes['is_gst_applicable'] === null) {
+            unset($attributes['is_gst_applicable']);
+        }
 
         if (array_key_exists('is_gst_applicable', $attributes)) {
             $attributes['is_gst_applicable'] = filter_var(

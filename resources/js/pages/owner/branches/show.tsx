@@ -322,12 +322,13 @@ export default function OwnerBranchesShow({
                             branch: branch.id,
                         })}
                         className="space-y-6 rounded-xl border border-border p-4"
-                        onSubmit={(event) => {
+                        onBefore={() => {
                             if (!submitAllowed.current) {
-                                event.preventDefault();
                                 openConfirmation();
+                                return false;
                             }
                             submitAllowed.current = false;
+                            return true;
                         }}
                     >
                         {({ processing, errors: formErrors }) => (

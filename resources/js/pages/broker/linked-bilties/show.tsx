@@ -231,11 +231,12 @@ export default function LinkedBiltyShow({
                                             method="post"
                                             id="linked-bilty-pay-form"
                                             className="grid gap-4 md:grid-cols-2"
-                                            onSubmit={(event) => {
+                                            onBefore={() => {
                                                 if (!paySubmitAllowed.current) {
-                                                    event.preventDefault();
                                                     const data = new FormData(
-                                                        event.currentTarget,
+                                                        document.getElementById(
+                                                            'linked-bilty-pay-form',
+                                                        ) as HTMLFormElement,
                                                     );
                                                     const amountValue =
                                                         data.get('amount');
@@ -341,9 +342,10 @@ export default function LinkedBiltyShow({
                                                     }
                                                     setPayReviewFields(fields);
                                                     setPayConfirmOpen(true);
-                                                    return;
+                                                    return false;
                                                 }
                                                 paySubmitAllowed.current = false;
+                                                return true;
                                             }}
                                         >
                                             {({ processing, errors }) => (

@@ -85,6 +85,7 @@ use App\\Models\\PlatformBillingProfile;
 use App\\Models\\Role;
 use App\\Models\\State;
 use App\\Models\\SubscriptionInvoice;
+use App\\Models\\SubscriptionTaxSetting;
 use App\\Models\\User;
 use Database\\Seeders\\IndiaGeographySeeder;
 use Database\\Seeders\\RbacSeeder;
@@ -110,10 +111,12 @@ City::query()->firstOrCreate(
     ['state_id' => $gj->id, 'name_normalized' => 'ahmedabad'],
     ['id' => (string) Str::uuid(), 'name' => 'Ahmedabad', 'is_active' => true],
 );
-GstRate::query()->firstOrCreate(
+$gst18 = GstRate::query()->firstOrCreate(
     ['rate_percent' => '18.000', 'version' => 1],
     ['id' => (string) Str::uuid(), 'effective_from' => '2025-04-01', 'is_active' => true],
 );
+SubscriptionTaxSetting::query()->delete();
+SubscriptionTaxSetting::query()->create(['gst_rate_id' => $gst18->id, 'gst_rate_percent' => '18.00']);
 
 $pw = Hash::make('${PASSWORD}');
 
@@ -351,7 +354,7 @@ test.describe
             }),
         ).toBeVisible();
 
-        // Create Profile 2 FIRST (Gujarat, 18% GST) so Profile 1 (Maharashtra) becomes currentActive() for intra-state checkout,
+        // Create Profile 2 FIRST (Gujarat) so Profile 1 (Maharashtra) becomes currentActive() for intra-state checkout,
         // allowing us to verify BOTH the Gujarat GST-conflict block AND Maharashtra Logo/Bank/Terms snapshot immutability!
         await adminPage.goto('/admin/billing-profiles/create', {
             waitUntil: 'networkidle',
@@ -365,17 +368,6 @@ test.describe
             .fill('77 Corporate Road, SG Highway');
         await selectGeography(adminPage, 'Gujarat', 'Ahmedabad');
         await adminPage.locator('#pin_code').fill('380054');
-        const gst18Value = await adminPage.evaluate(() => {
-            const sel = document.getElementById(
-                'gst_rate_id',
-            ) as HTMLSelectElement | null;
-            const opt = Array.from(sel?.options ?? []).find((o) =>
-                o.text.includes('18'),
-            );
-            return opt?.value ?? '';
-        });
-        expect(gst18Value).not.toBe('');
-        await adminPage.locator('#gst_rate_id').selectOption(gst18Value);
         await adminPage.locator('#gstin').fill('24AABCT9999H1Z2');
         await adminPage
             .getByRole('button', { name: /Create Billing Profile/i })
@@ -385,7 +377,7 @@ test.describe
             timeout: 15_000,
         });
 
-        // Create Profile 1 SECOND (Maharashtra, 18% GST, with Logo, Bank, Website, Notes)
+        // Create Profile 1 SECOND (Maharashtra, with Logo, Bank, Website, Notes)
         await adminPage.goto('/admin/billing-profiles/create', {
             waitUntil: 'networkidle',
         });
@@ -400,7 +392,6 @@ test.describe
             .fill('401 Tech Park, Baner');
         await selectGeography(adminPage, 'Maharashtra', 'Pune');
         await adminPage.locator('#pin_code').fill('411045');
-        await adminPage.locator('#gst_rate_id').selectOption(gst18Value);
         await adminPage.locator('#gstin').fill('27AABCT1234F1Z5');
         await adminPage.locator('#bank_name').fill('HDFC Bank');
         await adminPage.locator('#bank_account_name').fill(PROFILE_1_NAME);

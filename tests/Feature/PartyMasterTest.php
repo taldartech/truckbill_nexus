@@ -7,12 +7,16 @@ use App\Domains\Master\Party\Exceptions\PartyDomainException;
 use App\Domains\Master\Party\PartyService;
 use App\Domains\Rbac\Enums\PermissionDomain;
 use App\Domains\Rbac\RoleAssignmentService;
+use App\Models\Enquiry;
 use App\Models\Party;
+use App\Models\PartyRole;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\Audit\AuditEntry;
 use App\Support\Tenant\TenantContextHolder;
 use Database\Seeders\RbacSeeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
 
 function actingAsCustomer(User $user): void
@@ -104,11 +108,18 @@ test('owner can create multi-role party and retain role details on removal', fun
         ->and($party->branch_id)->toBeNull();
 
     $consignor = $party->roles()->where('role', PartyRoleType::Consignor->value)->firstOrFail();
-    app(PartyService::class)->removeRole($owner, $consignor, 'Remove consignor role');
+    app(PartyService::class)->update(
+        $owner,
+        $party,
+        [],
+        'Remove consignor role',
+        [['role' => PartyRoleType::Customer->value, 'attributes' => []]],
+    );
 
     expect($consignor->fresh()->deactivated_at)->not->toBeNull()
         ->and($consignor->fresh()->role_attributes)->toBeArray()
-        ->and($party->roles()->whereNull('deactivated_at')->count())->toBe(1);
+        ->and($party->roles()->whereNull('deactivated_at')->count())->toBe(1)
+        ->and(AuditEntry::query()->where('subject_id', $consignor->id)->where('remark', 'Remove consignor role')->exists())->toBeTrue();
 });
 
 test('party endpoints enforce permissions and hide cross-company records', function () {
@@ -188,4 +199,60 @@ test('json party store returns option payload for quick create', function () {
         ->assertJsonStructure([
             'data' => ['id', 'name', 'contact_number', 'city', 'state'],
         ]);
+});
+
+test('edit adds roles and blocks removing a role that existing records depend on', function () {
+    ['owner' => $owner, 'company' => $company] = partyWorkspace();
+    $this->actingAs($owner);
+    $service = app(PartyService::class);
+
+    $party = $service->create(
+        actor: $owner,
+        company: $company,
+        branch: null,
+        attributes: ['name' => 'Linked Customer', 'contact_number' => '9876500000', 'state' => 'Maharashtra', 'city' => 'Pune'],
+        roles: [['role' => PartyRoleType::Customer->value, 'attributes' => []]],
+    );
+    Enquiry::factory()->create(['company_id' => $company->id, 'customer_party_id' => $party->id]);
+
+    $service->update($owner, $party, [], 'Add consignor', [
+        ['role' => PartyRoleType::Customer->value, 'attributes' => []],
+        ['role' => PartyRoleType::Consignor->value, 'attributes' => []],
+    ]);
+    expect($party->roles()->whereNull('deactivated_at')->pluck('role')->sort()->values()->all())
+        ->toBe(['consignor', 'customer']);
+
+    try {
+        $service->update($owner, $party, [], 'Drop customer', [
+            ['role' => PartyRoleType::Consignor->value, 'attributes' => []],
+        ]);
+        $this->fail('Expected the dependent customer role to be protected.');
+    } catch (ValidationException $e) {
+        expect($e->errors()['roles'][0])->toContain('Customer role cannot be removed')
+            ->toContain('enquiries');
+    }
+
+    expect($party->roles()->where('role', 'customer')->value('deactivated_at'))->toBeNull()
+        ->and(AuditEntry::query()->where('subject_type', PartyRole::class)->where('remark', 'Add consignor')->exists())->toBeTrue();
+});
+
+test('edit requires at least one role when roles are submitted', function () {
+    ['owner' => $owner, 'company' => $company] = partyWorkspace();
+    $this->actingAs($owner);
+
+    $party = app(PartyService::class)->create(
+        actor: $owner,
+        company: $company,
+        branch: null,
+        attributes: ['name' => 'Solo', 'contact_number' => '9876511111', 'state' => 'Maharashtra', 'city' => 'Pune'],
+        roles: [['role' => PartyRoleType::Customer->value, 'attributes' => []]],
+    );
+
+    expect(fn () => app(PartyService::class)->update($owner, $party, [], 'Clear roles', []))
+        ->toThrow(ValidationException::class);
+});
+
+test('standalone party role endpoints are removed', function () {
+    expect(Route::has('branch.parties.roles.assign'))->toBeFalse()
+        ->and(Route::has('branch.parties.roles.remove'))->toBeFalse();
 });

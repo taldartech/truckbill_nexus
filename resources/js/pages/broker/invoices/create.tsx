@@ -202,13 +202,13 @@ export default function BrokerInvoiceCreate({
         setConfirmOpen(true);
     };
 
-    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    const handleBeforeSubmit = (): boolean => {
         if (!submitAllowed.current) {
-            event.preventDefault();
             openConfirmation();
-            return;
+            return false;
         }
         submitAllowed.current = false;
+        return true;
     };
 
     return (
@@ -256,7 +256,7 @@ export default function BrokerInvoiceCreate({
                     action={urls.store}
                     method="post"
                     className="space-y-3"
-                    onSubmit={handleSubmit}
+                    onBefore={handleBeforeSubmit}
                 >
                     {({ processing }) => (
                         <>

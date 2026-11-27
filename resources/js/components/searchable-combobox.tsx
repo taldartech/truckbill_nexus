@@ -752,8 +752,10 @@ export function SearchableCombobox({
                         aria-haspopup="listbox"
                         aria-labelledby={`${id}-label`}
                         aria-required={required ? 'true' : undefined}
+                        aria-invalid={error ? 'true' : undefined}
+                        aria-describedby={error ? `${id}-error` : undefined}
                         className={cn(
-                            'flex h-9 min-w-0 flex-1 items-center justify-between gap-2 rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50',
+                            'flex h-9 min-w-0 flex-1 items-center justify-between gap-2 rounded-md border border-input bg-background px-3 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20',
                             !selectedOption && 'text-muted-foreground',
                         )}
                         onClick={() => {
@@ -818,7 +820,11 @@ export function SearchableCombobox({
                 {label}
             </span>
             {error ? (
-                <p className="text-sm text-destructive" role="alert">
+                <p
+                    id={`${id}-error`}
+                    className="text-sm text-destructive"
+                    role="alert"
+                >
                     {error}
                 </p>
             ) : null}

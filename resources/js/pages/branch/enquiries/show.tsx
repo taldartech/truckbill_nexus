@@ -435,15 +435,17 @@ export default function BranchEnquiryShow({
                                     action={urls.update}
                                     method="patch"
                                     className="space-y-3 md:col-span-2"
-                                    onSubmit={(event) => {
+                                    onBefore={() => {
                                         if (!editSubmitAllowed.current) {
-                                            event.preventDefault();
                                             openEditConfirmation(
-                                                event.currentTarget,
+                                                document.getElementById(
+                                                    'enquiry-edit-form',
+                                                ) as HTMLFormElement,
                                             );
-                                        } else {
-                                            editSubmitAllowed.current = false;
+                                            return false;
                                         }
+                                        editSubmitAllowed.current = false;
+                                        return true;
                                     }}
                                 >
                                     <SearchablePartySelect

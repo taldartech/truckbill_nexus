@@ -6,6 +6,7 @@ import {
     ResponsiveDataTable,
     type DataTableColumn,
 } from '@/components/data-table';
+import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
 import { FormSection } from '@/components/form-section';
 import InputError from '@/components/input-error';
 import { PageShell } from '@/components/page-shell';
@@ -165,6 +166,17 @@ function SubscriptionGstSection({
     const form = useForm({ gst_rate_id: gst.gst_rate_id ?? '', remark: '' });
     const isConfigured = gst.gst_rate_id !== null;
     const changed = form.data.gst_rate_id !== (gst.gst_rate_id ?? '');
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const rateLabel = (id: string | null) =>
+        gst.options.find((option) => option.id === id)?.label ??
+        'Not configured';
+    const save = () => {
+        setConfirmOpen(false);
+        form.put(gst.update_url ?? '', {
+            preserveScroll: true,
+            onSuccess: () => form.setData('remark', ''),
+        });
+    };
 
     return (
         <FormSection
@@ -214,6 +226,9 @@ function SubscriptionGstSection({
                                     form.setData('remark', e.target.value)
                                 }
                                 placeholder="Reason for changing the subscription GST rate"
+                                aria-invalid={
+                                    form.errors.remark ? true : undefined
+                                }
                             />
                             <InputError message={form.errors.remark} />
                         </>
@@ -222,17 +237,39 @@ function SubscriptionGstSection({
                         type="button"
                         className="mt-2"
                         disabled={form.processing || !changed}
-                        onClick={() =>
-                            form.put(gst.update_url ?? '', {
-                                preserveScroll: true,
-                                onSuccess: () => form.setData('remark', ''),
-                            })
-                        }
+                        onClick={() => setConfirmOpen(true)}
                     >
                         Save GST Rate
                     </Button>
                 </div>
             ) : null}
+            <FormConfirmationDialog
+                open={confirmOpen}
+                onOpenChange={setConfirmOpen}
+                mode="edit"
+                title="Change subscription GST rate?"
+                description="Applies to new quotes and checkouts. Paid and invoiced amounts keep their original rate."
+                changes={[
+                    {
+                        label: 'GST Rate',
+                        previous: rateLabel(gst.gst_rate_id),
+                        next: rateLabel(form.data.gst_rate_id),
+                        changeType: 'modified',
+                    },
+                    ...(isConfigured
+                        ? [
+                              {
+                                  label: 'Remark',
+                                  previous: '—',
+                                  next: form.data.remark || '—',
+                                  changeType: 'added' as const,
+                              },
+                          ]
+                        : []),
+                ]}
+                processing={form.processing}
+                onConfirm={save}
+            />
         </FormSection>
     );
 }

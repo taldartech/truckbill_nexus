@@ -579,6 +579,7 @@ export function PartyMasterFormFields({
                                   <option value="1">Yes</option>
                                   <option value="0">No</option>
                               </select>
+                              <InputError message={errors.is_gst_applicable} />
                           </div>
                       </AppFormGrid>,
                   )

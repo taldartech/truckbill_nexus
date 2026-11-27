@@ -14,6 +14,7 @@ use App\Models\Branch;
 use App\Models\Company;
 use App\Models\Party;
 use App\Models\PartyRole;
+use App\Models\State;
 use App\Models\User;
 use App\Support\Audit\AuditAction;
 use App\Support\Audit\AuditedTransaction;
@@ -22,6 +23,7 @@ use App\Support\Database\CaseInsensitiveLike;
 use App\Support\Tenant\TenantContext;
 use App\Support\Tenant\TenantContextHolder;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
@@ -42,6 +44,7 @@ final class PartyService
         private readonly AuditWriter $audit = new AuditWriter,
         private readonly PartyRoleAttributeValidator $roleAttributes = new PartyRoleAttributeValidator,
         private readonly TransporterTdsCalculationService $transporterTds = new TransporterTdsCalculationService,
+        private readonly PartyRoleDependencyGuard $roleDependencies = new PartyRoleDependencyGuard,
     ) {}
 
     /**
@@ -174,16 +177,19 @@ final class PartyService
 
         $normalizedRoles = null;
         if ($roles !== null) {
+            if ($roles === []) {
+                throw ValidationException::withMessages(['roles' => 'At least one party role is required.']);
+            }
             $normalizedRoles = $this->normalizeRolePayloads($roles, $mergedPartyAttributes);
-            $this->roleAttributes->validatePartyAttributes(
-                $mergedPartyAttributes,
-                array_column($normalizedRoles, 'role'),
+            $submittedRoles = array_column($normalizedRoles, 'role');
+            $this->roleAttributes->validatePartyAttributes($mergedPartyAttributes, $submittedRoles);
+            $this->roleDependencies->assertRemovable(
+                $party,
+                array_values(array_diff($this->activeRoleValues($party), $submittedRoles)),
+                $submittedRoles,
             );
         } else {
-            $this->roleAttributes->validatePartyAttributes(
-                $mergedPartyAttributes,
-                array_values($party->roles()->whereNull('deactivated_at')->pluck('role')->all()),
-            );
+            $this->roleAttributes->validatePartyAttributes($mergedPartyAttributes, $this->activeRoleValues($party));
         }
 
         return $this->auditedTransaction->run(function () use ($actor, $party, $company, $branch, $attributes, $remark, $normalizedRoles): Party {
@@ -232,183 +238,6 @@ final class PartyService
         });
     }
 
-    /**
-     * Add or update active roles without deactivating omitted roles.
-     *
-     * @param  list<array{role: string, attributes?: array<string, mixed>}>  $roles
-     */
-    public function syncRoles(User $actor, Party $party, array $roles, string $remark): Party
-    {
-        if ($roles === []) {
-            throw ValidationException::withMessages(['roles' => 'At least one party role is required.']);
-        }
-
-        $company = $party->company()->firstOrFail();
-        $branch = $party->branch_id !== null
-            ? Branch::query()->where('company_id', $company->id)->whereKey($party->branch_id)->first()
-            : null;
-
-        $this->assertCanMutate($actor, $company, $branch ?? $this->resolveActorBranch($actor, $company));
-
-        $partyAttributes = $party->only([
-            'name',
-            'contact_person',
-            'contact_number',
-            'email',
-            'gstin',
-            'pan',
-            'is_gst_applicable',
-            'state',
-            'city',
-            'address',
-        ]);
-
-        $normalizedRoles = $this->normalizeRolePayloads($roles, $partyAttributes);
-        $this->roleAttributes->validatePartyAttributes(
-            $partyAttributes,
-            array_column($normalizedRoles, 'role'),
-        );
-
-        return $this->auditedTransaction->run(function () use ($actor, $party, $company, $branch, $normalizedRoles, $remark): Party {
-            return $this->withTenant($actor, $company, $branch, function () use ($party, $company, $normalizedRoles, $remark): Party {
-                $this->applyRoleSync($party, $company, $normalizedRoles, $remark);
-
-                return $party->fresh(['roles']) ?? $party;
-            });
-        });
-    }
-
-    /**
-     * @param  array<string, mixed>  $roleAttributes
-     */
-    public function assignRole(
-        User $actor,
-        Party $party,
-        PartyRoleType $role,
-        array $roleAttributes,
-        string $remark,
-    ): PartyRole {
-        $company = $party->company()->firstOrFail();
-        $branch = $party->branch_id !== null
-            ? Branch::query()->where('company_id', $company->id)->whereKey($party->branch_id)->first()
-            : null;
-
-        $this->assertCanMutate($actor, $company, $branch ?? $this->resolveActorBranch($actor, $company));
-
-        $partyAttributes = $party->only([
-            'name',
-            'contact_person',
-            'contact_number',
-            'email',
-            'gstin',
-            'pan',
-            'is_gst_applicable',
-            'state',
-            'city',
-            'address',
-        ]);
-
-        $normalized = $this->roleAttributes->validateAndNormalize($role, $roleAttributes, $partyAttributes);
-        $normalized = $this->applyTransporterTdsRates($role, $normalized, $partyAttributes);
-        $this->roleAttributes->validatePartyAttributes(
-            $partyAttributes,
-            array_values(array_merge(
-                $party->roles()->whereNull('deactivated_at')->pluck('role')->all(),
-                [$role->value],
-            )),
-        );
-
-        return $this->auditedTransaction->run(function () use ($actor, $party, $company, $branch, $role, $normalized, $remark): PartyRole {
-            return $this->withTenant($actor, $company, $branch, function () use ($party, $company, $role, $normalized, $remark): PartyRole {
-                $existing = PartyRole::query()
-                    ->where('party_id', $party->id)
-                    ->where('role', $role->value)
-                    ->first();
-
-                if ($existing !== null && $existing->isActive()) {
-                    throw ValidationException::withMessages(['role' => 'Role is already assigned.']);
-                }
-
-                if ($existing !== null) {
-                    $before = $existing->toArray();
-                    $existing->deactivated_at = null;
-                    $existing->role_attributes = $normalized;
-                    $existing->save();
-
-                    $this->audit->write(
-                        AuditAction::Updated,
-                        PartyRole::class,
-                        $existing->id,
-                        remark: $remark,
-                        before: $before,
-                        after: $existing->fresh()?->toArray(),
-                    );
-
-                    return $existing->fresh() ?? $existing;
-                }
-
-                $created = PartyRole::query()->create([
-                    'id' => (string) Str::uuid(),
-                    'company_id' => $company->id,
-                    'party_id' => $party->id,
-                    'role' => $role->value,
-                    'role_attributes' => $normalized,
-                ]);
-
-                $this->audit->write(
-                    AuditAction::Created,
-                    PartyRole::class,
-                    $created->id,
-                    remark: null,
-                    before: null,
-                    after: $created->toArray(),
-                );
-
-                return $created;
-            });
-        });
-    }
-
-    public function removeRole(User $actor, PartyRole $partyRole, string $remark): PartyRole
-    {
-        $party = $partyRole->party()->firstOrFail();
-        $company = $party->company()->firstOrFail();
-        $branch = $party->branch_id !== null
-            ? Branch::query()->where('company_id', $company->id)->whereKey($party->branch_id)->first()
-            : null;
-
-        $this->assertCanMutate($actor, $company, $branch ?? $this->resolveActorBranch($actor, $company));
-
-        $activeCount = PartyRole::query()
-            ->where('party_id', $party->id)
-            ->whereNull('deactivated_at')
-            ->count();
-
-        if ($activeCount <= 1 && $partyRole->isActive()) {
-            throw ValidationException::withMessages(['role' => 'Cannot remove the last active party role.']);
-        }
-
-        return $this->auditedTransaction->run(function () use ($actor, $partyRole, $company, $branch, $remark): PartyRole {
-            return $this->withTenant($actor, $company, $branch, function () use ($partyRole, $remark): PartyRole {
-                $before = $partyRole->toArray();
-                // Retain role details on removal (Rules §6).
-                $partyRole->deactivated_at = now();
-                $partyRole->save();
-
-                $this->audit->write(
-                    AuditAction::Updated,
-                    PartyRole::class,
-                    $partyRole->id,
-                    remark: $remark,
-                    before: $before,
-                    after: $partyRole->fresh()?->toArray(),
-                );
-
-                return $partyRole->fresh() ?? $partyRole;
-            });
-        });
-    }
-
     public function softDelete(User $actor, Party $party, string $remark): void
     {
         $company = $party->company()->firstOrFail();
@@ -445,10 +274,14 @@ final class PartyService
         ?string $query = null,
         ?string $role = null,
         int $perPage = 15,
+        ?string $stateId = null,
+        ?string $city = null,
+        bool $deleted = false,
     ): LengthAwarePaginator {
         $this->assertCanView($actor, $company, $branch);
 
         $builder = Party::query()
+            ->when($deleted, fn (Builder $q) => $q->onlyTrashed())
             ->visibleInBranch($company->id, $branch->id)
             ->with(['roles' => fn ($q) => $q->whereNull('deactivated_at')])
             ->orderBy('name');
@@ -456,6 +289,7 @@ final class PartyService
         if ($query !== null && trim($query) !== '') {
             CaseInsensitiveLike::whereAnyContains($builder, [
                 'name',
+                'contact_person',
                 'contact_number',
                 'email',
                 'pan',
@@ -469,14 +303,50 @@ final class PartyService
             });
         }
 
+        if ($stateId !== null && $stateId !== '') {
+            $stateName = State::query()->whereKey($stateId)->value('name');
+            $builder->where(function (Builder $q) use ($stateId, $stateName): void {
+                $q->where('state_id', $stateId);
+                if (is_string($stateName)) {
+                    $q->orWhere(fn (Builder $legacy) => $legacy->whereNull('state_id')->whereRaw('LOWER(state) = ?', [mb_strtolower($stateName)]));
+                }
+            });
+        }
+
+        if ($city !== null && trim($city) !== '') {
+            CaseInsensitiveLike::whereContains($builder, 'city', $city);
+        }
+
         return $builder->paginate($perPage);
     }
 
     /**
+     * Upsert submitted roles and deactivate omitted ones; role details are retained on removal (Rules §6).
+     *
      * @param  list<array{role: string, attributes: array<string, mixed>}>  $normalizedRoles
      */
     private function applyRoleSync(Party $party, Company $company, array $normalizedRoles, string $remark): void
     {
+        $removed = PartyRole::query()
+            ->where('party_id', $party->id)
+            ->whereNull('deactivated_at')
+            ->whereNotIn('role', array_column($normalizedRoles, 'role'))
+            ->get();
+        foreach ($removed as $partyRole) {
+            $before = $partyRole->toArray();
+            $partyRole->deactivated_at = now();
+            $partyRole->save();
+
+            $this->audit->write(
+                AuditAction::Updated,
+                PartyRole::class,
+                $partyRole->id,
+                remark: $remark,
+                before: $before,
+                after: $partyRole->fresh()?->toArray(),
+            );
+        }
+
         foreach ($normalizedRoles as $rolePayload) {
             $existing = PartyRole::query()
                 ->where('party_id', $party->id)
@@ -615,6 +485,17 @@ final class PartyService
         $attributes['applicable_tds_rate'] = $result->applicableRate;
 
         return $attributes;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function activeRoleValues(Party $party): array
+    {
+        return array_values(array_map(
+            'strval',
+            $party->roles()->whereNull('deactivated_at')->pluck('role')->all(),
+        ));
     }
 
     private function assertCanView(User $actor, Company $company, Branch $branch): void

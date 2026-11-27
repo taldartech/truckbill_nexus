@@ -2,6 +2,7 @@ import { Form, Head, Link } from '@inertiajs/react';
 import { useState } from 'react';
 import { QuickCreateLedgerSheet } from '@/components/accounting/quick-create-ledger-sheet';
 import { AppIndexListCard, AppIndexPage } from '@/components/app-index-page';
+import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -105,6 +106,9 @@ export default function AccountingVoucherCreate({
                                                 ),
                                             )}
                                         </select>
+                                        <InputError
+                                            message={errors.voucher_type}
+                                        />
                                     </div>
                                     <div className="space-y-1">
                                         <Label htmlFor="voucher_date" required>
@@ -116,6 +120,9 @@ export default function AccountingVoucherCreate({
                                             type="date"
                                             required
                                         />
+                                        <InputError
+                                            message={errors.voucher_date}
+                                        />
                                     </div>
                                     <div className="space-y-1">
                                         <Label htmlFor="narration">
@@ -124,6 +131,9 @@ export default function AccountingVoucherCreate({
                                         <Input
                                             id="narration"
                                             name="narration"
+                                        />
+                                        <InputError
+                                            message={errors.narration}
                                         />
                                     </div>
                                 </div>
@@ -150,11 +160,7 @@ export default function AccountingVoucherCreate({
                                             Add Line
                                         </Button>
                                     </div>
-                                    {errors.lines ? (
-                                        <p className="text-sm text-destructive">
-                                            {errors.lines}
-                                        </p>
-                                    ) : null}
+                                    <InputError message={errors.lines} />
                                     <div className="overflow-x-auto rounded-md border">
                                         <table className="w-full min-w-[720px] text-left text-sm">
                                             <thead className="border-b bg-muted/40 text-muted-foreground">
@@ -259,6 +265,13 @@ export default function AccountingVoucherCreate({
                                                                         ),
                                                                     )}
                                                                 </select>
+                                                                <InputError
+                                                                    message={
+                                                                        errors[
+                                                                            `lines.${index}.gl_ledger_id`
+                                                                        ]
+                                                                    }
+                                                                />
                                                             </div>
                                                         </td>
                                                         <td className="px-3 py-2">
@@ -302,6 +315,13 @@ export default function AccountingVoucherCreate({
                                                                     );
                                                                 }}
                                                             />
+                                                            <InputError
+                                                                message={
+                                                                    errors[
+                                                                        `lines.${index}.debit_amount`
+                                                                    ]
+                                                                }
+                                                            />
                                                         </td>
                                                         <td className="px-3 py-2">
                                                             <Input
@@ -344,6 +364,13 @@ export default function AccountingVoucherCreate({
                                                                     );
                                                                 }}
                                                             />
+                                                            <InputError
+                                                                message={
+                                                                    errors[
+                                                                        `lines.${index}.credit_amount`
+                                                                    ]
+                                                                }
+                                                            />
                                                         </td>
                                                         <td className="px-3 py-2">
                                                             <Input
@@ -378,6 +405,13 @@ export default function AccountingVoucherCreate({
                                                                             ),
                                                                     );
                                                                 }}
+                                                            />
+                                                            <InputError
+                                                                message={
+                                                                    errors[
+                                                                        `lines.${index}.narration`
+                                                                    ]
+                                                                }
                                                             />
                                                         </td>
                                                     </tr>

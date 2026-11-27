@@ -1,5 +1,5 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
-import { useMemo, useRef, useState, type FormEvent } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
     AppFormCard,
     AppFormPage,
@@ -259,13 +259,16 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
         setConfirmOpen(true);
     };
 
-    const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    const handleBeforeSubmit = (): boolean => {
         if (!submitAllowed.current) {
-            event.preventDefault();
-            openConfirmation(event.currentTarget);
-            return;
+            const form = document.getElementById('party-master-form');
+            if (form instanceof HTMLFormElement) {
+                openConfirmation(form);
+            }
+            return false;
         }
         submitAllowed.current = false;
+        return true;
     };
 
     const handleConfirm = () => {
@@ -298,7 +301,7 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
                     action={action}
                     method={method}
                     className="space-y-6"
-                    onSubmit={handleSubmit}
+                    onBefore={handleBeforeSubmit}
                 >
                     {({ errors, processing }) => (
                         <>
