@@ -4,6 +4,7 @@ namespace App\Domains\Enquiry\Webhook;
 
 use App\Domains\Enquiry\EnquiryService;
 use App\Domains\Enquiry\Support\EnquiryPayloadFingerprint;
+use App\Models\Branch;
 use App\Models\Enquiry;
 use App\Support\Idempotency\IdempotencyGuard;
 use App\Support\Tenant\TenantContext;
@@ -35,6 +36,18 @@ final class EnquiryWebhookIntakeService
 
         $auth = $this->authenticator->authenticate($request);
         $company = $auth['company'];
+        $credential = $auth['credential'];
+        $this->credentials()->touchLastUsed($credential);
+
+        $receivingBranch = null;
+        if ($credential->receiving_branch_id !== null) {
+            $receivingBranch = Branch::query()
+                ->where('company_id', $company->id)
+                ->whereKey($credential->receiving_branch_id)
+                ->whereNull('deactivated_at')
+                ->whereNull('deleted_at')
+                ->first();
+        }
 
         $this->replay->assertFreshTimestamp($request);
 
@@ -59,10 +72,10 @@ final class EnquiryWebhookIntakeService
         $previous = TenantContextHolder::get();
         TenantContextHolder::inject(new TenantContext(
             companyId: $company->id,
-            branchId: null,
+            branchId: $receivingBranch?->id,
             ownerId: (string) $company->owner_user_id,
             isInternal: false,
-            isOwnerScope: true,
+            isOwnerScope: $receivingBranch === null,
         ));
 
         $callbackExecuted = false;
@@ -73,7 +86,7 @@ final class EnquiryWebhookIntakeService
                 idempotencyKey: $idempotencyKey,
                 requestHash: $requestHash,
                 ttlHours: (int) config('enquiry_webhook.idempotency_ttl_hours', 72),
-                callback: function () use ($company, $payload, $correlationId, $request, &$callbackExecuted): array {
+                callback: function () use ($company, $receivingBranch, $payload, $correlationId, $request, &$callbackExecuted): array {
                     $callbackExecuted = true;
                     // Consume nonce only when performing real work — after idempotency miss.
                     $this->replay->consumeNonce($company, $request);
@@ -82,6 +95,7 @@ final class EnquiryWebhookIntakeService
                         company: $company,
                         payload: $payload,
                         correlationId: $correlationId !== '' ? $correlationId : null,
+                        branch: $receivingBranch,
                     );
 
                     return [
@@ -166,5 +180,10 @@ final class EnquiryWebhookIntakeService
         unset($payload['company_id'], $payload['branch_id'], $payload['owner_id']);
 
         return $payload;
+    }
+
+    private function credentials(): EnquiryWebhookCredentialService
+    {
+        return new EnquiryWebhookCredentialService;
     }
 }

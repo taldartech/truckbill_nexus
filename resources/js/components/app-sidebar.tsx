@@ -337,15 +337,6 @@ export function AppSidebar() {
                   },
               ]
             : []),
-        ...(nav?.broker_registers
-            ? [
-                  {
-                      title: 'Broker Registers',
-                      href: '/broker/registers',
-                      icon: ClipboardList,
-                  },
-              ]
-            : []),
     ];
 
     const branchMasters: NavItem[] = [

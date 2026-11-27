@@ -14,6 +14,7 @@ use App\Support\Outbox\OutboxMessage;
 use App\Support\Tenant\TenantContext;
 use App\Support\Tenant\TenantContextHolder;
 use Database\Seeders\RbacSeeder;
+use Database\Seeders\SubscriptionCatalogueSeeder;
 use Illuminate\Foundation\Configuration\ApplicationBuilder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -24,6 +25,7 @@ beforeEach(function () {
     TenantContextHolder::clear();
     RateLimiter::clear('enquiry-webhook-test');
     (new RbacSeeder)->run();
+    $this->seed(SubscriptionCatalogueSeeder::class);
     config([
         'enquiry_webhook.rate_limit_per_minute' => 60,
         'enquiry_webhook.timestamp_skew_seconds' => 300,

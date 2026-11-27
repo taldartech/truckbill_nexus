@@ -41,15 +41,25 @@ class Enquiry extends Model
         'enquiry_number',
         'enquiry_date',
         'customer_party_id',
+        'party_name',
+        'consignor_party_id',
+        'consignee_party_id',
+        'from_state_id',
+        'from_city_id',
+        'to_state_id',
+        'to_city_id',
         'external_customer_name',
         'external_customer_phone',
         'external_customer_email',
+        'external_business_name',
+        'external_contact_person_name',
         'pickup_location',
         'delivery_location',
         'vehicle_type_id',
         'vehicle_quantity',
         'expected_loading_date',
         'instructions',
+        'pending_master_resolution',
         'assigned_user_id',
         'status',
         'created_by_user_id',
@@ -69,6 +79,7 @@ class Enquiry extends Model
             'expected_loading_date' => 'date',
             'vehicle_quantity' => 'integer',
             'converted_at' => 'immutable_datetime',
+            'pending_master_resolution' => 'array',
         ];
     }
 
@@ -103,6 +114,42 @@ class Enquiry extends Model
     public function customerParty(): BelongsTo
     {
         return $this->belongsTo(Party::class, 'customer_party_id');
+    }
+
+    /** @return BelongsTo<Party, $this> */
+    public function consignorParty(): BelongsTo
+    {
+        return $this->belongsTo(Party::class, 'consignor_party_id');
+    }
+
+    /** @return BelongsTo<Party, $this> */
+    public function consigneeParty(): BelongsTo
+    {
+        return $this->belongsTo(Party::class, 'consignee_party_id');
+    }
+
+    /** @return BelongsTo<State, $this> */
+    public function fromState(): BelongsTo
+    {
+        return $this->belongsTo(State::class, 'from_state_id');
+    }
+
+    /** @return BelongsTo<City, $this> */
+    public function fromCity(): BelongsTo
+    {
+        return $this->belongsTo(City::class, 'from_city_id');
+    }
+
+    /** @return BelongsTo<State, $this> */
+    public function toState(): BelongsTo
+    {
+        return $this->belongsTo(State::class, 'to_state_id');
+    }
+
+    /** @return BelongsTo<City, $this> */
+    public function toCity(): BelongsTo
+    {
+        return $this->belongsTo(City::class, 'to_city_id');
     }
 
     /**

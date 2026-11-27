@@ -15,7 +15,9 @@ use Illuminate\Support\Str;
  * @property string $token_prefix
  * @property string $token_hash
  * @property string|null $label
+ * @property string|null $receiving_branch_id
  * @property CarbonImmutable|null $expires_at
+ * @property CarbonImmutable|null $last_used_at
  * @property CarbonImmutable|null $revoked_at
  * @property string|null $replaces_credential_id
  */
@@ -29,8 +31,8 @@ class CompanyEnquiryWebhookCredential extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
-        'id', 'company_id', 'token_prefix', 'token_hash', 'label',
-        'expires_at', 'revoked_at', 'created_by_user_id', 'revoked_by_user_id', 'replaces_credential_id',
+        'id', 'company_id', 'token_prefix', 'token_hash', 'label', 'receiving_branch_id',
+        'expires_at', 'last_used_at', 'revoked_at', 'created_by_user_id', 'revoked_by_user_id', 'replaces_credential_id',
     ];
 
     protected $hidden = [
@@ -41,6 +43,7 @@ class CompanyEnquiryWebhookCredential extends Model
     {
         return [
             'expires_at' => 'immutable_datetime',
+            'last_used_at' => 'immutable_datetime',
             'revoked_at' => 'immutable_datetime',
         ];
     }
@@ -73,5 +76,11 @@ class CompanyEnquiryWebhookCredential extends Model
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    /** @return BelongsTo<Branch, $this> */
+    public function receivingBranch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class, 'receiving_branch_id');
     }
 }

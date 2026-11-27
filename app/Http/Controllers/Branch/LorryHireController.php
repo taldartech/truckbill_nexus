@@ -14,6 +14,7 @@ use App\Domains\Broker\LorryHire\LorryHireService;
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Consignment\Enums\FreightRateType;
 use App\Domains\Consignment\Enums\LrWorkflowContext;
+use App\Domains\Consignment\Support\FreightRateTypeCatalog;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Party\PartyOptionQuery;
 use App\Domains\Rbac\PermissionAuthorizer;
@@ -236,12 +237,7 @@ class LorryHireController extends Controller
             'goods_lines.*.rate_type' => [
                 'nullable',
                 'string',
-                Rule::in([
-                    FreightRateType::FixedAmount->value,
-                    FreightRateType::PerPackageUnit->value,
-                    FreightRateType::PerChargedWeight->value,
-                    FreightRateType::PerActualWeight->value,
-                ]),
+                Rule::in(FreightRateTypeCatalog::selectableValues()),
             ],
             'goods_lines.*.rate' => ['required', 'numeric', 'min:0'],
             'goods_lines.*.loading_weight' => ['nullable', 'numeric', 'min:0'],
@@ -710,14 +706,7 @@ class LorryHireController extends Controller
 
     private function freightRateTypeLabel(FreightRateType $type): string
     {
-        return match ($type) {
-            FreightRateType::FixedAmount => 'Fixed Amount',
-            FreightRateType::PerPackageUnit => 'Per Unit',
-            FreightRateType::PerKg => 'Per KG',
-            FreightRateType::PerMt => 'Per MT',
-            FreightRateType::PerActualWeight => 'Per Actual Weight',
-            FreightRateType::PerChargedWeight => 'Per Charged Weight',
-        };
+        return FreightRateTypeCatalog::label($type);
     }
 
     /**
@@ -725,20 +714,7 @@ class LorryHireController extends Controller
      */
     private function freightRateTypeOptions(): array
     {
-        $options = [];
-        foreach ([
-            FreightRateType::FixedAmount,
-            FreightRateType::PerPackageUnit,
-            FreightRateType::PerChargedWeight,
-            FreightRateType::PerActualWeight,
-        ] as $type) {
-            $options[] = [
-                'value' => $type->value,
-                'label' => $this->freightRateTypeLabel($type),
-            ];
-        }
-
-        return $options;
+        return FreightRateTypeCatalog::inertiaOptions();
     }
 
     /**

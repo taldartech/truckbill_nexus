@@ -6,8 +6,12 @@ use App\Domains\Company\CompanyWorkspaceService;
 use App\Domains\Company\Exceptions\CompanyDomainException;
 use App\Domains\Rbac\InternalAuthorization;
 use App\Domains\Rbac\PermissionCodes;
+use App\Domains\Subscription\Entitlement\CompanyCapabilities;
+use App\Domains\Subscription\Entitlement\CompanyCapabilityResolver;
 use App\Http\Controllers\Controller;
+use App\Models\Branch;
 use App\Models\Company;
+use App\Models\CompanyEnquiryWebhookCredential;
 use App\Models\OwnershipTransfer;
 use App\Models\User;
 use App\Support\Audit\AuditEntry;
@@ -113,6 +117,22 @@ class CompanyLifecycleController extends Controller
             ->limit(100)
             ->get(['id', 'name', 'email']);
 
+        $branches = Branch::query()
+            ->where('company_id', $company->id)
+            ->whereNull('deactivated_at')
+            ->whereNull('deleted_at')
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (Branch $branch): array => ['id' => $branch->id, 'name' => $branch->name])
+            ->values()
+            ->all();
+
+        $webhookCredentials = CompanyEnquiryWebhookCredential::query()
+            ->where('company_id', $company->id)
+            ->orderByDesc('created_at')
+            ->limit(20)
+            ->get();
+
         return Inertia::render('admin/companies/show', [
             'company' => [
                 'id' => $company->id,
@@ -146,11 +166,27 @@ class CompanyLifecycleController extends Controller
                 'remark' => $entry->remark,
                 'created_at' => $entry->created_at->toIso8601String(),
             ])->values()->all(),
+            'branches' => $branches,
+            'enquiries_entitled' => app(CompanyCapabilityResolver::class)
+                ->allowsRead($company, CompanyCapabilities::ENQUIRIES),
+            'enquiry_webhook_credentials' => $webhookCredentials->map(fn (CompanyEnquiryWebhookCredential $row): array => [
+                'id' => $row->id,
+                'label' => $row->label,
+                'token_prefix' => $row->token_prefix,
+                'receiving_branch_id' => $row->receiving_branch_id,
+                'last_used_at' => $row->last_used_at?->toIso8601String(),
+                'revoked_at' => $row->revoked_at?->toIso8601String(),
+                'is_usable' => $row->isUsable(),
+                'rotate_url' => route('admin.companies.enquiry-webhook-credentials.rotate', [$company, $row]),
+                'revoke_url' => route('admin.companies.enquiry-webhook-credentials.revoke', [$company, $row]),
+                'update_url' => route('admin.companies.enquiry-webhook-credentials.update', [$company, $row]),
+            ])->values()->all(),
             'urls' => [
                 'index' => route('admin.companies.index'),
                 'deactivate' => route('admin.companies.deactivate', $company),
                 'reactivate' => route('admin.companies.reactivate', $company),
                 'transfer' => route('admin.companies.ownership-transfers.store', $company),
+                'enquiry_webhook_store' => route('admin.companies.enquiry-webhook-credentials.store', $company),
             ],
         ]);
     }

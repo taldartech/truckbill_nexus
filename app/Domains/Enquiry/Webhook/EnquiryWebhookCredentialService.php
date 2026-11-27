@@ -7,6 +7,7 @@ use App\Models\CompanyEnquiryWebhookCredential;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 /**
  * Company-scoped website enquiry webhook credentials (hashed at rest).
@@ -17,8 +18,16 @@ final class EnquiryWebhookCredentialService
     /**
      * @return array{credential: CompanyEnquiryWebhookCredential, plain_token: string}
      */
-    public function create(Company $company, ?User $actor = null, ?string $label = null): array
-    {
+    public function create(
+        Company $company,
+        ?User $actor = null,
+        ?string $label = null,
+        ?string $receivingBranchId = null,
+    ): array {
+        if ($receivingBranchId !== null) {
+            $this->assertReceivingBranch($company, $receivingBranchId);
+        }
+
         $plain = 'tb_enq_'.Str::lower(Str::random(40));
         $prefix = substr($plain, 0, 12);
 
@@ -29,6 +38,7 @@ final class EnquiryWebhookCredentialService
             'token_prefix' => $prefix,
             'token_hash' => $this->hashToken($plain),
             'label' => $label,
+            'receiving_branch_id' => $receivingBranchId,
             'created_by_user_id' => $actor?->id,
         ]);
         $credential->save();
@@ -103,5 +113,39 @@ final class EnquiryWebhookCredentialService
     public function hashToken(string $plainToken): string
     {
         return hash('sha256', $plainToken);
+    }
+
+    public function updateReceivingBranch(
+        CompanyEnquiryWebhookCredential $credential,
+        ?string $receivingBranchId,
+    ): CompanyEnquiryWebhookCredential {
+        if ($receivingBranchId !== null) {
+            $company = Company::query()->findOrFail($credential->company_id);
+            $this->assertReceivingBranch($company, $receivingBranchId);
+        }
+
+        $credential->forceFill(['receiving_branch_id' => $receivingBranchId])->save();
+
+        return $credential->fresh();
+    }
+
+    public function touchLastUsed(CompanyEnquiryWebhookCredential $credential): void
+    {
+        $credential->forceFill(['last_used_at' => now()])->save();
+    }
+
+    private function assertReceivingBranch(Company $company, string $branchId): void
+    {
+        $exists = $company->branches()
+            ->whereKey($branchId)
+            ->whereNull('deactivated_at')
+            ->whereNull('deleted_at')
+            ->exists();
+
+        if (! $exists) {
+            throw ValidationException::withMessages([
+                'receiving_branch_id' => 'Receiving branch must be an active branch of this company.',
+            ]);
+        }
     }
 }

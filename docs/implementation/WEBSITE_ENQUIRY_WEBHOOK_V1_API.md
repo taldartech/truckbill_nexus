@@ -14,8 +14,8 @@ This document is the integration contract for the sibling `website/` project.
 | Item         | Value                                                    |
 | ------------ | -------------------------------------------------------- |
 | Method       | `POST`                                                   |
-| Path         | `/webhooks/enquiries`                                    |
-| Route name   | `webhooks.enquiries`                                     |
+| Path         | `/webhooks/enquiries` (alias: `POST /api/v1/enquiries`)  |
+| Route name   | `webhooks.enquiries` (`api.v1.enquiries.store`)          |
 | Auth session | Not required (no TruckBill login)                        |
 | CSRF         | Exempt **only** for this exact path (alongside Razorpay) |
 

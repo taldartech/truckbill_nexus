@@ -14,6 +14,8 @@ export type PartyOption = {
     short_name?: string | null;
     city?: string | null;
     state?: string | null;
+    city_id?: string | null;
+    state_id?: string | null;
     contact_number?: string | null;
 };
 

@@ -293,7 +293,6 @@ test('broker purchase activates immediately without invoice approval and restore
             ->where('workspace.navigation.broker_transporter_balances', true)
             ->where('workspace.navigation.customer_invoices', true)
             ->where('workspace.navigation.customer_payments', true)
-            ->where('workspace.navigation.broker_registers', true)
             ->where('workspace.navigation.masters_parties', true)
             ->where('workspace.navigation.masters_vehicles', true)
             ->where('workspace.navigation.masters_bank_cash', true)
@@ -445,7 +444,6 @@ test('broker purchase activates immediately without invoice approval and restore
         'branch.broker.deliveries.index',
         'branch.broker.linked-bilties.index',
         'branch.broker.transporter-balances.index',
-        'branch.broker.registers.index',
         'branch.broker.invoices.create',
         'branch.invoices.index',
         'branch.payments.index',
@@ -669,7 +667,6 @@ test('subscription combination matrix enforces exact navigation and route access
                 ->and($nav['customer_invoices'])->toBeTrue("{$label}: customer_invoices")
                 ->and($nav['customer_payments'])->toBeTrue("{$label}: customer_payments")
                 ->and($nav['broker_lorry_hires'])->toBe($spec['broker'], "{$label}: broker_lorry_hires")
-                ->and($nav['broker_registers'])->toBe($spec['broker'], "{$label}: broker_registers")
                 ->and($nav['ownfleet_vehicle_drivers'])->toBe($spec['ownfleet'], "{$label}: ownfleet_vehicle_drivers")
                 ->and($nav['partload_challans'])->toBe($spec['partload'], "{$label}: partload_challans")
                 ->and($nav['accounting'])->toBe($spec['accounting'], "{$label}: accounting");

@@ -20,8 +20,12 @@ type EnquiryRow = {
     enquiry_number: string | null;
     status: string;
     source: string;
-    pickup_location: string;
-    delivery_location: string;
+    party_label?: string | null;
+    route_label?: string | null;
+    pickup_date?: string | null;
+    goods_type_name?: string | null;
+    weight_mt?: string | null;
+    vehicle_type_name?: string | null;
     vehicle_quantity: number;
 };
 
@@ -66,6 +70,46 @@ export default function BranchEnquiriesIndex({
                 cell: (row) => row.enquiry_number ?? row.id.slice(0, 8),
             },
             {
+                id: 'party',
+                header: 'Party',
+                priority: 1,
+                cell: (row) => row.party_label ?? '—',
+            },
+            {
+                id: 'route',
+                header: 'Route',
+                priority: 2,
+                cell: (row) => row.route_label ?? '—',
+            },
+            {
+                id: 'pickup',
+                header: 'Pickup',
+                priority: 2,
+                className: 'tabular-nums text-xs',
+                cell: (row) => row.pickup_date ?? '—',
+            },
+            {
+                id: 'goods',
+                header: 'Goods / Wt',
+                priority: 2,
+                cell: (row) =>
+                    [
+                        row.goods_type_name,
+                        row.weight_mt ? `${row.weight_mt} MT` : null,
+                    ]
+                        .filter(Boolean)
+                        .join(' · ') || '—',
+            },
+            {
+                id: 'vehicle',
+                header: 'Vehicle',
+                priority: 3,
+                cell: (row) =>
+                    row.vehicle_type_name
+                        ? `${row.vehicle_type_name} × ${row.vehicle_quantity}`
+                        : String(row.vehicle_quantity),
+            },
+            {
                 id: 'status',
                 header: 'Status',
                 priority: 1,
@@ -74,19 +118,6 @@ export default function BranchEnquiriesIndex({
                         status={`${row.status} · ${row.source}`}
                     />
                 ),
-            },
-            {
-                id: 'route',
-                header: 'Route',
-                priority: 2,
-                cell: (row) =>
-                    `${row.pickup_location} → ${row.delivery_location}`,
-            },
-            {
-                id: 'vehicles',
-                header: 'Vehicles',
-                priority: 2,
-                cell: (row) => row.vehicle_quantity,
             },
         ],
         [],

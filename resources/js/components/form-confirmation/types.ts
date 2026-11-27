@@ -5,9 +5,17 @@ export type FieldReview = {
     group?: string;
 };
 
+export type FieldReviewTable = {
+    headers: string[];
+    rows: string[][];
+};
+
 export type FieldReviewSection = {
     title: string;
-    fields: FieldReview[];
+    fields?: FieldReview[];
+    table?: FieldReviewTable;
+    /** Full-width section in the confirmation grid. */
+    layout?: 'default' | 'full';
 };
 
 export type ChangeReview = {

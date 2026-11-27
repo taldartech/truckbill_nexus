@@ -1,22 +1,38 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
-import { Save } from 'lucide-react';
-import { useRef, useState } from 'react';
-import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
-import type { FieldReview } from '@/components/form-confirmation/types';
-import { SearchablePartySelect } from '@/components/searchable-party-select';
+import { ArrowLeft, Save } from 'lucide-react';
+import { useMemo, useRef, useState } from 'react';
 import {
-    LrfPage,
-    LrfSection,
-} from '@/pages/branch/lorry-receipts/lr-form-sections';
+    AppFormCard,
+    AppFormGrid,
+    AppFormPage,
+    AppFormSection,
+} from '@/components/app-form-page';
+import { StateCityFields } from '@/components/geography/state-city-fields';
+import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
+import type { FieldReviewSection } from '@/components/form-confirmation/types';
+import { QuickCreateCatalogueSheet } from '@/components/masters/quick-create-catalogue-sheet';
+import {
+    SearchablePartySelect,
+    type PartyOption,
+} from '@/components/searchable-party-select';
+import {
+    SearchableCombobox,
+    type ComboboxOption,
+} from '@/components/searchable-combobox';
+import { AppIconAction } from '@/components/app-icon-action';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { formatMtLabel } from '@/lib/operational-weight';
+import { readCanQuickCreateGeography } from '@/lib/geography-permissions';
 
 type Props = {
     company: { id: string; name: string };
     branch: { id: string; name: string };
-    parties: { id: string; name: string }[];
-    customers?: { id: string; name: string }[];
+    customers: PartyOption[];
+    consignors: PartyOption[];
+    consignees: PartyOption[];
+    goods_types: { id: string; name: string }[];
     vehicle_types: { id: string; name: string }[];
     urls: {
         index: string;
@@ -24,71 +40,173 @@ type Props = {
         parties_create?: string;
         parties_store?: string;
         parties_options?: string;
+        goods_types_store?: string;
+        truck_types_store?: string;
     };
 };
-
-const fieldClass =
-    'flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm';
-
-function formValue(data: FormData, key: string, fallback = ''): string {
-    const value = data.get(key);
-    return typeof value === 'string' ? value : fallback;
-}
 
 export default function BranchEnquiryCreate({
     company,
     branch,
-    parties,
     customers,
+    consignors,
+    consignees,
+    goods_types,
     vehicle_types,
     urls,
 }: Props) {
-    const { errors } = usePage<{
-        errors?: Record<string, string>;
-    }>().props;
+    const { errors } = usePage<{ errors?: Record<string, string> }>().props;
+    const canQuickCreateGeo = readCanQuickCreateGeography(usePage().props);
 
-    const customerOptions = customers ?? parties;
     const submitAllowed = useRef(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
-    const [reviewFields, setReviewFields] = useState<FieldReview[]>([]);
+    const [reviewSections, setReviewSections] = useState<FieldReviewSection[]>(
+        [],
+    );
+
     const [customerPartyId, setCustomerPartyId] = useState('');
+    const [consignorPartyId, setConsignorPartyId] = useState('');
+    const [consigneePartyId, setConsigneePartyId] = useState('');
+    const [goodsTypeId, setGoodsTypeId] = useState('');
+    const [extraGoodsTypes, setExtraGoodsTypes] = useState<ComboboxOption[]>(
+        [],
+    );
+    const [extraVehicleTypes, setExtraVehicleTypes] = useState<
+        ComboboxOption[]
+    >([]);
+    const [goodsQuickCreateOpen, setGoodsQuickCreateOpen] = useState(false);
+    const [vehicleQuickCreateOpen, setVehicleQuickCreateOpen] = useState(false);
+
+    const [fromStateId, setFromStateId] = useState('');
+    const [fromCityId, setFromCityId] = useState('');
+    const [toStateId, setToStateId] = useState('');
+    const [toCityId, setToCityId] = useState('');
+
+    const goodsComboboxOptions = useMemo(
+        () => [
+            ...goods_types.map((row) => ({ id: row.id, label: row.name })),
+            ...extraGoodsTypes,
+        ],
+        [extraGoodsTypes, goods_types],
+    );
+
+    const vehicleComboboxOptions = useMemo(
+        () => [
+            ...vehicle_types.map((row) => ({ id: row.id, label: row.name })),
+            ...extraVehicleTypes,
+        ],
+        [extraVehicleTypes, vehicle_types],
+    );
+
+    const applyPartyRoute = (
+        party: PartyOption | null,
+        direction: 'from' | 'to',
+    ) => {
+        if (!party?.state_id || !party.city_id) {
+            return;
+        }
+        if (direction === 'from') {
+            setFromStateId(party.state_id);
+            setFromCityId(party.city_id);
+        } else {
+            setToStateId(party.state_id);
+            setToCityId(party.city_id);
+        }
+    };
+
+    const labelForGoods = (id: string) =>
+        goodsComboboxOptions.find((row) => row.id === id)?.label ?? '—';
+
+    const labelForVehicle = (id: string) =>
+        vehicleComboboxOptions.find((row) => row.id === id)?.label ?? '—';
+
+    const labelForParty = (id: string, options: PartyOption[]) =>
+        options.find((row) => row.id === id)?.short_name ||
+        options.find((row) => row.id === id)?.name ||
+        '—';
 
     const openConfirmation = (form: HTMLFormElement) => {
         const data = new FormData(form);
-        const customerName =
-            customerOptions.find((option) => option.id === customerPartyId)
-                ?.name ??
-            (
-                form.querySelector(
-                    '#customer_party_id',
-                ) as HTMLSelectElement | null
-            )?.selectedOptions?.[0]?.text?.trim() ??
-            '—';
-        const vehicleTypeId = formValue(data, 'vehicle_type_id');
-        const vehicleTypeName =
-            vehicle_types.find((type) => type.id === vehicleTypeId)?.name ??
-            '—';
 
-        setReviewFields([
-            { label: 'Customer', value: customerName },
+        setReviewSections([
             {
-                label: 'Pickup',
-                value: formValue(data, 'pickup_location').trim() || '—',
+                title: 'Enquiry information',
+                fields: [
+                    {
+                        label: 'Goods type',
+                        value: labelForGoods(
+                            (data.get('goods_type_id') as string) ?? '',
+                        ),
+                    },
+                    {
+                        label: 'Weight (MT)',
+                        value: formatMtLabel(
+                            (data.get('weight_mt') as string) ?? '',
+                        ),
+                    },
+                    {
+                        label: 'Vehicle type',
+                        value: labelForVehicle(
+                            (data.get('vehicle_type_id') as string) ?? '',
+                        ),
+                    },
+                    {
+                        label: 'Pickup date',
+                        value:
+                            ((data.get('expected_loading_date') as string) ??
+                                '') ||
+                            '—',
+                    },
+                ],
             },
             {
-                label: 'Delivery',
-                value: formValue(data, 'delivery_location').trim() || '—',
+                title: 'Party and route',
+                fields: [
+                    {
+                        label: 'Party name',
+                        value:
+                            ((data.get('party_name') as string) ?? '').trim() ||
+                            '—',
+                    },
+                    {
+                        label: 'Customer',
+                        value: customerPartyId
+                            ? labelForParty(customerPartyId, customers)
+                            : '—',
+                    },
+                    {
+                        label: 'Consignor',
+                        value: consignorPartyId
+                            ? labelForParty(consignorPartyId, consignors)
+                            : '—',
+                    },
+                    {
+                        label: 'Consignee',
+                        value: consigneePartyId
+                            ? labelForParty(consigneePartyId, consignees)
+                            : '—',
+                    },
+                    {
+                        label: 'From',
+                        value: `${fromCityId ? 'City selected' : '—'} / ${fromStateId ? 'State selected' : '—'}`,
+                    },
+                    {
+                        label: 'To',
+                        value: `${toCityId ? 'City selected' : '—'} / ${toStateId ? 'State selected' : '—'}`,
+                    },
+                ],
             },
-            { label: 'Vehicle type', value: vehicleTypeName },
             {
-                label: 'Vehicle quantity',
-                value: formValue(data, 'vehicle_quantity', '1'),
-            },
-            {
-                label: 'Goods',
-                value:
-                    formValue(data, 'goods[0][goods_description]').trim() ||
-                    '—',
+                title: 'Notes',
+                fields: [
+                    {
+                        label: 'Notes',
+                        value:
+                            (
+                                (data.get('instructions') as string) ?? ''
+                            ).trim() || '—',
+                    },
+                ],
             },
         ]);
         setConfirmOpen(true);
@@ -120,180 +238,248 @@ export default function BranchEnquiryCreate({
     return (
         <>
             <Head title={`Create enquiry · ${branch.name}`} />
-            <LrfPage
+            <AppFormPage
                 title="Create enquiry"
-                subtitle={`${company.name} · ${branch.name} — structured broker enquiry capture.`}
-                backHref={urls.index}
-                backLabel="Enquiries"
+                description={`${company.name} · ${branch.name}`}
+                actions={
+                    <AppIconAction
+                        icon={ArrowLeft}
+                        label="Back to enquiries"
+                        href={urls.index}
+                        variant="outline"
+                    />
+                }
             >
                 <Form
                     id="enquiry-create-form"
                     action={urls.store}
                     method="post"
-                    className="space-y-3"
+                    className="space-y-6"
                     onBefore={handleBeforeSubmit}
                 >
                     {({ processing }) => (
                         <>
-                            <LrfSection
-                                step={1}
-                                title="Customer and enquiry"
-                                description="Assign the customer party for this pipeline entry."
-                                tone="receipt"
-                            >
-                                <div className="grid gap-3 md:grid-cols-2">
-                                    <div className="md:col-span-2 lg:col-span-1">
+                            <AppFormCard>
+                                <AppFormSection
+                                    title="Enquiry information"
+                                    description="Goods, weight, vehicle, and pickup date."
+                                >
+                                    <AppFormGrid cols={3}>
+                                        <div className="space-y-2 md:col-span-2">
+                                            <SearchableCombobox
+                                                id="goods_type_id"
+                                                name="goods_type_id"
+                                                label="Goods type"
+                                                options={goodsComboboxOptions}
+                                                value={goodsTypeId}
+                                                required
+                                                error={errors?.goods_type_id}
+                                                addAction={
+                                                    urls.goods_types_store
+                                                        ? {
+                                                              label: '+ Add',
+                                                              onClick: () =>
+                                                                  setGoodsQuickCreateOpen(
+                                                                      true,
+                                                                  ),
+                                                          }
+                                                        : undefined
+                                                }
+                                                onValueChange={(id) =>
+                                                    setGoodsTypeId(id)
+                                                }
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="weight_mt">
+                                                Weight (MT)
+                                            </Label>
+                                            <Input
+                                                id="weight_mt"
+                                                name="weight_mt"
+                                                type="number"
+                                                min={0}
+                                                step="0.001"
+                                                required
+                                            />
+                                        </div>
+                                        <div className="space-y-2 md:col-span-2">
+                                            <SearchableCombobox
+                                                id="vehicle_type_id"
+                                                name="vehicle_type_id"
+                                                label="Vehicle type"
+                                                options={vehicleComboboxOptions}
+                                                required
+                                                error={errors?.vehicle_type_id}
+                                                addAction={
+                                                    urls.truck_types_store
+                                                        ? {
+                                                              label: '+ Add',
+                                                              onClick: () =>
+                                                                  setVehicleQuickCreateOpen(
+                                                                      true,
+                                                                  ),
+                                                          }
+                                                        : undefined
+                                                }
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="expected_loading_date">
+                                                Pickup date
+                                            </Label>
+                                            <Input
+                                                id="expected_loading_date"
+                                                name="expected_loading_date"
+                                                type="date"
+                                            />
+                                        </div>
+                                    </AppFormGrid>
+                                </AppFormSection>
+                            </AppFormCard>
+
+                            <AppFormCard>
+                                <AppFormSection
+                                    title="Party and route information"
+                                    description="Party, consignor/consignee, and from/to geography."
+                                >
+                                    <AppFormGrid cols={2}>
+                                        <div className="space-y-2 md:col-span-2">
+                                            <Label htmlFor="party_name">
+                                                Party name
+                                            </Label>
+                                            <Input
+                                                id="party_name"
+                                                name="party_name"
+                                                placeholder="Free-text party when not selecting a customer master"
+                                            />
+                                        </div>
                                         <SearchablePartySelect
                                             id="customer_party_id"
                                             name="customer_party_id"
-                                            label="Customer"
-                                            options={customerOptions}
+                                            label="Customer (optional)"
+                                            options={customers}
                                             searchUrl={urls.parties_options}
                                             role="customer"
-                                            required
                                             value={customerPartyId}
                                             onValueChange={setCustomerPartyId}
-                                            emptyMessage="No eligible Customers in this branch. Create a Customer party first."
                                             createStoreUrl={urls.parties_store}
                                             createHref={urls.parties_create}
                                             createLabel="Add"
                                             createRole="customer"
                                             error={errors?.customer_party_id}
                                         />
-                                    </div>
-                                </div>
-                            </LrfSection>
+                                        <SearchablePartySelect
+                                            id="consignor_party_id"
+                                            name="consignor_party_id"
+                                            label="Consignor (optional)"
+                                            options={consignors}
+                                            searchUrl={urls.parties_options}
+                                            role="consignor"
+                                            value={consignorPartyId}
+                                            onValueChange={(id) => {
+                                                setConsignorPartyId(id);
+                                                const party =
+                                                    consignors.find(
+                                                        (row) => row.id === id,
+                                                    ) ?? null;
+                                                applyPartyRoute(party, 'from');
+                                            }}
+                                            onPartyChange={(party) =>
+                                                applyPartyRoute(party, 'from')
+                                            }
+                                            createStoreUrl={urls.parties_store}
+                                            createHref={urls.parties_create}
+                                            createLabel="Add"
+                                            createRole="consignor"
+                                            error={errors?.consignor_party_id}
+                                        />
+                                        <SearchablePartySelect
+                                            id="consignee_party_id"
+                                            name="consignee_party_id"
+                                            label="Consignee (optional)"
+                                            options={consignees}
+                                            searchUrl={urls.parties_options}
+                                            role="consignee"
+                                            value={consigneePartyId}
+                                            onValueChange={(id) => {
+                                                setConsigneePartyId(id);
+                                                const party =
+                                                    consignees.find(
+                                                        (row) => row.id === id,
+                                                    ) ?? null;
+                                                applyPartyRoute(party, 'to');
+                                            }}
+                                            onPartyChange={(party) =>
+                                                applyPartyRoute(party, 'to')
+                                            }
+                                            createStoreUrl={urls.parties_store}
+                                            createHref={urls.parties_create}
+                                            createLabel="Add"
+                                            createRole="consignee"
+                                            error={errors?.consignee_party_id}
+                                        />
+                                    </AppFormGrid>
 
-                            <LrfSection
-                                step={2}
-                                title="Route"
-                                description="Pickup and delivery locations."
-                                tone="route"
-                            >
-                                <div className="grid gap-3 md:grid-cols-2">
+                                    <div className="mt-4 space-y-2">
+                                        <p className="text-sm font-medium text-foreground">
+                                            From
+                                        </p>
+                                        <StateCityFields
+                                            fieldPrefix="from_"
+                                            valueMode="ids"
+                                            required
+                                            stateId={fromStateId}
+                                            cityId={fromCityId}
+                                            canQuickCreate={canQuickCreateGeo}
+                                            stateError={errors?.from_state_id}
+                                            cityError={errors?.from_city_id}
+                                            onChange={(value) => {
+                                                setFromStateId(value.state_id);
+                                                setFromCityId(value.city_id);
+                                            }}
+                                        />
+                                    </div>
+
+                                    <div className="mt-4 space-y-2">
+                                        <p className="text-sm font-medium text-foreground">
+                                            To
+                                        </p>
+                                        <StateCityFields
+                                            fieldPrefix="to_"
+                                            valueMode="ids"
+                                            required
+                                            stateId={toStateId}
+                                            cityId={toCityId}
+                                            canQuickCreate={canQuickCreateGeo}
+                                            stateError={errors?.to_state_id}
+                                            cityError={errors?.to_city_id}
+                                            onChange={(value) => {
+                                                setToStateId(value.state_id);
+                                                setToCityId(value.city_id);
+                                            }}
+                                        />
+                                    </div>
+                                </AppFormSection>
+                            </AppFormCard>
+
+                            <AppFormCard>
+                                <AppFormSection title="Notes">
                                     <div className="space-y-2">
-                                        <Label htmlFor="pickup_location">
-                                            Pickup location
+                                        <Label htmlFor="instructions">
+                                            Notes
                                         </Label>
-                                        <Input
-                                            id="pickup_location"
-                                            name="pickup_location"
-                                            required
+                                        <textarea
+                                            id="instructions"
+                                            name="instructions"
+                                            rows={4}
+                                            className="min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
                                         />
                                     </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="delivery_location">
-                                            Delivery location
-                                        </Label>
-                                        <Input
-                                            id="delivery_location"
-                                            name="delivery_location"
-                                            required
-                                        />
-                                    </div>
-                                </div>
-                            </LrfSection>
+                                </AppFormSection>
+                            </AppFormCard>
 
-                            <LrfSection
-                                step={3}
-                                title="Vehicle"
-                                description="Type and quantity requested."
-                                tone="goods"
-                            >
-                                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                                    <div className="space-y-2 md:col-span-2">
-                                        <Label htmlFor="vehicle_type_id">
-                                            Vehicle type
-                                        </Label>
-                                        <select
-                                            id="vehicle_type_id"
-                                            name="vehicle_type_id"
-                                            required
-                                            className={fieldClass}
-                                            defaultValue=""
-                                        >
-                                            <option value="" disabled>
-                                                Select vehicle type
-                                            </option>
-                                            {vehicle_types.map((type) => (
-                                                <option
-                                                    key={type.id}
-                                                    value={type.id}
-                                                >
-                                                    {type.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="vehicle_quantity">
-                                            Vehicle quantity
-                                        </Label>
-                                        <Input
-                                            id="vehicle_quantity"
-                                            name="vehicle_quantity"
-                                            type="number"
-                                            min={1}
-                                            defaultValue={1}
-                                            required
-                                        />
-                                    </div>
-                                </div>
-                            </LrfSection>
-
-                            <LrfSection
-                                step={4}
-                                title="Goods"
-                                description="Cargo description and package count."
-                                tone="optional"
-                            >
-                                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                                    <div className="space-y-2 md:col-span-2">
-                                        <Label htmlFor="goods_description">
-                                            Goods description
-                                        </Label>
-                                        <Input
-                                            id="goods_description"
-                                            name="goods[0][goods_description]"
-                                            required
-                                            placeholder="General cargo"
-                                        />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label htmlFor="package_count">
-                                            Package count
-                                        </Label>
-                                        <Input
-                                            id="package_count"
-                                            name="goods[0][package_count]"
-                                            type="number"
-                                            min={0}
-                                            defaultValue={1}
-                                        />
-                                    </div>
-                                </div>
-                            </LrfSection>
-
-                            <LrfSection
-                                step={5}
-                                title="Instructions"
-                                description="Operational notes for quoters."
-                                tone="optional"
-                            >
-                                <div className="space-y-2">
-                                    <Label htmlFor="instructions">
-                                        Special instructions
-                                    </Label>
-                                    <textarea
-                                        id="instructions"
-                                        name="instructions"
-                                        rows={4}
-                                        className="min-h-24 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                    />
-                                </div>
-                            </LrfSection>
-
-                            <div className="sticky bottom-0 z-10 flex flex-wrap gap-3 border-t border-border bg-background/95 py-4 backdrop-blur">
+                            <div className="flex flex-wrap gap-3">
                                 <Button
                                     type="submit"
                                     variant="primary"
@@ -316,11 +502,38 @@ export default function BranchEnquiryCreate({
                     onOpenChange={setConfirmOpen}
                     mode="create"
                     title="Create this enquiry?"
-                    description="Review customer, route, and vehicle details before submitting."
-                    fields={reviewFields}
+                    description="Review enquiry, party, and route details before submitting."
+                    sections={reviewSections}
                     onConfirm={handleConfirm}
                 />
-            </LrfPage>
+            </AppFormPage>
+
+            {urls.goods_types_store ? (
+                <QuickCreateCatalogueSheet
+                    open={goodsQuickCreateOpen}
+                    onOpenChange={setGoodsQuickCreateOpen}
+                    title="Quick add goods type"
+                    storeUrl={urls.goods_types_store}
+                    onCreated={(item) => {
+                        const option = { id: item.id, label: item.name };
+                        setExtraGoodsTypes((current) => [...current, option]);
+                        setGoodsTypeId(item.id);
+                    }}
+                />
+            ) : null}
+
+            {urls.truck_types_store ? (
+                <QuickCreateCatalogueSheet
+                    open={vehicleQuickCreateOpen}
+                    onOpenChange={setVehicleQuickCreateOpen}
+                    title="Quick add vehicle type"
+                    storeUrl={urls.truck_types_store}
+                    onCreated={(item) => {
+                        const option = { id: item.id, label: item.name };
+                        setExtraVehicleTypes((current) => [...current, option]);
+                    }}
+                />
+            ) : null}
         </>
     );
 }

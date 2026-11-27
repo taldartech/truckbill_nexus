@@ -33,6 +33,7 @@ use App\Models\OwnerCatalogueItem;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Support\Presentation\FreightAmountPresentation;
+use App\Support\Weight\OperationalWeight;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -149,7 +150,18 @@ class EnquiryController extends Controller
         $query = Enquiry::query()
             ->where('company_id', $company->id)
             ->whereNull('deleted_at')
-            ->with(['goodsRows' => fn ($q) => $q->orderBy('position')])
+            ->with([
+                'goodsRows' => fn ($q) => $q->orderBy('position'),
+                'goodsRows.goodsType:id,name',
+                'customerParty:id,name,short_name',
+                'consignorParty:id,name,short_name',
+                'consigneeParty:id,name,short_name',
+                'fromCity:id,name',
+                'fromState:id,name',
+                'toCity:id,name',
+                'toState:id,name',
+                'vehicleType:id,name',
+            ])
             ->orderByDesc('created_at');
 
         if ($includeUnassigned) {
@@ -215,11 +227,28 @@ class EnquiryController extends Controller
             ->limit(200)
             ->get(['id', 'name']);
 
+        $goodsTypes = OwnerCatalogueItem::query()
+            ->where('owner_user_id', $company->owner_user_id)
+            ->where('catalogue_type', OwnerCatalogueType::GoodsType->value)
+            ->where('is_active', true)
+            ->whereNull('deleted_at')
+            ->orderBy('name')
+            ->limit(200)
+            ->get(['id', 'name']);
+
+        $consignors = app(PartyOptionQuery::class)->forRoles($company, $branch, PartyRoleType::Consignor);
+        $consignees = app(PartyOptionQuery::class)->forRoles($company, $branch, PartyRoleType::Consignee);
+
         return Inertia::render('branch/enquiries/create', [
             'company' => ['id' => $company->id, 'name' => $company->name],
             'branch' => ['id' => $branch->id, 'name' => $branch->name],
-            'parties' => $customers,
             'customers' => $customers,
+            'consignors' => $consignors,
+            'consignees' => $consignees,
+            'goods_types' => $goodsTypes->map(fn ($type): array => [
+                'id' => $type->id,
+                'name' => $type->name,
+            ])->values()->all(),
             'vehicle_types' => $vehicleTypes->map(fn ($type): array => [
                 'id' => $type->id,
                 'name' => $type->name,
@@ -230,6 +259,8 @@ class EnquiryController extends Controller
                 'parties_create' => route('branch.parties.create', absolute: false),
                 'parties_store' => route('branch.parties.store', absolute: false),
                 'parties_options' => route('branch.parties.options', absolute: false),
+                'goods_types_store' => route('branch.goods-types.store', absolute: false),
+                'truck_types_store' => route('branch.truck-types.store', absolute: false),
             ],
         ]);
     }
@@ -718,21 +749,28 @@ class EnquiryController extends Controller
     {
         return $request->validate([
             'enquiry_date' => ['nullable', 'date'],
-            'customer_party_id' => ['required', 'uuid'],
-            'pickup_location' => ['required', 'string', 'max:255'],
-            'delivery_location' => ['required', 'string', 'max:255'],
+            'party_name' => ['nullable', 'string', 'max:255'],
+            'customer_party_id' => ['nullable', 'uuid'],
+            'consignor_party_id' => ['nullable', 'uuid'],
+            'consignee_party_id' => ['nullable', 'uuid'],
+            'from_state_id' => ['nullable', 'uuid'],
+            'from_city_id' => ['nullable', 'uuid'],
+            'to_state_id' => ['nullable', 'uuid'],
+            'to_city_id' => ['nullable', 'uuid'],
+            'pickup_location' => ['prohibited'],
+            'delivery_location' => ['prohibited'],
             'vehicle_type_id' => ['required', 'uuid'],
-            'vehicle_quantity' => ['required', 'integer', 'min:1'],
+            'vehicle_quantity' => ['nullable', 'integer', 'min:1'],
             'vehicle_types' => ['prohibited'],
+            'pickup_date' => ['nullable', 'date'],
             'expected_loading_date' => ['nullable', 'date'],
+            'notes' => ['nullable', 'string'],
             'instructions' => ['nullable', 'string'],
-            'goods' => ['required', 'array', 'min:1', 'max:50'],
+            'goods_type_id' => ['nullable', 'uuid'],
+            'weight_mt' => ['nullable', 'numeric', 'gt:0'],
+            'goods' => ['sometimes', 'array', 'max:1'],
             'goods.*.goods_type_id' => ['nullable', 'uuid'],
-            'goods.*.package_type_id' => ['nullable', 'uuid'],
-            'goods.*.goods_description' => ['nullable', 'string', 'max:255'],
-            'goods.*.package_count' => ['nullable', 'numeric', 'min:0'],
-            'goods.*.actual_weight' => ['nullable', 'numeric', 'min:0'],
-            'goods.*.charged_weight' => ['nullable', 'numeric', 'min:0'],
+            'goods.*.weight_mt' => ['nullable', 'numeric', 'gt:0'],
             'company_id' => ['prohibited'],
             'branch_id' => ['prohibited'],
             'created_by_user_id' => ['prohibited'],
@@ -750,21 +788,28 @@ class EnquiryController extends Controller
         return $request->validate([
             'remark' => ['required', 'string', 'min:1'],
             'enquiry_date' => ['sometimes', 'date'],
-            'customer_party_id' => ['sometimes', 'uuid'],
-            'pickup_location' => ['sometimes', 'string', 'max:255'],
-            'delivery_location' => ['sometimes', 'string', 'max:255'],
+            'party_name' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'customer_party_id' => ['sometimes', 'nullable', 'uuid'],
+            'consignor_party_id' => ['sometimes', 'nullable', 'uuid'],
+            'consignee_party_id' => ['sometimes', 'nullable', 'uuid'],
+            'from_state_id' => ['sometimes', 'nullable', 'uuid'],
+            'from_city_id' => ['sometimes', 'nullable', 'uuid'],
+            'to_state_id' => ['sometimes', 'nullable', 'uuid'],
+            'to_city_id' => ['sometimes', 'nullable', 'uuid'],
+            'pickup_location' => ['prohibited'],
+            'delivery_location' => ['prohibited'],
             'vehicle_type_id' => ['sometimes', 'uuid'],
             'vehicle_quantity' => ['sometimes', 'integer', 'min:1'],
             'vehicle_types' => ['prohibited'],
+            'pickup_date' => ['nullable', 'date'],
             'expected_loading_date' => ['nullable', 'date'],
+            'notes' => ['nullable', 'string'],
             'instructions' => ['nullable', 'string'],
-            'goods' => ['sometimes', 'array', 'min:1', 'max:50'],
+            'goods_type_id' => ['sometimes', 'nullable', 'uuid'],
+            'weight_mt' => ['sometimes', 'nullable', 'numeric', 'gt:0'],
+            'goods' => ['sometimes', 'array', 'max:1'],
             'goods.*.goods_type_id' => ['nullable', 'uuid'],
-            'goods.*.package_type_id' => ['nullable', 'uuid'],
-            'goods.*.goods_description' => ['nullable', 'string', 'max:255'],
-            'goods.*.package_count' => ['nullable', 'numeric', 'min:0'],
-            'goods.*.actual_weight' => ['nullable', 'numeric', 'min:0'],
-            'goods.*.charged_weight' => ['nullable', 'numeric', 'min:0'],
+            'goods.*.weight_mt' => ['nullable', 'numeric', 'gt:0'],
             'company_id' => ['prohibited'],
             'branch_id' => ['prohibited'],
             'status' => ['prohibited'],
@@ -809,12 +854,43 @@ class EnquiryController extends Controller
             'source' => $enquiry->source->value,
             'status' => $enquiry->status->value,
             'enquiry_date' => $enquiry->enquiry_date?->toDateString(),
+            'party_name' => $enquiry->party_name,
             'customer_party_id' => $enquiry->customer_party_id,
             'customer_name' => $enquiry->relationLoaded('customerParty') && $enquiry->customerParty
                 ? $enquiry->customerParty->name
                 : null,
+            'consignor_party_id' => $enquiry->consignor_party_id,
+            'consignor_name' => $enquiry->relationLoaded('consignorParty') && $enquiry->consignorParty
+                ? $enquiry->consignorParty->name
+                : null,
+            'consignee_party_id' => $enquiry->consignee_party_id,
+            'consignee_name' => $enquiry->relationLoaded('consigneeParty') && $enquiry->consigneeParty
+                ? $enquiry->consigneeParty->name
+                : null,
+            'from_state_id' => $enquiry->from_state_id,
+            'from_city_id' => $enquiry->from_city_id,
+            'to_state_id' => $enquiry->to_state_id,
+            'to_city_id' => $enquiry->to_city_id,
+            'from_city_name' => $enquiry->relationLoaded('fromCity') ? $enquiry->fromCity?->name : null,
+            'from_state_name' => $enquiry->relationLoaded('fromState') ? $enquiry->fromState?->name : null,
+            'to_city_name' => $enquiry->relationLoaded('toCity') ? $enquiry->toCity?->name : null,
+            'to_state_name' => $enquiry->relationLoaded('toState') ? $enquiry->toState?->name : null,
             'pickup_location' => $enquiry->pickup_location,
             'delivery_location' => $enquiry->delivery_location,
+            'party_label' => $this->partyLabel($enquiry),
+            'route_label' => $this->routeLabel($enquiry),
+            'pickup_date' => $enquiry->expected_loading_date?->toDateString(),
+            'goods_type_name' => $enquiry->relationLoaded('goodsRows')
+                && $enquiry->goodsRows->first()?->relationLoaded('goodsType')
+                ? $enquiry->goodsRows->first()?->goodsType?->name
+                : null,
+            'weight_mt' => $enquiry->relationLoaded('goodsRows') && $enquiry->goodsRows->first()?->actual_weight !== null
+                ? OperationalWeight::kgToMt((string) $enquiry->goodsRows->first()->actual_weight)
+                : null,
+            'vehicle_type_name' => $enquiry->relationLoaded('vehicleType') ? $enquiry->vehicleType?->name : null,
+            'pending_master_resolution' => $enquiry->pending_master_resolution,
+            'external_business_name' => $enquiry->external_business_name,
+            'external_contact_person_name' => $enquiry->external_contact_person_name,
             'vehicle_type_id' => $enquiry->vehicle_type_id,
             'vehicle_quantity' => $enquiry->vehicle_quantity,
             'expected_loading_date' => $enquiry->expected_loading_date?->toDateString(),
@@ -897,5 +973,41 @@ class EnquiryController extends Controller
                 ]
                 : null,
         ];
+    }
+
+    private function partyLabel(Enquiry $enquiry): string
+    {
+        if (filled($enquiry->party_name)) {
+            return (string) $enquiry->party_name;
+        }
+
+        if ($enquiry->relationLoaded('customerParty') && $enquiry->customerParty) {
+            return $enquiry->customerParty->short_name ?: $enquiry->customerParty->name;
+        }
+
+        if ($enquiry->relationLoaded('consignorParty') && $enquiry->consignorParty) {
+            return $enquiry->consignorParty->short_name ?: $enquiry->consignorParty->name;
+        }
+
+        if ($enquiry->external_business_name) {
+            return (string) $enquiry->external_business_name;
+        }
+
+        if ($enquiry->external_customer_name) {
+            return (string) $enquiry->external_customer_name;
+        }
+
+        return '—';
+    }
+
+    private function routeLabel(Enquiry $enquiry): string
+    {
+        $from = $enquiry->pickup_location;
+        $to = $enquiry->delivery_location;
+        if ($from === null && $to === null) {
+            return '—';
+        }
+
+        return trim((string) $from).' → '.trim((string) $to);
     }
 }

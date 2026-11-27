@@ -9,6 +9,7 @@ import { AppIconAction } from '@/components/app-icon-action';
 import { FormSection } from '@/components/form-section';
 import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 
@@ -37,11 +38,26 @@ type Props = {
         remark: string | null;
         created_at: string | null;
     }[];
+    branches?: { id: string; name: string }[];
+    enquiries_entitled?: boolean;
+    enquiry_webhook_credentials?: {
+        id: string;
+        label: string | null;
+        token_prefix: string;
+        receiving_branch_id: string | null;
+        last_used_at: string | null;
+        revoked_at: string | null;
+        is_usable: boolean;
+        rotate_url: string;
+        revoke_url: string;
+        update_url: string;
+    }[];
     urls: {
         index: string;
         deactivate: string;
         reactivate: string;
         transfer: string;
+        enquiry_webhook_store?: string;
     };
 };
 
@@ -56,12 +72,20 @@ export default function AdminCompanyShow({
     customer_candidates,
     transfers,
     audit_entries,
+    branches = [],
+    enquiries_entitled = false,
+    enquiry_webhook_credentials = [],
     urls,
 }: Props) {
     const { flash, errors } = usePage<{
-        flash?: { success?: string | null };
+        flash?: {
+            success?: string | null;
+            enquiry_webhook_plain_token?: string | null;
+        };
         errors?: Record<string, string>;
     }>().props;
+
+    const plainToken = flash?.enquiry_webhook_plain_token ?? null;
 
     return (
         <>
@@ -163,6 +187,115 @@ export default function AdminCompanyShow({
                         </div>
                     </FormSection>
                 </Form>
+
+                {enquiries_entitled && urls.enquiry_webhook_store ? (
+                    <Form action={urls.enquiry_webhook_store} method="post">
+                        <FormSection
+                            title="Website enquiry webhook tokens"
+                            description="Generate company-scoped bearer tokens. Plain token is shown once; only the prefix is stored on screen afterwards."
+                            columns={2}
+                        >
+                            {plainToken ? (
+                                <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950 md:col-span-2">
+                                    <p className="font-medium">
+                                        Copy token now
+                                    </p>
+                                    <code className="mt-1 block font-mono text-xs break-all">
+                                        {plainToken}
+                                    </code>
+                                </div>
+                            ) : null}
+                            <div className="space-y-2">
+                                <Label htmlFor="webhook-label">Label</Label>
+                                <Input
+                                    id="webhook-label"
+                                    name="label"
+                                    placeholder="Production website"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="receiving_branch_id">
+                                    Receiving branch
+                                </Label>
+                                <select
+                                    id="receiving_branch_id"
+                                    name="receiving_branch_id"
+                                    className={selectClass}
+                                    defaultValue=""
+                                >
+                                    <option value="">
+                                        Unassigned company queue
+                                    </option>
+                                    {branches.map((branch) => (
+                                        <option
+                                            key={branch.id}
+                                            value={branch.id}
+                                        >
+                                            {branch.name}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+                            <div className="md:col-span-2">
+                                <Button type="submit">Generate token</Button>
+                            </div>
+                            {enquiry_webhook_credentials.length > 0 ? (
+                                <ul className="space-y-2 text-sm md:col-span-2">
+                                    {enquiry_webhook_credentials.map((row) => (
+                                        <li
+                                            key={row.id}
+                                            className="rounded-md border border-border bg-muted/20 px-3 py-2"
+                                        >
+                                            <span className="font-mono text-xs">
+                                                {row.token_prefix}…
+                                            </span>
+                                            {row.label ? ` · ${row.label}` : ''}
+                                            <div className="text-xs text-muted-foreground">
+                                                {row.is_usable
+                                                    ? 'Active'
+                                                    : 'Revoked/expired'}{' '}
+                                                · last used{' '}
+                                                {row.last_used_at ?? '—'}
+                                            </div>
+                                            {row.is_usable ? (
+                                                <div className="mt-2 flex flex-wrap gap-2">
+                                                    <Form
+                                                        action={row.rotate_url}
+                                                        method="post"
+                                                    >
+                                                        <Button
+                                                            type="submit"
+                                                            size="sm"
+                                                            variant="outline"
+                                                        >
+                                                            Rotate
+                                                        </Button>
+                                                    </Form>
+                                                    <Form
+                                                        action={row.revoke_url}
+                                                        method="post"
+                                                    >
+                                                        <Button
+                                                            type="submit"
+                                                            size="sm"
+                                                            variant="destructive"
+                                                        >
+                                                            Revoke
+                                                        </Button>
+                                                    </Form>
+                                                </div>
+                                            ) : null}
+                                        </li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p className="text-sm text-muted-foreground md:col-span-2">
+                                    No webhook credentials yet.
+                                </p>
+                            )}
+                        </FormSection>
+                    </Form>
+                ) : null}
 
                 <Form action={urls.transfer} method="post">
                     <FormSection

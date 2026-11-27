@@ -287,3 +287,13 @@ Before completing any implementation task: review the full diff; remove unused i
 - **Left:** the record name or section title, with status and role badges and relevant secondary information. Status badges never sit in the actions area.
 - **Right:** authorized actions, right-aligned and wrapping on narrow screens without overlapping the title. Record actions are icon-only `AppIconAction` controls with familiar icons (Back, View, Edit, Documents, Download, Print, Delete), an accessible label, a tooltip and consistent sizing. Destructive actions use destructive styling and a confirmation dialog, with a remark where the domain requires one.
 - Only actions the viewer is authorized to use are rendered.
+
+## 27. Freight Rate Type Order (Permanent)
+
+- Selectable freight Rate Types use one authoritative catalog (`FreightRateTypeCatalog` / `freight-rate-type-options.ts`) in this order: **Per Charged Weight**, **Per Actual Weight**, **Fixed**, **Per Unit**.
+- New rows default to **Per Charged Weight**. Persisted enum values and legacy `per_kg` / `per_mt` rows remain valid; historical freight amounts and KG/MT storage semantics are unchanged.
+
+## 28. Numeric Input Scroll (Permanent)
+
+- Shared `Input` blurs `type="number"` fields on mouse wheel so scroll does not change the value accidentally.
+- Page and modal scrolling continue normally; wheel events are not blocked globally.

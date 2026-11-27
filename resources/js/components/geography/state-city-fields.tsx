@@ -19,6 +19,8 @@ type GeographyOption = {
 type ValueMode = 'ids' | 'names';
 
 type Props = {
+    /** Prefix for form field names, e.g. `from_` → `from_state_id`. */
+    fieldPrefix?: string;
     stateId?: string | null;
     cityId?: string | null;
     stateName?: string | null;
@@ -93,6 +95,7 @@ function mergeOptions(
  * Changing State clears an incompatible City.
  */
 export function StateCityFields({
+    fieldPrefix = '',
     stateId = '',
     cityId = '',
     stateName = '',
@@ -107,6 +110,8 @@ export function StateCityFields({
     cityStoreUrl,
     onChange,
 }: Props) {
+    const stateFieldName = `${fieldPrefix}state_id`;
+    const cityFieldName = `${fieldPrefix}city_id`;
     const page = usePage();
     const canManageMasters = readCanManageGeography(page.props);
     const canManage = canQuickCreate ?? readCanQuickCreateGeography(page.props);
@@ -210,8 +215,12 @@ export function StateCityFields({
         <>
             <div className="grid gap-4 md:grid-cols-2">
                 <SearchableCombobox
-                    id="state_id"
-                    name={useNamesMode ? 'state_lookup' : 'state_id'}
+                    id={stateFieldName}
+                    name={
+                        useNamesMode
+                            ? `${fieldPrefix}state_lookup`
+                            : stateFieldName
+                    }
                     label="State"
                     options={stateOptions}
                     value={selectedStateId}
@@ -272,8 +281,12 @@ export function StateCityFields({
                     </>
                 ) : null}
                 <SearchableCombobox
-                    id="city_id"
-                    name={useNamesMode ? 'city_lookup' : 'city_id'}
+                    id={cityFieldName}
+                    name={
+                        useNamesMode
+                            ? `${fieldPrefix}city_lookup`
+                            : cityFieldName
+                    }
                     label="City"
                     options={cityOptions}
                     value={selectedCityId}

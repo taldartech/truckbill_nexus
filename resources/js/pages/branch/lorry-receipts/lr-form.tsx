@@ -6,8 +6,14 @@ import { normalizeComparable } from '@/components/form-confirmation/diff';
 import type {
     ChangeReview,
     FieldReview,
+    FieldReviewSection,
 } from '@/components/form-confirmation/types';
 import InputError from '@/components/input-error';
+import {
+    DEFAULT_FREIGHT_RATE_TYPE,
+    FREIGHT_RATE_TYPE_OPTIONS,
+    freightRateTypeLabel,
+} from '@/lib/freight-rate-type-options';
 import {
     QuickCreateCatalogueSheet,
     type QuickCreatedCatalogueItem,
@@ -188,12 +194,9 @@ type GoodsFieldSource =
     | 'match_actual'
     | 'other';
 
-const NEW_ROW_RATE_TYPE_VALUES = new Set([
-    'fixed_amount',
-    'per_package_unit',
-    'per_charged_weight',
-    'per_actual_weight',
-]);
+const NEW_ROW_RATE_TYPE_VALUES = new Set<string>(
+    FREIGHT_RATE_TYPE_OPTIONS.map((option) => option.value),
+);
 
 const fieldClass =
     'flex h-9 w-full min-w-0 rounded-md border border-input bg-background px-3 text-sm';
@@ -276,7 +279,7 @@ const emptyGoods = (): GoodsRow => ({
     weight_per_unit: '',
     actual_weight: '',
     charged_weight: '',
-    freight_rate_type: 'per_charged_weight',
+    freight_rate_type: DEFAULT_FREIGHT_RATE_TYPE,
     rate_semantics: 'weight_mt',
     freight_rate: '0',
     goods_value: '',
@@ -296,7 +299,6 @@ function computeLrSummary(goodsRows: GoodsRow[], chargeRows: ChargeRow[]) {
     const totalAdditional = sumNumericStrings(
         chargeRows.map((row) => row.amount),
     );
-
     return {
         totalActual: formatFixed(totalActual, 3),
         totalCharged: formatFixed(totalCharged, 3),
@@ -328,7 +330,7 @@ function formatGoodsRowReview(
         `Actual ${row.actual_weight || '—'} MT`,
         `Charged ${row.charged_weight || '—'} MT`,
         mayViewFreight
-            ? `Rate ${row.freight_rate || '—'} (${row.freight_rate_type || '—'})`
+            ? `Rate ${row.freight_rate || '—'} (${freightRateTypeLabel(row.freight_rate_type || '')})`
             : null,
         mayViewFreight
             ? `Freight ${freightPreview !== null ? formatFixed(freightPreview, 2) : '—'}`
@@ -364,6 +366,7 @@ function pushScalarChange(
     label: string,
     previousRaw: string,
     nextRaw: string,
+    group?: string,
 ): void {
     const previous = normalizeComparable(previousRaw);
     const next = normalizeComparable(nextRaw);
@@ -376,6 +379,7 @@ function pushScalarChange(
             previous: '—',
             next,
             changeType: 'added',
+            group,
         });
         return;
     }
@@ -385,6 +389,7 @@ function pushScalarChange(
             previous,
             next: '—',
             changeType: 'removed',
+            group,
         });
         return;
     }
@@ -393,6 +398,7 @@ function pushScalarChange(
         previous: previous || '—',
         next: next || '—',
         changeType: 'modified',
+        group,
     });
 }
 
@@ -535,6 +541,9 @@ export default function LrForm({
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [formProcessing, setFormProcessing] = useState(false);
     const [reviewFields, setReviewFields] = useState<FieldReview[]>([]);
+    const [reviewSections, setReviewSections] = useState<FieldReviewSection[]>(
+        [],
+    );
     const [reviewChanges, setReviewChanges] = useState<ChangeReview[]>([]);
     const initialGoodsRowCount = useRef(
         lorryReceipt?.goods?.length ? lorryReceipt.goods.length : 1,
@@ -1053,6 +1062,7 @@ export default function LrForm({
                 'Vehicle',
                 originalVehicleLabel,
                 vehicleLabel,
+                'Bilty Information',
             );
             const originalPayeeType =
                 (
@@ -1071,6 +1081,7 @@ export default function LrForm({
                 'Pay To',
                 originalPayeeTypeLabel,
                 payeeTypeLabel,
+                'Market Vehicle Information',
             );
             pushScalarChange(
                 changes,
@@ -1081,6 +1092,7 @@ export default function LrForm({
                     }
                 ).intended_payee_party_id ?? '—',
                 payeePartyLabel,
+                'Market Vehicle Information',
             );
             const originalBillingId =
                 (
@@ -1097,6 +1109,7 @@ export default function LrForm({
                 'Billing Customer',
                 originalBillingName,
                 customerName,
+                'Bilty Information',
             );
             pushScalarChange(
                 changes,
@@ -1105,6 +1118,7 @@ export default function LrForm({
                     (option) => option.id === lorryReceipt.consignor_party_id,
                 )?.name ?? '—',
                 consignorName,
+                'Route Information',
             );
             pushScalarChange(
                 changes,
@@ -1113,6 +1127,7 @@ export default function LrForm({
                     (option) => option.id === lorryReceipt.consignee_party_id,
                 )?.name ?? '—',
                 consigneeName,
+                'Route Information',
             );
             pushScalarChange(
                 changes,
@@ -1123,6 +1138,7 @@ export default function LrForm({
                     stations,
                 ),
                 loadingStation,
+                'Route Information',
             );
             pushScalarChange(
                 changes,
@@ -1133,6 +1149,7 @@ export default function LrForm({
                     stations,
                 ),
                 unloadingStation,
+                'Route Information',
             );
 
             const originalGoods = mapGoodsFromReceipt(lorryReceipt.goods);
@@ -1155,6 +1172,7 @@ export default function LrForm({
                         ),
                         next: '—',
                         changeType: 'removed',
+                        group: 'Goods and Freight',
                     });
                     continue;
                 }
@@ -1170,6 +1188,7 @@ export default function LrForm({
                             mayViewFreight,
                         ),
                         changeType: 'added',
+                        group: 'Goods and Freight',
                     });
                     continue;
                 }
@@ -1194,6 +1213,7 @@ export default function LrForm({
                             previous,
                             next,
                             changeType: 'modified',
+                            group: 'Goods and Freight',
                         });
                     }
                 }
@@ -1211,6 +1231,7 @@ export default function LrForm({
                 'E-Way Bills',
                 formatEwbReview(originalEwbs),
                 formatEwbReview(ewbs),
+                'Additional Information',
             );
 
             const originalCharges: ChargeRow[] =
@@ -1223,6 +1244,7 @@ export default function LrForm({
                 'Additional Charges',
                 formatChargesReview(originalCharges),
                 formatChargesReview(charges),
+                'Additional Information',
             );
 
             const originalSummary = computeLrSummary(
@@ -1231,15 +1253,30 @@ export default function LrForm({
             );
             pushScalarChange(
                 changes,
-                'Actual Wt (MT)',
+                'Total Actual Weight (MT)',
                 originalSummary.totalActual,
                 summary.totalActual,
+                'Goods and Freight',
             );
             pushScalarChange(
                 changes,
-                'Charged Wt (MT)',
+                'Total Charged Weight (MT)',
                 originalSummary.totalCharged,
                 summary.totalCharged,
+                'Goods and Freight',
+            );
+            pushScalarChange(
+                changes,
+                'Total Units',
+                formatPackageCount(
+                    String(
+                        sumNumericStrings(
+                            originalGoods.map((row) => row.package_count),
+                        ),
+                    ),
+                ),
+                summary.totalUnits,
+                'Goods and Freight',
             );
             if (mayViewFreight) {
                 pushScalarChange(
@@ -1247,175 +1284,242 @@ export default function LrForm({
                     'Freight',
                     originalSummary.totalFreight,
                     summary.totalFreight,
+                    'Goods and Freight',
                 );
                 pushScalarChange(
                     changes,
-                    'Additional Charges Total',
+                    'Additional Charges',
                     originalSummary.totalAdditional,
                     summary.totalAdditional,
+                    'Goods and Freight',
                 );
                 pushScalarChange(
                     changes,
-                    'Total Amount',
+                    'Final Amount',
                     originalSummary.totalAmount,
                     summary.totalAmount,
+                    'Goods and Freight',
                 );
             }
 
             setReviewChanges(changes);
             setReviewFields([]);
+            setReviewSections([]);
             setConfirmOpen(true);
             return;
         }
 
         const lrNumber = data.get('lr_number');
         const lrDate = data.get('lr_date');
-        const fields: FieldReview[] = [
-            {
-                label: 'Bilty No.',
-                value:
-                    (typeof lrNumber === 'string' ? lrNumber.trim() : '') ||
-                    'Auto',
-                group: 'Document & Customer',
-            },
-            {
-                label: 'Bilty Date',
-                value: (typeof lrDate === 'string' ? lrDate.trim() : '') || '—',
-                group: 'Document & Customer',
-            },
-            {
-                label: 'Customer',
-                value: customerName,
-                group: 'Document & Customer',
-            },
-            {
-                label: 'Vehicle',
-                value: vehicleLabel,
-                group: 'Vehicle & Operations',
-            },
-            ...(showPayTo
-                ? [
-                      {
-                          label: 'Pay To',
-                          value: payeeTypeLabel,
-                          group: 'Vehicle & Operations',
-                      },
-                      {
-                          label: 'Payee',
-                          value: payeePartyLabel,
-                          group: 'Vehicle & Operations',
-                      },
-                  ]
-                : []),
-            {
-                label: 'Consignor',
-                value: consignorName,
-                group: 'Parties & Route',
-            },
-            {
-                label: 'Consignee',
-                value: consigneeName,
-                group: 'Parties & Route',
-            },
-            {
-                label: 'From',
-                value: loadingStation,
-                group: 'Parties & Route',
-            },
-            {
-                label: 'To',
-                value: unloadingStation,
-                group: 'Parties & Route',
-            },
-        ];
+        const ownershipLabel =
+            selectedVehicle?.ownership === 'own'
+                ? 'Own Vehicle'
+                : selectedVehicle?.ownership === 'market'
+                  ? 'Market Vehicle'
+                  : '—';
+        const primaryDriverLabel =
+            selectedVehicle?.primary_driver_name?.trim() || '—';
+        const substituteDriverLabel =
+            useSubstituteDriver && substituteDriverPartyId !== ''
+                ? (formOptions.drivers?.find(
+                      (option) => option.id === substituteDriverPartyId,
+                  )?.name ?? substituteDriverPartyId)
+                : null;
 
-        const goodsTypeOptions = goodsTypes;
-        const packageTypeOptions = packageTypes;
-        goods.forEach((row, index) => {
-            fields.push({
-                label: `Goods ${index + 1}`,
-                value: formatGoodsRowReview(
-                    row,
-                    index,
-                    goodsTypeOptions,
-                    packageTypeOptions,
-                    mayViewFreight,
-                ),
-                group: 'Goods',
-            });
+        const goodsTableHeaders = [
+            'Goods Type',
+            'Units',
+            'Actual Wt (MT)',
+            'Charged Wt (MT)',
+            'Rate Type',
+            ...(mayViewFreight ? ['Rate', 'Freight'] : []),
+        ];
+        const goodsTableRows = goods.map((row, index) => {
+            const goodsLabel =
+                goodsTypes.find((option) => option.id === row.goods_type_id)
+                    ?.name ?? `Row ${index + 1}`;
+            const freightPreview = computeFreightPreview(row);
+            const base = [
+                goodsLabel,
+                row.package_count || '—',
+                row.actual_weight || '—',
+                row.charged_weight || '—',
+                freightRateTypeLabel(row.freight_rate_type || ''),
+            ];
+            if (mayViewFreight) {
+                base.push(
+                    row.freight_rate || '—',
+                    freightPreview !== null
+                        ? formatFixed(freightPreview, 2)
+                        : '—',
+                );
+            }
+            return base;
         });
 
-        if (ewbs.length > 0) {
-            fields.push({
-                label: 'E-Way Bills',
-                value: formatEwbReview(ewbs),
-                group: 'Optional',
-            });
-        }
-
-        if (charges.length > 0) {
-            fields.push({
-                label: 'Additional Charges',
-                value: formatChargesReview(charges),
-                group: 'Optional',
-            });
-        }
-
-        fields.push(
+        const financialSummaryFields: FieldReview[] = [
             {
-                label: 'GR Number',
-                value: externalGrNumber.trim() || '—',
-                group: 'Optional Details',
+                label: 'Total Actual Weight (MT)',
+                value: String(summary.totalActual),
             },
             {
-                label: 'Invoice Number',
-                value: clientInvoiceNumber.trim() || '—',
-                group: 'Optional Details',
+                label: 'Total Charged Weight (MT)',
+                value: String(summary.totalCharged),
             },
             {
-                label: 'Goods Value',
-                value: declaredGoodsValue.trim() || summary.totalGoodsValue,
-                group: 'Optional Details',
+                label: 'Total Units',
+                value: String(summary.totalUnits),
             },
-            {
-                label: 'Reference By',
-                value: referenceBy.trim() || '—',
-                group: 'Optional Details',
-            },
-        );
-
-        fields.push(
-            {
-                label: 'Actual Wt (MT)',
-                value: summary.totalActual,
-                group: 'Totals',
-            },
-            {
-                label: 'Charged Wt (MT)',
-                value: summary.totalCharged,
-                group: 'Totals',
-            },
-        );
+        ];
         if (mayViewFreight) {
-            fields.push(
+            financialSummaryFields.push(
                 {
                     label: 'Freight',
-                    value: summary.totalFreight,
-                    group: 'Totals',
+                    value: String(summary.totalFreight),
                 },
                 {
-                    label: 'Additional Charges Total',
-                    value: summary.totalAdditional,
-                    group: 'Totals',
+                    label: 'Additional Charges',
+                    value: String(summary.totalAdditional),
                 },
                 {
-                    label: 'Total Billable',
-                    value: summary.totalAmount,
-                    group: 'Totals',
+                    label: 'Final Amount',
+                    value: String(summary.totalAmount),
                 },
             );
         }
-        setReviewFields(fields);
+
+        const additionalFields: FieldReview[] = [];
+        if (externalGrNumber.trim() !== '') {
+            additionalFields.push({
+                label: 'GR Number',
+                value: externalGrNumber.trim(),
+            });
+        }
+        if (clientInvoiceNumber.trim() !== '') {
+            additionalFields.push({
+                label: 'Material Invoice Number',
+                value: clientInvoiceNumber.trim(),
+            });
+        }
+        if (ewbs.length > 0) {
+            additionalFields.push({
+                label: 'E-Way Bill',
+                value: formatEwbReview(ewbs),
+            });
+        }
+        if (charges.length > 0) {
+            additionalFields.push({
+                label: 'Additional Charge Lines',
+                value: formatChargesReview(charges),
+            });
+        }
+        const goodsValue = declaredGoodsValue.trim() || summary.totalGoodsValue;
+        if (goodsValue !== '' && goodsValue !== '0' && goodsValue !== '0.00') {
+            additionalFields.push({
+                label: 'Goods Value',
+                value: goodsValue,
+            });
+        }
+        const notes = data.get('remarks');
+        if (typeof notes === 'string' && notes.trim() !== '') {
+            additionalFields.push({
+                label: 'Notes',
+                value: notes.trim(),
+            });
+        }
+
+        const sections: FieldReviewSection[] = [
+            {
+                title: 'Bilty Information',
+                fields: [
+                    {
+                        label: 'Bilty Number',
+                        value:
+                            (typeof lrNumber === 'string'
+                                ? lrNumber.trim()
+                                : '') || 'Auto',
+                    },
+                    {
+                        label: 'Bilty Date',
+                        value:
+                            (typeof lrDate === 'string' ? lrDate.trim() : '') ||
+                            '—',
+                    },
+                    { label: 'Customer', value: customerName },
+                    { label: 'Vehicle Number', value: vehicleLabel },
+                    { label: 'Vehicle Ownership', value: ownershipLabel },
+                    {
+                        label: 'Driver',
+                        value: substituteDriverLabel ?? primaryDriverLabel,
+                    },
+                ],
+            },
+            {
+                title: 'Route Information',
+                fields: [
+                    { label: 'Consignor', value: consignorName },
+                    { label: 'Consignee', value: consigneeName },
+                    { label: 'From', value: loadingStation },
+                    { label: 'To', value: unloadingStation },
+                    {
+                        label: 'Reference By',
+                        value: referenceBy.trim() || '—',
+                    },
+                ],
+            },
+            {
+                title: 'Goods and Freight',
+                layout: 'full',
+                table: {
+                    headers: goodsTableHeaders,
+                    rows: goodsTableRows,
+                },
+                fields: financialSummaryFields,
+            },
+        ];
+
+        if (selectedVehicle?.ownership === 'market' && showPayTo) {
+            sections.push({
+                title: 'Market Vehicle Information',
+                fields: [
+                    {
+                        label: 'Truck Owner',
+                        value: selectedVehicle?.owner_name ?? '—',
+                    },
+                    { label: 'Pay To', value: payeeTypeLabel },
+                    { label: 'Payee', value: payeePartyLabel },
+                ],
+            });
+        }
+
+        if (selectedVehicle?.ownership === 'own') {
+            const ownFields: FieldReview[] = [
+                {
+                    label: 'Assigned Driver',
+                    value: primaryDriverLabel,
+                },
+            ];
+            if (substituteDriverLabel) {
+                ownFields.push({
+                    label: 'Substitute Driver',
+                    value: substituteDriverLabel,
+                });
+            }
+            sections.push({
+                title: 'Own Vehicle Information',
+                fields: ownFields,
+            });
+        }
+
+        if (additionalFields.length > 0) {
+            sections.push({
+                title: 'Additional Information',
+                fields: additionalFields,
+            });
+        }
+
+        setReviewSections(sections);
+        setReviewFields([]);
         setReviewChanges([]);
         setConfirmOpen(true);
     };
@@ -3525,6 +3629,9 @@ export default function LrForm({
                     }
                     description="Review vehicle, customer, weights, and freight before submitting."
                     fields={reviewFields}
+                    sections={
+                        reviewSections.length > 0 ? reviewSections : undefined
+                    }
                     changes={reviewChanges}
                     onConfirm={handleConfirm}
                     confirmLabel={

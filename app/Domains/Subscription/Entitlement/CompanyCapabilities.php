@@ -24,8 +24,6 @@ final class CompanyCapabilities
 
     public const BROKER_INVOICES = 'broker.invoices';
 
-    public const BROKER_REGISTERS = 'broker.registers';
-
     // OwnFleet module capabilities
     public const OWNFLEET_LR = 'ownfleet.lr';
 
@@ -114,7 +112,6 @@ final class CompanyCapabilities
             self::BROKER_LINKED_BILTIES,
             self::BROKER_BOOK_BALANCE,
             self::BROKER_INVOICES,
-            self::BROKER_REGISTERS,
             self::OWNFLEET_LR,
             self::OWNFLEET_TRIPS,
             self::OWNFLEET_TRIP_EXPENSES,

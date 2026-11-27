@@ -153,7 +153,6 @@ final class CompanyCapabilityResolver
             CompanyCapabilities::BROKER_LINKED_BILTIES => ['read' => $hasBrokerRead, 'mutate' => $mutationsAllowed && $hasBroker],
             CompanyCapabilities::BROKER_BOOK_BALANCE => ['read' => $hasBrokerRead, 'mutate' => $mutationsAllowed && $hasBroker],
             CompanyCapabilities::BROKER_INVOICES => ['read' => $hasBrokerRead, 'mutate' => $mutationsAllowed && $hasBroker],
-            CompanyCapabilities::BROKER_REGISTERS => ['read' => $hasBrokerRead, 'mutate' => $mutationsAllowed && $hasBroker],
 
             // OwnFleet
             CompanyCapabilities::OWNFLEET_LR => ['read' => $hasOwnFleetRead, 'mutate' => $mutationsAllowed && $hasOwnFleet],
@@ -374,14 +373,6 @@ final class CompanyCapabilityResolver
             'broker_deliveries' => $capRead(CompanyCapabilities::BROKER_DELIVERIES) && $perm(PermissionCodes::BROKER_DELIVERY_VIEW),
             'broker_linked_bilties' => $capRead(CompanyCapabilities::BROKER_LINKED_BILTIES) && $perm(PermissionCodes::BROKER_LINKED_BILTY_VIEW),
             'broker_transporter_balances' => $capRead(CompanyCapabilities::BROKER_BOOK_BALANCE) && $perm(PermissionCodes::BROKER_BOOK_BALANCE_VIEW),
-            'broker_registers' => $capRead(CompanyCapabilities::BROKER_REGISTERS) && (
-                $perm(PermissionCodes::BROKER_LORRY_HIRE_VIEW)
-                || $perm(PermissionCodes::BROKER_VOUCHER_VIEW)
-                || $perm(PermissionCodes::BROKER_DELIVERY_VIEW)
-                || $perm(PermissionCodes::BROKER_INVOICE_VIEW)
-                || $perm(PermissionCodes::BROKER_BOOK_BALANCE_VIEW)
-                || $perm(PermissionCodes::BROKER_LINKED_BILTY_VIEW)
-            ),
             'customer_invoices' => $capRead(CompanyCapabilities::CUSTOMER_INVOICES)
                 && (($canOwnFleet && $perm(PermissionCodes::INVOICE_VIEW))
                     || ($canBrokerLr && $perm(PermissionCodes::BROKER_INVOICE_VIEW))

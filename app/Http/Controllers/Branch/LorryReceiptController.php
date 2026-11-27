@@ -14,6 +14,7 @@ use App\Domains\Consignment\LorryReceiptOperationalStatusService;
 use App\Domains\Consignment\LorryReceiptService;
 use App\Domains\Consignment\LrVehicleClassificationService;
 use App\Domains\Consignment\LrWorkflowContextResolver;
+use App\Domains\Consignment\Support\FreightRateTypeCatalog;
 use App\Domains\Document\DocumentAttachmentService;
 use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Master\Party\Enums\PartyRoleType;
@@ -750,20 +751,7 @@ class LorryReceiptController extends Controller
         }
 
         return [
-            'rateTypeOptions' => array_values(collect([
-                FreightRateType::FixedAmount,
-                FreightRateType::PerPackageUnit,
-                FreightRateType::PerChargedWeight,
-                FreightRateType::PerActualWeight,
-            ])->map(fn (FreightRateType $type): array => [
-                'value' => $type->value,
-                'label' => match ($type) {
-                    FreightRateType::FixedAmount => 'Fixed Amount',
-                    FreightRateType::PerPackageUnit => 'Per Unit',
-                    FreightRateType::PerActualWeight => 'Per Actual Weight',
-                    FreightRateType::PerChargedWeight => 'Per Charged Weight',
-                },
-            ])->all()),
+            'rateTypeOptions' => FreightRateTypeCatalog::inertiaOptions(),
             'consignors' => $consignors,
             'consignees' => $consignees,
             'billingCustomers' => $billingCustomers,

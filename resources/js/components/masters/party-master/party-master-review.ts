@@ -219,9 +219,11 @@ export function buildPartyCreateReview(
     return partyReviewSections(input)
         .map((section) => ({
             ...section,
-            fields: section.fields.filter((field) => field.value !== ''),
+            fields: (section.fields ?? []).filter(
+                (field) => field.value !== '',
+            ),
         }))
-        .filter((section) => section.fields.length > 0);
+        .filter((section) => (section.fields ?? []).length > 0);
 }
 
 /**
@@ -258,7 +260,7 @@ export function buildPartyEditReview(
 
     const previousValues = new Map<string, string>();
     for (const section of partyReviewSections(original)) {
-        for (const field of section.fields) {
+        for (const field of section.fields ?? []) {
             previousValues.set(`${section.title}|${field.label}`, field.value);
         }
     }
@@ -267,7 +269,7 @@ export function buildPartyEditReview(
         if (section.title === ROLES_SECTION) {
             continue;
         }
-        for (const field of section.fields) {
+        for (const field of section.fields ?? []) {
             const previous =
                 previousValues.get(`${section.title}|${field.label}`) ?? '';
             if (previous === field.value) {

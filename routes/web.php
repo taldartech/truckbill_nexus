@@ -1,6 +1,7 @@
 <?php
 
 use App\Domains\Document\DocumentParentTypes;
+use App\Http\Controllers\Admin\CompanyEnquiryWebhookController;
 use App\Http\Controllers\Admin\CompanyLifecycleController;
 use App\Http\Controllers\Admin\Crm\CrmDashboardController;
 use App\Http\Controllers\Admin\Crm\LeadController as CrmLeadController;
@@ -17,6 +18,7 @@ use App\Http\Controllers\Admin\SubscriptionCalculatorController;
 use App\Http\Controllers\Admin\SubscriptionCatalogueController;
 use App\Http\Controllers\Admin\SubscriptionInvoiceController;
 use App\Http\Controllers\Admin\TdsRuleController;
+use App\Http\Controllers\Api\EnquiryV1ApiController;
 use App\Http\Controllers\Api\GeographyController;
 use App\Http\Controllers\Api\GeographyQuickCreateController;
 use App\Http\Controllers\Api\PublicLeadController;
@@ -37,7 +39,6 @@ use App\Http\Controllers\Branch\BrokerAdjustmentController;
 use App\Http\Controllers\Branch\BrokerDailyPaymentsController;
 use App\Http\Controllers\Branch\BrokerDeliveryController;
 use App\Http\Controllers\Branch\BrokerInvoiceController;
-use App\Http\Controllers\Branch\BrokerRegistersController;
 use App\Http\Controllers\Branch\CatalogueController;
 use App\Http\Controllers\Branch\CustomerInvoiceController;
 use App\Http\Controllers\Branch\DocumentAttachmentController;
@@ -102,6 +103,9 @@ Route::post('/webhooks/razorpay', RazorpayWebhookController::class)
 Route::post('/webhooks/enquiries', EnquiryWebhookController::class)
     ->withoutMiddleware([EnforceWebSessionPolicy::class])
     ->name('webhooks.enquiries');
+Route::post('/api/v1/enquiries', EnquiryV1ApiController::class)
+    ->withoutMiddleware([EnforceWebSessionPolicy::class])
+    ->name('api.v1.enquiries.store');
 
 Route::post('/api/v1/public/leads', [PublicLeadController::class, 'store'])
     ->middleware(['website.lead.key', 'throttle:30,1'])
@@ -306,10 +310,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::middleware('company.capability:broker.lorry_hire')->group(function () {
             Route::get('/lorry-receipts/{lorryReceipt}/create-lorry-hire', [LorryHireController::class, 'createFromLorryReceipt'])->name('branch.broker.lorry-hires.create-from-lr');
             Route::post('/lorry-receipts/{lorryReceipt}/lorry-hires', [LorryHireController::class, 'storeFromLorryReceipt'])->name('branch.broker.lorry-hires.store-from-lr');
-        });
-
-        Route::middleware('company.capability:broker.registers')->group(function () {
-            Route::get('/broker/registers', [BrokerRegistersController::class, 'index'])->name('branch.broker.registers.index');
         });
 
         Route::middleware('company.capability:broker.lorry_hire')->group(function () {
@@ -684,6 +684,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('admin.companies.reactivate');
     Route::post('/admin/companies/{company}/ownership-transfers', [OwnershipTransferController::class, 'store'])
         ->name('admin.companies.ownership-transfers.store');
+    Route::post('/admin/companies/{company}/enquiry-webhook-credentials', [CompanyEnquiryWebhookController::class, 'store'])
+        ->name('admin.companies.enquiry-webhook-credentials.store');
+    Route::post('/admin/companies/{company}/enquiry-webhook-credentials/{credential}/rotate', [CompanyEnquiryWebhookController::class, 'rotate'])
+        ->name('admin.companies.enquiry-webhook-credentials.rotate');
+    Route::post('/admin/companies/{company}/enquiry-webhook-credentials/{credential}/revoke', [CompanyEnquiryWebhookController::class, 'revoke'])
+        ->name('admin.companies.enquiry-webhook-credentials.revoke');
+    Route::patch('/admin/companies/{company}/enquiry-webhook-credentials/{credential}', [CompanyEnquiryWebhookController::class, 'update'])
+        ->name('admin.companies.enquiry-webhook-credentials.update');
 
     // Customer Identities register removed (PO 25 Nov 2026). Lifecycle show/deactivate
     // remains for deep links from Users / company administration.

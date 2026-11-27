@@ -19,6 +19,7 @@ use App\Domains\Rbac\Enums\PermissionDomain;
 use App\Domains\Rbac\PermissionCodes;
 use App\Domains\Rbac\RoleAssignmentService;
 use App\Models\Branch;
+use App\Models\City;
 use App\Models\Company;
 use App\Models\Enquiry;
 use App\Models\EnquiryConversion;
@@ -28,6 +29,7 @@ use App\Models\Party;
 use App\Models\Permission;
 use App\Models\Role;
 use App\Models\RolePermission;
+use App\Models\State;
 use App\Models\Trip;
 use App\Models\User;
 use App\Models\Vehicle;
@@ -81,6 +83,39 @@ function cdfGrant(string $roleSlug, string $code): void
  *     otherBranch: Branch
  * }
  */
+/**
+ * @return array{state: State, mumbai: City, pune: City}
+ */
+function cdfEnquiryGeo(): array
+{
+    $state = State::query()->create([
+        'id' => (string) Str::uuid(),
+        'name' => 'Maharashtra',
+        'code' => 'MH',
+        'gst_code' => '27',
+        'country_code' => 'IN',
+        'is_active' => true,
+    ]);
+
+    $mumbai = City::query()->create([
+        'id' => (string) Str::uuid(),
+        'state_id' => $state->id,
+        'name' => 'Mumbai',
+        'name_normalized' => City::normalizeName('Mumbai'),
+        'is_active' => true,
+    ]);
+
+    $pune = City::query()->create([
+        'id' => (string) Str::uuid(),
+        'state_id' => $state->id,
+        'name' => 'Pune',
+        'name_normalized' => City::normalizeName('Pune'),
+        'is_active' => true,
+    ]);
+
+    return compact('state', 'mumbai', 'pune');
+}
+
 function cdfWorkspace(): array
 {
     foreach ([
@@ -194,20 +229,17 @@ function cdfWorkspace(): array
         'truck_type_id' => $truck->id,
     ]);
 
+    $geo = cdfEnquiryGeo();
     $enquiry = app(EnquiryService::class)->createManual($company, $branch, $owner, [
         'customer_party_id' => $customer->id,
-        'pickup_location' => 'Mumbai',
-        'delivery_location' => 'Pune',
+        'from_state_id' => $geo['state']->id,
+        'from_city_id' => $geo['mumbai']->id,
+        'to_state_id' => $geo['state']->id,
+        'to_city_id' => $geo['pune']->id,
         'vehicle_type_id' => $truck->id,
         'vehicle_quantity' => 2,
-        'goods' => [[
-            'goods_type_id' => $goodsType->id,
-            'package_type_id' => $packageType->id,
-            'goods_description' => 'Steel coils',
-            'package_count' => 10,
-            'actual_weight' => 100,
-            'charged_weight' => 110,
-        ]],
+        'goods_type_id' => $goodsType->id,
+        'weight_mt' => 5,
     ]);
 
     TenantContextHolder::clear();

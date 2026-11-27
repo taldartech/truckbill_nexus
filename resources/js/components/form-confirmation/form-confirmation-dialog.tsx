@@ -93,23 +93,68 @@ function CreateReviewBody({
             {resolvedSections.map((section) => (
                 <section
                     key={section.title}
-                    className="rounded-lg border border-border/80 bg-muted/20 p-3"
+                    className={cn(
+                        'rounded-lg border border-border/80 bg-muted/20 p-3',
+                        section.layout === 'full' && 'sm:col-span-2',
+                    )}
                 >
                     <h3 className="mb-2 text-xs font-semibold tracking-wide text-muted-foreground uppercase">
                         {section.title}
                     </h3>
-                    <dl className="space-y-2.5">
-                        {section.fields.map((field) => (
-                            <div key={`${section.title}-${field.label}`}>
-                                <dt className="text-xs text-muted-foreground">
-                                    {field.label}
-                                </dt>
-                                <dd className="mt-0.5 text-sm break-words text-foreground">
-                                    {field.value || '—'}
-                                </dd>
-                            </div>
-                        ))}
-                    </dl>
+                    {section.table ? (
+                        <div className="overflow-x-auto">
+                            <table className="w-full min-w-[32rem] border-collapse text-left text-sm">
+                                <thead>
+                                    <tr className="border-b border-border text-xs text-muted-foreground">
+                                        {section.table.headers.map((header) => (
+                                            <th
+                                                key={header}
+                                                className="px-2 py-1.5 font-medium"
+                                            >
+                                                {header}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {section.table.rows.map((row, index) => (
+                                        <tr
+                                            key={index}
+                                            className="border-b border-border/60 last:border-0"
+                                        >
+                                            {row.map((cell, cellIndex) => (
+                                                <td
+                                                    key={cellIndex}
+                                                    className="px-2 py-1.5 align-top"
+                                                >
+                                                    {cell || '—'}
+                                                </td>
+                                            ))}
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    ) : null}
+                    {section.fields && section.fields.length > 0 ? (
+                        <dl
+                            className={cn(
+                                'space-y-2.5',
+                                section.table ? 'mt-3' : undefined,
+                            )}
+                        >
+                            {section.fields.map((field) => (
+                                <div key={`${section.title}-${field.label}`}>
+                                    <dt className="text-xs text-muted-foreground">
+                                        {field.label}
+                                    </dt>
+                                    <dd className="mt-0.5 text-sm break-words text-foreground">
+                                        {field.value || '—'}
+                                    </dd>
+                                </div>
+                            ))}
+                        </dl>
+                    ) : null}
                 </section>
             ))}
         </div>

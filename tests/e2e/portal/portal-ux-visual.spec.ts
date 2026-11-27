@@ -146,19 +146,12 @@ test.describe('Portal UX visual certification', () => {
             await capture(page, 'partload-create-form');
         }
 
-        const brokerResponse = await page.goto('/broker/registers');
+        const brokerResponse = await page.goto('/broker/lorry-hires');
         if (brokerResponse && brokerResponse.status() < 400) {
             await expect(
-                page.getByRole('heading', {
-                    name: /Broker operational registers/i,
-                }),
+                page.getByRole('heading', { name: /Lorry Hires/i }),
             ).toBeVisible({ timeout: 20_000 });
-            await expect(
-                page
-                    .getByRole('link', { name: /Open Lorry Hire register/i })
-                    .first(),
-            ).toBeVisible();
-            await capture(page, 'broker-registers-hub');
+            await capture(page, 'broker-lorry-hires-index');
         }
     });
 });

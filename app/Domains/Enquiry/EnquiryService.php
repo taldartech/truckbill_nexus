@@ -7,21 +7,19 @@ use App\Domains\Enquiry\Enums\EnquiryStatus;
 use App\Domains\Enquiry\Exceptions\EnquiryAuthorizationException;
 use App\Domains\Enquiry\Exceptions\EnquiryConflictException;
 use App\Domains\Enquiry\Exceptions\EnquiryDomainException;
+use App\Domains\Enquiry\Support\EnquiryIntakeSupport;
 use App\Domains\Enquiry\Support\EnquiryPayloadFingerprint;
-use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
-use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Numbering\DocumentNumberAllocator;
 use App\Domains\Numbering\Enums\DocumentNumberScopeType;
 use App\Domains\Numbering\Enums\DocumentNumberType;
+use App\Domains\Subscription\Entitlement\CompanyCapabilities;
+use App\Domains\Subscription\Entitlement\CompanyCapabilityResolver;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\Enquiry;
 use App\Models\EnquiryExternalReference;
 use App\Models\EnquiryGoodsRow;
 use App\Models\EnquiryStatusHistory;
-use App\Models\OwnerCatalogueItem;
-use App\Models\Party;
-use App\Models\PartyRole;
 use App\Models\User;
 use App\Support\Audit\AuditAction;
 use App\Support\Audit\AuditedTransaction;
@@ -29,6 +27,7 @@ use App\Support\Audit\AuditWriter;
 use App\Support\Outbox\OutboxWriter;
 use App\Support\Tenant\TenantContext;
 use App\Support\Tenant\TenantContextHolder;
+use App\Support\Weight\OperationalWeight;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
@@ -44,6 +43,8 @@ final class EnquiryService
         private readonly AuditedTransaction $auditedTransaction = new AuditedTransaction,
         private readonly AuditWriter $audit = new AuditWriter,
         private readonly OutboxWriter $outbox = new OutboxWriter,
+        private readonly EnquiryIntakeSupport $intake = new EnquiryIntakeSupport,
+        private readonly CompanyCapabilityResolver $capabilities = new CompanyCapabilityResolver,
     ) {}
 
     /**
@@ -77,9 +78,21 @@ final class EnquiryService
      * @param  array<string, mixed>  $payload
      * @return array{enquiry: Enquiry, created: bool}
      */
-    public function createFromWebsite(Company $company, array $payload, ?string $correlationId = null): array
-    {
-        $this->ensureTenantMatches($company, null);
+    public function createFromWebsite(
+        Company $company,
+        array $payload,
+        ?string $correlationId = null,
+        ?Branch $branch = null,
+    ): array {
+        if (! $this->capabilities->allowsRead($company, CompanyCapabilities::ENQUIRIES)) {
+            throw new EnquiryAuthorizationException('Enquiries capability is not enabled for this company.');
+        }
+
+        if ($branch !== null && $branch->company_id !== $company->id) {
+            throw new EnquiryDomainException('Receiving branch does not belong to company.');
+        }
+
+        $this->ensureTenantMatches($company, $branch);
 
         $normalized = $this->normalizeWebsitePayload($company, $payload);
         $externalReference = $normalized['external_reference'];
@@ -110,6 +123,7 @@ final class EnquiryService
         try {
             $enquiry = AuditWriter::usingSystemActor('enquiry-website-webhook', function () use (
                 $company,
+                $branch,
                 $normalized,
                 $externalReference,
                 $fingerprint,
@@ -117,7 +131,7 @@ final class EnquiryService
             ): Enquiry {
                 return $this->persistNewEnquiry(
                     company: $company,
-                    branch: null,
+                    branch: $branch,
                     source: EnquirySource::Website,
                     actorUserId: null,
                     normalized: $normalized,
@@ -195,7 +209,14 @@ final class EnquiryService
         $enquiry->loadMissing('goodsRows');
 
         $normalized = $this->normalizeManualPayload($company, array_merge([
+            'party_name' => $enquiry->party_name,
             'customer_party_id' => $enquiry->customer_party_id,
+            'consignor_party_id' => $enquiry->consignor_party_id,
+            'consignee_party_id' => $enquiry->consignee_party_id,
+            'from_state_id' => $enquiry->from_state_id,
+            'from_city_id' => $enquiry->from_city_id,
+            'to_state_id' => $enquiry->to_state_id,
+            'to_city_id' => $enquiry->to_city_id,
             'pickup_location' => $enquiry->pickup_location,
             'delivery_location' => $enquiry->delivery_location,
             'vehicle_type_id' => $enquiry->vehicle_type_id,
@@ -203,14 +224,10 @@ final class EnquiryService
             'expected_loading_date' => $this->dateToString($enquiry->expected_loading_date),
             'instructions' => $enquiry->instructions,
             'enquiry_date' => $this->dateToString($enquiry->enquiry_date),
-            'goods' => $enquiry->goodsRows->map(fn (EnquiryGoodsRow $row): array => [
-                'goods_type_id' => $row->goods_type_id,
-                'package_type_id' => $row->package_type_id,
-                'goods_description' => $row->goods_description,
-                'package_count' => $row->package_count,
-                'actual_weight' => $row->actual_weight,
-                'charged_weight' => $row->charged_weight,
-            ])->all(),
+            'goods_type_id' => $enquiry->goodsRows->first()?->goods_type_id,
+            'weight_mt' => $enquiry->goodsRows->first()?->actual_weight !== null
+                ? OperationalWeight::kgToMt((string) $enquiry->goodsRows->first()->actual_weight)
+                : null,
         ], $payload));
 
         return $this->auditedTransaction->run(function () use ($company, $branch, $enquiry, $normalized, $remark): Enquiry {
@@ -219,13 +236,21 @@ final class EnquiryService
 
                 $enquiry->forceFill([
                     'enquiry_date' => $normalized['enquiry_date'],
+                    'party_name' => $normalized['party_name'],
                     'customer_party_id' => $normalized['customer_party_id'],
+                    'consignor_party_id' => $normalized['consignor_party_id'],
+                    'consignee_party_id' => $normalized['consignee_party_id'],
+                    'from_state_id' => $normalized['from_state_id'],
+                    'from_city_id' => $normalized['from_city_id'],
+                    'to_state_id' => $normalized['to_state_id'],
+                    'to_city_id' => $normalized['to_city_id'],
                     'pickup_location' => $normalized['pickup_location'],
                     'delivery_location' => $normalized['delivery_location'],
                     'vehicle_type_id' => $normalized['vehicle_type_id'],
                     'vehicle_quantity' => $normalized['vehicle_quantity'],
                     'expected_loading_date' => $normalized['expected_loading_date'],
                     'instructions' => $normalized['instructions'],
+                    'pending_master_resolution' => $normalized['pending_master_resolution'],
                 ])->save();
 
                 // Soft-delete prior goods rows (DEC-003). Active uniqueness is enforced by a
@@ -301,16 +326,26 @@ final class EnquiryService
                     'source' => $source,
                     'enquiry_number' => $allocation['number'],
                     'enquiry_date' => $normalized['enquiry_date'],
+                    'party_name' => $normalized['party_name'] ?? null,
                     'customer_party_id' => $normalized['customer_party_id'] ?? null,
+                    'consignor_party_id' => $normalized['consignor_party_id'] ?? null,
+                    'consignee_party_id' => $normalized['consignee_party_id'] ?? null,
+                    'from_state_id' => $normalized['from_state_id'] ?? null,
+                    'from_city_id' => $normalized['from_city_id'] ?? null,
+                    'to_state_id' => $normalized['to_state_id'] ?? null,
+                    'to_city_id' => $normalized['to_city_id'] ?? null,
                     'external_customer_name' => $normalized['external_customer_name'] ?? null,
                     'external_customer_phone' => $normalized['external_customer_phone'] ?? null,
                     'external_customer_email' => $normalized['external_customer_email'] ?? null,
+                    'external_business_name' => $normalized['external_business_name'] ?? null,
+                    'external_contact_person_name' => $normalized['external_contact_person_name'] ?? null,
                     'pickup_location' => $normalized['pickup_location'],
                     'delivery_location' => $normalized['delivery_location'],
                     'vehicle_type_id' => $normalized['vehicle_type_id'],
                     'vehicle_quantity' => $normalized['vehicle_quantity'],
                     'expected_loading_date' => $normalized['expected_loading_date'],
                     'instructions' => $normalized['instructions'],
+                    'pending_master_resolution' => $normalized['pending_master_resolution'] ?? null,
                     'assigned_user_id' => null,
                     'status' => EnquiryStatus::New,
                     'created_by_user_id' => $actorUserId,
@@ -411,36 +446,38 @@ final class EnquiryService
      */
     private function normalizeManualPayload(Company $company, array $payload): array
     {
-        $customerPartyId = (string) ($payload['customer_party_id'] ?? '');
-        if ($customerPartyId === '') {
-            throw ValidationException::withMessages(['customer_party_id' => 'Customer party is required.']);
-        }
+        $route = $this->intake->resolveManualRouteAndParties($company, $payload);
+        $vehicle = $this->intake->resolveVehicleType($company, $payload, required: true);
+        $goods = $this->intake->normalizeManualGoods($company, $payload);
 
-        $this->assertCustomerParty($company, $customerPartyId);
-
-        $vehicleTypeId = (string) ($payload['vehicle_type_id'] ?? '');
-        $vehicleType = $this->assertCatalogueItem(
-            $company,
-            $vehicleTypeId,
-            OwnerCatalogueType::TruckType,
-            'vehicle_type_id',
+        $pickupDate = $this->normalizeDate(
+            $payload['pickup_date'] ?? $payload['expected_loading_date'] ?? null,
+            'expected_loading_date',
         );
-
-        $goods = $this->normalizeGoodsRows($company, $payload['goods'] ?? null);
 
         return [
             'enquiry_date' => $this->normalizeDate($payload['enquiry_date'] ?? null, 'enquiry_date')
                 ?? Carbon::now(config('app.timezone'))->toDateString(),
-            'customer_party_id' => $customerPartyId,
+            'party_name' => $route['party_name'],
+            'customer_party_id' => $route['customer_party_id'],
+            'consignor_party_id' => $route['consignor_party_id'],
+            'consignee_party_id' => $route['consignee_party_id'],
+            'from_state_id' => $route['from_state_id'],
+            'from_city_id' => $route['from_city_id'],
+            'to_state_id' => $route['to_state_id'],
+            'to_city_id' => $route['to_city_id'],
             'external_customer_name' => null,
             'external_customer_phone' => null,
             'external_customer_email' => null,
-            'pickup_location' => $this->requireString($payload, 'pickup_location'),
-            'delivery_location' => $this->requireString($payload, 'delivery_location'),
-            'vehicle_type_id' => $vehicleType->id,
-            'vehicle_quantity' => $this->normalizeVehicleQuantity($payload),
-            'expected_loading_date' => $this->normalizeDate($payload['expected_loading_date'] ?? null, 'expected_loading_date'),
-            'instructions' => $this->optionalString($payload['instructions'] ?? null),
+            'external_business_name' => null,
+            'external_contact_person_name' => null,
+            'pickup_location' => $route['pickup_location'],
+            'delivery_location' => $route['delivery_location'],
+            'vehicle_type_id' => $vehicle['vehicle_type_id'],
+            'vehicle_quantity' => $this->normalizeVehicleQuantity($payload, defaultWhenMissing: 1),
+            'expected_loading_date' => $pickupDate,
+            'instructions' => $this->optionalString($payload['notes'] ?? $payload['instructions'] ?? null),
+            'pending_master_resolution' => $vehicle['pending'] === [] ? null : $vehicle['pending'],
             'goods' => $goods,
         ];
     }
@@ -460,116 +497,60 @@ final class EnquiryService
             throw ValidationException::withMessages(['external_reference' => 'External reference is too long.']);
         }
 
-        $vehicleTypeId = trim((string) ($payload['vehicle_type_id'] ?? ''));
-        if ($vehicleTypeId === '') {
-            throw ValidationException::withMessages(['vehicle_type_id' => 'Vehicle type id is required.']);
+        $vehicle = $this->intake->resolveVehicleType($company, $payload, required: false);
+        $goodsPayload = $this->intake->resolveWebsiteGoods($company, $payload);
+        $route = $this->intake->resolveWebsiteRoute($company, $payload);
+
+        $pending = array_merge($vehicle['pending'], $goodsPayload['pending'], $route['pending']);
+        $pending = $pending === [] ? null : $pending;
+
+        $businessName = $this->optionalString($payload['business_name'] ?? null)
+            ?? $this->optionalString($payload['customer_name'] ?? null);
+        if ($businessName === null) {
+            throw ValidationException::withMessages(['business_name' => 'Business or customer name is required.']);
         }
-
-        $vehicleType = $this->assertCatalogueItem(
-            $company,
-            $vehicleTypeId,
-            OwnerCatalogueType::TruckType,
-            'vehicle_type_id',
-        );
-
-        $goods = $this->normalizeGoodsRows($company, $payload['goods'] ?? null);
-
-        $customerName = $this->requireString($payload, 'customer_name', 'customer_name');
 
         return [
             'external_reference' => $externalReference,
             'enquiry_date' => Carbon::now(config('app.timezone'))->toDateString(),
+            'party_name' => null,
             'customer_party_id' => null,
-            'external_customer_name' => $customerName,
-            'external_customer_phone' => $this->optionalString($payload['customer_phone'] ?? null),
-            'external_customer_email' => $this->optionalEmail($payload['customer_email'] ?? null),
-            'pickup_location' => $this->requireString($payload, 'pickup_location'),
-            'delivery_location' => $this->requireString($payload, 'delivery_location'),
-            'vehicle_type_id' => $vehicleType->id,
-            'vehicle_type_code' => null,
-            'vehicle_quantity' => $this->normalizeVehicleQuantity($payload),
-            'expected_loading_date' => $this->normalizeDate($payload['expected_loading_date'] ?? null, 'expected_loading_date'),
-            'instructions' => $this->optionalString($payload['instructions'] ?? null),
-            'goods' => $goods,
+            'consignor_party_id' => null,
+            'consignee_party_id' => null,
+            'from_state_id' => $route['from_state_id'],
+            'from_city_id' => $route['from_city_id'],
+            'to_state_id' => $route['to_state_id'],
+            'to_city_id' => $route['to_city_id'],
+            'external_customer_name' => $businessName,
+            'external_customer_phone' => $this->optionalString($payload['contact_number'] ?? $payload['customer_phone'] ?? null),
+            'external_customer_email' => $this->optionalEmail($payload['email'] ?? $payload['customer_email'] ?? null),
+            'external_business_name' => $this->optionalString($payload['business_name'] ?? null) ?? $businessName,
+            'external_contact_person_name' => $this->optionalString($payload['contact_person_name'] ?? null),
+            'pickup_location' => $route['pickup_location'] ?? '',
+            'delivery_location' => $route['delivery_location'] ?? '',
+            'vehicle_type_id' => $vehicle['vehicle_type_id'],
+            'vehicle_quantity' => $this->normalizeVehicleQuantity($payload, defaultWhenMissing: 1),
+            'expected_loading_date' => $this->normalizeDate(
+                $payload['pickup_date'] ?? $payload['expected_loading_date'] ?? null,
+                'expected_loading_date',
+            ),
+            'instructions' => $this->optionalString($payload['notes'] ?? $payload['instructions'] ?? null),
+            'pending_master_resolution' => $pending,
+            'goods' => $goodsPayload['goods'],
         ];
-    }
-
-    /**
-     * @return list<array<string, mixed>>
-     */
-    private function normalizeGoodsRows(Company $company, mixed $goods): array
-    {
-        if (! is_array($goods) || $goods === []) {
-            throw ValidationException::withMessages(['goods' => 'At least one goods row is required.']);
-        }
-
-        $max = (int) config('enquiry_webhook.max_goods_rows', 50);
-        if (count($goods) > $max) {
-            throw ValidationException::withMessages(['goods' => "A maximum of {$max} goods rows is allowed."]);
-        }
-
-        $normalized = [];
-        foreach (array_values($goods) as $index => $row) {
-            if (! is_array($row)) {
-                throw ValidationException::withMessages(["goods.{$index}" => 'Goods row must be an object.']);
-            }
-
-            $goodsTypeId = null;
-            $packageTypeId = null;
-
-            if (! empty($row['goods_type_id'])) {
-                $item = $this->assertCatalogueItem(
-                    $company,
-                    (string) $row['goods_type_id'],
-                    OwnerCatalogueType::GoodsType,
-                    "goods.{$index}.goods_type_id",
-                );
-                $goodsTypeId = $item->id;
-            }
-
-            if (! empty($row['package_type_id'])) {
-                $item = $this->assertCatalogueItem(
-                    $company,
-                    (string) $row['package_type_id'],
-                    OwnerCatalogueType::PackageType,
-                    "goods.{$index}.package_type_id",
-                );
-                $packageTypeId = $item->id;
-            }
-
-            $description = $this->optionalString($row['goods_description'] ?? null);
-            if ($goodsTypeId === null && ($description === null || $description === '')) {
-                throw ValidationException::withMessages([
-                    "goods.{$index}" => 'Each goods row requires a goods type or description.',
-                ]);
-            }
-
-            $normalized[] = [
-                'goods_type_id' => $goodsTypeId,
-                'package_type_id' => $packageTypeId,
-                'goods_type_code' => null,
-                'package_type_code' => null,
-                'goods_description' => $description,
-                'package_count' => $this->normalizeNonNegativeDecimal($row['package_count'] ?? null, "goods.{$index}.package_count"),
-                'actual_weight' => $this->normalizeNonNegativeDecimal($row['actual_weight'] ?? null, "goods.{$index}.actual_weight"),
-                'charged_weight' => $this->normalizeNonNegativeDecimal($row['charged_weight'] ?? null, "goods.{$index}.charged_weight"),
-            ];
-        }
-
-        return $normalized;
     }
 
     /**
      * @param  array<string, mixed>  $payload
      */
-    private function normalizeVehicleQuantity(array $payload): int
+    private function normalizeVehicleQuantity(array $payload, int $defaultWhenMissing = 1): int
     {
         if (array_key_exists('vehicle_types', $payload) && is_array($payload['vehicle_types'])) {
             throw ValidationException::withMessages(['vehicle_type' => 'Exactly one vehicle type is required; arrays are not accepted.']);
         }
 
-        if (! array_key_exists('vehicle_quantity', $payload)) {
-            throw ValidationException::withMessages(['vehicle_quantity' => 'Vehicle quantity is required.']);
+        if (! array_key_exists('vehicle_quantity', $payload) || $payload['vehicle_quantity'] === null || $payload['vehicle_quantity'] === '') {
+            return max(1, $defaultWhenMissing);
         }
 
         $quantity = $payload['vehicle_quantity'];
@@ -583,67 +564,6 @@ final class EnquiryService
         }
 
         return $quantity;
-    }
-
-    private function assertCustomerParty(Company $company, string $partyId): Party
-    {
-        /** @var Party|null $party */
-        $party = Party::query()
-            ->where('company_id', $company->id)
-            ->whereKey($partyId)
-            ->first();
-
-        if ($party === null) {
-            throw ValidationException::withMessages(['customer_party_id' => 'Customer party was not found in this company.']);
-        }
-
-        $hasCustomerRole = PartyRole::query()
-            ->where('company_id', $company->id)
-            ->where('party_id', $party->id)
-            ->where('role', PartyRoleType::Customer->value)
-            ->whereNull('deactivated_at')
-            ->whereNull('deleted_at')
-            ->exists();
-
-        if (! $hasCustomerRole) {
-            throw ValidationException::withMessages(['customer_party_id' => 'Selected party must have an active Customer role.']);
-        }
-
-        return $party;
-    }
-
-    private function assertCatalogueItem(
-        Company $company,
-        string $itemId,
-        OwnerCatalogueType $type,
-        string $field,
-    ): OwnerCatalogueItem {
-        /** @var OwnerCatalogueItem|null $item */
-        $item = OwnerCatalogueItem::query()
-            ->whereKey($itemId)
-            ->where('owner_user_id', $company->owner_user_id)
-            ->where('catalogue_type', $type->value)
-            ->where('is_active', true)
-            ->first();
-
-        if ($item === null) {
-            throw ValidationException::withMessages([$field => 'Catalogue reference is invalid for this company.']);
-        }
-
-        return $item;
-    }
-
-    /**
-     * @param  array<string, mixed>  $payload
-     */
-    private function requireString(array $payload, string $key, ?string $errorKey = null): string
-    {
-        $value = trim((string) ($payload[$key] ?? ''));
-        if ($value === '') {
-            throw ValidationException::withMessages([$errorKey ?? $key => ucfirst(str_replace('_', ' ', $key)).' is required.']);
-        }
-
-        return $value;
     }
 
     private function optionalString(mixed $value): ?string
@@ -695,24 +615,6 @@ final class EnquiryService
         }
 
         return Carbon::parse((string) $value)->toDateString();
-    }
-
-    private function normalizeNonNegativeDecimal(mixed $value, string $field): ?string
-    {
-        if ($value === null || $value === '') {
-            return null;
-        }
-
-        if (! is_numeric($value)) {
-            throw ValidationException::withMessages([$field => 'Must be a number.']);
-        }
-
-        $number = (float) $value;
-        if ($number < 0) {
-            throw ValidationException::withMessages([$field => 'Must be nonnegative.']);
-        }
-
-        return number_format($number, 3, '.', '');
     }
 
     private function ensureTenantMatches(Company $company, ?Branch $branch): void
