@@ -898,6 +898,7 @@ export default function TripExpensesWorkspace({
                                                         <select
                                                             id="adv_entry_type"
                                                             name="entry_type"
+                                                            required
                                                             defaultValue="advance"
                                                             className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
                                                         >

@@ -89,7 +89,7 @@ class PlatformBillingProfileController extends Controller
             'legal_name' => ['required', 'string', 'max:255'],
             'trade_name' => ['nullable', 'string', 'max:255'],
             'registered_address' => ['required', 'string', 'max:1000'],
-            'state_id' => ['nullable', 'uuid'],
+            'state_id' => ['required_without:state_name', 'nullable', 'uuid'],
             'state_name' => ['nullable', 'string', 'max:120'],
             'state_code' => ['nullable', 'string', 'max:10'],
             'city' => ['required', 'string', 'max:120'],

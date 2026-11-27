@@ -11,6 +11,7 @@ type CapabilityBlockedProps = {
     isReadOnlyLifecycle?: boolean;
     isOwner: boolean;
     manageSubscriptionUrl: string | null;
+    purchaseSubscriptionUrl?: string | null;
     dashboardUrl: string;
 };
 
@@ -21,6 +22,7 @@ export default function CapabilityBlocked({
     isReadOnlyLifecycle = false,
     isOwner,
     manageSubscriptionUrl,
+    purchaseSubscriptionUrl = null,
     dashboardUrl,
 }: CapabilityBlockedProps) {
     const contextLabel =
@@ -54,8 +56,24 @@ export default function CapabilityBlocked({
                                     : 'Historical records remain safe. Please contact your Company Owner if this branch needs access to this workflow.'}
                             </p>
                             <div className="flex flex-wrap gap-2 pt-2">
-                                {isOwner && manageSubscriptionUrl ? (
+                                {isOwner && purchaseSubscriptionUrl ? (
                                     <Button asChild variant="primary" size="sm">
+                                        <Link href={purchaseSubscriptionUrl}>
+                                            <CreditCard className="size-4" />
+                                            Purchase / Upgrade Plan
+                                        </Link>
+                                    </Button>
+                                ) : null}
+                                {isOwner && manageSubscriptionUrl ? (
+                                    <Button
+                                        asChild
+                                        variant={
+                                            purchaseSubscriptionUrl
+                                                ? 'outline'
+                                                : 'primary'
+                                        }
+                                        size="sm"
+                                    >
                                         <Link href={manageSubscriptionUrl}>
                                             <CreditCard className="size-4" />
                                             Manage Subscription

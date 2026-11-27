@@ -611,39 +611,46 @@ export default function TripShow({
                                             >
                                                 {({ processing }) => (
                                                     <>
-                                                        <Label htmlFor="pickup_station_id">
-                                                            Add pickup
-                                                        </Label>
-                                                        <select
-                                                            id="pickup_station_id"
-                                                            name="station_id"
-                                                            required
-                                                            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-                                                            defaultValue=""
-                                                        >
-                                                            <option
-                                                                value=""
-                                                                disabled
+                                                        <div className="space-y-1">
+                                                            <Label
+                                                                htmlFor="pickup_station_id"
+                                                                required
                                                             >
-                                                                Station
-                                                            </option>
-                                                            {formOptions.stations.map(
-                                                                (station) => (
-                                                                    <option
-                                                                        key={
-                                                                            station.id
-                                                                        }
-                                                                        value={
-                                                                            station.id
-                                                                        }
-                                                                    >
-                                                                        {
-                                                                            station.name
-                                                                        }
-                                                                    </option>
-                                                                ),
-                                                            )}
-                                                        </select>
+                                                                Pickup station
+                                                            </Label>
+                                                            <select
+                                                                id="pickup_station_id"
+                                                                name="station_id"
+                                                                required
+                                                                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                                                defaultValue=""
+                                                            >
+                                                                <option
+                                                                    value=""
+                                                                    disabled
+                                                                >
+                                                                    Station
+                                                                </option>
+                                                                {formOptions.stations.map(
+                                                                    (
+                                                                        station,
+                                                                    ) => (
+                                                                        <option
+                                                                            key={
+                                                                                station.id
+                                                                            }
+                                                                            value={
+                                                                                station.id
+                                                                            }
+                                                                        >
+                                                                            {
+                                                                                station.name
+                                                                            }
+                                                                        </option>
+                                                                    ),
+                                                                )}
+                                                            </select>
+                                                        </div>
                                                         <select
                                                             name="consignor_party_id"
                                                             className="h-9 rounded-md border border-input bg-background px-3 text-sm"
@@ -674,20 +681,38 @@ export default function TripShow({
                                                             name="goods_description"
                                                             placeholder="Goods"
                                                         />
-                                                        <Input
-                                                            name="weight"
-                                                            type="number"
-                                                            step="0.001"
-                                                            min="0.001"
-                                                            required
-                                                            placeholder="Weight (MT)"
-                                                            aria-label="Pickup weight in MT"
-                                                        />
-                                                        <Input
-                                                            name="pickup_date"
-                                                            type="date"
-                                                            required
-                                                        />
+                                                        <div className="space-y-1">
+                                                            <Label
+                                                                htmlFor="show_pickup_weight"
+                                                                required
+                                                            >
+                                                                Weight (MT)
+                                                            </Label>
+                                                            <Input
+                                                                id="show_pickup_weight"
+                                                                name="weight"
+                                                                type="number"
+                                                                step="0.001"
+                                                                min="0.001"
+                                                                required
+                                                                placeholder="Weight (MT)"
+                                                                aria-label="Pickup weight in MT"
+                                                            />
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <Label
+                                                                htmlFor="show_pickup_date"
+                                                                required
+                                                            >
+                                                                Pickup date
+                                                            </Label>
+                                                            <Input
+                                                                id="show_pickup_date"
+                                                                name="pickup_date"
+                                                                type="date"
+                                                                required
+                                                            />
+                                                        </div>
                                                         {errors?.weight ? (
                                                             <p className="text-sm text-destructive">
                                                                 {errors.weight}
@@ -783,8 +808,11 @@ export default function TripShow({
                                             >
                                                 {({ processing }) => (
                                                     <>
-                                                        <Label htmlFor="drop_station_id">
-                                                            Add drop
+                                                        <Label
+                                                            htmlFor="drop_station_id"
+                                                            required
+                                                        >
+                                                            Drop station
                                                         </Label>
                                                         <select
                                                             id="drop_station_id"
@@ -1020,88 +1048,116 @@ export default function TripShow({
                                                             allocation
                                                         </Label>
                                                     </div>
-                                                    <select
-                                                        name="trip_pickup_id"
-                                                        required
-                                                        className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-                                                        defaultValue=""
-                                                    >
-                                                        <option
-                                                            value=""
-                                                            disabled
+                                                    <div className="space-y-1">
+                                                        <Label
+                                                            htmlFor="show_trip_pickup_id"
+                                                            required
                                                         >
                                                             Pickup
-                                                        </option>
-                                                        {movements.pickups.map(
-                                                            (pickup) => (
-                                                                <option
-                                                                    key={
-                                                                        pickup.id
-                                                                    }
-                                                                    value={
-                                                                        pickup.id
-                                                                    }
-                                                                >
-                                                                    #
-                                                                    {
-                                                                        pickup.position
-                                                                    }{' '}
-                                                                    {
-                                                                        pickup.station_name
-                                                                    }{' '}
-                                                                    (
-                                                                    {formatMtLabel(
-                                                                        kgToMt(
-                                                                            pickup.weight,
-                                                                        ),
-                                                                    )}
-                                                                    )
-                                                                </option>
-                                                            ),
-                                                        )}
-                                                    </select>
-                                                    <select
-                                                        name="trip_drop_id"
-                                                        required
-                                                        className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-                                                        defaultValue=""
-                                                    >
-                                                        <option
-                                                            value=""
-                                                            disabled
+                                                        </Label>
+                                                        <select
+                                                            id="show_trip_pickup_id"
+                                                            name="trip_pickup_id"
+                                                            required
+                                                            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                                            defaultValue=""
+                                                        >
+                                                            <option
+                                                                value=""
+                                                                disabled
+                                                            >
+                                                                Pickup
+                                                            </option>
+                                                            {movements.pickups.map(
+                                                                (pickup) => (
+                                                                    <option
+                                                                        key={
+                                                                            pickup.id
+                                                                        }
+                                                                        value={
+                                                                            pickup.id
+                                                                        }
+                                                                    >
+                                                                        #
+                                                                        {
+                                                                            pickup.position
+                                                                        }{' '}
+                                                                        {
+                                                                            pickup.station_name
+                                                                        }{' '}
+                                                                        (
+                                                                        {formatMtLabel(
+                                                                            kgToMt(
+                                                                                pickup.weight,
+                                                                            ),
+                                                                        )}
+                                                                        )
+                                                                    </option>
+                                                                ),
+                                                            )}
+                                                        </select>
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <Label
+                                                            htmlFor="show_trip_drop_id"
+                                                            required
                                                         >
                                                             Drop
-                                                        </option>
-                                                        {movements.drops.map(
-                                                            (drop) => (
-                                                                <option
-                                                                    key={
-                                                                        drop.id
-                                                                    }
-                                                                    value={
-                                                                        drop.id
-                                                                    }
-                                                                >
-                                                                    #
-                                                                    {
-                                                                        drop.position
-                                                                    }{' '}
-                                                                    {
-                                                                        drop.station_name
-                                                                    }
-                                                                </option>
-                                                            ),
-                                                        )}
-                                                    </select>
-                                                    <Input
-                                                        name="allocation_weight"
-                                                        type="number"
-                                                        step="0.001"
-                                                        min="0.001"
-                                                        required
-                                                        placeholder="Allocation weight (MT)"
-                                                        aria-label="Allocation weight in MT"
-                                                    />
+                                                        </Label>
+                                                        <select
+                                                            id="show_trip_drop_id"
+                                                            name="trip_drop_id"
+                                                            required
+                                                            className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                                            defaultValue=""
+                                                        >
+                                                            <option
+                                                                value=""
+                                                                disabled
+                                                            >
+                                                                Drop
+                                                            </option>
+                                                            {movements.drops.map(
+                                                                (drop) => (
+                                                                    <option
+                                                                        key={
+                                                                            drop.id
+                                                                        }
+                                                                        value={
+                                                                            drop.id
+                                                                        }
+                                                                    >
+                                                                        #
+                                                                        {
+                                                                            drop.position
+                                                                        }{' '}
+                                                                        {
+                                                                            drop.station_name
+                                                                        }
+                                                                    </option>
+                                                                ),
+                                                            )}
+                                                        </select>
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <Label
+                                                            htmlFor="show_allocation_weight"
+                                                            required
+                                                        >
+                                                            Allocation weight
+                                                            (MT)
+                                                        </Label>
+                                                        <Input
+                                                            id="show_allocation_weight"
+                                                            name="allocation_weight"
+                                                            type="number"
+                                                            step="0.001"
+                                                            min="0.001"
+                                                            required
+                                                            placeholder="Allocation weight (MT)"
+                                                            aria-label="Allocation weight in MT"
+                                                        />
+                                                    </div>
                                                     <Input
                                                         name="rate"
                                                         type="number"
@@ -1253,40 +1309,60 @@ export default function TripShow({
                                             >
                                                 {({ processing }) => (
                                                     <>
-                                                        <select
-                                                            name="expense_category_id"
-                                                            required
-                                                            className="h-9 rounded-md border border-input bg-background px-3 text-sm"
-                                                            defaultValue=""
-                                                        >
-                                                            <option
-                                                                value=""
-                                                                disabled
+                                                        <div className="space-y-1">
+                                                            <Label
+                                                                htmlFor="show_expense_category_id"
+                                                                required
                                                             >
                                                                 Category
-                                                            </option>
-                                                            {formOptions.expense_categories.map(
-                                                                (category) => (
-                                                                    <option
-                                                                        key={
-                                                                            category.id
-                                                                        }
-                                                                        value={
-                                                                            category.id
-                                                                        }
-                                                                    >
-                                                                        {
-                                                                            category.name
-                                                                        }
-                                                                    </option>
-                                                                ),
-                                                            )}
-                                                        </select>
-                                                        <Input
-                                                            name="expense_date"
-                                                            type="date"
-                                                            required
-                                                        />
+                                                            </Label>
+                                                            <select
+                                                                id="show_expense_category_id"
+                                                                name="expense_category_id"
+                                                                required
+                                                                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                                                defaultValue=""
+                                                            >
+                                                                <option
+                                                                    value=""
+                                                                    disabled
+                                                                >
+                                                                    Category
+                                                                </option>
+                                                                {formOptions.expense_categories.map(
+                                                                    (
+                                                                        category,
+                                                                    ) => (
+                                                                        <option
+                                                                            key={
+                                                                                category.id
+                                                                            }
+                                                                            value={
+                                                                                category.id
+                                                                            }
+                                                                        >
+                                                                            {
+                                                                                category.name
+                                                                            }
+                                                                        </option>
+                                                                    ),
+                                                                )}
+                                                            </select>
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            <Label
+                                                                htmlFor="show_expense_date"
+                                                                required
+                                                            >
+                                                                Expense date
+                                                            </Label>
+                                                            <Input
+                                                                id="show_expense_date"
+                                                                name="expense_date"
+                                                                type="date"
+                                                                required
+                                                            />
+                                                        </div>
                                                         <select
                                                             name="payment_mode_id"
                                                             className="h-9 rounded-md border border-input bg-background px-3 text-sm"

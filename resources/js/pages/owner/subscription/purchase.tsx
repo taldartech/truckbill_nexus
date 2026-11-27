@@ -396,6 +396,7 @@ export default function SubscriptionPurchase({
                         </Label>
                         <select
                             id="purchase_company"
+                            required
                             value={company.id}
                             onChange={(e) => {
                                 const target = companyOptions.find(

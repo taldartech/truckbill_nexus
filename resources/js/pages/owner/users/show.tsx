@@ -165,7 +165,9 @@ export default function OwnerUsersShow({
                                         </select>
                                     </div>
                                     <div className="grid gap-2">
-                                        <Label htmlFor="remark">Remark</Label>
+                                        <Label htmlFor="remark" required>
+                                            Remark
+                                        </Label>
                                         <Input
                                             id="remark"
                                             name="remark"
@@ -296,7 +298,9 @@ export default function OwnerUsersShow({
                                         </select>
                                     </div>
                                     <div className="grid gap-2">
-                                        <Label htmlFor="role_id">Role</Label>
+                                        <Label htmlFor="role_id" required>
+                                            Role
+                                        </Label>
                                         <select
                                             id="role_id"
                                             name="role_id"
@@ -319,7 +323,7 @@ export default function OwnerUsersShow({
                                         <InputError message={errors.role_id} />
                                     </div>
                                     <div className="grid gap-2">
-                                        <Label htmlFor="role_remark">
+                                        <Label htmlFor="role_remark" required>
                                             Remark
                                         </Label>
                                         <Input
@@ -356,7 +360,10 @@ export default function OwnerUsersShow({
                             {({ processing, errors }) => (
                                 <>
                                     <div className="grid gap-2">
-                                        <Label htmlFor="deactivate_remark">
+                                        <Label
+                                            htmlFor="deactivate_remark"
+                                            required
+                                        >
                                             Remark
                                         </Label>
                                         <Input

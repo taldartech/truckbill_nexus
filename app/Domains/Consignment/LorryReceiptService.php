@@ -252,6 +252,7 @@ final class LorryReceiptService
         $this->assertLifecycleAllowsMutation($company);
 
         $lockedContext = $lorryReceipt->workflow_context;
+        $this->assertContextEntitled($company, $lockedContext);
         if (array_key_exists('workflow_context', $payload)) {
             $requested = trim((string) $payload['workflow_context']);
             if ($requested !== '' && $requested !== $lockedContext->value) {

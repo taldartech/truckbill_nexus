@@ -87,41 +87,73 @@ export default function TripInvoiceEditCharges({
                                 {charges.map((charge, index) => (
                                     <div
                                         key={index}
-                                        className="grid gap-2 rounded border p-3 md:grid-cols-3"
+                                        className="grid gap-3 rounded border p-3 md:grid-cols-3"
                                     >
-                                        <select
-                                            name={`charges[${index}][charge_type]`}
-                                            defaultValue={charge.charge_type}
-                                            className="rounded-md border px-2 py-1"
-                                        >
-                                            {chargeTypeOptions.map((opt) => (
-                                                <option
-                                                    key={opt.value}
-                                                    value={opt.value}
-                                                >
-                                                    {opt.label}
-                                                </option>
-                                            ))}
-                                        </select>
-                                        <input
-                                            name={`charges[${index}][description]`}
-                                            placeholder="Description"
-                                            defaultValue={charge.description}
-                                            required
-                                            className="rounded-md border px-2 py-1"
-                                        />
-                                        <input
-                                            name={`charges[${index}][amount]`}
-                                            type="number"
-                                            step="0.01"
-                                            min="0.01"
-                                            defaultValue={charge.amount}
-                                            required
-                                            disabled={
-                                                !permissions.can_view_freight
-                                            }
-                                            className="rounded-md border px-2 py-1"
-                                        />
+                                        <div className="space-y-1">
+                                            <Label
+                                                htmlFor={`charge_type_${index}`}
+                                            >
+                                                Charge Type
+                                            </Label>
+                                            <select
+                                                id={`charge_type_${index}`}
+                                                name={`charges[${index}][charge_type]`}
+                                                defaultValue={
+                                                    charge.charge_type
+                                                }
+                                                className="h-9 w-full rounded-md border px-2 py-1 text-sm"
+                                            >
+                                                {chargeTypeOptions.map(
+                                                    (opt) => (
+                                                        <option
+                                                            key={opt.value}
+                                                            value={opt.value}
+                                                        >
+                                                            {opt.label}
+                                                        </option>
+                                                    ),
+                                                )}
+                                            </select>
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label
+                                                htmlFor={`charge_description_${index}`}
+                                                required
+                                            >
+                                                Description
+                                            </Label>
+                                            <input
+                                                id={`charge_description_${index}`}
+                                                name={`charges[${index}][description]`}
+                                                placeholder="Description"
+                                                defaultValue={
+                                                    charge.description
+                                                }
+                                                required
+                                                className="h-9 w-full rounded-md border px-2 py-1 text-sm"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <Label
+                                                htmlFor={`charge_amount_${index}`}
+                                                required
+                                            >
+                                                Amount
+                                            </Label>
+                                            <input
+                                                id={`charge_amount_${index}`}
+                                                name={`charges[${index}][amount]`}
+                                                type="number"
+                                                step="0.01"
+                                                min="0.01"
+                                                defaultValue={charge.amount}
+                                                required
+                                                disabled={
+                                                    !permissions.can_view_freight
+                                                }
+                                                className="h-9 w-full rounded-md border px-2 py-1 text-sm"
+                                            />
+                                        </div>
                                     </div>
                                 ))}
                                 <Button

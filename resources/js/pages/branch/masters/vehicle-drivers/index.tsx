@@ -756,6 +756,7 @@ export default function VehicleDriversIndex({
                                                 <select
                                                     id="vd_entry_type"
                                                     name="entry_type"
+                                                    required
                                                     defaultValue="advance"
                                                     className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
                                                 >

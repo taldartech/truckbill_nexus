@@ -12,7 +12,10 @@ import {
     DocumentDrawer,
     type DocumentDrawerProps,
 } from '@/components/masters/document-drawer';
-import { VehicleDriverAssignmentModal } from '@/components/masters/vehicle-driver-assignment-modal';
+import {
+    VehicleDriverAssignmentModal,
+    VehicleDriverRemoveModal,
+} from '@/components/masters/vehicle-driver-assignment-modal';
 import type { PartyOption } from '@/components/searchable-party-select';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { Badge } from '@/components/ui/badge';
@@ -129,6 +132,7 @@ export default function VehicleShow({
     const { flash } = usePage<{ flash?: { success?: string | null } }>().props;
     const [docsOpen, setDocsOpen] = useState(false);
     const [assignModalOpen, setAssignModalOpen] = useState(false);
+    const [removeModalOpen, setRemoveModalOpen] = useState(false);
     const today = new Date().toISOString().slice(0, 10);
 
     return (
@@ -290,13 +294,9 @@ export default function VehicleShow({
                                             size="sm"
                                             variant="outline"
                                             className="gap-1.5 text-destructive hover:text-destructive"
-                                            onClick={() => {
-                                                router.post(
-                                                    links.driverRemove!,
-                                                    { effective_date: today },
-                                                    { preserveScroll: true },
-                                                );
-                                            }}
+                                            onClick={() =>
+                                                setRemoveModalOpen(true)
+                                            }
                                         >
                                             <UserMinus className="size-3.5" />
                                             Remove Driver
@@ -414,25 +414,46 @@ export default function VehicleShow({
             ) : null}
 
             {driverManagement?.can_manage ? (
-                <VehicleDriverAssignmentModal
-                    open={assignModalOpen}
-                    onOpenChange={setAssignModalOpen}
-                    fixedVehicle={{
-                        id: vehicle.id,
-                        registration_number: vehicle.registration_number,
-                        current_driver_name:
-                            driverManagement.active_assignment?.driver_name ??
-                            vehicle.primary_driver_name,
-                    }}
-                    driverOptions={driverManagement.driver_options}
-                    partiesOptionsUrl={links.partiesOptionsUrl}
-                    partiesStoreUrl={links.partiesStoreUrl}
-                    canCreateParty={driverManagement.can_create_party}
-                    defaultDate={today}
-                    mode={
-                        driverManagement.active_assignment ? 'change' : 'assign'
-                    }
-                />
+                <>
+                    <VehicleDriverAssignmentModal
+                        open={assignModalOpen}
+                        onOpenChange={setAssignModalOpen}
+                        fixedVehicle={{
+                            id: vehicle.id,
+                            registration_number: vehicle.registration_number,
+                            current_driver_name:
+                                driverManagement.active_assignment
+                                    ?.driver_name ??
+                                vehicle.primary_driver_name,
+                        }}
+                        driverOptions={driverManagement.driver_options}
+                        partiesOptionsUrl={links.partiesOptionsUrl}
+                        partiesStoreUrl={links.partiesStoreUrl}
+                        canCreateParty={driverManagement.can_create_party}
+                        defaultDate={today}
+                        mode={
+                            driverManagement.active_assignment
+                                ? 'change'
+                                : 'assign'
+                        }
+                    />
+                    {driverManagement.active_assignment &&
+                    links.driverRemove ? (
+                        <VehicleDriverRemoveModal
+                            open={removeModalOpen}
+                            onOpenChange={setRemoveModalOpen}
+                            removeUrl={links.driverRemove}
+                            registrationNumber={vehicle.registration_number}
+                            driverName={
+                                driverManagement.active_assignment
+                                    .driver_name ??
+                                vehicle.primary_driver_name ??
+                                'Primary Driver'
+                            }
+                            defaultDate={today}
+                        />
+                    ) : null}
+                </>
             ) : null}
         </>
     );

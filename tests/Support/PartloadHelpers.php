@@ -63,12 +63,42 @@ if (! function_exists('partloadWorkspace')) {
             remark: 'Partload customer',
         );
 
+        $transporter = app(PartyService::class)->create(
+            actor: $ctx['owner'],
+            company: $ctx['company'],
+            branch: null,
+            attributes: [
+                'name' => 'Partload Transporter '.Str::lower(Str::random(4)),
+                'contact_number' => '9800099002',
+                'pan' => 'AABCT9002E',
+                'state' => 'MH',
+                'city' => 'Mumbai',
+                'is_gst_applicable' => false,
+            ],
+            roles: [[
+                'role' => PartyRoleType::Transporter->value,
+                'attributes' => [
+                    'pan' => 'AABCT9002E',
+                    'pan_status' => 'active',
+                    'declaration' => true,
+                    'declaration_type' => 'owner',
+                    'tds_percentage' => '1.00',
+                    'goods_vehicles_count' => 2,
+                ],
+            ]],
+            remark: 'Partload transporter',
+        );
+
         $ctx['vehicle']->forceFill([
-            'ownership' => VehicleOwnership::Own,
-            'primary_driver_party_id' => $ctx['primaryDriver']->id,
+            'ownership' => VehicleOwnership::Market,
+            'owner_party_id' => $transporter->id,
+            'truck_type_id' => null,
+            'tyre_layout_id' => null,
+            'primary_driver_party_id' => null,
         ])->save();
 
         $ctx['customer'] = $customer;
+        $ctx['transporter'] = $transporter;
 
         return $ctx;
     }

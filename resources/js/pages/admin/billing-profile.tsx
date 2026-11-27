@@ -214,6 +214,7 @@ export default function AdminBillingProfile({
                             </Label>
                             <select
                                 id="state_id"
+                                required
                                 value={form.data.state_id}
                                 onChange={(e) => {
                                     const st = states.find(

@@ -482,12 +482,13 @@ test('complete partload journey supports transshipment forwarding, shortage/dama
         'from_station_id' => $ctx['fromStation']->id,
         'to_station_id' => $hubStation->id,
         'vehicle_id' => $ctx['vehicle']->id,
+        'driver_party_id' => $ctx['primaryDriver']->id,
         'lorry_receipt_ids' => [$toPayLr->id],
     ]))->toThrow(PartloadConflictException::class);
 
     // Consolidate Challan 1 into a Main Challan & Dispatch
     $mainChallan = app(PartloadMainChallanService::class)->create($ctx['company'], $ctx['branch'], $ctx['member'], [
-        'ownership_mode' => VehicleOwnership::Own->value,
+        'ownership_mode' => VehicleOwnership::Market->value,
         'vehicle_id' => $ctx['vehicle']->id,
         'driver_party_id' => $ctx['primaryDriver']->id,
         'from_station_id' => $ctx['fromStation']->id,

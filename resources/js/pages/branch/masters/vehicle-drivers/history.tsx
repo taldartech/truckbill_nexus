@@ -1,8 +1,11 @@
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { ArrowLeft, RefreshCw, Truck, UserMinus, UserPlus } from 'lucide-react';
 import { useState } from 'react';
 import { AppIndexListCard, AppIndexPage } from '@/components/app-index-page';
-import { VehicleDriverAssignmentModal } from '@/components/masters/vehicle-driver-assignment-modal';
+import {
+    VehicleDriverAssignmentModal,
+    VehicleDriverRemoveModal,
+} from '@/components/masters/vehicle-driver-assignment-modal';
 import type { PartyOption } from '@/components/searchable-party-select';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -58,6 +61,7 @@ export default function VehicleDriverHistory({
 }: Props) {
     const { flash } = usePage<{ flash?: { success?: string | null } }>().props;
     const [assignOpen, setAssignOpen] = useState(false);
+    const [removeOpen, setRemoveOpen] = useState(false);
 
     const today = new Date().toISOString().slice(0, 10);
 
@@ -112,11 +116,7 @@ export default function VehicleDriverHistory({
                                     variant="outline"
                                     size="sm"
                                     className="gap-1.5 text-destructive hover:text-destructive"
-                                    onClick={() => {
-                                        router.post(urls.remove, {
-                                            effective_date: today,
-                                        });
-                                    }}
+                                    onClick={() => setRemoveOpen(true)}
                                 >
                                     <UserMinus className="size-3.5" />
                                     Remove Current Driver
@@ -246,6 +246,16 @@ export default function VehicleDriverHistory({
                 defaultDate={today}
                 mode={vehicle.primary_driver_party_id ? 'change' : 'assign'}
             />
+            {permissions.can_remove && vehicle.primary_driver_party_id ? (
+                <VehicleDriverRemoveModal
+                    open={removeOpen}
+                    onOpenChange={setRemoveOpen}
+                    removeUrl={urls.remove}
+                    registrationNumber={vehicle.registration_number}
+                    driverName={vehicle.primary_driver_name ?? 'Primary Driver'}
+                    defaultDate={today}
+                />
+            ) : null}
         </>
     );
 }

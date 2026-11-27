@@ -71,6 +71,9 @@ final class EnsureCompanyCapability
                 'manageSubscriptionUrl' => $isOwner
                     ? route('owner.subscriptions.index', absolute: false)
                     : null,
+                'purchaseSubscriptionUrl' => $isOwner
+                    ? route('owner.companies.subscription.purchase', ['company' => $company->id], absolute: false)
+                    : null,
                 'dashboardUrl' => route('branch.dashboard', absolute: false),
             ])->toResponse($request)->setStatusCode(403);
         }

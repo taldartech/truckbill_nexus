@@ -170,6 +170,14 @@ class PartyController extends Controller
                 : PartyRoleType::from((string) $roleInput);
         }
 
+        $this->assertPartyRolesAllowed(
+            $company,
+            array_map(
+                static fn (PartyRoleType $role): array => ['role' => $role->value, 'attributes' => []],
+                $roles,
+            ),
+        );
+
         $options = app(PartyOptionQuery::class)->forRoles(
             company: $company,
             branch: $branch,

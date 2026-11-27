@@ -17,6 +17,7 @@ use App\Domains\Partload\Exceptions\PartloadConflictException;
 use App\Domains\Partload\Exceptions\PartloadDomainException;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
+use App\Domains\Subscription\Entitlement\CompanyCapabilityResolver;
 use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
 use App\Domains\Subscription\Entitlement\SubscriptionEntitlementGate;
 use App\Domains\Subscription\Enums\SubscriptionModule;
@@ -549,6 +550,14 @@ final class PartloadMainChallanService
 
         if ($vehicle === null) {
             throw ValidationException::withMessages(['vehicle_id' => 'Vehicle was not found.']);
+        }
+
+        if (! app(CompanyCapabilityResolver::class)->allowsVehicleOwnership($company, $vehicle->ownership, forMutation: true)) {
+            throw ValidationException::withMessages([
+                'vehicle_id' => $vehicle->ownership === VehicleOwnership::Own
+                    ? 'Own vehicles require an active OwnFleet subscription.'
+                    : 'Selected vehicle ownership is not included in this Company subscription.',
+            ]);
         }
 
         return $vehicle;

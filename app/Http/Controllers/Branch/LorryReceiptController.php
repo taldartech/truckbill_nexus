@@ -436,6 +436,7 @@ class LorryReceiptController extends Controller
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertPermission($actor, $company, $branch, PermissionCodes::LR_EDIT);
         $this->assertLr($lorryReceipt, $company, $branch);
+        $this->assertWorkflowContextMutable($company, $lorryReceipt->workflow_context);
 
         if ($lorryReceipt->status !== LrStatus::Pending) {
             abort(422, 'Only pending Lorry Receipts can be edited.');
@@ -481,6 +482,7 @@ class LorryReceiptController extends Controller
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertPermission($actor, $company, $branch, PermissionCodes::LR_EDIT);
         $this->assertLr($lorryReceipt, $company, $branch);
+        $this->assertWorkflowContextMutable($company, $lorryReceipt->workflow_context);
 
         $payload = $this->validatedPayload($request, forUpdate: true);
         $payload['workflow_context'] = $lorryReceipt->workflow_context->value;
@@ -795,6 +797,19 @@ class LorryReceiptController extends Controller
     private function capabilities(): CompanyCapabilityResolver
     {
         return app(CompanyCapabilityResolver::class);
+    }
+
+    private function assertWorkflowContextMutable(Company $company, LrWorkflowContext $context): void
+    {
+        $capability = match ($context) {
+            LrWorkflowContext::OwnFleet => CompanyCapabilities::OWNFLEET_LR,
+            LrWorkflowContext::Broker => CompanyCapabilities::BROKER_LR,
+            LrWorkflowContext::Partload => CompanyCapabilities::PARTLOAD_LR,
+        };
+
+        if (! $this->capabilities()->allowsMutate($company, $capability)) {
+            abort(403, $this->capabilities()->denyMessage($company, $capability));
+        }
     }
 
     /**

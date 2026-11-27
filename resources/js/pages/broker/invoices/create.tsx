@@ -320,14 +320,17 @@ export default function BrokerInvoiceCreate({
                                     emptyMessage="No eligible Customers in this branch."
                                 />
 
-                                <Label className="mt-4 flex flex-col gap-1 text-sm">
-                                    Invoice date
+                                <div className="mt-4 space-y-1.5">
+                                    <Label htmlFor="invoice_date">
+                                        Invoice date
+                                    </Label>
                                     <input
+                                        id="invoice_date"
                                         type="date"
                                         name="invoice_date"
-                                        className="rounded-md border border-border px-2 py-1.5"
+                                        className="w-full rounded-md border border-border px-2 py-1.5 text-sm"
                                     />
-                                </Label>
+                                </div>
 
                                 {preview && (
                                     <div className="mt-4 rounded-lg border border-[#2D8CFF]/30 bg-[#2D8CFF]/5 p-4 text-sm">

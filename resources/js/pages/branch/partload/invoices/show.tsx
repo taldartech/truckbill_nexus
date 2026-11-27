@@ -371,6 +371,7 @@ export default function PartloadInvoiceShow({
                                 </Label>
                                 <select
                                     id="payment_mode"
+                                    required
                                     value={paymentForm.data.payment_mode}
                                     onChange={(e) =>
                                         paymentForm.setData(

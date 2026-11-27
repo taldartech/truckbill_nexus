@@ -13,6 +13,7 @@ use App\Domains\Partload\Exceptions\PartloadDomainException;
 use App\Domains\Partload\MainChallan\PartloadMainChallanService;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
+use App\Domains\Subscription\Entitlement\CompanyCapabilityResolver;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
@@ -82,6 +83,8 @@ class PartloadMainChallanController extends Controller
 
         $eligible = $this->mainChallans->eligibleChallans($company, $branch);
 
+        $capabilities = app(CompanyCapabilityResolver::class);
+
         return Inertia::render('partload/main-challans/create', [
             'eligibleChallans' => $eligible->map(fn ($challan): array => [
                 'id' => $challan->id,
@@ -107,7 +110,11 @@ class PartloadMainChallanController extends Controller
                     'city' => $station->city,
                     'state' => $station->state,
                 ])->values()->all(),
-            'vehicleOptions' => $this->vehicleOptions->forBranch($company, $branch),
+            'vehicleOptions' => $this->vehicleOptions->forBranch(
+                $company,
+                $branch,
+                ownerships: $capabilities->allowedVehicleOwnerships($company, forMutation: false),
+            ),
             'driverOptions' => $this->partyOptions->forRoles($company, $branch, PartyRoleType::Driver),
             'permissions' => array_merge($this->permissions($actor, $company, $branch), [
                 'can_create_masters' => $this->masterPermissions(
@@ -118,6 +125,10 @@ class PartloadMainChallanController extends Controller
                     $this->authorizer,
                 )['can_create'],
                 'can_quick_create_stations' => (int) $actor->id === (int) $company->owner_user_id,
+                'allowed_vehicle_ownerships' => array_map(
+                    static fn ($ownership): string => $ownership->value,
+                    $capabilities->allowedVehicleOwnerships($company, forMutation: true),
+                ),
             ]),
             'urls' => [
                 'store' => route('branch.partload.main-challans.store', absolute: false),

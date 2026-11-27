@@ -253,3 +253,102 @@ export function VehicleDriverAssignmentModal({
         </Dialog>
     );
 }
+
+export function VehicleDriverRemoveModal({
+    open,
+    onOpenChange,
+    removeUrl,
+    registrationNumber,
+    driverName,
+    defaultDate,
+}: {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    removeUrl: string;
+    registrationNumber: string;
+    driverName: string;
+    defaultDate: string;
+}) {
+    const [effectiveDate, setEffectiveDate] = useState(defaultDate);
+    const [remarks, setRemarks] = useState('');
+    const [processing, setProcessing] = useState(false);
+
+    useEffect(() => {
+        if (open) {
+            setEffectiveDate(defaultDate);
+            setRemarks('');
+        }
+    }, [open, defaultDate]);
+
+    const handleSubmit = (event: React.FormEvent) => {
+        event.preventDefault();
+        setProcessing(true);
+        router.post(
+            removeUrl,
+            {
+                effective_date: effectiveDate,
+                remarks: remarks.trim() || null,
+            },
+            {
+                preserveScroll: true,
+                onSuccess: () => onOpenChange(false),
+                onFinish: () => setProcessing(false),
+            },
+        );
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Remove Primary Driver</DialogTitle>
+                    <DialogDescription>
+                        End the active assignment for{' '}
+                        <strong>{driverName}</strong> on{' '}
+                        <strong>{registrationNumber}</strong>. Assignment
+                        history and historical Trips remain intact.
+                    </DialogDescription>
+                </DialogHeader>
+                <form className="space-y-4" onSubmit={handleSubmit}>
+                    <div className="space-y-1.5">
+                        <Label htmlFor="modal_remove_effective_date" required>
+                            Effective End Date
+                        </Label>
+                        <Input
+                            id="modal_remove_effective_date"
+                            type="date"
+                            value={effectiveDate}
+                            onChange={(e) => setEffectiveDate(e.target.value)}
+                            required
+                        />
+                    </div>
+                    <div className="space-y-1.5">
+                        <Label htmlFor="modal_remove_remarks">Remarks</Label>
+                        <Input
+                            id="modal_remove_remarks"
+                            value={remarks}
+                            onChange={(e) => setRemarks(e.target.value)}
+                            placeholder="Reason for driver removal"
+                        />
+                    </div>
+                    <DialogFooter className="gap-2">
+                        <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => onOpenChange(false)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            type="submit"
+                            variant="destructive"
+                            disabled={processing}
+                        >
+                            {processing ? 'Removing…' : 'Confirm Remove'}
+                        </Button>
+                    </DialogFooter>
+                </form>
+            </DialogContent>
+        </Dialog>
+    );
+}

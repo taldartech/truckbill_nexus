@@ -508,6 +508,9 @@ test.describe('Mandatory indicators, Vehicle Drivers, and Subscription Entitleme
             page.getByText(/OwnFleet is not included in this Company/i),
         ).toBeVisible();
         await expect(
+            page.getByRole('link', { name: 'Purchase / Upgrade Plan' }),
+        ).toBeVisible();
+        await expect(
             page.getByRole('link', { name: 'Manage Subscription' }),
         ).toBeVisible();
 
@@ -550,6 +553,9 @@ test.describe('Mandatory indicators, Vehicle Drivers, and Subscription Entitleme
         await expect(
             page.getByText(/OwnFleet is not included in this Company/i),
         ).toBeVisible();
+        await expect(
+            page.getByRole('link', { name: 'Purchase / Upgrade Plan' }),
+        ).toHaveCount(0);
         await expect(
             page.getByRole('link', { name: 'Manage Subscription' }),
         ).toHaveCount(0);

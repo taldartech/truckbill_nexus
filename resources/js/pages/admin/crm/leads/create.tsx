@@ -1,5 +1,6 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { ArrowLeft, Save } from 'lucide-react';
+import { useState } from 'react';
 import { StateCityFields } from '@/components/geography/state-city-fields';
 import { PortalErrorList } from '@/components/admin/portal-feedback';
 import { AppIconAction } from '@/components/app-icon-action';
@@ -37,6 +38,7 @@ export default function CrmLeadCreate({
     const { errors } = usePage<{
         errors?: Record<string, string>;
     }>().props;
+    const [duplicateOverride, setDuplicateOverride] = useState(false);
 
     return (
         <>
@@ -159,17 +161,28 @@ export default function CrmLeadCreate({
                                 type="checkbox"
                                 name="duplicate_override"
                                 value="1"
+                                checked={duplicateOverride}
+                                onChange={(e) =>
+                                    setDuplicateOverride(e.target.checked)
+                                }
                                 className="size-4 rounded border border-input"
                             />
                             Override potential duplicate warning
                         </label>
                         <div className="space-y-2 md:col-span-2">
-                            <Label htmlFor="duplicate_override_remark">
+                            <Label
+                                htmlFor="duplicate_override_remark"
+                                required={duplicateOverride}
+                            >
                                 Duplicate override remark
                             </Label>
                             <textarea
                                 id="duplicate_override_remark"
                                 name="duplicate_override_remark"
+                                required={duplicateOverride}
+                                aria-required={
+                                    duplicateOverride ? 'true' : undefined
+                                }
                                 rows={2}
                                 className={textareaClass}
                             />

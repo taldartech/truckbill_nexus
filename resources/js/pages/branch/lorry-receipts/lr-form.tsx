@@ -1777,6 +1777,25 @@ export default function LrForm({
                                                                 {selectedVehicle?.primary_driver_name ??
                                                                     'No primary driver assigned'}
                                                             </div>
+                                                            {mode ===
+                                                                'create' &&
+                                                            !selectedVehicle?.primary_driver_party_id ? (
+                                                                <p className="text-xs font-medium text-amber-600">
+                                                                    No primary
+                                                                    driver is
+                                                                    assigned to
+                                                                    this
+                                                                    vehicle.
+                                                                    Enable
+                                                                    Substitute
+                                                                    Driver below
+                                                                    or assign a
+                                                                    Primary
+                                                                    Driver in
+                                                                    Vehicle
+                                                                    Drivers.
+                                                                </p>
+                                                            ) : null}
                                                         </div>
                                                         <div className="space-y-1.5">
                                                             <Label>

@@ -7,6 +7,9 @@ require_once __DIR__.'/../Support/BrokerLorryHireHelpers.php';
 
 use App\Domains\Company\CompanyWorkspaceService;
 use App\Domains\Consignment\Enums\FreightRateType;
+use App\Domains\Consignment\Enums\LrWorkflowContext;
+use App\Domains\Consignment\LorryReceiptService;
+use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Party\PartyService;
 use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
@@ -14,6 +17,8 @@ use App\Domains\Master\Vehicle\VehicleService;
 use App\Domains\OwnFleet\Driver\VehicleDriverAssignmentService;
 use App\Domains\OwnFleet\Driver\VehicleDriverAttendanceService;
 use App\Domains\OwnFleet\Enums\DriverAttendanceStatus;
+use App\Domains\Partload\Challan\PartloadChallanService;
+use App\Domains\Partload\Enums\PartloadFreightPaymentTerm;
 use App\Domains\Rbac\Enums\PermissionDomain;
 use App\Domains\Rbac\PermissionCodes;
 use App\Domains\Rbac\RoleAssignmentService;
@@ -29,8 +34,10 @@ use App\Models\Company;
 use App\Models\CompanyMembership;
 use App\Models\CompanySubscriptionTrial;
 use App\Models\LorryReceipt;
+use App\Models\OwnerCatalogueItem;
 use App\Models\Party;
 use App\Models\Role;
+use App\Models\Station;
 use App\Models\SubscriptionAddon;
 use App\Models\SubscriptionCatalogueVersion;
 use App\Models\SubscriptionPlan;
@@ -240,6 +247,11 @@ test('broker-only company allows market vehicles only, blocks ownfleet and partl
         'remark' => 'Forged own vehicle on Broker-only plan',
     ])->assertForbidden();
 
+    // Party options endpoint must reject Driver role query on Broker-only plan.
+    asBranchHttp($ctx['owner'], $ctx['company'], $ctx['branch']);
+    $this->getJson(route('branch.parties.options', ['role' => PartyRoleType::Driver->value]))
+        ->assertForbidden();
+
     asBranchHttp($ctx['owner'], $ctx['company'], $ctx['branch']);
     $this->postJson(route('branch.vehicles.store'), [
         'registration_number' => 'MH12FORGEDOWN2',
@@ -277,7 +289,8 @@ test('broker-only company allows market vehicles only, blocks ownfleet and partl
         ->assertForbidden()
         ->assertInertia(fn ($page) => $page
             ->component('branch/capability-blocked')
-            ->where('manageSubscriptionUrl', route('owner.subscriptions.index', absolute: false)));
+            ->where('manageSubscriptionUrl', route('owner.subscriptions.index', absolute: false))
+            ->where('purchaseSubscriptionUrl', route('owner.companies.subscription.purchase', ['company' => $ctx['company']->id], absolute: false)));
 
     asBranchHttp($ctx['owner'], $ctx['company'], $ctx['branch']);
     $this->get(route('branch.partload.challans.index'))
@@ -290,7 +303,8 @@ test('broker-only company allows market vehicles only, blocks ownfleet and partl
         ->assertForbidden()
         ->assertInertia(fn ($page) => $page
             ->component('branch/capability-blocked')
-            ->where('manageSubscriptionUrl', null));
+            ->where('manageSubscriptionUrl', null)
+            ->where('purchaseSubscriptionUrl', null));
 });
 
 test('ownfleet-only company enforces own vehicles only, blocks broker/partload, and blocks market vehicle forgery', function () {
@@ -340,9 +354,64 @@ test('partload-only company enables partload operations and blocks unrestricted 
     asBranchHttp($owner, $pl['company'], $pl['branch']);
     $this->get(route('branch.partload.main-challans.index'))->assertOk();
     asBranchHttp($owner, $pl['company'], $pl['branch']);
-    $this->get(route('branch.partload.challans.create'))->assertOk();
+    $this->get(route('branch.partload.challans.create'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('permissions.allowed_vehicle_ownerships', ['market']));
     asBranchHttp($owner, $pl['company'], $pl['branch']);
-    $this->get(route('branch.partload.main-challans.create'))->assertOk();
+    $this->get(route('branch.partload.main-challans.create'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('permissions.allowed_vehicle_ownerships', ['market']));
+
+    // Partload Challan service rejects historical/forged Own vehicle when OwnFleet is absent.
+    $historicalOwn = Vehicle::query()->create([
+        'company_id' => $pl['company']->id,
+        'branch_id' => null,
+        'registration_number' => 'MH12PLHISTOWN1',
+        'ownership' => VehicleOwnership::Own->value,
+        'is_active' => true,
+    ]);
+    $plDriver = createDriverPartyForCompany($owner, $pl['company'], $pl['branch'], 'PL Challan Driver', 'MH12PLDRV1');
+    $plCustomer = app(PartyService::class)->create(
+        actor: $owner,
+        company: $pl['company'],
+        branch: null,
+        attributes: ['name' => 'PL Cust', 'contact_number' => '9800088001', 'state' => 'MH', 'city' => 'Pune', 'is_gst_applicable' => false],
+        roles: [['role' => PartyRoleType::Customer->value], ['role' => PartyRoleType::Consignor->value], ['role' => PartyRoleType::Consignee->value]],
+        remark: 'PL customer',
+    );
+    $stationA = Station::factory()->create(['owner_user_id' => $owner->id, 'name' => 'PL Origin', 'is_active' => true]);
+    $stationB = Station::factory()->create(['owner_user_id' => $owner->id, 'name' => 'PL Dest', 'is_active' => true]);
+    $goodsType = OwnerCatalogueItem::factory()->create(['owner_user_id' => $owner->id, 'catalogue_type' => OwnerCatalogueType::GoodsType->value, 'name' => 'Carton Goods', 'is_active' => true]);
+    $pkgType = OwnerCatalogueItem::factory()->create(['owner_user_id' => $owner->id, 'catalogue_type' => OwnerCatalogueType::PackageType->value, 'name' => 'Box', 'is_active' => true]);
+    $plLr = app(LorryReceiptService::class)->create($pl['company'], $pl['branch'], $owner, [
+        'workflow_context' => LrWorkflowContext::Partload->value,
+        'lr_date' => now()->toDateString(),
+        'from_station_id' => $stationA->id,
+        'to_station_id' => $stationB->id,
+        'billing_customer_party_id' => $plCustomer->id,
+        'consignor_party_id' => $plCustomer->id,
+        'consignee_party_id' => $plCustomer->id,
+        'freight_payment_term' => PartloadFreightPaymentTerm::ToPay->value,
+        'goods' => [[
+            'goods_type_id' => $goodsType->id,
+            'package_type_id' => $pkgType->id,
+            'goods_description' => 'Cartons',
+            'package_count' => 2,
+            'actual_weight' => 100,
+            'charged_weight' => 100,
+            'freight_rate_type' => FreightRateType::FixedAmount->value,
+            'freight_rate' => 500,
+        ]],
+    ]);
+    expect(fn () => app(PartloadChallanService::class)->create($pl['company'], $pl['branch'], $owner, [
+        'from_station_id' => $stationA->id,
+        'to_station_id' => $stationB->id,
+        'vehicle_id' => $historicalOwn->id,
+        'driver_party_id' => $plDriver->id,
+        'lorry_receipt_ids' => [$plLr->id],
+    ]))->toThrow(ValidationException::class);
 
     // Unrestricted OwnFleet & Broker remain blocked.
     asBranchHttp($owner, $pl['company'], $pl['branch']);

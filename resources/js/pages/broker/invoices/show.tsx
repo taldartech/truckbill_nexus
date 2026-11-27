@@ -252,15 +252,21 @@ export default function BrokerInvoiceShow({
                                     >
                                         {({ processing }) => (
                                             <>
-                                                <Label className="flex flex-col gap-1 text-sm">
-                                                    Reason
+                                                <div className="space-y-1.5">
+                                                    <Label
+                                                        htmlFor="cancellation_remark"
+                                                        required
+                                                    >
+                                                        Reason
+                                                    </Label>
                                                     <textarea
+                                                        id="cancellation_remark"
                                                         name="cancellation_remark"
                                                         required
                                                         rows={3}
-                                                        className="rounded-md border border-border px-2 py-1.5"
+                                                        className="w-full rounded-md border border-border px-2 py-1.5 text-sm"
                                                     />
-                                                </Label>
+                                                </div>
                                                 <Button
                                                     type="submit"
                                                     variant="destructive"
@@ -424,9 +430,12 @@ function PaymentsPanel({
                                     {invoice.balance_due ?? '0.00'}
                                 </span>
                             </div>
-                            <Label className="flex flex-col gap-1 text-sm">
-                                Amount received
+                            <div className="space-y-1.5">
+                                <Label htmlFor="amount_received" required>
+                                    Amount received
+                                </Label>
                                 <input
+                                    id="amount_received"
                                     name="amount_received"
                                     type="number"
                                     step="0.01"
@@ -434,46 +443,56 @@ function PaymentsPanel({
                                     max={invoice.balance_due ?? undefined}
                                     defaultValue={invoice.balance_due ?? ''}
                                     required
-                                    className="rounded-md border border-border px-2 py-1.5"
+                                    className="w-full rounded-md border border-border px-2 py-1.5 text-sm"
                                 />
                                 <InputError message={errors.amount_received} />
-                            </Label>
-                            <Label className="flex flex-col gap-1 text-sm">
-                                Customer TDS
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label htmlFor="tds_amount">Customer TDS</Label>
                                 <input
+                                    id="tds_amount"
                                     name="tds_amount"
                                     type="number"
                                     step="0.01"
                                     min="0"
                                     defaultValue="0"
-                                    className="rounded-md border border-border px-2 py-1.5"
+                                    className="w-full rounded-md border border-border px-2 py-1.5 text-sm"
                                 />
                                 <InputError message={errors.tds_amount} />
-                            </Label>
-                            <Label className="flex flex-col gap-1 text-sm">
-                                Deduction
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label htmlFor="deduction_amount">
+                                    Deduction
+                                </Label>
                                 <input
+                                    id="deduction_amount"
                                     name="deduction_amount"
                                     type="number"
                                     step="0.01"
                                     min="0"
                                     defaultValue="0"
-                                    className="rounded-md border border-border px-2 py-1.5"
+                                    className="w-full rounded-md border border-border px-2 py-1.5 text-sm"
                                 />
                                 <InputError message={errors.deduction_amount} />
-                            </Label>
-                            <Label className="flex flex-col gap-1 text-sm">
-                                Payment mode
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label htmlFor="payment_mode">
+                                    Payment mode
+                                </Label>
                                 <input
+                                    id="payment_mode"
                                     name="payment_mode"
-                                    className="rounded-md border border-border px-2 py-1.5"
+                                    className="w-full rounded-md border border-border px-2 py-1.5 text-sm"
                                 />
-                            </Label>
-                            <Label className="flex flex-col gap-1 text-sm">
-                                Bank / cash account
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label htmlFor="bank_cash_account_id">
+                                    Bank / cash account
+                                </Label>
                                 <select
+                                    id="bank_cash_account_id"
                                     name="bank_cash_account_id"
-                                    className="rounded-md border border-border px-2 py-1.5"
+                                    className="w-full rounded-md border border-border px-2 py-1.5 text-sm"
                                 >
                                     <option value="">Optional</option>
                                     {bankCashAccounts.map((a) => (
@@ -482,14 +501,15 @@ function PaymentsPanel({
                                         </option>
                                     ))}
                                 </select>
-                            </Label>
-                            <Label className="flex flex-col gap-1 text-sm">
-                                Reference
+                            </div>
+                            <div className="space-y-1.5">
+                                <Label htmlFor="reference">Reference</Label>
                                 <input
+                                    id="reference"
                                     name="reference"
-                                    className="rounded-md border border-border px-2 py-1.5"
+                                    className="w-full rounded-md border border-border px-2 py-1.5 text-sm"
                                 />
-                            </Label>
+                            </div>
                             <Button
                                 type="submit"
                                 disabled={processing}

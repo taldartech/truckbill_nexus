@@ -49,6 +49,7 @@ type Props = {
     permissions?: {
         can_create_masters?: boolean;
         can_quick_create_stations?: boolean;
+        allowed_vehicle_ownerships?: string[];
     };
     urls: {
         store: string;
@@ -251,10 +252,18 @@ export default function PartloadMainChallanCreate({
                                                     : undefined
                                             }
                                             allowOwnQuickCreate={
-                                                canCreateMasters
+                                                canCreateMasters &&
+                                                (permissions?.allowed_vehicle_ownerships?.includes(
+                                                    'own',
+                                                ) ??
+                                                    false)
                                             }
                                             allowMarketQuickCreate={
-                                                canCreateMasters
+                                                canCreateMasters &&
+                                                (permissions?.allowed_vehicle_ownerships?.includes(
+                                                    'market',
+                                                ) ??
+                                                    true)
                                             }
                                             emptyMessage="No vehicles in this branch."
                                             error={errors.vehicle_id}

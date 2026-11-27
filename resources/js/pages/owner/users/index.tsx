@@ -113,7 +113,9 @@ export default function OwnerUsersIndex({
                             {({ processing, errors }) => (
                                 <>
                                     <div className="grid gap-2">
-                                        <Label htmlFor="email">Email</Label>
+                                        <Label htmlFor="email" required>
+                                            Email
+                                        </Label>
                                         <Input
                                             id="email"
                                             name="email"
