@@ -1,4 +1,5 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
+import { AccountingBackAction } from '@/components/accounting/accounting-back-action';
 import {
     AppIndexFilters,
     AppIndexListCard,
@@ -26,7 +27,7 @@ type Props = {
         closing_credit: string;
         balanced: boolean;
     };
-    urls: { index: string; vouchers: string };
+    urls: { index: string };
 };
 
 export default function AccountingTrialBalance({
@@ -41,11 +42,7 @@ export default function AccountingTrialBalance({
             <AppIndexPage>
                 <AppIndexListCard
                     title="Trial Balance"
-                    toolbar={
-                        <Button asChild variant="outline" size="sm">
-                            <Link href={urls.vouchers}>Day Book</Link>
-                        </Button>
-                    }
+                    toolbar={<AccountingBackAction />}
                 >
                     <AppIndexFilters
                         onSubmit={(event) => {

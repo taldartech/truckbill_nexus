@@ -426,8 +426,8 @@ export default function DeliveriesIndex({
                             setDocsFor(null);
                         }
                     }}
-                    title={`POD / delivery documents · ${docsFor.lr_number ?? docsFor.id}`}
                     {...docsFor.documentDrawer}
+                    title={`${docsFor.documentDrawer.title} · ${docsFor.lr_number ?? docsFor.id}`}
                 />
             ) : null}
 

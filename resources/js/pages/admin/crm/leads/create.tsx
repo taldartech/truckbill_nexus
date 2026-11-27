@@ -9,6 +9,7 @@ import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { MobileNumberInput } from '@/components/ui/mobile-number-input';
 
 type AssignableUser = { id: number; name: string; email: string };
 
@@ -55,7 +56,7 @@ export default function CrmLeadCreate({
                     />
                 }
             >
-                <PortalErrorList errors={errors} keys={['email']} />
+                <PortalErrorList errors={errors} keys={['email', 'mobile']} />
 
                 <Form action={store_url} method="post" className="space-y-6">
                     <FormSection title="Contact" columns={2}>
@@ -73,7 +74,7 @@ export default function CrmLeadCreate({
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="mobile">Mobile</Label>
-                            <Input id="mobile" name="mobile" />
+                            <MobileNumberInput id="mobile" name="mobile" />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="company_name">Company name</Label>

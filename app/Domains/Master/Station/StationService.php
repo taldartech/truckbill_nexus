@@ -221,6 +221,42 @@ final class StationService
         return $builder->paginate($perPage);
     }
 
+    /**
+     * Effective default transporter per station: branch-specific mapping wins over the company-level one.
+     *
+     * @param  list<string>  $stationIds
+     * @return array<string, ?string> station_id => default_transporter_party_id
+     */
+    public function effectiveDefaultTransporters(Company $company, Branch $branch, array $stationIds): array
+    {
+        if ($stationIds === []) {
+            return [];
+        }
+
+        $rows = StationDefaultTransporter::query()
+            ->where('company_id', $company->id)
+            ->whereIn('station_id', $stationIds)
+            ->where(function ($q) use ($branch): void {
+                $q->whereNull('branch_id')->orWhere('branch_id', $branch->id);
+            })
+            ->get(['station_id', 'branch_id', 'default_transporter_party_id']);
+
+        $resolved = [];
+        foreach ($rows as $row) {
+            $stationId = (string) $row->station_id;
+            if ($row->branch_id !== null || ! array_key_exists($stationId, $resolved)) {
+                $resolved[$stationId] = $row->default_transporter_party_id;
+            }
+        }
+
+        return $resolved;
+    }
+
+    public function effectiveDefaultTransporter(Company $company, Branch $branch, Station $station): ?string
+    {
+        return $this->effectiveDefaultTransporters($company, $branch, [$station->id])[$station->id] ?? null;
+    }
+
     private function assertOwnerStation(User $actor, Station $station): void
     {
         if ((int) $station->owner_user_id !== (int) $actor->id) {

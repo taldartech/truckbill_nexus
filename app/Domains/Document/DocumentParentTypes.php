@@ -68,7 +68,26 @@ final class DocumentParentTypes
     }
 
     /**
-     * Parents eligible for the shared DocumentDrawer (excludes company_record hub).
+     * Parents without a verified document requirement. Historical attachments stay
+     * listable/downloadable read-only; new uploads, replacements and deletions are rejected.
+     *
+     * @return list<string>
+     */
+    public static function retired(): array
+    {
+        return [
+            self::STATION,
+            self::BANK_CASH_ACCOUNT,
+        ];
+    }
+
+    public static function isRetired(string $parentType): bool
+    {
+        return in_array($parentType, self::retired(), true);
+    }
+
+    /**
+     * Parents eligible for the shared DocumentDrawer (excludes company_record hub and retired parents).
      *
      * @return list<string>
      */
@@ -77,8 +96,6 @@ final class DocumentParentTypes
         return [
             self::PARTY,
             self::VEHICLE,
-            self::BANK_CASH_ACCOUNT,
-            self::STATION,
             self::LORRY_RECEIPT,
             self::TRIP,
             self::BROKER_DELIVERY,

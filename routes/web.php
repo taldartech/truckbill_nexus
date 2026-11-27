@@ -32,6 +32,7 @@ use App\Http\Controllers\Branch\Accounting\AccountingOpeningBalanceController;
 use App\Http\Controllers\Branch\Accounting\AccountingOutstandingController;
 use App\Http\Controllers\Branch\Accounting\AccountingReportController;
 use App\Http\Controllers\Branch\Accounting\AccountingVoucherController;
+use App\Http\Controllers\Branch\Accounting\AccountingWorkspaceController;
 use App\Http\Controllers\Branch\BankCashAccountController;
 use App\Http\Controllers\Branch\BranchDashboardController;
 use App\Http\Controllers\Branch\BranchSettingsController;
@@ -413,6 +414,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         });
 
         Route::middleware('company.capability:accounting')->group(function () {
+            Route::get('/accounting', [AccountingWorkspaceController::class, 'index'])->name('branch.accounting.workspace');
             Route::get('/accounting/vouchers', [AccountingVoucherController::class, 'index'])->name('branch.accounting.vouchers.index');
             Route::get('/accounting/vouchers/create', [AccountingVoucherController::class, 'create'])
                 ->middleware('company.capability:accounting,mutate')

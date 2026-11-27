@@ -42,7 +42,6 @@ class AccountingOpeningBalanceController extends Controller
             ])->values()->all(),
             'urls' => [
                 'store' => route('branch.accounting.opening-balances.store', absolute: false),
-                'index' => route('branch.accounting.vouchers.index', absolute: false),
             ],
         ]);
     }

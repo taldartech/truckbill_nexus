@@ -846,6 +846,8 @@ class EnquiryController extends Controller
      */
     private function enquiryPayload(Enquiry $enquiry, bool $maySeeFreight): array
     {
+        $firstGoodsRow = $enquiry->relationLoaded('goodsRows') ? $enquiry->goodsRows->first() : null;
+
         return [
             'id' => $enquiry->id,
             'company_id' => $enquiry->company_id,
@@ -880,12 +882,11 @@ class EnquiryController extends Controller
             'party_label' => $this->partyLabel($enquiry),
             'route_label' => $this->routeLabel($enquiry),
             'pickup_date' => $enquiry->expected_loading_date?->toDateString(),
-            'goods_type_name' => $enquiry->relationLoaded('goodsRows')
-                && $enquiry->goodsRows->first()?->relationLoaded('goodsType')
-                ? $enquiry->goodsRows->first()?->goodsType?->name
+            'goods_type_name' => $firstGoodsRow?->relationLoaded('goodsType')
+                ? $firstGoodsRow->goodsType?->name
                 : null,
-            'weight_mt' => $enquiry->relationLoaded('goodsRows') && $enquiry->goodsRows->first()?->actual_weight !== null
-                ? OperationalWeight::kgToMt((string) $enquiry->goodsRows->first()->actual_weight)
+            'weight_mt' => $firstGoodsRow?->actual_weight !== null
+                ? OperationalWeight::kgToMt((string) $firstGoodsRow->actual_weight)
                 : null,
             'vehicle_type_name' => $enquiry->relationLoaded('vehicleType') ? $enquiry->vehicleType?->name : null,
             'pending_master_resolution' => $enquiry->pending_master_resolution,

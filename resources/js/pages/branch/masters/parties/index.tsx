@@ -360,7 +360,11 @@ export default function PartiesIndex({
                     }
                 }}
                 title="Delete party?"
-                description={`${deleteRow?.name ?? 'This party'} will be removed from active lists. Its history is preserved.`}
+                description={deleteRow?.name ?? 'This party'}
+                consequences={[
+                    'The party is removed from active lists and selectors.',
+                    'Existing Bilties, hires, invoices and audit history keep their party details.',
+                ]}
                 confirmLabel="Delete party"
                 processing={deleteProcessing}
                 errorMessage={deleteError}

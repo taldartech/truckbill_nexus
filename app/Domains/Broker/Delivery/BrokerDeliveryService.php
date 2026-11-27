@@ -10,6 +10,8 @@ use App\Domains\Broker\Exceptions\BrokerDomainException;
 use App\Domains\Consignment\Enums\LrStatus;
 use App\Domains\Consignment\Enums\LrWorkflowContext;
 use App\Domains\Document\DocumentAttachmentService;
+use App\Domains\Document\DocumentParentTypes;
+use App\Domains\Document\DocumentTypeCatalog;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
 use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
@@ -334,10 +336,10 @@ final class BrokerDeliveryService
             $actor,
             $company,
             $branch,
-            'broker_delivery',
+            DocumentParentTypes::BROKER_DELIVERY,
             $delivery->id,
             $upload,
-            documentType: 'pod',
+            documentType: DocumentTypeCatalog::POD,
             label: $label,
             remark: 'Attach POD for delivery '.$delivery->id,
         );

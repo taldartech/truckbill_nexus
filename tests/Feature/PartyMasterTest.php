@@ -166,6 +166,21 @@ test('party endpoints enforce permissions and hide cross-company records', funct
     expect(Party::query()->where('company_id', $otherCompany->id)->whereKey($partyId)->exists())->toBeFalse();
 });
 
+test('party store rejects a contact number that is not a ten digit mobile', function () {
+    ['owner' => $owner, 'company' => $company, 'branch' => $branch] = partyWorkspace();
+    actingAsCustomer($owner);
+    seedBranchSession($company, $branch);
+
+    $this->postJson(route('branch.parties.store'), [
+        'name' => 'Short Mobile Party',
+        'contact_number' => '98765',
+        'roles' => [['role' => 'customer', 'attributes' => []]],
+    ])->assertUnprocessable()
+        ->assertJsonValidationErrors(['contact_number' => 'Enter a valid 10-digit mobile number.']);
+
+    expect(Party::query()->where('name', 'Short Mobile Party')->exists())->toBeFalse();
+});
+
 test('transporter role requires approved fields', function () {
     ['owner' => $owner, 'company' => $company] = partyWorkspace();
     $this->actingAs($owner);

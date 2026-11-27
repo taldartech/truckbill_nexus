@@ -37,7 +37,6 @@ class AccountingFundTransferController extends Controller
         return Inertia::render('accounting/fund-transfers/create', [
             'urls' => [
                 'store' => route('branch.accounting.fund-transfers.store', absolute: false),
-                'index' => route('branch.accounting.vouchers.index', absolute: false),
             ],
         ]);
     }

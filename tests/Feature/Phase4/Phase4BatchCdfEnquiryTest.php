@@ -88,30 +88,18 @@ function cdfGrant(string $roleSlug, string $code): void
  */
 function cdfEnquiryGeo(): array
 {
-    $state = State::query()->create([
-        'id' => (string) Str::uuid(),
-        'name' => 'Maharashtra',
-        'code' => 'MH',
-        'gst_code' => '27',
-        'country_code' => 'IN',
-        'is_active' => true,
-    ]);
+    $state = State::query()->firstOrCreate(
+        ['country_code' => 'IN', 'code' => 'MH'],
+        ['id' => (string) Str::uuid(), 'name' => 'Maharashtra', 'gst_code' => '27', 'is_active' => true],
+    );
 
-    $mumbai = City::query()->create([
-        'id' => (string) Str::uuid(),
-        'state_id' => $state->id,
-        'name' => 'Mumbai',
-        'name_normalized' => City::normalizeName('Mumbai'),
-        'is_active' => true,
-    ]);
+    $city = fn (string $name): City => City::query()->firstOrCreate(
+        ['state_id' => $state->id, 'name_normalized' => City::normalizeName($name)],
+        ['id' => (string) Str::uuid(), 'name' => $name, 'is_active' => true],
+    );
 
-    $pune = City::query()->create([
-        'id' => (string) Str::uuid(),
-        'state_id' => $state->id,
-        'name' => 'Pune',
-        'name_normalized' => City::normalizeName('Pune'),
-        'is_active' => true,
-    ]);
+    $mumbai = $city('Mumbai');
+    $pune = $city('Pune');
 
     return compact('state', 'mumbai', 'pune');
 }

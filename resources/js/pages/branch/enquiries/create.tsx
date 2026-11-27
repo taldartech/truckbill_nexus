@@ -1,6 +1,6 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
 import { ArrowLeft, Save } from 'lucide-react';
-import { useMemo, useRef, useState } from 'react';
+import { type ReactNode, useMemo, useRef, useState } from 'react';
 import {
     AppFormCard,
     AppFormGrid,
@@ -65,8 +65,12 @@ export default function BranchEnquiryCreate({
     );
 
     const [customerPartyId, setCustomerPartyId] = useState('');
-    const [consignorPartyId, setConsignorPartyId] = useState('');
-    const [consigneePartyId, setConsigneePartyId] = useState('');
+    const [consignorParty, setConsignorParty] = useState<PartyOption | null>(
+        null,
+    );
+    const [consigneeParty, setConsigneeParty] = useState<PartyOption | null>(
+        null,
+    );
     const [goodsTypeId, setGoodsTypeId] = useState('');
     const [extraGoodsTypes, setExtraGoodsTypes] = useState<ComboboxOption[]>(
         [],
@@ -77,10 +81,8 @@ export default function BranchEnquiryCreate({
     const [goodsQuickCreateOpen, setGoodsQuickCreateOpen] = useState(false);
     const [vehicleQuickCreateOpen, setVehicleQuickCreateOpen] = useState(false);
 
-    const [fromStateId, setFromStateId] = useState('');
-    const [fromCityId, setFromCityId] = useState('');
-    const [toStateId, setToStateId] = useState('');
-    const [toCityId, setToCityId] = useState('');
+    const [fromRoute, setFromRoute] = useState<RouteSelection>(EMPTY_ROUTE);
+    const [toRoute, setToRoute] = useState<RouteSelection>(EMPTY_ROUTE);
 
     const goodsComboboxOptions = useMemo(
         () => [
@@ -98,20 +100,23 @@ export default function BranchEnquiryCreate({
         [extraVehicleTypes, vehicle_types],
     );
 
-    const applyPartyRoute = (
-        party: PartyOption | null,
-        direction: 'from' | 'to',
-    ) => {
-        if (!party?.state_id || !party.city_id) {
-            return;
-        }
-        if (direction === 'from') {
-            setFromStateId(party.state_id);
-            setFromCityId(party.city_id);
-        } else {
-            setToStateId(party.state_id);
-            setToCityId(party.city_id);
-        }
+    const originLocation =
+        errors?.from_state_id || errors?.from_city_id
+            ? null
+            : partyMasterLocation(consignorParty);
+    const destinationLocation =
+        errors?.to_state_id || errors?.to_city_id
+            ? null
+            : partyMasterLocation(consigneeParty);
+
+    const selectConsignor = (party: PartyOption | null) => {
+        setConsignorParty(party);
+        setFromRoute(EMPTY_ROUTE);
+    };
+
+    const selectConsignee = (party: PartyOption | null) => {
+        setConsigneeParty(party);
+        setToRoute(EMPTY_ROUTE);
     };
 
     const labelForGoods = (id: string) =>
@@ -124,6 +129,11 @@ export default function BranchEnquiryCreate({
         options.find((row) => row.id === id)?.short_name ||
         options.find((row) => row.id === id)?.name ||
         '—';
+
+    const routeReviewValue = (location: string | null, route: RouteSelection) =>
+        location ??
+        ([route.city, route.state].filter((part) => part !== '').join(', ') ||
+            '—');
 
     const openConfirmation = (form: HTMLFormElement) => {
         const data = new FormData(form);
@@ -176,23 +186,25 @@ export default function BranchEnquiryCreate({
                     },
                     {
                         label: 'Consignor',
-                        value: consignorPartyId
-                            ? labelForParty(consignorPartyId, consignors)
-                            : '—',
+                        value:
+                            consignorParty?.short_name ||
+                            consignorParty?.name ||
+                            '—',
                     },
                     {
                         label: 'Consignee',
-                        value: consigneePartyId
-                            ? labelForParty(consigneePartyId, consignees)
-                            : '—',
+                        value:
+                            consigneeParty?.short_name ||
+                            consigneeParty?.name ||
+                            '—',
                     },
                     {
                         label: 'From',
-                        value: `${fromCityId ? 'City selected' : '—'} / ${fromStateId ? 'State selected' : '—'}`,
+                        value: routeReviewValue(originLocation, fromRoute),
                     },
                     {
                         label: 'To',
-                        value: `${toCityId ? 'City selected' : '—'} / ${toStateId ? 'State selected' : '—'}`,
+                        value: routeReviewValue(destinationLocation, toRoute),
                     },
                 ],
             },
@@ -376,18 +388,8 @@ export default function BranchEnquiryCreate({
                                             options={consignors}
                                             searchUrl={urls.parties_options}
                                             role="consignor"
-                                            value={consignorPartyId}
-                                            onValueChange={(id) => {
-                                                setConsignorPartyId(id);
-                                                const party =
-                                                    consignors.find(
-                                                        (row) => row.id === id,
-                                                    ) ?? null;
-                                                applyPartyRoute(party, 'from');
-                                            }}
-                                            onPartyChange={(party) =>
-                                                applyPartyRoute(party, 'from')
-                                            }
+                                            value={consignorParty?.id ?? ''}
+                                            onPartyChange={selectConsignor}
                                             createStoreUrl={urls.parties_store}
                                             createHref={urls.parties_create}
                                             createLabel="Add"
@@ -401,18 +403,8 @@ export default function BranchEnquiryCreate({
                                             options={consignees}
                                             searchUrl={urls.parties_options}
                                             role="consignee"
-                                            value={consigneePartyId}
-                                            onValueChange={(id) => {
-                                                setConsigneePartyId(id);
-                                                const party =
-                                                    consignees.find(
-                                                        (row) => row.id === id,
-                                                    ) ?? null;
-                                                applyPartyRoute(party, 'to');
-                                            }}
-                                            onPartyChange={(party) =>
-                                                applyPartyRoute(party, 'to')
-                                            }
+                                            value={consigneeParty?.id ?? ''}
+                                            onPartyChange={selectConsignee}
                                             createStoreUrl={urls.parties_store}
                                             createHref={urls.parties_create}
                                             createLabel="Add"
@@ -421,44 +413,51 @@ export default function BranchEnquiryCreate({
                                         />
                                     </AppFormGrid>
 
-                                    <div className="mt-4 space-y-2">
-                                        <p className="text-sm font-medium text-foreground">
-                                            From
-                                        </p>
-                                        <StateCityFields
-                                            fieldPrefix="from_"
-                                            valueMode="ids"
-                                            required
-                                            stateId={fromStateId}
-                                            cityId={fromCityId}
-                                            canQuickCreate={canQuickCreateGeo}
-                                            stateError={errors?.from_state_id}
-                                            cityError={errors?.from_city_id}
-                                            onChange={(value) => {
-                                                setFromStateId(value.state_id);
-                                                setFromCityId(value.city_id);
-                                            }}
-                                        />
-                                    </div>
-
-                                    <div className="mt-4 space-y-2">
-                                        <p className="text-sm font-medium text-foreground">
-                                            To
-                                        </p>
-                                        <StateCityFields
-                                            fieldPrefix="to_"
-                                            valueMode="ids"
-                                            required
-                                            stateId={toStateId}
-                                            cityId={toCityId}
-                                            canQuickCreate={canQuickCreateGeo}
-                                            stateError={errors?.to_state_id}
-                                            cityError={errors?.to_city_id}
-                                            onChange={(value) => {
-                                                setToStateId(value.state_id);
-                                                setToCityId(value.city_id);
-                                            }}
-                                        />
+                                    <div className="mt-4 space-y-4">
+                                        <RouteEndpoint
+                                            title="From"
+                                            source="consignor"
+                                            location={originLocation}
+                                        >
+                                            <StateCityFields
+                                                fieldPrefix="from_"
+                                                valueMode="ids"
+                                                required
+                                                stateId={fromRoute.state_id}
+                                                cityId={fromRoute.city_id}
+                                                stateName={fromRoute.state}
+                                                cityName={fromRoute.city}
+                                                canQuickCreate={
+                                                    canQuickCreateGeo
+                                                }
+                                                stateError={
+                                                    errors?.from_state_id
+                                                }
+                                                cityError={errors?.from_city_id}
+                                                onChange={setFromRoute}
+                                            />
+                                        </RouteEndpoint>
+                                        <RouteEndpoint
+                                            title="To"
+                                            source="consignee"
+                                            location={destinationLocation}
+                                        >
+                                            <StateCityFields
+                                                fieldPrefix="to_"
+                                                valueMode="ids"
+                                                required
+                                                stateId={toRoute.state_id}
+                                                cityId={toRoute.city_id}
+                                                stateName={toRoute.state}
+                                                cityName={toRoute.city}
+                                                canQuickCreate={
+                                                    canQuickCreateGeo
+                                                }
+                                                stateError={errors?.to_state_id}
+                                                cityError={errors?.to_city_id}
+                                                onChange={setToRoute}
+                                            />
+                                        </RouteEndpoint>
                                     </div>
                                 </AppFormSection>
                             </AppFormCard>
@@ -535,5 +534,54 @@ export default function BranchEnquiryCreate({
                 />
             ) : null}
         </>
+    );
+}
+
+type RouteSelection = {
+    state_id: string;
+    city_id: string;
+    state: string;
+    city: string;
+};
+
+const EMPTY_ROUTE: RouteSelection = {
+    state_id: '',
+    city_id: '',
+    state: '',
+    city: '',
+};
+
+/** Display label for a party's master location, or null when the route must be entered. */
+function partyMasterLocation(party: PartyOption | null): string | null {
+    if (!party?.state_id || !party.city_id || !party.city || !party.state) {
+        return null;
+    }
+
+    return `${party.city}, ${party.state}`;
+}
+
+function RouteEndpoint({
+    title,
+    source,
+    location,
+    children,
+}: {
+    title: string;
+    source: 'consignor' | 'consignee';
+    location: string | null;
+    children: ReactNode;
+}) {
+    return (
+        <div className="space-y-2" data-testid={`enquiry-route-${source}`}>
+            <p className="text-sm font-medium text-foreground">{title}</p>
+            {location ? (
+                <p className="text-sm text-muted-foreground">
+                    <span className="text-foreground">{location}</span> · from{' '}
+                    {source}
+                </p>
+            ) : (
+                children
+            )}
+        </div>
     );
 }

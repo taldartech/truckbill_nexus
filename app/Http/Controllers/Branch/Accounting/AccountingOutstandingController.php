@@ -86,10 +86,6 @@ class AccountingOutstandingController extends Controller
                 'index' => $kind === 'tax'
                     ? route('branch.accounting.reports.tax-summary', absolute: false)
                     : route('branch.accounting.reports.outstanding', absolute: false),
-                'outstanding' => route('branch.accounting.reports.outstanding', absolute: false),
-                'tax_summary' => route('branch.accounting.reports.tax-summary', absolute: false),
-                'trial_balance' => route('branch.accounting.reports.trial-balance', absolute: false),
-                'vouchers' => route('branch.accounting.vouchers.index', absolute: false),
             ],
         ]);
     }

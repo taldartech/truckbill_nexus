@@ -15,6 +15,7 @@ use App\Models\Branch;
 use App\Models\Company;
 use App\Models\CompanySubscriptionTrial;
 use App\Models\User;
+use App\Support\Cache\RequestScopedMemo;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 
@@ -46,6 +47,7 @@ final class CompanyCapabilityResolver
         $versionKey = self::versionCacheKey($companyId);
         $current = (int) Cache::get($versionKey, 1);
         Cache::forever($versionKey, $current + 1);
+        app(RequestScopedMemo::class)->forgetByPrefix(self::memoKeyPrefix($companyId));
     }
 
     /**
@@ -62,32 +64,62 @@ final class CompanyCapabilityResolver
      */
     public function resolve(Company $company): array
     {
-        $version = (int) Cache::get(self::versionCacheKey($company->id), 1);
         $dayKey = $this->clock->now()->toDateString();
-        $cacheKey = "company_capabilities:{$company->id}:v{$version}:{$dayKey}";
+        $memoKey = self::memoKeyPrefix($company->id).$dayKey;
+        $entry = $this->memoizedResolution($company, $memoKey, $dayKey);
 
-        /** @var array{payload: array{
-         *     company_id: string,
-         *     lifecycle_status: string,
-         *     mutations_allowed: bool,
-         *     historical_view_allowed: bool,
-         *     is_read_only_grace_or_restricted: bool,
-         *     active_modules: list<string>,
-         *     historical_modules: list<string>,
-         *     capabilities: array<string, array{read: bool, mutate: bool}>
-         * }, trial_ends_at_ts: int|null} $cached */
-        $cached = Cache::remember($cacheKey, now()->addMinutes(5), fn (): array => $this->buildCachedResolution($company));
-
+        $cached = $entry['resolution'];
         $trialEndsTs = $cached['trial_ends_at_ts'] ?? null;
         if ($cached['payload']['lifecycle_status'] === SubscriptionLifecycleStatus::Trial->value
             && $trialEndsTs !== null
             && $this->clock->now()->getTimestamp() > $trialEndsTs
         ) {
-            Cache::forget($cacheKey);
-            $cached = Cache::remember($cacheKey, now()->addMinutes(5), fn (): array => $this->buildCachedResolution($company));
+            Cache::forget($entry['cache_key']);
+            app(RequestScopedMemo::class)->forget($memoKey);
+            $cached = $this->memoizedResolution($company, $memoKey, $dayKey)['resolution'];
         }
 
         return $cached['payload'];
+    }
+
+    /**
+     * @return array{
+     *     cache_key: string,
+     *     resolution: array{
+     *         payload: array{
+     *             company_id: string,
+     *             lifecycle_status: string,
+     *             mutations_allowed: bool,
+     *             historical_view_allowed: bool,
+     *             is_read_only_grace_or_restricted: bool,
+     *             active_modules: list<string>,
+     *             historical_modules: list<string>,
+     *             capabilities: array<string, array{read: bool, mutate: bool}>
+     *         },
+     *         trial_ends_at_ts: int|null
+     *     }
+     * }
+     */
+    private function memoizedResolution(Company $company, string $memoKey, string $dayKey): array
+    {
+        return app(RequestScopedMemo::class)->remember($memoKey, function () use ($company, $dayKey): array {
+            $version = (int) Cache::get(self::versionCacheKey($company->id), 1);
+            $cacheKey = "company_capabilities:{$company->id}:v{$version}:{$dayKey}";
+
+            /** @var array{payload: array{
+             *     company_id: string,
+             *     lifecycle_status: string,
+             *     mutations_allowed: bool,
+             *     historical_view_allowed: bool,
+             *     is_read_only_grace_or_restricted: bool,
+             *     active_modules: list<string>,
+             *     historical_modules: list<string>,
+             *     capabilities: array<string, array{read: bool, mutate: bool}>
+             * }, trial_ends_at_ts: int|null} $resolution */
+            $resolution = Cache::remember($cacheKey, now()->addMinutes(5), fn (): array => $this->buildCachedResolution($company));
+
+            return ['cache_key' => $cacheKey, 'resolution' => $resolution];
+        });
     }
 
     /**
@@ -422,5 +454,10 @@ final class CompanyCapabilityResolver
     private static function versionCacheKey(string $companyId): string
     {
         return "company_capabilities:ver:{$companyId}";
+    }
+
+    private static function memoKeyPrefix(string $companyId): string
+    {
+        return "company_capabilities:memo:{$companyId}:";
     }
 }

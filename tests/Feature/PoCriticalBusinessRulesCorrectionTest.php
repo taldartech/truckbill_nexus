@@ -115,23 +115,19 @@ test('fractional package units are rejected', function () {
     ]]))->toThrow(ValidationException::class);
 });
 
-test('lorry hire inherits bilty intended payee and rejects forged override', function () {
+test('lorry hire always uses the bilty intended payee and ignores a client payee', function () {
     $ctx = brokerWorkspace();
     tripActivate($ctx['company'], $ctx['branch']);
     $lr = brokerCreateBrokerLr($ctx);
     $other = brokerCreateTransporterAndMarketVehicle($ctx);
 
-    expect(fn () => app(LorryHireService::class)->createFromLorryReceipt($lr, $ctx['member'], [
-        'transporter_party_id' => $other['transporter']->id,
-        'goods_lines' => brokerGoodsPayloadFromLr($lr),
-    ]))->toThrow(ValidationException::class);
-
     $hire = app(LorryHireService::class)->createFromLorryReceipt($lr, $ctx['member'], [
-        'transporter_party_id' => $lr->intended_payee_party_id,
+        'transporter_party_id' => $other['transporter']->id,
         'goods_lines' => brokerGoodsPayloadFromLr($lr),
     ]);
 
-    expect($hire->transporter_party_id)->toBe($lr->intended_payee_party_id);
+    expect($hire->transporter_party_id)->toBe($lr->intended_payee_party_id)
+        ->and($hire->transporter_party_id)->not->toBe($other['transporter']->id);
 });
 
 test('duplicate active hire create is rejected while uniqueness is preserved', function () {

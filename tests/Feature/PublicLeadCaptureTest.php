@@ -77,6 +77,24 @@ test('public lead capture rejects privileged fields', function () {
     ], publicLeadHeaders())->assertStatus(422);
 });
 
+test('public lead capture normalizes the india prefix before storing the mobile number', function () {
+    $this->postJson(route('api.public.leads.store'), [
+        'name' => 'Prefixed Mobile',
+        'email' => 'prefixed.mobile@example.com',
+        'mobile' => '+91 98765-43210',
+    ], publicLeadHeaders())->assertCreated();
+
+    expect(Lead::query()->where('email', 'prefixed.mobile@example.com')->value('mobile'))->toBe('9876543210');
+});
+
+test('public lead capture rejects mobile numbers that are not ten digits', function () {
+    $this->postJson(route('api.public.leads.store'), [
+        'name' => 'Short Mobile',
+        'email' => 'short.mobile@example.com',
+        'mobile' => '98765',
+    ], publicLeadHeaders())->assertUnprocessable()->assertJsonValidationErrors('mobile');
+});
+
 test('public lead capture replays idempotent requests', function () {
     $payload = [
         'name' => 'Retry User',

@@ -1,5 +1,4 @@
 import { Form, Head, usePage } from '@inertiajs/react';
-import { useState } from 'react';
 import InputError from '@/components/input-error';
 import {
     FbDetailCard,
@@ -7,10 +6,6 @@ import {
     FbInfoGrid,
     FbInfoItem,
 } from '@/components/fb-detail';
-import {
-    DocumentDrawer,
-    type DocumentDrawerProps,
-} from '@/components/masters/document-drawer';
 import { MasterRecordActions } from '@/components/masters/master-record-actions';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { Button } from '@/components/ui/button';
@@ -30,28 +25,21 @@ type Props = {
         is_active: boolean;
         default_transporter_party_id: string | null;
     };
-    documentDrawer: Omit<
-        DocumentDrawerProps,
-        'open' | 'onOpenChange' | 'title'
-    > | null;
     links: {
         hub: string;
         index: string;
         edit: string;
         destroy: string;
         set_default_transporter: string;
-        documents: string;
     };
 };
 export default function StationShow({
     canManageOwnerStations,
     permissions,
     station,
-    documentDrawer,
     links,
 }: Props) {
     const { flash } = usePage<{ flash?: { success?: string | null } }>().props;
-    const [docsOpen, setDocsOpen] = useState(false);
     return (
         <>
             <Head title={station.name} />
@@ -78,12 +66,6 @@ export default function StationShow({
                             editHref={
                                 canManageOwnerStations ? links.edit : null
                             }
-                            onOpenDocuments={
-                                documentDrawer
-                                    ? () => setDocsOpen(true)
-                                    : undefined
-                            }
-                            documentsHref={links.documents}
                             destroy={
                                 canManageOwnerStations && permissions.can_delete
                                     ? {
@@ -172,13 +154,6 @@ export default function StationShow({
                     </FbDetailCard>
                 ) : null}
             </FbDetailPage>
-            {documentDrawer ? (
-                <DocumentDrawer
-                    open={docsOpen}
-                    onOpenChange={setDocsOpen}
-                    {...documentDrawer}
-                />
-            ) : null}
         </>
     );
 }

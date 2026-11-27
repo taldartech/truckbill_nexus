@@ -10,6 +10,7 @@ use App\Http\Middleware\ManageTenantContextLifecycle;
 use App\Http\Middleware\RejectClientTenantIdentifiers;
 use App\Http\Middleware\ResolveBranchWorkspace;
 use App\Http\Middleware\ResolveManagementCompany;
+use App\Http\Middleware\ScopeRequestMemo;
 use App\Http\Middleware\VerifyWebsiteLeadApiKey;
 use App\Models\User;
 use Illuminate\Foundation\Application;
@@ -57,6 +58,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append([
             AssignCorrelationId::class,
             ManageTenantContextLifecycle::class,
+            ScopeRequestMemo::class,
             RejectClientTenantIdentifiers::class,
         ]);
 

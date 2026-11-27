@@ -1,4 +1,5 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
+import { AccountingBackAction } from '@/components/accounting/accounting-back-action';
 import {
     AppIndexFilters,
     AppIndexListCard,
@@ -19,13 +20,7 @@ type Props = {
         net: string;
         side: string;
     }>;
-    urls: {
-        index: string;
-        outstanding?: string;
-        tax_summary?: string;
-        trial_balance: string;
-        vouchers: string;
-    };
+    urls: { index: string };
 };
 
 export default function AccountingOutstanding({
@@ -40,32 +35,7 @@ export default function AccountingOutstanding({
             <AppIndexPage>
                 <AppIndexListCard
                     title={title}
-                    toolbar={
-                        <div className="flex flex-wrap gap-2">
-                            {urls.outstanding ? (
-                                <Button asChild variant="outline" size="sm">
-                                    <Link href={urls.outstanding}>
-                                        Outstanding
-                                    </Link>
-                                </Button>
-                            ) : null}
-                            {urls.tax_summary ? (
-                                <Button asChild variant="outline" size="sm">
-                                    <Link href={urls.tax_summary}>
-                                        GST / TDS
-                                    </Link>
-                                </Button>
-                            ) : null}
-                            <Button asChild variant="outline" size="sm">
-                                <Link href={urls.trial_balance}>
-                                    Trial Balance
-                                </Link>
-                            </Button>
-                            <Button asChild variant="outline" size="sm">
-                                <Link href={urls.vouchers}>Day Book</Link>
-                            </Button>
-                        </div>
-                    }
+                    toolbar={<AccountingBackAction />}
                 >
                     <AppIndexFilters
                         onSubmit={(event) => {

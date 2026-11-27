@@ -7,6 +7,7 @@ use App\Domains\Subscription\Billing\PlatformBillingProfileService;
 use App\Domains\Subscription\Exceptions\SubscriptionDomainException;
 use App\Http\Controllers\Controller;
 use App\Models\PlatformBillingProfile;
+use App\Rules\IndianMobileNumber;
 use App\Support\Audit\AuditEntry;
 use App\Support\Files\PrivateFileService;
 use App\Support\Files\StoredFile;
@@ -109,7 +110,7 @@ class PlatformBillingProfileController extends Controller
             'legal_name' => ['required', 'string', 'max:255'],
             'pan' => ['required', 'string', 'max:10'],
             'logo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
-            'contact_number' => ['required', 'string', 'max:32'],
+            'contact_number' => ['required', 'string', new IndianMobileNumber],
             'email' => ['required', 'email', 'max:255'],
             'registered_address' => ['required', 'string', 'max:1000'],
             'state_id' => ['required', 'uuid'],
@@ -200,7 +201,7 @@ class PlatformBillingProfileController extends Controller
             'pan' => ['required', 'string', 'max:10'],
             'logo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'remove_logo' => ['nullable', 'boolean'],
-            'contact_number' => ['required', 'string', 'max:32'],
+            'contact_number' => ['required', 'string', new IndianMobileNumber],
             'email' => ['required', 'email', 'max:255'],
             'registered_address' => ['required', 'string', 'max:1000'],
             'state_id' => ['required', 'uuid'],

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Api;
 
+use App\Rules\IndianMobileNumber;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StorePublicLeadRequest extends FormRequest
@@ -19,7 +20,7 @@ class StorePublicLeadRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'company_name' => ['nullable', 'string', 'max:255'],
-            'mobile' => ['nullable', 'string', 'max:20'],
+            'mobile' => ['nullable', 'string', new IndianMobileNumber],
             'email' => ['required', 'email', 'max:255'],
             'city' => ['nullable', 'string', 'max:100'],
             'state' => ['nullable', 'string', 'max:100'],
@@ -57,6 +58,10 @@ class StorePublicLeadRequest extends FormRequest
             if ($this->exists($key) && is_string($this->input($key))) {
                 $payload[$key] = trim($this->input($key));
             }
+        }
+
+        if (($payload['mobile'] ?? '') !== '') {
+            $payload['mobile'] = IndianMobileNumber::normalizeExternal($payload['mobile']);
         }
 
         if ($payload !== []) {

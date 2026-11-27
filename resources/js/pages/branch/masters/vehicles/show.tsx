@@ -10,6 +10,7 @@ import {
 } from '@/components/fb-detail';
 import {
     DocumentDrawer,
+    DocumentSectionList,
     type DocumentDrawerProps,
 } from '@/components/masters/document-drawer';
 import { MasterRecordActions } from '@/components/masters/master-record-actions';
@@ -70,10 +71,7 @@ type Props = {
     permissions: { can_edit: boolean; can_delete: boolean };
     vehicle: VehicleDetail;
     driverManagement?: DriverManagement;
-    documentDrawer: Omit<
-        DocumentDrawerProps,
-        'open' | 'onOpenChange' | 'title'
-    > | null;
+    documentDrawer: Omit<DocumentDrawerProps, 'open' | 'onOpenChange'> | null;
     links: {
         hub: string;
         dashboard: string;
@@ -258,6 +256,31 @@ export default function VehicleShow({
                         ) : null}
                     </FbInfoGrid>
                 </FbDetailCard>
+
+                {documentDrawer ? (
+                    <div className="mt-4">
+                        <FbDetailCard
+                            title={documentDrawer.title}
+                            actions={
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="secondary"
+                                    onClick={() => setDocsOpen(true)}
+                                >
+                                    Manage vehicle documents
+                                </Button>
+                            }
+                        >
+                            <div className="px-4 py-3">
+                                <DocumentSectionList
+                                    sections={documentDrawer.sections}
+                                    attachments={documentDrawer.attachments}
+                                />
+                            </div>
+                        </FbDetailCard>
+                    </div>
+                ) : null}
 
                 {vehicle.ownership === 'own' && driverManagement ? (
                     <div className="mt-4 space-y-4">

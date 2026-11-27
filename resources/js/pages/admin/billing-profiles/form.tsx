@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { MobileNumberInput } from '@/components/ui/mobile-number-input';
 
 const textareaClass =
     'min-h-20 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
@@ -335,10 +336,9 @@ export default function BillingProfileForm({ mode, profile, links }: Props) {
                             <Label htmlFor="contact_number" required>
                                 Contact Number
                             </Label>
-                            <Input
+                            <MobileNumberInput
                                 id="contact_number"
                                 required
-                                maxLength={15}
                                 placeholder="9876543210"
                                 value={form.data.contact_number}
                                 onChange={(e) =>

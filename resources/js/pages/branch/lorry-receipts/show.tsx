@@ -23,6 +23,7 @@ import {
 } from '@/components/fb-detail';
 import {
     DocumentDrawer,
+    DocumentSectionList,
     type DocumentDrawerProps,
 } from '@/components/masters/document-drawer';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
@@ -320,7 +321,7 @@ export default function LorryReceiptShow({
                                         {documentDrawer ? (
                                             <AppIconAction
                                                 icon={FolderOpen}
-                                                label="Documents / POD"
+                                                label="POD & supporting documents"
                                                 onClick={() =>
                                                     setDocsOpen(true)
                                                 }
@@ -526,63 +527,35 @@ export default function LorryReceiptShow({
                             </div>
 
                             {documentDrawer ? (
-                                <FbDetailCard title="Documents / POD">
-                                    <div className="space-y-3 px-4 py-3">
-                                        <p className="text-sm text-slate-600">
-                                            Supporting documents and optional
-                                            proof of delivery for this bilty.
-                                        </p>
+                                <FbDetailCard
+                                    title={documentDrawer.title}
+                                    actions={
                                         <Button
                                             type="button"
                                             variant="secondary"
+                                            size="sm"
                                             onClick={() => setDocsOpen(true)}
                                         >
                                             <FileText
                                                 className="mr-2 size-4"
                                                 aria-hidden
                                             />
-                                            Manage documents
+                                            Upload POD / documents
                                         </Button>
-                                        <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200 text-sm">
-                                            {documentDrawer.attachments
-                                                .length === 0 ? (
-                                                <li className="px-3 py-2 text-slate-500">
-                                                    No files attached yet.
-                                                </li>
-                                            ) : (
-                                                documentDrawer.attachments.map(
-                                                    (attachment) => (
-                                                        <li
-                                                            key={attachment.id}
-                                                            className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"
-                                                        >
-                                                            <span>
-                                                                {attachment.label ||
-                                                                    attachment
-                                                                        .file
-                                                                        ?.original_name ||
-                                                                    attachment.document_type ||
-                                                                    'Attachment'}
-                                                            </span>
-                                                            {attachment.download_url ? (
-                                                                <a
-                                                                    className="text-sm text-[#2A6FDB] underline"
-                                                                    href={
-                                                                        attachment.download_url
-                                                                    }
-                                                                >
-                                                                    Download
-                                                                </a>
-                                                            ) : (
-                                                                <span className="text-xs text-slate-500">
-                                                                    Unavailable
-                                                                </span>
-                                                            )}
-                                                        </li>
-                                                    ),
-                                                )
-                                            )}
-                                        </ul>
+                                    }
+                                >
+                                    <div className="space-y-3 px-4 py-3">
+                                        <p className="text-sm text-slate-600">
+                                            Upload the POD separately from
+                                            supporting documents. Supporting
+                                            files never count as POD.
+                                        </p>
+                                        <DocumentSectionList
+                                            sections={documentDrawer.sections}
+                                            attachments={
+                                                documentDrawer.attachments
+                                            }
+                                        />
                                     </div>
                                 </FbDetailCard>
                             ) : null}
@@ -840,7 +813,6 @@ export default function LorryReceiptShow({
                 <DocumentDrawer
                     open={docsOpen}
                     onOpenChange={setDocsOpen}
-                    title="LR documents / POD"
                     {...documentDrawer}
                 />
             ) : null}

@@ -332,7 +332,7 @@ export function AppSidebar() {
             ? [
                   {
                       title: 'Accounting',
-                      href: '/accounting/vouchers',
+                      href: '/accounting',
                       icon: Landmark,
                   },
               ]

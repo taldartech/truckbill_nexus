@@ -1,5 +1,8 @@
 import { Form, Head, Link, usePage } from '@inertiajs/react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import { diffScalarFields } from '@/components/form-confirmation/diff';
+import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
+import type { ChangeReview } from '@/components/form-confirmation/types';
 import { StateCityFields } from '@/components/geography/state-city-fields';
 import InputError from '@/components/input-error';
 import {
@@ -20,6 +23,13 @@ type Station = {
     city_id?: string | null;
     is_active: boolean;
 };
+const STATION_FORM_ID = 'station-form';
+
+function stationFormElement(): HTMLFormElement | null {
+    const form = document.getElementById(STATION_FORM_ID);
+    return form instanceof HTMLFormElement ? form : null;
+}
+
 type Props = {
     company: { id: string; name: string; status: string };
     branch: { id: string; name: string; status: string };
@@ -42,6 +52,68 @@ export default function StationForm({ mode, station, links }: Props) {
     const [cityId, setCityId] = useState(station?.city_id ?? '');
     const [state, setState] = useState(station?.state ?? '');
     const [city, setCity] = useState(station?.city ?? '');
+    const submitAllowed = useRef(false);
+    const [confirmOpen, setConfirmOpen] = useState(false);
+    const [review, setReview] = useState<{
+        name: string;
+        isActive: boolean;
+        remark: string;
+    }>({ name: '', isActive: true, remark: '' });
+
+    const openConfirmation = (): boolean => {
+        if (submitAllowed.current) {
+            submitAllowed.current = false;
+            return true;
+        }
+        const form = stationFormElement();
+        if (!form) {
+            return true;
+        }
+        const data = new FormData(form);
+        const text = (field: string): string => {
+            const value = data.get(field);
+            return typeof value === 'string' ? value.trim() : '';
+        };
+        setReview({
+            name: text('name'),
+            isActive: data.get('is_active') === '1',
+            remark: text('remark'),
+        });
+        setConfirmOpen(true);
+        return false;
+    };
+
+    const confirmSubmit = () => {
+        submitAllowed.current = true;
+        setConfirmOpen(false);
+        window.setTimeout(() => stationFormElement()?.requestSubmit(), 0);
+    };
+
+    const yesNo = (value: unknown): string => (value ? 'Active' : 'Inactive');
+    const changes: ChangeReview[] =
+        mode === 'edit' && station
+            ? diffScalarFields(
+                  {
+                      name: station.name,
+                      state: station.state ?? '',
+                      city: station.city ?? '',
+                      is_active: station.is_active,
+                  },
+                  {
+                      name: review.name,
+                      state,
+                      city,
+                      is_active: review.isActive,
+                  },
+                  [
+                      { key: 'name', label: 'Name' },
+                      { key: 'state', label: 'State' },
+                      { key: 'city', label: 'City' },
+                      { key: 'is_active', label: 'Status', format: yesNo },
+                  ],
+              )
+            : [];
+
     return (
         <>
             <Head
@@ -62,9 +134,11 @@ export default function StationForm({ mode, station, links }: Props) {
                 backLabel="Stations"
             >
                 <Form
+                    id={STATION_FORM_ID}
                     action={action}
                     method={mode === 'create' ? 'post' : 'patch'}
                     className="space-y-3"
+                    onBefore={openConfirmation}
                 >
                     {({ errors, processing }) => (
                         <>
@@ -76,7 +150,9 @@ export default function StationForm({ mode, station, links }: Props) {
                             >
                                 <div className="grid gap-3 md:grid-cols-2">
                                     <div className="space-y-2">
-                                        <Label htmlFor="name">Name</Label>
+                                        <Label htmlFor="name" required>
+                                            Name
+                                        </Label>
                                         <Input
                                             id="name"
                                             name="name"
@@ -87,6 +163,7 @@ export default function StationForm({ mode, station, links }: Props) {
                                     </div>
                                     <div className="md:col-span-2">
                                         <StateCityFields
+                                            required
                                             canQuickCreate={
                                                 canQuickCreateGeography
                                             }
@@ -164,6 +241,33 @@ export default function StationForm({ mode, station, links }: Props) {
                         </>
                     )}
                 </Form>
+                <FormConfirmationDialog
+                    open={confirmOpen}
+                    onOpenChange={setConfirmOpen}
+                    mode={mode}
+                    title={
+                        mode === 'create'
+                            ? 'Create this station?'
+                            : 'Save station changes?'
+                    }
+                    sections={[
+                        {
+                            title: 'Station',
+                            fields: [
+                                { label: 'Name', value: review.name },
+                                { label: 'State', value: state },
+                                { label: 'City', value: city },
+                                {
+                                    label: 'Status',
+                                    value: yesNo(review.isActive),
+                                },
+                            ],
+                        },
+                    ]}
+                    changes={changes}
+                    remark={mode === 'edit' ? review.remark : undefined}
+                    onConfirm={confirmSubmit}
+                />
             </LrfPage>
         </>
     );

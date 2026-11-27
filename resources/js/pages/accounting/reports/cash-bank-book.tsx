@@ -1,4 +1,5 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
+import { AccountingBackAction } from '@/components/accounting/accounting-back-action';
 import {
     AppIndexFilters,
     AppIndexListCard,
@@ -28,13 +29,7 @@ type Props = {
     closing_debit: string;
     closing_credit: string;
     rows: Row[];
-    urls: {
-        index: string;
-        cash_book: string;
-        bank_book: string;
-        vouchers: string;
-        trial_balance: string;
-    };
+    urls: { index: string };
 };
 
 export default function AccountingCashBankBook({
@@ -54,24 +49,7 @@ export default function AccountingCashBankBook({
             <AppIndexPage>
                 <AppIndexListCard
                     title={`${title} · ${ledgerName}`}
-                    toolbar={
-                        <div className="flex flex-wrap gap-2">
-                            <Button asChild variant="outline" size="sm">
-                                <Link href={urls.cash_book}>Cash Book</Link>
-                            </Button>
-                            <Button asChild variant="outline" size="sm">
-                                <Link href={urls.bank_book}>Bank Book</Link>
-                            </Button>
-                            <Button asChild variant="outline" size="sm">
-                                <Link href={urls.trial_balance}>
-                                    Trial Balance
-                                </Link>
-                            </Button>
-                            <Button asChild variant="outline" size="sm">
-                                <Link href={urls.vouchers}>Day Book</Link>
-                            </Button>
-                        </div>
-                    }
+                    toolbar={<AccountingBackAction />}
                 >
                     <AppIndexFilters
                         onSubmit={(event) => {

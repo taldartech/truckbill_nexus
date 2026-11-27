@@ -1,19 +1,33 @@
 import { Head, Link, router } from '@inertiajs/react';
+import { Eye, Plus } from 'lucide-react';
+import type { FormEvent } from 'react';
+import { AccountingBackAction } from '@/components/accounting/accounting-back-action';
+import { AppIconAction } from '@/components/app-icon-action';
 import {
     AppIndexFilters,
     AppIndexListCard,
     AppIndexPage,
 } from '@/components/app-index-page';
+import InputError from '@/components/input-error';
 import { TablePagination } from '@/components/table-pagination';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
+type Option = { value: string; label: string };
+
+type Filters = {
+    financial_year_id: string;
+    from_date: string;
+    to_date: string;
+    voucher_type: string;
+};
+
 type Props = {
-    bootstrap: { period_label: string | null };
-    filters: { from_date: string; to_date: string; voucher_type: string };
-    voucherTypeOptions: Array<{ value: string; label: string }>;
-    permissions: { can_create: boolean; can_report: boolean };
+    filters: Filters;
+    financialYearOptions: Option[];
+    voucherTypeOptions: Option[];
+    permissions: { can_create: boolean };
     vouchers: {
         data: Array<{
             id: string;
@@ -31,169 +45,101 @@ type Props = {
             per_page: number;
         };
     };
-    urls: {
-        index: string;
-        create: string;
-        ledgers: string;
-        trial_balance: string;
-        profit_and_loss: string;
-        balance_sheet: string;
-        cash_book: string;
-        bank_book: string;
-        outstanding: string;
-        tax_summary?: string;
-        fund_transfer: string;
-        opening_balances?: string;
-        activation?: string;
-        reconciliation?: string;
-    };
+    urls: { index: string; create: string; workspace: string };
+    errors?: Partial<Record<keyof Filters, string>>;
 };
 
-export default function AccountingVouchersIndex({
-    bootstrap,
+const selectClass =
+    'h-9 w-full rounded-md border border-input bg-background px-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
+
+const filterFieldClass = 'w-full space-y-1 sm:w-44';
+
+function formValue(
+    form: HTMLFormElement,
+    name: keyof Filters,
+): string | undefined {
+    const field = form.elements.namedItem(name) as
+        | HTMLInputElement
+        | HTMLSelectElement
+        | null;
+
+    return field?.value || undefined;
+}
+
+export default function AccountingDayBook({
     filters,
+    financialYearOptions,
     voucherTypeOptions,
     permissions,
     vouchers,
     urls,
+    errors = {},
 }: Props) {
+    const hasActiveFilters = Object.values(filters).some(Boolean);
+    const selectedYearLabel = financialYearOptions.find(
+        (option) => option.value === filters.financial_year_id,
+    )?.label;
+
+    const applyFilters = (event: FormEvent<HTMLFormElement>) => {
+        event.preventDefault();
+        const form = event.currentTarget;
+        router.get(
+            urls.index,
+            {
+                financial_year_id: formValue(form, 'financial_year_id'),
+                from_date: formValue(form, 'from_date'),
+                to_date: formValue(form, 'to_date'),
+                voucher_type: formValue(form, 'voucher_type'),
+            },
+            { preserveState: true },
+        );
+    };
+
     return (
         <>
             <Head title="Day Book" />
             <AppIndexPage>
                 <AppIndexListCard
-                    title={`Day Book${bootstrap.period_label ? ` · ${bootstrap.period_label}` : ''}`}
+                    title={`Day Book${selectedYearLabel ? ` · FY ${selectedYearLabel}` : ''}`}
                     toolbar={
-                        <div className="flex flex-wrap gap-2">
-                            <Button asChild variant="outline" size="sm">
-                                <Link href={urls.ledgers}>Ledgers</Link>
-                            </Button>
-                            {permissions.can_report ? (
-                                <>
-                                    <Button asChild variant="outline" size="sm">
-                                        <Link href={urls.trial_balance}>
-                                            Trial Balance
-                                        </Link>
-                                    </Button>
-                                    <Button asChild variant="outline" size="sm">
-                                        <Link href={urls.profit_and_loss}>
-                                            P&L
-                                        </Link>
-                                    </Button>
-                                    <Button asChild variant="outline" size="sm">
-                                        <Link href={urls.balance_sheet}>
-                                            Balance Sheet
-                                        </Link>
-                                    </Button>
-                                    <Button asChild variant="outline" size="sm">
-                                        <Link href={urls.cash_book}>
-                                            Cash Book
-                                        </Link>
-                                    </Button>
-                                    <Button asChild variant="outline" size="sm">
-                                        <Link href={urls.bank_book}>
-                                            Bank Book
-                                        </Link>
-                                    </Button>
-                                    <Button asChild variant="outline" size="sm">
-                                        <Link href={urls.outstanding}>
-                                            Outstanding
-                                        </Link>
-                                    </Button>
-                                    {urls.tax_summary ? (
-                                        <Button
-                                            asChild
-                                            variant="outline"
-                                            size="sm"
-                                        >
-                                            <Link href={urls.tax_summary}>
-                                                Tax Summary
-                                            </Link>
-                                        </Button>
-                                    ) : null}
-                                    {urls.reconciliation ? (
-                                        <Button
-                                            asChild
-                                            variant="outline"
-                                            size="sm"
-                                        >
-                                            <Link href={urls.reconciliation}>
-                                                Reconciliation
-                                            </Link>
-                                        </Button>
-                                    ) : null}
-                                </>
-                            ) : null}
-                            {urls.activation ? (
-                                <Button asChild variant="outline" size="sm">
-                                    <Link href={urls.activation}>
-                                        Activation / Cutover
-                                    </Link>
-                                </Button>
-                            ) : null}
+                        <>
+                            <AccountingBackAction href={urls.workspace} />
                             {permissions.can_create ? (
-                                <>
-                                    <Button asChild variant="outline" size="sm">
-                                        <Link href={urls.fund_transfer}>
-                                            Fund Transfer
-                                        </Link>
-                                    </Button>
-                                    {urls.opening_balances ? (
-                                        <Button
-                                            asChild
-                                            variant="outline"
-                                            size="sm"
-                                        >
-                                            <Link href={urls.opening_balances}>
-                                                Opening Balances
-                                            </Link>
-                                        </Button>
-                                    ) : null}
-                                    <Button
-                                        asChild
-                                        size="sm"
-                                        className="bg-[#2FB36F] text-white hover:bg-[#279960]"
-                                    >
-                                        <Link href={urls.create}>
-                                            New Voucher
-                                        </Link>
-                                    </Button>
-                                </>
+                                <Link
+                                    href={urls.create}
+                                    className="app-index-header-btn"
+                                >
+                                    <Plus className="size-3.5" aria-hidden />
+                                    New Voucher
+                                </Link>
                             ) : null}
-                        </div>
+                        </>
                     }
                 >
-                    <AppIndexFilters
-                        onSubmit={(event) => {
-                            event.preventDefault();
-                            const form = event.currentTarget;
-                            router.get(
-                                urls.index,
-                                {
-                                    from_date:
-                                        (
-                                            form.elements.namedItem(
-                                                'from_date',
-                                            ) as HTMLInputElement
-                                        ).value || undefined,
-                                    to_date:
-                                        (
-                                            form.elements.namedItem(
-                                                'to_date',
-                                            ) as HTMLInputElement
-                                        ).value || undefined,
-                                    voucher_type:
-                                        (
-                                            form.elements.namedItem(
-                                                'voucher_type',
-                                            ) as HTMLSelectElement
-                                        ).value || undefined,
-                                },
-                                { preserveState: true },
-                            );
-                        }}
-                    >
-                        <div className="space-y-1">
+                    <AppIndexFilters onSubmit={applyFilters}>
+                        <div className={filterFieldClass}>
+                            <Label htmlFor="financial_year_id">
+                                Financial Year
+                            </Label>
+                            <select
+                                id="financial_year_id"
+                                name="financial_year_id"
+                                className={selectClass}
+                                defaultValue={filters.financial_year_id}
+                            >
+                                <option value="">All years</option>
+                                {financialYearOptions.map((option) => (
+                                    <option
+                                        key={option.value}
+                                        value={option.value}
+                                    >
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+                            <InputError message={errors.financial_year_id} />
+                        </div>
+                        <div className={filterFieldClass}>
                             <Label htmlFor="from_date">From</Label>
                             <Input
                                 id="from_date"
@@ -201,8 +147,9 @@ export default function AccountingVouchersIndex({
                                 type="date"
                                 defaultValue={filters.from_date}
                             />
+                            <InputError message={errors.from_date} />
                         </div>
-                        <div className="space-y-1">
+                        <div className={filterFieldClass}>
                             <Label htmlFor="to_date">To</Label>
                             <Input
                                 id="to_date"
@@ -210,16 +157,17 @@ export default function AccountingVouchersIndex({
                                 type="date"
                                 defaultValue={filters.to_date}
                             />
+                            <InputError message={errors.to_date} />
                         </div>
-                        <div className="space-y-1">
-                            <Label htmlFor="voucher_type">Type</Label>
+                        <div className={filterFieldClass}>
+                            <Label htmlFor="voucher_type">Voucher Type</Label>
                             <select
                                 id="voucher_type"
                                 name="voucher_type"
-                                className="h-9 rounded-md border border-input bg-background px-2 text-sm"
+                                className={selectClass}
                                 defaultValue={filters.voucher_type}
                             >
-                                <option value="">All</option>
+                                <option value="">All types</option>
                                 {voucherTypeOptions.map((option) => (
                                     <option
                                         key={option.value}
@@ -229,31 +177,36 @@ export default function AccountingVouchersIndex({
                                     </option>
                                 ))}
                             </select>
+                            <InputError message={errors.voucher_type} />
                         </div>
-                        <Button type="submit" variant="outline" size="sm">
-                            Apply
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button type="submit" size="sm" className="h-9">
+                                Apply
+                            </Button>
+                            {hasActiveFilters ? (
+                                <Button
+                                    asChild
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-9"
+                                >
+                                    <Link href={urls.index}>Reset</Link>
+                                </Button>
+                            ) : null}
+                        </div>
                     </AppIndexFilters>
                     <div className="overflow-x-auto">
-                        <table className="w-full min-w-[800px] text-left text-sm">
-                            <thead className="border-b text-muted-foreground">
+                        <table className="app-index-table min-w-[760px]">
+                            <thead>
                                 <tr>
-                                    <th className="px-3 py-2 font-medium">
-                                        Date
+                                    <th className="w-28">Date</th>
+                                    <th className="w-40">Voucher No.</th>
+                                    <th className="w-32">Type</th>
+                                    <th>Narration</th>
+                                    <th className="w-36 text-right">Amount</th>
+                                    <th className="w-16">
+                                        <span className="sr-only">Actions</span>
                                     </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Voucher
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Type
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Narration
-                                    </th>
-                                    <th className="px-3 py-2 font-medium">
-                                        Amount
-                                    </th>
-                                    <th className="px-3 py-2 font-medium" />
                                 </tr>
                             </thead>
                             <tbody>
@@ -261,42 +214,35 @@ export default function AccountingVouchersIndex({
                                     <tr>
                                         <td
                                             colSpan={6}
-                                            className="px-3 py-8 text-center text-muted-foreground"
+                                            className="app-index-empty"
                                         >
-                                            No posted vouchers in this range.
+                                            {hasActiveFilters
+                                                ? 'No posted vouchers match these filters.'
+                                                : 'No vouchers have been posted yet.'}
                                         </td>
                                     </tr>
                                 ) : (
                                     vouchers.data.map((row) => (
-                                        <tr
-                                            key={row.id}
-                                            className="border-b last:border-0"
-                                        >
-                                            <td className="px-3 py-2">
-                                                {row.voucher_date}
-                                            </td>
-                                            <td className="px-3 py-2 font-medium">
+                                        <tr key={row.id}>
+                                            <td>{row.voucher_date}</td>
+                                            <td className="font-medium">
                                                 {row.voucher_number}
                                             </td>
-                                            <td className="px-3 py-2">
-                                                {row.voucher_type_label}
+                                            <td>{row.voucher_type_label}</td>
+                                            <td className="min-w-64 whitespace-normal">
+                                                {row.narration ?? '—'}
                                             </td>
-                                            <td className="px-3 py-2">
-                                                {row.narration}
-                                            </td>
-                                            <td className="px-3 py-2">
+                                            <td className="text-right tabular-nums">
                                                 {row.total_debit}
                                             </td>
-                                            <td className="px-3 py-2 text-right">
-                                                <Button
-                                                    asChild
+                                            <td className="text-right">
+                                                <AppIconAction
+                                                    icon={Eye}
+                                                    label={`View voucher ${row.voucher_number}`}
+                                                    tooltip="View"
+                                                    href={row.urls.show}
                                                     size="sm"
-                                                    variant="outline"
-                                                >
-                                                    <Link href={row.urls.show}>
-                                                        View
-                                                    </Link>
-                                                </Button>
+                                                />
                                             </td>
                                         </tr>
                                     ))
@@ -309,6 +255,8 @@ export default function AccountingVouchersIndex({
                             baseUrl={urls.index}
                             meta={vouchers.meta}
                             query={{
+                                financial_year_id:
+                                    filters.financial_year_id || undefined,
                                 from_date: filters.from_date || undefined,
                                 to_date: filters.to_date || undefined,
                                 voucher_type: filters.voucher_type || undefined,

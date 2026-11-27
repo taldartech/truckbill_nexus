@@ -1,5 +1,6 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import type { FormEvent } from 'react';
+import { AccountingBackAction } from '@/components/accounting/accounting-back-action';
 import { AppIndexListCard, AppIndexPage } from '@/components/app-index-page';
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
@@ -64,9 +65,10 @@ export default function AccountingVoucherShow({
                                     {voucher.status}
                                 </Badge>
                             ) : null}
-                            <Button asChild variant="outline" size="sm">
-                                <Link href={urls.index}>Day Book</Link>
-                            </Button>
+                            <AccountingBackAction
+                                href={urls.index}
+                                label="Back to Day Book"
+                            />
                         </div>
                     }
                 >

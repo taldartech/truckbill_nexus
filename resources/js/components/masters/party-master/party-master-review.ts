@@ -130,7 +130,7 @@ function partyReviewSections(input: PartyReviewInput): FieldReviewSection[] {
                               value: titleCase(transporter.pan_status),
                           },
                           {
-                              label: 'TDS Declaration Received',
+                              label: 'Declaration Received',
                               value: yesNo(transporter.declaration),
                           },
                           {

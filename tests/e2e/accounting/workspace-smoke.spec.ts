@@ -10,13 +10,27 @@ test.describe('Accounting workspace smoke', () => {
         );
     });
 
-    test('Day Book, Ledgers, and core reports load', async ({ page }) => {
+    test('Accounting gateway, Day Book, Ledgers, and core reports load', async ({
+        page,
+    }) => {
         test.setTimeout(180_000);
         const { email, password } = demoCredentials();
         await loginAs(page, email, password);
         await enterDemoAlphaBranch(page);
 
-        await page.goto('/accounting/vouchers');
+        await page.goto('/accounting');
+        await expect(
+            page.getByRole('heading', { name: 'Accounting', exact: true }),
+        ).toBeVisible({ timeout: 20_000 });
+        await expect(
+            page.getByRole('heading', { name: 'Transactions' }),
+        ).toBeVisible();
+        await page
+            .getByRole('link', { name: /^Day Book/ })
+            .first()
+            .click();
+
+        await page.waitForURL('**/accounting/vouchers');
         await expect(
             page.getByRole('heading', { name: /Day Book/i }),
         ).toBeVisible({ timeout: 20_000 });

@@ -491,7 +491,10 @@ test.describe('Subscription administration, Party Master and validation UX', () 
         await row.getByRole('button', { name: 'Delete party' }).click();
         await page.getByRole('button', { name: 'Delete party' }).last().click();
         await expect(page.getByText('Audit remark is required.')).toBeVisible();
-        await page.locator('#master-audit-remark').fill('E2E duplicate record');
+        await page
+            .getByRole('dialog')
+            .getByLabel('Audit remark')
+            .fill('E2E duplicate record');
         await page.getByRole('button', { name: 'Delete party' }).last().click();
         await expect(page.getByRole('status')).toHaveText('Party deleted.', {
             timeout: 15_000,

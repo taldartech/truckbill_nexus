@@ -30,6 +30,7 @@ use App\Models\Party;
 use App\Models\PartyRole;
 use App\Models\State;
 use App\Models\User;
+use App\Rules\IndianMobileNumber;
 use App\Support\Presentation\AccountNumberMask;
 use App\Support\Presentation\FreightAmountPresentation;
 use App\Support\Presentation\PartyProfilePresentation;
@@ -692,7 +693,7 @@ class PartyController extends Controller
         return [
             'short_name' => ['nullable', 'string', 'max:255'],
             'contact_person' => ['nullable', 'string', 'max:255'],
-            'contact_number' => ['nullable', 'string', 'max:50'],
+            'contact_number' => ['nullable', 'string', new IndianMobileNumber],
             'email' => ['nullable', 'email', 'max:255'],
             'gstin' => ['nullable', 'string', 'max:20'],
             'pan' => ['nullable', 'string', 'max:20'],

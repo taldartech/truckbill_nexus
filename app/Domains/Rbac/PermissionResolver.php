@@ -12,6 +12,7 @@ use App\Models\InternalRoleAssignment;
 use App\Models\Permission;
 use App\Models\RolePermission;
 use App\Models\User;
+use App\Support\Cache\RequestScopedMemo;
 use Illuminate\Support\Facades\Cache;
 use Throwable;
 
@@ -146,6 +147,18 @@ class PermissionResolver
      * @return list<string>
      */
     private function remember(PermissionDomain $domain, User $user, ?string $branchId, \Closure $resolver): array
+    {
+        return app(RequestScopedMemo::class)->remember(
+            $this->cache->memoKey($domain->value, (string) $user->id, $branchId),
+            fn (): array => $this->rememberInCache($domain, $user, $branchId, $resolver),
+        );
+    }
+
+    /**
+     * @param  \Closure(): mixed  $resolver
+     * @return list<string>
+     */
+    private function rememberInCache(PermissionDomain $domain, User $user, ?string $branchId, \Closure $resolver): array
     {
         $key = $this->cache->cacheKey($domain->value, (string) $user->id, $branchId);
 

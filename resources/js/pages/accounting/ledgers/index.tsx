@@ -1,4 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
+import { AccountingBackAction } from '@/components/accounting/accounting-back-action';
 import { AppIndexListCard, AppIndexPage } from '@/components/app-index-page';
 import { Button } from '@/components/ui/button';
 
@@ -9,21 +10,16 @@ type Props = {
         group_name: string | null;
         urls: { show: string };
     }>;
-    urls: { vouchers: string };
 };
 
-export default function AccountingLedgersIndex({ ledgers, urls }: Props) {
+export default function AccountingLedgersIndex({ ledgers }: Props) {
     return (
         <>
             <Head title="Ledgers" />
             <AppIndexPage>
                 <AppIndexListCard
                     title="Chart of Accounts — Ledgers"
-                    toolbar={
-                        <Button asChild variant="outline" size="sm">
-                            <Link href={urls.vouchers}>Day Book</Link>
-                        </Button>
-                    }
+                    toolbar={<AccountingBackAction />}
                 >
                     <div className="overflow-x-auto">
                         <table className="w-full min-w-[640px] text-left text-sm">

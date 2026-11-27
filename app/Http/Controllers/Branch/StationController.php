@@ -3,19 +3,16 @@
 namespace App\Http\Controllers\Branch;
 
 use App\Domains\Company\CompanyAccessService;
-use App\Domains\Document\DocumentAttachmentService;
 use App\Domains\Geography\Concerns\ResolvesAddressGeography;
 use App\Domains\Master\Exceptions\MasterDomainException;
 use App\Domains\Master\Station\StationService;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
-use App\Http\Controllers\Branch\Concerns\PresentsDocumentDrawer;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\Party;
 use App\Models\Station;
-use App\Models\StationDefaultTransporter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,14 +23,12 @@ use Inertia\Response;
 class StationController extends Controller
 {
     use AuthorizesBranchPanel;
-    use PresentsDocumentDrawer;
     use ResolvesAddressGeography;
 
     public function __construct(
         private readonly CompanyAccessService $access,
         private readonly PermissionAuthorizer $authorizer,
         private readonly StationService $stations,
-        private readonly DocumentAttachmentService $documents,
     ) {}
 
     public function index(Request $request, Company $company, Branch $branch): Response
@@ -53,13 +48,11 @@ class StationController extends Controller
             abort(403, $e->getMessage());
         }
 
-        $defaults = StationDefaultTransporter::query()
-            ->where('company_id', $company->id)
-            ->where(function ($q) use ($branch): void {
-                $q->whereNull('branch_id')->orWhere('branch_id', $branch->id);
-            })
-            ->get()
-            ->keyBy('station_id');
+        $defaults = $this->stations->effectiveDefaultTransporters(
+            $company,
+            $branch,
+            array_values(array_map(fn (Station $station): string => $station->id, $page->items())),
+        );
 
         return Inertia::render('branch/masters/stations/index', [
             'company' => $this->companyPayload($company),
@@ -69,15 +62,13 @@ class StationController extends Controller
             'filters' => ['q' => $request->string('q')->toString()],
             'stations' => [
                 'data' => collect($page->items())->map(function (Station $station) use ($defaults): array {
-                    $default = $defaults->get($station->id);
-
                     return [
                         'id' => $station->id,
                         'name' => $station->name,
                         'state' => $station->state,
                         'city' => $station->city,
                         'is_active' => (bool) $station->is_active,
-                        'default_transporter_party_id' => $default?->default_transporter_party_id,
+                        'default_transporter_party_id' => $defaults[$station->id] ?? null,
                     ];
                 })->values()->all(),
                 'meta' => [
@@ -112,7 +103,7 @@ class StationController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            ...$this->geographyValidationRules(false),
+            ...$this->geographyValidationRules(true),
             'is_active' => ['sometimes', 'boolean'],
             'remark' => ['nullable', 'string', 'max:1000'],
         ]);
@@ -151,14 +142,7 @@ class StationController extends Controller
             abort(403, $e->getMessage());
         }
 
-        $default = StationDefaultTransporter::query()
-            ->where('station_id', $station->id)
-            ->where('company_id', $company->id)
-            ->where(function ($q) use ($branch): void {
-                $q->whereNull('branch_id')->orWhere('branch_id', $branch->id);
-            })
-            ->orderByRaw('branch_id nulls last')
-            ->first();
+        $defaultTransporterPartyId = $this->stations->effectiveDefaultTransporter($company, $branch, $station);
 
         return Inertia::render('branch/masters/stations/show', [
             'company' => $this->companyPayload($company),
@@ -173,17 +157,8 @@ class StationController extends Controller
                 'city' => $station->city,
                 'city_id' => $station->city_id,
                 'is_active' => (bool) $station->is_active,
-                'default_transporter_party_id' => $default?->default_transporter_party_id,
+                'default_transporter_party_id' => $defaultTransporterPartyId,
             ],
-            'documentDrawer' => $this->documentDrawerPayload(
-                $actor,
-                $company,
-                $branch,
-                'station',
-                $station->id,
-                $this->documents,
-                $permissions,
-            ),
             'links' => [
                 'hub' => route('branch.masters.index'),
                 'index' => route('branch.stations.index'),
@@ -191,12 +166,6 @@ class StationController extends Controller
                 'update' => route('branch.stations.update', [$station]),
                 'destroy' => route('branch.stations.destroy', [$station]),
                 'set_default_transporter' => route('branch.stations.default-transporter', [$station]),
-                'documents' => route('branch.documents.index', [
-                    'company' => $company,
-                    'branch' => $branch,
-                    'parentType' => 'station',
-                    'parentId' => $station->id,
-                ]),
             ],
         ]);
     }
@@ -241,7 +210,7 @@ class StationController extends Controller
 
         $validated = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
-            ...$this->geographyValidationRules(false),
+            ...$this->geographyValidationRules(true),
             'is_active' => ['sometimes', 'boolean'],
             'remark' => ['required', 'string', 'max:1000'],
         ]);

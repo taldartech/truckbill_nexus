@@ -11,6 +11,8 @@ use App\Domains\Consignment\Enums\FreightRateSemantics;
 use App\Domains\Consignment\Enums\FreightRateType;
 use App\Domains\Consignment\Enums\LrStatus;
 use App\Domains\Consignment\Enums\LrWorkflowContext;
+use App\Domains\Consignment\Exceptions\LorryReceiptDomainException;
+use App\Domains\Consignment\Support\FreightRateTypeCatalog;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
 use App\Domains\Numbering\DocumentNumberAllocator;
@@ -21,6 +23,7 @@ use App\Domains\Rbac\PermissionCodes;
 use App\Domains\Subscription\Entitlement\CoreModuleEntitlementResolver;
 use App\Domains\Subscription\Entitlement\SubscriptionEntitlementGate;
 use App\Domains\Subscription\Enums\SubscriptionModule;
+use App\Domains\Tax\Exceptions\TaxDomainException;
 use App\Domains\Tax\TransporterTdsCalculationService;
 use App\Models\Branch;
 use App\Models\Company;
@@ -139,25 +142,17 @@ final class LorryHireService
      * @param  array{
      *     hire_date?: string|null,
      *     remarks?: string|null,
-     *     transporter_party_id?: string|null,
      *     tds_override_rate?: string|null,
      *     tds_override_remark?: string|null,
      *     goods_lines?: list<array{
      *         lr_goods_row_id: string,
      *         rate_type?: string,
-     *         rate: string|float|int,
-     *         is_fixed_amount?: bool
-     *     }>,
-     *     goods?: list<array{
-     *         lr_goods_row_id: string,
-     *         freight_rate_type?: string,
-     *         freight_rate?: string|float|int,
-     *         rate_type?: string,
-     *         rate?: string|float|int,
-     *         is_fixed_amount?: bool,
-     *         loading_weight?: string|float|int|null
+     *         rate: string|float|int
      *     }>
      * }  $payload
+     *
+     * Payee and loading weight are never read from the payload: the Payee is the Bilty's
+     * persisted intended payee and loading weight is derived from the Bilty goods rows.
      */
     public function createFromLorryReceipt(
         LorryReceipt $lorryReceipt,
@@ -172,24 +167,10 @@ final class LorryHireService
         $this->assertLorryReceiptEligible($lorryReceipt);
 
         $vehicle = $this->resolveMarketVehicle($lorryReceipt, $company, $branch);
-        $transporter = $this->resolveInheritedPayee(
-            $lorryReceipt,
-            $company,
-            $branch,
-            filled($payload['transporter_party_id'] ?? null)
-                ? (string) $payload['transporter_party_id']
-                : null,
-        );
+        $transporter = $this->inheritedPayee($lorryReceipt, $company, $branch);
 
-        if (array_key_exists('goods_lines', $payload) && $payload['goods_lines'] !== []) {
-            $goodsLinesInput = $payload['goods_lines'];
-        } elseif (array_key_exists('goods', $payload) && $payload['goods'] !== []) {
-            $goodsLinesInput = $payload['goods'];
-        } else {
-            $goodsLinesInput = null;
-        }
-
-        if ($goodsLinesInput === null) {
+        $goodsLinesInput = $payload['goods_lines'] ?? [];
+        if ($goodsLinesInput === []) {
             throw ValidationException::withMessages([
                 'goods_lines' => 'At least one transporter freight goods line is required.',
             ]);
@@ -201,22 +182,7 @@ final class LorryHireService
             $freightTotal = bcadd($freightTotal, $line['freight_amount'], 2);
         }
 
-        $role = PartyRole::query()
-            ->where('company_id', $company->id)
-            ->where('party_id', $transporter->id)
-            ->where('role', PartyRoleType::Transporter->value)
-            ->whereNull('deleted_at')
-            ->whereNull('deactivated_at')
-            ->firstOrFail();
-
-        $roleAttrs = is_array($role->role_attributes) ? $role->role_attributes : [];
-
-        $tdsContext = $this->tds->buildContextFromTransporter(
-            [
-                'pan' => $transporter->pan,
-            ],
-            $roleAttrs,
-        );
+        $tdsContext = $this->tdsContextForPayee($transporter);
 
         $allowOverride = $this->authorizer->allowsCustomer(
             $actor,
@@ -431,52 +397,50 @@ final class LorryHireService
 
             /** @var LrGoodsRow $row */
             $row = $rowsById->get($rowId);
-            $isFixed = (bool) ($input['is_fixed_amount'] ?? false);
-            $rateTypeValue = (string) (
-                $input['freight_rate_type']
-                ?? $input['rate_type']
-                ?? ($isFixed ? FreightRateType::FixedAmount->value : $row->freight_rate_type->value)
+
+            $rateType = FreightRateType::tryFrom(
+                (string) ($input['rate_type'] ?? FreightRateTypeCatalog::default()->value),
             );
-            $rateType = FreightRateType::tryFrom($rateTypeValue);
             if ($rateType === null) {
                 throw ValidationException::withMessages([
-                    "goods_lines.{$index}.freight_rate_type" => 'Invalid transporter freight rate type.',
+                    "goods_lines.{$index}.rate_type" => 'Invalid transporter freight rate type.',
                 ]);
             }
-            if ($isFixed || $rateType === FreightRateType::FixedAmount) {
-                $rateType = FreightRateType::FixedAmount;
-                $isFixed = true;
-            }
+            $isFixed = $rateType === FreightRateType::FixedAmount;
 
-            $rateRaw = $input['freight_rate'] ?? $input['rate'] ?? null;
-            $rate = $rateRaw !== null && $rateRaw !== '' ? (string) $rateRaw : '';
+            $rate = (string) ($input['rate'] ?? '');
             if ($rate === '' || ! is_numeric($rate)) {
                 throw ValidationException::withMessages([
-                    "goods_lines.{$index}.freight_rate" => 'Transporter rate is required.',
+                    "goods_lines.{$index}.rate" => 'Transporter rate is required.',
                 ]);
             }
 
-            // Weights are inherited from the linked Bilty — client loading_weight is ignored.
+            // Weights are inherited from the linked Bilty — never accepted from the client.
             $actualWeight = $row->actual_weight !== null
                 ? $this->formattedWeight((string) $row->actual_weight)
                 : '0.000';
             $chargedWeight = $row->charged_weight !== null
                 ? $this->formattedWeight((string) $row->charged_weight)
                 : $actualWeight;
-            $loadingWeightSnapshot = $this->loadingWeightFromGoodsRow($row);
 
             // Authoritative semantics come from the linked Bilty goods row — never trust client overrides.
             $semantics = $row->rate_semantics ?? FreightRateSemantics::WeightKg;
 
-            $freightAmount = $this->calculations->goodsLineFreight([
-                'rate_type' => $rateType,
-                'rate' => $rate,
-                'is_fixed_amount' => $isFixed,
-                'package_count' => $row->package_count,
-                'actual_weight' => $actualWeight,
-                'charged_weight' => $chargedWeight,
-                'rate_semantics' => $semantics,
-            ]);
+            try {
+                $freightAmount = $this->calculations->goodsLineFreight([
+                    'rate_type' => $rateType,
+                    'rate' => $rate,
+                    'is_fixed_amount' => $isFixed,
+                    'package_count' => $row->package_count,
+                    'actual_weight' => $actualWeight,
+                    'charged_weight' => $chargedWeight,
+                    'rate_semantics' => $semantics,
+                ]);
+            } catch (LorryReceiptDomainException $e) {
+                throw ValidationException::withMessages([
+                    "goods_lines.{$index}.rate_type" => $e->getMessage(),
+                ]);
+            }
 
             $computed[] = [
                 'lr_goods_row_id' => $rowId,
@@ -484,7 +448,7 @@ final class LorryHireService
                 'rate' => number_format((float) $rate, 4, '.', ''),
                 'is_fixed_amount' => $isFixed,
                 'freight_amount' => $freightAmount,
-                'loading_weight' => $loadingWeightSnapshot,
+                'loading_weight' => $this->loadingWeightForRateBasis($row, $rateType),
                 'rate_semantics' => $semantics,
             ];
         }
@@ -493,21 +457,22 @@ final class LorryHireService
     }
 
     /**
+     * Loading weight snapshot (canonical KG) derived from the Bilty goods row by rate basis:
+     * Per Actual Weight uses actual weight; every other rate type uses charged weight.
+     * Falls back to the other weight when the preferred one is missing or zero.
+     *
      * @return numeric-string
      */
-    private function loadingWeightFromGoodsRow(LrGoodsRow $row): string
+    private function loadingWeightForRateBasis(LrGoodsRow $row, FreightRateType $rateType): string
     {
-        $charged = $row->charged_weight;
-        if ($charged !== null) {
-            $chargedString = (string) $charged;
-            if (is_numeric($chargedString) && bccomp($chargedString, '0', 3) > 0) {
-                return $this->formattedWeight($chargedString);
-            }
-        }
+        $candidates = $rateType === FreightRateType::PerActualWeight
+            ? [$row->actual_weight, $row->charged_weight]
+            : [$row->charged_weight, $row->actual_weight];
 
-        $actual = $row->actual_weight;
-        if ($actual !== null) {
-            return $this->formattedWeight((string) $actual);
+        foreach ($candidates as $weight) {
+            if ($weight !== null && is_numeric((string) $weight) && bccomp((string) $weight, '0', 3) > 0) {
+                return $this->formattedWeight((string) $weight);
+            }
         }
 
         return '0.000';
@@ -562,30 +527,19 @@ final class LorryHireService
     }
 
     /**
-     * Hire Payee is inherited from the Bilty intended payee — not re-selected on Hire create.
-     * Client-submitted transporter_party_id may only match the inherited payee (forgery rejected).
+     * Hire Payee is the Bilty's persisted intended payee — never re-selected or overridden on Hire create.
+     *
+     * @throws ValidationException when the Bilty payee is missing or not usable for a Hire.
      */
-    private function resolveInheritedPayee(
-        LorryReceipt $lorryReceipt,
-        Company $company,
-        Branch $branch,
-        ?string $submittedTransporterPartyId,
-    ): Party {
+    public function inheritedPayee(LorryReceipt $lorryReceipt, Company $company, Branch $branch): Party
+    {
         $intendedId = filled($lorryReceipt->intended_payee_party_id)
             ? (string) $lorryReceipt->intended_payee_party_id
             : null;
 
         if ($intendedId === null) {
             throw ValidationException::withMessages([
-                'transporter_party_id' => 'This Bilty has no intended Payee. Correct the Bilty Payee before creating Lorry Hire.',
-            ]);
-        }
-
-        if ($submittedTransporterPartyId !== null
-            && $submittedTransporterPartyId !== ''
-            && $submittedTransporterPartyId !== $intendedId) {
-            throw ValidationException::withMessages([
-                'transporter_party_id' => 'Lorry Hire Payee must match the Bilty intended Payee. Edit the Bilty to correct the Payee.',
+                'payee' => 'This Bilty has no intended Payee. Correct the Bilty Payee before creating Lorry Hire.',
             ]);
         }
 
@@ -597,25 +551,68 @@ final class LorryHireService
 
         if ($party === null) {
             throw ValidationException::withMessages([
-                'transporter_party_id' => 'The Bilty intended Payee is not available for transactions in this branch. Correct the Bilty Payee before creating Lorry Hire.',
+                'payee' => 'The Bilty intended Payee is not available for transactions in this branch. Correct the Bilty Payee before creating Lorry Hire.',
             ]);
         }
 
-        $hasRole = PartyRole::query()
-            ->where('company_id', $company->id)
-            ->where('party_id', $party->id)
-            ->where('role', PartyRoleType::Transporter->value)
-            ->whereNull('deleted_at')
-            ->whereNull('deactivated_at')
-            ->exists();
-
-        if (! $hasRole) {
+        if ($this->transporterRoleFor($party) === null) {
             throw ValidationException::withMessages([
-                'transporter_party_id' => 'The Bilty intended Payee must have an active Transporter role. Correct the Bilty before creating Lorry Hire.',
+                'payee' => 'The Bilty intended Payee must have an active Transporter role. Correct the Bilty before creating Lorry Hire.',
             ]);
         }
 
         return $party;
+    }
+
+    /**
+     * Applicable transporter TDS preview for the inherited payee (no override).
+     *
+     * @return array{applicable_percent: string, explanation: string}|null
+     */
+    public function tdsPreviewForPayee(Party $payee): ?array
+    {
+        try {
+            $result = $this->tds->calculate($this->tdsContextForPayee($payee));
+        } catch (TaxDomainException) {
+            return null;
+        }
+
+        return [
+            'applicable_percent' => number_format((float) $result->applicableRate, 3, '.', ''),
+            'explanation' => (string) $result->explanation,
+        ];
+    }
+
+    public function defaultHireDate(Company $company): string
+    {
+        return CarbonImmutable::now($this->companyTimezone($company))->format('Y-m-d');
+    }
+
+    private function transporterRoleFor(Party $party): ?PartyRole
+    {
+        return PartyRole::query()
+            ->where('company_id', $party->company_id)
+            ->where('party_id', $party->id)
+            ->where('role', PartyRoleType::Transporter->value)
+            ->whereNull('deleted_at')
+            ->whereNull('deactivated_at')
+            ->first();
+    }
+
+    /**
+     * @return array{
+     *     pan_status: string|null,
+     *     pan_fourth_char: string|null,
+     *     declaration_valid: bool,
+     *     goods_vehicle_count: int|null
+     * }
+     */
+    private function tdsContextForPayee(Party $payee): array
+    {
+        $role = $this->transporterRoleFor($payee);
+        $roleAttrs = is_array($role?->role_attributes) ? $role->role_attributes : [];
+
+        return $this->tds->buildContextFromTransporter(['pan' => $payee->pan], $roleAttrs);
     }
 
     private function assertCanCreate(User $actor, Company $company, Branch $branch): void

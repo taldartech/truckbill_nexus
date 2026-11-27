@@ -6,6 +6,8 @@ use App\Domains\Company\CompanyAccessService;
 use App\Domains\Document\DocumentAttachmentService;
 use App\Domains\Document\DocumentParentAccess;
 use App\Domains\Document\DocumentParentTypes;
+use App\Domains\Document\DocumentTypeCatalog;
+use App\Domains\Document\DocumentValidity;
 use App\Domains\Document\Exceptions\DocumentDomainException;
 use App\Domains\Master\Exceptions\MasterDomainException;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
@@ -16,8 +18,10 @@ use App\Models\Company;
 use App\Models\DocumentAttachment;
 use App\Models\User;
 use App\Support\Files\Exceptions\FileNotAvailableException;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -56,6 +60,7 @@ class DocumentAttachmentController extends Controller
         }
 
         $attachments->load('storedFile');
+        $context = $this->documents->contextFor($company, $parentType, $parentId);
 
         return Inertia::render('branch/masters/documents/index', [
             'company' => $this->companyPayload($company),
@@ -65,9 +70,10 @@ class DocumentAttachmentController extends Controller
                 'type' => $parentType,
                 'id' => $parentId,
             ],
+            ...$this->documentContextPayload($context),
             'storage' => $usage,
             'max_upload_bytes' => self::MAX_UPLOAD_BYTES,
-            'attachments' => $attachments->map(fn (DocumentAttachment $attachment): array => $this->presentDocumentAttachment($attachment, $company, $branch))->values()->all(),
+            'attachments' => $attachments->map(fn (DocumentAttachment $attachment): array => $this->presentDocumentAttachment($attachment, $company, $branch, $context))->values()->all(),
             'links' => [
                 'hub' => route('branch.masters.index'),
                 'manager' => route('branch.documents.index', [
@@ -91,10 +97,30 @@ class DocumentAttachmentController extends Controller
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertParentType($parentType);
 
+        try {
+            $this->documents->assertCanAttach($actor, $company, $branch, $parentType, $parentId);
+        } catch (MasterDomainException|DocumentDomainException $e) {
+            abort(403, $e->getMessage());
+        }
+
+        $context = $this->documents->contextFor($company, $parentType, $parentId);
+        $requestedType = $request->input('document_type');
+        $requestedType = is_string($requestedType) ? $requestedType : null;
+
+        $expiresOnRules = [Rule::requiredIf(DocumentTypeCatalog::requiresExpiry($requestedType)), 'nullable', 'date'];
+        if ($request->filled('issued_on')) {
+            $expiresOnRules[] = 'after_or_equal:issued_on';
+        }
+
         $validated = $request->validate([
             'file' => ['required', 'file', 'max:2048', 'mimes:pdf,jpg,jpeg,png,webp'],
-            'document_type' => ['nullable', 'string', 'max:100'],
-            'label' => ['nullable', 'string', 'max:255'],
+            'document_type' => $context->allowedTypes === null
+                ? ['nullable', 'string', 'max:64']
+                : ['required', 'string', Rule::in($context->allowedTypes)],
+            'label' => ['nullable', 'string', 'max:128'],
+            'document_number' => ['nullable', 'string', 'max:64'],
+            'issued_on' => ['nullable', 'date'],
+            'expires_on' => $expiresOnRules,
             'remark' => ['nullable', 'string', 'max:1000'],
         ]);
 
@@ -109,6 +135,11 @@ class DocumentAttachmentController extends Controller
                 $validated['document_type'] ?? null,
                 $validated['label'] ?? null,
                 $validated['remark'] ?? 'Upload and attach document',
+                new DocumentValidity(
+                    documentNumber: $validated['document_number'] ?? null,
+                    issuedOn: isset($validated['issued_on']) ? CarbonImmutable::parse($validated['issued_on']) : null,
+                    expiresOn: isset($validated['expires_on']) ? CarbonImmutable::parse($validated['expires_on']) : null,
+                ),
             );
         } catch (MasterDomainException|DocumentDomainException|FileNotAvailableException $e) {
             abort(403, $e->getMessage());

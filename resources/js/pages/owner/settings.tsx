@@ -10,6 +10,7 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { MobileNumberInput } from '@/components/ui/mobile-number-input';
 import { StateCityFields } from '@/components/geography/state-city-fields';
 import { readCanQuickCreateGeography } from '@/lib/geography-permissions';
 import { CompanyOwnerPageShell } from '@/components/owner/owner-page-header';
@@ -221,16 +222,30 @@ export default function OwnerSettings({
                                                 }
                                                 error={errors.contact_person}
                                             />
-                                            <Field
-                                                id="mobile"
-                                                label="Mobile"
-                                                name="mobile"
-                                                defaultValue={
-                                                    company.mobile ?? ''
-                                                }
-                                                error={errors.mobile}
-                                                required
-                                            />
+                                            <div className="space-y-2">
+                                                <Label
+                                                    htmlFor="mobile"
+                                                    required
+                                                >
+                                                    Mobile
+                                                </Label>
+                                                <MobileNumberInput
+                                                    id="mobile"
+                                                    name="mobile"
+                                                    required
+                                                    defaultValue={
+                                                        company.mobile ?? ''
+                                                    }
+                                                    aria-invalid={
+                                                        Boolean(
+                                                            errors.mobile,
+                                                        ) || undefined
+                                                    }
+                                                />
+                                                <InputError
+                                                    message={errors.mobile}
+                                                />
+                                            </div>
                                             <Field
                                                 id="email"
                                                 label="Email"

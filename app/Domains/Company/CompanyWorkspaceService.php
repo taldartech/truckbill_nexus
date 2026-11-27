@@ -14,6 +14,7 @@ use App\Models\BranchAssignment;
 use App\Models\Company;
 use App\Models\CompanyMembership;
 use App\Models\User;
+use App\Rules\IndianMobileNumber;
 use App\Support\Audit\AuditAction;
 use App\Support\Audit\AuditedTransaction;
 use App\Support\Audit\AuditWriter;
@@ -578,8 +579,8 @@ final class CompanyWorkspaceService
         if (array_key_exists('contact_number', $attributes)) {
             $contact = trim((string) ($attributes['contact_number'] ?? ''));
             $normalized['contact_number'] = $contact !== '' ? $contact : null;
-            if ($normalized['contact_number'] !== null && ! preg_match('/^\d{10}$/', $normalized['contact_number'])) {
-                throw new InvalidArgumentException('Contact number must be a 10-digit mobile number when provided.');
+            if ($normalized['contact_number'] !== null && ! IndianMobileNumber::isValid($normalized['contact_number'])) {
+                throw new InvalidArgumentException(IndianMobileNumber::MESSAGE);
             }
         }
 

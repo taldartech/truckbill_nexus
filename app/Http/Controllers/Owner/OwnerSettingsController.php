@@ -13,6 +13,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\Owner\Concerns\AuthorizesOwnerPanel;
 use App\Models\Company;
 use App\Models\User;
+use App\Rules\IndianMobileNumber;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -126,7 +127,7 @@ class OwnerSettingsController extends Controller
                 'city_id' => ['required', 'uuid', Rule::exists('cities', 'id')->where(fn ($query) => $query->where('is_active', true))],
                 'pin' => ['required', 'string', 'max:10'],
                 'contact_person' => ['nullable', 'string', 'max:255'],
-                'mobile' => ['required', 'string', 'max:20'],
+                'mobile' => ['required', 'string', new IndianMobileNumber],
                 'email' => ['nullable', 'email', 'max:255'],
                 'gst_registration_type' => ['required', Rule::enum(GstRegistrationType::class)],
                 'tax_liability' => ['required', Rule::enum(TaxLiability::class)],

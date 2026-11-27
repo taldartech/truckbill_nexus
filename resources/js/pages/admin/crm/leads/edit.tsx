@@ -8,6 +8,7 @@ import { PageShell } from '@/components/page-shell';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { MobileNumberInput } from '@/components/ui/mobile-number-input';
 
 type AssignableUser = { id: number; name: string; email: string };
 
@@ -73,7 +74,7 @@ export default function CrmLeadEdit({
                     />
                 }
             >
-                <PortalErrorList errors={errors} keys={['email']} />
+                <PortalErrorList errors={errors} keys={['email', 'mobile']} />
 
                 <Form action={update_url} method="put" className="space-y-6">
                     <FormSection title="Contact" columns={2}>
@@ -97,7 +98,7 @@ export default function CrmLeadEdit({
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="mobile">Mobile</Label>
-                            <Input
+                            <MobileNumberInput
                                 id="mobile"
                                 name="mobile"
                                 defaultValue={lead.mobile ?? ''}

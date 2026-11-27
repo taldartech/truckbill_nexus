@@ -56,9 +56,6 @@ class AccountingReportController extends Controller
             ],
             'urls' => [
                 'index' => route('branch.accounting.reports.trial-balance', absolute: false),
-                'vouchers' => route('branch.accounting.vouchers.index', absolute: false),
-                'profit_and_loss' => route('branch.accounting.reports.profit-and-loss', absolute: false),
-                'balance_sheet' => route('branch.accounting.reports.balance-sheet', absolute: false),
             ],
         ]);
     }
@@ -81,9 +78,6 @@ class AccountingReportController extends Controller
             'report' => $report,
             'urls' => [
                 'index' => route('branch.accounting.reports.profit-and-loss', absolute: false),
-                'trial_balance' => route('branch.accounting.reports.trial-balance', absolute: false),
-                'balance_sheet' => route('branch.accounting.reports.balance-sheet', absolute: false),
-                'vouchers' => route('branch.accounting.vouchers.index', absolute: false),
             ],
         ]);
     }
@@ -104,9 +98,6 @@ class AccountingReportController extends Controller
             'report' => $report,
             'urls' => [
                 'index' => route('branch.accounting.reports.balance-sheet', absolute: false),
-                'trial_balance' => route('branch.accounting.reports.trial-balance', absolute: false),
-                'profit_and_loss' => route('branch.accounting.reports.profit-and-loss', absolute: false),
-                'vouchers' => route('branch.accounting.vouchers.index', absolute: false),
             ],
         ]);
     }

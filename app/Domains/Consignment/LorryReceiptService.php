@@ -784,6 +784,13 @@ final class LorryReceiptService
             return;
         }
 
+        $ownerId = $vehicle->owner_party_id;
+        if ($payeeType !== 'agency' && ($ownerId === null || $ownerId === '')) {
+            throw ValidationException::withMessages([
+                'intended_payee_party_id' => 'This market vehicle has no Truck Owner. Select the Agency to pay, or add the Truck Owner on the vehicle master.',
+            ]);
+        }
+
         if ($payeeType === null || $payeePartyId === null) {
             throw ValidationException::withMessages([
                 'intended_payee_party_id' => 'Pay To and Payee are required for Broker market Bilties.',
@@ -791,12 +798,6 @@ final class LorryReceiptService
         }
 
         if ($payeeType === 'owner') {
-            $ownerId = $vehicle->owner_party_id;
-            if ($ownerId === null || $ownerId === '') {
-                throw ValidationException::withMessages([
-                    'intended_payee_party_id' => 'This market vehicle has no Truck Owner. Select Pay To Agency, or add the Truck Owner on the vehicle master.',
-                ]);
-            }
             if ($ownerId !== $payeePartyId) {
                 throw ValidationException::withMessages([
                     'intended_payee_party_id' => 'Truck Owner payee must match the vehicle’s registered owner.',

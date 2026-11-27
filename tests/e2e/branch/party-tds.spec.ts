@@ -40,10 +40,24 @@ test.describe('Party Master transporter TDS panel', () => {
 
         const tdsPanel = page.getByTestId('transporter-tds-panel');
         await expect(tdsPanel).toBeVisible();
-        await expect(page.getByLabel(/declaration type/i)).toBeVisible();
-        await expect(page.getByLabel(/^pan status/i)).toBeVisible();
+        const panStatus = tdsPanel.getByRole('radiogroup', {
+            name: /pan status/i,
+        });
+        await expect(panStatus.getByRole('radio')).toHaveCount(2);
+        await expect(
+            panStatus.getByRole('radio', { name: 'Active' }),
+        ).toBeVisible();
+        await expect(
+            panStatus.getByRole('radio', { name: 'Inactive' }),
+        ).toBeVisible();
+        const declaration = tdsPanel.getByRole('radiogroup', {
+            name: /declaration received/i,
+        });
+        await expect(declaration.getByRole('radio')).toHaveCount(2);
+        await declaration.getByRole('radio', { name: 'Yes' }).check();
+        await panStatus.getByRole('radio', { name: 'Active' }).check();
         await expect(page.getByLabel(/goods vehicles count/i)).toBeVisible();
-        await expect(page.getByText(/declaration affirmed/i)).toBeVisible();
+        await expect(page.getByText(/declaration type/i)).toHaveCount(0);
 
         const preview = page.getByTestId('tds-preview-panel');
         await expect(preview).toBeVisible();

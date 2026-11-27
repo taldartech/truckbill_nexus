@@ -1,15 +1,10 @@
 import { Head, usePage } from '@inertiajs/react';
-import { useState } from 'react';
 import {
     FbDetailCard,
     FbDetailPage,
     FbInfoGrid,
     FbInfoItem,
 } from '@/components/fb-detail';
-import {
-    DocumentDrawer,
-    type DocumentDrawerProps,
-} from '@/components/masters/document-drawer';
 import { MasterRecordActions } from '@/components/masters/master-record-actions';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 
@@ -30,28 +25,17 @@ type Props = {
     branch: { id: string; name: string; status: string };
     permissions: { can_edit: boolean; can_delete: boolean };
     account: Account;
-    documentDrawer: Omit<
-        DocumentDrawerProps,
-        'open' | 'onOpenChange' | 'title'
-    > | null;
     links: {
         hub: string;
         dashboard: string;
         index: string;
         edit: string;
         destroy: string;
-        documents: string;
     };
 };
 
-export default function BankCashShow({
-    permissions,
-    account,
-    documentDrawer,
-    links,
-}: Props) {
+export default function BankCashShow({ permissions, account, links }: Props) {
     const { flash } = usePage<{ flash?: { success?: string | null } }>().props;
-    const [docsOpen, setDocsOpen] = useState(false);
     return (
         <>
             <Head title={account.name} />
@@ -76,12 +60,6 @@ export default function BankCashShow({
                         <MasterRecordActions
                             noun="account"
                             editHref={permissions.can_edit ? links.edit : null}
-                            onOpenDocuments={
-                                documentDrawer
-                                    ? () => setDocsOpen(true)
-                                    : undefined
-                            }
-                            documentsHref={links.documents}
                             destroy={
                                 permissions.can_delete
                                     ? {
@@ -108,13 +86,6 @@ export default function BankCashShow({
                     </FbInfoGrid>
                 </FbDetailCard>
             </FbDetailPage>
-            {documentDrawer ? (
-                <DocumentDrawer
-                    open={docsOpen}
-                    onOpenChange={setDocsOpen}
-                    {...documentDrawer}
-                />
-            ) : null}
         </>
     );
 }

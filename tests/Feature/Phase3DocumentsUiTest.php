@@ -144,9 +144,10 @@ test('document upload download authorization respects company isolation and scan
     );
 
     $this->post(route('branch.documents.store', ['parentType' => 'party', 'parentId' => $party->id]), [
-        'file' => UploadedFile::fake()->create('rc.pdf', 100, 'application/pdf'),
-        'label' => 'RC',
-        'remark' => 'Upload RC',
+        'file' => UploadedFile::fake()->create('pan.pdf', 100, 'application/pdf'),
+        'document_type' => 'pan',
+        'label' => 'PAN',
+        'remark' => 'Upload PAN',
     ])->assertRedirect();
 
     $attachment = DocumentAttachment::query()->where('parent_id', $party->id)->firstOrFail();

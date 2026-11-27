@@ -351,10 +351,11 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
                     description={
                         mode === 'create'
                             ? 'Review the values below before creating the party.'
-                            : `Review the changes before saving. Remark: ${reviewRemark}`
+                            : 'Review the changes before saving.'
                     }
                     sections={reviewSections}
                     changes={reviewChanges}
+                    remark={mode === 'edit' ? reviewRemark : undefined}
                     processing={false}
                     onConfirm={handleConfirm}
                 />

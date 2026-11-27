@@ -20,7 +20,6 @@ use App\Http\Controllers\Controller;
 use App\Models\AccountingVoucher;
 use App\Models\Branch;
 use App\Models\Company;
-use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -46,26 +45,35 @@ class AccountingVoucherController extends Controller
     {
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->authorizeAccounting($actor, $company, $branch, $this->authorizer, PermissionCodes::BRANCH_ACCOUNTING_VIEW);
-        $bootstrap = $this->workspace->bootstrap($company);
+        $this->workspace->bootstrap($company);
+
+        $filters = $request->validate([
+            'financial_year_id' => ['nullable', 'uuid', Rule::exists('accounting_periods', 'id')->where('company_id', $company->id)],
+            'from_date' => ['nullable', 'date'],
+            'to_date' => ['nullable', 'date', 'after_or_equal:from_date'],
+            'voucher_type' => ['nullable', Rule::enum(AccountingVoucherType::class)],
+        ]);
 
         $page = $this->workspace->dayBook(
             company: $company,
             branch: $branch,
-            fromDate: $request->string('from_date')->toString() ?: null,
-            toDate: $request->string('to_date')->toString() ?: null,
-            voucherType: $request->string('voucher_type')->toString() ?: null,
+            fromDate: $filters['from_date'] ?? null,
+            toDate: $filters['to_date'] ?? null,
+            voucherType: $filters['voucher_type'] ?? null,
             perPage: min(100, max(1, (int) $request->input('per_page', 25))),
+            financialYearId: $filters['financial_year_id'] ?? null,
         );
 
         return Inertia::render('accounting/vouchers/index', [
-            'bootstrap' => $bootstrap,
             'filters' => [
-                'from_date' => $request->string('from_date')->toString(),
-                'to_date' => $request->string('to_date')->toString(),
-                'voucher_type' => $request->string('voucher_type')->toString(),
+                'financial_year_id' => $filters['financial_year_id'] ?? '',
+                'from_date' => $filters['from_date'] ?? '',
+                'to_date' => $filters['to_date'] ?? '',
+                'voucher_type' => $filters['voucher_type'] ?? '',
             ],
+            'financialYearOptions' => $this->workspace->financialYearOptions($company),
             'voucherTypeOptions' => $this->workspace->voucherTypeOptions(),
-            'permissions' => $this->permissions($actor, $company, $branch),
+            'permissions' => $this->accountingAbilities($actor, $company, $branch, $this->authorizer),
             'vouchers' => [
                 'data' => collect($page->items())->map(fn (AccountingVoucher $voucher): array => [
                     'id' => $voucher->id,
@@ -90,18 +98,7 @@ class AccountingVoucherController extends Controller
             'urls' => [
                 'index' => route('branch.accounting.vouchers.index', absolute: false),
                 'create' => route('branch.accounting.vouchers.create', absolute: false),
-                'ledgers' => route('branch.accounting.ledgers.index', absolute: false),
-                'trial_balance' => route('branch.accounting.reports.trial-balance', absolute: false),
-                'profit_and_loss' => route('branch.accounting.reports.profit-and-loss', absolute: false),
-                'balance_sheet' => route('branch.accounting.reports.balance-sheet', absolute: false),
-                'cash_book' => route('branch.accounting.reports.cash-book', absolute: false),
-                'bank_book' => route('branch.accounting.reports.bank-book', absolute: false),
-                'outstanding' => route('branch.accounting.reports.outstanding', absolute: false),
-                'tax_summary' => route('branch.accounting.reports.tax-summary', absolute: false),
-                'fund_transfer' => route('branch.accounting.fund-transfers.create', absolute: false),
-                'opening_balances' => route('branch.accounting.opening-balances.create', absolute: false),
-                'activation' => route('branch.accounting.activation.show', absolute: false),
-                'reconciliation' => route('branch.accounting.reports.reconciliation', absolute: false),
+                'workspace' => route('branch.accounting.workspace', absolute: false),
             ],
         ]);
     }
@@ -114,6 +111,8 @@ class AccountingVoucherController extends Controller
 
         return Inertia::render('accounting/vouchers/create', [
             'voucherTypeOptions' => $this->workspace->voucherTypeOptions(),
+            'defaultVoucherType' => (AccountingVoucherType::tryFrom($request->string('voucher_type')->toString())
+                ?? AccountingVoucherType::Journal)->value,
             'ledgers' => $this->workspace->activeLedgers($company)->map(fn ($ledger): array => [
                 'id' => $ledger->id,
                 'name' => $ledger->name,
@@ -236,21 +235,5 @@ class AccountingVoucherController extends Controller
         return redirect()
             ->route('branch.accounting.vouchers.show', $reversal)
             ->with('flash.success', 'Reversal voucher '.$reversal->voucher_number.' posted.');
-    }
-
-    /**
-     * @return array{can_view: bool, can_create: bool, can_report: bool, can_mutate: bool}
-     */
-    private function permissions(User $actor, Company $company, Branch $branch): array
-    {
-        $isOwner = (int) $actor->id === (int) $company->owner_user_id;
-        $canMutate = app(CompanyCapabilityResolver::class)->allowsMutate($company, CompanyCapabilities::ACCOUNTING);
-
-        return [
-            'can_view' => $isOwner || $this->authorizer->allowsCustomer($actor, PermissionCodes::BRANCH_ACCOUNTING_VIEW, $company, $branch),
-            'can_create' => $canMutate && ($isOwner || $this->authorizer->allowsCustomer($actor, PermissionCodes::BRANCH_ACCOUNTING_VOUCHER_CREATE, $company, $branch)),
-            'can_report' => $isOwner || $this->authorizer->allowsCustomer($actor, PermissionCodes::BRANCH_ACCOUNTING_REPORT_VIEW, $company, $branch),
-            'can_mutate' => $canMutate,
-        ];
     }
 }

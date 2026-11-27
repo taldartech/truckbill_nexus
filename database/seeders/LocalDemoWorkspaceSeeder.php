@@ -28,6 +28,7 @@ use App\Domains\Enquiry\EnquiryAssignmentService;
 use App\Domains\Enquiry\EnquiryConversionService;
 use App\Domains\Enquiry\EnquiryQuotationService;
 use App\Domains\Enquiry\EnquiryService;
+use App\Domains\Geography\GeographyLookupService;
 use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Party\PartyService;
@@ -581,8 +582,12 @@ class LocalDemoWorkspaceSeeder extends Seeder
             sharedScope: $visibility === DataVisibility::SharedData,
         );
         $this->ensureBank($company, $head, 'demo-bank:'.$company->id.':1');
-        $fromStation = $this->ensureStation($owner, 'demo-station:'.$company->id.':1', $companyName === self::COMPANY_A_NAME ? 'Bhiwandi Hub' : 'Vatva Hub');
-        $toStation = $this->ensureStation($owner, 'demo-station:'.$company->id.':2', $companyName === self::COMPANY_A_NAME ? 'Nagpur Depot' : 'Vadodara Yard');
+        $fromStation = $companyName === self::COMPANY_A_NAME
+            ? $this->ensureStation($owner, 'Bhiwandi Hub', 'Maharashtra', 'Thane')
+            : $this->ensureStation($owner, 'Vatva Hub', 'Gujarat', 'Ahmedabad');
+        $toStation = $companyName === self::COMPANY_A_NAME
+            ? $this->ensureStation($owner, 'Nagpur Depot', 'Maharashtra', 'Nagpur')
+            : $this->ensureStation($owner, 'Vadodara Yard', 'Gujarat', 'Vadodara');
 
         $modules = $companyName === self::COMPANY_A_NAME
             ? ['broker', 'ownfleet', 'partload']
@@ -610,6 +615,8 @@ class LocalDemoWorkspaceSeeder extends Seeder
                 $owner,
                 $customerParty,
                 $catalogues,
+                $fromStation,
+                $toStation,
                 'demo-manual:'.$company->id.':'.$branch->id.':'.$i,
                 $i,
             );
@@ -718,6 +725,8 @@ class LocalDemoWorkspaceSeeder extends Seeder
                 $transporterParty,
                 $marketVehicle,
                 $catalogues,
+                $fromStation,
+                $toStation,
             );
         }
         TenantContextHolder::clear();
@@ -1438,14 +1447,36 @@ class LocalDemoWorkspaceSeeder extends Seeder
         ]);
     }
 
-    private function ensureStation(User $owner, string $fixtureKey, string $name): Station
+    /**
+     * Demo stations always carry Master geography; earlier placeholder fixtures are repaired in place.
+     */
+    private function ensureStation(User $owner, string $name, string $stateName, string $cityName): Station
     {
+        $geography = new GeographyLookupService;
+        $stateId = $geography->findActiveStateIdByName($stateName);
+        $cityId = $stateId !== null ? $geography->findActiveCityIdByName($stateId, $cityName) : null;
+        if ($stateId === null || $cityId === null) {
+            throw new RuntimeException("Demo station geography {$cityName}, {$stateName} is missing; run IndiaGeographySeeder first.");
+        }
+
+        $resolved = $geography->resolveAddressFields($stateId, $cityId);
+        $attributes = [
+            'state_id' => $resolved['state_id'],
+            'state' => $resolved['state'],
+            'city_id' => $resolved['city_id'],
+            'city' => $resolved['city'],
+        ];
+
         $existing = Station::query()
             ->where('owner_user_id', $owner->id)
             ->where('name', $name)
             ->first();
 
         if ($existing !== null) {
+            if ($existing->state_id === null || $existing->city_id === null) {
+                $existing->forceFill($attributes)->save();
+            }
+
             return $existing;
         }
 
@@ -1453,8 +1484,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
             'id' => (string) Str::uuid(),
             'owner_user_id' => $owner->id,
             'name' => $name,
-            'state' => 'Maharashtra',
-            'city' => 'Demo City',
+            ...$attributes,
             'is_active' => true,
         ]);
     }
@@ -2040,6 +2070,8 @@ class LocalDemoWorkspaceSeeder extends Seeder
         User $actor,
         Party $customer,
         array $catalogues,
+        Station $fromStation,
+        Station $toStation,
         string $fixtureKey,
         int $index,
     ): void {
@@ -2055,33 +2087,35 @@ class LocalDemoWorkspaceSeeder extends Seeder
             return;
         }
 
+        $route = $index % 2 === 0
+            ? $this->enquiryRoute($toStation, $fromStation)
+            : $this->enquiryRoute($fromStation, $toStation);
+
         $enquiries->createManual($company, $branch, $actor, [
             'customer_party_id' => $customer->id,
-            'pickup_location' => $index % 2 === 0 ? 'Pune Warehouse' : 'Mumbai Dock',
-            'delivery_location' => $index % 2 === 0 ? 'Nagpur Depot' : 'Nashik Market',
+            ...$route,
             'vehicle_type_id' => $catalogues['truck']->id,
             'vehicle_quantity' => $index === 1 ? 1 : 2,
             'expected_loading_date' => CarbonImmutable::now()->addDays(3 + $index)->toDateString(),
             'instructions' => 'Local demo manual enquiry '.$marker,
-            'goods' => [
-                [
-                    'goods_type_id' => $catalogues['goods']->id,
-                    'package_type_id' => $catalogues['package']->id,
-                    'goods_description' => 'Demo FMCG cartons',
-                    'package_count' => 10 + $index,
-                    'actual_weight' => 100 + ($index * 10),
-                    'charged_weight' => 110 + ($index * 10),
-                ],
-                [
-                    'goods_type_id' => $catalogues['goods']->id,
-                    'package_type_id' => $catalogues['package']->id,
-                    'goods_description' => 'Demo spare parts',
-                    'package_count' => 4,
-                    'actual_weight' => 40,
-                    'charged_weight' => 45,
-                ],
-            ],
+            'goods_type_id' => $catalogues['goods']->id,
+            'weight_mt' => (string) (8 + $index),
         ]);
+    }
+
+    /**
+     * Manual enquiries route between Master State/City pairs, taken from the demo stations.
+     *
+     * @return array{from_state_id: string, from_city_id: string, to_state_id: string, to_city_id: string}
+     */
+    private function enquiryRoute(Station $from, Station $to): array
+    {
+        return [
+            'from_state_id' => (string) $from->state_id,
+            'from_city_id' => (string) $from->city_id,
+            'to_state_id' => (string) $to->state_id,
+            'to_city_id' => (string) $to->city_id,
+        ];
     }
 
     /**
@@ -2105,6 +2139,8 @@ class LocalDemoWorkspaceSeeder extends Seeder
         Party $transporterParty,
         Vehicle $marketVehicle,
         array $catalogues,
+        Station $fromStation,
+        Station $toStation,
     ): void {
         $assignMarker = 'demo-cdf-assign:'.$company->id;
         $convertFixtureKey = 'demo-cdf-convert:'.$company->id;
@@ -2133,22 +2169,13 @@ class LocalDemoWorkspaceSeeder extends Seeder
         if ($convertEnquiry === null) {
             $convertEnquiry = $enquiries->createManual($company, $branch, $actor, [
                 'customer_party_id' => $customerParty->id,
-                'pickup_location' => 'CDF Demo Pickup Yard',
-                'delivery_location' => 'CDF Demo Delivery Gate',
+                ...$this->enquiryRoute($fromStation, $toStation),
                 'vehicle_type_id' => $catalogues['truck']->id,
                 'vehicle_quantity' => 1,
                 'expected_loading_date' => CarbonImmutable::now()->addDays(4)->toDateString(),
                 'instructions' => 'Deterministic Option C conversion fixture ['.$convertFixtureKey.']',
-                'goods' => [
-                    [
-                        'goods_type_id' => $catalogues['goods']->id,
-                        'package_type_id' => $catalogues['package']->id,
-                        'goods_description' => 'CDF conversion cargo',
-                        'package_count' => 12,
-                        'actual_weight' => 120,
-                        'charged_weight' => 130,
-                    ],
-                ],
+                'goods_type_id' => $catalogues['goods']->id,
+                'weight_mt' => '12',
             ]);
         }
 

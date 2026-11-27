@@ -223,31 +223,21 @@ function batchBWorkspace(bool $withEnquiryCreate = true): array
  */
 function batchBManualPayload(array $workspace, array $overrides = []): array
 {
+    $origin = geographyIdsFor('Maharashtra', 'Pune');
+    $destination = geographyIdsFor('Maharashtra', 'Mumbai City');
+
     return array_merge([
         'customer_party_id' => $workspace['party']->id,
-        'pickup_location' => 'Pune Warehouse',
-        'delivery_location' => 'Mumbai Port',
+        'from_state_id' => $origin['state_id'],
+        'from_city_id' => $origin['city_id'],
+        'to_state_id' => $destination['state_id'],
+        'to_city_id' => $destination['city_id'],
         'vehicle_type_id' => $workspace['truck']->id,
         'vehicle_quantity' => 2,
         'expected_loading_date' => '2026-12-01',
         'instructions' => 'Handle with care',
-        'goods' => [
-            [
-                'goods_type_id' => $workspace['goodsType']->id,
-                'package_type_id' => $workspace['packageType']->id,
-                'goods_description' => 'Steel rods',
-                'package_count' => 10,
-                'actual_weight' => 100.5,
-                'charged_weight' => 110,
-            ],
-            [
-                'goods_type_id' => $workspace['goodsType']->id,
-                'goods_description' => 'Spare parts',
-                'package_count' => 2,
-                'actual_weight' => 5,
-                'charged_weight' => 5,
-            ],
-        ],
+        'goods_type_id' => $workspace['goodsType']->id,
+        'weight_mt' => 10.5,
     ], $overrides);
 }
 
@@ -266,15 +256,14 @@ test('authorized branch user creates enquiry with company branch goods status au
         ->assertJsonPath('data.source', 'manual')
         ->assertJsonPath('data.status', 'new')
         ->assertJsonPath('data.vehicle_quantity', 2)
-        ->assertJsonCount(2, 'data.goods')
-        ->assertJsonPath('data.goods.0.position', 1)
-        ->assertJsonPath('data.goods.1.position', 2);
+        ->assertJsonCount(1, 'data.goods')
+        ->assertJsonPath('data.goods.0.position', 1);
 
     $enquiryId = $response->json('data.id');
     expect(EnquiryStatusHistory::query()->where('enquiry_id', $enquiryId)->count())->toBe(1)
         ->and(AuditEntry::query()->where('subject_type', Enquiry::class)->where('subject_id', $enquiryId)->where('action', 'created')->count())->toBe(1)
         ->and(OutboxMessage::query()->where('event_type', 'enquiry.created')->where('company_id', $ws['company']->id)->count())->toBe(1)
-        ->and(EnquiryGoodsRow::query()->where('enquiry_id', $enquiryId)->count())->toBe(2);
+        ->and(EnquiryGoodsRow::query()->where('enquiry_id', $enquiryId)->count())->toBe(1);
 });
 
 test('zero vehicle quantity and vehicle type arrays are rejected', function () {
@@ -399,8 +388,8 @@ test('edit without remark is rejected', function () {
     // Re-bind session after create so CustomerWebSession matches the testing session id.
     batchBActingAs($ws['member'], $ws['company'], $ws['branch']);
     $this->patchJson(route('branch.enquiries.update', ['enquiry' => $enquiryId]), [
-        'pickup_location' => 'Updated Pickup',
-    ])->assertUnprocessable();
+        'weight_mt' => 20,
+    ])->assertUnprocessable()->assertJsonValidationErrors('remark');
 });
 
 test('edit with remark updates enquiry and preserves creation side effects', function () {
@@ -413,10 +402,12 @@ test('edit with remark updates enquiry and preserves creation side effects', fun
     )->assertCreated()->json('data.id');
 
     batchBActingAs($ws['member'], $ws['company'], $ws['branch']);
+    $nashik = geographyIdsFor('Maharashtra', 'Nashik');
     $this->patchJson(route('branch.enquiries.update', ['enquiry' => $enquiryId]), [
         'remark' => 'Corrected pickup',
-        'pickup_location' => 'Updated Pickup',
-    ])->assertOk()->assertJsonPath('data.pickup_location', 'Updated Pickup');
+        'from_state_id' => $nashik['state_id'],
+        'from_city_id' => $nashik['city_id'],
+    ])->assertOk()->assertJsonPath('data.from_city_id', $nashik['city_id']);
 
     expect(Enquiry::query()->whereKey($enquiryId)->value('assigned_user_id'))->toBeNull()
         ->and(OutboxMessage::query()->where('event_type', 'enquiry.created')->where('company_id', $ws['company']->id)->count())->toBe(1)
@@ -438,31 +429,23 @@ test('enquiry goods edit soft-deletes prior rows and retains history identifiers
         ->pluck('id')
         ->all();
 
-    expect($originalIds)->toHaveCount(2);
+    expect($originalIds)->toHaveCount(1);
 
     batchBActingAs($ws['member'], $ws['company'], $ws['branch']);
     $this->patchJson(route('branch.enquiries.update', ['enquiry' => $enquiryId]), [
         'remark' => 'Replace goods rows',
-        'goods' => [
-            [
-                'goods_type_id' => $ws['goodsType']->id,
-                'package_type_id' => $ws['packageType']->id,
-                'goods_description' => 'Replacement cargo',
-                'package_count' => 3,
-                'actual_weight' => 30,
-                'charged_weight' => 30,
-            ],
-        ],
+        'goods_type_id' => $ws['goodsType']->id,
+        'weight_mt' => 3,
     ])->assertOk()->assertJsonCount(1, 'data.goods')->assertJsonPath('data.goods.0.position', 1);
 
     $active = EnquiryGoodsRow::query()->where('enquiry_id', $enquiryId)->orderBy('position')->get();
     $trashed = EnquiryGoodsRow::onlyTrashed()->where('enquiry_id', $enquiryId)->orderBy('position')->get();
 
     expect($active)->toHaveCount(1)
-        ->and($trashed)->toHaveCount(2)
+        ->and($trashed)->toHaveCount(1)
         ->and($trashed->pluck('id')->all())->toEqualCanonicalizing($originalIds)
         ->and($active->first()?->id)->not->toBeIn($originalIds)
-        ->and($active->first()?->goods_description)->toBe('Replacement cargo');
+        ->and($active->first()?->actual_weight)->toBe('3000.000');
 
     // Active position uniqueness still holds after soft-delete reuse of position 1.
     expect(

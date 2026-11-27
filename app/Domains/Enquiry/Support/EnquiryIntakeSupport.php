@@ -5,6 +5,7 @@ namespace App\Domains\Enquiry\Support;
 use App\Domains\Geography\GeographyLookupService;
 use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
 use App\Domains\Master\Party\Enums\PartyRoleType;
+use App\Models\City;
 use App\Models\Company;
 use App\Models\OwnerCatalogueItem;
 use App\Models\Party;
@@ -63,25 +64,21 @@ final class EnquiryIntakeSupport
             ]);
         }
 
-        $fromStateId = $this->optionalUuid($payload['from_state_id'] ?? null);
-        $fromCityId = $this->optionalUuid($payload['from_city_id'] ?? null);
-        $toStateId = $this->optionalUuid($payload['to_state_id'] ?? null);
-        $toCityId = $this->optionalUuid($payload['to_city_id'] ?? null);
+        $consignorLocation = $this->partyMasterLocation($company, $consignorPartyId);
+        $consigneeLocation = $this->partyMasterLocation($company, $consigneePartyId);
 
-        if ($fromStateId === null && $consignorPartyId !== null) {
-            $consignor = Party::query()->where('company_id', $company->id)->whereKey($consignorPartyId)->first();
-            $fromStateId = $consignor?->state_id;
-            $fromCityId = $fromCityId ?? $consignor?->city_id;
-        }
-
-        if ($toStateId === null && $consigneePartyId !== null) {
-            $consignee = Party::query()->where('company_id', $company->id)->whereKey($consigneePartyId)->first();
-            $toStateId = $consignee?->state_id;
-            $toCityId = $toCityId ?? $consignee?->city_id;
-        }
-
-        $origin = $this->resolveRouteEndpoint($fromStateId, $fromCityId, 'from_state_id', 'from_city_id');
-        $destination = $this->resolveRouteEndpoint($toStateId, $toCityId, 'to_state_id', 'to_city_id');
+        $origin = $this->resolveRouteEndpoint(
+            $consignorLocation['state_id'] ?? $this->optionalUuid($payload['from_state_id'] ?? null),
+            $consignorLocation['city_id'] ?? $this->optionalUuid($payload['from_city_id'] ?? null),
+            'from_state_id',
+            'from_city_id',
+        );
+        $destination = $this->resolveRouteEndpoint(
+            $consigneeLocation['state_id'] ?? $this->optionalUuid($payload['to_state_id'] ?? null),
+            $consigneeLocation['city_id'] ?? $this->optionalUuid($payload['to_city_id'] ?? null),
+            'to_state_id',
+            'to_city_id',
+        );
 
         return [
             'party_name' => $partyName,
@@ -410,11 +407,19 @@ final class EnquiryIntakeSupport
     ): array {
         if ($stateId === null || $cityId === null) {
             throw ValidationException::withMessages([
-                $stateField => 'Origin and destination state and city are required.',
+                $stateId === null ? $stateField : $cityField => 'Select the State and City from the master list.',
             ]);
         }
 
-        $resolved = $this->geography->resolveAddressFields($stateId, $cityId);
+        try {
+            $resolved = $this->geography->resolveAddressFields($stateId, $cityId);
+        } catch (ValidationException $e) {
+            $errors = $e->errors();
+            throw ValidationException::withMessages(array_filter([
+                $stateField => $errors['state_id'] ?? null,
+                $cityField => $errors['city_id'] ?? null,
+            ]));
+        }
 
         return [
             'state_id' => (string) $resolved['state_id'],
@@ -571,6 +576,34 @@ final class EnquiryIntakeSupport
         $trimmed = trim((string) $value);
 
         return $trimmed === '' ? null : $trimmed;
+    }
+
+    /**
+     * The party's active master State/City pair, or null when the party has no usable location.
+     *
+     * @return array{state_id: string, city_id: string}|null
+     */
+    private function partyMasterLocation(Company $company, ?string $partyId): ?array
+    {
+        if ($partyId === null) {
+            return null;
+        }
+
+        $party = Party::query()->where('company_id', $company->id)->whereKey($partyId)->first(['state_id', 'city_id']);
+        if ($party?->state_id === null || $party->city_id === null) {
+            return null;
+        }
+
+        $isActiveMasterPair = City::query()
+            ->whereKey($party->city_id)
+            ->where('state_id', $party->state_id)
+            ->where('is_active', true)
+            ->whereHas('state', fn ($state) => $state->where('is_active', true))
+            ->exists();
+
+        return $isActiveMasterPair
+            ? ['state_id' => (string) $party->state_id, 'city_id' => (string) $party->city_id]
+            : null;
     }
 
     private function optionalUuid(mixed $value): ?string

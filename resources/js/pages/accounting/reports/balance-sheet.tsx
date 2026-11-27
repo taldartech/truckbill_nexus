@@ -1,4 +1,5 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
+import { AccountingBackAction } from '@/components/accounting/accounting-back-action';
 import {
     AppIndexFilters,
     AppIndexListCard,
@@ -22,12 +23,7 @@ type Props = {
         net_profit: string;
         balanced: boolean;
     };
-    urls: {
-        index: string;
-        trial_balance: string;
-        profit_and_loss: string;
-        vouchers: string;
-    };
+    urls: { index: string };
 };
 
 function Section({
@@ -73,23 +69,7 @@ export default function AccountingBalanceSheet({
             <AppIndexPage>
                 <AppIndexListCard
                     title="Balance Sheet"
-                    toolbar={
-                        <div className="flex flex-wrap gap-2">
-                            <Button asChild variant="outline" size="sm">
-                                <Link href={urls.trial_balance}>
-                                    Trial Balance
-                                </Link>
-                            </Button>
-                            <Button asChild variant="outline" size="sm">
-                                <Link href={urls.profit_and_loss}>
-                                    Profit & Loss
-                                </Link>
-                            </Button>
-                            <Button asChild variant="outline" size="sm">
-                                <Link href={urls.vouchers}>Day Book</Link>
-                            </Button>
-                        </div>
-                    }
+                    toolbar={<AccountingBackAction />}
                 >
                     <AppIndexFilters
                         onSubmit={(event) => {

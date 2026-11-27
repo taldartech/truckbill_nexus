@@ -95,6 +95,15 @@ final class DocumentParentAccess
             $canView = false;
         }
 
+        if (DocumentParentTypes::isRetired($parentType)) {
+            return [
+                'can_view' => $canView,
+                'can_create' => false,
+                'can_edit' => false,
+                'can_delete' => false,
+            ];
+        }
+
         try {
             $this->assertCanMutate($actor, $company, $branch, $parentType);
             $canMutate = true;

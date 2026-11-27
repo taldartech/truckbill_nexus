@@ -36,7 +36,25 @@ final class DocumentAttachmentService
         private readonly PrivateFileService $files = new PrivateFileService,
         private readonly AuditedTransaction $auditedTransaction = new AuditedTransaction,
         private readonly AuditWriter $audit = new AuditWriter,
+        private readonly DocumentTypeCatalog $catalog = new DocumentTypeCatalog,
     ) {}
+
+    public function contextFor(Company $company, string $parentType, string $parentId): DocumentContext
+    {
+        return $this->catalog->contextFor($company, $parentType, $parentId);
+    }
+
+    /**
+     * Authorize a new attachment on a parent: active (non-retired) parent type,
+     * mutate permission, tenant-scoped parent and parent-specific state gates.
+     */
+    public function assertCanAttach(User $actor, Company $company, ?Branch $branch, string $parentType, string $parentId): void
+    {
+        $this->assertParentNotRetired($parentType);
+        $this->parentAccess->assertCanMutate($actor, $company, $branch, $parentType);
+        $this->assertParentAuthorized($company, $branch, $parentType, $parentId);
+        $this->assertBrokerDeliveryMutable($company, $branch, $parentType, $parentId);
+    }
 
     /**
      * Attach an already-stored private file to an approved parent record.
@@ -51,14 +69,14 @@ final class DocumentAttachmentService
         ?string $documentType = null,
         ?string $label = null,
         string $remark = 'Attach document',
+        ?DocumentValidity $validity = null,
     ): DocumentAttachment {
-        $this->parentAccess->assertCanMutate($actor, $company, $branch, $parentType);
-        $this->assertParentAuthorized($company, $branch, $parentType, $parentId);
-        $this->assertBrokerDeliveryMutable($company, $branch, $parentType, $parentId);
+        $this->assertCanAttach($actor, $company, $branch, $parentType, $parentId);
+        $validity = $this->assertDocumentTypeAllowed($company, $parentType, $parentId, $documentType, $validity);
         $this->assertFileUsable($file, $company);
 
-        return $this->auditedTransaction->run(function () use ($actor, $company, $branch, $parentType, $parentId, $file, $documentType, $label, $remark): DocumentAttachment {
-            return $this->access->withTenant($actor, $company, $branch, function () use ($company, $branch, $parentType, $parentId, $file, $documentType, $label, $remark): DocumentAttachment {
+        return $this->auditedTransaction->run(function () use ($actor, $company, $branch, $parentType, $parentId, $file, $documentType, $label, $remark, $validity): DocumentAttachment {
+            return $this->access->withTenant($actor, $company, $branch, function () use ($company, $branch, $parentType, $parentId, $file, $documentType, $label, $remark, $validity): DocumentAttachment {
                 $attachment = DocumentAttachment::query()->create([
                     'id' => (string) Str::uuid(),
                     'company_id' => $company->id,
@@ -68,6 +86,9 @@ final class DocumentAttachmentService
                     'stored_file_id' => $file->id,
                     'document_type' => $documentType,
                     'label' => $label,
+                    'document_number' => $validity->documentNumber,
+                    'issued_on' => $validity->issuedOn,
+                    'expires_on' => $validity->expiresOn,
                     'version' => 1,
                     'supersedes_attachment_id' => null,
                     'counts_toward_storage' => true,
@@ -101,12 +122,12 @@ final class DocumentAttachmentService
         ?string $documentType = null,
         ?string $label = null,
         string $remark = 'Upload and attach document',
+        ?DocumentValidity $validity = null,
     ): DocumentAttachment {
-        $this->parentAccess->assertCanMutate($actor, $company, $branch, $parentType);
-        $this->assertParentAuthorized($company, $branch, $parentType, $parentId);
-        $this->assertBrokerDeliveryMutable($company, $branch, $parentType, $parentId);
+        $this->assertCanAttach($actor, $company, $branch, $parentType, $parentId);
+        $this->assertDocumentTypeAllowed($company, $parentType, $parentId, $documentType, $validity);
 
-        return $this->access->withTenant($actor, $company, $branch, function () use ($actor, $company, $branch, $parentType, $parentId, $upload, $documentType, $label, $remark): DocumentAttachment {
+        return $this->access->withTenant($actor, $company, $branch, function () use ($actor, $company, $branch, $parentType, $parentId, $upload, $documentType, $label, $remark, $validity): DocumentAttachment {
             $file = $this->files->store($upload);
 
             if (! $file->isDownloadable()) {
@@ -124,6 +145,7 @@ final class DocumentAttachmentService
                 $documentType,
                 $label,
                 $remark,
+                $validity,
             );
         });
     }
@@ -142,6 +164,7 @@ final class DocumentAttachmentService
             ? Branch::query()->where('company_id', $company->id)->whereKey($attachment->branch_id)->first()
             : null;
 
+        $this->assertParentNotRetired($attachment->parent_type);
         $this->parentAccess->assertCanEdit($actor, $company, $branch, $attachment->parent_type);
         $this->assertParentAuthorized($company, $branch, $attachment->parent_type, $attachment->parent_id);
         $this->assertBrokerDeliveryMutable($company, $branch, $attachment->parent_type, $attachment->parent_id);
@@ -169,6 +192,9 @@ final class DocumentAttachmentService
                     'stored_file_id' => $replacementFile->id,
                     'document_type' => $attachment->document_type,
                     'label' => $attachment->label,
+                    'document_number' => $attachment->document_number,
+                    'issued_on' => $attachment->issued_on,
+                    'expires_on' => $attachment->expires_on,
                     'version' => ((int) $attachment->version) + 1,
                     'supersedes_attachment_id' => $attachment->id,
                     'counts_toward_storage' => true,
@@ -222,6 +248,7 @@ final class DocumentAttachmentService
             ? Branch::query()->where('company_id', $company->id)->whereKey($attachment->branch_id)->first()
             : null;
 
+        $this->assertParentNotRetired($attachment->parent_type);
         $this->parentAccess->assertCanDelete($actor, $company, $branch, $attachment->parent_type);
 
         $this->auditedTransaction->run(function () use ($actor, $company, $branch, $attachment, $remark, $retainStorageCount): void {
@@ -321,6 +348,45 @@ final class DocumentAttachmentService
             'raw_available_bytes' => $raw,
             'delta_bytes' => $raw - $usage['file_bytes'],
         ];
+    }
+
+    private function assertParentNotRetired(string $parentType): void
+    {
+        if (DocumentParentTypes::isRetired($parentType)) {
+            throw new DocumentDomainException('Documents are retired for this record type; existing files remain available read-only.');
+        }
+    }
+
+    /**
+     * Document type must belong to the parent's catalog; validity metadata is kept only
+     * for validity-tracked types and expiry is mandatory for expiring types.
+     */
+    private function assertDocumentTypeAllowed(
+        Company $company,
+        string $parentType,
+        string $parentId,
+        ?string $documentType,
+        ?DocumentValidity $validity,
+    ): DocumentValidity {
+        if (! $this->catalog->contextFor($company, $parentType, $parentId)->allows($documentType)) {
+            throw new DocumentDomainException('Document type is not allowed for this record.');
+        }
+
+        if (! DocumentTypeCatalog::tracksValidity($documentType)) {
+            return new DocumentValidity;
+        }
+
+        $validity ??= new DocumentValidity;
+
+        if (DocumentTypeCatalog::requiresExpiry($documentType) && $validity->expiresOn === null) {
+            throw new DocumentDomainException('Expiry date is required for '.DocumentTypeCatalog::label($documentType).'.');
+        }
+
+        if ($validity->issuedOn !== null && $validity->expiresOn !== null && $validity->expiresOn->lessThan($validity->issuedOn)) {
+            throw new DocumentDomainException('Expiry date cannot be before the issue date.');
+        }
+
+        return $validity;
     }
 
     private function assertFileUsable(StoredFile $file, Company $company): void

@@ -48,24 +48,26 @@ type Props = {
     disabled?: boolean;
 };
 
-function vehicleOptionLabel(option: VehicleSelectOption): string {
-    if (option.label && option.label.trim() !== '') {
-        return option.label;
-    }
-    const parts = [option.registration_number];
-    if (option.ownership_label) {
-        parts.push(option.ownership_label);
-    }
-    if (option.owner_name) {
-        parts.push(option.owner_name);
-    }
-    return parts.join(' · ');
+/** Secondary line: own vehicles stay identifiable; market vehicles show only recorded owner and driver. */
+function vehicleOptionDescription(option: VehicleSelectOption): string | null {
+    const parts = [
+        option.ownership === 'own' ? 'Own vehicle' : option.owner_name,
+        option.primary_driver_name
+            ? `Driver: ${option.primary_driver_name}`
+            : null,
+    ].filter((part): part is string => Boolean(part && part.trim() !== ''));
+
+    return parts.length > 0 ? parts.join(' · ') : null;
 }
 
 function toComboboxOption(option: VehicleSelectOption): ComboboxOption {
     return {
         id: option.id,
-        label: vehicleOptionLabel(option),
+        label: option.registration_number,
+        description: vehicleOptionDescription(option),
+        keywords: [option.owner_name, option.primary_driver_name].filter(
+            (keyword): keyword is string => Boolean(keyword),
+        ),
     };
 }
 

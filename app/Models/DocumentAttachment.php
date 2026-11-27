@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Support\Files\StoredFile;
+use Carbon\CarbonImmutable;
 use Database\Factories\DocumentAttachmentFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -10,6 +11,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
+/**
+ * @property CarbonImmutable|null $issued_on
+ * @property CarbonImmutable|null $expires_on
+ */
 class DocumentAttachment extends Model
 {
     /** @use HasFactory<DocumentAttachmentFactory> */
@@ -28,6 +33,9 @@ class DocumentAttachment extends Model
         'stored_file_id',
         'document_type',
         'label',
+        'document_number',
+        'issued_on',
+        'expires_on',
         'version',
         'supersedes_attachment_id',
         'counts_toward_storage',
@@ -38,6 +46,8 @@ class DocumentAttachment extends Model
     {
         return [
             'version' => 'integer',
+            'issued_on' => 'immutable_date',
+            'expires_on' => 'immutable_date',
             'counts_toward_storage' => 'boolean',
             'is_current' => 'boolean',
         ];

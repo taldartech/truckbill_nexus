@@ -43,8 +43,6 @@ class AccountingActivationController extends Controller
                 'dry_run' => route('branch.accounting.activation.dry-run', absolute: false),
                 'confirm' => route('branch.accounting.activation.confirm', absolute: false),
                 'catch_up' => route('branch.accounting.activation.catch-up', absolute: false),
-                'reconciliation' => route('branch.accounting.reports.reconciliation', absolute: false),
-                'vouchers' => route('branch.accounting.vouchers.index', absolute: false),
             ],
         ]);
     }
@@ -146,10 +144,6 @@ class AccountingActivationController extends Controller
             'reconciliation' => $this->reconciliation->reconcile($company, $branch, $from, $to),
             'urls' => [
                 'index' => route('branch.accounting.reports.reconciliation', absolute: false),
-                'activation' => route('branch.accounting.activation.show', absolute: false),
-                'trial_balance' => route('branch.accounting.reports.trial-balance', absolute: false),
-                'profit_and_loss' => route('branch.accounting.reports.profit-and-loss', absolute: false),
-                'vouchers' => route('branch.accounting.vouchers.index', absolute: false),
             ],
         ]);
     }

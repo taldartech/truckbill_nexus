@@ -9,6 +9,7 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { MobileNumberInput } from '@/components/ui/mobile-number-input';
 import { readCanQuickCreateGeography } from '@/lib/geography-permissions';
 
 type Option = { value: string; label: string };
@@ -245,14 +246,30 @@ export default function OwnerCompanyCreate({
                                             error={errors.contact_person}
                                         />
                                         <>
-                                            <Field
-                                                id="mobile"
-                                                label="Mobile"
-                                                name="mobile"
-                                                required
-                                                defaultValue={defaults.mobile}
-                                                error={errors.mobile}
-                                            />
+                                            <div className="space-y-2">
+                                                <Label
+                                                    htmlFor="mobile"
+                                                    required
+                                                >
+                                                    Mobile
+                                                </Label>
+                                                <MobileNumberInput
+                                                    id="mobile"
+                                                    name="mobile"
+                                                    required
+                                                    defaultValue={
+                                                        defaults.mobile
+                                                    }
+                                                    aria-invalid={
+                                                        Boolean(
+                                                            errors.mobile,
+                                                        ) || undefined
+                                                    }
+                                                />
+                                                <InputError
+                                                    message={errors.mobile}
+                                                />
+                                            </div>
                                             <Field
                                                 id="email"
                                                 label="Email"

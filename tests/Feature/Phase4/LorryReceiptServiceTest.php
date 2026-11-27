@@ -380,6 +380,10 @@ test('market bilty requires a payee when the vehicle master has no truck owner',
     expect(fn () => $service->create($ctx['company'], $ctx['branch'], $ctx['member'], lrPayload($ctx)))
         ->toThrow(ValidationException::class, 'This market vehicle has no Truck Owner.');
 
+    expect(fn () => $service->create($ctx['company'], $ctx['branch'], $ctx['member'], lrPayload($ctx, [
+        'intended_payee_type' => null,
+    ])))->toThrow(ValidationException::class, 'Select the Agency to pay');
+
     $lr = $service->create($ctx['company'], $ctx['branch'], $ctx['member'], lrPayload($ctx, [
         'intended_payee_type' => 'agency',
     ]));

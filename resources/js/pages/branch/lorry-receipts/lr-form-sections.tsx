@@ -273,10 +273,13 @@ export function LrfPayPills({
     value,
     onChange,
     disabled,
+    ownerUnavailable = false,
 }: {
     value: 'owner' | 'agency' | '';
     onChange: (next: 'owner' | 'agency') => void;
     disabled?: boolean;
+    /** The vehicle has no Truck Owner, so only Agency can be paid. */
+    ownerUnavailable?: boolean;
 }) {
     return (
         <div className="lrf-pay-pills" role="group" aria-label="Pay to">
@@ -289,7 +292,10 @@ export function LrfPayPills({
                 <button
                     key={pill.id}
                     type="button"
-                    disabled={disabled}
+                    aria-pressed={value === pill.id}
+                    disabled={
+                        disabled || (pill.id === 'owner' && ownerUnavailable)
+                    }
                     onClick={() => onChange(pill.id)}
                     className={cn(
                         'lrf-pay-pill w-1/2',

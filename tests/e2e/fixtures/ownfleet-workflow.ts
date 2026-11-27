@@ -331,9 +331,14 @@ export async function uploadTripDocumentViaDrawer(
     await expect(manageDocs).toBeVisible({ timeout: 15_000 });
     await manageDocs.click();
 
-    const drawer = page.getByRole('dialog', { name: 'Trip documents' });
+    const drawer = page.getByRole('dialog', {
+        name: 'POD & Supporting Documents',
+    });
     await expect(drawer).toBeVisible({ timeout: 15_000 });
 
+    await drawer
+        .locator('#drawer-document-type')
+        .selectOption({ label: 'Supporting Document' });
     await drawer.locator('#drawer-file').setInputFiles(e2eTinyPng);
     await drawer.locator('#drawer-label').fill(options.label);
     await drawer

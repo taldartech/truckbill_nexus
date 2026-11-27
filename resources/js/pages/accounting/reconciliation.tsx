@@ -1,5 +1,6 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
 import { useState } from 'react';
+import { AccountingBackAction } from '@/components/accounting/accounting-back-action';
 import { AppIndexListCard, AppIndexPage } from '@/components/app-index-page';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -33,13 +34,7 @@ type Props = {
         unposted_operational_count: number;
         cutover_date: string | null;
     };
-    urls: {
-        index: string;
-        activation: string;
-        trial_balance: string;
-        profit_and_loss: string;
-        vouchers: string;
-    };
+    urls: { index: string };
 };
 
 export default function AccountingReconciliation({
@@ -56,26 +51,7 @@ export default function AccountingReconciliation({
             <AppIndexPage>
                 <AppIndexListCard
                     title="Operational vs General Ledger Reconciliation"
-                    toolbar={
-                        <div className="flex flex-wrap gap-2">
-                            <Button asChild variant="outline" size="sm">
-                                <Link href={urls.activation}>
-                                    Activation & Catch-up
-                                </Link>
-                            </Button>
-                            <Button asChild variant="outline" size="sm">
-                                <Link href={urls.profit_and_loss}>P&amp;L</Link>
-                            </Button>
-                            <Button asChild variant="outline" size="sm">
-                                <Link href={urls.trial_balance}>
-                                    Trial Balance
-                                </Link>
-                            </Button>
-                            <Button asChild variant="outline" size="sm">
-                                <Link href={urls.vouchers}>Day Book</Link>
-                            </Button>
-                        </div>
-                    }
+                    toolbar={<AccountingBackAction />}
                 >
                     <form
                         onSubmit={(e) => {

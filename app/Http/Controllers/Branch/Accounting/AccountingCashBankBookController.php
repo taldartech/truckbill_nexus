@@ -70,10 +70,6 @@ class AccountingCashBankBookController extends Controller
                 'index' => $ledgerName === 'Cash'
                     ? route('branch.accounting.reports.cash-book', absolute: false)
                     : route('branch.accounting.reports.bank-book', absolute: false),
-                'cash_book' => route('branch.accounting.reports.cash-book', absolute: false),
-                'bank_book' => route('branch.accounting.reports.bank-book', absolute: false),
-                'vouchers' => route('branch.accounting.vouchers.index', absolute: false),
-                'trial_balance' => route('branch.accounting.reports.trial-balance', absolute: false),
             ],
         ]);
     }

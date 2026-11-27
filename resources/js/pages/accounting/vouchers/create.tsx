@@ -1,6 +1,7 @@
-import { Form, Head, Link } from '@inertiajs/react';
+import { Form, Head } from '@inertiajs/react';
 import { useState } from 'react';
 import { QuickCreateLedgerSheet } from '@/components/accounting/quick-create-ledger-sheet';
+import { AccountingBackAction } from '@/components/accounting/accounting-back-action';
 import { AppIndexListCard, AppIndexPage } from '@/components/app-index-page';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -19,6 +20,7 @@ type Line = {
 
 type Props = {
     voucherTypeOptions: Array<{ value: string; label: string }>;
+    defaultVoucherType: string;
     ledgers: Ledger[];
     accountGroups: AccountGroup[];
     urls: { store: string; index: string; ledger_quick_create: string };
@@ -26,6 +28,7 @@ type Props = {
 
 export default function AccountingVoucherCreate({
     voucherTypeOptions,
+    defaultVoucherType,
     ledgers: initialLedgers,
     accountGroups,
     urls,
@@ -71,9 +74,10 @@ export default function AccountingVoucherCreate({
                 <AppIndexListCard
                     title="New Voucher"
                     toolbar={
-                        <Button asChild variant="outline" size="sm">
-                            <Link href={urls.index}>Day Book</Link>
-                        </Button>
+                        <AccountingBackAction
+                            href={urls.index}
+                            label="Back to Day Book"
+                        />
                     }
                 >
                     <Form
@@ -93,7 +97,7 @@ export default function AccountingVoucherCreate({
                                             name="voucher_type"
                                             required
                                             className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-                                            defaultValue="journal"
+                                            defaultValue={defaultVoucherType}
                                         >
                                             {voucherTypeOptions.map(
                                                 (option) => (

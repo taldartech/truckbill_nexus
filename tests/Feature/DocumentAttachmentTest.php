@@ -5,6 +5,7 @@ require_once __DIR__.'/../Support/VehicleMasterFixtures.php';
 use App\Domains\Auth\WebSessionService;
 use App\Domains\Company\CompanyWorkspaceService;
 use App\Domains\Document\DocumentAttachmentService;
+use App\Domains\Document\DocumentTypeCatalog;
 use App\Domains\Document\Exceptions\DocumentDomainException;
 use App\Domains\Master\Exceptions\MasterDomainException;
 use App\Domains\Master\Vehicle\VehicleService;
@@ -106,7 +107,7 @@ test('upload attach download and storage accounting', function () {
         'vehicle',
         $vehicle->id,
         docPdf('rc.pdf', 200),
-        documentType: 'rc',
+        documentType: DocumentTypeCatalog::REGISTRATION_CERTIFICATE,
         label: 'RC Book',
     );
 
@@ -142,6 +143,7 @@ test('cross-company file attach and download denied', function () {
         'vehicle',
         $vehicle->id,
         docPdf(),
+        documentType: DocumentTypeCatalog::REGISTRATION_CERTIFICATE,
     );
 
     docActingAsCustomer($otherOwner);

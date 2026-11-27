@@ -3,41 +3,24 @@ import { useState } from 'react';
 import { AppIndexListCard, AppIndexPage } from '@/components/app-index-page';
 import {
     DocumentDrawer,
-    type DocumentDrawerAttachment,
+    DocumentSectionList,
+    type DocumentDrawerProps,
 } from '@/components/masters/document-drawer';
 import { Button } from '@/components/ui/button';
 
-type Props = {
-    company: { id: string; name: string; status: string };
-    branch: { id: string; name: string; status: string };
-    permissions: {
-        can_create: boolean;
-        can_edit: boolean;
-        can_delete: boolean;
-    };
-    parent: { type: string; id: string };
-    storage: { file_bytes: number; attachment_count: number };
-    max_upload_bytes: number;
-    attachments: DocumentDrawerAttachment[];
+type Props = Omit<DocumentDrawerProps, 'open' | 'onOpenChange' | 'links'> & {
     links: { hub: string; upload: string; manager: string };
 };
 
-export default function DocumentsIndex({
-    permissions,
-    parent,
-    storage,
-    max_upload_bytes,
-    attachments,
-    links,
-}: Props) {
+export default function DocumentsIndex({ links, ...drawer }: Props) {
     const { flash } = usePage<{ flash?: { success?: string | null } }>().props;
-    const [drawerOpen, setDrawerOpen] = useState(true);
+    const [drawerOpen, setDrawerOpen] = useState(!drawer.retired);
 
     return (
         <>
-            <Head title={`Documents · ${parent.type}`} />
+            <Head title={drawer.title} />
             <AppIndexPage>
-                <AppIndexListCard title="Document management">
+                <AppIndexListCard title={drawer.title}>
                     {flash?.success ? (
                         <p
                             role="status"
@@ -48,44 +31,38 @@ export default function DocumentsIndex({
                     ) : null}
                     <div className="space-y-3 p-4">
                         <p className="text-sm text-slate-500">
-                            Parent: {parent.type.replaceAll('_', ' ')} /{' '}
-                            {parent.id}
+                            Parent: {drawer.parent.type.replaceAll('_', ' ')} /{' '}
+                            {drawer.parent.id}
                         </p>
-                        <Button
-                            type="button"
-                            className="bg-[#2FB36F] text-white hover:bg-[#279960]"
-                            onClick={() => setDrawerOpen(true)}
-                        >
-                            Open document drawer
-                        </Button>
-                        <ul className="space-y-2 md:hidden">
-                            {attachments.map((a) => (
-                                <li
-                                    key={a.id}
-                                    className="rounded-lg border border-[#e5e7eb] p-3 text-sm"
-                                >
-                                    <p className="font-medium">
-                                        {a.label ||
-                                            a.file?.original_name ||
-                                            'Attachment'}
-                                    </p>
-                                    <p className="text-slate-500">
-                                        v{a.version} · {a.file?.scan_status}
-                                    </p>
-                                </li>
-                            ))}
-                        </ul>
+                        {drawer.retired ? (
+                            <p
+                                role="note"
+                                className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm"
+                            >
+                                Documents are no longer collected for this
+                                record type. Existing files remain available
+                                read-only.
+                            </p>
+                        ) : (
+                            <Button
+                                type="button"
+                                className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                                onClick={() => setDrawerOpen(true)}
+                            >
+                                Open document drawer
+                            </Button>
+                        )}
+                        <DocumentSectionList
+                            sections={drawer.sections}
+                            attachments={drawer.attachments}
+                        />
                     </div>
                 </AppIndexListCard>
             </AppIndexPage>
             <DocumentDrawer
+                {...drawer}
                 open={drawerOpen}
                 onOpenChange={setDrawerOpen}
-                parent={parent}
-                storage={storage}
-                max_upload_bytes={max_upload_bytes}
-                attachments={attachments}
-                permissions={permissions}
                 links={{ manager: links.manager, upload: links.upload }}
             />
         </>

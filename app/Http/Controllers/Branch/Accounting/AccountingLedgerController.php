@@ -42,9 +42,6 @@ class AccountingLedgerController extends Controller
                     'show' => route('branch.accounting.ledgers.show', $ledger, absolute: false),
                 ],
             ])->values()->all(),
-            'urls' => [
-                'vouchers' => route('branch.accounting.vouchers.index', absolute: false),
-            ],
         ]);
     }
 

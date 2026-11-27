@@ -18,6 +18,7 @@ import {
 import { TransporterTdsPanel } from '@/components/masters/party-master/transporter-tds-panel';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { MobileNumberInput } from '@/components/ui/mobile-number-input';
 import { cn } from '@/lib/utils';
 
 export type PartyMasterFormFieldsProps = {
@@ -313,7 +314,7 @@ export function PartyMasterFormFields({
                                     ? 'Mobile number'
                                     : 'Contact number'}
                             </Label>
-                            <Input
+                            <MobileNumberInput
                                 id={`${idPrefix}contact_number`}
                                 name={nativeForm ? 'contact_number' : undefined}
                                 required={model.contactNumberRequired}

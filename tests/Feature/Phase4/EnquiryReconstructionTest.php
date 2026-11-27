@@ -3,9 +3,13 @@
 use App\Domains\Company\CompanyWorkspaceService;
 use App\Domains\Enquiry\EnquiryService;
 use App\Domains\Master\Catalogue\Enums\OwnerCatalogueType;
+use App\Domains\Master\Party\Enums\PartyRoleType;
+use App\Models\Branch;
 use App\Models\City;
 use App\Models\Company;
 use App\Models\OwnerCatalogueItem;
+use App\Models\Party;
+use App\Models\PartyRole;
 use App\Models\State;
 use App\Models\User;
 use App\Support\Tenant\TenantContext;
@@ -13,6 +17,7 @@ use App\Support\Tenant\TenantContextHolder;
 use Database\Seeders\RbacSeeder;
 use Database\Seeders\SubscriptionCatalogueSeeder;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 beforeEach(function () {
     TenantContextHolder::clear();
@@ -29,30 +34,18 @@ afterEach(function () {
  */
 function enquiryGeo(): array
 {
-    $state = State::query()->create([
-        'id' => (string) Str::uuid(),
-        'name' => 'Maharashtra',
-        'code' => 'MH',
-        'gst_code' => '27',
-        'country_code' => 'IN',
-        'is_active' => true,
-    ]);
+    $state = State::query()->firstOrCreate(
+        ['country_code' => 'IN', 'code' => 'MH'],
+        ['id' => (string) Str::uuid(), 'name' => 'Maharashtra', 'gst_code' => '27', 'is_active' => true],
+    );
 
-    $mumbai = City::query()->create([
-        'id' => (string) Str::uuid(),
-        'state_id' => $state->id,
-        'name' => 'Mumbai',
-        'name_normalized' => City::normalizeName('Mumbai'),
-        'is_active' => true,
-    ]);
+    $city = fn (string $name): City => City::query()->firstOrCreate(
+        ['state_id' => $state->id, 'name_normalized' => City::normalizeName($name)],
+        ['id' => (string) Str::uuid(), 'name' => $name, 'is_active' => true],
+    );
 
-    $pune = City::query()->create([
-        'id' => (string) Str::uuid(),
-        'state_id' => $state->id,
-        'name' => 'Pune',
-        'name_normalized' => City::normalizeName('Pune'),
-        'is_active' => true,
-    ]);
+    $mumbai = $city('Mumbai');
+    $pune = $city('Pune');
 
     return compact('state', 'mumbai', 'pune');
 }
@@ -155,4 +148,133 @@ test('website v1 field mapping resolves goods weight and route text', function (
         ->and($enquiry->vehicle_type_id)->toBe($truck->id)
         ->and($enquiry->instructions)->toBe('Website v1 mapping')
         ->and($enquiry->goodsRows->first()->goods_type_id)->toBe($goodsType->id);
+});
+
+/**
+ * @return array{owner: User, company: Company, branch: Branch, geo: array{state: State, mumbai: City, pune: City}, base: array<string, mixed>}
+ */
+function enquiryRouteFixture(): array
+{
+    $geo = enquiryGeo();
+    $owner = User::factory()->customer()->create();
+    $company = app(CompanyWorkspaceService::class)->createCompany($owner, 'Route Derivation Co');
+    $branch = $company->branches()->firstOrFail();
+
+    $catalogue = fn (OwnerCatalogueType $type): OwnerCatalogueItem => OwnerCatalogueItem::factory()->create([
+        'owner_user_id' => $owner->id,
+        'catalogue_type' => $type->value,
+        'is_active' => true,
+    ]);
+
+    TenantContextHolder::inject(new TenantContext(
+        companyId: $company->id,
+        branchId: $branch->id,
+        ownerId: (string) $company->owner_user_id,
+    ));
+
+    return [
+        'owner' => $owner,
+        'company' => $company,
+        'branch' => $branch,
+        'geo' => $geo,
+        'base' => [
+            'party_name' => 'Route Party',
+            'vehicle_type_id' => $catalogue(OwnerCatalogueType::TruckType)->id,
+            'goods_type_id' => $catalogue(OwnerCatalogueType::GoodsType)->id,
+            'weight_mt' => 5,
+        ],
+    ];
+}
+
+function enquiryRouteParty(Company $company, PartyRoleType $role, ?City $city): Party
+{
+    $party = Party::factory()->create([
+        'company_id' => $company->id,
+        'state_id' => $city?->state_id,
+        'city_id' => $city?->id,
+    ]);
+    PartyRole::factory()->create(['company_id' => $company->id, 'party_id' => $party->id, 'role' => $role->value]);
+
+    return $party;
+}
+
+test('manual enquiry derives each route side from the consignor and consignee master location', function () {
+    ['owner' => $owner, 'company' => $company, 'branch' => $branch, 'geo' => $geo, 'base' => $base] = enquiryRouteFixture();
+    $consignor = enquiryRouteParty($company, PartyRoleType::Consignor, $geo['mumbai']);
+    $consignee = enquiryRouteParty($company, PartyRoleType::Consignee, $geo['pune']);
+
+    $enquiry = app(EnquiryService::class)->createManual($company, $branch, $owner, [
+        ...$base,
+        'consignor_party_id' => $consignor->id,
+        'consignee_party_id' => $consignee->id,
+        'from_state_id' => $geo['state']->id,
+        'from_city_id' => $geo['pune']->id,
+        'to_state_id' => $geo['state']->id,
+        'to_city_id' => $geo['mumbai']->id,
+    ]);
+
+    expect($enquiry->from_city_id)->toBe($geo['mumbai']->id)
+        ->and($enquiry->to_city_id)->toBe($geo['pune']->id)
+        ->and($enquiry->pickup_location)->toContain('Mumbai')
+        ->and($enquiry->delivery_location)->toContain('Pune');
+});
+
+test('manual enquiry uses the submitted route for a side whose party has no master location', function () {
+    ['owner' => $owner, 'company' => $company, 'branch' => $branch, 'geo' => $geo, 'base' => $base] = enquiryRouteFixture();
+    $consignor = enquiryRouteParty($company, PartyRoleType::Consignor, $geo['mumbai']);
+    $consignee = enquiryRouteParty($company, PartyRoleType::Consignee, null);
+
+    $enquiry = app(EnquiryService::class)->createManual($company, $branch, $owner, [
+        ...$base,
+        'consignor_party_id' => $consignor->id,
+        'consignee_party_id' => $consignee->id,
+        'to_state_id' => $geo['state']->id,
+        'to_city_id' => $geo['pune']->id,
+    ]);
+
+    expect($enquiry->from_city_id)->toBe($geo['mumbai']->id)
+        ->and($enquiry->to_city_id)->toBe($geo['pune']->id);
+});
+
+test('manual enquiry requires the destination when the consignee has no master location', function () {
+    ['owner' => $owner, 'company' => $company, 'branch' => $branch, 'geo' => $geo, 'base' => $base] = enquiryRouteFixture();
+    $consignor = enquiryRouteParty($company, PartyRoleType::Consignor, $geo['mumbai']);
+
+    expect(fn () => app(EnquiryService::class)->createManual($company, $branch, $owner, [
+        ...$base,
+        'consignor_party_id' => $consignor->id,
+    ]))->toThrow(function (ValidationException $e): void {
+        expect($e->errors())->toHaveKey('to_state_id')->not->toHaveKey('from_state_id');
+    });
+});
+
+test('manual enquiry reports invalid submitted geography against the route field', function () {
+    ['owner' => $owner, 'company' => $company, 'branch' => $branch, 'geo' => $geo, 'base' => $base] = enquiryRouteFixture();
+
+    expect(fn () => app(EnquiryService::class)->createManual($company, $branch, $owner, [
+        ...$base,
+        'from_state_id' => $geo['state']->id,
+        'from_city_id' => (string) Str::uuid(),
+        'to_state_id' => $geo['state']->id,
+        'to_city_id' => $geo['pune']->id,
+    ]))->toThrow(function (ValidationException $e): void {
+        expect($e->errors())->toHaveKey('from_city_id');
+    });
+});
+
+test('replacing the consignor on edit recomputes the origin from the new party', function () {
+    ['owner' => $owner, 'company' => $company, 'branch' => $branch, 'geo' => $geo, 'base' => $base] = enquiryRouteFixture();
+    $enquiry = app(EnquiryService::class)->createManual($company, $branch, $owner, [
+        ...$base,
+        'consignor_party_id' => enquiryRouteParty($company, PartyRoleType::Consignor, $geo['mumbai'])->id,
+        'to_state_id' => $geo['state']->id,
+        'to_city_id' => $geo['mumbai']->id,
+    ]);
+
+    $updated = app(EnquiryService::class)->updateManual($company, $branch, $enquiry, $owner, [
+        'consignor_party_id' => enquiryRouteParty($company, PartyRoleType::Consignor, $geo['pune'])->id,
+    ], 'Consignor changed');
+
+    expect($updated->from_city_id)->toBe($geo['pune']->id)
+        ->and($updated->to_city_id)->toBe($geo['mumbai']->id);
 });

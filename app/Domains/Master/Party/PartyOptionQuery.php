@@ -85,7 +85,7 @@ final class PartyOptionQuery
     }
 
     /**
-     * @return array{id: string, name: string, short_name: string, city: string|null, state: string|null, contact_number: string|null}
+     * @return array{id: string, name: string, short_name: string, city: string|null, state: string|null, city_id: string|null, state_id: string|null, contact_number: string|null}
      */
     private function optionPayload(Party $party): array
     {

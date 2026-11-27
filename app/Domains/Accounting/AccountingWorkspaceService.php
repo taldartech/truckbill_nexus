@@ -5,6 +5,7 @@ namespace App\Domains\Accounting;
 use App\Domains\Accounting\Enums\AccountingVoucherStatus;
 use App\Domains\Accounting\Enums\AccountingVoucherType;
 use App\Domains\Accounting\Enums\AccountNature;
+use App\Models\AccountingPeriod;
 use App\Models\AccountingVoucher;
 use App\Models\AccountingVoucherLine;
 use App\Models\Branch;
@@ -49,6 +50,7 @@ final class AccountingWorkspaceService
         ?string $toDate = null,
         ?string $voucherType = null,
         int $perPage = 25,
+        ?string $financialYearId = null,
     ): LengthAwarePaginator {
         $builder = AccountingVoucher::query()
             ->where('company_id', $company->id)
@@ -64,6 +66,15 @@ final class AccountingWorkspaceService
             });
         }
 
+        if (filled($financialYearId)) {
+            $financialYear = AccountingPeriod::query()
+                ->where('company_id', $company->id)
+                ->whereKey($financialYearId)
+                ->firstOrFail();
+            $builder->whereDate('voucher_date', '>=', $financialYear->starts_on->toDateString())
+                ->whereDate('voucher_date', '<=', $financialYear->ends_on->toDateString());
+        }
+
         if (filled($fromDate)) {
             $builder->whereDate('voucher_date', '>=', $fromDate);
         }
@@ -77,6 +88,22 @@ final class AccountingWorkspaceService
         }
 
         return $builder->paginate($perPage);
+    }
+
+    /**
+     * @return list<array{value: string, label: string}>
+     */
+    public function financialYearOptions(Company $company): array
+    {
+        return array_values(AccountingPeriod::query()
+            ->where('company_id', $company->id)
+            ->orderByDesc('starts_on')
+            ->get(['id', 'label'])
+            ->map(fn (AccountingPeriod $period): array => [
+                'value' => (string) $period->id,
+                'label' => (string) $period->label,
+            ])
+            ->all());
     }
 
     /**

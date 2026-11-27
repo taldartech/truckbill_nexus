@@ -1,6 +1,7 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, useForm } from '@inertiajs/react';
 import type { FormEvent } from 'react';
 import { useState } from 'react';
+import { AccountingBackAction } from '@/components/accounting/accounting-back-action';
 import { AppIndexListCard, AppIndexPage } from '@/components/app-index-page';
 import InputError from '@/components/input-error';
 import { Badge } from '@/components/ui/badge';
@@ -61,8 +62,6 @@ type Props = {
         dry_run: string;
         confirm: string;
         catch_up: string;
-        reconciliation: string;
-        vouchers: string;
     };
 };
 
@@ -165,18 +164,7 @@ export default function AccountingActivation({ activation, urls }: Props) {
             <AppIndexPage>
                 <AppIndexListCard
                     title="Accounting Activation, Opening Cutover & Catch-up"
-                    toolbar={
-                        <div className="flex flex-wrap gap-2">
-                            <Button asChild variant="outline" size="sm">
-                                <Link href={urls.reconciliation}>
-                                    Reconciliation
-                                </Link>
-                            </Button>
-                            <Button asChild variant="outline" size="sm">
-                                <Link href={urls.vouchers}>Day Book</Link>
-                            </Button>
-                        </div>
-                    }
+                    toolbar={<AccountingBackAction />}
                 >
                     <div className="grid gap-3 border-b p-4 md:grid-cols-4">
                         <div>

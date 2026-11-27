@@ -733,6 +733,7 @@ export default function LrForm({
         Boolean(vehicleId) &&
         selectedVehicle?.ownership === 'own';
     const showPayTo = isMarketVehicle;
+    const marketVehicleHasOwner = Boolean(selectedVehicle?.owner_party_id);
     const showPayeeRow =
         showPayTo &&
         (intendedPayeeType === 'owner' || intendedPayeeType === 'agency');
@@ -774,6 +775,20 @@ export default function LrForm({
             setTdsPreviewLabel('—');
         }
     }, [isMarketVehicle]);
+
+    useEffect(() => {
+        if (
+            !isMarketVehicle ||
+            marketVehicleHasOwner ||
+            intendedPayeeType === 'agency'
+        ) {
+            return;
+        }
+        if (intendedPayeeType === 'owner') {
+            setIntendedPayeePartyId('');
+        }
+        setIntendedPayeeType('agency');
+    }, [intendedPayeeType, isMarketVehicle, marketVehicleHasOwner]);
 
     useEffect(() => {
         if (!isOwnVehicle) {
@@ -894,13 +909,6 @@ export default function LrForm({
                 </Badge>
             );
         }
-        if (selectedVehicle.ownership === 'market') {
-            return (
-                <Badge variant="outline" className="shrink-0">
-                    Market
-                </Badge>
-            );
-        }
         return null;
     }, [selectedVehicle?.ownership]);
 
@@ -1013,10 +1021,7 @@ export default function LrForm({
                 (option) => option.id === billingCustomerId,
             )?.name ?? selectedOptionLabel('billing_customer_party_id');
         const vehicleLabel =
-            selectedVehicleMeta?.label ??
-            selectedVehicleMeta?.registration_number ??
-            formOptions.vehicles?.find((option) => option.id === vehicleId)
-                ?.label ??
+            selectedVehicle?.registration_number ??
             selectedOptionLabel('vehicle_id');
         const consignorName =
             consignorParty?.name ?? selectedOptionLabel('consignor_party_id');
@@ -1384,6 +1389,7 @@ export default function LrForm({
                 {
                     label: 'Final Amount',
                     value: String(summary.totalAmount),
+                    emphasis: 'total',
                 },
             );
         }
@@ -1848,6 +1854,9 @@ export default function LrForm({
                                                             value={
                                                                 intendedPayeeType
                                                             }
+                                                            ownerUnavailable={
+                                                                !marketVehicleHasOwner
+                                                            }
                                                             onChange={(
                                                                 next,
                                                             ) => {
@@ -1869,6 +1878,20 @@ export default function LrForm({
                                                             name="intended_payee_type"
                                                             value={
                                                                 intendedPayeeType
+                                                            }
+                                                        />
+                                                        {!marketVehicleHasOwner ? (
+                                                            <p className="text-xs text-muted-foreground">
+                                                                This truck has
+                                                                no owner on
+                                                                record, so
+                                                                payment goes to
+                                                                an Agency.
+                                                            </p>
+                                                        ) : null}
+                                                        <InputError
+                                                            message={
+                                                                errors.intended_payee_type
                                                             }
                                                         />
                                                     </div>

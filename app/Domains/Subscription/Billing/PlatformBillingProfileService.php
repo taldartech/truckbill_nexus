@@ -12,6 +12,7 @@ use App\Models\PlatformBillingProfile;
 use App\Models\State;
 use App\Models\SubscriptionTaxSetting;
 use App\Models\User;
+use App\Rules\IndianMobileNumber;
 use App\Support\Audit\AuditAction;
 use App\Support\Audit\AuditedTransaction;
 use App\Support\Audit\AuditWriter;
@@ -397,11 +398,8 @@ final class PlatformBillingProfileService
             throw ValidationException::withMessages(['pan' => 'A valid PAN is required (e.g. AABCT1234F).']);
         }
 
-        $digits = preg_replace('/\D+/', '', (string) ($payload['contact_number'] ?? '')) ?? '';
-        if (strlen($digits) === 12 && str_starts_with($digits, '91')) {
-            $digits = substr($digits, 2);
-        }
-        if (! preg_match(CompanyProfileValidator::MOBILE_PATTERN, $digits)) {
+        $digits = IndianMobileNumber::normalizeExternal((string) ($payload['contact_number'] ?? ''));
+        if (! IndianMobileNumber::isValid($digits)) {
             throw ValidationException::withMessages(['contact_number' => 'A valid 10-digit Indian Contact Number is required.']);
         }
 

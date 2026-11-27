@@ -21,6 +21,7 @@ use App\Models\Company;
 use App\Models\CompanyMembership;
 use App\Models\Role;
 use App\Models\User;
+use App\Rules\IndianMobileNumber;
 use App\Support\Audit\AuditEntry;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -254,7 +255,7 @@ class OwnerBranchesController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'remark' => ['required', 'string', 'max:1000'],
-            'contact_number' => ['nullable', 'digits:10'],
+            'contact_number' => ['nullable', 'string', new IndianMobileNumber],
             'is_head_office' => ['required', 'boolean'],
             'address' => ['nullable', 'string', 'max:2000'],
             'state_id' => ['nullable', 'uuid', Rule::exists('states', 'id')->where(fn ($query) => $query->where('is_active', true))],
@@ -336,7 +337,7 @@ class OwnerBranchesController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'contact_number' => ['nullable', 'digits:10'],
+            'contact_number' => ['nullable', 'string', new IndianMobileNumber],
             'is_head_office' => ['required', 'boolean'],
             'address' => ['nullable', 'string', 'max:2000'],
             'state_id' => ['nullable', 'uuid', Rule::exists('states', 'id')->where(fn ($query) => $query->where('is_active', true))],

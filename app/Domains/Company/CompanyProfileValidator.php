@@ -8,6 +8,7 @@ use App\Domains\Company\Enums\TaxLiability;
 use App\Domains\Company\Exceptions\CompanyDomainException;
 use App\Domains\Geography\GeographyLookupService;
 use App\Models\GstRate;
+use App\Rules\IndianMobileNumber;
 use Illuminate\Support\Carbon;
 use Illuminate\Validation\ValidationException;
 
@@ -21,8 +22,6 @@ final class CompanyProfileValidator
     public const GSTIN_PATTERN = '/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/';
 
     public const PIN_PATTERN = '/^[1-9][0-9]{5}$/';
-
-    public const MOBILE_PATTERN = '/^[6-9][0-9]{9}$/';
 
     public function __construct(
         private readonly GeographyLookupService $geography = new GeographyLookupService,
@@ -97,8 +96,8 @@ final class CompanyProfileValidator
             throw new CompanyDomainException('A valid 6-digit PIN is required.');
         }
 
-        if ($normalized['mobile'] === '' || ! preg_match(self::MOBILE_PATTERN, $normalized['mobile'])) {
-            throw new CompanyDomainException('A valid 10-digit mobile number is required.');
+        if (! IndianMobileNumber::isValid($normalized['mobile'])) {
+            throw new CompanyDomainException(IndianMobileNumber::MESSAGE);
         }
 
         if ($normalized['gst_registration_type'] === null) {

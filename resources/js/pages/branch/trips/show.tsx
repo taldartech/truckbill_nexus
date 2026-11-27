@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from 'react';
 import { AppIconAction } from '@/components/app-icon-action';
 import {
     DocumentDrawer,
+    DocumentSectionList,
     type DocumentDrawerProps,
 } from '@/components/masters/document-drawer';
 import {
@@ -1645,12 +1646,15 @@ export default function TripShow({
                                 </div>
                             </TripDetailCard>
 
-                            <TripDetailCard title="Documents">
+                            <TripDetailCard
+                                title={documentDrawer?.title ?? 'Documents'}
+                            >
                                 <div className="space-y-3 p-4">
                                     <p className="text-sm text-muted-foreground">
-                                        Upload supporting trip files and
-                                        optional POD from this screen. POD is
-                                        not required to complete the trip.
+                                        Upload the POD separately from
+                                        supporting trip files. POD is not
+                                        required to complete the trip, and
+                                        supporting files never count as POD.
                                     </p>
                                     <div className="flex flex-wrap gap-2">
                                         <Button asChild variant="secondary">
@@ -1684,52 +1688,12 @@ export default function TripShow({
                                         ) : null}
                                     </div>
                                     {documentDrawer ? (
-                                        <ul className="divide-y divide-border rounded-lg border border-border text-sm">
-                                            {documentDrawer.attachments
-                                                .length === 0 ? (
-                                                <li className="px-3 py-2 text-muted-foreground">
-                                                    No trip documents yet.
-                                                </li>
-                                            ) : (
-                                                documentDrawer.attachments.map(
-                                                    (attachment) => (
-                                                        <li
-                                                            key={attachment.id}
-                                                            className="flex flex-wrap items-center justify-between gap-2 px-3 py-2"
-                                                        >
-                                                            <span>
-                                                                {attachment.label ||
-                                                                    attachment
-                                                                        .file
-                                                                        ?.original_name ||
-                                                                    attachment.document_type ||
-                                                                    'Attachment'}
-                                                                {attachment.is_current
-                                                                    ? ''
-                                                                    : ' (history)'}
-                                                            </span>
-                                                            {attachment.download_url ? (
-                                                                <a
-                                                                    className="text-sm text-[#2A6FDB] underline"
-                                                                    href={
-                                                                        attachment.download_url
-                                                                    }
-                                                                >
-                                                                    Download
-                                                                </a>
-                                                            ) : (
-                                                                <span className="text-xs text-muted-foreground">
-                                                                    {attachment
-                                                                        .file
-                                                                        ?.scan_status ??
-                                                                        'Unavailable'}
-                                                                </span>
-                                                            )}
-                                                        </li>
-                                                    ),
-                                                )
-                                            )}
-                                        </ul>
+                                        <DocumentSectionList
+                                            sections={documentDrawer.sections}
+                                            attachments={
+                                                documentDrawer.attachments
+                                            }
+                                        />
                                     ) : null}
                                 </div>
                             </TripDetailCard>
@@ -1779,7 +1743,6 @@ export default function TripShow({
                 <DocumentDrawer
                     open={docsOpen}
                     onOpenChange={setDocsOpen}
-                    title="Trip documents"
                     {...documentDrawer}
                 />
             ) : null}

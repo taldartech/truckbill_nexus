@@ -3,6 +3,8 @@ export type FieldReview = {
     value: string;
     /** Optional grouping key for two-column review layout */
     group?: string;
+    /** Render as a prominent total row (financial summaries). */
+    emphasis?: 'total';
 };
 
 export type FieldReviewTable = {
@@ -29,6 +31,13 @@ export type ChangeReview = {
 
 export type FormConfirmationMode = 'create' | 'edit' | 'destructive';
 
+export type FormConfirmationReason = {
+    label?: string;
+    placeholder?: string;
+    /** Server-side error for the reason (e.g. a rejected remark). */
+    error?: string | null;
+};
+
 export type FormConfirmationProps = {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -39,8 +48,14 @@ export type FormConfirmationProps = {
     /** Optional pre-grouped sections (takes precedence over flat fields when provided). */
     sections?: FieldReviewSection[];
     changes?: ChangeReview[];
+    /** Edit audit remark entered on the form, shown with the changes. */
+    remark?: string;
+    /** Destructive: what will happen when the action is confirmed. */
+    consequences?: string[];
+    /** Destructive: capture a mandatory reason inside the dialog; it is passed to `onConfirm`. */
+    reason?: FormConfirmationReason;
     processing?: boolean;
-    onConfirm: () => void;
+    onConfirm: (reason?: string) => void;
     confirmLabel?: string;
     /** Optional second primary path (e.g. Save & Create Lorry Hire). */
     onSecondaryConfirm?: () => void;

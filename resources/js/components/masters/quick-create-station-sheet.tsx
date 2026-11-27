@@ -244,6 +244,7 @@ export function QuickCreateStationSheet({
                         </div>
 
                         <StateCityFields
+                            required
                             canQuickCreate={canQuickCreateGeography}
                             stateId={draft.state_id}
                             cityId={draft.city_id}

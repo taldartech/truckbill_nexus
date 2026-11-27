@@ -1,5 +1,6 @@
-import { Form, Head, Link } from '@inertiajs/react';
+import { Form, Head } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
+import { AccountingBackAction } from '@/components/accounting/accounting-back-action';
 import { AppIndexListCard, AppIndexPage } from '@/components/app-index-page';
 import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
@@ -17,7 +18,7 @@ type LineDraft = {
 
 type Props = {
     ledgers: LedgerOption[];
-    urls: { store: string; index: string };
+    urls: { store: string };
 };
 
 function emptyLine(): LineDraft {
@@ -71,11 +72,7 @@ export default function AccountingOpeningBalanceCreate({
             <AppIndexPage>
                 <AppIndexListCard
                     title="Opening Balances"
-                    toolbar={
-                        <Button asChild variant="outline" size="sm">
-                            <Link href={urls.index}>Day Book</Link>
-                        </Button>
-                    }
+                    toolbar={<AccountingBackAction />}
                 >
                     <Form
                         action={urls.store}

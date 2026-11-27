@@ -21,20 +21,37 @@ afterEach(function (): void {
     TenantContextHolder::clear();
 });
 
-it('creates station via json quick-create without code', function (): void {
+function actAsStationOwnerInBranch(): void
+{
     $owner = User::factory()->customer()->create([
         'password' => Hash::make('owner-secret'),
     ]);
     $company = app(CompanyWorkspaceService::class)->createCompany($owner, 'Station QA Co');
     $branch = $company->branches()->firstOrFail();
 
-    $this->flushSession();
-    $this->actingAs($owner);
+    test()->flushSession();
+    test()->actingAs($owner);
     session()->forget(WebSessionService::SESSION_VERSION_KEY);
     seedBranchSession($company, $branch);
+}
+
+it('requires master state and city when creating a station', function (): void {
+    actAsStationOwnerInBranch();
+
+    $this->postJson(route('branch.stations.store'), ['name' => 'No Geography Hub'])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors(['state_id', 'city_id']);
+});
+
+it('creates station via json quick-create without code', function (): void {
+    actAsStationOwnerInBranch();
+
+    $geo = geographyIdsFor();
 
     $response = $this->postJson(route('branch.stations.store'), [
         'name' => 'Andheri Hub',
+        'state_id' => $geo['state_id'],
+        'city_id' => $geo['city_id'],
         'remark' => 'Quick create',
     ]);
 

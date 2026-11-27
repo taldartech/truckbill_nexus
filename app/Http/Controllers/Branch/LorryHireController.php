@@ -12,23 +12,19 @@ use App\Domains\Broker\LorryHire\LorryHireCalculationService;
 use App\Domains\Broker\LorryHire\LorryHireCancellationService;
 use App\Domains\Broker\LorryHire\LorryHireService;
 use App\Domains\Company\CompanyAccessService;
+use App\Domains\Consignment\Enums\FreightRateSemantics;
 use App\Domains\Consignment\Enums\FreightRateType;
 use App\Domains\Consignment\Enums\LrWorkflowContext;
 use App\Domains\Consignment\Support\FreightRateTypeCatalog;
-use App\Domains\Master\Party\Enums\PartyRoleType;
-use App\Domains\Master\Party\PartyOptionQuery;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
-use App\Domains\Tax\Exceptions\TaxDomainException;
-use App\Domains\Tax\TransporterTdsCalculationService;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Controller;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\LorryHire;
 use App\Models\LorryReceipt;
-use App\Models\Party;
-use App\Models\PartyRole;
+use App\Models\LrGoodsRow;
 use App\Models\User;
 use App\Support\Presentation\FreightAmountPresentation;
 use Illuminate\Http\RedirectResponse;
@@ -53,7 +49,6 @@ class LorryHireController extends Controller
         private readonly LorryHireCalculationService $calculations,
         private readonly BrokerAdjustmentService $adjustments,
         private readonly FreightAmountPresentation $freightPresentation,
-        private readonly TransporterTdsCalculationService $tds = new TransporterTdsCalculationService,
     ) {}
 
     public function index(Request $request, Company $company, Branch $branch): Response
@@ -146,73 +141,58 @@ class LorryHireController extends Controller
         $lorryReceipt->load([
             'fromStation',
             'toStation',
-            'consignor',
-            'consignee',
             'billingCustomer',
             'vehicle.ownerParty',
             'goodsRows.goodsType',
-            'ewayBills',
         ]);
 
-        $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
-        $payee = $this->payeePreview($lorryReceipt, $company, $branch);
-        $tdsPreview = $payee !== null ? $this->tdsPreviewForPayee($payee) : null;
+        $payee = null;
+        $payeeBlockedReason = null;
+        try {
+            $payee = $this->lorryHires->inheritedPayee($lorryReceipt, $company, $branch);
+        } catch (ValidationException $e) {
+            $payeeBlockedReason = $e->errors()['payee'][0] ?? 'The Bilty Payee cannot be used for a Lorry Hire.';
+        }
+
+        $canCreateVoucher = $this->authorizer->allowsCustomer(
+            $actor,
+            PermissionCodes::BROKER_VOUCHER_CREATE,
+            $company,
+            $branch,
+        );
 
         return Inertia::render('broker/lorry-hires/create', [
             'lorryReceipt' => [
                 'id' => $lorryReceipt->id,
                 'lr_number' => $lorryReceipt->lr_number,
-                'lr_date' => $lorryReceipt->lr_date?->format('d-m-Y'),
-                'billing_customer_name' => $lorryReceipt->billingCustomer?->name,
-                'consignor_name' => $lorryReceipt->consignor?->name,
-                'consignee_name' => $lorryReceipt->consignee?->name,
+                'lr_date' => $lorryReceipt->lr_date?->toDateString(),
+                'customer_name' => $lorryReceipt->billingCustomer?->name,
                 'vehicle_registration' => $lorryReceipt->vehicle?->registration_number,
-                'from_text' => $lorryReceipt->from_text,
-                'to_text' => $lorryReceipt->to_text,
+                'vehicle_owner_name' => $lorryReceipt->vehicle?->ownerParty?->name,
                 'loading_station' => $this->loadingStationLabel($lorryReceipt),
                 'unloading_station' => $this->unloadingStationLabel($lorryReceipt),
-                'customer_freight_total' => $this->freightPresentation->presentAmount(
-                    $lorryReceipt->freight_total,
-                    $maySeeFreight,
-                ),
-                'eway_bills' => $lorryReceipt->ewayBills->map(fn ($row): array => [
-                    'ewb_number' => $row->ewb_number,
-                    'ewb_date' => $row->ewb_date?->format('d-m-Y'),
-                    'valid_until' => $row->valid_until?->format('d-m-Y'),
-                ])->values()->all(),
             ],
-            'payee' => $payee,
-            'suggestedPayeeId' => $payee['id'] ?? null,
-            'transporterOptions' => $this->transporterOptions($company, $branch),
-            // Payee is always required for Broker hire; null payee means Bilty must be corrected.
-            'payeeRequired' => true,
-            'tdsPreview' => $tdsPreview,
-            'goodsRows' => $lorryReceipt->goodsRows->map(function ($row) use ($maySeeFreight): array {
-                $type = $row->freight_rate_type;
-
-                return [
-                    'id' => $row->id,
-                    'goods_type_name' => $row->goodsType?->name,
-                    'goods_description' => $row->goods_description,
-                    'package_count' => $row->package_count,
-                    'actual_weight' => $row->actual_weight,
-                    'charged_weight' => $row->charged_weight,
-                    'customer_rate_type' => $type->value,
-                    'customer_rate_type_label' => $this->freightRateTypeLabel($type),
-                    'customer_freight_rate' => $this->freightPresentation->presentAmount($row->freight_rate, $maySeeFreight),
-                    'customer_freight_amount' => $this->freightPresentation->presentAmount($row->freight_amount, $maySeeFreight),
-                    'suggested_loading_weight' => $row->charged_weight ?? $row->actual_weight,
-                ];
-            })->values()->all(),
-            'rateTypeOptions' => $this->freightRateTypeOptions(),
-            'permissions' => $this->lorryHirePermissions($actor, $company, $branch, $maySeeFreight),
+            'payee' => $payee !== null ? ['id' => $payee->id, 'name' => $payee->name] : null,
+            'payeeBlockedReason' => $payeeBlockedReason,
+            'tdsPreview' => $payee !== null ? $this->lorryHires->tdsPreviewForPayee($payee) : null,
+            'goodsRows' => $lorryReceipt->goodsRows->map(fn (LrGoodsRow $row): array => [
+                'id' => $row->id,
+                'label' => $this->goodsRowLabel($row),
+                'package_count' => $row->package_count,
+                'actual_weight' => $row->actual_weight,
+                'charged_weight' => $row->charged_weight,
+                'rate_semantics' => ($row->rate_semantics ?? FreightRateSemantics::WeightKg)->value,
+            ])->values()->all(),
+            'rateTypeOptions' => FreightRateTypeCatalog::inertiaOptions(),
+            'defaults' => [
+                'hire_date' => $this->lorryHires->defaultHireDate($company),
+                'rate_type' => FreightRateTypeCatalog::default()->value,
+            ],
+            'permissions' => ['can_create_voucher' => $canCreateVoucher],
             'urls' => [
                 'store' => route('branch.broker.lorry-hires.store-from-lr', [$lorryReceipt], absolute: false),
                 'lr_show' => route('branch.lorry-receipts.show', [$lorryReceipt], absolute: false),
-                'index' => route('branch.broker.lorry-hires.index', absolute: false),
-                'parties_options' => route('branch.parties.options', absolute: false),
-                'parties_store' => route('branch.parties.store', absolute: false),
-                'parties_create' => route('branch.parties.create', absolute: false),
+                'lr_edit' => route('branch.lorry-receipts.edit', [$lorryReceipt], absolute: false),
             ],
         ]);
     }
@@ -227,26 +207,7 @@ class LorryHireController extends Controller
         $this->assertPermission($actor, $company, $branch, PermissionCodes::BROKER_LORRY_HIRE_CREATE);
         $this->assertLr($lorryReceipt, $company, $branch);
 
-        $validated = $request->validate([
-            'hire_date' => ['nullable', 'date'],
-            'remarks' => ['nullable', 'string', 'max:2000'],
-            // Inherited from Bilty intended payee — optional on wire; service rejects forgery.
-            'transporter_party_id' => ['nullable', 'uuid'],
-            'goods_lines' => ['required', 'array', 'min:1'],
-            'goods_lines.*.lr_goods_row_id' => ['required', 'uuid'],
-            'goods_lines.*.rate_type' => [
-                'nullable',
-                'string',
-                Rule::in(FreightRateTypeCatalog::selectableValues()),
-            ],
-            'goods_lines.*.rate' => ['required', 'numeric', 'min:0'],
-            'goods_lines.*.loading_weight' => ['nullable', 'numeric', 'min:0'],
-            'goods_lines.*.is_fixed_amount' => ['sometimes', 'boolean'],
-            'tds_override_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
-            'tds_override_remark' => ['nullable', 'string', 'max:2000'],
-            'redirect_to_voucher' => ['sometimes', 'boolean'],
-        ]);
-
+        // Repeat submission for a Bilty that already has an active hire → show the existing hire.
         $redirectToVoucher = $request->boolean('redirect_to_voucher')
             && $this->authorizer->allowsCustomer(
                 $actor,
@@ -255,6 +216,27 @@ class LorryHireController extends Controller
                 $branch,
             );
 
+        $existing = $this->lorryHires->lorryHireForLorryReceipt($lorryReceipt);
+        if ($existing !== null) {
+            return $this->redirectAfterHireCreate($existing, $redirectToVoucher, existing: true);
+        }
+
+        // Payee and loading weight are inherited from the Bilty; any client value is not accepted.
+        $validated = $request->validate([
+            'hire_date' => ['required', 'date'],
+            'remarks' => ['nullable', 'string', 'max:2000'],
+            'goods_lines' => ['required', 'array', 'min:1'],
+            'goods_lines.*.lr_goods_row_id' => ['required', 'uuid'],
+            'goods_lines.*.rate_type' => [
+                'required',
+                'string',
+                Rule::in(FreightRateTypeCatalog::selectableValues()),
+            ],
+            'goods_lines.*.rate' => ['required', 'numeric', 'min:0'],
+            'tds_override_rate' => ['nullable', 'numeric', 'min:0', 'max:100'],
+            'tds_override_remark' => ['nullable', 'string', 'max:2000'],
+        ]);
+
         try {
             $hire = $this->lorryHires->createFromLorryReceipt($lorryReceipt, $actor, $validated);
         } catch (ValidationException $e) {
@@ -262,15 +244,10 @@ class LorryHireController extends Controller
         } catch (BrokerAuthorizationException $e) {
             abort(403, $e->getMessage());
         } catch (BrokerConflictException $e) {
-            // Idempotent recovery for duplicate/concurrent submit of the same LR.
+            // Concurrent duplicate submit: the competing request created the hire first.
             $existing = $this->lorryHires->lorryHireForLorryReceipt($lorryReceipt);
-            if ($existing !== null
-                && str_contains($e->getMessage(), 'already has an active Lorry Hire')) {
-                return $this->redirectAfterHireCreate(
-                    $existing,
-                    $redirectToVoucher,
-                    existing: true,
-                );
+            if ($existing !== null) {
+                return $this->redirectAfterHireCreate($existing, $redirectToVoucher, existing: true);
             }
 
             throw ValidationException::withMessages(['goods_lines' => $e->getMessage()]);
@@ -709,101 +686,15 @@ class LorryHireController extends Controller
         return FreightRateTypeCatalog::label($type);
     }
 
-    /**
-     * @return list<array{value: string, label: string}>
-     */
-    private function freightRateTypeOptions(): array
+    private function goodsRowLabel(LrGoodsRow $row): string
     {
-        return FreightRateTypeCatalog::inertiaOptions();
-    }
+        $typeName = $row->goodsType?->name;
+        $description = filled($row->goods_description) ? (string) $row->goods_description : null;
 
-    /**
-     * @return array{id: string, name: string, role_label: string, pan_status_label: string|null}|null
-     */
-    private function payeePreview(LorryReceipt $lorryReceipt, Company $company, Branch $branch): ?array
-    {
-        // Never silently substitute Vehicle Owner — intended payee must be explicit on the Bilty.
-        $partyId = $lorryReceipt->intended_payee_party_id;
-        if ($partyId === null || $partyId === '') {
-            return null;
+        if ($typeName !== null && $description !== null) {
+            return $typeName.' — '.$description;
         }
 
-        $party = Party::query()
-            ->visibleInBranch($company->id, $branch->id)
-            ->whereKey($partyId)
-            ->whereNull('deleted_at')
-            ->first();
-
-        if ($party === null) {
-            return null;
-        }
-
-        $role = PartyRole::query()
-            ->where('company_id', $lorryReceipt->company_id)
-            ->where('party_id', $party->id)
-            ->where('role', PartyRoleType::Transporter->value)
-            ->whereNull('deleted_at')
-            ->whereNull('deactivated_at')
-            ->first();
-
-        $attrs = is_array($role?->role_attributes) ? $role->role_attributes : [];
-        $pan = trim((string) ($party->pan ?? ''));
-
-        return [
-            'id' => $party->id,
-            'name' => $party->name,
-            'role_label' => 'Transporter',
-            'pan_status_label' => $pan !== '' ? 'PAN available' : 'PAN missing',
-        ];
-    }
-
-    /**
-     * @param  array{id: string, name: string, role_label: string, pan_status_label: string|null}|null  $payee
-     * @return array{applicable_percent: string, explanation: string}|null
-     */
-    private function tdsPreviewForPayee(?array $payee): ?array
-    {
-        if ($payee === null) {
-            return null;
-        }
-
-        $party = Party::query()->find($payee['id']);
-        if ($party === null) {
-            return null;
-        }
-
-        $role = PartyRole::query()
-            ->where('company_id', $party->company_id)
-            ->where('party_id', $party->id)
-            ->where('role', PartyRoleType::Transporter->value)
-            ->whereNull('deleted_at')
-            ->whereNull('deactivated_at')
-            ->first();
-
-        $roleAttrs = is_array($role?->role_attributes) ? $role->role_attributes : [];
-        $context = $this->tds->buildContextFromTransporter(
-            ['pan' => $party->pan],
-            $roleAttrs,
-        );
-
-        try {
-            $result = $this->tds->calculate($context);
-        } catch (TaxDomainException) {
-            return null;
-        }
-
-        return [
-            'applicable_percent' => number_format((float) $result->applicableRate, 3, '.', ''),
-            'explanation' => (string) $result->explanation,
-        ];
-    }
-
-    /**
-     * @return list<array{id: string, name: string}>
-     */
-    private function transporterOptions(Company $company, Branch $branch): array
-    {
-        return app(PartyOptionQuery::class)
-            ->forRoles($company, $branch, PartyRoleType::Transporter);
+        return $typeName ?? $description ?? 'Goods';
     }
 }

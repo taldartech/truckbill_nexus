@@ -10,9 +10,11 @@ import {
 } from '@/components/fb-detail';
 import {
     DocumentDrawer,
+    DocumentSectionList,
     type DocumentDrawerProps,
 } from '@/components/masters/document-drawer';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { formatDisplayDate } from '@/lib/dates';
 
 type ProfileItem = { label: string; value: string; kind?: 'date' };
@@ -26,10 +28,7 @@ type Props = {
         available_balance: string;
         statement_url: string;
     } | null;
-    documentDrawer: Omit<
-        DocumentDrawerProps,
-        'open' | 'onOpenChange' | 'title'
-    > | null;
+    documentDrawer: Omit<DocumentDrawerProps, 'open' | 'onOpenChange'> | null;
     links: { index: string; edit: string; documents: string };
 };
 
@@ -101,7 +100,7 @@ export default function PartyShow({
                             {documentDrawer ? (
                                 <AppIconAction
                                     icon={FileText}
-                                    label="Documents"
+                                    label={documentDrawer.title}
                                     onClick={() => setDocsOpen(true)}
                                     variant="info"
                                     size="sm"
@@ -132,6 +131,29 @@ export default function PartyShow({
                         <ProfileItems items={section.items} />
                     </FbDetailCard>
                 ))}
+
+                {documentDrawer ? (
+                    <FbDetailCard
+                        title={documentDrawer.title}
+                        actions={
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => setDocsOpen(true)}
+                            >
+                                Manage documents
+                            </Button>
+                        }
+                    >
+                        <div className="px-4 py-3">
+                            <DocumentSectionList
+                                sections={documentDrawer.sections}
+                                attachments={documentDrawer.attachments}
+                            />
+                        </div>
+                    </FbDetailCard>
+                ) : null}
 
                 {bookBalance ? (
                     <FbDetailCard title="Financial">

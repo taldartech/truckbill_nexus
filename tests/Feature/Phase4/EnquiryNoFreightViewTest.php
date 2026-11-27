@@ -123,6 +123,13 @@ function enquiryNfWorkspace(): array
         'is_active' => true,
     ]);
 
+    $goodsType = OwnerCatalogueItem::factory()->create([
+        'owner_user_id' => $owner->id,
+        'catalogue_type' => OwnerCatalogueType::GoodsType->value,
+        'name' => 'Boxes',
+        'is_active' => true,
+    ]);
+
     TenantContextHolder::inject(new TenantContext(
         companyId: $company->id,
         branchId: $branch->id,
@@ -167,18 +174,18 @@ function enquiryNfWorkspace(): array
         remark: 'NF transporter',
     );
 
+    $origin = geographyIdsFor('Maharashtra', 'Pune');
+    $destination = geographyIdsFor('Maharashtra', 'Mumbai City');
     $enquiry = app(EnquiryService::class)->createManual($company, $branch, $admin, [
         'customer_party_id' => $customer->id,
-        'pickup_location' => 'Pune',
-        'delivery_location' => 'Mumbai',
+        'from_state_id' => $origin['state_id'],
+        'from_city_id' => $origin['city_id'],
+        'to_state_id' => $destination['state_id'],
+        'to_city_id' => $destination['city_id'],
         'vehicle_type_id' => $truck->id,
         'vehicle_quantity' => 1,
-        'goods' => [[
-            'goods_description' => 'Boxes',
-            'package_count' => 10,
-            'actual_weight' => 100,
-            'charged_weight' => 100,
-        ]],
+        'goods_type_id' => $goodsType->id,
+        'weight_mt' => 0.1,
     ]);
 
     app(EnquiryQuotationService::class)->create($company, $branch, $enquiry, $admin, [

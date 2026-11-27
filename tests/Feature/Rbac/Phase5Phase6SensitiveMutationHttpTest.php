@@ -211,6 +211,7 @@ test('owner without branch role can create subscribed broker lorry hire while un
     $before = LorryHire::query()->count();
     rbacHttpAs($ctx['owner'], $ctx);
     test()->post(route('branch.broker.lorry-hires.store-from-lr', $lr), [
+        'hire_date' => now()->toDateString(),
         'goods_lines' => brokerGoodsPayloadFromLr($lr),
     ])->assertRedirect();
 

@@ -1,11 +1,12 @@
-import { Form, Head, Link } from '@inertiajs/react';
+import { Form, Head } from '@inertiajs/react';
+import { AccountingBackAction } from '@/components/accounting/accounting-back-action';
 import { AppIndexListCard, AppIndexPage } from '@/components/app-index-page';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 
 type Props = {
-    urls: { store: string; index: string };
+    urls: { store: string };
 };
 
 export default function AccountingFundTransferCreate({ urls }: Props) {
@@ -15,11 +16,7 @@ export default function AccountingFundTransferCreate({ urls }: Props) {
             <AppIndexPage>
                 <AppIndexListCard
                     title="Cash / Bank Transfer"
-                    toolbar={
-                        <Button asChild variant="outline" size="sm">
-                            <Link href={urls.index}>Day Book</Link>
-                        </Button>
-                    }
+                    toolbar={<AccountingBackAction />}
                 >
                     <Form
                         action={urls.store}

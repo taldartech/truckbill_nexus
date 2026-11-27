@@ -5,6 +5,7 @@ import ShellEmptyState from '@/components/shell-empty-state';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { MobileNumberInput } from '@/components/ui/mobile-number-input';
 import {
     AppFormCard,
     AppFormGrid,
@@ -362,19 +363,14 @@ export default function OwnerBranchesCreate({
                                                 <Label htmlFor="contact_number">
                                                     Contact number
                                                 </Label>
-                                                <Input
+                                                <MobileNumberInput
                                                     id="contact_number"
                                                     name="contact_number"
-                                                    inputMode="numeric"
-                                                    maxLength={10}
                                                     placeholder="10-digit mobile"
                                                     value={contactNumber}
                                                     onChange={(e) =>
                                                         setContactNumber(
-                                                            e.target.value.replace(
-                                                                /\D/g,
-                                                                '',
-                                                            ),
+                                                            e.target.value,
                                                         )
                                                     }
                                                 />

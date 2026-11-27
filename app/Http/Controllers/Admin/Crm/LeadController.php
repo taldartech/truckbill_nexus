@@ -16,6 +16,7 @@ use App\Models\Crm\LeadFollowUp;
 use App\Models\InternalRoleAssignment;
 use App\Models\State;
 use App\Models\User;
+use App\Rules\IndianMobileNumber;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -523,7 +524,7 @@ class LeadController extends Controller
         return [
             'contact_name' => ['required', 'string', 'max:255'],
             'email' => ['nullable', 'email', 'max:255'],
-            'mobile' => ['nullable', 'string', 'max:20'],
+            'mobile' => ['nullable', 'string', new IndianMobileNumber],
             'company_name' => ['nullable', 'string', 'max:255'],
             'state' => ['nullable', 'string', 'max:100'],
             'city' => ['nullable', 'string', 'max:100'],

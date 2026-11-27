@@ -21,6 +21,7 @@ use App\Models\EnquiryExternalReference;
 use App\Models\EnquiryGoodsRow;
 use App\Models\EnquiryStatusHistory;
 use App\Models\User;
+use App\Rules\IndianMobileNumber;
 use App\Support\Audit\AuditAction;
 use App\Support\Audit\AuditedTransaction;
 use App\Support\Audit\AuditWriter;
@@ -522,7 +523,7 @@ final class EnquiryService
             'to_state_id' => $route['to_state_id'],
             'to_city_id' => $route['to_city_id'],
             'external_customer_name' => $businessName,
-            'external_customer_phone' => $this->optionalString($payload['contact_number'] ?? $payload['customer_phone'] ?? null),
+            'external_customer_phone' => $this->optionalMobile($payload['contact_number'] ?? $payload['customer_phone'] ?? null),
             'external_customer_email' => $this->optionalEmail($payload['email'] ?? $payload['customer_email'] ?? null),
             'external_business_name' => $this->optionalString($payload['business_name'] ?? null) ?? $businessName,
             'external_contact_person_name' => $this->optionalString($payload['contact_person_name'] ?? null),
@@ -575,6 +576,21 @@ final class EnquiryService
         $trimmed = trim((string) $value);
 
         return $trimmed === '' ? null : $trimmed;
+    }
+
+    private function optionalMobile(mixed $value): ?string
+    {
+        $raw = $this->optionalString($value);
+        if ($raw === null) {
+            return null;
+        }
+
+        $mobile = IndianMobileNumber::normalizeExternal($raw);
+        if (! IndianMobileNumber::isValid($mobile)) {
+            throw ValidationException::withMessages(['contact_number' => IndianMobileNumber::MESSAGE]);
+        }
+
+        return $mobile;
     }
 
     private function optionalEmail(mixed $value): ?string

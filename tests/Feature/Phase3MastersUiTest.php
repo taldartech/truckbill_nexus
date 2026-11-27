@@ -263,9 +263,11 @@ test('station create is owner-only while members can view directory', function (
     uiActingAsCustomer($owner);
     enterBranchWorkspace($company, $branch)->assertRedirect();
     $this->get(route('branch.stations.create'))->assertRedirect(route('branch.stations.index'));
+    $geo = geographyIdsFor('Maharashtra', 'Pune');
     $this->post(route('branch.stations.store'), [
         'name' => 'Pune',
-        'city' => 'Pune',
+        'state_id' => $geo['state_id'],
+        'city_id' => $geo['city_id'],
         'remark' => 'Create station',
     ])->assertRedirect();
 });

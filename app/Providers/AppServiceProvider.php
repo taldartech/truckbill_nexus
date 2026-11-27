@@ -15,6 +15,7 @@ use App\Domains\Subscription\Payments\Gateway\RazorpaySdkClient;
 use App\Domains\Subscription\Support\SubscriptionClock;
 use App\Models\User;
 use App\Policies\UserPolicy;
+use App\Support\Cache\RequestScopedMemo;
 use App\Support\Files\Scanning\MalwareScanner;
 use App\Support\Files\Scanning\MalwareScannerFactory;
 use Carbon\CarbonImmutable;
@@ -43,6 +44,7 @@ class AppServiceProvider extends ServiceProvider
         });
 
         $this->app->singleton(PermissionAuthorizer::class);
+        $this->app->scoped(RequestScopedMemo::class);
         $this->app->singleton(WebSessionService::class);
         $this->app->singleton(SubscriptionClock::class);
         $this->app->singleton(CompositeLrDependencyGuard::class, function (): CompositeLrDependencyGuard {

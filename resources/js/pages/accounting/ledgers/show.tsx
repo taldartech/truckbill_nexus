@@ -1,4 +1,5 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, router } from '@inertiajs/react';
+import { AccountingBackAction } from '@/components/accounting/accounting-back-action';
 import {
     AppIndexFilters,
     AppIndexListCard,
@@ -45,9 +46,10 @@ export default function AccountingLedgerShow({
                 <AppIndexListCard
                     title={`Ledger · ${ledger.name}`}
                     toolbar={
-                        <Button asChild variant="outline" size="sm">
-                            <Link href={urls.index}>Ledgers</Link>
-                        </Button>
+                        <AccountingBackAction
+                            href={urls.index}
+                            label="Back to Ledgers"
+                        />
                     }
                 >
                     <AppIndexFilters

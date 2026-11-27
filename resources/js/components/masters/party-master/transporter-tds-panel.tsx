@@ -5,7 +5,18 @@ import { FormSection } from '@/components/form-section';
 import InputError from '@/components/input-error';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { RadioGroup } from '@/components/ui/radio-group';
 import type { TransporterAttrs } from '@/components/masters/party-master/party-master-types';
+
+const PAN_STATUS_OPTIONS = [
+    { value: 'active', label: 'Active' },
+    { value: 'inactive', label: 'Inactive' },
+] as const;
+
+const DECLARATION_RECEIVED_OPTIONS = [
+    { value: '1', label: 'Yes' },
+    { value: '0', label: 'No' },
+] as const;
 
 type TdsPreviewRequest = {
     pan: string;
@@ -197,33 +208,23 @@ export function TransporterTdsPanel({
                 <InputError message={errors.pan} />
             </div>
             <div className="space-y-2">
-                <Label htmlFor={`${idPrefix}pan_status`} required>
+                <Label id={`${idPrefix}pan_status_label`} required>
                     PAN Status
                 </Label>
-                <select
-                    id={`${idPrefix}pan_status`}
+                <RadioGroup
+                    name={attrName('pan_status') ?? `${idPrefix}pan_status`}
+                    labelledBy={`${idPrefix}pan_status_label`}
                     required
-                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    options={PAN_STATUS_OPTIONS}
                     value={transporter.pan_status}
-                    onChange={(event) =>
+                    invalid={Boolean(errors['roles.attributes.pan_status'])}
+                    onValueChange={(value) =>
                         setTransporter((current) => ({
                             ...current,
-                            pan_status: event.target
-                                .value as TransporterAttrs['pan_status'],
+                            pan_status: value as TransporterAttrs['pan_status'],
                         }))
                     }
-                >
-                    <option value="">Select PAN status</option>
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                </select>
-                {nativeForm ? (
-                    <input
-                        type="hidden"
-                        name={attrName('pan_status')}
-                        value={transporter.pan_status}
-                    />
-                ) : null}
+                />
                 <InputError message={errors['roles.attributes.pan_status']} />
             </div>
             <div className="space-y-2">
@@ -251,33 +252,24 @@ export function TransporterTdsPanel({
                 ) : null}
             </div>
             <div className="space-y-2">
-                <Label htmlFor={`${idPrefix}declaration`} required>
-                    TDS Declaration Received
+                <Label id={`${idPrefix}declaration_label`} required>
+                    Declaration Received
                 </Label>
-                <select
-                    id={`${idPrefix}declaration`}
+                <RadioGroup
+                    name={attrName('declaration') ?? `${idPrefix}declaration`}
+                    labelledBy={`${idPrefix}declaration_label`}
                     required
-                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    options={DECLARATION_RECEIVED_OPTIONS}
                     value={transporter.declaration}
-                    onChange={(event) =>
+                    invalid={Boolean(errors['roles.attributes.declaration'])}
+                    onValueChange={(value) =>
                         setTransporter((current) => ({
                             ...current,
-                            declaration: event.target
-                                .value as TransporterAttrs['declaration'],
+                            declaration:
+                                value as TransporterAttrs['declaration'],
                         }))
                     }
-                >
-                    <option value="">Select Yes or No</option>
-                    <option value="1">Yes</option>
-                    <option value="0">No</option>
-                </select>
-                {nativeForm && transporter.declaration !== '' ? (
-                    <input
-                        type="hidden"
-                        name={attrName('declaration')}
-                        value={transporter.declaration}
-                    />
-                ) : null}
+                />
                 <InputError message={errors['roles.attributes.declaration']} />
             </div>
 
@@ -317,7 +309,7 @@ export function TransporterTdsPanel({
                     ) : null}
                     {!previewReady ? (
                         <p className="text-sm text-muted-foreground">
-                            Select PAN Status and TDS Declaration Received to
+                            Select PAN Status and Declaration Received to
                             preview the applicable TDS.
                         </p>
                     ) : null}

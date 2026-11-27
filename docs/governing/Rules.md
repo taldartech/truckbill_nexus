@@ -297,3 +297,43 @@ Before completing any implementation task: review the full diff; remove unused i
 
 - Shared `Input` blurs `type="number"` fields on mouse wheel so scroll does not change the value accidentally.
 - Page and modal scrolling continue normally; wheel events are not blocked globally.
+
+## 29. Mobile Number Standard (Permanent)
+
+- Every Indian mobile field (Party/Driver/Transporter contact, Company, Branch, Owner settings, CRM Leads, Platform Billing Profiles, Enquiry customer phone, public lead and Website Enquiry API) accepts exactly **10 digits starting 6–9** when a value is provided. Optional fields remain optional.
+- One authoritative backend rule (`App\Rules\IndianMobileNumber`) and one shared frontend input (`MobileNumberInput`): `type="tel"` with a numeric keyboard, digits only, at most 10 characters, never `type="number"`, and stored as text.
+- External intake (public forms, Website API) may normalize separators and a `+91`/`91` prefix before validation. Stored values are never silently truncated; invalid values are rejected with an actionable error.
+- Does not apply to GSTIN, PAN, bank account, licence, vehicle number, PIN code, landline or international contact fields.
+
+## 30. Confirmation Dialog Standard (Permanent)
+
+- All create, edit and destructive confirmations use the shared `FormConfirmationDialog`. Its density follows the content: a compact single column for short reviews, and a wide two-column layout with tables for transactional documents.
+- **Create:** sectioned label/value review, no remark, actions **Back to edit** and **Confirm**. Totals in financial summaries are emphasized and appear only to users who may view financial values.
+- **Edit:** changed fields only, with previous and new values and a text change type (Changed / Added / Removed), plus the mandatory audit remark entered on the form.
+- **Delete / cancel:** lists the consequences and captures a mandatory reason inside the dialog (`MasterAuditRemarkDialog` wraps this variant).
+- After a confirmed submit is rejected, the form stays open with values preserved and every error visible.
+
+## 31. Manual Enquiry Route Derivation (Permanent)
+
+- When the Consignor has an active master State and City, the enquiry **From** is derived from it on the server and the From State/City inputs are hidden. The **To** side follows the Consignee in the same way, independently. Submitted values for a derived side are ignored.
+- When a party is absent or has no valid master location, that side's State and City are required inputs. Replacing a party on edit recomputes its side; stored enquiry route snapshots are otherwise unchanged. Website / API enquiry intake is unaffected.
+
+## 32. Bilty Truck Selector and Pay To (Permanent)
+
+- Truck options show the truck number as the primary text. Secondary text is **Own vehicle** for own vehicles; for market vehicles it shows only the recorded owner and `Driver: name`. Missing values are omitted, never fabricated.
+- A market vehicle without a Truck Owner is paid to an **Agency**. Pay To switches to Agency automatically, the Truck Owner option is unavailable, and a valid Transporter agency is required. An agency is never chosen automatically. Changing the vehicle re-evaluates Pay To and clears an owner payee that no longer applies. The server enforces the same rules, and Lorry Hire inherits the Bilty payee.
+
+## 33. Contextual Documents (Permanent)
+
+- Document types are restricted per record by `DocumentTypeCatalog`: Bilty / Trip / Delivery (POD, Supporting, Shortage/Damage, Invoice Support), Vehicle (RC, Insurance, Fitness, Permit, PUC, Road Tax, Other, with number, issue date and expiry; expiry is required only for expiring types), and Party by active role (PAN, GST, TDS Declaration, Driving Licence, Other).
+- Station and Bank/Cash documents are retired: existing files stay viewable and downloadable, while new uploads, replacements and deletions are rejected. `documents:retired-report` lists the retained files. A supporting upload never marks POD received.
+
+## 34. Station Default Transporter and Portable Ordering (Permanent)
+
+- The effective station default transporter is the Branch mapping, then the Company mapping, then none. Mappings never leak across companies or branches.
+- Queries use portable SQL (`CASE` ordering rather than `NULLS FIRST/LAST`) so they run on PostgreSQL, MySQL and MariaDB.
+
+## 35. Accounting Workspace (Permanent)
+
+- **Accounting** opens a gateway grouped into Transactions, Masters, Financial Reports, and Compliance and Controls. It lists only implemented screens the viewer is authorized and entitled to open. The Day Book is its own report, filtered by Financial Year, date range and voucher type, with a New Voucher action. Accounting pages use an icon-only Back action instead of horizontal navigation bars.
+- Company capability and permission lookups are memoized per HTTP request on top of the shared cache. Invalidation on activation, upgrade, add-on purchase or trial expiry takes effect immediately, and nothing is shared across requests or workers.
