@@ -20,7 +20,6 @@ use App\Domains\Subscription\Storage\StorageReconciliationService;
 use App\Domains\Subscription\Support\SubscriptionClock;
 use App\Models\City;
 use App\Models\CompanySubscriptionTrial;
-use App\Models\GstRate;
 use App\Models\State;
 use App\Models\SubscriptionCatalogueVersion;
 use App\Models\SubscriptionPlan;
@@ -310,10 +309,6 @@ test('invoice number approval is immutable and email failure does not reverse ap
         ['state_id' => $state->id, 'name_normalized' => 'pune'],
         ['id' => (string) Str::uuid(), 'name' => 'Pune', 'is_active' => true],
     );
-    $gstRate = GstRate::query()->firstOrCreate(
-        ['rate_percent' => '0.000', 'version' => 1],
-        ['id' => (string) Str::uuid(), 'effective_from' => '2025-04-01', 'is_active' => true],
-    );
     $profile = app(PlatformBillingProfileService::class)->create($approver, [
         'legal_name' => 'TruckBill Platform Co',
         'pan' => 'AABCT1234F',
@@ -324,7 +319,6 @@ test('invoice number approval is immutable and email failure does not reverse ap
         'city_id' => $city->id,
         'pin_code' => '411001',
         'gstin' => null,
-        'gst_rate_id' => $gstRate->id,
     ]);
 
     $gateway = new FakePaymentGateway;

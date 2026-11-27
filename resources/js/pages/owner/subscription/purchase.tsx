@@ -89,7 +89,7 @@ type Quote = {
     };
     gst: {
         configured: boolean;
-        rate_percent: string;
+        gst_rate_percent: string;
         cgst_amount: string;
         sgst_amount: string;
         igst_amount: string;
@@ -954,7 +954,10 @@ export default function SubscriptionPurchase({
                                                 <div className="flex justify-between">
                                                     <dt className="text-muted-foreground">
                                                         IGST (
-                                                        {quote.gst.rate_percent}
+                                                        {
+                                                            quote.gst
+                                                                .gst_rate_percent
+                                                        }
                                                         %)
                                                     </dt>
                                                     <dd>
@@ -968,7 +971,7 @@ export default function SubscriptionPurchase({
                                                             CGST (
                                                             {Number(
                                                                 quote.gst
-                                                                    .rate_percent,
+                                                                    .gst_rate_percent,
                                                             ) / 2}
                                                             %)
                                                         </dt>
@@ -985,7 +988,7 @@ export default function SubscriptionPurchase({
                                                             SGST (
                                                             {Number(
                                                                 quote.gst
-                                                                    .rate_percent,
+                                                                    .gst_rate_percent,
                                                             ) / 2}
                                                             %)
                                                         </dt>

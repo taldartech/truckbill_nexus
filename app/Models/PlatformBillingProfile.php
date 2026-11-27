@@ -26,8 +26,6 @@ use Illuminate\Support\Str;
  * @property string|null $state_code
  * @property string $pin_code
  * @property string|null $gstin
- * @property string|null $gst_rate_id
- * @property string $gst_rate_percent
  * @property string|null $bank_name
  * @property string|null $bank_account_name
  * @property string|null $bank_account_number
@@ -61,8 +59,6 @@ class PlatformBillingProfile extends Model
         'state_code',
         'pin_code',
         'gstin',
-        'gst_rate_id',
-        'gst_rate_percent',
         'bank_name',
         'bank_account_name',
         'bank_account_number',
@@ -76,7 +72,6 @@ class PlatformBillingProfile extends Model
     protected function casts(): array
     {
         return [
-            'gst_rate_percent' => 'decimal:2',
             'is_active' => 'boolean',
         ];
     }
@@ -115,14 +110,6 @@ class PlatformBillingProfile extends Model
     public function cityRecord(): BelongsTo
     {
         return $this->belongsTo(City::class, 'city_id');
-    }
-
-    /**
-     * @return BelongsTo<GstRate, $this>
-     */
-    public function gstRate(): BelongsTo
-    {
-        return $this->belongsTo(GstRate::class, 'gst_rate_id');
     }
 
     /**
@@ -171,8 +158,6 @@ class PlatformBillingProfile extends Model
             'state_code' => $this->state_code,
             'pin_code' => $this->pin_code,
             'gstin' => $this->gstin,
-            'gst_rate_id' => $this->gst_rate_id,
-            'gst_rate_percent' => (string) $this->gst_rate_percent,
             'bank_name' => $this->bank_name,
             'bank_account_name' => $this->bank_account_name,
             'bank_account_number' => $this->bank_account_number,

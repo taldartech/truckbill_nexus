@@ -21,12 +21,6 @@ import { Label } from '@/components/ui/label';
 const textareaClass =
     'min-h-20 w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50';
 
-type GstRateOption = {
-    id: string;
-    label: string;
-    rate_percent: string;
-};
-
 type BillingProfileData = {
     id: string;
     legal_name: string;
@@ -42,8 +36,6 @@ type BillingProfileData = {
     state_code: string;
     pin_code: string;
     gstin: string;
-    gst_rate_id: string;
-    gst_rate_percent: string;
     bank_name: string;
     bank_account_name: string;
     bank_account_number: string;
@@ -55,7 +47,6 @@ type BillingProfileData = {
 type Props = {
     mode: 'create' | 'edit';
     profile: BillingProfileData | null;
-    gstRates: GstRateOption[];
     links: {
         index: string;
         show?: string;
@@ -69,12 +60,7 @@ type DiffRow = {
     next: string;
 };
 
-export default function BillingProfileForm({
-    mode,
-    profile,
-    gstRates,
-    links,
-}: Props) {
+export default function BillingProfileForm({ mode, profile, links }: Props) {
     const { flash, errors } = usePage<{
         flash?: { success?: string | null };
         errors?: Record<string, string>;
@@ -94,7 +80,6 @@ export default function BillingProfileForm({
         city: string;
         pin_code: string;
         gstin: string;
-        gst_rate_id: string;
         bank_name: string;
         bank_account_name: string;
         bank_account_number: string;
@@ -116,7 +101,6 @@ export default function BillingProfileForm({
         city: profile?.city ?? '',
         pin_code: profile?.pin_code ?? '',
         gstin: profile?.gstin ?? '',
-        gst_rate_id: profile?.gst_rate_id ?? '',
         bank_name: profile?.bank_name ?? '',
         bank_account_name: profile?.bank_account_name ?? '',
         bank_account_number: profile?.bank_account_number ?? '',
@@ -128,22 +112,10 @@ export default function BillingProfileForm({
 
     const [confirmEditOpen, setConfirmEditOpen] = useState(false);
 
-    const selectedRate = useMemo(
-        () => gstRates.find((r) => r.id === form.data.gst_rate_id) ?? null,
-        [gstRates, form.data.gst_rate_id],
-    );
-    const gstinRequired =
-        selectedRate !== null && Number(selectedRate.rate_percent) > 0;
-
     const editDiffs = useMemo<DiffRow[]>(() => {
         if (mode !== 'edit' || !profile) {
             return [];
         }
-        const prevRate =
-            gstRates.find((r) => r.id === profile.gst_rate_id)?.label ??
-            `${Number(profile.gst_rate_percent)}%`;
-        const nextRate = selectedRate?.label ?? '—';
-
         const pairs: [string, string, string][] = [
             ['Company Name', profile.legal_name, form.data.legal_name],
             ['PAN', profile.pan, form.data.pan.toUpperCase()],
@@ -166,7 +138,6 @@ export default function BillingProfileForm({
                 profile.gstin || '—',
                 form.data.gstin.toUpperCase() || '—',
             ],
-            ['GST Rate', prevRate, nextRate],
             ['Bank Name', profile.bank_name || '—', form.data.bank_name || '—'],
             [
                 'Account Holder Name',
@@ -210,7 +181,7 @@ export default function BillingProfileForm({
         }
 
         return changed;
-    }, [mode, profile, form.data, gstRates, selectedRate]);
+    }, [mode, profile, form.data]);
 
     const submitCreate = () => {
         form.post(links.submit, {
@@ -230,7 +201,7 @@ export default function BillingProfileForm({
             },
             {
                 forceFormData: true,
-                onSuccess: () => {
+                onFinish: () => {
                     setConfirmEditOpen(false);
                 },
             },
@@ -462,35 +433,10 @@ export default function BillingProfileForm({
                             />
                         </div>
 
-                        <div className="space-y-1.5">
-                            <Label htmlFor="gst_rate_id" required>
-                                GST Rate
-                            </Label>
-                            <select
-                                id="gst_rate_id"
-                                required
-                                value={form.data.gst_rate_id}
-                                onChange={(e) =>
-                                    form.setData('gst_rate_id', e.target.value)
-                                }
-                                className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                            >
-                                <option value="">Select GST rate</option>
-                                {gstRates.map((rate) => (
-                                    <option key={rate.id} value={rate.id}>
-                                        {rate.label}
-                                    </option>
-                                ))}
-                            </select>
-                        </div>
-
                         <div className="space-y-1.5 sm:col-span-2 lg:col-span-2">
-                            <Label htmlFor="gstin" required={gstinRequired}>
-                                GSTIN
-                            </Label>
+                            <Label htmlFor="gstin">GSTIN</Label>
                             <Input
                                 id="gstin"
-                                required={gstinRequired}
                                 maxLength={15}
                                 className="font-mono uppercase"
                                 placeholder="27AABCT1234F1Z5"

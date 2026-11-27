@@ -107,7 +107,12 @@ function sbSeedPlatformProfile(User $admin, string $stateCode = '27', string $st
         ['id' => (string) Str::uuid(), 'effective_from' => '2025-04-01', 'is_active' => true],
     );
 
-    return app(PlatformBillingProfileService::class)->create($admin, [
+    $billing = app(PlatformBillingProfileService::class);
+    if ($billing->subscriptionTaxSetting() === null) {
+        $billing->updateSubscriptionGstRate($admin, $gstRate->id);
+    }
+
+    return $billing->create($admin, [
         'legal_name' => 'TruckBill SaaS Platform Pvt Ltd',
         'pan' => 'AABCT1234F',
         'contact_number' => '9876543210',
@@ -117,7 +122,6 @@ function sbSeedPlatformProfile(User $admin, string $stateCode = '27', string $st
         'city_id' => $city->id,
         'pin_code' => '411001',
         'gstin' => $stateCode.'AABCT1234F1Z5',
-        'gst_rate_id' => $gstRate->id,
     ]);
 }
 
@@ -369,7 +373,6 @@ test('simplified subscription purchase, prorated upgrade, accounting add-on, imm
     // Mutate PlatformBillingProfile & Customer Company AFTER invoice approval — approved invoice snapshot MUST stay immutable.
     sbLoginAs($superAdmin);
     $puneCity = City::query()->where('state_id', $mhState->id)->firstOrFail();
-    $gst18 = GstRate::query()->where('rate_percent', '18.000')->firstOrFail();
     $this->post(route('admin.billing-profiles.update', $profile), [
         'legal_name' => 'Renamed Platform Entity LLP',
         'pan' => 'AABCT1234F',
@@ -380,7 +383,6 @@ test('simplified subscription purchase, prorated upgrade, accounting add-on, imm
         'city_id' => $puneCity->id,
         'pin_code' => '400099',
         'gstin' => '27AABCT1234F1Z5',
-        'gst_rate_id' => $gst18->id,
         'remark' => 'Address update',
     ])->assertRedirect();
 

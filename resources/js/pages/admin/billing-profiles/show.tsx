@@ -36,7 +36,6 @@ type Props = {
         state_code: string;
         pin_code: string;
         gstin: string;
-        gst_rate_percent: string;
         bank_name: string;
         bank_account_name: string;
         bank_account_number: string;
@@ -115,7 +114,6 @@ export default function BillingProfileShow({
         ],
         ['PIN Code', profile.pin_code],
         ['GSTIN', profile.gstin || 'Unregistered'],
-        ['GST Rate', `${Number(profile.gst_rate_percent)}%`],
         ['Bank Name', profile.bank_name || '—'],
         ['Account Holder Name', profile.bank_account_name || '—'],
         ['Account Number', profile.bank_account_number || '—'],

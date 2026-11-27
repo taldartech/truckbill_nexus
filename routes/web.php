@@ -13,6 +13,8 @@ use App\Http\Controllers\Admin\LocationController;
 use App\Http\Controllers\Admin\OwnershipTransferController;
 use App\Http\Controllers\Admin\PlatformBillingProfileController;
 use App\Http\Controllers\Admin\RolePermissionController;
+use App\Http\Controllers\Admin\SubscriptionCalculatorController;
+use App\Http\Controllers\Admin\SubscriptionCatalogueController;
 use App\Http\Controllers\Admin\SubscriptionInvoiceController;
 use App\Http\Controllers\Admin\TdsRuleController;
 use App\Http\Controllers\Api\GeographyController;
@@ -787,6 +789,21 @@ Route::middleware(['auth', 'verified'])->group(function () {
         ->name('admin.subscription-invoices.approve');
     Route::post('/admin/subscription-invoices/{invoice}/credit-note', [SubscriptionInvoiceController::class, 'issueCreditNote'])
         ->name('admin.subscription-invoices.credit-note');
+
+    Route::get('/admin/subscription-catalogue', [SubscriptionCatalogueController::class, 'index'])
+        ->name('admin.subscription-catalogue');
+    Route::post('/admin/subscription-catalogue/plans', [SubscriptionCatalogueController::class, 'storePlan'])
+        ->name('admin.subscription-catalogue.plans.store');
+    Route::put('/admin/subscription-catalogue/plans/{plan}', [SubscriptionCatalogueController::class, 'updatePlan'])
+        ->name('admin.subscription-catalogue.plans.update');
+    Route::put('/admin/subscription-catalogue/addons/{addon}', [SubscriptionCatalogueController::class, 'updateAddon'])
+        ->name('admin.subscription-catalogue.addons.update');
+    Route::put('/admin/subscription-catalogue/gst', [SubscriptionCatalogueController::class, 'updateGst'])
+        ->name('admin.subscription-catalogue.gst.update');
+    Route::get('/admin/subscription-calculator', [SubscriptionCalculatorController::class, 'index'])
+        ->name('admin.subscription-calculator');
+    Route::post('/admin/subscription-calculator/quote', [SubscriptionCalculatorController::class, 'quote'])
+        ->name('admin.subscription-calculator.quote');
 
     Route::get('/admin/gst-rates', [GstRateController::class, 'index'])
         ->name('admin.gst-rates');

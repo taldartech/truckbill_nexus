@@ -17,7 +17,6 @@ use App\Domains\Subscription\Payments\PaymentIntentService;
 use App\Domains\Subscription\Payments\RazorpayWebhookNormalizer;
 use App\Domains\Subscription\Payments\Support\RazorpayMoney;
 use App\Models\City;
-use App\Models\GstRate;
 use App\Models\PaymentIntent;
 use App\Models\State;
 use App\Models\SubscriptionCatalogueVersion;
@@ -586,10 +585,6 @@ test('super admin can approve subscription invoice with billing profile and manu
         ['state_id' => $state->id, 'name_normalized' => 'pune'],
         ['id' => (string) Str::uuid(), 'name' => 'Pune', 'is_active' => true],
     );
-    $gstRate = GstRate::query()->firstOrCreate(
-        ['rate_percent' => '0.000', 'version' => 1],
-        ['id' => (string) Str::uuid(), 'effective_from' => '2025-04-01', 'is_active' => true],
-    );
     $profile = app(PlatformBillingProfileService::class)->create($sa, [
         'legal_name' => 'TruckBill Billing Co',
         'pan' => 'AABCT1234F',
@@ -600,7 +595,6 @@ test('super admin can approve subscription invoice with billing profile and manu
         'city_id' => $city->id,
         'pin_code' => '411001',
         'gstin' => null,
-        'gst_rate_id' => $gstRate->id,
     ]);
 
     test()->actingAs($sa);

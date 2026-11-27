@@ -1503,13 +1503,22 @@ class LocalDemoWorkspaceSeeder extends Seeder
 
     private function ensureDemoPlatformBillingProfile(User $sa): void
     {
+        $billing = app(PlatformBillingProfileService::class);
+
+        if ($billing->subscriptionTaxSetting() === null) {
+            $gstRate = GstRate::query()->where('is_active', true)->where('rate_percent', 18)->first()
+                ?? GstRate::query()->where('is_active', true)->orderByDesc('rate_percent')->first();
+            if ($gstRate !== null) {
+                $billing->updateSubscriptionGstRate($sa, $gstRate->id);
+            }
+        }
+
         if (PlatformBillingProfile::currentActive() !== null) {
             return;
         }
 
         $state = State::query()->where('gst_code', '27')->where('is_active', true)->first();
-        $gstRate = GstRate::query()->where('is_active', true)->orderByDesc('rate_percent')->first();
-        if ($state === null || $gstRate === null) {
+        if ($state === null) {
             return;
         }
 
@@ -1526,7 +1535,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
                 'is_active' => true,
             ]);
 
-        app(PlatformBillingProfileService::class)->create($sa, [
+        $billing->create($sa, [
             'legal_name' => 'Taldar Tech Consultancy Demo Pvt Ltd',
             'pan' => 'AABCT1234E',
             'contact_number' => '9800000001',
@@ -1536,7 +1545,6 @@ class LocalDemoWorkspaceSeeder extends Seeder
             'city_id' => $city->id,
             'pin_code' => '411045',
             'gstin' => '27AABCT1234E1Z5',
-            'gst_rate_id' => $gstRate->id,
             'bank_name' => 'HDFC Bank',
             'bank_account_name' => 'Taldar Tech Consultancy Demo Pvt Ltd',
             'bank_account_number' => '50200012345678',

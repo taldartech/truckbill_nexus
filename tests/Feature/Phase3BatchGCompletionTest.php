@@ -212,10 +212,6 @@ test('invoice html preview download and email do not reverse approval', function
         ['state_id' => $state->id, 'name_normalized' => 'pune'],
         ['id' => (string) Str::uuid(), 'name' => 'Pune', 'is_active' => true],
     );
-    $gstRate = GstRate::query()->firstOrCreate(
-        ['rate_percent' => '0.000', 'version' => 1],
-        ['id' => (string) Str::uuid(), 'effective_from' => '2025-04-01', 'is_active' => true],
-    );
     $profile = app(PlatformBillingProfileService::class)->create($admin, [
         'legal_name' => 'TruckBill Batch G Pvt Ltd',
         'pan' => 'AABCT1234F',
@@ -226,7 +222,6 @@ test('invoice html preview download and email do not reverse approval', function
         'city_id' => $city->id,
         'pin_code' => '411001',
         'gstin' => null,
-        'gst_rate_id' => $gstRate->id,
     ]);
 
     $invoices = app(SubscriptionInvoiceService::class);

@@ -38,7 +38,6 @@ type BillingProfileRow = {
     state_code: string | null;
     pin_code: string;
     gstin: string | null;
-    gst_rate_percent: string;
     bank_name: string | null;
     has_logo: boolean;
     logo_url: string | null;
@@ -177,13 +176,6 @@ export default function BillingProfilesIndex({
                         </div>
                     </div>
                 ),
-            },
-            {
-                id: 'gst_rate',
-                header: 'GST Rate',
-                priority: 2,
-                className: 'text-xs font-medium',
-                cell: (row) => `${Number(row.gst_rate_percent)}%`,
             },
             {
                 id: 'bank',

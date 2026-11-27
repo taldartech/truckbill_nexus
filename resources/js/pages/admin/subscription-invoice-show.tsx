@@ -24,7 +24,6 @@ type ActiveProfileOption = {
     legal_name: string;
     pan: string | null;
     gstin: string | null;
-    gst_rate_percent: string;
     registered_address: string;
     city: string;
     state_name: string;
@@ -270,8 +269,7 @@ export default function AdminSubscriptionInvoiceShow({
                                     {activeProfiles.map((p) => (
                                         <option key={p.id} value={p.id}>
                                             {p.legal_name} (
-                                            {p.gstin || 'Unregistered'} ·{' '}
-                                            {Number(p.gst_rate_percent)}%)
+                                            {p.gstin || 'Unregistered'})
                                         </option>
                                     ))}
                                 </select>
@@ -360,9 +358,7 @@ export default function AdminSubscriptionInvoiceShow({
                                 <p className="font-mono">
                                     GSTIN:{' '}
                                     {selectedProfile.gstin || 'Unregistered'} ·
-                                    PAN: {selectedProfile.pan || '—'} · GST
-                                    Rate:{' '}
-                                    {Number(selectedProfile.gst_rate_percent)}%
+                                    PAN: {selectedProfile.pan || '—'}
                                 </p>
                                 {!selectedProfile.compatible &&
                                 selectedProfile.compatibility_message ? (

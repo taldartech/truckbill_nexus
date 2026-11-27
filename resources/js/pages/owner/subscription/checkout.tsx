@@ -32,7 +32,7 @@ type Props = {
         taxable_amount?: string;
         gst?: {
             configured?: boolean;
-            rate_percent?: string;
+            gst_rate_percent?: string;
             cgst_amount?: string;
             sgst_amount?: string;
             igst_amount?: string;
@@ -328,7 +328,7 @@ export default function SubscriptionCheckout({
                             {quote?.gst?.configured ? (
                                 <div className="flex justify-between gap-4">
                                     <dt className="text-muted-foreground">
-                                        GST ({quote.gst.rate_percent}%)
+                                        GST ({quote.gst.gst_rate_percent}%)
                                     </dt>
                                     <dd>
                                         {quote.gst.is_inter_state

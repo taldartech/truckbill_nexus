@@ -10,6 +10,7 @@ use App\Models\Company;
 use App\Models\GstRate;
 use App\Models\PlatformBillingProfile;
 use App\Models\State;
+use App\Models\SubscriptionTaxSetting;
 use App\Models\User;
 use App\Support\Audit\AuditAction;
 use App\Support\Audit\AuditedTransaction;
@@ -45,13 +46,69 @@ final class PlatformBillingProfileService
         return PlatformBillingProfile::currentActive();
     }
 
+    public function subscriptionTaxSetting(): ?SubscriptionTaxSetting
+    {
+        return SubscriptionTaxSetting::current();
+    }
+
+    /**
+     * Common GST rate applied to future subscription purchases across all Billing Profiles.
+     */
+    public function subscriptionGstRatePercent(): string
+    {
+        $setting = $this->subscriptionTaxSetting();
+
+        return DecimalMath::of((string) ($setting->gst_rate_percent ?? '0'), 2);
+    }
+
+    /**
+     * Configure the common subscription GST rate. Changes apply to future quotes only;
+     * purchase, payment-intent and invoice snapshots keep the rate they were priced with.
+     */
+    public function updateSubscriptionGstRate(User $actor, string $gstRateId, string $remark = ''): SubscriptionTaxSetting
+    {
+        $gstRate = $this->resolveEffectiveGstRate($gstRateId);
+
+        return $this->tx->run(function () use ($actor, $gstRate, $remark): SubscriptionTaxSetting {
+            return $this->withPlatformTenant(function () use ($actor, $gstRate, $remark): SubscriptionTaxSetting {
+                $existing = SubscriptionTaxSetting::query()->orderByDesc('updated_at')->lockForUpdate()->first();
+                $trimmedRemark = trim($remark);
+                if ($existing !== null && $trimmedRemark === '') {
+                    throw ValidationException::withMessages([
+                        'remark' => 'An edit remark is required when changing the subscription GST rate.',
+                    ]);
+                }
+
+                $before = $existing?->toArray();
+                $setting = $existing ?? new SubscriptionTaxSetting;
+                $setting->fill([
+                    'gst_rate_id' => $gstRate->id,
+                    'gst_rate_percent' => DecimalMath::of((string) $gstRate->rate_percent, 2),
+                    'updated_by_user_id' => $actor->id,
+                ]);
+                $setting->save();
+
+                $this->audit->write(
+                    action: $existing === null ? AuditAction::Created : AuditAction::Updated,
+                    subjectType: SubscriptionTaxSetting::class,
+                    subjectId: $setting->id,
+                    remark: $existing === null ? 'Configure subscription GST rate' : $trimmedRemark,
+                    before: $before,
+                    after: $setting->toArray(),
+                );
+
+                return $setting->fresh(['gstRate', 'updatedBy']) ?? $setting;
+            });
+        });
+    }
+
     /**
      * @return Collection<int, PlatformBillingProfile>
      */
     public function listAll(?string $status = 'all', ?string $search = null): Collection
     {
         $query = PlatformBillingProfile::query()
-            ->with(['state:id,name,gst_code', 'cityRecord:id,name', 'gstRate:id,rate_percent,version', 'updatedBy:id,name,email'])
+            ->with(['state:id,name,gst_code', 'cityRecord:id,name', 'updatedBy:id,name,email'])
             ->orderByDesc('is_active')
             ->orderBy('legal_name');
 
@@ -85,7 +142,7 @@ final class PlatformBillingProfileService
         return PlatformBillingProfile::query()
             ->where('is_active', true)
             ->whereNull('deleted_at')
-            ->with(['state:id,name,gst_code', 'cityRecord:id,name', 'gstRate:id,rate_percent,version'])
+            ->with(['state:id,name,gst_code', 'cityRecord:id,name'])
             ->orderBy('legal_name')
             ->get();
     }
@@ -122,7 +179,7 @@ final class PlatformBillingProfileService
                     after: $profile->toArray(),
                 );
 
-                return $profile->fresh(['state', 'cityRecord', 'gstRate', 'logoFile', 'updatedBy']) ?? $profile;
+                return $profile->fresh(['state', 'cityRecord', 'logoFile', 'updatedBy']) ?? $profile;
             });
         });
     }
@@ -168,7 +225,7 @@ final class PlatformBillingProfileService
                 ]));
                 $locked->save();
 
-                $fresh = $locked->fresh(['state', 'cityRecord', 'gstRate', 'logoFile', 'updatedBy']) ?? $locked;
+                $fresh = $locked->fresh(['state', 'cityRecord', 'logoFile', 'updatedBy']) ?? $locked;
 
                 $this->audit->write(
                     action: AuditAction::Updated,
@@ -221,7 +278,8 @@ final class PlatformBillingProfileService
     }
 
     /**
-     * Compute subscription GST strictly from configured PlatformBillingProfile and Company place of supply.
+     * Compute subscription GST from the common subscription GST rate (or a preserved snapshot rate),
+     * the Billing Profile supplier registration and the Company place of supply.
      *
      * @return array{
      *     configured: bool,
@@ -238,8 +296,12 @@ final class PlatformBillingProfileService
      *     grand_total: string
      * }
      */
-    public function computeTaxForCompany(Company $company, string $taxableAmount, ?PlatformBillingProfile $profile = null): array
-    {
+    public function computeTaxForCompany(
+        Company $company,
+        string $taxableAmount,
+        ?PlatformBillingProfile $profile = null,
+        ?string $snapshotRatePercent = null,
+    ): array {
         $taxable = DecimalMath::of($taxableAmount, 2);
         $activeProfile = $profile ?? $this->current();
         $defaultSac = (string) config('subscription.billing.default_sac_code', '998314');
@@ -263,7 +325,9 @@ final class PlatformBillingProfileService
             ];
         }
 
-        $rate = DecimalMath::of((string) $activeProfile->gst_rate_percent, 2);
+        $rate = $snapshotRatePercent !== null
+            ? DecimalMath::of($snapshotRatePercent, 2)
+            : $this->subscriptionGstRatePercent();
         $supplierCode = $this->resolveProfileStateCode($activeProfile);
         $isInterState = $supplierCode !== null
             && $customerCode !== null
@@ -370,31 +434,7 @@ final class PlatformBillingProfileService
             throw ValidationException::withMessages(['pin_code' => 'A valid 6-digit PIN Code is required.']);
         }
 
-        $gstRateId = filled($payload['gst_rate_id'] ?? null) ? (string) $payload['gst_rate_id'] : null;
-        if ($gstRateId === null) {
-            throw ValidationException::withMessages(['gst_rate_id' => 'GST Rate must be selected from the GST Master.']);
-        }
-
-        $today = Carbon::today();
-        $gstRate = GstRate::query()
-            ->whereKey($gstRateId)
-            ->where('is_active', true)
-            ->where('effective_from', '<=', $today)
-            ->where(function ($q) use ($today): void {
-                $q->whereNull('effective_to')->orWhere('effective_to', '>=', $today);
-            })
-            ->first();
-
-        if ($gstRate === null) {
-            throw ValidationException::withMessages(['gst_rate_id' => 'Selected GST Rate is inactive or outside its effective period.']);
-        }
-
-        $ratePercent = DecimalMath::of((string) $gstRate->rate_percent, 2);
         $gstin = filled($payload['gstin'] ?? null) ? strtoupper(trim((string) $payload['gstin'])) : null;
-
-        if (DecimalMath::compare($ratePercent, '0', 2) > 0 && $gstin === null) {
-            throw ValidationException::withMessages(['gstin' => 'GSTIN is required when selecting a positive GST Rate.']);
-        }
 
         if ($gstin !== null) {
             if (! preg_match(CompanyProfileValidator::GSTIN_PATTERN, $gstin)) {
@@ -445,8 +485,6 @@ final class PlatformBillingProfileService
             'city' => (string) $resolvedGeography['city'],
             'pin_code' => $pinCode,
             'gstin' => $gstin,
-            'gst_rate_id' => $gstRate->id,
-            'gst_rate_percent' => $ratePercent,
             'bank_name' => $bankName,
             'bank_account_name' => $bankAccountName,
             'bank_account_number' => $bankAccountNumber,
@@ -454,6 +492,27 @@ final class PlatformBillingProfileService
             'website' => $website,
             'notes_terms' => $notesTerms,
         ];
+    }
+
+    private function resolveEffectiveGstRate(string $gstRateId): GstRate
+    {
+        $today = Carbon::today();
+        $gstRate = $gstRateId === '' ? null : GstRate::query()
+            ->whereKey($gstRateId)
+            ->where('is_active', true)
+            ->where('effective_from', '<=', $today)
+            ->where(function ($q) use ($today): void {
+                $q->whereNull('effective_to')->orWhere('effective_to', '>=', $today);
+            })
+            ->first();
+
+        if ($gstRate === null) {
+            throw ValidationException::withMessages([
+                'gst_rate_id' => 'Select an active GST Rate from the GST Master.',
+            ]);
+        }
+
+        return $gstRate;
     }
 
     private function storeLogoUpload(UploadedFile $logo): StoredFile
@@ -493,7 +552,7 @@ final class PlatformBillingProfileService
                     'updated_by_user_id' => $actor->id,
                 ])->save();
 
-                $fresh = $locked->fresh(['state', 'cityRecord', 'gstRate', 'logoFile', 'updatedBy']) ?? $locked;
+                $fresh = $locked->fresh(['state', 'cityRecord', 'logoFile', 'updatedBy']) ?? $locked;
 
                 $this->audit->write(
                     action: AuditAction::Updated,

@@ -209,7 +209,6 @@ class SubscriptionInvoiceController extends Controller
                     'legal_name' => $profile->legal_name,
                     'pan' => $profile->pan,
                     'gstin' => $profile->gstin,
-                    'gst_rate_percent' => (string) $profile->gst_rate_percent,
                     'registered_address' => $profile->registered_address,
                     'city' => $profile->city,
                     'state_name' => $profile->state_name,

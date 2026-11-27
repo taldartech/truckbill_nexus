@@ -120,7 +120,9 @@ test('accounting addon auto-posts transport transactions, keeps platform subscri
         ['rate_percent' => '18.000', 'version' => 1],
         ['id' => (string) Str::uuid(), 'effective_from' => '2025-04-01', 'is_active' => true],
     );
-    app(PlatformBillingProfileService::class)->create($ctx['owner'], [
+    $billing = app(PlatformBillingProfileService::class);
+    $billing->updateSubscriptionGstRate($ctx['owner'], $gstRate->id);
+    $billing->create($ctx['owner'], [
         'legal_name' => 'TruckBill Platform Pvt Ltd',
         'pan' => 'AABCT1234F',
         'contact_number' => '9876543210',
@@ -130,7 +132,6 @@ test('accounting addon auto-posts transport transactions, keeps platform subscri
         'city_id' => $city->id,
         'pin_code' => '411001',
         'gstin' => '27AABCT1234F1Z5',
-        'gst_rate_id' => $gstRate->id,
     ]);
 
     $hire = brokerCreateLorryHire($ctx);

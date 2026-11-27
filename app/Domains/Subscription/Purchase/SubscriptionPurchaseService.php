@@ -191,6 +191,26 @@ final class SubscriptionPurchaseService
     }
 
     /**
+     * Price a prospective initial purchase without any Company, owner, contract or payment record.
+     * Runs the exact initial-purchase path used by Owner checkout so identical inputs yield identical totals.
+     *
+     * @param  array{
+     *     plan_ids?: list<string>,
+     *     addon_ids?: list<string>,
+     *     addon_quantities?: array<string, int>,
+     *     tenure?: string|null
+     * }  $input
+     * @return array<string, mixed>
+     */
+    public function quoteForProspect(array $input, ?string $customerStateId = null): array
+    {
+        $prospect = new Company;
+        $prospect->state_id = $customerStateId;
+
+        return $this->quote($prospect, [...$input, 'mode' => 'initial']);
+    }
+
+    /**
      * Automate draft/contract creation and PaymentIntent creation for checkout.
      *
      * @param  array{
@@ -1212,6 +1232,10 @@ final class SubscriptionPurchaseService
 
     private function activeSubscription(Company $company): ?CompanySubscription
     {
+        if (! $company->exists) {
+            return null;
+        }
+
         return CompanySubscription::query()
             ->where('company_id', $company->id)
             ->where('status', 'active')

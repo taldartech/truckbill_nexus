@@ -2,6 +2,7 @@ import { Link, router, usePage } from '@inertiajs/react';
 import {
     ArrowLeftFromLine,
     Building2,
+    Calculator,
     ClipboardList,
     CreditCard,
     FileSearch,
@@ -34,6 +35,8 @@ import {
 import { dashboard } from '@/routes';
 import admin, {
     gstRates,
+    subscriptionCalculator,
+    subscriptionCatalogue,
     subscriptionInvoices,
     tdsRules,
 } from '@/routes/admin';
@@ -601,6 +604,24 @@ export function AppSidebar() {
                                         title: 'Billing Profiles',
                                         href: '/admin/billing-profiles',
                                         icon: Landmark,
+                                    },
+                                ]
+                              : []),
+                          ...(hasInternal(
+                              'internal.subscription_billing.view',
+                              'internal.subscription_billing.manage',
+                              'internal.crm.view',
+                          )
+                              ? [
+                                    {
+                                        title: 'Subscription Catalogue',
+                                        href: subscriptionCatalogue.url(),
+                                        icon: Package,
+                                    },
+                                    {
+                                        title: 'Subscription Calculator',
+                                        href: subscriptionCalculator.url(),
+                                        icon: Calculator,
                                     },
                                 ]
                               : []),

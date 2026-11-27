@@ -91,8 +91,8 @@ final class SubscriptionInvoiceService
                 $discountAmount = DecimalMath::of((string) ($quote['discount_amount'] ?? '0.00'), 2);
 
                 $defaultProfile = $this->billingProfiles->current();
-                $tax = is_array($quote['tax'] ?? null)
-                    ? $quote['tax']
+                $tax = is_array($quote['gst'] ?? null)
+                    ? $quote['gst']
                     : $this->billingProfiles->computeTaxForCompany($company, $taxableAmount, $defaultProfile);
 
                 $cgst = DecimalMath::of((string) ($tax['cgst_amount'] ?? '0.00'), 2);
@@ -101,7 +101,7 @@ final class SubscriptionInvoiceService
                 $totalTax = DecimalMath::of((string) ($tax['total_tax_amount'] ?? DecimalMath::add($cgst, DecimalMath::add($sgst, $igst, 2), 2)), 2);
                 $grandTotal = DecimalMath::of((string) $intent->amount, 2);
 
-                if (DecimalMath::compare(DecimalMath::add($taxableAmount, $totalTax, 2), $grandTotal, 2) !== 0 && ! isset($quote['tax'])) {
+                if (DecimalMath::compare(DecimalMath::add($taxableAmount, $totalTax, 2), $grandTotal, 2) !== 0 && ! isset($quote['gst'])) {
                     $taxableAmount = $grandTotal;
                     $cgst = '0.00';
                     $sgst = '0.00';
@@ -430,6 +430,7 @@ final class SubscriptionInvoiceService
             $resolvedCompany,
             (string) $invoice->taxable_amount,
             $profile,
+            (string) $invoice->gst_rate_percent,
         );
 
         $origTotalTax = DecimalMath::of((string) $invoice->total_tax_amount, 2);

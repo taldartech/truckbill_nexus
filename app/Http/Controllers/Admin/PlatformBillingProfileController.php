@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Domains\Rbac\InternalAuthorization;
 use App\Domains\Subscription\Billing\PlatformBillingProfileService;
 use App\Domains\Subscription\Exceptions\SubscriptionDomainException;
-use App\Domains\Tax\GstRateService;
 use App\Http\Controllers\Controller;
 use App\Models\PlatformBillingProfile;
 use App\Support\Audit\AuditEntry;
@@ -28,7 +27,6 @@ class PlatformBillingProfileController extends Controller
     public function __construct(
         private readonly PlatformBillingProfileService $profiles = new PlatformBillingProfileService,
         private readonly InternalAuthorization $internalAuth = new InternalAuthorization,
-        private readonly GstRateService $gstRates = new GstRateService,
         private readonly PrivateFileService $files = new PrivateFileService,
     ) {}
 
@@ -65,7 +63,6 @@ class PlatformBillingProfileController extends Controller
                 'state_code' => $profile->state_code,
                 'pin_code' => $profile->pin_code,
                 'gstin' => $profile->gstin,
-                'gst_rate_percent' => (string) $profile->gst_rate_percent,
                 'bank_name' => $profile->bank_name,
                 'has_logo' => $profile->logo_stored_file_id !== null || $profile->logo_path !== null,
                 'logo_url' => ($profile->logo_stored_file_id !== null || $profile->logo_path !== null)
@@ -97,7 +94,6 @@ class PlatformBillingProfileController extends Controller
         return Inertia::render('admin/billing-profiles/form', [
             'mode' => 'create',
             'profile' => null,
-            'gstRates' => $this->gstRateOptions(),
             'links' => [
                 'index' => route('admin.billing-profiles.index'),
                 'submit' => route('admin.billing-profiles.store'),
@@ -120,7 +116,6 @@ class PlatformBillingProfileController extends Controller
             'city_id' => ['required', 'uuid'],
             'pin_code' => ['required', 'string', 'max:12'],
             'gstin' => ['nullable', 'string', 'max:15'],
-            'gst_rate_id' => ['required', 'uuid'],
             'bank_name' => ['nullable', 'string', 'max:160'],
             'bank_account_name' => ['nullable', 'string', 'max:160'],
             'bank_account_number' => ['nullable', 'string', 'max:64'],
@@ -147,7 +142,7 @@ class PlatformBillingProfileController extends Controller
             'internal.subscription_billing.manage',
         ]);
 
-        $profile->load(['state:id,name,gst_code', 'cityRecord:id,name', 'gstRate:id,rate_percent,version', 'updatedBy:id,name,email']);
+        $profile->load(['state:id,name,gst_code', 'cityRecord:id,name', 'updatedBy:id,name,email']);
         $canManage = $this->internalAuth->allows($request->user(), 'internal.subscription_billing.manage');
 
         $audits = AuditEntry::query()
@@ -183,12 +178,11 @@ class PlatformBillingProfileController extends Controller
     public function edit(Request $request, PlatformBillingProfile $profile): Response
     {
         $this->internalAuth->authorizeOrAbort($request, 'internal.subscription_billing.manage');
-        $profile->load(['state:id,name,gst_code', 'cityRecord:id,name', 'gstRate:id,rate_percent,version', 'updatedBy:id,name,email']);
+        $profile->load(['state:id,name,gst_code', 'cityRecord:id,name', 'updatedBy:id,name,email']);
 
         return Inertia::render('admin/billing-profiles/form', [
             'mode' => 'edit',
             'profile' => $this->profilePayload($profile),
-            'gstRates' => $this->gstRateOptions($profile),
             'links' => [
                 'index' => route('admin.billing-profiles.index'),
                 'show' => route('admin.billing-profiles.show', $profile),
@@ -213,7 +207,6 @@ class PlatformBillingProfileController extends Controller
             'city_id' => ['required', 'uuid'],
             'pin_code' => ['required', 'string', 'max:12'],
             'gstin' => ['nullable', 'string', 'max:15'],
-            'gst_rate_id' => ['required', 'uuid'],
             'bank_name' => ['nullable', 'string', 'max:160'],
             'bank_account_name' => ['nullable', 'string', 'max:160'],
             'bank_account_number' => ['nullable', 'string', 'max:64'],
@@ -309,32 +302,6 @@ class PlatformBillingProfileController extends Controller
     }
 
     /**
-     * @return list<array{id: string, label: string, rate_percent: string}>
-     */
-    private function gstRateOptions(?PlatformBillingProfile $profile = null): array
-    {
-        $rates = $this->gstRates->listActive();
-        $options = $rates->map(fn ($rate): array => [
-            'id' => $rate->id,
-            'label' => $rate->displayLabel(),
-            'rate_percent' => (string) $rate->rate_percent,
-        ])->values()->all();
-
-        if ($profile !== null && $profile->gstRate !== null) {
-            $already = collect($options)->contains('id', $profile->gstRate->id);
-            if (! $already) {
-                $options[] = [
-                    'id' => $profile->gstRate->id,
-                    'label' => $profile->gstRate->displayLabel().' (Historical)',
-                    'rate_percent' => (string) $profile->gstRate->rate_percent,
-                ];
-            }
-        }
-
-        return array_values($options);
-    }
-
-    /**
      * @return array<string, mixed>
      */
     private function profilePayload(PlatformBillingProfile $profile): array
@@ -356,8 +323,6 @@ class PlatformBillingProfileController extends Controller
             'state_code' => $profile->state_code ?? '',
             'pin_code' => $profile->pin_code,
             'gstin' => $profile->gstin ?? '',
-            'gst_rate_id' => $profile->gst_rate_id ?? '',
-            'gst_rate_percent' => (string) $profile->gst_rate_percent,
             'bank_name' => $profile->bank_name ?? '',
             'bank_account_name' => $profile->bank_account_name ?? '',
             'bank_account_number' => $profile->bank_account_number ?? '',

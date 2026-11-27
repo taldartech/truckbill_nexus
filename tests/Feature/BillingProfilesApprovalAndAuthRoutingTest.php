@@ -133,7 +133,6 @@ test('multiple billing profiles crud, master validation, secure logo storage, ed
         'city_id' => $geo['pune']->id,
         'pin_code' => '411045',
         'gstin' => '27AABCT1234F1Z5',
-        'gst_rate_id' => $geo['gst18']->id,
         'bank_name' => 'HDFC Bank',
         'bank_account_name' => 'TruckBill West Billing Pvt Ltd',
         'bank_account_number' => '50200012345678',
@@ -153,7 +152,6 @@ test('multiple billing profiles crud, master validation, secure logo storage, ed
         'city_id' => $geo['ahmedabad']->id,
         'pin_code' => '380054',
         'gstin' => '24AABCT5678G1Z1',
-        'gst_rate_id' => $geo['gst18']->id,
     ])->assertRedirect();
 
     expect(PlatformBillingProfile::query()->where('is_active', true)->count())->toBe(2);
@@ -184,7 +182,6 @@ test('multiple billing profiles crud, master validation, secure logo storage, ed
         'city_id' => $geo['pune']->id,
         'pin_code' => '411045',
         'gstin' => '27AABCT1234F1Z5',
-        'gst_rate_id' => $geo['gst18']->id,
         'remark' => '',
     ])->assertSessionHasErrors('remark');
 
@@ -198,7 +195,6 @@ test('multiple billing profiles crud, master validation, secure logo storage, ed
         'city_id' => $geo['pune']->id,
         'pin_code' => '411001',
         'gstin' => '24AABCT1234F1Z5', // 24 belongs to GJ, not MH (27)
-        'gst_rate_id' => $geo['gst18']->id,
     ]))->toThrow(ValidationException::class);
 
     expect(fn () => app(PlatformBillingProfileService::class)->create($superAdmin, [
@@ -211,7 +207,6 @@ test('multiple billing profiles crud, master validation, secure logo storage, ed
         'city_id' => $geo['pune']->id,
         'pin_code' => '411001',
         'gstin' => null,
-        'gst_rate_id' => $geo['gst0']->id,
         'bank_name' => 'SBI',
     ]))->toThrow(ValidationException::class);
 
@@ -226,7 +221,6 @@ test('multiple billing profiles crud, master validation, secure logo storage, ed
         'city_id' => $geo['pune']->id,
         'pin_code' => '411045',
         'gstin' => '27AABCT1234F1Z5',
-        'gst_rate_id' => $geo['gst18']->id,
         'bank_name' => 'HDFC Bank',
         'bank_account_name' => 'TruckBill West Billing Pvt Ltd',
         'bank_account_number' => '50200012345678',
@@ -254,6 +248,7 @@ test('subscription approval separation, visibility restriction, gst conflict blo
     bpLogin($superAdmin);
     $profiles = app(PlatformBillingProfileService::class);
     $invoices = app(SubscriptionInvoiceService::class);
+    $profiles->updateSubscriptionGstRate($superAdmin, $geo['gst18']->id);
 
     $logoOriginal = UploadedFile::fake()->image('orig-logo.png', 180, 90);
     $mhProfile18 = $profiles->create($superAdmin, [
@@ -266,7 +261,6 @@ test('subscription approval separation, visibility restriction, gst conflict blo
         'city_id' => $geo['pune']->id,
         'pin_code' => '411001',
         'gstin' => '27AABCT1111A1Z5',
-        'gst_rate_id' => $geo['gst18']->id,
         'bank_name' => 'ICICI Bank',
         'bank_account_name' => 'TruckBill MH 18%',
         'bank_account_number' => '112233445566',
@@ -339,7 +333,7 @@ test('subscription approval separation, visibility restriction, gst conflict blo
     enterManagementCompany($otherCompany)->assertRedirect();
     $this->get(route('owner.subscription.invoices.show', $invoice))->assertNotFound();
 
-    // Step 4: Create additional profiles (shared GSTIN, 5% MH rate mismatch, GJ 18% inter-state mismatch) & verify approval guards.
+    // Step 4: Create additional profiles (shared GSTIN, GJ inter-state mismatch) & verify approval guards.
     bpLogin($superAdmin);
     $mhSameGstin = $profiles->create($superAdmin, [
         'legal_name' => 'TruckBill MH Secondary Desk',
@@ -351,19 +345,6 @@ test('subscription approval separation, visibility restriction, gst conflict blo
         'city_id' => $geo['pune']->id,
         'pin_code' => '411001',
         'gstin' => '27AABCT1111A1Z5',
-        'gst_rate_id' => $geo['gst18']->id,
-    ]);
-    $mhProfile5 = $profiles->create($superAdmin, [
-        'legal_name' => 'TruckBill MH 5% Profile',
-        'pan' => 'AABCT2222B',
-        'contact_number' => '9876543212',
-        'email' => 'mh5@truckbill.test',
-        'registered_address' => 'Pune 5',
-        'state_id' => $geo['mh']->id,
-        'city_id' => $geo['pune']->id,
-        'pin_code' => '411001',
-        'gstin' => '27AABCT2222B1Z5',
-        'gst_rate_id' => $geo['gst5']->id,
     ]);
     $gjProfile18 = $profiles->create($superAdmin, [
         'legal_name' => 'TruckBill GJ 18% Profile',
@@ -375,15 +356,11 @@ test('subscription approval separation, visibility restriction, gst conflict blo
         'city_id' => $geo['ahmedabad']->id,
         'pin_code' => '380001',
         'gstin' => '24AABCT3333C1Z5',
-        'gst_rate_id' => $geo['gst18']->id,
     ]);
 
     $today = CarbonImmutable::now('Asia/Kolkata')->toDateString();
     $yesterday = CarbonImmutable::now('Asia/Kolkata')->subDays(2)->toDateString();
     $tomorrow = CarbonImmutable::now('Asia/Kolkata')->addDay()->toDateString();
-
-    expect(fn () => $invoices->approveInvoice($superAdmin, $invoice, $mhProfile5->id, 'TB/2026-27/BADRATE', $today))
-        ->toThrow(SubscriptionDomainException::class, 'GST configuration conflict');
 
     expect(fn () => $invoices->approveInvoice($superAdmin, $invoice, $gjProfile18->id, 'TB/2026-27/BADSTATE', $today))
         ->toThrow(SubscriptionDomainException::class, 'GST configuration conflict');
@@ -407,6 +384,9 @@ test('subscription approval separation, visibility restriction, gst conflict blo
     expect(fn () => $invoices->approveInvoice($superAdmin, $oldInvoice, $mhProfile18->id, 'TB/2026-27/LATE', $today))
         ->toThrow(SubscriptionDomainException::class, 'Statutory GST issuance deadline exceeded');
 
+    // Changing the common subscription GST rate after purchase must not alter or block the paid invoice.
+    $profiles->updateSubscriptionGstRate($superAdmin, $geo['gst5']->id, 'Rate revision for future purchases');
+
     // Valid approval using MH 18% Profile.
     $this->post(route('admin.subscription-invoices.approve', $invoice), [
         'billing_profile_id' => $mhProfile18->id,
@@ -418,6 +398,7 @@ test('subscription approval separation, visibility restriction, gst conflict blo
     expect($approved->isApprovedForCustomer())->toBeTrue()
         ->and($approved->approved_number)->toBe('MH-26-0001')
         ->and($approved->billing_profile_id)->toBe($mhProfile18->id)
+        ->and((string) $approved->gst_rate_percent)->toBe('18.00')
         ->and($approved->supplier_snapshot['legal_name'])->toBe('TruckBill MH 18% Profile')
         ->and($approved->supplier_snapshot['logo_snapshot_path'])->not->toBeNull();
 
@@ -436,7 +417,7 @@ test('subscription approval separation, visibility restriction, gst conflict blo
                 'taxable_amount' => (string) $invoice->taxable_amount,
                 'subtotal_amount' => (string) $invoice->subtotal_amount,
                 'discount_amount' => (string) $invoice->discount_amount,
-                'tax' => [
+                'gst' => [
                     'gst_rate_percent' => (string) $invoice->gst_rate_percent,
                     'cgst_amount' => (string) $invoice->cgst_amount,
                     'sgst_amount' => (string) $invoice->sgst_amount,
@@ -471,7 +452,7 @@ test('subscription approval separation, visibility restriction, gst conflict blo
                 'taxable_amount' => '1000.00',
                 'subtotal_amount' => '1000.00',
                 'discount_amount' => '0.00',
-                'tax' => [
+                'gst' => [
                     'gst_rate_percent' => '18.00',
                     'cgst_amount' => '90.00',
                     'sgst_amount' => '90.00',
@@ -517,7 +498,6 @@ test('subscription approval separation, visibility restriction, gst conflict blo
         'city_id' => $geo['pune']->id,
         'pin_code' => '411099',
         'gstin' => '27AABCT1111A1Z5',
-        'gst_rate_id' => $geo['gst18']->id,
         'bank_name' => 'Axis Bank',
         'bank_account_name' => 'Mutated Account',
         'bank_account_number' => '99999999',
