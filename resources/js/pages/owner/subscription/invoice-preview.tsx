@@ -10,6 +10,7 @@ type Props = {
         document_title: string;
         banner: string | null;
         supplier: Record<string, string | null> | null;
+        supplier_logo_data_uri?: string | null;
         customer: Record<string, string | null>;
         invoice: {
             id: string;
@@ -143,6 +144,13 @@ export default function InvoicePreview({
                         </p>
                         {document.supplier ? (
                             <>
+                                {document.supplier_logo_data_uri ? (
+                                    <img
+                                        src={document.supplier_logo_data_uri}
+                                        alt="Supplier Logo"
+                                        className="mb-2 max-h-12 max-w-[160px] object-contain"
+                                    />
+                                ) : null}
                                 <p className="text-sm font-semibold">
                                     {document.supplier.legal_name}
                                 </p>
@@ -156,9 +164,17 @@ export default function InvoicePreview({
                                         .filter(Boolean)
                                         .join(', ')}
                                 </p>
-                                {document.supplier.gstin ? (
-                                    <p className="mt-1 font-mono">
-                                        GSTIN: {document.supplier.gstin}
+                                <p className="mt-1 font-mono">
+                                    {document.supplier.gstin
+                                        ? `GSTIN: ${document.supplier.gstin}`
+                                        : 'GSTIN: Unregistered'}
+                                    {document.supplier.pan
+                                        ? ` · PAN: ${document.supplier.pan}`
+                                        : ''}
+                                </p>
+                                {document.supplier.website ? (
+                                    <p className="text-muted-foreground">
+                                        {document.supplier.website}
                                     </p>
                                 ) : null}
                             </>
@@ -329,6 +345,41 @@ export default function InvoicePreview({
                         </tfoot>
                     </table>
                 </section>
+
+                {document.supplier &&
+                (document.supplier.bank_name ||
+                    document.supplier.notes_terms) ? (
+                    <div className="grid gap-4 sm:grid-cols-2">
+                        {document.supplier.bank_name ? (
+                            <div className="rounded-xl border border-border p-4 text-xs">
+                                <p className="mb-1 text-[11px] font-semibold text-muted-foreground uppercase">
+                                    Bank Details
+                                </p>
+                                <p>{document.supplier.bank_name}</p>
+                                <p>
+                                    Account Holder:{' '}
+                                    {document.supplier.bank_account_name || '—'}
+                                </p>
+                                <p className="font-mono">
+                                    A/c:{' '}
+                                    {document.supplier.bank_account_number ||
+                                        '—'}{' '}
+                                    · IFSC: {document.supplier.bank_ifsc || '—'}
+                                </p>
+                            </div>
+                        ) : null}
+                        {document.supplier.notes_terms ? (
+                            <div className="rounded-xl border border-border p-4 text-xs">
+                                <p className="mb-1 text-[11px] font-semibold text-muted-foreground uppercase">
+                                    Notes / Terms
+                                </p>
+                                <p className="whitespace-pre-wrap">
+                                    {document.supplier.notes_terms}
+                                </p>
+                            </div>
+                        ) : null}
+                    </div>
+                ) : null}
             </CompanyOwnerPageShell>
         </>
     );

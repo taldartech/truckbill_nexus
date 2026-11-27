@@ -46,9 +46,12 @@ return [
 
     'billing' => [
         'currency' => 'INR',
+        'default_sac_code' => env('SUBSCRIPTION_SAC_CODE', '998314'),
         'invoice_number_prefix' => env('SUBSCRIPTION_INVOICE_PREFIX', 'TB'),
         // Financial year starts April (India) — configurable.
         'financial_year_start_month' => (int) env('SUBSCRIPTION_FY_START_MONTH', 4),
+        // Statutory service-invoice issuance window (GST Section 31(2) / Rule 47: 30 days from supply/payment).
+        'statutory_issuance_window_days' => (int) env('SUBSCRIPTION_INVOICE_STATUTORY_DAYS', 30),
     ],
 
     'payments' => [

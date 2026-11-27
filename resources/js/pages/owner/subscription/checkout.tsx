@@ -390,9 +390,10 @@ export default function SubscriptionCheckout({
                             ))}
                         </ul>
                         <p className="text-xs text-muted-foreground">
-                            Entitlements activate and your immutable GST tax
-                            invoice is generated only after authoritative server
-                            verification.
+                            Entitlements activate immediately after server
+                            payment verification; your tax invoice becomes
+                            available after internal Billing Profile and Invoice
+                            Number approval.
                         </p>
                     </div>
                 </section>

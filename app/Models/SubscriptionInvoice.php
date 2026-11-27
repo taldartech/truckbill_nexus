@@ -14,13 +14,16 @@ use Illuminate\Support\Str;
  * @property string $company_id
  * @property string|null $payment_intent_id
  * @property string|null $company_subscription_id
+ * @property string|null $billing_profile_id
+ * @property string|null $supplier_registration_key
  * @property string $status
  * @property string $document_type
  * @property string|null $original_invoice_id
  * @property string|null $proposed_number
  * @property string|null $approved_number
  * @property string|null $invoice_number
- * @property string $financial_year
+ * @property string|null $financial_year
+ * @property CarbonInterface|null $invoice_date
  * @property CarbonInterface|null $service_period_start
  * @property CarbonInterface|null $service_period_end
  * @property string|null $purchase_type
@@ -35,6 +38,8 @@ use Illuminate\Support\Str;
  * @property string $total_tax_amount
  * @property-read Company|null $company
  * @property-read PaymentIntent|null $paymentIntent
+ * @property-read PlatformBillingProfile|null $billingProfile
+ * @property-read User|null $approver
  * @property string|null $place_of_supply_state
  * @property string|null $place_of_supply_code
  * @property bool $is_inter_state
@@ -45,6 +50,7 @@ use Illuminate\Support\Str;
  * @property array<string, mixed>|null $customer_snapshot
  * @property array<string, mixed>|null $pricing_snapshot
  * @property string|null $payment_reference
+ * @property CarbonInterface|null $payment_at
  * @property string|null $credit_note_reason
  * @property CarbonInterface|null $approved_at
  * @property CarbonInterface|null $issued_at
@@ -57,6 +63,14 @@ class SubscriptionInvoice extends Model
 {
     use SoftDeletes;
 
+    public const STATUS_PENDING_APPROVAL = 'pending_approval';
+
+    public const STATUS_APPROVED = 'approved';
+
+    public const STATUS_ISSUED = 'issued';
+
+    public const STATUS_EMAILED = 'emailed';
+
     public $incrementing = false;
 
     protected $keyType = 'string';
@@ -66,6 +80,8 @@ class SubscriptionInvoice extends Model
         'company_id',
         'payment_intent_id',
         'company_subscription_id',
+        'billing_profile_id',
+        'supplier_registration_key',
         'status',
         'document_type',
         'original_invoice_id',
@@ -73,6 +89,7 @@ class SubscriptionInvoice extends Model
         'approved_number',
         'invoice_number',
         'financial_year',
+        'invoice_date',
         'service_period_start',
         'service_period_end',
         'purchase_type',
@@ -95,6 +112,7 @@ class SubscriptionInvoice extends Model
         'customer_snapshot',
         'pricing_snapshot',
         'payment_reference',
+        'payment_at',
         'credit_note_reason',
         'approved_at',
         'issued_at',
@@ -117,12 +135,14 @@ class SubscriptionInvoice extends Model
             'igst_amount' => 'decimal:2',
             'total_tax_amount' => 'decimal:2',
             'is_inter_state' => 'boolean',
+            'invoice_date' => 'date',
             'service_period_start' => 'date',
             'service_period_end' => 'date',
             'line_items' => 'array',
             'supplier_snapshot' => 'array',
             'customer_snapshot' => 'array',
             'pricing_snapshot' => 'array',
+            'payment_at' => 'datetime',
             'approved_at' => 'datetime',
             'issued_at' => 'datetime',
             'emailed_at' => 'datetime',
@@ -146,9 +166,14 @@ class SubscriptionInvoice extends Model
                 );
             }
 
-            if ($model->getOriginal('issued_at') !== null) {
+            if ($model->getOriginal('approved_at') !== null || $model->getOriginal('issued_at') !== null) {
                 foreach ([
+                    'billing_profile_id',
+                    'supplier_registration_key',
                     'invoice_number',
+                    'approved_number',
+                    'invoice_date',
+                    'financial_year',
                     'amount',
                     'subtotal_amount',
                     'discount_amount',
@@ -164,15 +189,38 @@ class SubscriptionInvoice extends Model
                     'line_items',
                     'service_period_start',
                     'service_period_end',
+                    'approved_by',
+                    'approved_at',
+                    'issued_at',
                 ] as $immutableField) {
                     if ($model->isDirty($immutableField)) {
                         throw new SubscriptionDomainException(
-                            'Issued subscription invoice financial and billing snapshots are immutable.'
+                            'Approved subscription invoice financial and billing snapshots are immutable.'
                         );
                     }
                 }
             }
         });
+
+        static::deleting(function (self $model): void {
+            if ($model->getOriginal('approved_at') !== null || $model->getOriginal('issued_at') !== null) {
+                throw new SubscriptionDomainException(
+                    'Approved subscription invoices cannot be deleted; issue a Credit Note instead.'
+                );
+            }
+        });
+    }
+
+    public function isApprovedForCustomer(): bool
+    {
+        return in_array($this->status, [self::STATUS_APPROVED, self::STATUS_ISSUED, self::STATUS_EMAILED], true)
+            && $this->approved_at !== null
+            && filled($this->invoice_number ?? $this->approved_number);
+    }
+
+    public function isPendingApproval(): bool
+    {
+        return ! $this->isApprovedForCustomer();
     }
 
     /**
@@ -205,5 +253,21 @@ class SubscriptionInvoice extends Model
     public function paymentIntent(): BelongsTo
     {
         return $this->belongsTo(PaymentIntent::class, 'payment_intent_id');
+    }
+
+    /**
+     * @return BelongsTo<PlatformBillingProfile, $this>
+     */
+    public function billingProfile(): BelongsTo
+    {
+        return $this->belongsTo(PlatformBillingProfile::class, 'billing_profile_id');
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function approver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by');
     }
 }

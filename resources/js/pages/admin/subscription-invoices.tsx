@@ -1,11 +1,11 @@
-import { Form, Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 import { Check, Download, Eye } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import { AppIconAction } from '@/components/app-icon-action';
 import {
     PortalErrorList,
     PortalFlashBanner,
 } from '@/components/admin/portal-feedback';
+import { AppIconAction } from '@/components/app-icon-action';
 import {
     ResponsiveDataTable,
     type DataTableColumn,
@@ -20,34 +20,50 @@ import { formatDisplayDateSmart } from '@/lib/dates';
 type InvoiceRow = {
     id: string;
     document_type: string;
+    company_id: string;
     company_name: string | null;
-    invoice_number: string | null;
-    proposed_number: string | null;
-    status: string;
-    payment_status: string;
+    purchase_details: string;
     purchase_type: string | null;
+    payment_reference: string | null;
+    payment_date: string | null;
+    invoice_number: string | null;
+    billing_profile_id: string | null;
+    billing_profile_name: string | null;
+    status: string;
+    is_approved: boolean;
     financial_year: string | null;
     taxable_amount: string;
     total_tax_amount: string;
     amount: string;
     currency: string;
-    issued_at: string | null;
+    invoice_date: string | null;
+    statutory_deadline: string | null;
+    is_overdue: boolean;
     view_url: string;
-    download_url: string;
+    download_url: string | null;
     approve_url: string | null;
 };
 
 type Props = {
-    filters: { company_id: string; q: string; status: string };
+    filters: {
+        customer_company: string;
+        billing_profile_id: string;
+        q: string;
+        status: string;
+        date_from: string;
+        date_to: string;
+    };
     companyOptions: { id: string; name: string }[];
+    billingProfileOptions: { id: string; name: string }[];
     canManage: boolean;
     invoices: InvoiceRow[];
-    links: { index: string; billing_profile: string };
+    links: { index: string; billing_profiles: string };
 };
 
 export default function AdminSubscriptionInvoices({
     filters,
     companyOptions,
+    billingProfileOptions,
     canManage,
     invoices,
     links,
@@ -58,8 +74,13 @@ export default function AdminSubscriptionInvoices({
     }>().props;
 
     const [search, setSearch] = useState(filters.q);
-    const [companyId, setCompanyId] = useState(filters.company_id);
+    const [companyId, setCompanyId] = useState(filters.customer_company);
+    const [billingProfileId, setBillingProfileId] = useState(
+        filters.billing_profile_id,
+    );
     const [status, setStatus] = useState(filters.status);
+    const [dateFrom, setDateFrom] = useState(filters.date_from);
+    const [dateTo, setDateTo] = useState(filters.date_to);
 
     const applyFilters = (e: React.FormEvent) => {
         e.preventDefault();
@@ -67,8 +88,11 @@ export default function AdminSubscriptionInvoices({
             links.index,
             {
                 q: search || undefined,
-                company_id: companyId || undefined,
+                customer_company: companyId || undefined,
+                billing_profile_id: billingProfileId || undefined,
                 status,
+                date_from: dateFrom || undefined,
+                date_to: dateTo || undefined,
             },
             { preserveState: true, replace: true },
         );
@@ -77,63 +101,97 @@ export default function AdminSubscriptionInvoices({
     const columns = useMemo<DataTableColumn<InvoiceRow>[]>(
         () => [
             {
+                id: 'company',
+                header: 'Company',
+                priority: 0,
+                cell: (row) => (
+                    <div className="font-medium">{row.company_name || '—'}</div>
+                ),
+            },
+            {
+                id: 'purchase',
+                header: 'Subscription / Purchase',
+                priority: 1,
+                cell: (row) => (
+                    <div className="text-xs">
+                        <div>{row.purchase_details}</div>
+                        <div className="text-muted-foreground capitalize">
+                            {row.document_type.replaceAll('_', ' ')}
+                        </div>
+                    </div>
+                ),
+            },
+            {
+                id: 'payment_ref',
+                header: 'Payment Ref',
+                priority: 2,
+                className: 'font-mono text-xs',
+                cell: (row) => row.payment_reference || '—',
+            },
+            {
+                id: 'payment_date',
+                header: 'Payment Date',
+                priority: 2,
+                className: 'text-xs text-muted-foreground',
+                cell: (row) => formatDisplayDateSmart(row.payment_date),
+            },
+            {
+                id: 'amount',
+                header: 'Amount',
+                priority: 0,
+                cell: (row) => (
+                    <div className="text-xs">
+                        <div className="font-medium">
+                            {row.currency} {row.amount}
+                        </div>
+                        <div className="text-muted-foreground">
+                            Taxable {row.taxable_amount} + GST{' '}
+                            {row.total_tax_amount}
+                        </div>
+                    </div>
+                ),
+            },
+            {
                 id: 'number',
                 header: 'Invoice Number',
                 priority: 0,
                 className: 'font-mono text-xs',
-                cell: (row) => row.invoice_number || row.proposed_number || '—',
+                cell: (row) => row.invoice_number || '—',
             },
             {
-                id: 'company',
-                header: 'Company',
-                priority: 0,
-                cell: (row) => row.company_name || '—',
-            },
-            {
-                id: 'type',
-                header: 'Type',
+                id: 'billing_profile',
+                header: 'Billing Profile',
                 priority: 2,
-                className: 'capitalize text-xs',
-                cell: (row) => row.document_type.replaceAll('_', ' '),
+                className: 'text-xs',
+                cell: (row) => row.billing_profile_name || '—',
             },
             {
                 id: 'status',
-                header: 'Status',
+                header: 'Invoice Status',
                 priority: 1,
-                cell: (row) => <WorkspaceStatusBadge status={row.status} />,
-            },
-            {
-                id: 'payment',
-                header: 'Payment',
-                priority: 2,
-                className: 'capitalize text-xs',
-                cell: (row) => row.payment_status,
-            },
-            {
-                id: 'taxable',
-                header: 'Taxable',
-                priority: 2,
-                cell: (row) => `${row.currency} ${row.taxable_amount}`,
-            },
-            {
-                id: 'tax',
-                header: 'GST',
-                priority: 3,
-                cell: (row) => `${row.currency} ${row.total_tax_amount}`,
-            },
-            {
-                id: 'amount',
-                header: 'Grand Total',
-                priority: 1,
-                className: 'font-medium',
-                cell: (row) => `${row.currency} ${row.amount}`,
-            },
-            {
-                id: 'date',
-                header: 'Issued Date',
-                priority: 3,
-                className: 'text-xs text-muted-foreground',
-                cell: (row) => formatDisplayDateSmart(row.issued_at),
+                cell: (row) => (
+                    <div className="flex flex-col gap-1">
+                        <WorkspaceStatusBadge
+                            status={
+                                row.is_approved
+                                    ? row.status
+                                    : 'pending_approval'
+                            }
+                        />
+                        {!row.is_approved && row.statutory_deadline ? (
+                            <span
+                                className={
+                                    row.is_overdue
+                                        ? 'text-[11px] font-medium text-destructive'
+                                        : 'text-[11px] text-muted-foreground'
+                                }
+                            >
+                                Due by{' '}
+                                {formatDisplayDateSmart(row.statutory_deadline)}
+                            </span>
+                        ) : null}
+                    </div>
+                ),
             },
         ],
         [],
@@ -144,11 +202,11 @@ export default function AdminSubscriptionInvoices({
             <Head title="Subscription Invoice Register" />
             <PageShell
                 title="Subscription Invoices"
-                description="Platform subscription tax invoices and credit notes issued to Customer Companies."
+                description="Approve pending subscription invoices with a Billing Profile and manual Invoice Number, or download issued documents."
                 actions={
                     <Button asChild variant="outline" size="sm">
-                        <Link href={links.billing_profile}>
-                            Platform Billing Profile
+                        <Link href={links.billing_profiles}>
+                            Billing Profiles
                         </Link>
                     </Button>
                 }
@@ -156,12 +214,12 @@ export default function AdminSubscriptionInvoices({
                 <PortalFlashBanner message={flash?.success} />
                 <PortalErrorList
                     errors={errors}
-                    keys={['approved_number', 'credit_note']}
+                    keys={['approval', 'credit_note']}
                 />
 
                 <form
                     onSubmit={applyFilters}
-                    className="grid gap-3 rounded-xl border border-border bg-card p-3 sm:grid-cols-4 sm:items-end"
+                    className="grid gap-3 rounded-xl border border-border bg-card p-4 sm:grid-cols-2 lg:grid-cols-6 lg:items-end"
                 >
                     <div className="space-y-1">
                         <Label htmlFor="inv_search">Search</Label>
@@ -173,7 +231,23 @@ export default function AdminSubscriptionInvoices({
                         />
                     </div>
                     <div className="space-y-1">
-                        <Label htmlFor="inv_company">Company</Label>
+                        <Label htmlFor="inv_status">Status</Label>
+                        <select
+                            id="inv_status"
+                            value={status}
+                            onChange={(e) => setStatus(e.target.value)}
+                            className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                        >
+                            <option value="all">All</option>
+                            <option value="pending_approval">
+                                Pending Approval
+                            </option>
+                            <option value="approved">Approved</option>
+                            <option value="credit_note">Credit Notes</option>
+                        </select>
+                    </div>
+                    <div className="space-y-1">
+                        <Label htmlFor="inv_company">Customer Company</Label>
                         <select
                             id="inv_company"
                             value={companyId}
@@ -189,21 +263,44 @@ export default function AdminSubscriptionInvoices({
                         </select>
                     </div>
                     <div className="space-y-1">
-                        <Label htmlFor="inv_status">Status</Label>
+                        <Label htmlFor="inv_billing_profile">
+                            Billing Profile
+                        </Label>
                         <select
-                            id="inv_status"
-                            value={status}
-                            onChange={(e) => setStatus(e.target.value)}
+                            id="inv_billing_profile"
+                            value={billingProfileId}
+                            onChange={(e) =>
+                                setBillingProfileId(e.target.value)
+                            }
                             className="flex h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
                         >
-                            <option value="all">All</option>
-                            <option value="issued">Issued</option>
-                            <option value="approved">Approved</option>
-                            <option value="awaiting_number_approval">
-                                Awaiting Approval
-                            </option>
-                            <option value="credit_note">Credit Notes</option>
+                            <option value="">All Billing Profiles</option>
+                            {billingProfileOptions.map((p) => (
+                                <option key={p.id} value={p.id}>
+                                    {p.name}
+                                </option>
+                            ))}
                         </select>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                            <Label htmlFor="inv_from">From</Label>
+                            <Input
+                                id="inv_from"
+                                type="date"
+                                value={dateFrom}
+                                onChange={(e) => setDateFrom(e.target.value)}
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <Label htmlFor="inv_to">To</Label>
+                            <Input
+                                id="inv_to"
+                                type="date"
+                                value={dateTo}
+                                onChange={(e) => setDateTo(e.target.value)}
+                            />
+                        </div>
                     </div>
                     <Button type="submit" variant="secondary">
                         Filter
@@ -217,42 +314,41 @@ export default function AdminSubscriptionInvoices({
                         rows={invoices}
                         rowKey={(row) => row.id}
                         emptyTitle="No subscription invoices found"
-                        emptyDescription="Invoices appear here after completed purchases or adjustments."
+                        emptyDescription="Invoices appear here after verified subscription payments."
                         actions={(invoice) => (
-                            <div className="flex flex-wrap items-center justify-end gap-1">
-                                <AppIconAction
-                                    icon={Eye}
-                                    label="View invoice"
-                                    href={invoice.view_url}
-                                    variant="info"
-                                />
-                                <AppIconAction
-                                    icon={Download}
-                                    label="Download invoice"
-                                    href={invoice.download_url}
-                                    variant="outline"
-                                />
+                            <div className="flex flex-wrap items-center justify-end gap-1.5">
                                 {canManage && invoice.approve_url ? (
-                                    <Form
-                                        action={invoice.approve_url}
-                                        method="post"
-                                        className="inline-flex items-center gap-1"
-                                    >
-                                        <Input
-                                            name="approved_number"
-                                            defaultValue={
-                                                invoice.proposed_number || ''
-                                            }
-                                            className="h-8 max-w-[8rem] font-mono text-xs"
-                                        />
+                                    <Button asChild size="sm">
+                                        <Link href={invoice.approve_url}>
+                                            <Check className="size-3.5" />
+                                            Approve Invoice
+                                        </Link>
+                                    </Button>
+                                ) : null}
+                                {invoice.is_approved ? (
+                                    <>
                                         <AppIconAction
-                                            icon={Check}
-                                            label="Approve number"
-                                            type="submit"
-                                            variant="default"
-                                            size="sm"
+                                            icon={Eye}
+                                            label="View invoice"
+                                            href={invoice.view_url}
+                                            variant="info"
                                         />
-                                    </Form>
+                                        {invoice.download_url ? (
+                                            <AppIconAction
+                                                icon={Download}
+                                                label="Download invoice"
+                                                href={invoice.download_url}
+                                                variant="outline"
+                                            />
+                                        ) : null}
+                                    </>
+                                ) : !canManage ? (
+                                    <AppIconAction
+                                        icon={Eye}
+                                        label="View details"
+                                        href={invoice.view_url}
+                                        variant="info"
+                                    />
                                 ) : null}
                             </div>
                         )}

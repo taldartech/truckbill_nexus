@@ -1,6 +1,7 @@
 <?php
 
 use App\Domains\Company\CompanyWorkspaceService;
+use App\Domains\Subscription\Billing\PlatformBillingProfileService;
 use App\Domains\Subscription\Billing\SubscriptionInvoiceService;
 use App\Domains\Subscription\Capacity\CompanyCapacityService;
 use App\Domains\Subscription\Contract\CompanySubscriptionContractService;
@@ -17,7 +18,10 @@ use App\Domains\Subscription\Payments\PaymentIntentService;
 use App\Domains\Subscription\Quota\QuotaAllocationService;
 use App\Domains\Subscription\Storage\StorageReconciliationService;
 use App\Domains\Subscription\Support\SubscriptionClock;
+use App\Models\City;
 use App\Models\CompanySubscriptionTrial;
+use App\Models\GstRate;
+use App\Models\State;
 use App\Models\SubscriptionCatalogueVersion;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
@@ -25,6 +29,7 @@ use App\Support\Tenant\TenantContextHolder;
 use Carbon\CarbonImmutable;
 use Database\Seeders\SubscriptionCatalogueSeeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 
 beforeEach(function () {
     TenantContextHolder::clear();
@@ -297,6 +302,31 @@ test('failed payment does not activate subscription', function () {
 test('invoice number approval is immutable and email failure does not reverse approval', function () {
     ['company' => $company] = batchEOwnerCompany('Invoice Co');
     $approver = User::factory()->superAdmin()->create();
+    $state = State::query()->firstOrCreate(
+        ['code' => 'MH'],
+        ['id' => (string) Str::uuid(), 'name' => 'Maharashtra', 'gst_code' => '27', 'is_active' => true],
+    );
+    $city = City::query()->firstOrCreate(
+        ['state_id' => $state->id, 'name_normalized' => 'pune'],
+        ['id' => (string) Str::uuid(), 'name' => 'Pune', 'is_active' => true],
+    );
+    $gstRate = GstRate::query()->firstOrCreate(
+        ['rate_percent' => '0.000', 'version' => 1],
+        ['id' => (string) Str::uuid(), 'effective_from' => '2025-04-01', 'is_active' => true],
+    );
+    $profile = app(PlatformBillingProfileService::class)->create($approver, [
+        'legal_name' => 'TruckBill Platform Co',
+        'pan' => 'AABCT1234F',
+        'contact_number' => '9876543210',
+        'email' => 'bill@truckbill.test',
+        'registered_address' => 'Pune',
+        'state_id' => $state->id,
+        'city_id' => $city->id,
+        'pin_code' => '411001',
+        'gstin' => null,
+        'gst_rate_id' => $gstRate->id,
+    ]);
+
     $gateway = new FakePaymentGateway;
     $intent = (new PaymentIntentService($gateway))->create($company, 'renewal', '250.00', 'inv-pay-1');
     $intent->forceFill([
@@ -306,19 +336,27 @@ test('invoice number approval is immutable and email failure does not reverse ap
     ])->save();
 
     $invoices = app(SubscriptionInvoiceService::class);
-    $draft = $invoices->createDraftFromPayment($intent);
-    $issuedNumber = (string) $draft->invoice_number;
-    $approved = $invoices->approveNumber($approver, $draft, 'TB/2026-2027/0009');
-    expect($approved->status)->toBe('issued')
-        ->and($approved->approved_number)->toBe($issuedNumber);
+    $pending = $invoices->createPendingApprovalFromPayment($intent);
+    expect($pending->status)->toBe('pending_approval')
+        ->and($pending->approved_number)->toBeNull();
+
+    $approved = $invoices->approveInvoice(
+        $approver,
+        $pending,
+        $profile->id,
+        'TB/2026-2027/0009',
+        now('Asia/Kolkata')->toDateString(),
+    );
+    expect($approved->status)->toBe('approved')
+        ->and($approved->approved_number)->toBe('TB/2026-2027/0009');
 
     expect(fn () => $approved->update(['approved_number' => 'HACK']))
         ->toThrow(SubscriptionDomainException::class);
 
     $failedEmail = $invoices->recordEmailAttempt($approved->fresh(), false, 'SMTP down');
-    expect($failedEmail->status)->toBe('issued')
+    expect($failedEmail->status)->toBe('approved')
         ->and($failedEmail->email_status)->toBe('failed')
-        ->and($failedEmail->approved_number)->toBe($issuedNumber);
+        ->and($failedEmail->approved_number)->toBe('TB/2026-2027/0009');
 });
 
 test('storage reconciliation reports allocation thresholds', function () {

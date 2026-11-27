@@ -2,41 +2,40 @@
 
 namespace App\Models;
 
+use App\Support\Files\StoredFile;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Str;
 
 /**
- * Platform (TruckBill SaaS service provider) billing & GST profile for subscription tax invoices.
+ * Internal Company Billing Profile for TruckBill SaaS subscription invoicing.
  *
  * @property string $id
  * @property string $legal_name
- * @property string|null $trade_name
+ * @property string|null $pan
+ * @property string|null $logo_path
+ * @property string|null $logo_stored_file_id
+ * @property string $contact_number
+ * @property string $email
  * @property string $registered_address
+ * @property string|null $city_id
+ * @property string $city
  * @property string|null $state_id
  * @property string $state_name
  * @property string|null $state_code
- * @property string $city
  * @property string $pin_code
  * @property string|null $gstin
- * @property string|null $pan
- * @property string $contact_number
- * @property string $email
- * @property string|null $logo_path
+ * @property string|null $gst_rate_id
+ * @property string $gst_rate_percent
  * @property string|null $bank_name
  * @property string|null $bank_account_name
  * @property string|null $bank_account_number
  * @property string|null $bank_ifsc
- * @property string|null $bank_branch
- * @property string $gst_rate_percent
- * @property string $sac_code
- * @property string|null $hsn_code
- * @property string $invoice_prefix
- * @property int $invoice_next_sequence
- * @property string $credit_note_prefix
- * @property int $credit_note_next_sequence
+ * @property string|null $website
+ * @property string|null $notes_terms
  * @property bool $is_active
+ * @property int|null $updated_by_user_id
  */
 class PlatformBillingProfile extends Model
 {
@@ -49,30 +48,27 @@ class PlatformBillingProfile extends Model
     protected $fillable = [
         'id',
         'legal_name',
-        'trade_name',
+        'pan',
+        'logo_path',
+        'logo_stored_file_id',
+        'contact_number',
+        'email',
         'registered_address',
+        'city_id',
+        'city',
         'state_id',
         'state_name',
         'state_code',
-        'city',
         'pin_code',
         'gstin',
-        'pan',
-        'contact_number',
-        'email',
-        'logo_path',
+        'gst_rate_id',
+        'gst_rate_percent',
         'bank_name',
         'bank_account_name',
         'bank_account_number',
         'bank_ifsc',
-        'bank_branch',
-        'gst_rate_percent',
-        'sac_code',
-        'hsn_code',
-        'invoice_prefix',
-        'invoice_next_sequence',
-        'credit_note_prefix',
-        'credit_note_next_sequence',
+        'website',
+        'notes_terms',
         'is_active',
         'updated_by_user_id',
     ];
@@ -81,8 +77,6 @@ class PlatformBillingProfile extends Model
     {
         return [
             'gst_rate_percent' => 'decimal:2',
-            'invoice_next_sequence' => 'integer',
-            'credit_note_next_sequence' => 'integer',
             'is_active' => 'boolean',
         ];
     }
@@ -102,6 +96,8 @@ class PlatformBillingProfile extends Model
             ->where('is_active', true)
             ->whereNull('deleted_at')
             ->orderByDesc('updated_at')
+            ->orderByDesc('created_at')
+            ->orderBy('id')
             ->first();
     }
 
@@ -114,6 +110,47 @@ class PlatformBillingProfile extends Model
     }
 
     /**
+     * @return BelongsTo<City, $this>
+     */
+    public function cityRecord(): BelongsTo
+    {
+        return $this->belongsTo(City::class, 'city_id');
+    }
+
+    /**
+     * @return BelongsTo<GstRate, $this>
+     */
+    public function gstRate(): BelongsTo
+    {
+        return $this->belongsTo(GstRate::class, 'gst_rate_id');
+    }
+
+    /**
+     * @return BelongsTo<StoredFile, $this>
+     */
+    public function logoFile(): BelongsTo
+    {
+        return $this->belongsTo(StoredFile::class, 'logo_stored_file_id');
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function updatedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'updated_by_user_id');
+    }
+
+    public function supplierRegistrationKey(): string
+    {
+        if (filled($this->gstin)) {
+            return 'gstin:'.strtoupper(trim((string) $this->gstin));
+        }
+
+        return 'profile:'.$this->id;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function toImmutableSnapshot(): array
@@ -121,26 +158,28 @@ class PlatformBillingProfile extends Model
         return [
             'id' => $this->id,
             'legal_name' => $this->legal_name,
-            'trade_name' => $this->trade_name,
+            'pan' => $this->pan,
+            'logo_stored_file_id' => $this->logo_stored_file_id,
+            'logo_path' => $this->logo_path,
+            'contact_number' => $this->contact_number,
+            'email' => $this->email,
             'registered_address' => $this->registered_address,
+            'city_id' => $this->city_id,
+            'city' => $this->city,
             'state_id' => $this->state_id,
             'state_name' => $this->state_name,
             'state_code' => $this->state_code,
-            'city' => $this->city,
             'pin_code' => $this->pin_code,
             'gstin' => $this->gstin,
-            'pan' => $this->pan,
-            'contact_number' => $this->contact_number,
-            'email' => $this->email,
-            'logo_path' => $this->logo_path,
+            'gst_rate_id' => $this->gst_rate_id,
+            'gst_rate_percent' => (string) $this->gst_rate_percent,
             'bank_name' => $this->bank_name,
             'bank_account_name' => $this->bank_account_name,
             'bank_account_number' => $this->bank_account_number,
             'bank_ifsc' => $this->bank_ifsc,
-            'bank_branch' => $this->bank_branch,
-            'gst_rate_percent' => (string) $this->gst_rate_percent,
-            'sac_code' => $this->sac_code,
-            'hsn_code' => $this->hsn_code,
+            'website' => $this->website,
+            'notes_terms' => $this->notes_terms,
+            'sac_code' => (string) config('subscription.billing.default_sac_code', '998314'),
         ];
     }
 }

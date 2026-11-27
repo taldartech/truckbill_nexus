@@ -15,9 +15,11 @@ use App\Domains\Subscription\Enums\SubscriptionTenure;
 use App\Domains\Subscription\Exceptions\SubscriptionDomainException;
 use App\Domains\Subscription\Payments\Gateway\FakePaymentGateway;
 use App\Domains\Subscription\Purchase\SubscriptionPurchaseService;
+use App\Models\City;
 use App\Models\Company;
 use App\Models\CompanySubscription;
 use App\Models\CustomerWebSession;
+use App\Models\GstRate;
 use App\Models\InternalRoleAssignment;
 use App\Models\PaymentIntent;
 use App\Models\Permission;
@@ -96,34 +98,34 @@ function sbSeedPlatformProfile(User $admin, string $stateCode = '27', string $st
             'is_active' => true,
         ],
     );
+    $city = City::query()->firstOrCreate(
+        ['state_id' => $state->id, 'name_normalized' => 'pune'],
+        ['id' => (string) Str::uuid(), 'name' => 'Pune', 'is_active' => true],
+    );
+    $gstRate = GstRate::query()->firstOrCreate(
+        ['rate_percent' => '18.000', 'version' => 1],
+        ['id' => (string) Str::uuid(), 'effective_from' => '2025-04-01', 'is_active' => true],
+    );
 
-    return app(PlatformBillingProfileService::class)->upsert($admin, [
+    return app(PlatformBillingProfileService::class)->create($admin, [
         'legal_name' => 'TruckBill SaaS Platform Pvt Ltd',
-        'trade_name' => 'TruckBill Cloud',
-        'registered_address' => '401 Tech Tower, Pune',
-        'state_id' => $state->id,
-        'state_name' => $state->name,
-        'state_code' => $state->gst_code,
-        'city' => 'Pune',
-        'pin_code' => '411001',
-        'gstin' => $stateCode.'AABCT1234F1Z5',
         'pan' => 'AABCT1234F',
         'contact_number' => '9876543210',
         'email' => 'billing@truckbill.test',
-        'gst_rate_percent' => '18.00',
-        'sac_code' => '998314',
-        'invoice_prefix' => 'TBINV',
-        'invoice_next_sequence' => 1,
-        'credit_note_prefix' => 'TBCN',
-        'credit_note_next_sequence' => 1,
-    ], null, 'Initial platform profile setup');
+        'registered_address' => '401 Tech Tower, Pune',
+        'state_id' => $state->id,
+        'city_id' => $city->id,
+        'pin_code' => '411001',
+        'gstin' => $stateCode.'AABCT1234F1Z5',
+        'gst_rate_id' => $gstRate->id,
+    ]);
 }
 
 // Scenarios 1, 2, 3, 4, 5: Simplified Purchase, Mid-term Prorated Upgrade, Accounting Add-on,
-// Platform Billing Profile, Immutable CGST/SGST vs IGST Invoices, Credit Notes & Duplicate Callback Idempotency.
+// Platform Billing Profile, Pending Approval -> Manual Invoice Approval, Immutable CGST/SGST vs IGST Invoices, Credit Notes & Duplicate Callback Idempotency.
 test('simplified subscription purchase, prorated upgrade, accounting add-on, immutable gst invoices and idempotent callbacks', function () {
     $superAdmin = sbCreateSuperAdmin();
-    sbSeedPlatformProfile($superAdmin, '27', 'Maharashtra');
+    $profile = sbSeedPlatformProfile($superAdmin, '27', 'Maharashtra');
 
     $mhState = State::query()->where('gst_code', '27')->firstOrFail();
     $gjState = State::query()->firstOrCreate(
@@ -212,10 +214,11 @@ test('simplified subscription purchase, prorated upgrade, accounting add-on, imm
 
     $invoice1 = SubscriptionInvoice::query()->where('payment_intent_id', $intent->id)->firstOrFail();
     expect($invoice1->document_type)->toBe('tax_invoice')
+        ->and($invoice1->status)->toBe('pending_approval')
+        ->and($invoice1->approved_number)->toBeNull()
         ->and((bool) $invoice1->is_inter_state)->toBeFalse()
         ->and((float) $invoice1->cgst_amount)->toBeGreaterThan(0)
         ->and((float) $invoice1->sgst_amount)->toBeGreaterThan(0)
-        ->and($invoice1->supplier_snapshot['legal_name'])->toBe('TruckBill SaaS Platform Pvt Ltd')
         ->and($invoice1->customer_snapshot['gstin'])->toBe('27AAACA1111B1Z2');
 
     // Scenario 5: Duplicate payment callback & webhook must NOT generate duplicate invoices or double-activate.
@@ -331,38 +334,53 @@ test('simplified subscription purchase, prorated upgrade, accounting add-on, imm
     $this->post(route('owner.companies.subscription.checkout.simulate', [$companyB, $intentB]))->assertRedirect();
 
     $invoiceB = SubscriptionInvoice::query()->where('payment_intent_id', $intentB->id)->firstOrFail();
-    expect((bool) $invoiceB->is_inter_state)->toBeTrue()
+    expect($invoiceB->status)->toBe('pending_approval')
+        ->and((bool) $invoiceB->is_inter_state)->toBeTrue()
         ->and((float) $invoiceB->igst_amount)->toBeGreaterThan(0)
         ->and((float) $invoiceB->cgst_amount)->toBe(0.0);
 
-    // Owner Panel download works (switch active management company to Company B)
+    // Owner Panel MUST NOT see or download unapproved invoice (switch active management company to Company B).
+    $this->post(route('workspace.context.company', $companyB))->assertRedirect();
+    $this->get(route('owner.subscription.invoices.show', $invoiceB))->assertForbidden();
+    $this->get(route('owner.subscription.invoices.download', $invoiceB))->assertForbidden();
+
+    // Super Admin approves Invoice B with Billing Profile + manual invoice number.
+    sbLoginAs($superAdmin);
+    $this->post(route('admin.subscription-invoices.approve', $invoiceB), [
+        'billing_profile_id' => $profile->id,
+        'invoice_number' => 'TB/2026-27/0002',
+        'invoice_date' => now('Asia/Kolkata')->toDateString(),
+    ])->assertRedirect();
+
+    $invoiceB->refresh();
+    expect(in_array($invoiceB->status, ['approved', 'issued', 'emailed'], true))->toBeTrue()
+        ->and($invoiceB->approved_number)->toBe('TB/2026-27/0002')
+        ->and($invoiceB->supplier_snapshot['legal_name'])->toBe('TruckBill SaaS Platform Pvt Ltd');
+
+    // Owner Panel download now works after approval.
+    sbLoginAs($owner);
     $this->post(route('workspace.context.company', $companyB))->assertRedirect();
     $this->get(route('owner.subscription.invoices.download', $invoiceB))
         ->assertOk()
         ->assertSee('TruckBill SaaS Platform Pvt Ltd')
-        ->assertSee('Gujarat Freight Movers');
+        ->assertSee('Gujarat Freight Movers')
+        ->assertSee('TB/2026-27/0002');
 
-    // Mutate PlatformBillingProfile & Customer Company AFTER invoice issuance — issued invoice snapshot MUST stay immutable.
+    // Mutate PlatformBillingProfile & Customer Company AFTER invoice approval — approved invoice snapshot MUST stay immutable.
     sbLoginAs($superAdmin);
-    $this->post(route('admin.billing-profile.update'), [
+    $puneCity = City::query()->where('state_id', $mhState->id)->firstOrFail();
+    $gst18 = GstRate::query()->where('rate_percent', '18.000')->firstOrFail();
+    $this->post(route('admin.billing-profiles.update', $profile), [
         'legal_name' => 'Renamed Platform Entity LLP',
-        'trade_name' => 'Renamed Trade',
-        'registered_address' => '999 New Address',
-        'state_id' => $mhState->id,
-        'state_name' => 'Maharashtra',
-        'state_code' => '27',
-        'city' => 'Mumbai',
-        'pin_code' => '400099',
-        'gstin' => '27AABCT1234F1Z5',
         'pan' => 'AABCT1234F',
         'contact_number' => '9999988888',
         'email' => 'new@truckbill.test',
-        'gst_rate_percent' => '18.00',
-        'sac_code' => '998314',
-        'invoice_prefix' => 'TBINV',
-        'invoice_next_sequence' => 50,
-        'credit_note_prefix' => 'TBCN',
-        'credit_note_next_sequence' => 1,
+        'registered_address' => '999 New Address',
+        'state_id' => $mhState->id,
+        'city_id' => $puneCity->id,
+        'pin_code' => '400099',
+        'gstin' => '27AABCT1234F1Z5',
+        'gst_rate_id' => $gst18->id,
         'remark' => 'Address update',
     ])->assertRedirect();
 
@@ -373,7 +391,7 @@ test('simplified subscription purchase, prorated upgrade, accounting add-on, imm
         ->and($reloadedB->customer_snapshot['legal_name'])->toBe('Gujarat Freight Movers');
 
     // Admin/CRM invoice register search, view & credit note issuance
-    $this->get(route('admin.subscription-invoices', ['search' => $invoiceB->invoice_number]))->assertOk();
+    $this->get(route('admin.subscription-invoices', ['search' => $invoiceB->approved_number]))->assertOk();
     $this->get(route('admin.subscription-invoices.show', $invoiceB))->assertOk();
     $this->get(route('admin.subscription-invoices.download', $invoiceB))->assertOk();
 

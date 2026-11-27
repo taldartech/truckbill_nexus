@@ -1,5 +1,6 @@
 <?php
 
+use App\Domains\Auth\PostLoginLandingResolver;
 use App\Http\Middleware\AssignCorrelationId;
 use App\Http\Middleware\EnforceWebSessionPolicy;
 use App\Http\Middleware\EnsureCompanyCapability;
@@ -10,6 +11,7 @@ use App\Http\Middleware\RejectClientTenantIdentifiers;
 use App\Http\Middleware\ResolveBranchWorkspace;
 use App\Http\Middleware\ResolveManagementCompany;
 use App\Http\Middleware\VerifyWebsiteLeadApiKey;
+use App\Models\User;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -33,6 +35,14 @@ return Application::configure(basePath: dirname(__DIR__))
             'api/v1/public/onboarding/*',
             'api/v1/public/leads',
         ]);
+
+        $middleware->redirectUsersTo(function (Request $request): string {
+            $user = $request->user();
+
+            return $user instanceof User
+                ? app(PostLoginLandingResolver::class)->resolve($request, $user, consumeIntended: false)
+                : '/workspace';
+        });
 
         $middleware->alias([
             'branch.workspace' => ResolveBranchWorkspace::class,

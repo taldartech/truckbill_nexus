@@ -1,6 +1,7 @@
 <?php
 
 use App\Domains\Company\CompanyWorkspaceService;
+use App\Domains\Subscription\Billing\PlatformBillingProfileService;
 use App\Domains\Subscription\Billing\SubscriptionInvoiceService;
 use App\Domains\Subscription\Contract\CompanySubscriptionContractService;
 use App\Domains\Subscription\Enums\SubscriptionTenure;
@@ -15,7 +16,10 @@ use App\Domains\Subscription\Payments\PaymentEventProcessor;
 use App\Domains\Subscription\Payments\PaymentIntentService;
 use App\Domains\Subscription\Payments\RazorpayWebhookNormalizer;
 use App\Domains\Subscription\Payments\Support\RazorpayMoney;
+use App\Models\City;
+use App\Models\GstRate;
 use App\Models\PaymentIntent;
+use App\Models\State;
 use App\Models\SubscriptionCatalogueVersion;
 use App\Models\SubscriptionInvoice;
 use App\Models\SubscriptionPlan;
@@ -26,6 +30,7 @@ use Database\Seeders\RbacSeeder;
 use Database\Seeders\SubscriptionCatalogueSeeder;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Mockery;
 use Mockery\MockInterface;
 use Razorpay\Api\Errors\SignatureVerificationError;
@@ -534,7 +539,7 @@ test('sdk order creation failures are wrapped safely', function () {
         ->toThrow(SubscriptionDomainException::class);
 });
 
-test('verified payment issues an immutable tax invoice automatically', function () {
+test('verified payment activates subscription and queues pending approval invoice', function () {
     ['owner' => $owner, 'company' => $company, 'draft' => $draft] = batchFOwnerDraft();
     $gateway = new FakePaymentGateway;
     $intent = (new PaymentIntentService($gateway))->create(
@@ -559,28 +564,54 @@ test('verified payment issues an immutable tax invoice automatically', function 
         ->first();
 
     expect($invoice)->not->toBeNull()
-        ->and($invoice->status)->toBe('issued')
-        ->and($invoice->approved_number)->not->toBeNull()
+        ->and($invoice->status)->toBe('pending_approval')
+        ->and($invoice->approved_number)->toBeNull()
         ->and($draft->fresh()->status)->toBe('active');
 });
 
-test('super admin can approve subscription invoice numbers via admin route', function () {
+test('super admin can approve subscription invoice with billing profile and manual invoice number', function () {
     ['company' => $company, 'draft' => $draft] = batchFOwnerDraft();
     $gateway = new FakePaymentGateway;
     $intent = (new PaymentIntentService($gateway))->create($company, 'subscription_activation', '50.00', 'sa-inv', subscription: $draft);
     $intent->forceFill(['status' => 'paid', 'verification_status' => 'verified'])->save();
     $invoice = app(SubscriptionInvoiceService::class)
-        ->ensureDraftQueuedAfterPayment($intent);
+        ->createPendingApprovalFromPayment($intent);
 
     $sa = User::factory()->superAdmin()->create();
+    $state = State::query()->firstOrCreate(
+        ['code' => 'MH'],
+        ['id' => (string) Str::uuid(), 'name' => 'Maharashtra', 'gst_code' => '27', 'is_active' => true],
+    );
+    $city = City::query()->firstOrCreate(
+        ['state_id' => $state->id, 'name_normalized' => 'pune'],
+        ['id' => (string) Str::uuid(), 'name' => 'Pune', 'is_active' => true],
+    );
+    $gstRate = GstRate::query()->firstOrCreate(
+        ['rate_percent' => '0.000', 'version' => 1],
+        ['id' => (string) Str::uuid(), 'effective_from' => '2025-04-01', 'is_active' => true],
+    );
+    $profile = app(PlatformBillingProfileService::class)->create($sa, [
+        'legal_name' => 'TruckBill Billing Co',
+        'pan' => 'AABCT1234F',
+        'contact_number' => '9876543210',
+        'email' => 'bill@truckbill.test',
+        'registered_address' => 'Pune',
+        'state_id' => $state->id,
+        'city_id' => $city->id,
+        'pin_code' => '411001',
+        'gstin' => null,
+        'gst_rate_id' => $gstRate->id,
+    ]);
+
     test()->actingAs($sa);
 
     $this->post(route('admin.subscription-invoices.approve', $invoice), [
-        'approved_number' => $invoice->proposed_number,
+        'billing_profile_id' => $profile->id,
+        'invoice_number' => 'TB/2026-27/SA01',
+        'invoice_date' => now('Asia/Kolkata')->toDateString(),
     ])->assertRedirect();
 
-    // Approval remains immutable; sample email dispatch may advance status to emailed.
-    expect($invoice->fresh()->approved_number)->toBe($invoice->proposed_number)
+    expect($invoice->fresh()->approved_number)->toBe('TB/2026-27/SA01')
         ->and(in_array($invoice->fresh()->status, ['approved', 'issued', 'emailed'], true))->toBeTrue();
 });
 
@@ -590,10 +621,12 @@ test('owner cannot approve invoice numbers', function () {
     $intent = (new PaymentIntentService($gateway))->create($company, 'subscription_activation', '50.00', 'own-inv', subscription: $draft);
     $intent->forceFill(['status' => 'paid', 'verification_status' => 'verified'])->save();
     $invoice = app(SubscriptionInvoiceService::class)
-        ->ensureDraftQueuedAfterPayment($intent);
+        ->createPendingApprovalFromPayment($intent);
 
     batchFLogin($owner);
     $this->post(route('admin.subscription-invoices.approve', $invoice), [
-        'approved_number' => $invoice->proposed_number,
+        'billing_profile_id' => (string) Str::uuid(),
+        'invoice_number' => 'HACKED',
+        'invoice_date' => now('Asia/Kolkata')->toDateString(),
     ])->assertForbidden();
 });

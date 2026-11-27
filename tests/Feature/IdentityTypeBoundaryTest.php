@@ -271,5 +271,5 @@ test('factory default users authenticate as before', function () {
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect('/workspace');
+    $response->assertRedirect(route('workspace.no-access'));
 });

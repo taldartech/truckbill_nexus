@@ -8,15 +8,16 @@ import {
 } from '@/components/data-table';
 import { CompanyOwnerPageShell } from '@/components/owner/owner-page-header';
 import { Button } from '@/components/ui/button';
+import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { formatDisplayDateSmart } from '@/lib/dates';
 
 type InvoiceRow = {
     id: string;
     document_type?: string;
     status: string;
+    is_approved: boolean;
+    status_label?: string;
     invoice_number?: string | null;
-    proposed_number: string | null;
-    approved_number: string | null;
     financial_year: string;
     taxable_amount?: string;
     total_tax_amount?: string;
@@ -25,8 +26,8 @@ type InvoiceRow = {
     issued_at?: string | null;
     email_status: string | null;
     created_at: string | null;
-    preview_url: string;
-    download_url: string;
+    preview_url: string | null;
+    download_url: string | null;
     email_url: string | null;
 };
 
@@ -53,10 +54,9 @@ export default function SubscriptionInvoices({
                 priority: 0,
                 className: 'font-mono text-xs',
                 cell: (row) =>
-                    row.invoice_number ||
-                    row.approved_number ||
-                    row.proposed_number ||
-                    '—',
+                    row.is_approved && row.invoice_number
+                        ? row.invoice_number
+                        : 'Pending Approval',
             },
             {
                 id: 'type',
@@ -70,7 +70,15 @@ export default function SubscriptionInvoices({
                 id: 'status',
                 header: 'Status',
                 priority: 1,
-                cell: (row) => row.status,
+                cell: (row) => (
+                    <WorkspaceStatusBadge
+                        status={
+                            row.is_approved
+                                ? row.status
+                                : 'Invoice Pending Approval'
+                        }
+                    />
+                ),
             },
             {
                 id: 'taxable',
@@ -94,11 +102,15 @@ export default function SubscriptionInvoices({
             },
             {
                 id: 'issued',
-                header: 'Issued Date',
+                header: 'Invoice Date',
                 priority: 3,
                 className: 'text-xs text-muted-foreground',
                 cell: (row) =>
-                    formatDisplayDateSmart(row.issued_at || row.created_at),
+                    row.is_approved
+                        ? formatDisplayDateSmart(
+                              row.issued_at || row.created_at,
+                          )
+                        : '—',
             },
         ],
         [],
@@ -129,22 +141,26 @@ export default function SubscriptionInvoices({
                     rows={invoices}
                     rowKey={(row) => row.id}
                     emptyTitle="No subscription invoices yet"
-                    emptyDescription="Invoices generate automatically after verified payment."
+                    emptyDescription="Verified payments appear here as Pending Approval until approved with a Billing Profile and Invoice Number."
                     actions={(invoice) => (
                         <div className="flex justify-end gap-1">
-                            <AppIconAction
-                                icon={Eye}
-                                label="View invoice"
-                                href={invoice.preview_url}
-                                variant="info"
-                            />
-                            <AppIconAction
-                                icon={Download}
-                                label="Download / Print"
-                                href={invoice.download_url}
-                                variant="outline"
-                            />
-                            {invoice.email_url ? (
+                            {invoice.is_approved && invoice.preview_url ? (
+                                <AppIconAction
+                                    icon={Eye}
+                                    label="View invoice"
+                                    href={invoice.preview_url}
+                                    variant="info"
+                                />
+                            ) : null}
+                            {invoice.is_approved && invoice.download_url ? (
+                                <AppIconAction
+                                    icon={Download}
+                                    label="Download / Print"
+                                    href={invoice.download_url}
+                                    variant="outline"
+                                />
+                            ) : null}
+                            {invoice.is_approved && invoice.email_url ? (
                                 <Form
                                     action={invoice.email_url}
                                     method="post"

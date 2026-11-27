@@ -29,6 +29,28 @@ final class InternalAuthorization
         return $this->authorizer->allowsInternal($user, $permissionCode);
     }
 
+    /**
+     * @param  list<string>  $permissionCodes
+     */
+    public function allowsAny(User $user, array $permissionCodes): bool
+    {
+        if (! $user->isInternal() || ! $user->isActive()) {
+            return false;
+        }
+
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
+        foreach ($permissionCodes as $code) {
+            if ($this->authorizer->allowsInternal($user, $code)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function authorizeOrAbort(Request $request, string $permissionCode): User
     {
         /** @var User|null $actor */

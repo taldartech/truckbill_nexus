@@ -12,9 +12,11 @@ use App\Models\AccountingActivationState;
 use App\Models\AccountingPostingLink;
 use App\Models\AccountingVoucher;
 use App\Models\BrokerInvoice;
+use App\Models\City;
 use App\Models\CompanySubscription;
 use App\Models\CompanySubscriptionItem;
 use App\Models\GlLedger;
+use App\Models\GstRate;
 use App\Models\State;
 use App\Models\SubscriptionAddon;
 use App\Models\SubscriptionCatalogueVersion;
@@ -110,24 +112,26 @@ test('accounting addon auto-posts transport transactions, keeps platform subscri
         ['code' => 'MH'],
         ['id' => (string) Str::uuid(), 'name' => 'Maharashtra', 'gst_code' => '27', 'is_active' => true],
     );
-    app(PlatformBillingProfileService::class)->upsert($ctx['owner'], [
+    $city = City::query()->firstOrCreate(
+        ['state_id' => $state->id, 'name_normalized' => 'pune'],
+        ['id' => (string) Str::uuid(), 'name' => 'Pune', 'is_active' => true],
+    );
+    $gstRate = GstRate::query()->firstOrCreate(
+        ['rate_percent' => '18.000', 'version' => 1],
+        ['id' => (string) Str::uuid(), 'effective_from' => '2025-04-01', 'is_active' => true],
+    );
+    app(PlatformBillingProfileService::class)->create($ctx['owner'], [
         'legal_name' => 'TruckBill Platform Pvt Ltd',
-        'registered_address' => 'Pune',
-        'state_id' => $state->id,
-        'state_name' => 'Maharashtra',
-        'state_code' => '27',
-        'city' => 'Pune',
-        'pin_code' => '411001',
-        'gstin' => '27AABCT1234F1Z5',
+        'pan' => 'AABCT1234F',
         'contact_number' => '9876543210',
         'email' => 'bill@truckbill.test',
-        'gst_rate_percent' => '18.00',
-        'sac_code' => '998314',
-        'invoice_prefix' => 'TBINV',
-        'invoice_next_sequence' => 1,
-        'credit_note_prefix' => 'TBCN',
-        'credit_note_next_sequence' => 1,
-    ], null, 'Setup');
+        'registered_address' => 'Pune',
+        'state_id' => $state->id,
+        'city_id' => $city->id,
+        'pin_code' => '411001',
+        'gstin' => '27AABCT1234F1Z5',
+        'gst_rate_id' => $gstRate->id,
+    ]);
 
     $hire = brokerCreateLorryHire($ctx);
     $lr = brokerDeliverLr($hire->lorryReceipt()->firstOrFail(), $ctx);

@@ -1035,9 +1035,9 @@ export default function SubscriptionPurchase({
 
                             <p className="flex items-start gap-1.5 text-[11px] text-muted-foreground">
                                 <ShieldCheck className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                                Entitlements activate and your GST tax invoice
-                                generates automatically only after server
-                                payment verification.
+                                Entitlements activate immediately after server
+                                payment verification; your invoice enters
+                                Pending Approval until finalized.
                             </p>
                         </div>
                     </aside>

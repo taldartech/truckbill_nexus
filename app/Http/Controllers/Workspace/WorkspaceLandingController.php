@@ -2,27 +2,19 @@
 
 namespace App\Http\Controllers\Workspace;
 
-use App\Domains\Company\CompanyAccessService;
-use App\Domains\Company\Exceptions\CompanyAccessException;
-use App\Domains\Company\WorkspaceNavigationService;
-use App\Domains\Rbac\PermissionAuthorizer;
+use App\Domains\Auth\PostLoginLandingResolver;
 use App\Http\Controllers\Controller;
-use App\Models\Branch;
-use App\Models\Company;
 use App\Models\User;
-use App\Support\Workspace\WorkspaceSession;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 /**
- * Post-login / workspace entry resolver (PO-P2-DESIGN-LANDING / SWITCHER).
+ * Post-login / workspace entry resolver — delegates to PostLoginLandingResolver.
  */
 class WorkspaceLandingController extends Controller
 {
     public function __construct(
-        private readonly WorkspaceNavigationService $navigation,
-        private readonly CompanyAccessService $access,
-        private readonly PermissionAuthorizer $authorizer = new PermissionAuthorizer,
+        private readonly PostLoginLandingResolver $resolver,
     ) {}
 
     public function __invoke(Request $request): RedirectResponse
@@ -30,62 +22,8 @@ class WorkspaceLandingController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        if ($user->isInternal()) {
-            return redirect()->route('dashboard');
-        }
-
-        if (! $user->isCustomer() || ! $user->isActive()) {
-            return redirect()->route('workspace.no-access');
-        }
-
-        $owned = $this->navigation->ownedCompanies($user);
-
-        // PO-OWNER-GLOBAL-MANAGEMENT: owners enter the global Owner dashboard,
-        // not a forced single-company dashboard or MRU selection.
-        if ($owned->isNotEmpty()) {
-            return redirect()->route('owner.home');
-        }
-
-        $accessible = $this->navigation->accessibleCompanies($user);
-        if ($accessible->isEmpty()) {
-            return redirect()->route('workspace.no-access');
-        }
-
-        if ($accessible->count() === 1) {
-            $companyId = $accessible->first()['id'];
-            $company = Company::query()->findOrFail($companyId);
-
-            if (! $this->access->canAccessBranchPanel($user, $company)) {
-                return redirect()->route('workspace.no-access');
-            }
-
-            $branches = $this->navigation->accessibleBranches($user, $company);
-            if ($branches->isEmpty()) {
-                return redirect()->route('workspace.no-access');
-            }
-
-            if ($branches->count() === 1) {
-                $branch = Branch::query()->findOrFail($branches->first()['id']);
-
-                // AUD-013: assignment alone is not enough — require Owner or PLATFORM_VIEW.
-                if (! $this->access->canViewBranchOperationsPanel($user, $company, $branch, $this->authorizer)) {
-                    return redirect()->route('workspace.no-access');
-                }
-
-                try {
-                    $this->access->activateContext($user, $company, $branch);
-                } catch (CompanyAccessException) {
-                    return redirect()->route('workspace.no-access');
-                }
-
-                WorkspaceSession::sync($request, $company->id, $branch->id);
-
-                return redirect()->route('branch.dashboard');
-            }
-
-            return redirect()->route('workspace.branches.select', ['company' => $company]);
-        }
-
-        return redirect()->route('workspace.companies.select');
+        return redirect()->to(
+            $this->resolver->resolve($request, $user, consumeIntended: false)
+        );
     }
 }

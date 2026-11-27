@@ -743,12 +743,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/admin/crm/tickets/{ticket}/assign', [CrmSupportTicketController::class, 'assign'])
         ->name('admin.crm.tickets.assign');
 
-    Route::get('/admin/billing-profile', [PlatformBillingProfileController::class, 'index'])
+    Route::get('/admin/billing-profile', [PlatformBillingProfileController::class, 'legacyRedirect'])
         ->name('admin.billing-profile');
-    Route::post('/admin/billing-profile', [PlatformBillingProfileController::class, 'update'])
-        ->name('admin.billing-profile.update');
-    Route::get('/admin/billing-profile/logo', [PlatformBillingProfileController::class, 'logo'])
-        ->name('admin.billing-profile.logo');
+    Route::get('/admin/billing-profiles', [PlatformBillingProfileController::class, 'index'])
+        ->name('admin.billing-profiles.index');
+    Route::get('/admin/billing-profiles/create', [PlatformBillingProfileController::class, 'create'])
+        ->name('admin.billing-profiles.create');
+    Route::post('/admin/billing-profiles', [PlatformBillingProfileController::class, 'store'])
+        ->name('admin.billing-profiles.store');
+    Route::get('/admin/billing-profiles/{profile}', [PlatformBillingProfileController::class, 'show'])
+        ->name('admin.billing-profiles.show');
+    Route::get('/admin/billing-profiles/{profile}/edit', [PlatformBillingProfileController::class, 'edit'])
+        ->name('admin.billing-profiles.edit');
+    Route::match(['put', 'post'], '/admin/billing-profiles/{profile}', [PlatformBillingProfileController::class, 'update'])
+        ->name('admin.billing-profiles.update');
+    Route::post('/admin/billing-profiles/{profile}/deactivate', [PlatformBillingProfileController::class, 'deactivate'])
+        ->name('admin.billing-profiles.deactivate');
+    Route::post('/admin/billing-profiles/{profile}/reactivate', [PlatformBillingProfileController::class, 'reactivate'])
+        ->name('admin.billing-profiles.reactivate');
+    Route::get('/admin/billing-profiles/{profile}/logo', [PlatformBillingProfileController::class, 'logo'])
+        ->name('admin.billing-profiles.logo');
 
     Route::get('/admin/roles', [RolePermissionController::class, 'index'])
         ->name('admin.roles.index');

@@ -65,7 +65,7 @@ function loginCustomer(User $user, string $password = 'owner-secret'): TestRespo
 test('customer with one owned company lands on global owner dashboard', function () {
     ['owner' => $owner, 'company' => $company] = createOwnerWorkspace();
 
-    loginCustomer($owner)->assertRedirect('/workspace');
+    loginCustomer($owner)->assertRedirect(route('owner.home'));
 
     $this->get(route('workspace.landing'))
         ->assertRedirect(route('owner.home'));
@@ -369,7 +369,7 @@ test('login redirects customers to workspace landing', function () {
     $this->post(route('login.store'), [
         'email' => $owner->email,
         'password' => 'owner-secret',
-    ])->assertRedirect('/workspace');
+    ])->assertRedirect(route('owner.home'));
 });
 
 test('internal users remain on technical dashboard from workspace landing', function () {

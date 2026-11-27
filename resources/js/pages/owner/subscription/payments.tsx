@@ -8,6 +8,7 @@ import {
 } from '@/components/data-table';
 import { CompanyOwnerPageShell } from '@/components/owner/owner-page-header';
 import { Button } from '@/components/ui/button';
+import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { formatDisplayDateSmart } from '@/lib/dates';
 
 type PaymentRow = {
@@ -20,6 +21,8 @@ type PaymentRow = {
     gateway: string;
     gateway_order_id: string | null;
     gateway_payment_id: string | null;
+    invoice_status?: string | null;
+    invoice_label?: string | null;
     invoice_number?: string | null;
     invoice_url?: string | null;
     invoice_download_url?: string | null;
@@ -52,7 +55,7 @@ export default function SubscriptionPayments({
             },
             {
                 id: 'status',
-                header: 'Status',
+                header: 'Payment Status',
                 priority: 1,
                 cell: (row) => `${row.status} / ${row.verification_status}`,
             },
@@ -66,8 +69,22 @@ export default function SubscriptionPayments({
                 id: 'invoice',
                 header: 'Invoice',
                 priority: 2,
-                className: 'font-mono text-xs',
-                cell: (row) => row.invoice_number || '—',
+                cell: (row) => {
+                    if (row.invoice_number) {
+                        return (
+                            <span className="font-mono text-xs">
+                                {row.invoice_number}
+                            </span>
+                        );
+                    }
+                    if (row.invoice_status === 'pending_approval') {
+                        return (
+                            <WorkspaceStatusBadge status="Invoice Pending Approval" />
+                        );
+                    }
+
+                    return '—';
+                },
             },
             {
                 id: 'gateway_order',

@@ -314,9 +314,9 @@ final class PaymentEventProcessor
 
         CompanyCapabilityResolver::invalidate($company);
 
-        // Automatically generate immutable subscription tax invoice after verified payment.
+        // Queue Pending Approval subscription invoice record without issuing an approved invoice.
         try {
-            $this->invoices->issueTaxInvoiceFromPayment($intent);
+            $this->invoices->createPendingApprovalFromPayment($intent);
         } catch (Throwable $e) {
             Log::warning('subscription.invoice_after_payment_failed', [
                 'payment_intent_id' => $intent->id,

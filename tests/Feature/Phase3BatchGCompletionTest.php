@@ -1,6 +1,7 @@
 <?php
 
 use App\Domains\Company\CompanyWorkspaceService;
+use App\Domains\Subscription\Billing\PlatformBillingProfileService;
 use App\Domains\Subscription\Billing\SubscriptionInvoiceDocumentService;
 use App\Domains\Subscription\Billing\SubscriptionInvoiceService;
 use App\Domains\Subscription\Capacity\CompanyCapacityService;
@@ -13,7 +14,9 @@ use App\Domains\Subscription\Quota\QuotaAllocationService;
 use App\Domains\Tax\GstRateService;
 use App\Domains\Tax\TdsRuleService;
 use App\Mail\SubscriptionInvoiceMail;
+use App\Models\City;
 use App\Models\GstRate;
+use App\Models\State;
 use App\Models\SubscriptionCatalogueVersion;
 use App\Models\SubscriptionInvoice;
 use App\Models\SubscriptionPlan;
@@ -26,6 +29,7 @@ use Database\Seeders\SubscriptionCatalogueSeeder;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 
 beforeEach(function () {
     TenantContextHolder::clear();
@@ -176,8 +180,6 @@ test('invoice html preview download and email do not reverse approval', function
     ['owner' => $owner, 'company' => $company] = batchGOwnerCompany('Invoice Doc Co');
     $catalogue = SubscriptionCatalogueVersion::query()->where('code', 'v2026-initial')->firstOrFail();
     $plan = SubscriptionPlan::query()->where('catalogue_version_id', $catalogue->id)->where('is_active', true)->firstOrFail();
-    $this->actingAs($owner);
-
     $draft = app(CompanySubscriptionContractService::class)->createDraftContract(
         actor: $owner,
         company: $company,
@@ -201,21 +203,63 @@ test('invoice html preview download and email do not reverse approval', function
         'gateway_payment_id' => 'pay_batch_g',
     ])->save();
 
-    $invoices = app(SubscriptionInvoiceService::class);
-    $invoice = $invoices->ensureDraftQueuedAfterPayment($intent);
-    $issuedNumber = (string) $invoice->invoice_number;
     $admin = User::factory()->internal()->superAdmin()->create();
-    $approved = $invoices->approveNumber($admin, $invoice, 'TB/2026-2027/G001');
+    $state = State::query()->firstOrCreate(
+        ['code' => 'MH'],
+        ['id' => (string) Str::uuid(), 'name' => 'Maharashtra', 'gst_code' => '27', 'is_active' => true],
+    );
+    $city = City::query()->firstOrCreate(
+        ['state_id' => $state->id, 'name_normalized' => 'pune'],
+        ['id' => (string) Str::uuid(), 'name' => 'Pune', 'is_active' => true],
+    );
+    $gstRate = GstRate::query()->firstOrCreate(
+        ['rate_percent' => '0.000', 'version' => 1],
+        ['id' => (string) Str::uuid(), 'effective_from' => '2025-04-01', 'is_active' => true],
+    );
+    $profile = app(PlatformBillingProfileService::class)->create($admin, [
+        'legal_name' => 'TruckBill Batch G Pvt Ltd',
+        'pan' => 'AABCT1234F',
+        'contact_number' => '9876543210',
+        'email' => 'bill@truckbill.test',
+        'registered_address' => 'Pune',
+        'state_id' => $state->id,
+        'city_id' => $city->id,
+        'pin_code' => '411001',
+        'gstin' => null,
+        'gst_rate_id' => $gstRate->id,
+    ]);
+
+    $invoices = app(SubscriptionInvoiceService::class);
+    $invoice = $invoices->createPendingApprovalFromPayment($intent);
+    expect($invoice->status)->toBe('pending_approval');
+
+    $login = $this->post(route('login.store'), [
+        'email' => $owner->email,
+        'password' => 'secret',
+    ]);
+    $login->assertRedirect();
+    foreach ($login->headers->getCookies() as $cookie) {
+        $this->withUnencryptedCookie($cookie->getName(), $cookie->getValue());
+    }
+    enterManagementCompany($company)->assertRedirect();
+    $this->get(route('owner.subscription.invoices.show', ['invoice' => $invoice]))
+        ->assertForbidden();
+
+    $issuedNumber = 'TB/2026-2027/G001';
+    $approved = $invoices->approveInvoice(
+        $admin,
+        $invoice,
+        $profile->id,
+        $issuedNumber,
+        now('Asia/Kolkata')->toDateString(),
+    );
 
     // Avoid session-policy logout across sequential HTTP calls: exercise document service + one Inertia show.
     $html = app(SubscriptionInvoiceDocumentService::class)->renderHtml($approved);
-    expect($html)->toContain('Supplier billing profile was not configured at issuance')
+    expect($html)->toContain('TruckBill Batch G Pvt Ltd')
         ->and($html)->toContain($issuedNumber);
 
-    seedManagementSession($company);
-
-    $this->actingAs($owner)
-        ->get(route('owner.subscription.invoices.show', ['invoice' => $approved]))
+    $this->get(route('owner.subscription.invoices.show', ['invoice' => $approved]))
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('owner/subscription/invoice-preview')
@@ -233,8 +277,7 @@ test('owner cannot approve invoice numbers', function () {
     ['owner' => $owner, 'company' => $company] = batchGOwnerCompany('No Approve Co');
     $invoice = SubscriptionInvoice::query()->create([
         'company_id' => $company->id,
-        'status' => 'awaiting_number_approval',
-        'proposed_number' => 'TB/2026-2027/0099',
+        'status' => 'pending_approval',
         'financial_year' => '2026-2027',
         'amount' => '10.00',
         'currency' => 'INR',
@@ -242,12 +285,14 @@ test('owner cannot approve invoice numbers', function () {
 
     $this->actingAs($owner)
         ->post(route('admin.subscription-invoices.approve', $invoice), [
-            'approved_number' => 'HACKED',
+            'billing_profile_id' => (string) Str::uuid(),
+            'invoice_number' => 'HACKED',
+            'invoice_date' => now('Asia/Kolkata')->toDateString(),
         ])
         ->assertForbidden();
 
     expect($invoice->fresh()->approved_number)->toBeNull()
-        ->and($invoice->fresh()->status)->toBe('awaiting_number_approval');
+        ->and($invoice->fresh()->status)->toBe('pending_approval');
 });
 
 test('capacity service reports purchased and available user capacity', function () {

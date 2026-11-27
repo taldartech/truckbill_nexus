@@ -32,6 +32,8 @@ class StoredFile extends Model
 {
     use HasUuids;
 
+    public const PLATFORM_SCOPE = '__platform__';
+
     protected $table = 'stored_files';
 
     /**

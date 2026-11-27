@@ -834,7 +834,11 @@ final class AccountingActivationLifecycleService
             SubscriptionInvoice::query()
                 ->where('company_id', $company->id)
                 ->where('document_type', 'tax_invoice')
-                ->where('status', 'issued')
+                ->whereIn('status', [
+                    SubscriptionInvoice::STATUS_APPROVED,
+                    SubscriptionInvoice::STATUS_ISSUED,
+                    SubscriptionInvoice::STATUS_EMAILED,
+                ])
                 ->whereDate('issued_at', '>=', $from)
                 ->whereDate('issued_at', '<=', $to)
                 ->orderBy('issued_at')

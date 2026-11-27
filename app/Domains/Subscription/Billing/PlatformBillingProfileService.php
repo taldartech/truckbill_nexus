@@ -2,30 +2,42 @@
 
 namespace App\Domains\Subscription\Billing;
 
+use App\Domains\Company\CompanyProfileValidator;
+use App\Domains\Geography\GeographyLookupService;
 use App\Domains\Subscription\Exceptions\SubscriptionDomainException;
 use App\Domains\Subscription\Support\DecimalMath;
 use App\Models\Company;
+use App\Models\GstRate;
 use App\Models\PlatformBillingProfile;
 use App\Models\State;
 use App\Models\User;
 use App\Support\Audit\AuditAction;
 use App\Support\Audit\AuditedTransaction;
 use App\Support\Audit\AuditWriter;
+use App\Support\Files\Exceptions\FileNotAvailableException;
+use App\Support\Files\Exceptions\FileValidationException;
+use App\Support\Files\PrivateFileService;
+use App\Support\Files\StoredFile;
 use App\Support\Tenant\TenantContext;
 use App\Support\Tenant\TenantContextHolder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Manages the TruckBill service provider's billing profile and authoritative subscription GST calculations.
+ * Manages multiple Company Billing Profiles and authoritative subscription GST calculations.
  */
 final class PlatformBillingProfileService
 {
+    public const IFSC_PATTERN = '/^[A-Z]{4}0[A-Z0-9]{6}$/';
+
     public function __construct(
         private readonly AuditedTransaction $tx = new AuditedTransaction,
         private readonly AuditWriter $audit = new AuditWriter,
+        private readonly GeographyLookupService $geography = new GeographyLookupService,
+        private readonly PrivateFileService $files = new PrivateFileService,
     ) {}
 
     public function current(): ?PlatformBillingProfile
@@ -34,132 +46,152 @@ final class PlatformBillingProfileService
     }
 
     /**
+     * @return Collection<int, PlatformBillingProfile>
+     */
+    public function listAll(?string $status = 'all', ?string $search = null): Collection
+    {
+        $query = PlatformBillingProfile::query()
+            ->with(['state:id,name,gst_code', 'cityRecord:id,name', 'gstRate:id,rate_percent,version', 'updatedBy:id,name,email'])
+            ->orderByDesc('is_active')
+            ->orderBy('legal_name');
+
+        if ($status === 'active') {
+            $query->where('is_active', true);
+        } elseif ($status === 'inactive') {
+            $query->where('is_active', false);
+        }
+
+        $trimmed = trim((string) $search);
+        if ($trimmed !== '') {
+            $like = '%'.mb_strtolower($trimmed).'%';
+            $query->where(function ($q) use ($like): void {
+                $q->whereRaw('LOWER(legal_name) LIKE ?', [$like])
+                    ->orWhereRaw('LOWER(COALESCE(gstin, \'\')) LIKE ?', [$like])
+                    ->orWhereRaw('LOWER(COALESCE(pan, \'\')) LIKE ?', [$like])
+                    ->orWhereRaw('LOWER(city) LIKE ?', [$like])
+                    ->orWhereRaw('LOWER(state_name) LIKE ?', [$like])
+                    ->orWhereRaw('LOWER(email) LIKE ?', [$like]);
+            });
+        }
+
+        return $query->get();
+    }
+
+    /**
+     * @return Collection<int, PlatformBillingProfile>
+     */
+    public function listActive(): Collection
+    {
+        return PlatformBillingProfile::query()
+            ->where('is_active', true)
+            ->whereNull('deleted_at')
+            ->with(['state:id,name,gst_code', 'cityRecord:id,name', 'gstRate:id,rate_percent,version'])
+            ->orderBy('legal_name')
+            ->get();
+    }
+
+    /**
+     * Create a new Company Billing Profile (no creation remark required).
+     *
      * @param  array<string, mixed>  $payload
      */
-    public function upsert(User $actor, array $payload, ?UploadedFile $logo = null, ?string $remark = null): PlatformBillingProfile
+    public function create(User $actor, array $payload, ?UploadedFile $logo = null): PlatformBillingProfile
     {
-        return $this->tx->run(function () use ($actor, $payload, $logo, $remark): PlatformBillingProfile {
-            $previous = TenantContextHolder::get();
-            TenantContextHolder::set(new TenantContext(
-                companyId: null,
-                branchId: null,
-                ownerId: null,
-                isInternal: true,
-                isOwnerScope: false,
-            ));
+        return $this->tx->run(function () use ($actor, $payload, $logo): PlatformBillingProfile {
+            return $this->withPlatformTenant(function () use ($actor, $payload, $logo): PlatformBillingProfile {
+                $attributes = $this->validateAndNormalize($payload);
 
-            try {
-                $existing = PlatformBillingProfile::query()
-                    ->where('is_active', true)
-                    ->whereNull('deleted_at')
-                    ->lockForUpdate()
-                    ->first();
-
-                $stateName = trim((string) ($payload['state_name'] ?? ''));
-                $stateCode = strtoupper(trim((string) ($payload['state_code'] ?? '')));
-                $stateId = filled($payload['state_id'] ?? null) ? (string) $payload['state_id'] : null;
-
-                if ($stateId !== null) {
-                    $state = State::query()->whereKey($stateId)->first();
-                    if ($state === null) {
-                        throw ValidationException::withMessages(['state_id' => 'Selected state is invalid.']);
-                    }
-                    $stateName = $state->name;
-                    $stateCode = strtoupper((string) $state->gst_code);
-                } elseif ($stateCode === '' && $stateName !== '') {
-                    $matched = State::query()
-                        ->whereRaw('LOWER(name) = ?', [strtolower($stateName)])
-                        ->orWhereRaw('LOWER(code) = ?', [strtolower($stateName)])
-                        ->first();
-                    if ($matched !== null) {
-                        $stateId = $matched->id;
-                        $stateName = $matched->name;
-                        $stateCode = strtoupper((string) $matched->gst_code);
-                    }
-                }
-
-                $gstin = filled($payload['gstin'] ?? null) ? strtoupper(trim((string) $payload['gstin'])) : null;
-                if ($gstin !== null && $stateCode === '' && preg_match('/^([0-9]{2})/', $gstin, $matches) === 1) {
-                    $stateCode = $matches[1];
-                }
-
-                $logoPath = $existing?->logo_path;
                 if ($logo !== null) {
-                    $logoPath = $logo->store('platform-billing', 'local');
-                } elseif (! empty($payload['remove_logo']) && $logoPath !== null) {
-                    Storage::disk('local')->delete($logoPath);
-                    $logoPath = null;
+                    $storedLogo = $this->storeLogoUpload($logo);
+                    $attributes['logo_stored_file_id'] = $storedLogo->id;
+                    $attributes['logo_path'] = $storedLogo->path;
                 }
 
-                $attributes = [
-                    'legal_name' => trim((string) $payload['legal_name']),
-                    'trade_name' => filled($payload['trade_name'] ?? null) ? trim((string) $payload['trade_name']) : null,
-                    'registered_address' => trim((string) $payload['registered_address']),
-                    'state_id' => $stateId,
-                    'state_name' => $stateName,
-                    'state_code' => $stateCode !== '' ? $stateCode : null,
-                    'city' => trim((string) $payload['city']),
-                    'pin_code' => trim((string) $payload['pin_code']),
-                    'gstin' => $gstin,
-                    'pan' => filled($payload['pan'] ?? null) ? strtoupper(trim((string) $payload['pan'])) : null,
-                    'contact_number' => trim((string) $payload['contact_number']),
-                    'email' => strtolower(trim((string) $payload['email'])),
-                    'logo_path' => $logoPath,
-                    'bank_name' => filled($payload['bank_name'] ?? null) ? trim((string) $payload['bank_name']) : null,
-                    'bank_account_name' => filled($payload['bank_account_name'] ?? null) ? trim((string) $payload['bank_account_name']) : null,
-                    'bank_account_number' => filled($payload['bank_account_number'] ?? null) ? trim((string) $payload['bank_account_number']) : null,
-                    'bank_ifsc' => filled($payload['bank_ifsc'] ?? null) ? strtoupper(trim((string) $payload['bank_ifsc'])) : null,
-                    'bank_branch' => filled($payload['bank_branch'] ?? null) ? trim((string) $payload['bank_branch']) : null,
-                    'gst_rate_percent' => number_format((float) ($payload['gst_rate_percent'] ?? 0), 2, '.', ''),
-                    'sac_code' => trim((string) ($payload['sac_code'] ?? '998314')),
-                    'hsn_code' => filled($payload['hsn_code'] ?? null) ? trim((string) $payload['hsn_code']) : null,
-                    'invoice_prefix' => strtoupper(trim((string) ($payload['invoice_prefix'] ?? 'TB'))),
-                    'invoice_next_sequence' => max(1, (int) ($payload['invoice_next_sequence'] ?? ($existing !== null ? $existing->invoice_next_sequence : 1))),
-                    'credit_note_prefix' => strtoupper(trim((string) ($payload['credit_note_prefix'] ?? 'TBCN'))),
-                    'credit_note_next_sequence' => max(1, (int) ($payload['credit_note_next_sequence'] ?? ($existing !== null ? $existing->credit_note_next_sequence : 1))),
+                $profile = PlatformBillingProfile::query()->create(array_merge([
+                    'id' => (string) Str::uuid(),
                     'is_active' => true,
                     'updated_by_user_id' => $actor->id,
-                ];
+                ], $attributes));
 
-                if ($existing === null) {
-                    $profile = PlatformBillingProfile::query()->create(array_merge([
-                        'id' => (string) Str::uuid(),
-                    ], $attributes));
+                $this->audit->write(
+                    action: AuditAction::Created,
+                    subjectType: PlatformBillingProfile::class,
+                    subjectId: $profile->id,
+                    remark: 'Create company billing profile '.$profile->legal_name,
+                    before: null,
+                    after: $profile->toArray(),
+                );
 
-                    $this->audit->write(
-                        action: AuditAction::Created,
-                        subjectType: PlatformBillingProfile::class,
-                        subjectId: $profile->id,
-                        remark: $remark ?? 'Configure platform billing profile',
-                        before: null,
-                        after: $profile->toArray(),
-                    );
+                return $profile->fresh(['state', 'cityRecord', 'gstRate', 'logoFile', 'updatedBy']) ?? $profile;
+            });
+        });
+    }
 
-                    return $profile;
+    /**
+     * Update an existing Company Billing Profile (mandatory edit remark, historical invoices remain intact).
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    public function update(
+        User $actor,
+        PlatformBillingProfile $profile,
+        array $payload,
+        ?UploadedFile $logo = null,
+        string $remark = '',
+    ): PlatformBillingProfile {
+        $trimmedRemark = trim($remark);
+        if ($trimmedRemark === '') {
+            throw ValidationException::withMessages([
+                'remark' => 'An edit remark is required when updating a Billing Profile.',
+            ]);
+        }
+
+        return $this->tx->run(function () use ($actor, $profile, $payload, $logo, $trimmedRemark): PlatformBillingProfile {
+            return $this->withPlatformTenant(function () use ($actor, $profile, $payload, $logo, $trimmedRemark): PlatformBillingProfile {
+                /** @var PlatformBillingProfile $locked */
+                $locked = PlatformBillingProfile::query()->whereKey($profile->id)->lockForUpdate()->firstOrFail();
+                $before = $locked->toArray();
+
+                $attributes = $this->validateAndNormalize($payload);
+
+                if ($logo !== null) {
+                    $storedLogo = $this->storeLogoUpload($logo);
+                    $attributes['logo_stored_file_id'] = $storedLogo->id;
+                    $attributes['logo_path'] = $storedLogo->path;
+                } elseif (! empty($payload['remove_logo'])) {
+                    $attributes['logo_stored_file_id'] = null;
+                    $attributes['logo_path'] = null;
                 }
 
-                $before = $existing->toArray();
-                $existing->fill($attributes);
-                $existing->save();
+                $locked->fill(array_merge($attributes, [
+                    'updated_by_user_id' => $actor->id,
+                ]));
+                $locked->save();
+
+                $fresh = $locked->fresh(['state', 'cityRecord', 'gstRate', 'logoFile', 'updatedBy']) ?? $locked;
 
                 $this->audit->write(
                     action: AuditAction::Updated,
                     subjectType: PlatformBillingProfile::class,
-                    subjectId: $existing->id,
-                    remark: $remark ?? 'Update platform billing profile',
+                    subjectId: $locked->id,
+                    remark: $trimmedRemark,
                     before: $before,
-                    after: $existing->fresh()?->toArray(),
+                    after: $fresh->toArray(),
                 );
 
-                return $existing->fresh() ?? $existing;
-            } finally {
-                if ($previous === null) {
-                    TenantContextHolder::clear();
-                } else {
-                    TenantContextHolder::set($previous);
-                }
-            }
+                return $fresh;
+            });
         });
+    }
+
+    public function deactivate(User $actor, PlatformBillingProfile $profile, string $remark): PlatformBillingProfile
+    {
+        return $this->toggleStatus($actor, $profile, false, $remark);
+    }
+
+    public function reactivate(User $actor, PlatformBillingProfile $profile, string $remark): PlatformBillingProfile
+    {
+        return $this->toggleStatus($actor, $profile, true, $remark);
     }
 
     /**
@@ -210,6 +242,7 @@ final class PlatformBillingProfileService
     {
         $taxable = DecimalMath::of($taxableAmount, 2);
         $activeProfile = $profile ?? $this->current();
+        $defaultSac = (string) config('subscription.billing.default_sac_code', '998314');
 
         [$customerState, $customerCode] = $this->resolveCompanyState($company);
 
@@ -217,7 +250,7 @@ final class PlatformBillingProfileService
             return [
                 'configured' => false,
                 'gst_rate_percent' => '0.00',
-                'sac_code' => '998314',
+                'sac_code' => $defaultSac,
                 'place_of_supply_state' => $customerState,
                 'place_of_supply_code' => $customerCode,
                 'is_inter_state' => false,
@@ -240,8 +273,8 @@ final class PlatformBillingProfileService
         if (! $hasSupplierGst || DecimalMath::compare($taxable, '0', 2) <= 0) {
             return [
                 'configured' => true,
-                'gst_rate_percent' => $rate,
-                'sac_code' => $activeProfile->sac_code,
+                'gst_rate_percent' => $hasSupplierGst ? $rate : '0.00',
+                'sac_code' => $defaultSac,
                 'place_of_supply_state' => $customerState ?? $activeProfile->state_name,
                 'place_of_supply_code' => $customerCode ?? $supplierCode,
                 'is_inter_state' => $isInterState,
@@ -271,7 +304,7 @@ final class PlatformBillingProfileService
         return [
             'configured' => true,
             'gst_rate_percent' => $rate,
-            'sac_code' => $activeProfile->sac_code,
+            'sac_code' => $defaultSac,
             'place_of_supply_state' => $customerState ?? $activeProfile->state_name,
             'place_of_supply_code' => $customerCode ?? $supplierCode,
             'is_inter_state' => $isInterState,
@@ -284,14 +317,224 @@ final class PlatformBillingProfileService
         ];
     }
 
-    public function assertConfiguredForProductionTaxInvoice(): PlatformBillingProfile
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array<string, mixed>
+     */
+    private function validateAndNormalize(array $payload): array
     {
-        $profile = $this->current();
-        if ($profile === null) {
-            throw new SubscriptionDomainException('Platform billing profile must be configured in Admin/CRM before issuing tax invoices.');
+        $legalName = trim((string) ($payload['legal_name'] ?? ''));
+        if ($legalName === '') {
+            throw ValidationException::withMessages(['legal_name' => 'Company Name is required.']);
         }
 
-        return $profile;
+        $pan = strtoupper(trim((string) ($payload['pan'] ?? '')));
+        if ($pan === '' || ! preg_match(CompanyProfileValidator::PAN_PATTERN, $pan)) {
+            throw ValidationException::withMessages(['pan' => 'A valid PAN is required (e.g. AABCT1234F).']);
+        }
+
+        $digits = preg_replace('/\D+/', '', (string) ($payload['contact_number'] ?? '')) ?? '';
+        if (strlen($digits) === 12 && str_starts_with($digits, '91')) {
+            $digits = substr($digits, 2);
+        }
+        if (! preg_match(CompanyProfileValidator::MOBILE_PATTERN, $digits)) {
+            throw ValidationException::withMessages(['contact_number' => 'A valid 10-digit Indian Contact Number is required.']);
+        }
+
+        $email = strtolower(trim((string) ($payload['email'] ?? '')));
+        if ($email === '' || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+            throw ValidationException::withMessages(['email' => 'A valid Email address is required.']);
+        }
+
+        $registeredAddress = trim((string) ($payload['registered_address'] ?? ''));
+        if ($registeredAddress === '') {
+            throw ValidationException::withMessages(['registered_address' => 'Registered Address is required.']);
+        }
+
+        $stateId = filled($payload['state_id'] ?? null) ? (string) $payload['state_id'] : null;
+        $cityId = filled($payload['city_id'] ?? null) ? (string) $payload['city_id'] : null;
+
+        if ($stateId === null) {
+            throw ValidationException::withMessages(['state_id' => 'State must be selected from the State Master.']);
+        }
+        if ($cityId === null) {
+            throw ValidationException::withMessages(['city_id' => 'City must be selected from the City Master.']);
+        }
+
+        $resolvedGeography = $this->geography->resolveAddressFields($stateId, $cityId);
+        $stateModel = State::query()->whereKey($resolvedGeography['state_id'])->firstOrFail();
+        $stateCode = strtoupper((string) $stateModel->gst_code);
+
+        $pinCode = trim((string) ($payload['pin_code'] ?? ''));
+        if (! preg_match(CompanyProfileValidator::PIN_PATTERN, $pinCode)) {
+            throw ValidationException::withMessages(['pin_code' => 'A valid 6-digit PIN Code is required.']);
+        }
+
+        $gstRateId = filled($payload['gst_rate_id'] ?? null) ? (string) $payload['gst_rate_id'] : null;
+        if ($gstRateId === null) {
+            throw ValidationException::withMessages(['gst_rate_id' => 'GST Rate must be selected from the GST Master.']);
+        }
+
+        $today = Carbon::today();
+        $gstRate = GstRate::query()
+            ->whereKey($gstRateId)
+            ->where('is_active', true)
+            ->where('effective_from', '<=', $today)
+            ->where(function ($q) use ($today): void {
+                $q->whereNull('effective_to')->orWhere('effective_to', '>=', $today);
+            })
+            ->first();
+
+        if ($gstRate === null) {
+            throw ValidationException::withMessages(['gst_rate_id' => 'Selected GST Rate is inactive or outside its effective period.']);
+        }
+
+        $ratePercent = DecimalMath::of((string) $gstRate->rate_percent, 2);
+        $gstin = filled($payload['gstin'] ?? null) ? strtoupper(trim((string) $payload['gstin'])) : null;
+
+        if (DecimalMath::compare($ratePercent, '0', 2) > 0 && $gstin === null) {
+            throw ValidationException::withMessages(['gstin' => 'GSTIN is required when selecting a positive GST Rate.']);
+        }
+
+        if ($gstin !== null) {
+            if (! preg_match(CompanyProfileValidator::GSTIN_PATTERN, $gstin)) {
+                throw ValidationException::withMessages(['gstin' => 'GSTIN format is invalid (expected 15-character GSTIN).']);
+            }
+            if ($stateCode !== '' && substr($gstin, 0, 2) !== $stateCode) {
+                throw ValidationException::withMessages(['gstin' => 'GSTIN state code prefix ('.substr($gstin, 0, 2).') must match selected State GST code ('.$stateCode.').']);
+            }
+        }
+
+        $bankName = filled($payload['bank_name'] ?? null) ? trim((string) $payload['bank_name']) : null;
+        $bankAccountName = filled($payload['bank_account_name'] ?? null) ? trim((string) $payload['bank_account_name']) : null;
+        $bankAccountNumber = filled($payload['bank_account_number'] ?? null) ? trim((string) $payload['bank_account_number']) : null;
+        $bankIfsc = filled($payload['bank_ifsc'] ?? null) ? strtoupper(trim((string) $payload['bank_ifsc'])) : null;
+
+        $bankProvidedCount = count(array_filter(
+            [$bankName, $bankAccountName, $bankAccountNumber, $bankIfsc],
+            static fn (?string $value): bool => $value !== null,
+        ));
+        if ($bankProvidedCount > 0 && $bankProvidedCount < 4) {
+            throw ValidationException::withMessages([
+                'bank_name' => 'Bank Name, Account Holder Name, Account Number, and IFSC Code must all be provided together.',
+            ]);
+        }
+        if ($bankIfsc !== null && ! preg_match(self::IFSC_PATTERN, $bankIfsc)) {
+            throw ValidationException::withMessages(['bank_ifsc' => 'IFSC Code must follow the 11-character format (e.g. HDFC0001234).']);
+        }
+
+        $website = filled($payload['website'] ?? null) ? trim((string) $payload['website']) : null;
+        if ($website !== null) {
+            if (filter_var($website, FILTER_VALIDATE_URL) === false || ! preg_match('/^https?:\/\//i', $website)) {
+                throw ValidationException::withMessages(['website' => 'Website must be a valid URL starting with http:// or https://.']);
+            }
+        }
+
+        $notesTerms = filled($payload['notes_terms'] ?? null) ? trim((string) $payload['notes_terms']) : null;
+
+        return [
+            'legal_name' => $legalName,
+            'pan' => $pan,
+            'contact_number' => $digits,
+            'email' => $email,
+            'registered_address' => $registeredAddress,
+            'state_id' => $resolvedGeography['state_id'],
+            'state_name' => (string) $resolvedGeography['state'],
+            'state_code' => $stateCode !== '' ? $stateCode : null,
+            'city_id' => $resolvedGeography['city_id'],
+            'city' => (string) $resolvedGeography['city'],
+            'pin_code' => $pinCode,
+            'gstin' => $gstin,
+            'gst_rate_id' => $gstRate->id,
+            'gst_rate_percent' => $ratePercent,
+            'bank_name' => $bankName,
+            'bank_account_name' => $bankAccountName,
+            'bank_account_number' => $bankAccountNumber,
+            'bank_ifsc' => $bankIfsc,
+            'website' => $website,
+            'notes_terms' => $notesTerms,
+        ];
+    }
+
+    private function storeLogoUpload(UploadedFile $logo): StoredFile
+    {
+        try {
+            return $this->files->storePlatformImage($logo);
+        } catch (FileValidationException|FileNotAvailableException $e) {
+            throw ValidationException::withMessages([
+                'logo' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private function toggleStatus(User $actor, PlatformBillingProfile $profile, bool $active, string $remark): PlatformBillingProfile
+    {
+        $trimmedRemark = trim($remark);
+        if ($trimmedRemark === '') {
+            throw ValidationException::withMessages([
+                'remark' => 'A remark is required for this lifecycle action.',
+            ]);
+        }
+
+        return $this->tx->run(function () use ($actor, $profile, $active, $trimmedRemark): PlatformBillingProfile {
+            return $this->withPlatformTenant(function () use ($actor, $profile, $active, $trimmedRemark): PlatformBillingProfile {
+                /** @var PlatformBillingProfile $locked */
+                $locked = PlatformBillingProfile::query()->whereKey($profile->id)->lockForUpdate()->firstOrFail();
+
+                if ((bool) $locked->is_active === $active) {
+                    throw new SubscriptionDomainException(
+                        $active ? 'Billing Profile is already active.' : 'Billing Profile is already inactive.'
+                    );
+                }
+
+                $before = $locked->toArray();
+                $locked->forceFill([
+                    'is_active' => $active,
+                    'updated_by_user_id' => $actor->id,
+                ])->save();
+
+                $fresh = $locked->fresh(['state', 'cityRecord', 'gstRate', 'logoFile', 'updatedBy']) ?? $locked;
+
+                $this->audit->write(
+                    action: AuditAction::Updated,
+                    subjectType: PlatformBillingProfile::class,
+                    subjectId: $locked->id,
+                    remark: $trimmedRemark,
+                    before: $before,
+                    after: $fresh->toArray(),
+                );
+
+                return $fresh;
+            });
+        });
+    }
+
+    /**
+     * @template T
+     *
+     * @param  callable(): T  $callback
+     * @return T
+     */
+    private function withPlatformTenant(callable $callback): mixed
+    {
+        $previous = TenantContextHolder::get();
+        TenantContextHolder::set(new TenantContext(
+            companyId: null,
+            branchId: null,
+            ownerId: null,
+            isInternal: true,
+            isOwnerScope: false,
+        ));
+
+        try {
+            return $callback();
+        } finally {
+            if ($previous === null) {
+                TenantContextHolder::clear();
+            } else {
+                TenantContextHolder::set($previous);
+            }
+        }
     }
 
     /**

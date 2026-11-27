@@ -50,12 +50,15 @@ use App\Models\Branch;
 use App\Models\BranchAssignment;
 use App\Models\BranchRoleAssignment;
 use App\Models\BrokerInvoice;
+use App\Models\City;
 use App\Models\Company;
 use App\Models\CompanyMembership;
 use App\Models\CompanySubscription;
 use App\Models\Crm\Lead;
 use App\Models\Crm\SupportTicket;
 use App\Models\Enquiry;
+use App\Models\GstRate;
+use App\Models\InternalRoleAssignment;
 use App\Models\LinkedBiltyGroup;
 use App\Models\LorryHire;
 use App\Models\LorryReceipt;
@@ -66,6 +69,7 @@ use App\Models\Permission;
 use App\Models\PlatformBillingProfile;
 use App\Models\Role;
 use App\Models\RolePermission;
+use App\Models\State;
 use App\Models\Station;
 use App\Models\SubscriptionAddon;
 use App\Models\SubscriptionCatalogueVersion;
@@ -931,6 +935,24 @@ class LocalDemoWorkspaceSeeder extends Seeder
                 'email_verified_at' => now(),
             ]);
 
+        $admin = User::query()->where('email', 'admin.demo@demo.test')->first()
+            ?? User::factory()->internal()->create([
+                'name' => 'Demo Internal Admin',
+                'email' => 'admin.demo@demo.test',
+                'password' => Hash::make($password),
+                'email_verified_at' => now(),
+            ]);
+
+        $roles = app(RoleAssignmentService::class);
+        $salesRole = Role::query()->where('domain', PermissionDomain::Internal->value)->where('slug', 'internal.sales_executive')->first();
+        if ($salesRole !== null && ! InternalRoleAssignment::query()->where('user_id', $sales->id)->where('role_id', $salesRole->id)->whereNull('deactivated_at')->exists()) {
+            $roles->assignInternalRole($sa, $sales, $salesRole, 'Local demo: assign Sales Executive role');
+        }
+        $adminRole = Role::query()->where('domain', PermissionDomain::Internal->value)->where('slug', 'internal.admin')->first();
+        if ($adminRole !== null && ! InternalRoleAssignment::query()->where('user_id', $admin->id)->where('role_id', $adminRole->id)->whereNull('deactivated_at')->exists()) {
+            $roles->assignInternalRole($sa, $admin, $adminRole, 'Local demo: assign Internal Admin role');
+        }
+
         $leads = app(LeadService::class);
         $tickets = app(SupportTicketService::class);
 
@@ -1485,24 +1507,42 @@ class LocalDemoWorkspaceSeeder extends Seeder
             return;
         }
 
-        app(PlatformBillingProfileService::class)->upsert($sa, [
+        $state = State::query()->where('gst_code', '27')->where('is_active', true)->first();
+        $gstRate = GstRate::query()->where('is_active', true)->orderByDesc('rate_percent')->first();
+        if ($state === null || $gstRate === null) {
+            return;
+        }
+
+        $city = City::query()
+            ->where('state_id', $state->id)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->first()
+            ?? City::query()->create([
+                'id' => (string) Str::uuid(),
+                'state_id' => $state->id,
+                'name' => 'Pune',
+                'name_normalized' => 'pune',
+                'is_active' => true,
+            ]);
+
+        app(PlatformBillingProfileService::class)->create($sa, [
             'legal_name' => 'Taldar Tech Consultancy Demo Pvt Ltd',
-            'trade_name' => 'TruckBill Platform',
+            'pan' => 'AABCT1234E',
+            'contact_number' => '9800000001',
+            'email' => 'billing@truckbill.demo.test',
             'registered_address' => '101 Tech Park, Baner Road',
-            'state_name' => 'Maharashtra',
-            'state_code' => '27',
-            'city' => 'Pune',
+            'state_id' => $state->id,
+            'city_id' => $city->id,
             'pin_code' => '411045',
             'gstin' => '27AABCT1234E1Z5',
-            'pan' => 'AABCT1234E',
-            'contact_number' => '+919800000001',
-            'email' => 'billing@truckbill.demo.test',
-            'gst_rate_percent' => '18.00',
-            'sac_code' => '998314',
-            'invoice_prefix' => 'TBINV',
-            'invoice_next_sequence' => 1,
-            'credit_note_prefix' => 'TBCN',
-            'credit_note_next_sequence' => 1,
+            'gst_rate_id' => $gstRate->id,
+            'bank_name' => 'HDFC Bank',
+            'bank_account_name' => 'Taldar Tech Consultancy Demo Pvt Ltd',
+            'bank_account_number' => '50200012345678',
+            'bank_ifsc' => 'HDFC0001234',
+            'website' => 'https://truckbill.in',
+            'notes_terms' => 'Subscription charges are non-refundable except as governed by statutory GST credit notes.',
         ]);
     }
 

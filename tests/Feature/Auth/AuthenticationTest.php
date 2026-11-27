@@ -18,7 +18,7 @@ test('users can authenticate using the login screen', function () {
     ]);
 
     $this->assertAuthenticated();
-    $response->assertRedirect('/workspace');
+    $response->assertRedirect(route('workspace.no-access'));
 });
 
 test('users can not authenticate with invalid password', function () {

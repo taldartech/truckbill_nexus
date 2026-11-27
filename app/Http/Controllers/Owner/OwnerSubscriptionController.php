@@ -33,6 +33,7 @@ use App\Models\SubscriptionCreditLedger;
 use App\Models\SubscriptionInvoice;
 use App\Models\SubscriptionPlan;
 use App\Models\User;
+use App\Support\Workspace\WorkspaceSession;
 use Carbon\CarbonImmutable;
 use Carbon\CarbonInterface;
 use Illuminate\Http\JsonResponse;
@@ -375,9 +376,11 @@ class OwnerSubscriptionController extends Controller
                 ->withErrors(['checkout' => $e->getMessage()]);
         }
 
+        WorkspaceSession::ensureCompany($request, $company->id);
+
         return redirect()
             ->route('owner.companies.subscription.purchase', $company)
-            ->with('success', 'Payment verified. Subscription activated and tax invoice generated.');
+            ->with('success', 'Payment verified and subscription activated. Tax invoice is Pending Approval.');
     }
 
     public function simulateCheckoutIntent(Request $request, Company $company, PaymentIntent $intent): RedirectResponse
@@ -409,9 +412,11 @@ class OwnerSubscriptionController extends Controller
             return back()->withErrors(['checkout' => $e->getMessage()]);
         }
 
+        WorkspaceSession::ensureCompany($request, $company->id);
+
         return redirect()
             ->route('owner.companies.subscription.purchase', $company)
-            ->with('success', 'Payment verified and subscription updated.');
+            ->with('success', 'Payment verified and subscription activated. Tax invoice is Pending Approval.');
     }
 
     public function verifyCheckout(Request $request, CompanySubscription $subscription, Company $company): RedirectResponse
@@ -553,6 +558,7 @@ class OwnerSubscriptionController extends Controller
 
         $invoicesByIntent = SubscriptionInvoice::query()
             ->where('company_id', $company->id)
+            ->where('document_type', 'tax_invoice')
             ->whereNotNull('payment_intent_id')
             ->get()
             ->keyBy('payment_intent_id');
@@ -560,9 +566,11 @@ class OwnerSubscriptionController extends Controller
         return Inertia::render('owner/subscription/payments', [
             'company' => $this->companyPayload($company),
             'ownerPanelScope' => $scope,
-            'gate_note' => 'Payments are verified on the server before entitlement activation. Razorpay Test Mode active when configured.',
+            'gate_note' => 'Payments are verified on the server before entitlement activation. Approved tax invoices become downloadable once internally approved.',
             'payments' => $intents->map(function (PaymentIntent $intent) use ($invoicesByIntent): array {
+                /** @var SubscriptionInvoice|null $invoice */
                 $invoice = $invoicesByIntent->get($intent->id);
+                $isApproved = $invoice !== null && $invoice->isApprovedForCustomer();
 
                 return [
                     'id' => $intent->id,
@@ -574,11 +582,15 @@ class OwnerSubscriptionController extends Controller
                     'gateway' => $intent->gateway,
                     'gateway_order_id' => $intent->gateway_order_id,
                     'gateway_payment_id' => $intent->gateway_payment_id,
-                    'invoice_number' => $invoice !== null
-                        ? ($invoice->invoice_number ?? $invoice->approved_number ?? $invoice->proposed_number)
+                    'invoice_status' => $invoice !== null ? ($isApproved ? 'approved' : 'pending_approval') : null,
+                    'invoice_label' => $invoice !== null
+                        ? ($isApproved ? ($invoice->invoice_number ?? $invoice->approved_number) : 'Invoice Pending Approval')
                         : null,
-                    'invoice_url' => $invoice !== null ? route('owner.subscription.invoices.show', $invoice) : null,
-                    'invoice_download_url' => $invoice !== null ? route('owner.subscription.invoices.download', $invoice) : null,
+                    'invoice_number' => $isApproved
+                        ? ($invoice->invoice_number ?? $invoice->approved_number)
+                        : null,
+                    'invoice_url' => $isApproved ? route('owner.subscription.invoices.show', $invoice) : null,
+                    'invoice_download_url' => $isApproved ? route('owner.subscription.invoices.download', $invoice) : null,
                     'created_at' => $intent->created_at?->toIso8601String(),
                 ];
             })->values()->all(),
@@ -604,30 +616,34 @@ class OwnerSubscriptionController extends Controller
         return Inertia::render('owner/subscription/invoices', [
             'company' => $this->companyPayload($company),
             'ownerPanelScope' => $scope,
-            'issuer_note' => 'Issued subscription tax invoices and credit notes store immutable supplier, customer, tax, and subscription snapshots.',
-            'invoices' => $invoices->map(fn (SubscriptionInvoice $invoice): array => [
-                'id' => $invoice->id,
-                'document_type' => $invoice->document_type,
-                'status' => $invoice->status,
-                'invoice_number' => $invoice->invoice_number ?? $invoice->approved_number ?? $invoice->proposed_number,
-                'proposed_number' => $invoice->proposed_number,
-                'approved_number' => $invoice->approved_number,
-                'financial_year' => $invoice->financial_year,
-                'taxable_amount' => (string) ($invoice->taxable_amount ?: $invoice->amount),
-                'total_tax_amount' => (string) ($invoice->total_tax_amount ?? '0.00'),
-                'amount' => (string) $invoice->amount,
-                'currency' => $invoice->currency,
-                'issued_at' => ($invoice->issued_at ?? $invoice->approved_at ?? $invoice->created_at)?->toDateString(),
-                'payment_reference' => $invoice->payment_reference ?? $invoice->payment_intent_id,
-                'email_status' => $invoice->email_status,
-                'approved_at' => $invoice->approved_at?->toIso8601String(),
-                'created_at' => $invoice->created_at?->toIso8601String(),
-                'preview_url' => route('owner.subscription.invoices.show', $invoice),
-                'download_url' => route('owner.subscription.invoices.download', $invoice),
-                'email_url' => in_array($invoice->status, ['approved', 'issued', 'emailed'], true)
-                    ? route('owner.subscription.invoices.email', $invoice)
-                    : null,
-            ])->values()->all(),
+            'issuer_note' => 'Subscription tax invoices become viewable and downloadable once reviewed and approved with a Billing Profile and Invoice Number.',
+            'invoices' => $invoices->map(function (SubscriptionInvoice $invoice): array {
+                $isApproved = $invoice->isApprovedForCustomer();
+
+                return [
+                    'id' => $invoice->id,
+                    'document_type' => $invoice->document_type,
+                    'status' => $isApproved ? $invoice->status : 'pending_approval',
+                    'is_approved' => $isApproved,
+                    'status_label' => $isApproved ? ucfirst($invoice->status) : 'Invoice Pending Approval',
+                    'invoice_number' => $isApproved ? ($invoice->invoice_number ?? $invoice->approved_number) : null,
+                    'financial_year' => $invoice->financial_year,
+                    'taxable_amount' => (string) ($invoice->taxable_amount ?: $invoice->amount),
+                    'total_tax_amount' => (string) ($invoice->total_tax_amount ?? '0.00'),
+                    'amount' => (string) $invoice->amount,
+                    'currency' => $invoice->currency,
+                    'issued_at' => $isApproved
+                        ? ($invoice->invoice_date?->toDateString() ?? ($invoice->issued_at ?? $invoice->approved_at)?->toDateString())
+                        : null,
+                    'payment_reference' => $invoice->payment_reference ?? $invoice->payment_intent_id,
+                    'email_status' => $isApproved ? $invoice->email_status : null,
+                    'approved_at' => $isApproved ? $invoice->approved_at?->toIso8601String() : null,
+                    'created_at' => $invoice->created_at?->toIso8601String(),
+                    'preview_url' => $isApproved ? route('owner.subscription.invoices.show', $invoice) : null,
+                    'download_url' => $isApproved ? route('owner.subscription.invoices.download', $invoice) : null,
+                    'email_url' => $isApproved ? route('owner.subscription.invoices.email', $invoice) : null,
+                ];
+            })->values()->all(),
             'links' => [
                 'overview' => route('owner.subscription'),
                 'payments' => route('owner.subscription.payments'),
@@ -638,7 +654,7 @@ class OwnerSubscriptionController extends Controller
     public function invoiceShow(Request $request, SubscriptionInvoice $invoice, Company $company): Response
     {
         ['scope' => $scope] = $this->authorizeOwnerPanel($request, $company, $this->access);
-        $this->assertCompanyInvoice($company, $invoice);
+        $this->assertCompanyInvoice($company, $invoice, requireApproved: true);
 
         return Inertia::render('owner/subscription/invoice-preview', [
             'company' => $this->companyPayload($company),
@@ -647,9 +663,7 @@ class OwnerSubscriptionController extends Controller
             'links' => [
                 'invoices' => route('owner.subscription.invoices'),
                 'download' => route('owner.subscription.invoices.download', $invoice),
-                'email' => in_array($invoice->status, ['approved', 'issued', 'emailed'], true)
-                    ? route('owner.subscription.invoices.email', $invoice)
-                    : null,
+                'email' => route('owner.subscription.invoices.email', $invoice),
             ],
         ]);
     }
@@ -657,10 +671,10 @@ class OwnerSubscriptionController extends Controller
     public function invoiceDownload(Request $request, SubscriptionInvoice $invoice, Company $company): HttpResponse
     {
         $this->authorizeOwnerPanel($request, $company, $this->access);
-        $this->assertCompanyInvoice($company, $invoice);
+        $this->assertCompanyInvoice($company, $invoice, requireApproved: true);
 
         $html = $this->invoiceDocuments->renderHtml($invoice);
-        $number = (string) ($invoice->invoice_number ?? $invoice->approved_number ?? $invoice->proposed_number ?? $invoice->id);
+        $number = (string) ($invoice->invoice_number ?? $invoice->approved_number ?? $invoice->id);
         $safe = preg_replace('/[^A-Za-z0-9._-]+/', '-', $number) ?: $invoice->id;
 
         return response($html, 200, [
@@ -672,7 +686,7 @@ class OwnerSubscriptionController extends Controller
     public function invoiceEmail(Request $request, SubscriptionInvoice $invoice, Company $company): RedirectResponse
     {
         ['user' => $user] = $this->authorizeOwnerPanel($request, $company, $this->access, requireFullScope: true);
-        $this->assertCompanyInvoice($company, $invoice);
+        $this->assertCompanyInvoice($company, $invoice, requireApproved: true);
 
         try {
             $result = $this->invoiceDocuments->dispatchEmail($invoice, $user);
@@ -988,10 +1002,14 @@ class OwnerSubscriptionController extends Controller
         }
     }
 
-    private function assertCompanyInvoice(Company $company, SubscriptionInvoice $invoice): void
+    private function assertCompanyInvoice(Company $company, SubscriptionInvoice $invoice, bool $requireApproved = false): void
     {
         if ($invoice->company_id !== $company->id) {
             abort(404);
+        }
+
+        if ($requireApproved && ! $invoice->isApprovedForCustomer()) {
+            abort(403, 'Invoice Pending Approval: unapproved subscription invoices are not accessible to Customers.');
         }
     }
 

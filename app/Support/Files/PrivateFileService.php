@@ -3,6 +3,7 @@
 namespace App\Support\Files;
 
 use App\Support\Files\Exceptions\FileNotAvailableException;
+use App\Support\Files\Exceptions\FileValidationException;
 use App\Support\Files\Exceptions\ScannerConfigurationException;
 use App\Support\Files\Scanning\MalwareScanner;
 use App\Support\Tenant\TenantContextHolder;
@@ -165,6 +166,124 @@ class PrivateFileService
     {
         $this->assertAuthorizedActor();
         TenantStorageMetadata::assertSameTenant($file->tenantMetadata());
+    }
+
+    /**
+     * Store a platform-owned image (e.g. Billing Profile logo) using the same validation,
+     * private disk, SHA-256 checksum, and malware scanner without weakening Customer isolation.
+     */
+    public function storePlatformImage(UploadedFile $upload): StoredFile
+    {
+        $this->assertAuthorizedPlatformActor();
+        $this->validator->validate($upload);
+
+        $extension = strtolower((string) $upload->getClientOriginalExtension());
+        if (! in_array($extension, ['jpg', 'jpeg', 'png', 'webp'], true)) {
+            throw new FileValidationException('Company logo must be a JPG, JPEG, PNG, or WEBP image.');
+        }
+
+        $scanner = $this->scanner();
+        $disk = (string) config('files.disk', 'private_files');
+        $uuid = (string) Str::uuid();
+        $path = $this->buildPath(StoredFile::PLATFORM_SCOPE, $uuid, $extension);
+
+        $absoluteTmp = $upload->getRealPath();
+        if ($absoluteTmp === false) {
+            throw new RuntimeException('Upload temporary path is unavailable.');
+        }
+
+        $checksum = hash_file('sha256', $absoluteTmp) ?: null;
+
+        try {
+            Storage::disk($disk)->putFileAs(
+                dirname($path),
+                $upload,
+                basename($path),
+            );
+        } catch (Throwable $e) {
+            throw new RuntimeException('Failed to store platform image.', 0, $e);
+        }
+
+        if (! Storage::disk($disk)->exists($path)) {
+            throw new RuntimeException('Stored platform image path is missing after write.');
+        }
+
+        try {
+            $file = StoredFile::query()->create([
+                'id' => $uuid,
+                'disk' => $disk,
+                'path' => $path,
+                'original_name' => $upload->getClientOriginalName(),
+                'extension' => $extension,
+                'mime_type' => (string) ($upload->getMimeType() ?: $upload->getClientMimeType()),
+                'size_bytes' => (int) $upload->getSize(),
+                'checksum_sha256' => $checksum,
+                'company_id' => StoredFile::PLATFORM_SCOPE,
+                'branch_id' => null,
+                'owner_id' => null,
+                'scan_status' => FileScanStatus::PendingScan->value,
+                'scan_message' => null,
+            ]);
+        } catch (Throwable $e) {
+            $this->deletePath($disk, $path, $e);
+
+            throw new RuntimeException('Failed to persist platform image metadata.', 0, $e);
+        }
+
+        $finalized = $this->scanAndFinalize($file, $scanner);
+        if (! $finalized->isDownloadable()) {
+            throw new FileNotAvailableException('Uploaded company logo failed malware validation.');
+        }
+
+        return $finalized;
+    }
+
+    public function downloadPlatformFile(StoredFile $file): StreamedResponse
+    {
+        $this->assertAuthorizedPlatformActor();
+        if ($file->company_id !== StoredFile::PLATFORM_SCOPE) {
+            abort(403, 'Cross-scope platform file access denied.');
+        }
+
+        if (! $file->isDownloadable()) {
+            throw new FileNotAvailableException('File is not available for download.');
+        }
+
+        $disk = Storage::disk($file->disk);
+        if (! $disk->exists($file->path)) {
+            throw new FileNotAvailableException('Stored object is missing.');
+        }
+
+        return $disk->download($file->path, $file->original_name, [
+            'Content-Type' => $file->mime_type,
+        ]);
+    }
+
+    /**
+     * Read platform-scoped file bytes for immutable document rendering (e.g. approved invoices).
+     *
+     * @return array{mime: string, contents: string}|null
+     */
+    public function readPlatformFileBytes(StoredFile $file): ?array
+    {
+        if ($file->company_id !== StoredFile::PLATFORM_SCOPE || ! $file->isDownloadable()) {
+            return null;
+        }
+
+        $disk = Storage::disk($file->disk);
+        if (! $disk->exists($file->path)) {
+            return null;
+        }
+
+        $contents = $disk->get($file->path);
+        if ($contents === null) {
+            return null;
+        }
+
+        return [
+            'mime' => $file->mime_type ?: 'image/png',
+            'contents' => $contents,
+        ];
     }
 
     /**
@@ -359,5 +478,17 @@ class PrivateFileService
         }
 
         TenantContextHolder::require();
+    }
+
+    private function assertAuthorizedPlatformActor(): void
+    {
+        if (! Auth::user() instanceof Authenticatable) {
+            abort(403, 'Authentication is required for private file access.');
+        }
+
+        $context = TenantContextHolder::require();
+        if (! $context->isInternal) {
+            abort(403, 'Internal platform access is required for platform files.');
+        }
     }
 }

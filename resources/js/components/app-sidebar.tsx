@@ -598,8 +598,8 @@ export function AppSidebar() {
                                         icon: CreditCard,
                                     },
                                     {
-                                        title: 'Billing Profile',
-                                        href: '/admin/billing-profile',
+                                        title: 'Billing Profiles',
+                                        href: '/admin/billing-profiles',
                                         icon: Landmark,
                                     },
                                 ]
