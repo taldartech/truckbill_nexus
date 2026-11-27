@@ -327,10 +327,13 @@ test('branch settings remain branch-scoped', function () {
 });
 
 test('unavailable modules are not exposed on branch dashboard', function () {
-    ['owner' => $owner, 'company' => $company, 'headOffice' => $headOffice] = createOwnerWorkspace();
+    ['owner' => $owner] = createOwnerWorkspace();
+    // Second company has no free trial and no active subscription.
+    $unsubscribedCompany = panelWorkspace()->createCompany($owner, 'Unsubscribed Co');
+    $unsubscribedBranch = $unsubscribedCompany->branches()->where('name', 'Head Office')->firstOrFail();
 
     loginCustomer($owner);
-    enterBranchWorkspace($company, $headOffice)->assertRedirect();
+    enterBranchWorkspace($unsubscribedCompany, $unsubscribedBranch)->assertRedirect();
 
     $this->get(route('branch.dashboard'))->assertOk()
         ->assertInertia(fn ($page) => $page

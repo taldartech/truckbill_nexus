@@ -72,14 +72,16 @@ class PermissionResolver
             return [];
         }
 
-        // Owner Panel/branch access is not granted by ordinary roles.
-        // Operational permissions still require an explicit branch role assignment.
         if (! $this->companyAccess->canAccessBranch($user, $company, $branch)) {
             return [];
         }
 
-        // Owner without an ordinary branch role assignment gets no operational PM codes.
-        // Owner special privileges remain in CompanyAccessService.
+        // Verified Company Owners receive all Customer-domain permissions on their active
+        // Company branches without requiring a separate branch role assignment.
+        // Company subscription entitlements and business rules still govern all access.
+        if ($this->companyAccess->isCompanyOwner($user, $company)) {
+            return PermissionCodes::customerAllCodes();
+        }
 
         return $this->remember(PermissionDomain::Customer, $user, $branch->id, function () use ($user, $company, $branch): array {
             $assignment = BranchRoleAssignment::query()

@@ -329,18 +329,16 @@ class BrokerInvoiceController extends Controller
         bool $maySeeFreight,
         ?BrokerInvoice $invoice = null,
     ): array {
-        $isOwner = $this->access->isCompanyOwner($actor, $company);
-
         return [
-            'can_view' => $isOwner || $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_INVOICE_VIEW, $company, $branch),
-            'can_create' => $isOwner || $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_INVOICE_CREATE, $company, $branch),
+            'can_view' => $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_INVOICE_VIEW, $company, $branch),
+            'can_create' => $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_INVOICE_CREATE, $company, $branch),
             'can_cancel' => $invoice !== null
                 && $invoice->status->value !== 'cancelled'
-                && ($isOwner || $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_INVOICE_CANCEL, $company, $branch)),
+                && $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_INVOICE_CANCEL, $company, $branch),
             'can_record_payment' => $invoice !== null
                 && $invoice->status->value !== 'cancelled'
-                && ($isOwner || $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_INVOICE_CREATE, $company, $branch)),
-            'can_print' => $isOwner || $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_INVOICE_PRINT, $company, $branch),
+                && $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_INVOICE_CREATE, $company, $branch),
+            'can_print' => $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_INVOICE_PRINT, $company, $branch),
             'can_view_freight' => $maySeeFreight,
         ];
     }

@@ -3,12 +3,12 @@
 /**
  * Owner designation vs branch operational permission boundary (HTTP).
  *
- * Governing rule: Owner Panel access is independent of ordinary roles, but
- * Trip/LR module mutations require PermissionAuthorizer codes (branch role).
- * Masters currently OR Owner designation with platform codes — documented separately.
+ * Verified Company Owners receive all Customer-domain operational permissions on
+ * active branches of their subscribed Company without requiring an additional
+ * branch role assignment, while remaining strictly bounded by Company
+ * subscription entitlements, tenant isolation, and ordinary-user RBAC.
  */
 
-use App\Domains\Auth\WebSessionService;
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Company\CompanyWorkspaceService;
 use App\Domains\Rbac\Enums\PermissionDomain;
@@ -22,6 +22,7 @@ use App\Models\User;
 use App\Support\Tenant\TenantContextHolder;
 use Database\Seeders\RbacSeeder;
 use Database\Seeders\SubscriptionCatalogueSeeder;
+use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 
@@ -38,16 +39,26 @@ afterEach(function () {
     TenantContextHolder::clear();
 });
 
-function ownerHttpAs(User $user, array $ctx): void
+function ownerHttpAs(User $user, array $ctx, string $password = 'owner-secret'): void
 {
     test()->flushSession();
+    auth()->guard('web')->logout();
+    app('auth')->forgetGuards();
     CustomerWebSession::query()->where('user_id', $user->id)->delete();
-    test()->actingAs($user);
-    session()->forget(WebSessionService::SESSION_VERSION_KEY);
+
+    $response = test()->withoutMiddleware(PreventRequestForgery::class)
+        ->post(route('login.store'), [
+            'email' => $user->email,
+            'password' => $password,
+        ]);
+    foreach ($response->headers->getCookies() as $cookie) {
+        test()->withUnencryptedCookie($cookie->getName(), $cookie->getValue());
+    }
+
     seedBranchSession($ctx['company'], $ctx['branch']);
 }
 
-test('owner without branch role cannot view trips via HTTP even though owner panel access remains', function () {
+test('owner without branch role can view subscribed trips via HTTP while unsubscribed modules and internal codes stay denied', function () {
     $ctx = tripWorkspace();
     tripActivate($ctx['company'], $ctx['branch']);
     $trip = tripCreatePendingTrip($ctx);
@@ -57,25 +68,16 @@ test('owner without branch role cannot view trips via HTTP even though owner pan
 
     expect($access->canAccessOwnerPanel($ctx['owner'], $ctx['company']))->toBeTrue()
         ->and($access->canAccessBranch($ctx['owner'], $ctx['company'], $ctx['branch']))->toBeTrue()
-        ->and($auth->allowsCustomer($ctx['owner'], PermissionCodes::TRIP_VIEW, $ctx['company'], $ctx['branch']))->toBeFalse();
+        ->and($auth->allowsCustomer($ctx['owner'], PermissionCodes::TRIP_VIEW, $ctx['company'], $ctx['branch']))->toBeTrue()
+        ->and($auth->allowsInternal($ctx['owner'], PermissionCodes::INTERNAL_CRM_VIEW))->toBeFalse();
 
     ownerHttpAs($ctx['owner'], $ctx);
 
-    $show = test()->get(route('branch.trips.show', $trip));
-    $index = test()->get(route('branch.trips.index'));
-
-    // Authorization may abort(403) or redirect away from operational surfaces.
-    expect(in_array($show->status(), [403, 302], true))->toBeTrue()
-        ->and(in_array($index->status(), [403, 302], true))->toBeTrue();
-
-    if ($show->status() === 302) {
-        expect($show->headers->get('Location') ?? '')->not->toContain((string) $trip->id);
-    }
-
-    if ($index->isOk()) {
-        expect(false)->toBeTrue('Owner without trip.view must not receive trips index OK');
-    }
-
+    test()->get(route('branch.trips.show', $trip))->assertOk();
+    test()->get(route('branch.trips.index'))->assertRedirect(route('branch.lorry-receipts.index'));
+    test()->get(route('branch.lorry-receipts.index'))->assertOk();
+    // Unsubscribed Broker module remains blocked even for the Company Owner.
+    test()->get(route('branch.broker.lorry-hires.index'))->assertStatus(403);
     expect(Trip::query()->whereKey($trip->id)->exists())->toBeTrue();
 });
 
@@ -130,7 +132,7 @@ test('owner of company A cannot access company B trips', function () {
         'company' => $companyB,
         'branch' => $branchB,
         'owner' => $ownerB,
-    ]);
+    ], 'owner-b');
 
     // Cross-tenant: should not leak existence as a successful payload.
     $response = test()->get(route('branch.trips.show', $tripA));

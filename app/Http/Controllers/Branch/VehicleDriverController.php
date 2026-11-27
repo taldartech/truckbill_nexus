@@ -308,8 +308,7 @@ class VehicleDriverController extends Controller
 
     private function assertCanView(User $actor, Company $company, Branch $branch): void
     {
-        $allowed = $this->access->isCompanyOwner($actor, $company)
-            || $this->authorizer->allowsCustomer($actor, PermissionCodes::PLATFORM_VIEW, $company, $branch)
+        $allowed = $this->authorizer->allowsCustomer($actor, PermissionCodes::PLATFORM_VIEW, $company, $branch)
             || $this->authorizer->allowsCustomer($actor, PermissionCodes::TRIP_VIEW, $company, $branch);
 
         if (! $allowed) {
@@ -320,8 +319,7 @@ class VehicleDriverController extends Controller
     private function canMutate(User $actor, Company $company, Branch $branch, string $capability): bool
     {
         return $this->capabilities->allowsMutate($company, $capability)
-            && ($this->access->isCompanyOwner($actor, $company)
-                || $this->authorizer->allowsCustomer($actor, PermissionCodes::PLATFORM_EDIT, $company, $branch)
+            && ($this->authorizer->allowsCustomer($actor, PermissionCodes::PLATFORM_EDIT, $company, $branch)
                 || $this->authorizer->allowsCustomer($actor, PermissionCodes::PLATFORM_CREATE, $company, $branch));
     }
 

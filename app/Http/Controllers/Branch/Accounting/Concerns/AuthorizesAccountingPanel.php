@@ -23,9 +23,7 @@ trait AuthorizesAccountingPanel
         string $permissionCode,
         bool $requireMutation = false,
     ): bool {
-        $isOwner = (int) $actor->id === (int) $company->owner_user_id;
-
-        if (! $isOwner && ! $authorizer->allowsCustomer($actor, $permissionCode, $company, $branch)) {
+        if (! $authorizer->allowsCustomer($actor, $permissionCode, $company, $branch)) {
             abort(403, 'You are not authorized for this Accounting action.');
         }
 

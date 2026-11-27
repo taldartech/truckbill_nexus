@@ -8,7 +8,9 @@
  *
  * Invariants:
  * - Server-side denials must not mutate durable state.
- * - Owner designation alone does not grant unrestricted operational mutations (AUD-013).
+ * - Verified Company Owner receives full Customer-domain operational permissions
+ *   for subscribed modules; unsubscribed modules and cross-company mutations remain denied.
+ * - Ordinary users require both role permissions and company subscription entitlements.
  * - No-Freight personas: financial amounts absent from Inertia props (server redaction).
  */
 
@@ -19,6 +21,7 @@ use App\Models\LorryHire;
 use App\Models\TransporterVoucher;
 use App\Models\Trip;
 use App\Models\TripInvoice;
+use App\Models\User;
 use App\Support\Tenant\TenantContextHolder;
 use Database\Seeders\RbacSeeder;
 use Database\Seeders\SubscriptionCatalogueSeeder;
@@ -41,10 +44,11 @@ afterEach(function () {
     TenantContextHolder::clear();
 });
 
-test('owner designation allows branch dashboard but forged trip cancel is denied without branch role', function () {
+test('owner designation allows subscribed branch mutations without branch role while unsubscribed and cross-tenant writes stay denied', function () {
     $ctx = tripWorkspace();
     tripActivate($ctx['company'], $ctx['branch']);
     $trip = tripCreatePendingTrip($ctx);
+    $otherOwner = User::factory()->customer()->create();
 
     expect(app(CompanyAccessService::class)->canViewBranchOperationsPanel(
         $ctx['owner'],
@@ -55,13 +59,21 @@ test('owner designation allows branch dashboard but forged trip cancel is denied
     rbacHttpAs($ctx['owner'], $ctx);
     test()->get(route('branch.dashboard'))->assertOk();
 
-    $beforeStatus = $trip->fresh()->status;
+    // Subscribed OwnFleet mutation succeeds for Owner without an ordinary branch role.
     rbacHttpAs($ctx['owner'], $ctx);
-    rbacExpectHttpDenied(test()->post(route('branch.trips.cancel', $trip), [
-        'cancellation_remark' => 'Forged owner cancel',
-    ]));
+    test()->post(route('branch.trips.cancel', $trip), [
+        'cancellation_remark' => 'Owner operational cancel',
+    ])->assertRedirect();
 
-    expect($trip->fresh()->status)->toBe($beforeStatus);
+    expect($trip->fresh()->status)->toBe(TripStatus::Cancelled);
+
+    // Cross-company Owner/user cannot cancel another company's trip.
+    $pending = tripCreatePendingTrip($ctx);
+    test()->actingAs($otherOwner);
+    test()->post(route('branch.trips.cancel', $pending), [
+        'cancellation_remark' => 'Cross-tenant forged cancel',
+    ])->assertForbidden();
+    expect($pending->fresh()->status)->toBe(TripStatus::Pending);
 });
 
 test('branch operator without module create cannot forge ownfleet trip from lr', function () {
@@ -189,7 +201,7 @@ test('viewer and operator forged broker lorry hire and voucher writes are denied
         ->and(TransporterVoucher::query()->count())->toBe($voucherCount);
 });
 
-test('owner without branch role cannot forge broker lorry hire create', function () {
+test('owner without branch role can create subscribed broker lorry hire while unsubscribed ownfleet stays denied', function () {
     brokerGrantLorryHirePermissions();
 
     $ctx = brokerWorkspace();
@@ -198,11 +210,17 @@ test('owner without branch role cannot forge broker lorry hire create', function
 
     $before = LorryHire::query()->count();
     rbacHttpAs($ctx['owner'], $ctx);
-    rbacExpectHttpDenied(test()->post(route('branch.broker.lorry-hires.store-from-lr', $lr), [
+    test()->post(route('branch.broker.lorry-hires.store-from-lr', $lr), [
         'goods_lines' => brokerGoodsPayloadFromLr($lr),
-    ]));
+    ])->assertRedirect();
 
-    expect(LorryHire::query()->count())->toBe($before);
+    expect(LorryHire::query()->count())->toBe($before + 1);
+
+    // Unsubscribed OwnFleet trip creation remains blocked even for the Owner.
+    rbacHttpAs($ctx['owner'], $ctx);
+    rbacExpectHttpDenied(test()->post(route('branch.trips.store-from-lr', $lr), [
+        'vehicle_id' => $ctx['vehicle']->id,
+    ]));
 });
 
 test('no-freight viewer and operator receive null broker lorry hire freight on show', function () {

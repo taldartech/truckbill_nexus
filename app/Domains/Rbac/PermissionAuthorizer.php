@@ -41,8 +41,9 @@ final class PermissionAuthorizer
             return false;
         }
 
-        // Operational permissions never grant Owner Panel; Owner designation is separate.
-        // Owner still needs an ordinary role assignment for operational PM codes.
+        // Authorizes Customer-domain operations strictly within the active Company & Branch.
+        // Verified Company Owners receive full Customer-domain permissions; ordinary users
+        // resolve solely through their active Branch role assignments.
         return in_array(
             $permissionCode,
             $this->resolver->codesForCustomerBranch($user, $company, $branch),

@@ -447,14 +447,11 @@ class PartyController extends Controller
         $mayViewBookBalance = $isTransporter
             && $this->capabilities()->allowsRead($company, CompanyCapabilities::BROKER_BOOK_BALANCE)
             && $maySeeFreight
-            && (
-                $actor->id === $company->owner_user_id
-                || $this->authorizer->allowsCustomer(
-                    $actor,
-                    PermissionCodes::BROKER_BOOK_BALANCE_VIEW,
-                    $company,
-                    $branch,
-                )
+            && $this->authorizer->allowsCustomer(
+                $actor,
+                PermissionCodes::BROKER_BOOK_BALANCE_VIEW,
+                $company,
+                $branch,
             );
 
         $bookBalance = null;

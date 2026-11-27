@@ -330,7 +330,8 @@ class TripInvoiceController extends Controller
         $canBrokerPayments = $this->capabilities->allowsRead($company, CompanyCapabilities::BROKER_INVOICES)
             && $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_INVOICE_VIEW, $company, $branch);
         $canPartloadPayments = $this->capabilities->allowsRead($company, CompanyCapabilities::PARTLOAD_INVOICES)
-            && $this->authorizer->allowsCustomer($actor, PermissionCodes::INVOICE_VIEW, $company, $branch);
+            && ($this->authorizer->allowsCustomer($actor, PermissionCodes::INVOICE_VIEW, $company, $branch)
+                || $this->authorizer->allowsCustomer($actor, PermissionCodes::PARTLOAD_DR_VIEW, $company, $branch));
 
         if (! $canOwnFleetPayments && ! $canBrokerPayments && ! $canPartloadPayments) {
             abort(403, 'Not authorized to view customer invoice payments.');
@@ -491,9 +492,12 @@ class TripInvoiceController extends Controller
             && $this->authorizer->allowsCustomer($actor, PermissionCodes::PAYMENT_VIEW, $company, $branch);
         $canBroker = $this->capabilities->allowsRead($company, CompanyCapabilities::BROKER_INVOICES)
             && $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_INVOICE_VIEW, $company, $branch);
+        $canPartload = $this->capabilities->allowsRead($company, CompanyCapabilities::PARTLOAD_INVOICES)
+            && ($this->authorizer->allowsCustomer($actor, PermissionCodes::INVOICE_VIEW, $company, $branch)
+                || $this->authorizer->allowsCustomer($actor, PermissionCodes::PARTLOAD_DR_VIEW, $company, $branch));
 
         return [
-            'can_view_payments' => $canOwnFleet || $canBroker,
+            'can_view_payments' => $canOwnFleet || $canBroker || $canPartload,
             'can_record_payment' => $this->authorizer->allowsCustomer($actor, PermissionCodes::PAYMENT_CREATE, $company, $branch),
         ];
     }

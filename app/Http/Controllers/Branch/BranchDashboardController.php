@@ -60,8 +60,9 @@ class BranchDashboardController extends Controller
 
         $ownFleet = $this->ownFleetOverview->forBranch($company, $branch, $user);
         $broker = $this->brokerOverview->forBranch($company, $branch, $user);
+        $nav = $this->capabilities()->navigationForUser($user, $company, $branch, $this->authorizer, $this->access);
 
-        $modules = $this->moduleShortcuts($company, $branch, $user, $broker);
+        $modules = $this->moduleShortcuts($nav, $broker);
 
         return Inertia::render('branch/dashboard', [
             'company' => [
@@ -88,24 +89,25 @@ class BranchDashboardController extends Controller
                 'select_branch' => $siblingBranches->count() > 1
                     ? route('workspace.branches.select', ['company' => $company], absolute: false)
                     : null,
-                'bilty_register' => route('branch.lorry-receipts.index', absolute: false),
-                'create_bilty' => route('branch.lorry-receipts.create', absolute: false),
+                'bilty_register' => $nav['bilty_register']
+                    ? route('branch.lorry-receipts.index', absolute: false)
+                    : null,
+                'create_bilty' => $nav['create_bilty']
+                    ? route('branch.lorry-receipts.create', absolute: false)
+                    : null,
             ],
         ]);
     }
 
     /**
+     * @param  array<string, bool>  $nav
      * @param  array<string, mixed>|null  $broker
      * @return list<array{key: string, label: string, href: string, description: string}>
      */
     private function moduleShortcuts(
-        Company $company,
-        Branch $branch,
-        User $user,
+        array $nav,
         ?array $broker,
     ): array {
-        $capabilities = $this->capabilities();
-        $nav = $capabilities->navigationForUser($user, $company, $branch, $this->authorizer, $this->access);
 
         $modules = [];
 

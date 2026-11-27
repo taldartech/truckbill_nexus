@@ -352,11 +352,13 @@ test('inactive membership branch or role denies effective permissions', function
     rbacAssign()->revokeCustomerBranchRole($owner, $roleAssignment, 'Cleanup historical');
 });
 
-test('owner access remains independent of ordinary role assignments', function () {
+test('owner access remains independent of ordinary role assignments and grants customer domain operational codes', function () {
     ['owner' => $owner, 'company' => $company, 'branch' => $branch] = seedCustomerWorkspace();
 
     expect(app(CompanyAccessService::class)->canAccessBranch($owner, $company, $branch))->toBeTrue()
-        ->and(rbacAuth()->allowsCustomer($owner, PermissionCodes::PLATFORM_VIEW, $company, $branch))->toBeFalse()
+        ->and(rbacAuth()->allowsCustomer($owner, PermissionCodes::PLATFORM_VIEW, $company, $branch))->toBeTrue()
+        ->and(rbacAuth()->allowsCustomer($owner, PermissionCodes::BROKER_LORRY_HIRE_VIEW, $company, $branch))->toBeTrue()
+        ->and(rbacAuth()->allowsInternal($owner, PermissionCodes::INTERNAL_CRM_VIEW))->toBeFalse()
         ->and(app(CompanyAccessService::class)->canAccessOwnerPanel($owner, $company))->toBeTrue();
 });
 

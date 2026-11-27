@@ -241,6 +241,24 @@ final class PermissionCodes
     public const INTERNAL_AUDIT_EXPORT = 'internal.audit.export';
 
     /**
+     * All Customer-domain permission codes (never includes Internal permissions).
+     *
+     * @return list<string>
+     */
+    public static function customerAllCodes(): array
+    {
+        return array_values(array_unique(array_merge(
+            self::customerPlatformCatalogue(),
+            self::customerMastersAndReportsCatalogue(),
+            self::customerPhase4Catalogue(),
+            self::customerPhase5Catalogue(),
+            self::customerPhase6Catalogue(),
+            self::customerPartloadCatalogue(),
+            self::customerAccountingCatalogue(),
+        )));
+    }
+
+    /**
      * @return list<string>
      */
     public static function customerPlatformCatalogue(): array

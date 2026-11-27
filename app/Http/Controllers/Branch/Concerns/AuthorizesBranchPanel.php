@@ -59,11 +59,11 @@ trait AuthorizesBranchPanel
         $entitlement = app(SubscriptionEntitlementGate::class)->evaluate($company);
         $mutationsAllowed = $entitlement['branch_mutations_allowed'];
 
-        $canView = ($isOwner || $authorizer->allowsCustomer($actor, PermissionCodes::PLATFORM_VIEW, $company, $branch))
+        $canView = $authorizer->allowsCustomer($actor, PermissionCodes::PLATFORM_VIEW, $company, $branch)
             && $entitlement['branch_view_allowed'];
-        $canCreate = $mutationsAllowed && ($isOwner || $authorizer->allowsCustomer($actor, PermissionCodes::PLATFORM_CREATE, $company, $branch));
-        $canEdit = $mutationsAllowed && ($isOwner || $authorizer->allowsCustomer($actor, PermissionCodes::PLATFORM_EDIT, $company, $branch));
-        $canDelete = $mutationsAllowed && ($isOwner || $authorizer->allowsCustomer($actor, PermissionCodes::PLATFORM_DELETE, $company, $branch));
+        $canCreate = $mutationsAllowed && $authorizer->allowsCustomer($actor, PermissionCodes::PLATFORM_CREATE, $company, $branch);
+        $canEdit = $mutationsAllowed && $authorizer->allowsCustomer($actor, PermissionCodes::PLATFORM_EDIT, $company, $branch);
+        $canDelete = $mutationsAllowed && $authorizer->allowsCustomer($actor, PermissionCodes::PLATFORM_DELETE, $company, $branch);
 
         return [
             'can_view' => $canView,

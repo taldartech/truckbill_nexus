@@ -591,11 +591,6 @@ class LorryReceiptController extends Controller
 
     private function customerAllows(User $actor, Company $company, Branch $branch, string $code): bool
     {
-        // Company Owner retains operational authority without depending on a branch role matrix row.
-        if ($this->access->isCompanyOwner($actor, $company)) {
-            return true;
-        }
-
         return $this->authorizer->allowsCustomer($actor, $code, $company, $branch);
     }
 

@@ -13,7 +13,9 @@ use App\Domains\Subscription\Support\SubscriptionClock;
 use App\Models\AccountingVoucher;
 use App\Models\Branch;
 use App\Models\Company;
+use App\Models\CompanySubscriptionTrial;
 use App\Models\User;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Cache;
 
 /**
@@ -64,115 +66,164 @@ final class CompanyCapabilityResolver
         $dayKey = $this->clock->now()->toDateString();
         $cacheKey = "company_capabilities:{$company->id}:v{$version}:{$dayKey}";
 
-        return Cache::remember($cacheKey, now()->addMinutes(5), function () use ($company): array {
-            $decision = $this->gate->evaluate($company);
-            $activeModules = $this->modules->entitledModules($company);
-            $historicalModules = $this->modules->historicalModules($company);
-            $activeAddons = $this->modules->activeAddonCodes($company);
-            $historicalAddons = $this->modules->historicalAddonCodes($company);
+        /** @var array{payload: array{
+         *     company_id: string,
+         *     lifecycle_status: string,
+         *     mutations_allowed: bool,
+         *     historical_view_allowed: bool,
+         *     is_read_only_grace_or_restricted: bool,
+         *     active_modules: list<string>,
+         *     historical_modules: list<string>,
+         *     capabilities: array<string, array{read: bool, mutate: bool}>
+         * }, trial_ends_at_ts: int|null} $cached */
+        $cached = Cache::remember($cacheKey, now()->addMinutes(5), fn (): array => $this->buildCachedResolution($company));
 
-            $activeSet = array_fill_keys(array_map(fn (SubscriptionModule $m): string => $m->value, $activeModules), true);
-            $historicalSet = array_fill_keys(array_map(fn (SubscriptionModule $m): string => $m->value, $historicalModules), true);
+        $trialEndsTs = $cached['trial_ends_at_ts'] ?? null;
+        if ($cached['payload']['lifecycle_status'] === SubscriptionLifecycleStatus::Trial->value
+            && $trialEndsTs !== null
+            && $this->clock->now()->getTimestamp() > $trialEndsTs
+        ) {
+            Cache::forget($cacheKey);
+            $cached = Cache::remember($cacheKey, now()->addMinutes(5), fn (): array => $this->buildCachedResolution($company));
+        }
 
-            $mutationsAllowed = $decision['branch_mutations_allowed'];
-            $historicalViewAllowed = $decision['branch_view_allowed'];
+        return $cached['payload'];
+    }
 
-            $hasBroker = isset($activeSet[SubscriptionModule::Broker->value]);
-            $hasOwnFleet = isset($activeSet[SubscriptionModule::OwnFleet->value]);
-            $hasPartload = isset($activeSet[SubscriptionModule::Partload->value]);
+    /**
+     * @return array{
+     *     payload: array{
+     *         company_id: string,
+     *         lifecycle_status: string,
+     *         mutations_allowed: bool,
+     *         historical_view_allowed: bool,
+     *         is_read_only_grace_or_restricted: bool,
+     *         active_modules: list<string>,
+     *         historical_modules: list<string>,
+     *         capabilities: array<string, array{read: bool, mutate: bool}>
+     *     },
+     *     trial_ends_at_ts: int|null
+     * }
+     */
+    private function buildCachedResolution(Company $company): array
+    {
+        $decision = $this->gate->evaluate($company);
+        $activeModules = $this->modules->entitledModules($company);
+        $historicalModules = $this->modules->historicalModules($company);
+        $activeAddons = $this->modules->activeAddonCodes($company);
+        $historicalAddons = $this->modules->historicalAddonCodes($company);
 
-            $hasBrokerRead = $historicalViewAllowed && isset($historicalSet[SubscriptionModule::Broker->value]);
-            $hasOwnFleetRead = $historicalViewAllowed && isset($historicalSet[SubscriptionModule::OwnFleet->value]);
-            $hasPartloadRead = $historicalViewAllowed && isset($historicalSet[SubscriptionModule::Partload->value]);
+        $activeSet = array_fill_keys(array_map(fn (SubscriptionModule $m): string => $m->value, $activeModules), true);
+        $historicalSet = array_fill_keys(array_map(fn (SubscriptionModule $m): string => $m->value, $historicalModules), true);
 
-            $hasAnyCore = $hasBroker || $hasOwnFleet || $hasPartload;
-            $hasAnyCoreRead = $hasBrokerRead || $hasOwnFleetRead || $hasPartloadRead;
+        $mutationsAllowed = $decision['branch_mutations_allowed'];
+        $historicalViewAllowed = $decision['branch_view_allowed'];
 
-            $hasAccounting = $mutationsAllowed && in_array('accounting', $activeAddons, true);
-            $hasAccountingRead = $historicalViewAllowed && (
-                in_array('accounting', $historicalAddons, true)
-                || $this->hasHistoricalAccountingVouchers($company)
-            );
+        $hasBroker = isset($activeSet[SubscriptionModule::Broker->value]);
+        $hasOwnFleet = isset($activeSet[SubscriptionModule::OwnFleet->value]);
+        $hasPartload = isset($activeSet[SubscriptionModule::Partload->value]);
 
-            $isReadOnlyLifecycle = in_array($decision['status'], [
-                SubscriptionLifecycleStatus::PaidGrace,
-                SubscriptionLifecycleStatus::Restricted,
-                SubscriptionLifecycleStatus::Cancelled,
-            ], true);
+        $hasBrokerRead = $historicalViewAllowed && isset($historicalSet[SubscriptionModule::Broker->value]);
+        $hasOwnFleetRead = $historicalViewAllowed && isset($historicalSet[SubscriptionModule::OwnFleet->value]);
+        $hasPartloadRead = $historicalViewAllowed && isset($historicalSet[SubscriptionModule::Partload->value]);
 
-            /** @var array<string, array{read: bool, mutate: bool}> $capabilities */
-            $capabilities = [
-                // Broker
-                CompanyCapabilities::BROKER_LR => ['read' => $hasBrokerRead, 'mutate' => $mutationsAllowed && $hasBroker],
-                CompanyCapabilities::BROKER_LORRY_HIRE => ['read' => $hasBrokerRead, 'mutate' => $mutationsAllowed && $hasBroker],
-                CompanyCapabilities::BROKER_VOUCHERS => ['read' => $hasBrokerRead, 'mutate' => $mutationsAllowed && $hasBroker],
-                CompanyCapabilities::BROKER_DAILY_PAYMENTS => ['read' => $hasBrokerRead, 'mutate' => $mutationsAllowed && $hasBroker],
-                CompanyCapabilities::BROKER_DELIVERIES => ['read' => $hasBrokerRead, 'mutate' => $mutationsAllowed && $hasBroker],
-                CompanyCapabilities::BROKER_LINKED_BILTIES => ['read' => $hasBrokerRead, 'mutate' => $mutationsAllowed && $hasBroker],
-                CompanyCapabilities::BROKER_BOOK_BALANCE => ['read' => $hasBrokerRead, 'mutate' => $mutationsAllowed && $hasBroker],
-                CompanyCapabilities::BROKER_INVOICES => ['read' => $hasBrokerRead, 'mutate' => $mutationsAllowed && $hasBroker],
-                CompanyCapabilities::BROKER_REGISTERS => ['read' => $hasBrokerRead, 'mutate' => $mutationsAllowed && $hasBroker],
+        $hasAnyCore = $hasBroker || $hasOwnFleet || $hasPartload;
+        $hasAnyCoreRead = $hasBrokerRead || $hasOwnFleetRead || $hasPartloadRead;
 
-                // OwnFleet
-                CompanyCapabilities::OWNFLEET_LR => ['read' => $hasOwnFleetRead, 'mutate' => $mutationsAllowed && $hasOwnFleet],
-                CompanyCapabilities::OWNFLEET_TRIPS => ['read' => $hasOwnFleetRead, 'mutate' => $mutationsAllowed && $hasOwnFleet],
-                CompanyCapabilities::OWNFLEET_TRIP_EXPENSES => ['read' => $hasOwnFleetRead, 'mutate' => $mutationsAllowed && $hasOwnFleet],
-                CompanyCapabilities::OWNFLEET_DIESEL => ['read' => $hasOwnFleetRead, 'mutate' => $mutationsAllowed && $hasOwnFleet],
-                CompanyCapabilities::OWNFLEET_INVOICES => ['read' => $hasOwnFleetRead, 'mutate' => $mutationsAllowed && $hasOwnFleet],
-                CompanyCapabilities::OWNFLEET_VEHICLE_DRIVERS => ['read' => $hasOwnFleetRead, 'mutate' => $mutationsAllowed && $hasOwnFleet],
-                CompanyCapabilities::OWNFLEET_DRIVER_ATTENDANCE => ['read' => $hasOwnFleetRead, 'mutate' => $mutationsAllowed && $hasOwnFleet],
-                CompanyCapabilities::OWNFLEET_TRUCK_TYPES => ['read' => $hasOwnFleetRead, 'mutate' => $mutationsAllowed && $hasOwnFleet],
-                CompanyCapabilities::OWNFLEET_TYRE_LAYOUTS => ['read' => $hasOwnFleetRead, 'mutate' => $mutationsAllowed && $hasOwnFleet],
-                CompanyCapabilities::OWNFLEET_EXPENSE_CATEGORIES => ['read' => $hasOwnFleetRead, 'mutate' => $mutationsAllowed && $hasOwnFleet],
+        $hasAccounting = $mutationsAllowed && in_array('accounting', $activeAddons, true);
+        $hasAccountingRead = $historicalViewAllowed && (
+            in_array('accounting', $historicalAddons, true)
+            || $this->hasHistoricalAccountingVouchers($company)
+        );
 
-                // Partload
-                CompanyCapabilities::PARTLOAD_LR => ['read' => $hasPartloadRead, 'mutate' => $mutationsAllowed && $hasPartload],
-                CompanyCapabilities::PARTLOAD_PENDING_LOADING => ['read' => $hasPartloadRead, 'mutate' => $mutationsAllowed && $hasPartload],
-                CompanyCapabilities::PARTLOAD_IN_TRANSIT => ['read' => $hasPartloadRead, 'mutate' => $mutationsAllowed && $hasPartload],
-                CompanyCapabilities::PARTLOAD_PENDING_DELIVERY => ['read' => $hasPartloadRead, 'mutate' => $mutationsAllowed && $hasPartload],
-                CompanyCapabilities::PARTLOAD_CHALLANS => ['read' => $hasPartloadRead, 'mutate' => $mutationsAllowed && $hasPartload],
-                CompanyCapabilities::PARTLOAD_MAIN_CHALLANS => ['read' => $hasPartloadRead, 'mutate' => $mutationsAllowed && $hasPartload],
-                CompanyCapabilities::PARTLOAD_INWARDS => ['read' => $hasPartloadRead, 'mutate' => $mutationsAllowed && $hasPartload],
-                CompanyCapabilities::PARTLOAD_DELIVERY_RECEIPTS => ['read' => $hasPartloadRead, 'mutate' => $mutationsAllowed && $hasPartload],
-                CompanyCapabilities::PARTLOAD_INVOICES => ['read' => $hasPartloadRead, 'mutate' => $mutationsAllowed && $hasPartload],
+        $isReadOnlyLifecycle = in_array($decision['status'], [
+            SubscriptionLifecycleStatus::PaidGrace,
+            SubscriptionLifecycleStatus::Restricted,
+            SubscriptionLifecycleStatus::Cancelled,
+        ], true);
 
-                // Vehicle ownership
-                CompanyCapabilities::VEHICLE_OWNERSHIP_OWN => ['read' => $hasOwnFleetRead, 'mutate' => $mutationsAllowed && $hasOwnFleet],
-                CompanyCapabilities::VEHICLE_OWNERSHIP_MARKET => [
-                    'read' => $hasBrokerRead || $hasPartloadRead,
-                    'mutate' => $mutationsAllowed && ($hasBroker || $hasPartload),
-                ],
+        /** @var array<string, array{read: bool, mutate: bool}> $capabilities */
+        $capabilities = [
+            // Broker
+            CompanyCapabilities::BROKER_LR => ['read' => $hasBrokerRead, 'mutate' => $mutationsAllowed && $hasBroker],
+            CompanyCapabilities::BROKER_LORRY_HIRE => ['read' => $hasBrokerRead, 'mutate' => $mutationsAllowed && $hasBroker],
+            CompanyCapabilities::BROKER_VOUCHERS => ['read' => $hasBrokerRead, 'mutate' => $mutationsAllowed && $hasBroker],
+            CompanyCapabilities::BROKER_DAILY_PAYMENTS => ['read' => $hasBrokerRead, 'mutate' => $mutationsAllowed && $hasBroker],
+            CompanyCapabilities::BROKER_DELIVERIES => ['read' => $hasBrokerRead, 'mutate' => $mutationsAllowed && $hasBroker],
+            CompanyCapabilities::BROKER_LINKED_BILTIES => ['read' => $hasBrokerRead, 'mutate' => $mutationsAllowed && $hasBroker],
+            CompanyCapabilities::BROKER_BOOK_BALANCE => ['read' => $hasBrokerRead, 'mutate' => $mutationsAllowed && $hasBroker],
+            CompanyCapabilities::BROKER_INVOICES => ['read' => $hasBrokerRead, 'mutate' => $mutationsAllowed && $hasBroker],
+            CompanyCapabilities::BROKER_REGISTERS => ['read' => $hasBrokerRead, 'mutate' => $mutationsAllowed && $hasBroker],
 
-                // Shared / Core / Accounting
-                CompanyCapabilities::LR_UNIFIED => ['read' => $hasAnyCoreRead, 'mutate' => $mutationsAllowed && $hasAnyCore],
-                CompanyCapabilities::CUSTOMER_INVOICES => [
-                    'read' => $hasBrokerRead || $hasOwnFleetRead || $hasPartloadRead,
-                    'mutate' => $mutationsAllowed && ($hasBroker || $hasOwnFleet || $hasPartload),
-                ],
-                CompanyCapabilities::CUSTOMER_PAYMENTS => [
-                    'read' => $hasBrokerRead || $hasOwnFleetRead || $hasPartloadRead,
-                    'mutate' => $mutationsAllowed && ($hasBroker || $hasOwnFleet || $hasPartload),
-                ],
-                CompanyCapabilities::ENQUIRIES => ['read' => $hasAnyCoreRead, 'mutate' => $mutationsAllowed && $hasAnyCore],
-                CompanyCapabilities::ACCOUNTING => ['read' => $hasAccountingRead, 'mutate' => $hasAccounting],
+            // OwnFleet
+            CompanyCapabilities::OWNFLEET_LR => ['read' => $hasOwnFleetRead, 'mutate' => $mutationsAllowed && $hasOwnFleet],
+            CompanyCapabilities::OWNFLEET_TRIPS => ['read' => $hasOwnFleetRead, 'mutate' => $mutationsAllowed && $hasOwnFleet],
+            CompanyCapabilities::OWNFLEET_TRIP_EXPENSES => ['read' => $hasOwnFleetRead, 'mutate' => $mutationsAllowed && $hasOwnFleet],
+            CompanyCapabilities::OWNFLEET_DIESEL => ['read' => $hasOwnFleetRead, 'mutate' => $mutationsAllowed && $hasOwnFleet],
+            CompanyCapabilities::OWNFLEET_INVOICES => ['read' => $hasOwnFleetRead, 'mutate' => $mutationsAllowed && $hasOwnFleet],
+            CompanyCapabilities::OWNFLEET_VEHICLE_DRIVERS => ['read' => $hasOwnFleetRead, 'mutate' => $mutationsAllowed && $hasOwnFleet],
+            CompanyCapabilities::OWNFLEET_DRIVER_ATTENDANCE => ['read' => $hasOwnFleetRead, 'mutate' => $mutationsAllowed && $hasOwnFleet],
+            CompanyCapabilities::OWNFLEET_TRUCK_TYPES => ['read' => $hasOwnFleetRead, 'mutate' => $mutationsAllowed && $hasOwnFleet],
+            CompanyCapabilities::OWNFLEET_TYRE_LAYOUTS => ['read' => $hasOwnFleetRead, 'mutate' => $mutationsAllowed && $hasOwnFleet],
+            CompanyCapabilities::OWNFLEET_EXPENSE_CATEGORIES => ['read' => $hasOwnFleetRead, 'mutate' => $mutationsAllowed && $hasOwnFleet],
 
-                // Shared Masters (accessible when company has historical/active branch panel view;
-                // mutations obey subscription gate + module ownership rules)
-                CompanyCapabilities::MASTERS_PARTIES => ['read' => $historicalViewAllowed, 'mutate' => $mutationsAllowed],
-                CompanyCapabilities::MASTERS_PARTIES_DRIVER_ROLE => [
-                    'read' => $hasOwnFleetRead || $hasPartloadRead,
-                    'mutate' => $mutationsAllowed && ($hasOwnFleet || $hasPartload),
-                ],
-                CompanyCapabilities::MASTERS_VEHICLES => ['read' => $hasAnyCoreRead, 'mutate' => $mutationsAllowed && $hasAnyCore],
-                CompanyCapabilities::MASTERS_BANK_CASH => ['read' => $historicalViewAllowed, 'mutate' => $mutationsAllowed],
-                CompanyCapabilities::MASTERS_STATIONS => ['read' => $historicalViewAllowed, 'mutate' => $mutationsAllowed],
-                CompanyCapabilities::MASTERS_GOODS_TYPES => ['read' => $historicalViewAllowed, 'mutate' => $mutationsAllowed],
-                CompanyCapabilities::MASTERS_PACKAGE_TYPES => ['read' => $historicalViewAllowed, 'mutate' => $mutationsAllowed],
-                CompanyCapabilities::MASTERS_DOCUMENT_TYPES => ['read' => $historicalViewAllowed, 'mutate' => $mutationsAllowed],
-                CompanyCapabilities::DOCUMENTS => ['read' => $historicalViewAllowed, 'mutate' => $mutationsAllowed],
-            ];
+            // Partload
+            CompanyCapabilities::PARTLOAD_LR => ['read' => $hasPartloadRead, 'mutate' => $mutationsAllowed && $hasPartload],
+            CompanyCapabilities::PARTLOAD_PENDING_LOADING => ['read' => $hasPartloadRead, 'mutate' => $mutationsAllowed && $hasPartload],
+            CompanyCapabilities::PARTLOAD_IN_TRANSIT => ['read' => $hasPartloadRead, 'mutate' => $mutationsAllowed && $hasPartload],
+            CompanyCapabilities::PARTLOAD_PENDING_DELIVERY => ['read' => $hasPartloadRead, 'mutate' => $mutationsAllowed && $hasPartload],
+            CompanyCapabilities::PARTLOAD_CHALLANS => ['read' => $hasPartloadRead, 'mutate' => $mutationsAllowed && $hasPartload],
+            CompanyCapabilities::PARTLOAD_MAIN_CHALLANS => ['read' => $hasPartloadRead, 'mutate' => $mutationsAllowed && $hasPartload],
+            CompanyCapabilities::PARTLOAD_INWARDS => ['read' => $hasPartloadRead, 'mutate' => $mutationsAllowed && $hasPartload],
+            CompanyCapabilities::PARTLOAD_DELIVERY_RECEIPTS => ['read' => $hasPartloadRead, 'mutate' => $mutationsAllowed && $hasPartload],
+            CompanyCapabilities::PARTLOAD_INVOICES => ['read' => $hasPartloadRead, 'mutate' => $mutationsAllowed && $hasPartload],
 
-            return [
+            // Vehicle ownership
+            CompanyCapabilities::VEHICLE_OWNERSHIP_OWN => ['read' => $hasOwnFleetRead, 'mutate' => $mutationsAllowed && $hasOwnFleet],
+            CompanyCapabilities::VEHICLE_OWNERSHIP_MARKET => [
+                'read' => $hasBrokerRead || $hasPartloadRead,
+                'mutate' => $mutationsAllowed && ($hasBroker || $hasPartload),
+            ],
+
+            // Shared / Core / Accounting
+            CompanyCapabilities::LR_UNIFIED => ['read' => $hasAnyCoreRead, 'mutate' => $mutationsAllowed && $hasAnyCore],
+            CompanyCapabilities::CUSTOMER_INVOICES => [
+                'read' => $hasBrokerRead || $hasOwnFleetRead || $hasPartloadRead,
+                'mutate' => $mutationsAllowed && ($hasBroker || $hasOwnFleet || $hasPartload),
+            ],
+            CompanyCapabilities::CUSTOMER_PAYMENTS => [
+                'read' => $hasBrokerRead || $hasOwnFleetRead || $hasPartloadRead,
+                'mutate' => $mutationsAllowed && ($hasBroker || $hasOwnFleet || $hasPartload),
+            ],
+            CompanyCapabilities::ENQUIRIES => ['read' => $hasAnyCoreRead, 'mutate' => $mutationsAllowed && $hasAnyCore],
+            CompanyCapabilities::ACCOUNTING => ['read' => $hasAccountingRead, 'mutate' => $hasAccounting],
+
+            // Shared Masters (accessible when company has historical/active branch panel view;
+            // mutations obey subscription gate + module ownership rules)
+            CompanyCapabilities::MASTERS_PARTIES => ['read' => $historicalViewAllowed, 'mutate' => $mutationsAllowed],
+            CompanyCapabilities::MASTERS_PARTIES_DRIVER_ROLE => [
+                'read' => $hasOwnFleetRead || $hasPartloadRead,
+                'mutate' => $mutationsAllowed && ($hasOwnFleet || $hasPartload),
+            ],
+            CompanyCapabilities::MASTERS_VEHICLES => ['read' => $hasAnyCoreRead, 'mutate' => $mutationsAllowed && $hasAnyCore],
+            CompanyCapabilities::MASTERS_BANK_CASH => ['read' => $historicalViewAllowed, 'mutate' => $mutationsAllowed],
+            CompanyCapabilities::MASTERS_STATIONS => ['read' => $historicalViewAllowed, 'mutate' => $mutationsAllowed],
+            CompanyCapabilities::MASTERS_GOODS_TYPES => ['read' => $historicalViewAllowed, 'mutate' => $mutationsAllowed],
+            CompanyCapabilities::MASTERS_PACKAGE_TYPES => ['read' => $historicalViewAllowed, 'mutate' => $mutationsAllowed],
+            CompanyCapabilities::MASTERS_DOCUMENT_TYPES => ['read' => $historicalViewAllowed, 'mutate' => $mutationsAllowed],
+            CompanyCapabilities::DOCUMENTS => ['read' => $historicalViewAllowed, 'mutate' => $mutationsAllowed],
+        ];
+
+        $trialEndsTs = null;
+        if ($decision['status'] === SubscriptionLifecycleStatus::Trial) {
+            $trialEndsAt = CompanySubscriptionTrial::query()->where('company_id', $company->id)->value('ends_at');
+            if ($trialEndsAt !== null) {
+                $trialEndsTs = CarbonImmutable::parse($trialEndsAt)->timezone(config('subscription.timezone', 'UTC'))->getTimestamp();
+            }
+        }
+
+        return [
+            'payload' => [
                 'company_id' => $company->id,
                 'lifecycle_status' => $decision['status']->value,
                 'mutations_allowed' => $mutationsAllowed,
@@ -181,8 +232,9 @@ final class CompanyCapabilityResolver
                 'active_modules' => array_keys($activeSet),
                 'historical_modules' => array_keys($historicalSet),
                 'capabilities' => $capabilities,
-            ];
-        });
+            ],
+            'trial_ends_at_ts' => $trialEndsTs,
+        ];
     }
 
     public function allowsRead(Company $company, string $capability): bool
@@ -302,10 +354,7 @@ final class CompanyCapabilityResolver
         PermissionAuthorizer $authorizer = new PermissionAuthorizer,
         CompanyAccessService $access = new CompanyAccessService,
     ): array {
-        $isOwner = $access->isCompanyOwner($user, $company);
-
         $perm = fn (string $code): bool => $authorizer->allowsCustomer($user, $code, $company, $branch);
-        $masterPerm = fn (string $code): bool => $isOwner || $authorizer->allowsCustomer($user, $code, $company, $branch);
 
         $capRead = fn (string $cap): bool => $this->allowsRead($company, $cap);
         $capMutate = fn (string $cap): bool => $this->allowsMutate($company, $cap);
@@ -319,13 +368,20 @@ final class CompanyCapabilityResolver
             'bilty_register' => $capRead(CompanyCapabilities::LR_UNIFIED) && $perm(PermissionCodes::LR_VIEW),
             'create_bilty' => $capMutate(CompanyCapabilities::LR_UNIFIED) && $perm(PermissionCodes::LR_CREATE),
             'partload_bilty_shortcut' => $canPartload && $capMutate(CompanyCapabilities::PARTLOAD_LR) && $perm(PermissionCodes::LR_CREATE),
-            'broker_lorry_hires' => $canBrokerLr && $perm(PermissionCodes::BROKER_LORRY_HIRE_VIEW),
-            'broker_vouchers' => $canBrokerLr && $perm(PermissionCodes::BROKER_VOUCHER_VIEW),
-            'broker_daily_payments' => $canBrokerLr && $perm(PermissionCodes::BROKER_VOUCHER_VIEW),
-            'broker_deliveries' => $canBrokerLr && $perm(PermissionCodes::BROKER_DELIVERY_VIEW),
-            'broker_linked_bilties' => $canBrokerLr && $perm(PermissionCodes::BROKER_LINKED_BILTY_VIEW),
-            'broker_transporter_balances' => $canBrokerLr && $perm(PermissionCodes::BROKER_BOOK_BALANCE_VIEW),
-            'broker_registers' => $canBrokerLr && $perm(PermissionCodes::BROKER_LORRY_HIRE_VIEW),
+            'broker_lorry_hires' => $capRead(CompanyCapabilities::BROKER_LORRY_HIRE) && $perm(PermissionCodes::BROKER_LORRY_HIRE_VIEW),
+            'broker_vouchers' => $capRead(CompanyCapabilities::BROKER_VOUCHERS) && $perm(PermissionCodes::BROKER_VOUCHER_VIEW),
+            'broker_daily_payments' => $capRead(CompanyCapabilities::BROKER_DAILY_PAYMENTS) && $perm(PermissionCodes::BROKER_VOUCHER_VIEW),
+            'broker_deliveries' => $capRead(CompanyCapabilities::BROKER_DELIVERIES) && $perm(PermissionCodes::BROKER_DELIVERY_VIEW),
+            'broker_linked_bilties' => $capRead(CompanyCapabilities::BROKER_LINKED_BILTIES) && $perm(PermissionCodes::BROKER_LINKED_BILTY_VIEW),
+            'broker_transporter_balances' => $capRead(CompanyCapabilities::BROKER_BOOK_BALANCE) && $perm(PermissionCodes::BROKER_BOOK_BALANCE_VIEW),
+            'broker_registers' => $capRead(CompanyCapabilities::BROKER_REGISTERS) && (
+                $perm(PermissionCodes::BROKER_LORRY_HIRE_VIEW)
+                || $perm(PermissionCodes::BROKER_VOUCHER_VIEW)
+                || $perm(PermissionCodes::BROKER_DELIVERY_VIEW)
+                || $perm(PermissionCodes::BROKER_INVOICE_VIEW)
+                || $perm(PermissionCodes::BROKER_BOOK_BALANCE_VIEW)
+                || $perm(PermissionCodes::BROKER_LINKED_BILTY_VIEW)
+            ),
             'customer_invoices' => $capRead(CompanyCapabilities::CUSTOMER_INVOICES)
                 && (($canOwnFleet && $perm(PermissionCodes::INVOICE_VIEW))
                     || ($canBrokerLr && $perm(PermissionCodes::BROKER_INVOICE_VIEW))
@@ -350,17 +406,17 @@ final class CompanyCapabilityResolver
                 && $perm(PermissionCodes::PLATFORM_VIEW_FREIGHT),
 
             // Masters sidebar
-            'masters_parties' => $capRead(CompanyCapabilities::MASTERS_PARTIES) && $masterPerm(PermissionCodes::PLATFORM_VIEW),
-            'masters_vehicles' => $capRead(CompanyCapabilities::MASTERS_VEHICLES) && $masterPerm(PermissionCodes::PLATFORM_VIEW),
-            'masters_vehicle_drivers' => $capRead(CompanyCapabilities::OWNFLEET_VEHICLE_DRIVERS) && $masterPerm(PermissionCodes::PLATFORM_VIEW),
-            'masters_bank_cash' => $capRead(CompanyCapabilities::MASTERS_BANK_CASH) && $masterPerm(PermissionCodes::PLATFORM_VIEW),
-            'masters_stations' => $capRead(CompanyCapabilities::MASTERS_STATIONS) && $masterPerm(PermissionCodes::PLATFORM_VIEW),
-            'masters_goods_types' => $capRead(CompanyCapabilities::MASTERS_GOODS_TYPES) && $masterPerm(PermissionCodes::PLATFORM_VIEW),
-            'masters_truck_types' => $capRead(CompanyCapabilities::OWNFLEET_TRUCK_TYPES) && $masterPerm(PermissionCodes::PLATFORM_VIEW),
-            'masters_tyre_layouts' => $capRead(CompanyCapabilities::OWNFLEET_TYRE_LAYOUTS) && $masterPerm(PermissionCodes::PLATFORM_VIEW),
-            'masters_document_types' => $capRead(CompanyCapabilities::MASTERS_DOCUMENT_TYPES) && $masterPerm(PermissionCodes::PLATFORM_VIEW),
-            'masters_expense_categories' => $capRead(CompanyCapabilities::OWNFLEET_EXPENSE_CATEGORIES) && $masterPerm(PermissionCodes::PLATFORM_VIEW),
-            'masters_package_types' => $capRead(CompanyCapabilities::MASTERS_PACKAGE_TYPES) && $masterPerm(PermissionCodes::PLATFORM_VIEW),
+            'masters_parties' => $capRead(CompanyCapabilities::MASTERS_PARTIES) && $perm(PermissionCodes::PLATFORM_VIEW),
+            'masters_vehicles' => $capRead(CompanyCapabilities::MASTERS_VEHICLES) && $perm(PermissionCodes::PLATFORM_VIEW),
+            'masters_vehicle_drivers' => $capRead(CompanyCapabilities::OWNFLEET_VEHICLE_DRIVERS) && $perm(PermissionCodes::PLATFORM_VIEW),
+            'masters_bank_cash' => $capRead(CompanyCapabilities::MASTERS_BANK_CASH) && $perm(PermissionCodes::PLATFORM_VIEW),
+            'masters_stations' => $capRead(CompanyCapabilities::MASTERS_STATIONS) && $perm(PermissionCodes::PLATFORM_VIEW),
+            'masters_goods_types' => $capRead(CompanyCapabilities::MASTERS_GOODS_TYPES) && $perm(PermissionCodes::PLATFORM_VIEW),
+            'masters_truck_types' => $capRead(CompanyCapabilities::OWNFLEET_TRUCK_TYPES) && $perm(PermissionCodes::PLATFORM_VIEW),
+            'masters_tyre_layouts' => $capRead(CompanyCapabilities::OWNFLEET_TYRE_LAYOUTS) && $perm(PermissionCodes::PLATFORM_VIEW),
+            'masters_document_types' => $capRead(CompanyCapabilities::MASTERS_DOCUMENT_TYPES) && $perm(PermissionCodes::PLATFORM_VIEW),
+            'masters_expense_categories' => $capRead(CompanyCapabilities::OWNFLEET_EXPENSE_CATEGORIES) && $perm(PermissionCodes::PLATFORM_VIEW),
+            'masters_package_types' => $capRead(CompanyCapabilities::MASTERS_PACKAGE_TYPES) && $perm(PermissionCodes::PLATFORM_VIEW),
         ];
     }
 
