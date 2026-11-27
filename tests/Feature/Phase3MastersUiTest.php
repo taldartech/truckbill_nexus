@@ -359,23 +359,26 @@ test('party show presents role-driven sections without internal identifiers', fu
         ->assertInertia(fn ($page) => $page
             ->component('branch/masters/parties/show')
             ->where('party.roles', ['Customer'])
-            ->where('party.sections.0.key', 'basic')
-            ->where('party.sections.1.key', 'business')
+            ->where('party.sections.0.key', 'general')
+            ->where('party.sections.0.items.1', ['label' => 'Party Short Name', 'value' => 'Plain Customer'])
+            ->where('party.sections.1.key', 'tax')
             ->has('party.sections', 2)
             ->missing('party.id')
             ->missing('roleOptions')
             ->missing('links.assign_role'));
 
     $driver = $service->create($owner, $company, null, [
-        'name' => 'Ravi Driver', 'contact_number' => '9000000012',
+        'name' => 'Ravi Driver',
+        'contact_number' => '9000000012',
+        'bank_name' => 'State Bank',
+        'bank_account_number' => '000123456789',
+        'bank_ifsc' => 'sbin0001234',
     ], [[
         'role' => PartyRoleType::Driver->value,
         'attributes' => [
             'driver_type' => 'permanent',
             'license_number' => 'MH1220200001234',
             'aadhaar' => '123412341234',
-            'bank_name' => 'State Bank',
-            'bank_account_number' => '000123456789',
         ],
     ]]);
 
@@ -383,9 +386,75 @@ test('party show presents role-driven sections without internal identifiers', fu
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->where('party.roles', ['Driver'])
-            ->where('party.sections.0.key', 'basic')
+            ->where('party.sections.0.key', 'general')
             ->where('party.sections.1.key', 'driver')
             ->where('party.sections.1.items.2.value', 'XXXX XXXX 1234')
             ->where('party.sections.2.key', 'bank')
+            ->where('party.sections.2.items', [
+                ['label' => 'Bank Name', 'value' => 'State Bank'],
+                ['label' => 'Account Number', 'value' => '********6789'],
+                ['label' => 'IFSC Code', 'value' => 'SBIN0001234'],
+            ])
             ->has('party.sections', 3));
+});
+
+test('party bank account stays masked and is kept when edit leaves it blank', function () {
+    ['owner' => $owner, 'company' => $company, 'branch' => $branch] = uiMastersWorkspace();
+    uiActingAsCustomer($owner);
+    enterBranchWorkspace($company, $branch)->assertRedirect();
+
+    $vendor = app(PartyService::class)->create($owner, $company, null, [
+        'name' => 'Diesel Vendor',
+        'contact_person' => 'Mahesh',
+        'contact_number' => '9000000013',
+        'bank_name' => 'HDFC',
+        'bank_account_number' => '50100012345678',
+    ], [['role' => PartyRoleType::GeneralVendor->value, 'attributes' => []]]);
+
+    $this->get(route('branch.parties.edit', $vendor))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('party.bank_account_number_masked', '**********5678')
+            ->missing('party.bank_account_number'));
+
+    $this->patch(route('branch.parties.update', $vendor), [
+        'name' => 'Diesel Vendor',
+        'bank_name' => 'HDFC Bank',
+        'bank_account_number' => '',
+        'bank_ifsc' => 'BAD-IFSC',
+        'remark' => 'Fix bank',
+    ])->assertSessionHasErrors('bank_ifsc');
+
+    $this->patch(route('branch.parties.update', $vendor), [
+        'name' => 'Diesel Vendor',
+        'bank_name' => 'HDFC Bank',
+        'bank_account_number' => '',
+        'remark' => 'Rename bank',
+    ])->assertRedirect(route('branch.parties.show', $vendor));
+
+    expect($vendor->fresh())
+        ->bank_name->toBe('HDFC Bank')
+        ->bank_account_number->toBe('50100012345678');
+});
+
+test('party short name follows the name until customized', function () {
+    ['owner' => $owner, 'company' => $company, 'branch' => $branch] = uiMastersWorkspace();
+    uiActingAsCustomer($owner);
+    enterBranchWorkspace($company, $branch)->assertRedirect();
+    $service = app(PartyService::class);
+
+    $following = $service->create($owner, $company, null, [
+        'name' => 'Konkan Roadways', 'contact_number' => '9000000014', 'state' => 'Maharashtra', 'city' => 'Pune',
+    ], [['role' => PartyRoleType::Customer->value, 'attributes' => []]]);
+    $custom = $service->create($owner, $company, null, [
+        'name' => 'Saurashtra Carriers', 'short_name' => 'Saurashtra', 'contact_number' => '9000000015', 'state' => 'Gujarat', 'city' => 'Rajkot',
+    ], [['role' => PartyRoleType::Customer->value, 'attributes' => []]]);
+
+    expect($following->short_name)->toBe('Konkan Roadways');
+
+    $this->patch(route('branch.parties.update', $following), ['name' => 'Konkan Logistics', 'remark' => 'Rename'])->assertRedirect();
+    $this->patch(route('branch.parties.update', $custom), ['name' => 'Saurashtra Freight', 'remark' => 'Rename'])->assertRedirect();
+
+    expect($following->fresh()->short_name)->toBe('Konkan Logistics')
+        ->and($custom->fresh()->short_name)->toBe('Saurashtra');
 });

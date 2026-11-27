@@ -5,29 +5,29 @@ import {
     AppFormPage,
     AppFormSection,
 } from '@/components/app-form-page';
-import {
-    diffScalarFields,
-    type ScalarFieldDef,
-} from '@/components/form-confirmation/diff';
 import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
 import type {
     ChangeReview,
-    FieldReview,
+    FieldReviewSection,
 } from '@/components/form-confirmation/types';
+import InputError from '@/components/input-error';
 import { PartyMasterFormFields } from '@/components/masters/party-master/party-master-form-fields';
-import { derivePartyFieldModel } from '@/components/masters/party-master/party-role-field-model';
-import type {
-    DriverAttrs,
-    PartyBasicValues,
-    RolePayload,
-    TransporterAttrs,
-} from '@/components/masters/party-master/party-master-types';
 import {
+    buildPartyCreateReview,
+    buildPartyEditReview,
+    type PartyReviewInput,
+} from '@/components/masters/party-master/party-master-review';
+import {
+    EMPTY_PARTY_BASIC,
     initialDriver,
     initialTransporter,
     roleIndexMap,
+    type DriverAttrs,
+    type PartyBasicValues,
+    type RolePayload,
+    type TransporterAttrs,
 } from '@/components/masters/party-master/party-master-types';
-import InputError from '@/components/input-error';
+import { derivePartyFieldModel } from '@/components/masters/party-master/party-role-field-model';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -36,12 +36,19 @@ import { readCanQuickCreateGeography } from '@/lib/geography-permissions';
 type Party = {
     id: string;
     name: string;
+    short_name: string | null;
     contact_person: string | null;
     contact_number: string | null;
     email: string | null;
     gstin: string | null;
     pan: string | null;
     is_gst_applicable: boolean;
+    bank_name: string | null;
+    bank_account_holder_name: string | null;
+    bank_account_number_masked: string | null;
+    bank_ifsc: string | null;
+    bank_short_name: string | null;
+    bank_beneficiary_id: string | null;
     state: string | null;
     city: string | null;
     state_id?: string | null;
@@ -66,75 +73,45 @@ type Props = {
     };
 };
 
-type PartyDraft = {
-    name: string;
-    contact_person: string;
-    contact_number: string;
-    email: string;
-    state: string;
-    city: string;
-    address: string;
-    gstin: string;
-    pan: string;
-    is_gst_applicable: string;
-    roles: string;
-    remark: string;
-};
-
-const PARTY_FIELD_DEFS: ScalarFieldDef<PartyDraft>[] = [
-    { key: 'name', label: 'Name' },
-    { key: 'contact_person', label: 'Contact person' },
-    { key: 'contact_number', label: 'Contact number' },
-    { key: 'email', label: 'Email' },
-    { key: 'state', label: 'State' },
-    { key: 'city', label: 'City' },
-    { key: 'address', label: 'Address' },
-    { key: 'gstin', label: 'GSTIN' },
-    { key: 'pan', label: 'PAN' },
-    { key: 'is_gst_applicable', label: 'GST applicable' },
-    { key: 'roles', label: 'Roles' },
-    { key: 'remark', label: 'Remark' },
-];
-
 const TDS_PREVIEW_URL = '/parties/tds-preview';
 
-function readFormControlValue(form: HTMLFormElement, id: string): string {
-    const element = form.querySelector(`#${id}`) as
-        | HTMLInputElement
-        | HTMLSelectElement
-        | null;
-    return element?.value?.trim() ?? '';
-}
-
-function roleLabels(
-    roleCodes: string[],
-    roleOptions: { value: string; label: string }[],
-): string {
-    return roleCodes
-        .map(
-            (code) =>
-                roleOptions.find((option) => option.value === code)?.label ??
-                code,
-        )
-        .join(', ');
-}
-
 function initialBasic(party: Party | null): PartyBasicValues {
+    if (party === null) {
+        return EMPTY_PARTY_BASIC;
+    }
+
     return {
-        name: party?.name ?? '',
-        contact_person: party?.contact_person ?? '',
-        contact_number: party?.contact_number ?? '',
-        email: party?.email ?? '',
-        address: party?.address ?? '',
-        gstin: party?.gstin ?? '',
-        pan: party?.pan ?? '',
+        name: party.name,
+        short_name: party.short_name ?? party.name,
+        contact_person: party.contact_person ?? '',
+        contact_number: party.contact_number ?? '',
+        email: party.email ?? '',
+        address: party.address ?? '',
+        gstin: party.gstin ?? '',
+        pan: party.pan ?? '',
         is_gst_applicable:
-            party?.is_gst_applicable === true
+            party.is_gst_applicable === true
                 ? '1'
-                : party?.is_gst_applicable === false
+                : party.is_gst_applicable === false
                   ? '0'
                   : '',
+        bank_name: party.bank_name ?? '',
+        bank_account_holder_name: party.bank_account_holder_name ?? '',
+        bank_account_number: '',
+        bank_ifsc: party.bank_ifsc ?? '',
+        bank_short_name: party.bank_short_name ?? '',
+        bank_beneficiary_id: party.bank_beneficiary_id ?? '',
     };
+}
+
+function initialRoles(mode: Props['mode'], party: Party | null): string[] {
+    if (mode === 'edit' && party?.roles?.length) {
+        return party.roles
+            .filter((role) => role.is_active !== false)
+            .map((role) => role.role);
+    }
+
+    return ['customer'];
 }
 
 export default function PartyForm({ mode, party, roleOptions, links }: Props) {
@@ -143,18 +120,15 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
     );
     const submitAllowed = useRef(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
-    const [reviewFields, setReviewFields] = useState<FieldReview[]>([]);
+    const [reviewSections, setReviewSections] = useState<FieldReviewSection[]>(
+        [],
+    );
     const [reviewChanges, setReviewChanges] = useState<ChangeReview[]>([]);
+    const [reviewRemark, setReviewRemark] = useState('');
 
-    const [selectedRoles, setSelectedRoles] = useState<string[]>(() => {
-        if (mode === 'edit' && party?.roles?.length) {
-            return party.roles
-                .filter((role) => role.is_active !== false)
-                .map((role) => role.role);
-        }
-
-        return ['customer'];
-    });
+    const [selectedRoles, setSelectedRoles] = useState<string[]>(() =>
+        initialRoles(mode, party),
+    );
     const [basic, setBasic] = useState<PartyBasicValues>(() =>
         initialBasic(party),
     );
@@ -189,72 +163,44 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
     const method = mode === 'create' ? 'post' : 'patch';
     const tdsPreviewUrl = links.tdsPreview ?? TDS_PREVIEW_URL;
 
-    const buildDraft = (form: HTMLFormElement): PartyDraft => {
-        const gstValue = readFormControlValue(form, 'is_gst_applicable');
+    const roleLabel = (code: string): string =>
+        roleOptions.find((option) => option.value === code)?.label ?? code;
 
-        return {
-            name: basic.name.trim(),
-            contact_person: basic.contact_person.trim(),
-            contact_number: basic.contact_number.trim(),
-            email: basic.email.trim(),
-            state: state.trim(),
-            city: city.trim(),
-            address: basic.address.trim(),
-            gstin: basic.gstin.trim(),
-            pan: pan.trim(),
-            is_gst_applicable:
-                gstValue === '1'
-                    ? 'Yes'
-                    : gstValue === '0'
-                      ? 'No'
-                      : gstValue === ''
-                        ? 'Not specified'
-                        : 'No',
-            roles: roleLabels(selectedRoles, roleOptions),
-            remark: readFormControlValue(form, 'remark'),
-        };
-    };
+    const reviewInput = (): PartyReviewInput => ({
+        selectedRoles,
+        roleLabel,
+        basic,
+        state,
+        city,
+        pan,
+        transporter,
+        driver,
+        maskedAccountNumber: party?.bank_account_number_masked,
+    });
 
-    const buildOriginal = (): PartyDraft => {
-        const activeRoles =
-            party?.roles
-                ?.filter((role) => role.is_active !== false)
-                .map((role) => role.role) ?? [];
-
-        return {
-            name: party?.name ?? '',
-            contact_person: party?.contact_person ?? '',
-            contact_number: party?.contact_number ?? '',
-            email: party?.email ?? '',
-            state: party?.state ?? '',
-            city: party?.city ?? '',
-            address: party?.address ?? '',
-            gstin: party?.gstin ?? '',
-            pan: party?.pan ?? '',
-            is_gst_applicable:
-                party?.is_gst_applicable === false ? 'No' : 'Yes',
-            roles: roleLabels(activeRoles, roleOptions),
-            remark: '',
-        };
-    };
+    const originalReviewInput = (): PartyReviewInput => ({
+        selectedRoles: initialRoles(mode, party),
+        roleLabel,
+        basic: initialBasic(party),
+        state: party?.state ?? '',
+        city: party?.city ?? '',
+        pan: party?.pan ?? '',
+        transporter: initialTransporter(party?.roles),
+        driver: initialDriver(party?.roles),
+        maskedAccountNumber: party?.bank_account_number_masked,
+    });
 
     const openConfirmation = (form: HTMLFormElement) => {
-        const draft = buildDraft(form);
         if (mode === 'create') {
-            setReviewFields(
-                PARTY_FIELD_DEFS.filter((field) => draft[field.key] !== '').map(
-                    (field) => ({
-                        label: field.label,
-                        value: draft[field.key],
-                    }),
-                ),
-            );
+            setReviewSections(buildPartyCreateReview(reviewInput()));
             setReviewChanges([]);
         } else {
-            setReviewFields([]);
+            setReviewSections([]);
             setReviewChanges(
-                diffScalarFields(buildOriginal(), draft, PARTY_FIELD_DEFS),
+                buildPartyEditReview(originalReviewInput(), reviewInput()),
             );
+            const remark = form.querySelector<HTMLInputElement>('#remark');
+            setReviewRemark(remark?.value.trim() ?? '');
         }
         setConfirmOpen(true);
     };
@@ -339,6 +285,9 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
                                 setDriver={setDriver}
                                 tdsPreviewUrl={tdsPreviewUrl}
                                 partyGstApplicable={party?.is_gst_applicable}
+                                maskedAccountNumber={
+                                    party?.bank_account_number_masked
+                                }
                             />
 
                             {!fieldModel.showGstBusinessTax &&
@@ -402,9 +351,9 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
                     description={
                         mode === 'create'
                             ? 'Review the values below before creating the party.'
-                            : 'Review field changes before saving.'
+                            : `Review the changes before saving. Remark: ${reviewRemark}`
                     }
-                    fields={reviewFields}
+                    sections={reviewSections}
                     changes={reviewChanges}
                     processing={false}
                     onConfirm={handleConfirm}

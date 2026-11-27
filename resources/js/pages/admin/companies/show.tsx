@@ -69,13 +69,13 @@ export default function AdminCompanyShow({
             <PageShell
                 title={company.name}
                 description="Company lifecycle, ownership transfer, and audit trail."
+                badges={
+                    <WorkspaceStatusBadge
+                        status={company.is_active ? 'active' : 'deactivated'}
+                    />
+                }
                 actions={
                     <div className="flex flex-wrap items-center gap-2">
-                        <WorkspaceStatusBadge
-                            status={
-                                company.is_active ? 'active' : 'deactivated'
-                            }
-                        />
                         <AppIconAction
                             icon={ArrowLeft}
                             label="Back to companies"

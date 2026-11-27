@@ -5,14 +5,13 @@ namespace App\Domains\Broker\Voucher;
 use App\Domains\Broker\Enums\VoucherPaymentMode;
 use App\Domains\Broker\Enums\VoucherStatus;
 use App\Domains\Broker\Exceptions\BrokerAuthorizationException;
-use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
 use App\Domains\Subscription\Entitlement\CompanyCapabilities;
 use App\Domains\Subscription\Entitlement\CompanyCapabilityResolver;
 use App\Models\Branch;
 use App\Models\Company;
-use App\Models\PartyRole;
+use App\Models\Party;
 use App\Models\TransporterVoucher;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -139,7 +138,7 @@ final class VoucherPayoutExportService
         $truckNo = $hire !== null && $hire->vehicle !== null
             ? (string) $hire->vehicle->registration_number
             : '-';
-        $beneficiaryId = $this->beneficiaryId($voucher);
+        $beneficiaryId = $this->beneficiaryId($transporter);
         $debitAcct = $account !== null
             ? (string) ($account->getAttributes()['account_number'] ?? '')
             : '';
@@ -177,24 +176,14 @@ final class VoucherPayoutExportService
         ];
     }
 
-    private function beneficiaryId(TransporterVoucher $voucher): string
+    private function beneficiaryId(?Party $transporter): string
     {
-        if ($voucher->transporter_party_id === null) {
+        if ($transporter === null) {
             return '';
         }
 
-        $role = PartyRole::query()
-            ->where('company_id', $voucher->company_id)
-            ->where('party_id', $voucher->transporter_party_id)
-            ->where('role', PartyRoleType::Transporter->value)
-            ->whereNull('deleted_at')
-            ->whereNull('deactivated_at')
-            ->first();
-
-        $attrs = is_array($role?->role_attributes) ? $role->role_attributes : [];
-
-        foreach (['beneficiary_id', 'bank_account_number', 'account_number'] as $key) {
-            $value = trim((string) ($attrs[$key] ?? ''));
+        foreach ([$transporter->bank_beneficiary_id, $transporter->bank_account_number] as $value) {
+            $value = trim((string) $value);
             if ($value !== '') {
                 return $value;
             }

@@ -211,7 +211,6 @@ function lrWorkspace(bool $withPermissions = true): array
                 'pan' => 'ABCDE1234F',
                 'pan_status' => 'active',
                 'declaration' => true,
-                'declaration_type' => 'owner',
                 'goods_vehicles_count' => 2,
             ],
         ]],
@@ -370,6 +369,22 @@ test('manual numbering uniqueness collision is rejected', function () {
             'lr_number' => 'LR-MANUAL-1',
         ]),
     ))->toThrow(LorryReceiptConflictException::class);
+});
+
+test('market bilty requires a payee when the vehicle master has no truck owner', function () {
+    $ctx = lrWorkspace();
+    lrActivate($ctx['company'], $ctx['branch']);
+    $ctx['vehicle']->forceFill(['owner_party_id' => null])->save();
+    $service = app(LorryReceiptService::class);
+
+    expect(fn () => $service->create($ctx['company'], $ctx['branch'], $ctx['member'], lrPayload($ctx)))
+        ->toThrow(ValidationException::class, 'This market vehicle has no Truck Owner.');
+
+    $lr = $service->create($ctx['company'], $ctx['branch'], $ctx['member'], lrPayload($ctx, [
+        'intended_payee_type' => 'agency',
+    ]));
+
+    expect($lr->intended_payee_party_id)->toBe($ctx['transporter']->id);
 });
 
 test('blank bilty number allocates automatically without client number_mode', function () {

@@ -1,4 +1,4 @@
-import { Form, Head, Link, router, usePage } from '@inertiajs/react';
+import { Form, Head, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import InputError from '@/components/input-error';
 import {
@@ -11,6 +11,7 @@ import {
     DocumentDrawer,
     type DocumentDrawerProps,
 } from '@/components/masters/document-drawer';
+import { MasterRecordActions } from '@/components/masters/master-record-actions';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -72,48 +73,27 @@ export default function StationShow({
                         />
                     }
                     actions={
-                        <>
-                            {canManageOwnerStations ? (
-                                <Button asChild variant="outline" size="sm">
-                                    <Link href={links.edit}>Edit</Link>
-                                </Button>
-                            ) : null}
-                            {documentDrawer ? (
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setDocsOpen(true)}
-                                >
-                                    Documents
-                                </Button>
-                            ) : (
-                                <Button asChild variant="outline" size="sm">
-                                    <Link href={links.documents}>
-                                        Documents
-                                    </Link>
-                                </Button>
-                            )}
-                            {canManageOwnerStations &&
-                            permissions.can_delete ? (
-                                <Button
-                                    type="button"
-                                    variant="destructive"
-                                    size="sm"
-                                    onClick={() => {
-                                        const remark = window.prompt(
-                                            'Remark for soft deletion',
-                                        );
-                                        if (!remark) return;
-                                        router.delete(links.destroy, {
-                                            data: { remark },
-                                        });
-                                    }}
-                                >
-                                    Soft delete
-                                </Button>
-                            ) : null}
-                        </>
+                        <MasterRecordActions
+                            noun="station"
+                            editHref={
+                                canManageOwnerStations ? links.edit : null
+                            }
+                            onOpenDocuments={
+                                documentDrawer
+                                    ? () => setDocsOpen(true)
+                                    : undefined
+                            }
+                            documentsHref={links.documents}
+                            destroy={
+                                canManageOwnerStations && permissions.can_delete
+                                    ? {
+                                          url: links.destroy,
+                                          description:
+                                              'Soft-delete this station from the shared directory.',
+                                      }
+                                    : null
+                            }
+                        />
                     }
                 >
                     <FbInfoGrid>

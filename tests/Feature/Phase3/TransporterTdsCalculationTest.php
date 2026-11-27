@@ -72,7 +72,6 @@ test('individual PAN P or H resolves to 1 percent', function (string $fourth) {
         'pan' => $pan,
         'pan_status' => 'active',
         'declaration' => false,
-        'declaration_type' => 'agency',
     ]);
 
     expect($result->applicableRate)->toBe('1.000')
@@ -86,32 +85,38 @@ test('entity PAN C resolves to 2 percent via reference seeder', function () {
         'pan' => 'ABCCE1234F',
         'pan_status' => 'active',
         'declaration' => false,
-        'declaration_type' => 'agency',
     ]);
 
     expect($result->applicableRate)->toBe('2.000')
         ->and($result->ruleCode)->toBe('PAN_ENTITY_2');
 });
 
-test('invalid or inactive PAN resolves to 20 percent', function (string $status) {
+test('inactive PAN resolves to 20 percent even with a declaration', function () {
     $result = calculateTransporterTds([
         'pan' => 'ABCPE1234F',
-        'pan_status' => $status,
+        'pan_status' => 'inactive',
         'declaration' => true,
-        'declaration_type' => 'owner',
         'goods_vehicles_count' => 2,
     ]);
 
     expect($result->applicableRate)->toBe('20.000')
         ->and($result->ruleCode)->toBe('INVALID_PAN');
-})->with(['invalid', 'inactive']);
+});
 
-test('owner declaration with at most 10 vehicles resolves to 0 percent', function () {
+test('unknown PAN status is never treated as active', function (string $status) {
+    $context = app(TransporterTdsCalculationService::class)->buildContextFromTransporter(
+        ['pan' => 'ABCPE1234F'],
+        ['pan_status' => $status, 'declaration' => false],
+    );
+
+    expect($context['pan_status'])->toBeNull();
+})->with(['invalid', 'valid', 'unknown']);
+
+test('TDS declaration received with at most 10 vehicles resolves to 0 percent', function () {
     $result = calculateTransporterTds([
         'pan' => 'ABCPE1234F',
         'pan_status' => 'active',
         'declaration' => true,
-        'declaration_type' => 'owner',
         'goods_vehicles_count' => 10,
     ]);
 
@@ -121,12 +126,11 @@ test('owner declaration with at most 10 vehicles resolves to 0 percent', functio
         ->and($result->goodsVehicleCount)->toBe(10);
 });
 
-test('owner declaration with more than 10 vehicles falls back to standard individual rate', function () {
+test('TDS declaration received with more than 10 vehicles falls back to standard individual rate', function () {
     $result = calculateTransporterTds([
         'pan' => 'ABCPE1234F',
         'pan_status' => 'active',
         'declaration' => true,
-        'declaration_type' => 'owner',
         'goods_vehicles_count' => 11,
     ]);
 
@@ -134,12 +138,11 @@ test('owner declaration with more than 10 vehicles falls back to standard indivi
         ->and($result->ruleCode)->toBe('PAN_INDIVIDUAL_1');
 });
 
-test('agency declaration ignores owner zero rule', function () {
+test('TDS declaration not received ignores the zero rule', function () {
     $result = calculateTransporterTds([
         'pan' => 'ABCPE1234F',
         'pan_status' => 'active',
-        'declaration' => true,
-        'declaration_type' => 'agency',
+        'declaration' => false,
         'goods_vehicles_count' => 3,
     ]);
 
@@ -152,7 +155,6 @@ test('override requires remark and allowOverride', function () {
         'pan' => 'ABCPE1234F',
         'pan_status' => 'active',
         'declaration' => false,
-        'declaration_type' => 'agency',
     ];
 
     expect(fn () => calculateTransporterTds($attrs, [], '5.000', null, true))
@@ -174,7 +176,6 @@ test('no matching rule throws configuration domain exception', function () {
         'pan' => 'ABCXE1234F',
         'pan_status' => 'active',
         'declaration' => false,
-        'declaration_type' => 'agency',
     ]))->toThrow(TaxDomainException::class);
 });
 
@@ -183,7 +184,6 @@ test('buildContextFromTransporter normalizes pan and maps declaration fields', f
         ['pan' => 'abcpe1234f'],
         [
             'declaration' => true,
-            'declaration_type' => 'Owner',
             'goods_vehicles_count' => '8',
             'pan_status' => 'Active',
         ],
@@ -194,8 +194,7 @@ test('buildContextFromTransporter normalizes pan and maps declaration fields', f
         'pan_status' => 'active',
         'declaration_valid' => true,
         'goods_vehicle_count' => 8,
-        'declaration_type' => 'owner',
-    ]);
+    ])->not->toHaveKey('declaration_type');
 });
 
 test('party create stores calculated and applicable tds rates for transporter', function () {
@@ -219,7 +218,6 @@ test('party create stores calculated and applicable tds rates for transporter', 
                 'pan' => 'ABCPE1234F',
                 'pan_status' => 'active',
                 'declaration' => true,
-                'declaration_type' => 'owner',
                 'goods_vehicles_count' => 4,
             ],
         ]],
@@ -240,7 +238,6 @@ test('tds preview endpoint returns calculated rates for authorized branch user',
         'pan' => 'ABCCE1234F',
         'pan_status' => 'active',
         'declaration' => false,
-        'declaration_type' => 'agency',
     ])
         ->assertOk()
         ->assertJsonPath('data.applicable_rate', '2.000')
@@ -269,7 +266,6 @@ test('april 1 declaration reset is idempotent per financial year', function () {
                 'pan' => 'ABCPE1234F',
                 'pan_status' => 'active',
                 'declaration' => true,
-                'declaration_type' => 'owner',
                 'goods_vehicles_count' => 4,
             ],
         ]],

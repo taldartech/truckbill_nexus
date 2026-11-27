@@ -386,12 +386,19 @@ class LocalDemoWorkspaceSeeder extends Seeder
                         'pan' => 'ABCDE'.str_pad(substr((string) abs(crc32($company->id)), 0, 4), 4, '0').'F',
                         'pan_status' => 'active',
                         'declaration' => true,
-                        'declaration_type' => 'owner',
                         'goods_vehicles_count' => 4,
                     ],
                 ],
             ],
             $companyName === self::COMPANY_A_NAME ? 'Thane' : 'Rajkot',
+            [
+                'short_name' => $companyName === self::COMPANY_A_NAME ? 'Konkan' : 'Saurashtra',
+                'bank_name' => 'State Bank of India',
+                'bank_account_holder_name' => $companyName === self::COMPANY_A_NAME ? 'Konkan Transporters' : 'Saurashtra Carriers',
+                'bank_account_number' => $companyName === self::COMPANY_A_NAME ? '30112233445566' : '30998877665544',
+                'bank_ifsc' => 'SBIN0001234',
+                'bank_short_name' => $companyName === self::COMPANY_A_NAME ? 'KONKAN SBI' : 'SAURASHTRA SBI',
+            ],
         );
 
         $consignorParty = $this->ensureParty(
@@ -560,7 +567,17 @@ class LocalDemoWorkspaceSeeder extends Seeder
             'MH14DEMO'.substr((string) crc32($company->id.'2'), 0, 4),
             ownership: VehicleOwnership::Market,
             primaryDriverPartyId: null,
+            truckTypeId: $catalogues['truck']->id,
             ownerPartyId: $transporterParty->id,
+            sharedScope: $visibility === DataVisibility::SharedData,
+            registrationDate: '2022-06-15',
+        );
+        // Market master with only the Truck Number: owner / payee is chosen on the Bilty.
+        $this->ensureVehicle(
+            $company,
+            $masterScopeBranch ?? $second,
+            'MH14MKT'.substr((string) crc32($company->id.'ownerless'), 0, 4),
+            ownership: VehicleOwnership::Market,
             sharedScope: $visibility === DataVisibility::SharedData,
         );
         $this->ensureBank($company, $head, 'demo-bank:'.$company->id.':1');
@@ -1185,6 +1202,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
 
     /**
      * @param  list<array{role: string, attributes?: array<string, mixed>}>  $rolePayload
+     * @param  array<string, string>  $extraAttributes  Party-level fixtures such as short name and bank details.
      */
     private function ensurePartyWithRoles(
         PartyService $parties,
@@ -1195,6 +1213,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
         string $name,
         array $rolePayload,
         string $city,
+        array $extraAttributes = [],
     ): Party {
         // Keep local-part ≤64 chars (RFC) — fixture keys include company UUIDs.
         $email = 'p'.substr(hash('sha256', $fixtureKey), 0, 20).'@party.demo.test';
@@ -1208,6 +1227,15 @@ class LocalDemoWorkspaceSeeder extends Seeder
             // Align historical demo fixtures with current company visibility scope.
             if ($existing->branch_id !== ($branch?->id)) {
                 $existing->forceFill(['branch_id' => $branch?->id])->save();
+            }
+
+            $missing = array_filter(
+                $extraAttributes,
+                fn (string $value, string $key): bool => blank($existing->{$key}) || ($key === 'short_name' && $existing->short_name === $existing->name),
+                ARRAY_FILTER_USE_BOTH,
+            );
+            if ($missing !== []) {
+                $existing->forceFill($missing)->save();
             }
 
             return $existing->fresh() ?? $existing;
@@ -1235,6 +1263,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
                 'city' => $city,
                 'address' => 'Demo address for '.$fixtureKey,
                 'is_gst_applicable' => false,
+                ...$extraAttributes,
             ],
             roles: $rolePayload,
             remark: 'Local demo: create party '.$fixtureKey,
@@ -1263,18 +1292,21 @@ class LocalDemoWorkspaceSeeder extends Seeder
         ?string $tyreLayoutId = null,
         ?string $ownerPartyId = null,
         bool $sharedScope = false,
+        ?string $registrationDate = null,
     ): Vehicle {
         $existing = Vehicle::query()
             ->where('company_id', $company->id)
             ->where('registration_number', $registration)
             ->first();
 
+        $isMarket = $ownership === VehicleOwnership::Market;
         $attributes = [
             'ownership' => $ownership->value,
-            'truck_type_id' => $ownership === VehicleOwnership::Own ? $truckTypeId : null,
-            'tyre_layout_id' => $ownership === VehicleOwnership::Own ? $tyreLayoutId : null,
-            'owner_party_id' => $ownership === VehicleOwnership::Market ? $ownerPartyId : null,
-            'primary_driver_party_id' => $ownership === VehicleOwnership::Own ? $primaryDriverPartyId : null,
+            'truck_type_id' => $truckTypeId,
+            'tyre_layout_id' => $isMarket ? null : $tyreLayoutId,
+            'owner_party_id' => $isMarket ? $ownerPartyId : null,
+            'primary_driver_party_id' => $primaryDriverPartyId,
+            'registration_date' => $registrationDate,
             'is_active' => true,
             'branch_id' => $sharedScope ? null : $branch->id,
         ];
@@ -1288,10 +1320,12 @@ class LocalDemoWorkspaceSeeder extends Seeder
                 'company_id' => $company->id,
                 'branch_id' => $sharedScope ? null : $branch->id,
                 'registration_number' => $registration,
-                'vehicle_type' => 'truck',
-                'make' => 'Tata',
-                'model' => '407',
-                'manufacture_year' => 2021,
+                ...($isMarket ? [] : [
+                    'vehicle_type' => 'truck',
+                    'make' => 'Tata',
+                    'model' => '407',
+                    'manufacture_year' => 2021,
+                ]),
                 ...$attributes,
             ]);
         }
@@ -1650,15 +1684,14 @@ class LocalDemoWorkspaceSeeder extends Seeder
             $company,
             $branch,
             'demo-party:'.$company->id.':transporter-invalid-pan',
-            'Alpha Invalid PAN Transporter',
+            'Alpha Inactive PAN Transporter',
             [
                 [
                     'role' => PartyRoleType::Transporter->value,
                     'attributes' => [
                         'pan' => 'ABCDE1234F',
-                        'pan_status' => 'invalid',
+                        'pan_status' => 'inactive',
                         'declaration' => false,
-                        'declaration_type' => 'owner',
                         'goods_vehicles_count' => 2,
                     ],
                 ],
@@ -1672,15 +1705,14 @@ class LocalDemoWorkspaceSeeder extends Seeder
             $company,
             $branch,
             'demo-party:'.$company->id.':transporter-agency',
-            'Alpha Agency Transporter',
+            'Alpha No Declaration Transporter',
             [
                 [
                     'role' => PartyRoleType::Transporter->value,
                     'attributes' => [
                         'pan' => 'AABCP5678K',
                         'pan_status' => 'active',
-                        'declaration' => true,
-                        'declaration_type' => 'agency',
+                        'declaration' => false,
                         'goods_vehicles_count' => 3,
                     ],
                 ],
@@ -1702,7 +1734,6 @@ class LocalDemoWorkspaceSeeder extends Seeder
                         'pan' => 'AAHPP9012L',
                         'pan_status' => 'active',
                         'declaration' => true,
-                        'declaration_type' => 'owner',
                         'goods_vehicles_count' => 15,
                     ],
                 ],
@@ -2270,7 +2301,6 @@ class LocalDemoWorkspaceSeeder extends Seeder
                         'pan' => 'BRKOW1234A',
                         'pan_status' => 'active',
                         'declaration' => true,
-                        'declaration_type' => 'owner',
                         'goods_vehicles_count' => 5,
                     ],
                 ],
@@ -2284,15 +2314,14 @@ class LocalDemoWorkspaceSeeder extends Seeder
             $company,
             $branch,
             'demo-party:'.$company->id.':broker-agency-transporter',
-            'Demo Broker Agency Transporter',
+            'Demo Broker No Declaration Transporter',
             [
                 [
                     'role' => PartyRoleType::Transporter->value,
                     'attributes' => [
                         'pan' => 'BRKAG5678C',
                         'pan_status' => 'active',
-                        'declaration' => true,
-                        'declaration_type' => 'agency',
+                        'declaration' => false,
                         'goods_vehicles_count' => 3,
                     ],
                 ],

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support\Presentation;
 
 use App\Domains\Master\Party\Enums\PartyRoleType;
+use App\Domains\Tax\Enums\PanStatus;
 use App\Models\Party;
 use App\Models\PartyRole;
 
@@ -18,10 +19,13 @@ final class PartyProfilePresentation
 {
     private const BUSINESS_ROLES = ['customer', 'consignor', 'consignee', 'transporter', 'general_vendor', 'pump_vendor'];
 
+    private const PAYABLE_ROLES = ['transporter', 'driver', 'general_vendor', 'pump_vendor'];
+
     /**
+     * @param  bool  $mayViewFinancials  Financial visibility gate for the applicable TDS rate and bank details.
      * @return list<ProfileSection>
      */
-    public function sections(Party $party): array
+    public function sections(Party $party, bool $mayViewFinancials): array
     {
         $roles = $party->roles->filter(fn (PartyRole $role): bool => $role->deactivated_at === null);
         $transporter = $this->roleAttributes($roles->all(), PartyRoleType::Transporter);
@@ -29,51 +33,59 @@ final class PartyProfilePresentation
         $roleValues = $roles->map(fn (PartyRole $role): string => (string) $role->role)->all();
 
         $sections = [
-            $this->section('basic', 'Basic information', [
-                $this->item('Contact person', $party->contact_person),
-                $this->item('Contact number', $party->contact_number),
+            $this->section('general', 'General Information', [
+                $this->item('Party Name', $party->name),
+                $this->item('Party Short Name', $party->short_name),
+                $this->item('Contact Person', $party->contact_person),
+                $this->item('Contact Number', $party->contact_number),
                 $this->item('Email', $party->email),
+                $this->item('Address', $party->address),
                 $this->item('City', $party->city),
                 $this->item('State', $party->state),
-                $this->item('Address', $party->address),
             ]),
         ];
 
         if (array_intersect($roleValues, self::BUSINESS_ROLES) !== []) {
-            $sections[] = $this->section('business', 'Business & tax', [
-                $this->item('GSTIN', $party->gstin),
+            $sections[] = $this->section('tax', 'Tax and Business Information', [
                 $this->item('PAN', $party->pan),
-                $this->item('GST applicable', $party->is_gst_applicable ? 'Yes' : 'No'),
                 ...($transporter === null ? [] : [
-                    $this->item('Short name', $transporter['short_name'] ?? null),
-                    $this->item('PAN status', $this->titleCase($transporter['pan_status'] ?? null)),
-                    $this->item('TDS declaration', $this->yesNo($transporter['declaration'] ?? null)),
-                    $this->item('Declaration type', $this->titleCase($transporter['declaration_type'] ?? null)),
-                    $this->item('Goods vehicles', $transporter['goods_vehicles_count'] ?? null),
-                    $this->item('Applicable TDS rate', $this->percent($transporter['applicable_tds_rate'] ?? null)),
+                    $this->item('PAN Status', PanStatus::tryFrom((string) ($transporter['pan_status'] ?? ''))?->label()),
+                ]),
+                $this->item('GST Applicable', $party->is_gst_applicable ? 'Yes' : 'No'),
+                $this->item('GSTIN', $party->gstin),
+                ...($transporter === null ? [] : [
+                    $this->item('TDS Declaration Received', $this->yesNo($transporter['declaration'] ?? null)),
+                    $this->item('Goods Vehicle Count', $transporter['goods_vehicles_count'] ?? null),
+                    $mayViewFinancials
+                        ? $this->item('Applicable TDS Rate', $this->percent($transporter['applicable_tds_rate'] ?? null))
+                        : null,
                 ]),
             ]);
         }
 
         if ($driver !== null) {
-            $sections[] = $this->section('driver', 'Driver details', [
-                $this->item('Driver type', $this->titleCase($driver['driver_type'] ?? null)),
-                $this->item('Licence number', $driver['license_number'] ?? null),
-                $this->item('Licence expiry', $driver['license_expiry'] ?? null, 'date'),
-                $this->item('Joining date', $driver['joining_date'] ?? null, 'date'),
+            $sections[] = $this->section('driver', 'Driver Information', [
+                $this->item('Driver Type', $this->titleCase($driver['driver_type'] ?? null)),
+                $this->item('Licence Number', $driver['license_number'] ?? null),
+                $this->item('Licence Expiry', $driver['license_expiry'] ?? null, 'date'),
+                $this->item('Joining Date', $driver['joining_date'] ?? null, 'date'),
                 $this->item('Aadhaar', $this->masked($driver['aadhaar'] ?? null)),
-                $this->item('Monthly payment base', $driver['monthly_payment_base'] ?? null),
-                $this->item('Emergency contact', $driver['emergency_contact_name'] ?? null),
-                $this->item('Emergency contact mobile', $driver['emergency_contact_mobile'] ?? null),
+                $this->item('Monthly Payment Base', $driver['monthly_payment_base'] ?? null),
+                $this->item('Emergency Contact', $driver['emergency_contact_name'] ?? null),
+                $this->item('Emergency Contact Mobile', $driver['emergency_contact_mobile'] ?? null),
             ]);
         }
 
-        $sections[] = $this->section('bank', 'Bank details', [
-            $this->item('Bank name', $driver['bank_name'] ?? null),
-            $this->item('Account number', $driver['bank_account_number'] ?? $transporter['bank_account'] ?? null),
-            $this->item('IFSC', $driver['ifsc'] ?? null),
-            $this->item('Beneficiary ID', $transporter['beneficiary_id'] ?? null),
-        ]);
+        if ($mayViewFinancials && array_intersect($roleValues, self::PAYABLE_ROLES) !== []) {
+            $sections[] = $this->section('bank', 'Bank Details', [
+                $this->item('Bank Name', $party->bank_name),
+                $this->item('Account Holder Name', $party->bank_account_holder_name),
+                $this->item('Account Number', AccountNumberMask::mask($party->bank_account_number)),
+                $this->item('IFSC Code', $party->bank_ifsc),
+                $this->item('Bank Short Name', $party->bank_short_name),
+                $this->item('Beneficiary ID', $party->bank_beneficiary_id),
+            ]);
+        }
 
         return array_values(array_filter($sections, fn (array $section): bool => $section['items'] !== []));
     }

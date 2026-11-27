@@ -8,7 +8,9 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
 import type {
+    ChangeReview,
     FieldReview,
     FieldReviewSection,
     FormConfirmationProps,
@@ -23,6 +25,28 @@ function changeTypeLabel(changeType: 'modified' | 'added' | 'removed'): string {
         default:
             return 'Modified';
     }
+}
+
+const CHANGE_ROW_CLASS: Record<ChangeReview['changeType'], string> = {
+    modified: 'bg-warning/10',
+    added: 'bg-primary/10',
+    removed: 'bg-destructive/10',
+};
+
+function groupChanges(
+    changes: ChangeReview[],
+): { title: string | null; changes: ChangeReview[] }[] {
+    const groups: { title: string | null; changes: ChangeReview[] }[] = [];
+    for (const change of changes) {
+        const title = change.group?.trim() || null;
+        const current = groups[groups.length - 1];
+        if (current && current.title === title) {
+            current.changes.push(change);
+        } else {
+            groups.push({ title, changes: [change] });
+        }
+    }
+    return groups;
 }
 
 function groupFieldsByKey(fields: FieldReview[]): FieldReviewSection[] {
@@ -151,8 +175,8 @@ export function FormConfirmationDialog({
                                         </th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    {changes.length === 0 ? (
+                                {changes.length === 0 ? (
+                                    <tbody>
                                         <tr>
                                             <td
                                                 colSpan={4}
@@ -161,32 +185,57 @@ export function FormConfirmationDialog({
                                                 No field changes detected.
                                             </td>
                                         </tr>
-                                    ) : (
-                                        changes.map((change) => (
-                                            <tr
-                                                key={change.label}
-                                                className="border-t border-border"
+                                    </tbody>
+                                ) : (
+                                    groupChanges(changes).map(
+                                        (group, index) => (
+                                            <tbody
+                                                key={`${group.title ?? 'changes'}-${index}`}
                                             >
-                                                <td className="px-3 py-2 font-medium">
-                                                    {change.label}
-                                                </td>
-                                                <td className="px-3 py-2 text-muted-foreground">
-                                                    {change.previous}
-                                                </td>
-                                                <td className="px-3 py-2">
-                                                    {change.next}
-                                                </td>
-                                                <td className="px-3 py-2">
-                                                    <span className="rounded-md border border-border px-2 py-0.5 text-xs">
-                                                        {changeTypeLabel(
-                                                            change.changeType,
+                                                {group.title ? (
+                                                    <tr className="border-t border-border bg-muted/30">
+                                                        <th
+                                                            colSpan={4}
+                                                            scope="rowgroup"
+                                                            className="px-3 py-1.5 text-left text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+                                                        >
+                                                            {group.title}
+                                                        </th>
+                                                    </tr>
+                                                ) : null}
+                                                {group.changes.map((change) => (
+                                                    <tr
+                                                        key={`${group.title ?? ''}-${change.label}`}
+                                                        className={cn(
+                                                            'border-t border-border',
+                                                            CHANGE_ROW_CLASS[
+                                                                change
+                                                                    .changeType
+                                                            ],
                                                         )}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        ))
-                                    )}
-                                </tbody>
+                                                    >
+                                                        <td className="px-3 py-2 font-medium">
+                                                            {change.label}
+                                                        </td>
+                                                        <td className="px-3 py-2 text-muted-foreground">
+                                                            {change.previous}
+                                                        </td>
+                                                        <td className="px-3 py-2">
+                                                            {change.next}
+                                                        </td>
+                                                        <td className="px-3 py-2">
+                                                            <span className="rounded-md border border-border bg-background px-2 py-0.5 text-xs">
+                                                                {changeTypeLabel(
+                                                                    change.changeType,
+                                                                )}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        ),
+                                    )
+                                )}
                             </table>
                         </div>
                     )}

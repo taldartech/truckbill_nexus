@@ -270,3 +270,20 @@ Before completing any implementation task: review the full diff; remove unused i
 - **Party roles via Edit only:** Roles are added or removed only through the Party Edit form, which reveals and validates the new role's mandatory fields. A role cannot be removed while existing operational or financial records depend on it; removed roles are deactivated (never deleted) with their details and audit history preserved.
 - **Validation feedback:** Every rejected form submission must provide a visible, actionable explanation. Field errors must be associated with their corresponding inputs, and unmapped errors must appear in a shared form-level summary. Form values must be preserved.
 - **Local test execution:** Full local test suites must only be executed when explicitly requested by the Product Owner.
+
+## 25. Party Master, Market Vehicle and Station Corrections (Permanent)
+
+- **TDS declaration:** The TDS Declaration Type is removed. Transporters record only **TDS Declaration Received — Yes / No**. TDS rule conditions may use `pan_status`, `declaration_valid`, `goods_vehicle_count`, `pan_fourth_char` and `entity_type` only. The zero-rate owner rule applies when the declaration is received and the transporter operates 10 or fewer goods vehicles. Historical Lorry Hire TDS snapshots are never rewritten.
+- **PAN Status:** Only `Active` or `Inactive`, and the value may be absent. Legacy `valid` maps to `Active` and `invalid` to `Inactive`; any other legacy value is cleared. Unknown values are never treated as Active.
+- **Party Short Name:** Every party has a dedicated Short Name. It starts as the Party Name and follows renames until the user customizes it. Centralized party search matches the Name and Short Name, ranking exact and prefix matches first. Documents always print the full legal name.
+- **Party bank details:** Bank Name, Account Holder Name, Account Number, IFSC Code, Bank Short Name and Beneficiary ID are optional party-level fields for transporter, driver and vendor roles. They are visible only to users who may view financial details. Account numbers are masked on display, and leaving the account number blank on edit keeps the stored value.
+- **Party confirmation:** Creation reviews the entered values in sections without a remark. Editing shows previous and new values with changes highlighted, lists added or removed roles, and requires a remark. A rejected submission returns to the form with values preserved and every error visible.
+- **Market Vehicle (supersedes the Market Truck Owner requirement in §21):** Market vehicles record Truck Number (mandatory) plus optional Truck Owner, Truck Type, Driver and Registration Date. OwnFleet-only technical fields (vehicle type, make, model, manufacture year, chassis, engine, capacity, tyre layout) apply only to own vehicles. The Truck Owner is enforced at the operational transaction: a Bilty paying the vehicle owner requires one, otherwise Pay To Agency must be selected. A market vehicle's driver is independent of OwnFleet driver assignments.
+- **Searchable selectors inside dialogs:** Searchable combobox panels must render inside the enclosing modal dialog or sheet so that keyboard input, focus and list scrolling work for nested Quick Add forms (for example, State selection in Station Quick Add).
+
+## 26. Card and Page Header Standard (Permanent)
+
+- Every page, card and record header uses the shared `AppCardHeader` layout, directly or through `PageShell`, `PageHeader`, `FbDetailCard`, `AppIndexListCard` or `AppFormSection`.
+- **Left:** the record name or section title, with status and role badges and relevant secondary information. Status badges never sit in the actions area.
+- **Right:** authorized actions, right-aligned and wrapping on narrow screens without overlapping the title. Record actions are icon-only `AppIconAction` controls with familiar icons (Back, View, Edit, Documents, Download, Print, Delete), an accessible label, a tooltip and consistent sizing. Destructive actions use destructive styling and a confirmation dialog, with a remark where the domain requires one.
+- Only actions the viewer is authorized to use are rendered.

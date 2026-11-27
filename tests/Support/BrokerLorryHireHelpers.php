@@ -287,7 +287,6 @@ if (! function_exists('brokerCreateTransporterAndMarketVehicle')) {
                     'pan' => 'BRKTR5678B',
                     'pan_status' => 'active',
                     'declaration' => true,
-                    'declaration_type' => 'owner',
                     'goods_vehicles_count' => 3,
                 ],
             ]],

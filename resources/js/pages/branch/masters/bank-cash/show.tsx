@@ -1,4 +1,4 @@
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import {
     FbDetailCard,
@@ -10,8 +10,8 @@ import {
     DocumentDrawer,
     type DocumentDrawerProps,
 } from '@/components/masters/document-drawer';
+import { MasterRecordActions } from '@/components/masters/master-record-actions';
 import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
-import { Button } from '@/components/ui/button';
 
 type Account = {
     id: string;
@@ -73,47 +73,24 @@ export default function BankCashShow({
                         />
                     }
                     actions={
-                        <>
-                            {permissions.can_edit ? (
-                                <Button asChild variant="outline" size="sm">
-                                    <Link href={links.edit}>Edit</Link>
-                                </Button>
-                            ) : null}
-                            {documentDrawer ? (
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setDocsOpen(true)}
-                                >
-                                    Documents
-                                </Button>
-                            ) : (
-                                <Button asChild variant="outline" size="sm">
-                                    <Link href={links.documents}>
-                                        Documents
-                                    </Link>
-                                </Button>
-                            )}
-                            {permissions.can_delete ? (
-                                <Button
-                                    type="button"
-                                    variant="destructive"
-                                    size="sm"
-                                    onClick={() => {
-                                        const remark = window.prompt(
-                                            'Remark for soft deletion',
-                                        );
-                                        if (!remark) return;
-                                        router.delete(links.destroy, {
-                                            data: { remark },
-                                        });
-                                    }}
-                                >
-                                    Soft delete
-                                </Button>
-                            ) : null}
-                        </>
+                        <MasterRecordActions
+                            noun="account"
+                            editHref={permissions.can_edit ? links.edit : null}
+                            onOpenDocuments={
+                                documentDrawer
+                                    ? () => setDocsOpen(true)
+                                    : undefined
+                            }
+                            documentsHref={links.documents}
+                            destroy={
+                                permissions.can_delete
+                                    ? {
+                                          url: links.destroy,
+                                          description: `Soft-delete ${account.name}. Existing history is preserved.`,
+                                      }
+                                    : null
+                            }
+                        />
                     }
                 >
                     <FbInfoGrid>

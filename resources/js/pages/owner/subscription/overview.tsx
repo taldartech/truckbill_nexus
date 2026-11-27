@@ -152,9 +152,9 @@ export default function SubscriptionOverview({
                     },
                     { label: company.name },
                 ]}
+                badges={<WorkspaceStatusBadge status={company.status} />}
                 actions={
                     <>
-                        <WorkspaceStatusBadge status={company.status} />
                         <span className="rounded-md border border-border px-2 py-0.5 text-xs">
                             {lifecycle.status.replaceAll('_', ' ')}
                         </span>

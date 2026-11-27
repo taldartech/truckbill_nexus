@@ -28,6 +28,22 @@ use Illuminate\Validation\ValidationException;
 
 final class VehicleService
 {
+    /**
+     * Technical specifications captured only for Own (OwnFleet) and unclassified vehicles.
+     * Market vehicles carry Truck Number, Truck Owner, Truck Type, Driver and Registration Date.
+     *
+     * @var list<string>
+     */
+    public const OWN_FLEET_ONLY_FIELDS = [
+        'vehicle_type',
+        'make',
+        'model',
+        'manufacture_year',
+        'chassis_number',
+        'engine_number',
+        'capacity_mt',
+    ];
+
     private readonly CompanyCapabilityResolver $capabilities;
 
     private readonly VehicleDriverAssignmentService $driverAssignments;
@@ -63,18 +79,17 @@ final class VehicleService
 
         return $this->auditedTransaction->run(function () use ($actor, $company, $branch, $panelBranch, $attributes, $normalized, $remark): Vehicle {
             return $this->access->withTenant($actor, $company, $branch, function () use ($actor, $company, $branch, $panelBranch, $attributes, $normalized, $remark): Vehicle {
+                $technical = $normalized['ownership'] === VehicleOwnership::Market
+                    ? []
+                    : collect($attributes)->only(self::OWN_FLEET_ONLY_FIELDS)->all();
+
                 $vehicle = Vehicle::query()->create([
+                    ...$technical,
                     'id' => (string) Str::uuid(),
                     'company_id' => $company->id,
                     'branch_id' => $branch?->id,
                     'registration_number' => strtoupper(trim((string) $attributes['registration_number'])),
-                    'vehicle_type' => $attributes['vehicle_type'] ?? null,
-                    'make' => $attributes['make'] ?? null,
-                    'model' => $attributes['model'] ?? null,
-                    'manufacture_year' => $attributes['manufacture_year'] ?? null,
-                    'chassis_number' => $attributes['chassis_number'] ?? null,
-                    'engine_number' => $attributes['engine_number'] ?? null,
-                    'capacity_mt' => $attributes['capacity_mt'] ?? null,
+                    'registration_date' => $attributes['registration_date'] ?? null,
                     'is_active' => $attributes['is_active'] ?? true,
                     'ownership' => $normalized['ownership'],
                     'truck_type_id' => $normalized['truck_type_id'],
@@ -151,17 +166,11 @@ final class VehicleService
             return $this->access->withTenant($actor, $company, $branch, function () use ($actor, $company, $panelBranch, $vehicle, $attributes, $normalized, $remark): Vehicle {
                 $before = $vehicle->toArray();
                 $previousDriverId = $vehicle->primary_driver_party_id;
-                $vehicle->fill(collect($attributes)->only([
-                    'registration_number',
-                    'vehicle_type',
-                    'make',
-                    'model',
-                    'manufacture_year',
-                    'chassis_number',
-                    'engine_number',
-                    'capacity_mt',
-                    'is_active',
-                ])->all());
+                $editable = ['registration_number', 'registration_date', 'is_active'];
+                if ($normalized['ownership'] !== VehicleOwnership::Market) {
+                    $editable = [...$editable, ...self::OWN_FLEET_ONLY_FIELDS];
+                }
+                $vehicle->fill(collect($attributes)->only($editable)->all());
 
                 $vehicle->ownership = $normalized['ownership'];
                 $vehicle->truck_type_id = $normalized['truck_type_id'];
@@ -335,15 +344,14 @@ final class VehicleService
             $this->tyreLayouts->assertForCompany($company, $tyreLayoutId, 'tyre_layout_id');
             $ownerPartyId = null;
         } elseif ($ownership === VehicleOwnership::Market) {
-            if ($ownerPartyId === null) {
-                throw ValidationException::withMessages([
-                    'owner_party_id' => 'Vehicle Owner (Transporter) is required for Market vehicles.',
-                ]);
+            // Truck Owner is optional on the master; Bilty / Lorry Hire enforce the payee.
+            if ($ownerPartyId !== null) {
+                $this->assertTransporterParty($company, $branch, $ownerPartyId);
             }
-            $this->assertTransporterParty($company, $branch, $ownerPartyId);
-            $truckTypeId = null;
+            if ($truckTypeId !== null) {
+                $this->assertCatalogue($company, $truckTypeId, OwnerCatalogueType::TruckType, 'truck_type_id');
+            }
             $tyreLayoutId = null;
-            $primaryDriverId = null;
         } else {
             // Unclassified historical-style create: clear ownership-dependent FKs.
             $truckTypeId = null;

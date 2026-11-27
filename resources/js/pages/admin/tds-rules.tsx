@@ -59,19 +59,16 @@ const OPERATORS = ['eq', 'neq', 'lte', 'gte', 'in', 'truthy'] as const;
 
 const DEFAULT_FIELDS = [
     'pan_status',
-    'declaration_type',
     'declaration_valid',
     'goods_vehicle_count',
     'pan_fourth_char',
 ];
 
-type PayeeType = 'any' | 'owner' | 'agency';
-type PanStatus = 'any' | 'active' | 'invalid' | 'inactive';
+type PanStatus = 'any' | 'active' | 'inactive';
 type DeclarationValid = 'any' | 'yes' | 'no';
 type PanCharGroup = 'any' | 'individual' | 'entity';
 
 type SimpleConditions = {
-    payeeType: PayeeType;
     panStatus: PanStatus;
     declarationValid: DeclarationValid;
     goodsVehicleMax: string;
@@ -79,7 +76,6 @@ type SimpleConditions = {
 };
 
 const defaultSimple: SimpleConditions = {
-    payeeType: 'any',
     panStatus: 'any',
     declarationValid: 'any',
     goodsVehicleMax: '',
@@ -112,13 +108,6 @@ function parseConditions(raw: unknown): ConditionJson[] {
 function buildConditionsFromSimple(simple: SimpleConditions): ConditionJson[] {
     const conditions: ConditionJson[] = [];
 
-    if (simple.payeeType !== 'any') {
-        conditions.push({
-            field: 'declaration_type',
-            operator: 'eq',
-            value: simple.payeeType,
-        });
-    }
     if (simple.panStatus !== 'any') {
         conditions.push({
             field: 'pan_status',
@@ -198,15 +187,12 @@ function buildPreviewSentence(
 ): string {
     const parts: string[] = [];
 
-    if (simple.payeeType !== 'any') {
-        parts.push(`payee type is ${simple.payeeType}`);
-    }
     if (simple.panStatus !== 'any') {
         parts.push(`PAN status is ${simple.panStatus}`);
     }
     if (simple.declarationValid !== 'any') {
         parts.push(
-            `declaration is ${simple.declarationValid === 'yes' ? 'valid' : 'invalid'}`,
+            `TDS declaration ${simple.declarationValid === 'yes' ? 'is received' : 'is not received'}`,
         );
     }
     if (simple.goodsVehicleMax.trim() !== '') {
@@ -306,7 +292,6 @@ export default function AdminTdsRules({
     const [editingRuleId, setEditingRuleId] = useState<string | null>(null);
 
     const [testPanStatus, setTestPanStatus] = useState('');
-    const [testDeclarationType, setTestDeclarationType] = useState('');
     const [testDeclarationValid, setTestDeclarationValid] = useState('');
     const [testGoodsCount, setTestGoodsCount] = useState('');
     const [testPanFourth, setTestPanFourth] = useState('');
@@ -400,7 +385,6 @@ export default function AdminTdsRules({
             evaluate_url,
             {
                 pan_status: testPanStatus || undefined,
-                declaration_type: testDeclarationType || undefined,
                 declaration_valid: testDeclarationValid || undefined,
                 goods_vehicle_count: testGoodsCount || undefined,
                 pan_fourth_char: testPanFourth || undefined,
@@ -471,23 +455,6 @@ export default function AdminTdsRules({
 
                         <SimpleConditionsHeading className="md:col-span-2" />
 
-                        <FieldGroup label="Payee type">
-                            <select
-                                value={simple.payeeType}
-                                onChange={(event) =>
-                                    updateSimple(
-                                        'payeeType',
-                                        event.target.value as PayeeType,
-                                    )
-                                }
-                                className={selectClass}
-                            >
-                                <option value="any">Any</option>
-                                <option value="owner">Owner</option>
-                                <option value="agency">Agency</option>
-                            </select>
-                        </FieldGroup>
-
                         <FieldGroup label="PAN status">
                             <select
                                 value={simple.panStatus}
@@ -501,12 +468,11 @@ export default function AdminTdsRules({
                             >
                                 <option value="any">Any</option>
                                 <option value="active">Active</option>
-                                <option value="invalid">Invalid</option>
                                 <option value="inactive">Inactive</option>
                             </select>
                         </FieldGroup>
 
-                        <FieldGroup label="Declaration valid">
+                        <FieldGroup label="TDS declaration received">
                             <select
                                 value={simple.declarationValid}
                                 onChange={(event) =>
@@ -774,30 +740,19 @@ export default function AdminTdsRules({
                     <FormSection title="Rule testing preview" columns={2}>
                         <form onSubmit={runPreviewTest} className="contents">
                             <FieldGroup label="PAN status">
-                                <Input
+                                <select
                                     value={testPanStatus}
                                     onChange={(event) =>
                                         setTestPanStatus(event.target.value)
                                     }
-                                    placeholder="active, invalid, …"
-                                />
-                            </FieldGroup>
-                            <FieldGroup label="Payee type">
-                                <select
-                                    value={testDeclarationType}
-                                    onChange={(event) =>
-                                        setTestDeclarationType(
-                                            event.target.value,
-                                        )
-                                    }
                                     className={selectClass}
                                 >
                                     <option value="">Any</option>
-                                    <option value="owner">Owner</option>
-                                    <option value="agency">Agency</option>
+                                    <option value="active">Active</option>
+                                    <option value="inactive">Inactive</option>
                                 </select>
                             </FieldGroup>
-                            <FieldGroup label="Declaration valid">
+                            <FieldGroup label="TDS declaration received">
                                 <select
                                     value={testDeclarationValid}
                                     onChange={(event) =>
@@ -808,8 +763,8 @@ export default function AdminTdsRules({
                                     className={selectClass}
                                 >
                                     <option value="">Any</option>
-                                    <option value="1">Yes</option>
-                                    <option value="0">No</option>
+                                    <option value="yes">Yes</option>
+                                    <option value="no">No</option>
                                 </select>
                             </FieldGroup>
                             <FieldGroup label="Goods vehicle count">

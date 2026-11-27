@@ -216,7 +216,7 @@ export default function OwnerBranchesShow({
             <OwnerPageHeader
                 title={branch.name}
                 description={`${company.name} · Branch details`}
-                actions={<WorkspaceStatusBadge status={branch.status} />}
+                badges={<WorkspaceStatusBadge status={branch.status} />}
             >
                 {flash?.success ? (
                     <p

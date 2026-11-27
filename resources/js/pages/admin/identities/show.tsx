@@ -54,13 +54,13 @@ export default function AdminIdentityShow({
             <PageShell
                 title={identity.name}
                 description={`${identity.email} · ${identity.identity_type ?? '—'}${identity.is_super_admin ? ' · Super Admin' : ''}`}
+                badges={
+                    <WorkspaceStatusBadge
+                        status={identity.is_active ? 'active' : 'deactivated'}
+                    />
+                }
                 actions={
                     <div className="flex flex-wrap items-center gap-2">
-                        <WorkspaceStatusBadge
-                            status={
-                                identity.is_active ? 'active' : 'deactivated'
-                            }
-                        />
                         <AppIconAction
                             icon={ArrowLeft}
                             label="Back to identities"

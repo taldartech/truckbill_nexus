@@ -4,6 +4,7 @@ namespace App\Domains\Tax;
 
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
+use App\Domains\Tax\Enums\PanStatus;
 use App\Domains\Tax\Exceptions\TaxDomainException;
 use App\Models\TdsRule;
 use App\Models\User;
@@ -22,6 +23,15 @@ use Illuminate\Validation\ValidationException;
  */
 final class TdsRuleService
 {
+    /** @var list<string> */
+    public const CONDITION_FIELDS = [
+        'pan_status',
+        'declaration_valid',
+        'goods_vehicle_count',
+        'pan_fourth_char',
+        'entity_type',
+    ];
+
     public function __construct(
         private readonly PermissionAuthorizer $authorizer = new PermissionAuthorizer,
         private readonly AuditedTransaction $auditedTransaction = new AuditedTransaction,
@@ -126,6 +136,19 @@ final class TdsRuleService
         foreach ($conditions as $condition) {
             if (! is_array($condition) || ! isset($condition['field'], $condition['operator'], $condition['value'])) {
                 throw ValidationException::withMessages(['conditions' => 'Each condition requires field, operator and value.']);
+            }
+
+            if (! in_array($condition['field'], self::CONDITION_FIELDS, true)) {
+                throw ValidationException::withMessages(['conditions' => 'Unsupported TDS condition field: '.$condition['field'].'.']);
+            }
+
+            if ($condition['field'] === 'pan_status') {
+                $values = is_array($condition['value']) ? $condition['value'] : [$condition['value']];
+                foreach ($values as $value) {
+                    if (PanStatus::tryFrom(strtolower(trim((string) $value))) === null) {
+                        throw ValidationException::withMessages(['conditions' => 'PAN status conditions must be Active or Inactive.']);
+                    }
+                }
             }
         }
     }

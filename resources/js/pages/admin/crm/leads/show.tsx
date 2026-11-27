@@ -247,9 +247,9 @@ export default function CrmLeadShow({
             <PageShell
                 title={lead.contact_name}
                 description={`${lead.interested_product} · ${lead.source}`}
+                badges={<WorkspaceStatusBadge status={lead.status} />}
                 actions={
                     <div className="flex flex-wrap items-center gap-2">
-                        <WorkspaceStatusBadge status={lead.status} />
                         {lead.edit_url ? (
                             <Button asChild variant="outline" size="sm">
                                 <a

@@ -96,7 +96,7 @@ test('super admin can manage tds rules via admin ui', function () {
             'priority' => 55,
             'condition_logic' => 'AND',
             'conditions_json' => json_encode([
-                ['field' => 'pan_status', 'operator' => 'eq', 'value' => 'valid'],
+                ['field' => 'pan_status', 'operator' => 'eq', 'value' => 'active'],
             ]),
             'rate_percent' => '1.000',
             'remark' => 'Create via UI',

@@ -31,6 +31,7 @@ final class CaseInsensitiveLike
         'name',
         'pan',
         'registration_number',
+        'short_name',
         'to_text',
     ];
 
@@ -103,6 +104,7 @@ final class CaseInsensitiveLike
                     'name' => 'LOWER(`name`) LIKE ?',
                     'pan' => 'LOWER(`pan`) LIKE ?',
                     'registration_number' => 'LOWER(`registration_number`) LIKE ?',
+                    'short_name' => 'LOWER(`short_name`) LIKE ?',
                     'to_text' => 'LOWER(`to_text`) LIKE ?',
                     default => throw new InvalidArgumentException("Unsupported LIKE column [{$column}]."),
                 };

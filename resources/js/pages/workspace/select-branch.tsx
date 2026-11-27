@@ -24,7 +24,7 @@ export default function SelectBranch({ company, branches }: SelectBranchProps) {
                 width="form"
                 title="Select a branch"
                 description={`Company ${company.name}`}
-                actions={<WorkspaceStatusBadge status={company.status} />}
+                badges={<WorkspaceStatusBadge status={company.status} />}
             >
                 <p className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
                     Step 2 of 2 · Branch

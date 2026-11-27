@@ -209,11 +209,13 @@ export default function AdminRoleEdit({
             <PageShell
                 title={`${role.name} · Permissions`}
                 description={`Domain: ${role.domain.toUpperCase()} · Slug: ${role.slug}`}
+                badges={
+                    <WorkspaceStatusBadge
+                        status={role.is_active ? 'Active' : 'Deactivated'}
+                    />
+                }
                 actions={
                     <div className="flex flex-wrap items-center gap-2">
-                        <WorkspaceStatusBadge
-                            status={role.is_active ? 'Active' : 'Deactivated'}
-                        />
                         <Badge variant="outline" className="capitalize">
                             {role.domain} role
                         </Badge>

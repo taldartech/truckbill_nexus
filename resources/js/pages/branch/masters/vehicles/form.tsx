@@ -18,6 +18,7 @@ import { Label } from '@/components/ui/label';
 type Vehicle = {
     id: string;
     registration_number: string;
+    registration_date: string | null;
     vehicle_type: string | null;
     make: string | null;
     model: string | null;
@@ -34,6 +35,17 @@ type Vehicle = {
 };
 
 type Option = { id: string; name: string };
+
+/** Technical specifications captured only for Own (OwnFleet) vehicles. */
+const OWN_FLEET_FIELDS = [
+    ['vehicle_type', 'Vehicle type'],
+    ['make', 'Make'],
+    ['model', 'Model'],
+    ['manufacture_year', 'Manufacture year'],
+    ['chassis_number', 'Chassis number'],
+    ['engine_number', 'Engine number'],
+    ['capacity_mt', 'Capacity (MT)'],
+] as const satisfies ReadonlyArray<readonly [keyof Vehicle, string]>;
 type OwnershipOption = { value: string; label: string };
 
 type Props = {
@@ -44,6 +56,7 @@ type Props = {
     driversEnabled?: boolean;
     formOptions: {
         ownershipOptions: OwnershipOption[];
+        truckTypesAvailable: boolean;
         truckTypes: Option[];
         tyreLayouts: Option[];
         transporters: PartyOption[];
@@ -98,6 +111,8 @@ export default function VehicleForm({
     const [quickCreate, setQuickCreate] = useState<'truck' | 'tyre' | null>(
         null,
     );
+    const isOwn = ownership === 'own';
+    const isMarket = ownership === 'market';
 
     return (
         <>
@@ -114,7 +129,7 @@ export default function VehicleForm({
                         ? 'Create vehicle'
                         : `Edit ${vehicle?.registration_number}`
                 }
-                subtitle="Registration, ownership, driver assignment, and technical specifications."
+                subtitle="Market vehicles need only the Truck Number; Own vehicles also carry fleet specifications."
                 backHref={links.index}
                 backLabel="Vehicles"
             >
@@ -137,7 +152,7 @@ export default function VehicleForm({
                                             htmlFor="registration_number"
                                             required
                                         >
-                                            Registration number
+                                            Truck Number
                                         </Label>
                                         <Input
                                             id="registration_number"
@@ -205,119 +220,12 @@ export default function VehicleForm({
                                             message={errors.ownership}
                                         />
                                     </div>
-                                    {ownership === 'own' ? (
-                                        <>
-                                            <div className="space-y-2">
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <Label
-                                                        htmlFor="truck_type_id"
-                                                        required
-                                                    >
-                                                        Truck Type
-                                                    </Label>
-                                                    {links.truckTypesStoreUrl ? (
-                                                        <button
-                                                            type="button"
-                                                            className="text-xs font-medium text-[#2D8CFF] hover:underline"
-                                                            onClick={() =>
-                                                                setQuickCreate(
-                                                                    'truck',
-                                                                )
-                                                            }
-                                                        >
-                                                            + Add
-                                                        </button>
-                                                    ) : null}
-                                                </div>
-                                                <select
-                                                    id="truck_type_id"
-                                                    name="truck_type_id"
-                                                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                                    value={truckTypeId}
-                                                    onChange={(event) =>
-                                                        setTruckTypeId(
-                                                            event.target.value,
-                                                        )
-                                                    }
-                                                    required
-                                                >
-                                                    <option value="">
-                                                        Select…
-                                                    </option>
-                                                    {truckTypes.map((item) => (
-                                                        <option
-                                                            key={item.id}
-                                                            value={item.id}
-                                                        >
-                                                            {item.name}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                                <InputError
-                                                    message={
-                                                        errors.truck_type_id
-                                                    }
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <div className="flex items-center justify-between gap-2">
-                                                    <Label
-                                                        htmlFor="tyre_layout_id"
-                                                        required
-                                                    >
-                                                        Tyre Layout
-                                                    </Label>
-                                                    {links.tyreLayoutsStoreUrl ? (
-                                                        <button
-                                                            type="button"
-                                                            className="text-xs font-medium text-[#2D8CFF] hover:underline"
-                                                            onClick={() =>
-                                                                setQuickCreate(
-                                                                    'tyre',
-                                                                )
-                                                            }
-                                                        >
-                                                            + Add
-                                                        </button>
-                                                    ) : null}
-                                                </div>
-                                                <select
-                                                    id="tyre_layout_id"
-                                                    name="tyre_layout_id"
-                                                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                                                    value={tyreLayoutId}
-                                                    onChange={(event) =>
-                                                        setTyreLayoutId(
-                                                            event.target.value,
-                                                        )
-                                                    }
-                                                    required
-                                                >
-                                                    <option value="">
-                                                        Select…
-                                                    </option>
-                                                    {tyreLayouts.map((item) => (
-                                                        <option
-                                                            key={item.id}
-                                                            value={item.id}
-                                                        >
-                                                            {item.name}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                                <InputError
-                                                    message={
-                                                        errors.tyre_layout_id
-                                                    }
-                                                />
-                                            </div>
-                                        </>
-                                    ) : (
+                                    {isMarket ? (
                                         <div className="space-y-2 md:col-span-2">
                                             <SearchablePartySelect
                                                 id="owner_party_id"
                                                 name="owner_party_id"
-                                                label="Vehicle Owner (Transporter)"
+                                                label="Truck Owner"
                                                 options={
                                                     formOptions.transporters
                                                 }
@@ -330,20 +238,128 @@ export default function VehicleForm({
                                                 }
                                                 createLabel="Add"
                                                 createRole="transporter"
-                                                required
                                                 value={ownerPartyId}
                                                 onValueChange={setOwnerPartyId}
-                                                emptyMessage="Search eligible Transporter owners…"
+                                                emptyMessage="Search Truck Owners (Transporters)…"
                                                 error={errors.owner_party_id}
                                             />
                                         </div>
-                                    )}
-                                    {ownership === 'own' && driversEnabled ? (
+                                    ) : null}
+                                    {isOwn ||
+                                    formOptions.truckTypesAvailable ? (
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <Label
+                                                    htmlFor="truck_type_id"
+                                                    required={isOwn}
+                                                >
+                                                    Truck Type
+                                                </Label>
+                                                {links.truckTypesStoreUrl ? (
+                                                    <button
+                                                        type="button"
+                                                        className="text-xs font-medium text-[#2D8CFF] hover:underline"
+                                                        onClick={() =>
+                                                            setQuickCreate(
+                                                                'truck',
+                                                            )
+                                                        }
+                                                    >
+                                                        + Add
+                                                    </button>
+                                                ) : null}
+                                            </div>
+                                            <select
+                                                id="truck_type_id"
+                                                name="truck_type_id"
+                                                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                                value={truckTypeId}
+                                                onChange={(event) =>
+                                                    setTruckTypeId(
+                                                        event.target.value,
+                                                    )
+                                                }
+                                                required={isOwn}
+                                            >
+                                                <option value="">
+                                                    Select…
+                                                </option>
+                                                {truckTypes.map((item) => (
+                                                    <option
+                                                        key={item.id}
+                                                        value={item.id}
+                                                    >
+                                                        {item.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <InputError
+                                                message={errors.truck_type_id}
+                                            />
+                                        </div>
+                                    ) : null}
+                                    {isOwn ? (
+                                        <div className="space-y-2">
+                                            <div className="flex items-center justify-between gap-2">
+                                                <Label
+                                                    htmlFor="tyre_layout_id"
+                                                    required
+                                                >
+                                                    Tyre Layout
+                                                </Label>
+                                                {links.tyreLayoutsStoreUrl ? (
+                                                    <button
+                                                        type="button"
+                                                        className="text-xs font-medium text-[#2D8CFF] hover:underline"
+                                                        onClick={() =>
+                                                            setQuickCreate(
+                                                                'tyre',
+                                                            )
+                                                        }
+                                                    >
+                                                        + Add
+                                                    </button>
+                                                ) : null}
+                                            </div>
+                                            <select
+                                                id="tyre_layout_id"
+                                                name="tyre_layout_id"
+                                                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                                                value={tyreLayoutId}
+                                                onChange={(event) =>
+                                                    setTyreLayoutId(
+                                                        event.target.value,
+                                                    )
+                                                }
+                                                required
+                                            >
+                                                <option value="">
+                                                    Select…
+                                                </option>
+                                                {tyreLayouts.map((item) => (
+                                                    <option
+                                                        key={item.id}
+                                                        value={item.id}
+                                                    >
+                                                        {item.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <InputError
+                                                message={errors.tyre_layout_id}
+                                            />
+                                        </div>
+                                    ) : null}
+                                    {isMarket || driversEnabled ? (
                                         <div className="space-y-2 md:col-span-2">
                                             <SearchablePartySelect
                                                 id="primary_driver_party_id"
                                                 name="primary_driver_party_id"
-                                                label="Primary Driver"
+                                                label={
+                                                    isMarket
+                                                        ? 'Driver'
+                                                        : 'Primary Driver'
+                                                }
                                                 options={formOptions.drivers}
                                                 searchUrl={
                                                     links.partiesOptionsUrl
@@ -365,55 +381,49 @@ export default function VehicleForm({
                                             />
                                         </div>
                                     ) : null}
-                                    {[
-                                        [
-                                            'vehicle_type',
-                                            'Vehicle type',
-                                            vehicle?.vehicle_type ?? '',
-                                        ],
-                                        ['make', 'Make', vehicle?.make ?? ''],
-                                        [
-                                            'model',
-                                            'Model',
-                                            vehicle?.model ?? '',
-                                        ],
-                                        [
-                                            'manufacture_year',
-                                            'Manufacture year',
-                                            vehicle?.manufacture_year?.toString() ??
-                                                '',
-                                        ],
-                                        [
-                                            'chassis_number',
-                                            'Chassis number',
-                                            vehicle?.chassis_number ?? '',
-                                        ],
-                                        [
-                                            'engine_number',
-                                            'Engine number',
-                                            vehicle?.engine_number ?? '',
-                                        ],
-                                        [
-                                            'capacity_mt',
-                                            'Capacity (MT)',
-                                            vehicle?.capacity_mt?.toString() ??
-                                                '',
-                                        ],
-                                    ].map(([name, label, value]) => (
-                                        <div key={name} className="space-y-2">
-                                            <Label htmlFor={name}>
-                                                {label}
-                                            </Label>
-                                            <Input
-                                                id={name}
-                                                name={name}
-                                                defaultValue={value}
-                                            />
-                                            <InputError
-                                                message={errors[name]}
-                                            />
-                                        </div>
-                                    ))}
+                                    <div className="space-y-2">
+                                        <Label htmlFor="registration_date">
+                                            Registration Date
+                                        </Label>
+                                        <Input
+                                            id="registration_date"
+                                            name="registration_date"
+                                            type="date"
+                                            defaultValue={
+                                                vehicle?.registration_date ?? ''
+                                            }
+                                        />
+                                        <InputError
+                                            message={errors.registration_date}
+                                        />
+                                    </div>
+                                    {isOwn
+                                        ? OWN_FLEET_FIELDS.map(
+                                              ([name, label]) => (
+                                                  <div
+                                                      key={name}
+                                                      className="space-y-2"
+                                                  >
+                                                      <Label htmlFor={name}>
+                                                          {label}
+                                                      </Label>
+                                                      <Input
+                                                          id={name}
+                                                          name={name}
+                                                          defaultValue={
+                                                              vehicle?.[
+                                                                  name
+                                                              ]?.toString() ??
+                                                              ''
+                                                          }
+                                                      />
+                                                      <InputError
+                                                          message={errors[name]}
+                                                      />
+                                                  </div>
+                                              ),
+                                          )
+                                        : null}
                                 </div>
                             </LrfSection>
                             <LrfSection

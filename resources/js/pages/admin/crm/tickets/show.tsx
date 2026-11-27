@@ -64,9 +64,9 @@ export default function CrmTicketShow({
             <PageShell
                 title={ticket.subject}
                 description={`${ticket.category} · ${ticket.priority} priority`}
+                badges={<WorkspaceStatusBadge status={ticket.status} />}
                 actions={
                     <div className="flex flex-wrap items-center gap-2">
-                        <WorkspaceStatusBadge status={ticket.status} />
                         <AppIconAction
                             icon={ArrowLeft}
                             label="Back to tickets"

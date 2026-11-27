@@ -81,7 +81,6 @@ if (! function_exists('partloadWorkspace')) {
                     'pan' => 'AABCT9002E',
                     'pan_status' => 'active',
                     'declaration' => true,
-                    'declaration_type' => 'owner',
                     'tds_percentage' => '1.00',
                     'goods_vehicles_count' => 2,
                 ],

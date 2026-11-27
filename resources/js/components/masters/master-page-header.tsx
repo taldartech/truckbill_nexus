@@ -1,3 +1,5 @@
+import { AppCardHeader } from '@/components/app-card-header';
+
 type Props = {
     title: string;
     /** Optional short supporting line under the title (filters/actions sit below). */
@@ -10,11 +12,11 @@ type Props = {
  */
 export function MasterPageHeader({ title, description = null }: Props) {
     return (
-        <div className="space-y-1">
-            <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-            {description ? (
-                <p className="text-sm text-muted-foreground">{description}</p>
-            ) : null}
-        </div>
+        <AppCardHeader
+            title={title}
+            titleAs="h1"
+            titleClassName="text-2xl font-semibold tracking-tight"
+            meta={description}
+        />
     );
 }

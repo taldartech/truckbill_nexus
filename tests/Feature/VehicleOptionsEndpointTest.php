@@ -120,7 +120,6 @@ test('json vehicle store returns option payload for quick create', function () {
             'attributes' => [
                 'pan_status' => 'active',
                 'declaration' => true,
-                'declaration_type' => 'owner',
             ],
         ]],
         remark: 'Quick create owner',

@@ -12,13 +12,13 @@ use App\Domains\Master\Exceptions\MasterDomainException;
 use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Domains\Master\Party\Exceptions\PartyDomainException;
 use App\Domains\Master\Party\PartyOptionQuery;
-use App\Domains\Master\Party\PartyRoleAttributeValidator;
 use App\Domains\Master\Party\PartyService;
 use App\Domains\Master\Support\MasterAccess;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
 use App\Domains\Subscription\Entitlement\CompanyCapabilities;
 use App\Domains\Subscription\Entitlement\CompanyCapabilityResolver;
+use App\Domains\Tax\Enums\PanStatus;
 use App\Domains\Tax\Exceptions\TaxDomainException;
 use App\Domains\Tax\TransporterTdsCalculationService;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
@@ -30,6 +30,7 @@ use App\Models\Party;
 use App\Models\PartyRole;
 use App\Models\State;
 use App\Models\User;
+use App\Support\Presentation\AccountNumberMask;
 use App\Support\Presentation\FreightAmountPresentation;
 use App\Support\Presentation\PartyProfilePresentation;
 use Illuminate\Http\JsonResponse;
@@ -310,9 +311,8 @@ class PartyController extends Controller
 
         $validated = $request->validate([
             'pan' => ['nullable', 'string', 'max:20'],
-            'pan_status' => ['nullable', 'string', 'max:32'],
+            'pan_status' => ['nullable', Rule::enum(PanStatus::class)],
             'declaration' => ['nullable'],
-            'declaration_type' => ['nullable', 'string', 'max:16'],
             'goods_vehicles_count' => ['nullable'],
             'tds_percentage' => ['nullable'],
             'tds_override' => ['nullable'],
@@ -326,7 +326,6 @@ class PartyController extends Controller
             'pan',
             'pan_status',
             'declaration',
-            'declaration_type',
             'goods_vehicles_count',
             'tds_percentage',
             'tds_override',
@@ -349,24 +348,9 @@ class PartyController extends Controller
             throw ValidationException::withMessages(['pan' => 'PAN format is invalid (AAAAA9999A).']);
         }
 
-        if (isset($roleAttrs['pan_status']) && filled($roleAttrs['pan_status'])) {
-            $status = strtolower(trim((string) $roleAttrs['pan_status']));
-            if (! in_array($status, PartyRoleAttributeValidator::PAN_STATUSES, true)) {
-                throw ValidationException::withMessages([
-                    'pan_status' => 'pan_status must be one of: '.implode(', ', PartyRoleAttributeValidator::PAN_STATUSES).'.',
-                ]);
-            }
-            $roleAttrs['pan_status'] = $status;
-        }
-
-        if (isset($roleAttrs['declaration_type']) && filled($roleAttrs['declaration_type'])) {
-            $type = strtolower(trim((string) $roleAttrs['declaration_type']));
-            if (! in_array($type, ['owner', 'agency'], true)) {
-                throw ValidationException::withMessages([
-                    'declaration_type' => 'Declaration type must be owner or agency.',
-                ]);
-            }
-            $roleAttrs['declaration_type'] = $type;
+        if (filled($roleAttrs['pan_status'] ?? null)
+            && PanStatus::tryFrom(strtolower(trim((string) $roleAttrs['pan_status']))) === null) {
+            throw ValidationException::withMessages(['pan_status' => 'PAN status must be Active or Inactive.']);
         }
 
         $context = $this->transporterTds->buildContextFromTransporter($partyAttrs, $roleAttrs);
@@ -399,14 +383,7 @@ class PartyController extends Controller
 
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'contact_person' => ['nullable', 'string', 'max:255'],
-            'contact_number' => ['nullable', 'string', 'max:50'],
-            'email' => ['nullable', 'email', 'max:255'],
-            'gstin' => ['nullable', 'string', 'max:20'],
-            'pan' => ['nullable', 'string', 'max:20'],
-            'is_gst_applicable' => ['sometimes', 'nullable', 'boolean'],
-            ...$this->geographyValidationRules(false),
-            'address' => ['nullable', 'string', 'max:2000'],
+            ...$this->partyFieldRules(),
             'roles' => ['required', 'array', 'min:1'],
             'roles.*.role' => ['required', Rule::enum(PartyRoleType::class)],
             'roles.*.attributes' => ['nullable', 'array'],
@@ -501,7 +478,7 @@ class PartyController extends Controller
                     ->map(fn (PartyRole $role): string => PartyRoleType::from((string) $role->role)->label())
                     ->values()
                     ->all(),
-                'sections' => $this->profilePresentation->sections($party),
+                'sections' => $this->profilePresentation->sections($party, $maySeeFreight),
             ],
             'bookBalance' => $bookBalance,
             'documentDrawer' => $this->documentDrawerPayload(
@@ -563,14 +540,7 @@ class PartyController extends Controller
 
         $validated = $request->validate([
             'name' => ['sometimes', 'string', 'max:255'],
-            'contact_person' => ['nullable', 'string', 'max:255'],
-            'contact_number' => ['nullable', 'string', 'max:50'],
-            'email' => ['nullable', 'email', 'max:255'],
-            'gstin' => ['nullable', 'string', 'max:20'],
-            'pan' => ['nullable', 'string', 'max:20'],
-            'is_gst_applicable' => ['sometimes', 'nullable', 'boolean'],
-            ...$this->geographyValidationRules(false),
-            'address' => ['nullable', 'string', 'max:2000'],
+            ...$this->partyFieldRules(),
             'roles' => ['sometimes', 'array', 'min:1'],
             'roles.*.role' => ['required_with:roles', Rule::enum(PartyRoleType::class)],
             'roles.*.attributes' => ['nullable', 'array'],
@@ -584,6 +554,10 @@ class PartyController extends Controller
             $this->assertPartyRolesAllowed($company, $roles);
         }
         $attributes = $this->normalizePartyAttributes($validated);
+        // Edit only shows the masked account number; a blank submission keeps the stored value.
+        if (blank($attributes['bank_account_number'] ?? null)) {
+            unset($attributes['bank_account_number']);
+        }
 
         try {
             $updated = $this->parties->update(
@@ -643,6 +617,7 @@ class PartyController extends Controller
         return [
             'id' => $party->id,
             'name' => $party->name,
+            'short_name' => $party->short_name,
             'contact_person' => $party->contact_person,
             'contact_number' => $party->contact_number,
             'email' => $party->email,
@@ -663,11 +638,18 @@ class PartyController extends Controller
         return [
             'id' => $party->id,
             'name' => $party->name,
+            'short_name' => $party->short_name,
             'contact_person' => $party->contact_person,
             'contact_number' => $party->contact_number,
             'email' => $party->email,
             'gstin' => $party->gstin,
             'pan' => $party->pan,
+            'bank_name' => $party->bank_name,
+            'bank_account_holder_name' => $party->bank_account_holder_name,
+            'bank_account_number_masked' => AccountNumberMask::mask($party->bank_account_number),
+            'bank_ifsc' => $party->bank_ifsc,
+            'bank_short_name' => $party->bank_short_name,
+            'bank_beneficiary_id' => $party->bank_beneficiary_id,
             'is_gst_applicable' => (bool) $party->is_gst_applicable,
             'state' => $party->state,
             'state_id' => $party->state_id,
@@ -700,6 +682,30 @@ class PartyController extends Controller
         } catch (MasterDomainException) {
             abort(404);
         }
+    }
+
+    /**
+     * @return array<string, list<mixed>>
+     */
+    private function partyFieldRules(): array
+    {
+        return [
+            'short_name' => ['nullable', 'string', 'max:255'],
+            'contact_person' => ['nullable', 'string', 'max:255'],
+            'contact_number' => ['nullable', 'string', 'max:50'],
+            'email' => ['nullable', 'email', 'max:255'],
+            'gstin' => ['nullable', 'string', 'max:20'],
+            'pan' => ['nullable', 'string', 'max:20'],
+            'is_gst_applicable' => ['sometimes', 'nullable', 'boolean'],
+            ...$this->geographyValidationRules(false),
+            'address' => ['nullable', 'string', 'max:2000'],
+            'bank_name' => ['nullable', 'string', 'max:255'],
+            'bank_account_holder_name' => ['nullable', 'string', 'max:255'],
+            'bank_account_number' => ['nullable', 'string', 'max:64'],
+            'bank_ifsc' => ['nullable', 'string', 'max:16'],
+            'bank_short_name' => ['nullable', 'string', 'max:255'],
+            'bank_beneficiary_id' => ['nullable', 'string', 'max:64'],
+        ];
     }
 
     /**

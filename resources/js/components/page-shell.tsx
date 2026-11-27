@@ -1,9 +1,12 @@
 import type { ReactNode } from 'react';
+import { AppCardHeader } from '@/components/app-card-header';
 import { cn } from '@/lib/utils';
 
 type PageShellProps = {
     title?: string;
     description?: string;
+    /** Status badges rendered beside the title (never in the actions area). */
+    badges?: ReactNode;
     actions?: ReactNode;
     children: ReactNode;
     className?: string;
@@ -28,6 +31,7 @@ const widthClass = {
 export function PageShell({
     title,
     description,
+    badges,
     actions,
     children,
     className,
@@ -45,60 +49,45 @@ export function PageShell({
         >
             {(title || actions) &&
                 (chrome === 'compact' ? (
-                    <div className="mb-1 flex flex-wrap items-start justify-between gap-3">
-                        <div className="min-w-0 flex-1 space-y-1">
-                            {title ? (
-                                <div className="flex flex-wrap items-center gap-2">
-                                    <h1 className="text-lg font-bold tracking-tight text-slate-900">
-                                        {title}
-                                    </h1>
+                    <AppCardHeader
+                        className="mb-1"
+                        title={title}
+                        titleAs="h1"
+                        titleClassName="text-lg font-bold tracking-tight text-slate-900"
+                        badges={
+                            titleAddon || badges ? (
+                                <>
                                     {titleAddon}
-                                </div>
-                            ) : (
-                                titleAddon
-                            )}
-                            {description ? (
-                                <p className="max-w-3xl text-[0.78rem] text-muted-foreground">
-                                    {description}
-                                </p>
-                            ) : null}
-                        </div>
-                        {actions ? (
-                            <div className="flex flex-wrap items-center gap-2">
-                                {actions}
-                            </div>
-                        ) : null}
-                    </div>
+                                    {badges}
+                                </>
+                            ) : undefined
+                        }
+                        meta={description}
+                        metaClassName="max-w-3xl text-[0.78rem]"
+                        actions={actions}
+                        actionsClassName="gap-2"
+                    />
                 ) : (
-                    <div className="rounded-xl border border-border bg-card p-4 shadow-xs md:p-5">
-                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                            <div className="min-w-0 space-y-1">
-                                <div
-                                    className="mb-2 h-1 w-16 rounded-full"
-                                    style={{
-                                        backgroundImage:
-                                            'var(--brand-gradient)',
-                                    }}
-                                    aria-hidden
-                                />
-                                {title ? (
-                                    <h1 className="text-xl font-semibold tracking-tight text-foreground md:text-2xl">
-                                        {title}
-                                    </h1>
-                                ) : null}
-                                {description ? (
-                                    <p className="max-w-3xl text-sm text-muted-foreground">
-                                        {description}
-                                    </p>
-                                ) : null}
-                            </div>
-                            {actions ? (
-                                <div className="flex flex-wrap items-center gap-2">
-                                    {actions}
-                                </div>
-                            ) : null}
-                        </div>
-                    </div>
+                    <AppCardHeader
+                        className="rounded-xl border border-border bg-card p-4 shadow-xs md:p-5"
+                        leading={
+                            <div
+                                className="mb-2 h-1 w-16 rounded-full"
+                                style={{
+                                    backgroundImage: 'var(--brand-gradient)',
+                                }}
+                                aria-hidden
+                            />
+                        }
+                        title={title}
+                        titleAs="h1"
+                        titleClassName="text-xl font-semibold tracking-tight text-foreground md:text-2xl"
+                        badges={badges}
+                        meta={description}
+                        metaClassName="max-w-3xl"
+                        actions={actions}
+                        actionsClassName="gap-2"
+                    />
                 ))}
             {children}
         </div>

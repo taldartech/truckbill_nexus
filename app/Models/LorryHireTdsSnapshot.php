@@ -21,7 +21,7 @@ class LorryHireTdsSnapshot extends Model
         'calculated_rate', 'applicable_rate', 'tds_amount',
         'matched_rule_id', 'rule_code', 'rule_priority',
         'pan_status', 'declaration_status', 'goods_vehicle_count',
-        'declaration_type', 'override_state', 'explanation', 'snapshotted_at',
+        'override_state', 'explanation', 'snapshotted_at',
     ];
 
     protected function casts(): array

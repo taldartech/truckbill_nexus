@@ -465,7 +465,7 @@ test.describe('Mandatory indicators, Vehicle Drivers, and Subscription Entitleme
         await expect(sidebar.getByText('Partload Challans')).toHaveCount(0);
         await expect(sidebar.getByText('Tyre Layouts')).toHaveCount(0);
 
-        // Vehicle Create locked to Market + mandatory indicators + Quick Add
+        // Vehicle Create locked to Market: only Truck Number mandatory + Quick Add
         await page.goto('/vehicles/create', { waitUntil: 'networkidle' });
         await expect(page.locator('#ownership')).toHaveText('Market');
         await expect(page.locator('select#ownership')).toHaveCount(0);
@@ -474,7 +474,7 @@ test.describe('Mandatory indicators, Vehicle Drivers, and Subscription Entitleme
         ).toHaveAttribute('data-required', 'true');
         await expect(
             page.locator('label[for="owner_party_id"]'),
-        ).toHaveAttribute('data-required', 'true');
+        ).not.toHaveAttribute('data-required', 'true');
         await expect(
             page.getByRole('button', { name: 'Add', exact: true }).first(),
         ).toBeVisible();
@@ -538,7 +538,7 @@ test.describe('Mandatory indicators, Vehicle Drivers, and Subscription Entitleme
         await page.locator('select#ownership').selectOption('market');
         await expect(
             page.locator('label[for="owner_party_id"]'),
-        ).toHaveAttribute('data-required', 'true');
+        ).not.toHaveAttribute('data-required', 'true');
 
         // 4. All Modules company
         await enterCompanyBranch(page, COMPANIES.allModules);

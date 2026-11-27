@@ -20,6 +20,8 @@ type AppIconActionProps = {
     label: string;
     tooltip?: string;
     href?: string;
+    /** Open `href` as a plain anchor in a new tab (downloads, print views). */
+    external?: boolean;
     onClick?: () => void;
     type?: 'button' | 'submit' | 'reset';
     /** Semantic Button variant — info/warning/primary included. */
@@ -41,6 +43,7 @@ export function AppIconAction({
     label,
     tooltip,
     href,
+    external = false,
     onClick,
     type = 'button',
     variant = 'outline',
@@ -56,6 +59,8 @@ export function AppIconAction({
     }
 
     const tip = tooltip ?? label;
+    const resolvedSize: ButtonSize =
+        children === undefined && size === 'sm' ? 'icon-sm' : size;
     const content = (
         <>
             {loading ? (
@@ -72,19 +77,30 @@ export function AppIconAction({
         <Button
             asChild
             variant={variant}
-            size={size}
+            size={resolvedSize}
             disabled={disabled || loading}
             className={cn('shrink-0', className)}
         >
-            <Link href={href} aria-label={label} prefetch>
-                {content}
-            </Link>
+            {external ? (
+                <a
+                    href={href}
+                    aria-label={label}
+                    target="_blank"
+                    rel="noreferrer"
+                >
+                    {content}
+                </a>
+            ) : (
+                <Link href={href} aria-label={label} prefetch>
+                    {content}
+                </Link>
+            )}
         </Button>
     ) : (
         <Button
             type={type}
             variant={variant}
-            size={size}
+            size={resolvedSize}
             disabled={disabled || loading}
             onClick={onClick}
             aria-label={label}

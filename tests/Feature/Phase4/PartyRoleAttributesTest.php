@@ -64,6 +64,10 @@ test('creates transporter with full attributes and persists on reload', function
             'pan' => 'ABCDE1234F',
             'state' => 'Maharashtra',
             'city' => 'Thane',
+            'short_name' => 'Konkan',
+            'bank_short_name' => 'KONKAN SBI',
+            'bank_beneficiary_id' => 'BEN-001',
+            'bank_account_number' => '1234567890',
         ],
         roles: [[
             'role' => PartyRoleType::Transporter->value,
@@ -71,12 +75,8 @@ test('creates transporter with full attributes and persists on reload', function
                 'pan' => 'ABCDE1234F',
                 'pan_status' => 'active',
                 'declaration' => true,
-                'declaration_type' => 'owner',
                 'tds_percentage' => '1.00',
                 'goods_vehicles_count' => 8,
-                'short_name' => 'Konkan',
-                'beneficiary_id' => 'BEN-001',
-                'bank_account' => '1234567890',
             ],
         ]],
     );
@@ -85,18 +85,39 @@ test('creates transporter with full attributes and persists on reload', function
     $attrs = $reloaded->roles->firstWhere('role', PartyRoleType::Transporter->value)?->role_attributes;
 
     expect($reloaded->pan)->toBe('ABCDE1234F')
+        ->and($reloaded->short_name)->toBe('Konkan')
+        ->and($reloaded->bank_short_name)->toBe('KONKAN SBI')
+        ->and($reloaded->bank_beneficiary_id)->toBe('BEN-001')
+        ->and($reloaded->bank_account_number)->toBe('1234567890')
         ->and($attrs)->toMatchArray([
             'pan' => 'ABCDE1234F',
             'pan_status' => 'active',
             'declaration' => true,
-            'declaration_type' => 'owner',
             'tds_percentage' => '1.00',
             'goods_vehicles_count' => 8,
-            'short_name' => 'Konkan',
-            'beneficiary_id' => 'BEN-001',
-            'bank_account' => '1234567890',
         ]);
 });
+
+test('transporter role rejects removed declaration type and role-level bank keys', function (string $key, mixed $value) {
+    ['owner' => $owner, 'company' => $company] = partyRoleAttrsWorkspace();
+    $this->actingAs($owner);
+
+    expect(fn () => app(PartyService::class)->create(
+        actor: $owner,
+        company: $company,
+        branch: null,
+        attributes: ['name' => 'Legacy Transporter', 'contact_number' => '9876500000', 'pan' => 'ABCDE1234F', 'state' => 'MH', 'city' => 'Pune'],
+        roles: [[
+            'role' => PartyRoleType::Transporter->value,
+            'attributes' => ['pan_status' => 'active', 'declaration' => true, $key => $value],
+        ]],
+    ))->toThrow(ValidationException::class);
+})->with([
+    'declaration type' => ['declaration_type', 'owner'],
+    'legacy PAN status' => ['pan_status', 'valid'],
+    'role bank account' => ['bank_account', '1234567890'],
+    'role beneficiary' => ['beneficiary_id', 'BEN-001'],
+]);
 
 test('permanent driver requires license while market does not', function () {
     ['owner' => $owner, 'company' => $company] = partyRoleAttrsWorkspace();
@@ -238,7 +259,6 @@ test('edit common fields without losing transporter attributes', function () {
                 'pan' => 'BBBBB1234B',
                 'pan_status' => 'active',
                 'declaration' => true,
-                'short_name' => 'Fleet',
                 'goods_vehicles_count' => 3,
             ],
         ]],
@@ -261,7 +281,6 @@ test('edit common fields without losing transporter attributes', function () {
                 'pan' => 'BBBBB1234B',
                 'pan_status' => 'active',
                 'declaration' => true,
-                'short_name' => 'Fleet',
                 'goods_vehicles_count' => 3,
             ],
         ]],
@@ -277,7 +296,6 @@ test('edit common fields without losing transporter attributes', function () {
             'pan' => 'BBBBB1234B',
             'pan_status' => 'active',
             'declaration' => true,
-            'short_name' => 'Fleet',
             'goods_vehicles_count' => 3,
         ]);
 });
@@ -390,7 +408,6 @@ test('accepts transporter with declaration false', function () {
                 'pan_status' => 'active',
                 'declaration' => false,
                 'goods_vehicles_count' => 3,
-                'declaration_type' => 'owner',
             ],
         ]],
     );
@@ -414,6 +431,7 @@ test('edit form payload includes active roles with attributes', function () {
             'pan' => 'DDDDD1234D',
             'state' => 'MH',
             'city' => 'Nashik',
+            'short_name' => 'Prefill',
         ],
         roles: [[
             'role' => PartyRoleType::Transporter->value,
@@ -421,7 +439,6 @@ test('edit form payload includes active roles with attributes', function () {
                 'pan' => 'DDDDD1234D',
                 'pan_status' => 'inactive',
                 'declaration' => true,
-                'short_name' => 'Prefill',
             ],
         ]],
     );
@@ -436,6 +453,6 @@ test('edit form payload includes active roles with attributes', function () {
             ->has('party.roles', 1)
             ->where('party.roles.0.role', 'transporter')
             ->where('party.roles.0.attributes.pan_status', 'inactive')
-            ->where('party.roles.0.attributes.short_name', 'Prefill')
+            ->where('party.short_name', 'Prefill')
         );
 });

@@ -61,7 +61,6 @@ type Props = {
         consignee_name?: string | null;
         vehicle_registration: string | null;
         transporter_name: string | null;
-        declaration_type: string;
         customer_freight_total?: string | null;
         remarks: string | null;
         freight_total: string | null;
@@ -419,13 +418,9 @@ export default function LorryHireShow({
                                         label="Payee"
                                         value={lorryHire.transporter_name}
                                         sub={
-                                            <>
-                                                {lorryHire.declaration_type ||
-                                                    '—'}
-                                                {lorryHire.tds_percent
-                                                    ? ` · TDS ${lorryHire.tds_percent}%`
-                                                    : null}
-                                            </>
+                                            lorryHire.tds_percent
+                                                ? `TDS ${lorryHire.tds_percent}%`
+                                                : undefined
                                         }
                                     />
                                     <FbInfoItem

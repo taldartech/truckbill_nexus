@@ -5,16 +5,17 @@ export type RolePayload = {
     is_active?: boolean;
 };
 
+export type PanStatusValue = '' | 'active' | 'inactive';
+
+/** TDS declaration received: '' until the user answers Yes ('1') or No ('0'). */
+export type DeclarationValue = '' | '1' | '0';
+
 export type TransporterAttrs = {
-    pan_status: string;
-    declaration: boolean;
-    declaration_type: string;
+    pan_status: PanStatusValue;
+    declaration: DeclarationValue;
     tds_percentage: string;
     tds_override: boolean;
     tds_adjustment_remark: string;
-    bank_account: string;
-    short_name: string;
-    beneficiary_id: string;
     goods_vehicles_count: string;
 };
 
@@ -25,9 +26,6 @@ export type DriverAttrs = {
     joining_date: string;
     aadhaar: string;
     pan: string;
-    bank_name: string;
-    bank_account_number: string;
-    ifsc: string;
     emergency_contact_name: string;
     emergency_contact_mobile: string;
     monthly_payment_base: string;
@@ -37,6 +35,7 @@ import type { PartyFieldModel } from '@/components/masters/party-master/party-ro
 
 export type PartyBasicValues = {
     name: string;
+    short_name: string;
     contact_person: string;
     contact_number: string;
     email: string;
@@ -44,7 +43,56 @@ export type PartyBasicValues = {
     gstin: string;
     pan: string;
     is_gst_applicable: '' | '0' | '1';
+    bank_name: string;
+    bank_account_holder_name: string;
+    /** Edit mode leaves this blank to keep the stored (masked) account number. */
+    bank_account_number: string;
+    bank_ifsc: string;
+    bank_short_name: string;
+    bank_beneficiary_id: string;
 };
+
+export const EMPTY_PARTY_BASIC: PartyBasicValues = {
+    name: '',
+    short_name: '',
+    contact_person: '',
+    contact_number: '',
+    email: '',
+    address: '',
+    gstin: '',
+    pan: '',
+    is_gst_applicable: '',
+    bank_name: '',
+    bank_account_holder_name: '',
+    bank_account_number: '',
+    bank_ifsc: '',
+    bank_short_name: '',
+    bank_beneficiary_id: '',
+};
+
+export const PARTY_BANK_FIELDS = [
+    ['bank_name', 'Bank Name'],
+    ['bank_account_holder_name', 'Account Holder Name'],
+    ['bank_account_number', 'Account Number'],
+    ['bank_ifsc', 'IFSC Code'],
+    ['bank_short_name', 'Bank Short Name'],
+    ['bank_beneficiary_id', 'Beneficiary ID'],
+] as const satisfies ReadonlyArray<readonly [keyof PartyBasicValues, string]>;
+
+/**
+ * Short name follows the name until the user customizes it (Rules §25).
+ */
+export function nameChangePatch(
+    current: PartyBasicValues,
+    nextName: string,
+): Partial<PartyBasicValues> {
+    const follows =
+        current.short_name === '' || current.short_name === current.name;
+
+    return follows
+        ? { name: nextName, short_name: nextName }
+        : { name: nextName };
+}
 
 export function attrString(
     attrs: Record<string, unknown> | undefined,
@@ -97,16 +145,23 @@ export function initialTransporter(
         (role) => role.role === 'transporter',
     )?.attributes;
 
+    const panStatus = attrString(attrs, 'pan_status');
+    const hasDeclaration =
+        attrs !== undefined &&
+        attrs.declaration !== undefined &&
+        attrs.declaration !== null;
+
     return {
-        pan_status: attrString(attrs, 'pan_status', 'active'),
-        declaration: attrBool(attrs, 'declaration', false),
-        declaration_type: attrString(attrs, 'declaration_type', 'owner'),
+        pan_status:
+            panStatus === 'active' || panStatus === 'inactive' ? panStatus : '',
+        declaration: hasDeclaration
+            ? attrBool(attrs, 'declaration')
+                ? '1'
+                : '0'
+            : '',
         tds_percentage: attrString(attrs, 'tds_percentage'),
         tds_override: attrBool(attrs, 'tds_override', false),
         tds_adjustment_remark: attrString(attrs, 'tds_adjustment_remark'),
-        bank_account: attrString(attrs, 'bank_account'),
-        short_name: attrString(attrs, 'short_name'),
-        beneficiary_id: attrString(attrs, 'beneficiary_id'),
         goods_vehicles_count: attrString(attrs, 'goods_vehicles_count'),
     };
 }
@@ -122,9 +177,6 @@ export function initialDriver(roles: RolePayload[] | undefined): DriverAttrs {
         joining_date: attrString(attrs, 'joining_date'),
         aadhaar: attrString(attrs, 'aadhaar'),
         pan: attrString(attrs, 'pan'),
-        bank_name: attrString(attrs, 'bank_name'),
-        bank_account_number: attrString(attrs, 'bank_account_number'),
-        ifsc: attrString(attrs, 'ifsc'),
         emergency_contact_name: attrString(attrs, 'emergency_contact_name'),
         emergency_contact_mobile: attrString(attrs, 'emergency_contact_mobile'),
         monthly_payment_base: attrString(attrs, 'monthly_payment_base'),
@@ -152,8 +204,9 @@ export function buildRolesPayload(
                 role,
                 attributes: {
                     pan_status: transporter.pan_status,
-                    declaration: transporter.declaration,
-                    declaration_type: transporter.declaration_type,
+                    ...(transporter.declaration !== ''
+                        ? { declaration: transporter.declaration === '1' }
+                        : {}),
                     ...(transporter.tds_percentage
                         ? { tds_percentage: transporter.tds_percentage }
                         : {}),
@@ -163,15 +216,6 @@ export function buildRolesPayload(
                               tds_adjustment_remark:
                                   transporter.tds_adjustment_remark,
                           }
-                        : {}),
-                    ...(transporter.bank_account
-                        ? { bank_account: transporter.bank_account }
-                        : {}),
-                    ...(transporter.short_name
-                        ? { short_name: transporter.short_name }
-                        : {}),
-                    ...(transporter.beneficiary_id
-                        ? { beneficiary_id: transporter.beneficiary_id }
                         : {}),
                     ...(transporter.goods_vehicles_count
                         ? {
@@ -204,16 +248,6 @@ export function buildRolesPayload(
                                   ? { aadhaar: driver.aadhaar }
                                   : {}),
                               ...(driver.pan ? { pan: driver.pan } : {}),
-                              ...(driver.bank_name
-                                  ? { bank_name: driver.bank_name }
-                                  : {}),
-                              ...(driver.bank_account_number
-                                  ? {
-                                        bank_account_number:
-                                            driver.bank_account_number,
-                                    }
-                                  : {}),
-                              ...(driver.ifsc ? { ifsc: driver.ifsc } : {}),
                               ...(driver.emergency_contact_name
                                   ? {
                                         emergency_contact_name:
@@ -265,6 +299,7 @@ export function buildPartyStorePayload(
 
     const payload: Record<string, unknown> = {
         name: basic.name.trim(),
+        short_name: basic.short_name.trim() || basic.name.trim(),
         contact_number: basic.contact_number.trim(),
         email: basic.email.trim() || null,
         state: geography.state.trim(),
@@ -278,6 +313,15 @@ export function buildPartyStorePayload(
     const contactPerson = basic.contact_person.trim();
     if (contactPerson !== '') {
         payload.contact_person = contactPerson;
+    }
+
+    if (fieldModel.showBankDetails) {
+        for (const [key] of PARTY_BANK_FIELDS) {
+            const value = basic[key].trim();
+            if (value !== '') {
+                payload[key] = value;
+            }
+        }
     }
 
     if (fieldModel.showGstBusinessTax) {

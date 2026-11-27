@@ -41,7 +41,7 @@ class LorryHire extends Model
 
     protected $fillable = [
         'id', 'company_id', 'branch_id', 'lorry_receipt_id', 'hire_number', 'hire_date',
-        'vehicle_id', 'transporter_party_id', 'declaration_type', 'status',
+        'vehicle_id', 'transporter_party_id', 'status',
         'freight_total', 'tds_percent', 'tds_amount', 'paid_amount', 'outstanding_amount',
         'remarks', 'cancelled_at', 'cancellation_remark', 'settle_outstanding', 'created_by_user_id',
     ];

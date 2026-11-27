@@ -9,8 +9,8 @@ use Illuminate\Support\Collection;
 /**
  * Evaluates structured AND/OR TDS rules by priority (Rules §6).
  *
- * Context keys commonly include: pan_status, pan_fourth_char, entity_type,
- * declaration_valid, goods_vehicle_count, declaration_type (owner|agency).
+ * Context keys commonly include: pan_status (active|inactive), pan_fourth_char,
+ * entity_type, declaration_valid (TDS declaration received) and goods_vehicle_count.
  *
  * Result is snapshot-compatible; does not mutate historical transactions.
  */

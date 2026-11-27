@@ -182,7 +182,9 @@ class VehicleController extends Controller
             'links' => array_merge($this->branchMasterNavLinks(), [
                 'index' => route('branch.vehicles.index', absolute: false),
                 'store' => route('branch.vehicles.store', absolute: false),
-                'truckTypesStoreUrl' => $ownsAllowed ? route('branch.truck-types.store', absolute: false) : null,
+                'truckTypesStoreUrl' => $this->capabilities->allowsMutate($company, CompanyCapabilities::OWNFLEET_TRUCK_TYPES)
+                    ? route('branch.truck-types.store', absolute: false)
+                    : null,
                 'tyreLayoutsStoreUrl' => $ownsAllowed ? route('branch.tyre-layouts.store', absolute: false) : null,
                 'partiesOptionsUrl' => route('branch.parties.options', absolute: false),
                 'partiesStoreUrl' => route('branch.parties.store', absolute: false),
@@ -203,6 +205,7 @@ class VehicleController extends Controller
             'chassis_number' => ['nullable', 'string', 'max:100'],
             'engine_number' => ['nullable', 'string', 'max:100'],
             'capacity_mt' => ['nullable', 'numeric', 'min:0'],
+            'registration_date' => ['nullable', 'date', 'before_or_equal:today'],
             'is_active' => ['sometimes', 'boolean'],
             'ownership' => ['required', Rule::enum(VehicleOwnership::class)],
             'truck_type_id' => ['nullable', 'uuid'],
@@ -375,7 +378,9 @@ class VehicleController extends Controller
                 'index' => route('branch.vehicles.index', absolute: false),
                 'show' => route('branch.vehicles.show', [$vehicle], absolute: false),
                 'update' => route('branch.vehicles.update', [$vehicle], absolute: false),
-                'truckTypesStoreUrl' => $ownsAllowed ? route('branch.truck-types.store', absolute: false) : null,
+                'truckTypesStoreUrl' => $this->capabilities->allowsMutate($company, CompanyCapabilities::OWNFLEET_TRUCK_TYPES)
+                    ? route('branch.truck-types.store', absolute: false)
+                    : null,
                 'tyreLayoutsStoreUrl' => $ownsAllowed ? route('branch.tyre-layouts.store', absolute: false) : null,
                 'partiesOptionsUrl' => route('branch.parties.options', absolute: false),
                 'partiesStoreUrl' => route('branch.parties.store', absolute: false),
@@ -400,6 +405,7 @@ class VehicleController extends Controller
             'chassis_number' => ['nullable', 'string', 'max:100'],
             'engine_number' => ['nullable', 'string', 'max:100'],
             'capacity_mt' => ['nullable', 'numeric', 'min:0'],
+            'registration_date' => ['nullable', 'date', 'before_or_equal:today'],
             'is_active' => ['sometimes', 'boolean'],
             'ownership' => ['required', Rule::enum(VehicleOwnership::class)],
             'truck_type_id' => ['nullable', 'uuid'],
@@ -461,6 +467,7 @@ class VehicleController extends Controller
         return [
             'id' => $vehicle->id,
             'registration_number' => $vehicle->registration_number,
+            'registration_date' => $vehicle->registration_date?->toDateString(),
             'vehicle_type' => $vehicle->vehicle_type,
             'make' => $vehicle->make,
             'model' => $vehicle->model,
@@ -486,6 +493,7 @@ class VehicleController extends Controller
     /**
      * @return array{
      *     ownershipOptions: array<int, array{value: string, label: string}>,
+     *     truckTypesAvailable: bool,
      *     truckTypes: array<int, array{id: string, name: string}>,
      *     tyreLayouts: array<int, array{id: string, name: string}>,
      *     transporters: array<int, array{id: string, name: string}>,
@@ -498,7 +506,8 @@ class VehicleController extends Controller
         $allowsOwn = in_array(VehicleOwnership::Own, $allowedOwnerships, true);
         $allowsMarket = in_array(VehicleOwnership::Market, $allowedOwnerships, true);
 
-        $truckTypes = $allowsOwn
+        $truckTypesAvailable = $this->capabilities->allowsRead($company, CompanyCapabilities::OWNFLEET_TRUCK_TYPES);
+        $truckTypes = $truckTypesAvailable
             ? OwnerCatalogueItem::query()
                 ->where('owner_user_id', $company->owner_user_id)
                 ->where('catalogue_type', OwnerCatalogueType::TruckType->value)
@@ -524,6 +533,7 @@ class VehicleController extends Controller
                 'value' => $case->value,
                 'label' => $case->label(),
             ])->values()->all(),
+            'truckTypesAvailable' => $truckTypesAvailable,
             'truckTypes' => $truckTypes->map(fn (OwnerCatalogueItem $item): array => [
                 'id' => $item->id,
                 'name' => $item->name,
@@ -535,9 +545,7 @@ class VehicleController extends Controller
             'transporters' => $allowsMarket
                 ? $partyOptions->forRoles($company, $branch, PartyRoleType::Transporter)
                 : [],
-            'drivers' => $allowsOwn
-                ? $partyOptions->forRoles($company, $branch, PartyRoleType::Driver)
-                : [],
+            'drivers' => $partyOptions->forRoles($company, $branch, PartyRoleType::Driver),
         ];
     }
 

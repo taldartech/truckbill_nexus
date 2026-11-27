@@ -10,6 +10,7 @@ type OwnerPageShellProps = {
     title: string;
     description?: string;
     breadcrumbs?: Crumb[];
+    badges?: ReactNode;
     actions?: ReactNode;
     children: ReactNode;
     width?: 'full' | 'wide' | 'form';
@@ -54,6 +55,7 @@ export function OwnerPageHeader({
     title,
     description,
     breadcrumbs,
+    badges,
     actions,
     children,
     width = 'full',
@@ -65,6 +67,7 @@ export function OwnerPageHeader({
         <PageShell
             title={title}
             description={shellDescription}
+            badges={badges}
             actions={actions}
             width={width}
             className={className}
@@ -105,12 +108,8 @@ export function CompanyOwnerPageShell({
             description={section}
             breadcrumbs={breadcrumbs}
             width={width}
-            actions={
-                <>
-                    <WorkspaceStatusBadge status={company.status} />
-                    {actions}
-                </>
-            }
+            badges={<WorkspaceStatusBadge status={company.status} />}
+            actions={actions}
         >
             {children}
         </OwnerPageHeader>

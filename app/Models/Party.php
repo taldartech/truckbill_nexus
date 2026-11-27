@@ -25,6 +25,7 @@ class Party extends Model
         'company_id',
         'branch_id',
         'name',
+        'short_name',
         'contact_person',
         'contact_number',
         'email',
@@ -36,7 +37,16 @@ class Party extends Model
         'city',
         'city_id',
         'address',
+        'bank_name',
+        'bank_account_holder_name',
+        'bank_account_number',
+        'bank_ifsc',
+        'bank_short_name',
+        'bank_beneficiary_id',
     ];
+
+    /** @var list<string> */
+    protected $hidden = ['bank_account_number'];
 
     protected function casts(): array
     {
@@ -50,6 +60,17 @@ class Party extends Model
         static::creating(function (self $model): void {
             if (! filled($model->getAttribute('id'))) {
                 $model->setAttribute('id', (string) Str::uuid());
+            }
+        });
+
+        static::saving(function (self $model): void {
+            $followsName = $model->exists
+                && $model->isDirty('name')
+                && ! $model->isDirty('short_name')
+                && $model->getOriginal('short_name') === $model->getOriginal('name');
+
+            if ($followsName || blank($model->getAttribute('short_name'))) {
+                $model->setAttribute('short_name', $model->getAttribute('name'));
             }
         });
     }

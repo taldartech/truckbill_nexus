@@ -4,6 +4,7 @@ namespace App\Domains\Master\Party;
 
 use App\Domains\Company\CompanyProfileValidator;
 use App\Domains\Master\Party\Enums\PartyRoleType;
+use App\Domains\Tax\Enums\PanStatus;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -11,9 +12,6 @@ use Illuminate\Validation\ValidationException;
  */
 final class PartyRoleAttributeValidator
 {
-    /** @var list<string> */
-    public const PAN_STATUSES = ['active', 'inactive', 'invalid', 'valid'];
-
     /** @var list<string> */
     private const CUSTOMER_FAMILY = ['customer', 'consignor', 'consignee'];
 
@@ -31,11 +29,7 @@ final class PartyRoleAttributeValidator
             'tds_adjustment_remark',
             'calculated_tds_rate',
             'applicable_tds_rate',
-            'bank_account',
-            'short_name',
-            'beneficiary_id',
             'goods_vehicles_count',
-            'declaration_type',
         ],
         'driver' => [
             'driver_type',
@@ -44,9 +38,6 @@ final class PartyRoleAttributeValidator
             'joining_date',
             'aadhaar',
             'pan',
-            'bank_name',
-            'bank_account_number',
-            'ifsc',
             'emergency_contact_name',
             'emergency_contact_mobile',
             'monthly_payment_base',
@@ -157,16 +148,16 @@ final class PartyRoleAttributeValidator
             ]);
         }
 
-        $panStatus = strtolower(trim((string) ($attributes['pan_status'] ?? '')));
-        if (! in_array($panStatus, self::PAN_STATUSES, true)) {
+        $panStatus = PanStatus::tryFrom(strtolower(trim((string) ($attributes['pan_status'] ?? ''))));
+        if ($panStatus === null) {
             throw ValidationException::withMessages([
-                'roles.attributes.pan_status' => 'Transporter pan_status must be one of: '.implode(', ', self::PAN_STATUSES).'.',
+                'roles.attributes.pan_status' => 'PAN status must be Active or Inactive.',
             ]);
         }
 
         if (! array_key_exists('declaration', $attributes) || $attributes['declaration'] === null || $attributes['declaration'] === '') {
             throw ValidationException::withMessages([
-                'roles.attributes.declaration' => 'Transporter requires declaration.',
+                'roles.attributes.declaration' => 'Select whether the TDS declaration is received.',
             ]);
         }
 
@@ -174,19 +165,9 @@ final class PartyRoleAttributeValidator
 
         $normalized = [
             'pan' => $pan,
-            'pan_status' => $panStatus,
+            'pan_status' => $panStatus->value,
             'declaration' => $declarationValid,
         ];
-
-        if (array_key_exists('declaration_type', $attributes) && filled($attributes['declaration_type'])) {
-            $type = strtolower(trim((string) $attributes['declaration_type']));
-            if (! in_array($type, ['owner', 'agency'], true)) {
-                throw ValidationException::withMessages([
-                    'roles.attributes.declaration_type' => 'Declaration type must be owner or agency.',
-                ]);
-            }
-            $normalized['declaration_type'] = $type;
-        }
 
         if (array_key_exists('tds_percentage', $attributes) && $attributes['tds_percentage'] !== null && $attributes['tds_percentage'] !== '') {
             if (! is_numeric($attributes['tds_percentage'])) {
@@ -213,16 +194,6 @@ final class PartyRoleAttributeValidator
 
         if (array_key_exists('tds_adjustment_remark', $attributes) && ! $tdsOverride && filled($attributes['tds_adjustment_remark'] ?? null)) {
             $normalized['tds_adjustment_remark'] = trim((string) $attributes['tds_adjustment_remark']);
-        }
-
-        foreach (['short_name', 'beneficiary_id'] as $optionalString) {
-            if (array_key_exists($optionalString, $attributes) && filled($attributes[$optionalString])) {
-                $normalized[$optionalString] = trim((string) $attributes[$optionalString]);
-            }
-        }
-
-        if (array_key_exists('bank_account', $attributes) && $attributes['bank_account'] !== null && $attributes['bank_account'] !== '') {
-            $normalized['bank_account'] = $attributes['bank_account'];
         }
 
         if (array_key_exists('goods_vehicles_count', $attributes) && $attributes['goods_vehicles_count'] !== null && $attributes['goods_vehicles_count'] !== '') {
@@ -285,9 +256,6 @@ final class PartyRoleAttributeValidator
                 'joining_date',
                 'aadhaar',
                 'pan',
-                'bank_name',
-                'bank_account_number',
-                'ifsc',
                 'emergency_contact_name',
                 'emergency_contact_mobile',
                 'monthly_payment_base',
@@ -350,6 +318,13 @@ final class PartyRoleAttributeValidator
 
         if (filled($partyAttributes['pan'] ?? null)) {
             $this->assertPanFormat($partyAttributes['pan'], 'pan');
+        }
+
+        if (filled($partyAttributes['bank_ifsc'] ?? null)
+            && ! preg_match('/^[A-Z]{4}0[A-Z0-9]{6}$/', strtoupper(trim((string) $partyAttributes['bank_ifsc'])))) {
+            throw ValidationException::withMessages([
+                'bank_ifsc' => 'IFSC format is invalid (e.g. HDFC0001234).',
+            ]);
         }
     }
 

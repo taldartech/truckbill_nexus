@@ -812,6 +812,7 @@ class LorryReceiptController extends Controller
      *
      * @return array{
      *     ownershipOptions: list<array{value: string, label: string}>,
+     *     truckTypesAvailable: bool,
      *     truckTypes: list<array{id: string, name: string}>,
      *     tyreLayouts: list<array{id: string, name: string}>,
      *     drivers: list<array{id: string, name: string}>,
@@ -825,7 +826,8 @@ class LorryReceiptController extends Controller
         $allowedOwnerships = $capabilities->allowedVehicleOwnerships($company);
         $allowsOwn = in_array(VehicleOwnership::Own, $allowedOwnerships, true);
 
-        $truckTypes = $allowsOwn
+        $truckTypesAvailable = $capabilities->allowsRead($company, CompanyCapabilities::OWNFLEET_TRUCK_TYPES);
+        $truckTypes = $truckTypesAvailable
             ? OwnerCatalogueItem::query()
                 ->where('owner_user_id', $company->owner_user_id)
                 ->where('catalogue_type', OwnerCatalogueType::TruckType->value)
@@ -846,20 +848,19 @@ class LorryReceiptController extends Controller
                 ->get(['id', 'name'])
             : collect();
 
-        $drivers = $allowsOwn
-            ? app(PartyOptionQuery::class)->forRoles(
-                $company,
-                $branch,
-                PartyRoleType::Driver,
-                100,
-            )
-            : [];
+        $drivers = app(PartyOptionQuery::class)->forRoles(
+            $company,
+            $branch,
+            PartyRoleType::Driver,
+            100,
+        );
 
         return [
             'ownershipOptions' => array_values(collect($allowedOwnerships)->map(fn (VehicleOwnership $ownership): array => [
                 'value' => $ownership->value,
                 'label' => $ownership->label(),
             ])->all()),
+            'truckTypesAvailable' => $truckTypesAvailable,
             'truckTypes' => array_values($truckTypes->map(fn (OwnerCatalogueItem $item): array => [
                 'id' => $item->id,
                 'name' => $item->name,
@@ -872,7 +873,9 @@ class LorryReceiptController extends Controller
                 'id' => (string) $driver['id'],
                 'name' => (string) $driver['name'],
             ])->all()),
-            'truckTypesStoreUrl' => $allowsOwn ? route('branch.truck-types.store', absolute: false) : null,
+            'truckTypesStoreUrl' => $capabilities->allowsMutate($company, CompanyCapabilities::OWNFLEET_TRUCK_TYPES)
+                ? route('branch.truck-types.store', absolute: false)
+                : null,
             'tyreLayoutsStoreUrl' => $allowsOwn ? route('branch.tyre-layouts.store', absolute: false) : null,
         ];
     }

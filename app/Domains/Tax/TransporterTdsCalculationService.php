@@ -2,6 +2,7 @@
 
 namespace App\Domains\Tax;
 
+use App\Domains\Tax\Enums\PanStatus;
 use App\Domains\Tax\Exceptions\TaxDomainException;
 use App\Domains\Tax\Exceptions\TdsNoMatchException;
 use Illuminate\Validation\ValidationException;
@@ -24,8 +25,7 @@ final class TransporterTdsCalculationService
      *     pan_status: string|null,
      *     pan_fourth_char: string|null,
      *     declaration_valid: bool,
-     *     goods_vehicle_count: int|null,
-     *     declaration_type: string|null
+     *     goods_vehicle_count: int|null
      * }
      */
     public function buildContextFromTransporter(array $partyAttrs, array $roleAttrs): array
@@ -33,18 +33,9 @@ final class TransporterTdsCalculationService
         $pan = strtoupper(trim((string) ($roleAttrs['pan'] ?? $partyAttrs['pan'] ?? '')));
         $panFourth = strlen($pan) >= 4 ? $pan[3] : null;
 
-        $panStatus = $roleAttrs['pan_status'] ?? null;
-        $panStatus = is_string($panStatus) && $panStatus !== ''
-            ? strtolower(trim($panStatus))
+        $panStatus = is_string($roleAttrs['pan_status'] ?? null)
+            ? PanStatus::tryFrom(strtolower(trim($roleAttrs['pan_status'])))?->value
             : null;
-
-        $declarationType = $roleAttrs['declaration_type'] ?? null;
-        $declarationType = is_string($declarationType) && $declarationType !== ''
-            ? strtolower(trim($declarationType))
-            : null;
-        if ($declarationType !== null && ! in_array($declarationType, ['owner', 'agency'], true)) {
-            $declarationType = null;
-        }
 
         $goodsCount = $roleAttrs['goods_vehicles_count'] ?? null;
         $goodsVehicleCount = is_numeric($goodsCount) ? (int) $goodsCount : null;
@@ -54,7 +45,6 @@ final class TransporterTdsCalculationService
             'pan_fourth_char' => $panFourth,
             'declaration_valid' => $this->normalizeDeclarationValid($roleAttrs['declaration'] ?? null),
             'goods_vehicle_count' => $goodsVehicleCount,
-            'declaration_type' => $declarationType,
         ];
     }
 

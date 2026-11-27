@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { AppCardHeader } from '@/components/app-card-header';
 import { cn } from '@/lib/utils';
 
 export function FbDetailPage({
@@ -40,14 +41,17 @@ export function FbDetailLayout({
 export function FbDetailCard({
     title,
     badges,
+    meta,
     actions,
     children,
     className,
 }: {
     title: ReactNode;
     badges?: ReactNode;
+    /** Secondary information below the title. */
+    meta?: ReactNode;
     actions?: ReactNode;
-    children: ReactNode;
+    children?: ReactNode;
     className?: string;
 }) {
     return (
@@ -57,24 +61,42 @@ export function FbDetailCard({
                 className,
             )}
         >
-            <div className="card-header fb-detail-card-header flex flex-wrap items-center justify-between gap-2 border-b border-[#e2e8f0] px-4 py-3">
-                <strong className="fb-detail-card-title flex flex-wrap items-center gap-2 text-[0.95rem] font-bold text-slate-800">
-                    {title}
-                    {badges}
-                </strong>
-                {actions ? (
-                    <div className="fb-detail-actions flex flex-wrap items-center gap-1.5">
-                        {actions}
-                    </div>
-                ) : null}
-            </div>
-            <div className="card-body">{children}</div>
+            <AppCardHeader
+                className={cn(
+                    'card-header fb-detail-card-header items-center px-4 py-3',
+                    children ? 'border-b border-[#e2e8f0]' : null,
+                )}
+                title={title}
+                titleAs="strong"
+                titleClassName="fb-detail-card-title text-[0.95rem] font-semibold text-slate-800"
+                badges={badges}
+                meta={meta}
+                actions={actions}
+                actionsClassName="fb-detail-actions"
+            />
+            {children ? <div className="card-body">{children}</div> : null}
         </div>
     );
 }
 
-export function FbInfoGrid({ children }: { children: ReactNode }) {
-    return <div className="fb-info-grid px-4 py-3">{children}</div>;
+export function FbInfoGrid({
+    children,
+    relaxed = false,
+}: {
+    children: ReactNode;
+    /** Spacious, normal-weight layout for master record views. */
+    relaxed?: boolean;
+}) {
+    return (
+        <div
+            className={cn(
+                'fb-info-grid px-4 py-3',
+                relaxed && 'fb-info-grid--relaxed',
+            )}
+        >
+            {children}
+        </div>
+    );
 }
 
 export function FbInfoItem({

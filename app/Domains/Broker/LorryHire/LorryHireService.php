@@ -210,10 +210,6 @@ final class LorryHireService
             ->firstOrFail();
 
         $roleAttrs = is_array($role->role_attributes) ? $role->role_attributes : [];
-        $declarationType = strtolower((string) ($roleAttrs['declaration_type'] ?? 'owner'));
-        if (! in_array($declarationType, ['owner', 'agency'], true)) {
-            $declarationType = 'owner';
-        }
 
         $tdsContext = $this->tds->buildContextFromTransporter(
             [
@@ -221,7 +217,6 @@ final class LorryHireService
             ],
             $roleAttrs,
         );
-        $tdsContext['declaration_type'] = $declarationType;
 
         $allowOverride = $this->authorizer->allowsCustomer(
             $actor,
@@ -257,7 +252,6 @@ final class LorryHireService
                 $branch,
                 $vehicle,
                 $transporter,
-                $declarationType,
                 $computedLines,
                 $freightTotal,
                 $tdsPercent,
@@ -274,7 +268,6 @@ final class LorryHireService
                     $branch,
                     $vehicle,
                     $transporter,
-                    $declarationType,
                     $computedLines,
                     $freightTotal,
                     $tdsPercent,
@@ -312,7 +305,6 @@ final class LorryHireService
                         'hire_date' => $hireDate,
                         'vehicle_id' => $vehicle->id,
                         'transporter_party_id' => $transporter->id,
-                        'declaration_type' => $declarationType,
                         'status' => LorryHireStatus::Pending,
                         'freight_total' => $freightTotal,
                         'tds_percent' => $tdsPercent,
@@ -352,7 +344,6 @@ final class LorryHireService
                         'pan_status' => $tdsResult->panStatus,
                         'declaration_status' => $tdsResult->declarationStatus,
                         'goods_vehicle_count' => $tdsResult->goodsVehicleCount,
-                        'declaration_type' => $declarationType,
                         'override_state' => $tdsResult->overrideState,
                         'explanation' => $tdsResult->explanation,
                         'snapshotted_at' => CarbonImmutable::now('UTC'),

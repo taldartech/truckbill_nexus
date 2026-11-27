@@ -116,7 +116,6 @@ test('party option query includes only active matching roles visible in branch',
             'pan' => 'AABCT1111A',
             'pan_status' => 'active',
             'declaration' => true,
-            'declaration_type' => 'owner',
             'goods_vehicles_count' => 1,
         ],
     ]], 't');
@@ -163,4 +162,27 @@ test('party option query includes only active matching roles visible in branch',
         ->and($ids)->not->toContain($driverOnly->id)
         ->and($ids)->not->toContain($otherBranchCustomer->id)
         ->and($ids)->not->toContain($inactiveCustomer->id);
+});
+
+test('party option search matches short names and ranks exact and prefix matches first', function () {
+    ['owner' => $owner, 'company' => $company, 'branchA' => $branchA] = partyOptionWorkspace();
+    $parties = app(PartyService::class);
+    $customer = fn (string $name, string $shortName, string $mobile) => $parties->create($owner, $company, $branchA, [
+        'name' => $name,
+        'short_name' => $shortName,
+        'contact_number' => $mobile,
+        'state' => 'MH',
+        'city' => 'Pune',
+    ], [['role' => PartyRoleType::Customer->value]], 'c');
+
+    $substring = $customer('Western Konkan Logistics', 'Western', '9800000011');
+    $prefix = $customer('Konkan Roadlines Private Limited', 'Konkan Roadlines', '9800000012');
+    $exactShort = $customer('Shree Konkan Carriers', 'Konkan', '9800000013');
+    $customer('Deccan Freight', 'Deccan', '9800000014');
+
+    $options = app(PartyOptionQuery::class)
+        ->forRoles($company, $branchA, PartyRoleType::Customer, query: 'konkan');
+
+    expect(collect($options)->pluck('id')->all())->toBe([$exactShort->id, $prefix->id, $substring->id])
+        ->and($options[0]['short_name'])->toBe('Konkan');
 });

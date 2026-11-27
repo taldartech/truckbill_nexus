@@ -6,16 +6,19 @@ use App\Domains\Master\Party\Enums\PartyRoleType;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\Party;
-use App\Support\Database\CaseInsensitiveLike;
 
 /**
  * Branch-visible Party options filtered by active role(s) for form selectors.
  */
 final class PartyOptionQuery
 {
+    public function __construct(
+        private readonly PartySearch $search = new PartySearch,
+    ) {}
+
     /**
      * @param  PartyRoleType|list<PartyRoleType>  $roles
-     * @return list<array{id: string, name: string, city: string|null, state: string|null, contact_number: string|null}>
+     * @return list<array{id: string, name: string, short_name: string, city: string|null, state: string|null, contact_number: string|null}>
      */
     public function forRoles(
         Company $company,
@@ -37,20 +40,10 @@ final class PartyOptionQuery
                     ->whereNull('deleted_at')
                     ->whereNull('deactivated_at');
             })
-            ->orderBy('name')
             ->limit($limit);
 
-        if ($query !== null && trim($query) !== '') {
-            CaseInsensitiveLike::whereAnyContains($builder, [
-                'name',
-                'contact_number',
-                'city',
-                'email',
-                'pan',
-            ], $query);
-        }
-
-        $parties = $builder->get(['id', 'name', 'city', 'state', 'contact_number']);
+        $parties = $this->search->apply($builder, $query ?? '')
+            ->get(['id', 'name', 'short_name', 'city', 'state', 'contact_number']);
 
         $options = [];
         $seen = [];
@@ -69,7 +62,7 @@ final class PartyOptionQuery
                         ->whereNull('deleted_at')
                         ->whereNull('deactivated_at');
                 })
-                ->first(['id', 'name', 'city', 'state', 'contact_number']);
+                ->first(['id', 'name', 'short_name', 'city', 'state', 'contact_number']);
 
             if ($selected !== null) {
                 array_unshift($options, $this->optionPayload($selected));
@@ -92,13 +85,14 @@ final class PartyOptionQuery
     }
 
     /**
-     * @return array{id: string, name: string, city: string|null, state: string|null, contact_number: string|null}
+     * @return array{id: string, name: string, short_name: string, city: string|null, state: string|null, contact_number: string|null}
      */
     private function optionPayload(Party $party): array
     {
         return [
             'id' => $party->id,
             'name' => $party->name,
+            'short_name' => (string) $party->short_name,
             'city' => $party->city,
             'state' => $party->state,
             'contact_number' => $party->contact_number,

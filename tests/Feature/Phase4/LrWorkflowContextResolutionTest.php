@@ -221,7 +221,6 @@ function lrContextWorkspace(): array
                 'pan' => 'CTXTR1234A',
                 'pan_status' => 'active',
                 'declaration' => true,
-                'declaration_type' => 'owner',
                 'goods_vehicles_count' => 2,
             ],
         ]],

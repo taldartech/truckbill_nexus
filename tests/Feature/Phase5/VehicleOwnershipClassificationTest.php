@@ -69,7 +69,6 @@ test('market vehicle resolves to broker context', function () {
                 'pan' => 'AAAAA1234A',
                 'pan_status' => 'active',
                 'declaration' => true,
-                'declaration_type' => 'owner',
                 'goods_vehicles_count' => 2,
             ],
         ]],
@@ -138,7 +137,6 @@ test('ownfleet-only company rejects market vehicle classification', function () 
                 'pan' => 'BBBBB1234B',
                 'pan_status' => 'active',
                 'declaration' => true,
-                'declaration_type' => 'owner',
                 'goods_vehicles_count' => 1,
             ],
         ]],
@@ -170,7 +168,7 @@ test('broker-only company rejects own vehicle classification', function () {
     ))->toThrow(ValidationException::class);
 });
 
-test('vehicle master requires truck type for own and transporter for market', function () {
+test('vehicle master requires truck type for own but keeps market master fields optional', function () {
     $ws = tripWorkspace([SubscriptionModule::OwnFleet->value, SubscriptionModule::Broker->value]);
     $vehicles = app(VehicleService::class);
 
@@ -231,7 +229,6 @@ test('vehicle master requires truck type for own and transporter for market', fu
                 'pan' => 'CCCCC1234C',
                 'pan_status' => 'active',
                 'declaration' => true,
-                'declaration_type' => 'owner',
                 'goods_vehicles_count' => 3,
             ],
         ]],
@@ -244,14 +241,34 @@ test('vehicle master requires truck type for own and transporter for market', fu
         null,
         [
             'registration_number' => 'MH12MKTOK01',
+            'registration_date' => '2024-04-01',
             'ownership' => VehicleOwnership::Market->value,
             'owner_party_id' => $ownerParty->id,
+            'truck_type_id' => $truckType->id,
+            'tyre_layout_id' => $tyreLayout->id,
+            'make' => 'Tata',
+            'chassis_number' => 'CHASSIS-1',
         ],
     );
 
     expect($market->ownership)->toBe(VehicleOwnership::Market)
         ->and($market->owner_party_id)->toBe($ownerParty->id)
-        ->and($market->truck_type_id)->toBeNull();
+        ->and($market->truck_type_id)->toBe($truckType->id)
+        ->and($market->tyre_layout_id)->toBeNull()
+        ->and($market->make)->toBeNull()
+        ->and($market->chassis_number)->toBeNull()
+        ->and($market->registration_date?->toDateString())->toBe('2024-04-01');
+
+    $ownerless = $vehicles->create(
+        $ws['owner'],
+        $ws['company'],
+        null,
+        ['registration_number' => 'MH12MKTNOOWN', 'ownership' => VehicleOwnership::Market->value],
+    );
+
+    expect($ownerless->owner_party_id)->toBeNull()
+        ->and($ownerless->truck_type_id)->toBeNull()
+        ->and($ownerless->primary_driver_party_id)->toBeNull();
 });
 
 test('cross-branch invisible vehicle cannot classify', function () {

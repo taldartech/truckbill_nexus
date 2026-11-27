@@ -161,7 +161,6 @@ function enquiryNfWorkspace(): array
                 'pan' => 'AABCT9999D',
                 'pan_status' => 'active',
                 'declaration' => true,
-                'declaration_type' => 'owner',
                 'goods_vehicles_count' => 2,
             ],
         ]],

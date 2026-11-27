@@ -68,7 +68,6 @@ test('enquiry create options include only active customers visible in the branch
             'pan' => 'AABCT2222B',
             'pan_status' => 'active',
             'declaration' => true,
-            'declaration_type' => 'owner',
             'goods_vehicles_count' => 1,
         ],
     ]], 'tnc');
@@ -140,7 +139,6 @@ test('enquiry store rejects forged non-customer party id', function () {
                 'pan' => 'AABCT3333C',
                 'pan_status' => 'active',
                 'declaration' => true,
-                'declaration_type' => 'owner',
                 'goods_vehicles_count' => 1,
             ],
         ]],

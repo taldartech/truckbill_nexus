@@ -148,7 +148,6 @@ test('broker lr cannot create ownfleet trip', function () {
                 'pan' => 'BRKTR1234A',
                 'pan_status' => 'active',
                 'declaration' => true,
-                'declaration_type' => 'owner',
                 'goods_vehicles_count' => 2,
             ],
         ]],

@@ -1,5 +1,6 @@
-import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Pencil, Power, RotateCcw } from 'lucide-react';
+import { Head, router, usePage } from '@inertiajs/react';
+import { ArrowLeft, Pencil, Power, ReceiptText, RotateCcw } from 'lucide-react';
+import { AppIconAction } from '@/components/app-icon-action';
 import { useState } from 'react';
 import {
     PortalErrorList,
@@ -128,50 +129,49 @@ export default function BillingProfileShow({
             <PageShell
                 title={profile.legal_name}
                 description="Company Billing Profile details and immutable audit trail."
+                badges={
+                    <WorkspaceStatusBadge
+                        status={profile.is_active ? 'active' : 'inactive'}
+                    />
+                }
                 actions={
-                    <div className="flex flex-wrap items-center gap-2">
-                        <WorkspaceStatusBadge
-                            status={profile.is_active ? 'active' : 'inactive'}
+                    <>
+                        <AppIconAction
+                            icon={ArrowLeft}
+                            label="All Profiles"
+                            href={links.index}
+                            size="sm"
                         />
-                        <Button asChild variant="outline" size="sm">
-                            <Link href={links.index}>All Profiles</Link>
-                        </Button>
-                        <Button asChild variant="outline" size="sm">
-                            <Link href={links.invoices}>Linked Invoices</Link>
-                        </Button>
-                        {canManage && links.edit ? (
-                            <Button asChild size="sm">
-                                <Link href={links.edit}>
-                                    <Pencil className="size-4" />
-                                    Edit
-                                </Link>
-                            </Button>
-                        ) : null}
-                        {canManage && lifecycleUrl ? (
-                            <Button
-                                type="button"
-                                size="sm"
-                                variant={
-                                    profile.is_active
-                                        ? 'destructive'
-                                        : 'secondary'
-                                }
-                                onClick={() => setLifecycleOpen(true)}
-                            >
-                                {profile.is_active ? (
-                                    <>
-                                        <Power className="size-4" />
-                                        Deactivate
-                                    </>
-                                ) : (
-                                    <>
-                                        <RotateCcw className="size-4" />
-                                        Reactivate
-                                    </>
-                                )}
-                            </Button>
-                        ) : null}
-                    </div>
+                        <AppIconAction
+                            icon={ReceiptText}
+                            label="Linked Invoices"
+                            href={links.invoices}
+                            variant="info"
+                            size="sm"
+                        />
+                        <AppIconAction
+                            icon={Pencil}
+                            label="Edit profile"
+                            href={links.edit ?? undefined}
+                            variant="warning"
+                            size="sm"
+                            visible={canManage && Boolean(links.edit)}
+                        />
+                        <AppIconAction
+                            icon={profile.is_active ? Power : RotateCcw}
+                            label={
+                                profile.is_active
+                                    ? 'Deactivate profile'
+                                    : 'Reactivate profile'
+                            }
+                            variant={
+                                profile.is_active ? 'destructive' : 'secondary'
+                            }
+                            size="sm"
+                            visible={canManage && Boolean(lifecycleUrl)}
+                            onClick={() => setLifecycleOpen(true)}
+                        />
+                    </>
                 }
             >
                 <PortalFlashBanner message={flash?.success} />

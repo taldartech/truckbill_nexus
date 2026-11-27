@@ -19,7 +19,15 @@ export type ComboboxOption = {
     id: string;
     label: string;
     description?: string | null;
+    /** Extra searchable terms (e.g. a short name) that are not part of the label. */
+    keywords?: string[];
 };
+
+function searchableTexts(option: ComboboxOption): string[] {
+    return [option.label ?? '', ...(option.keywords ?? [])].map((text) =>
+        text.toLowerCase(),
+    );
+}
 
 type AddAction = {
     label: string;
@@ -63,6 +71,7 @@ type PanelPosition = {
     width: number;
     maxHeight: number;
     placement: 'below' | 'above';
+    container: HTMLElement;
 };
 
 const CUSTOM_ID_PREFIX = 'custom:';
@@ -89,22 +98,24 @@ function rankOptions(
         return options;
     }
 
-    return [...options].sort((a, b) => {
-        const score = (label: string | undefined): number => {
-            const value = (label ?? '').toLowerCase();
-            if (value === q) {
-                return 0;
-            }
-            if (value.startsWith(q)) {
-                return 1;
-            }
-            if (value.includes(q)) {
-                return 2;
-            }
-            return 3;
-        };
+    const score = (option: ComboboxOption): number =>
+        Math.min(
+            ...searchableTexts(option).map((value) => {
+                if (value === q) {
+                    return 0;
+                }
+                if (value.startsWith(q)) {
+                    return 1;
+                }
+                if (value.includes(q)) {
+                    return 2;
+                }
+                return 3;
+            }),
+        );
 
-        const delta = score(a.label) - score(b.label);
+    return [...options].sort((a, b) => {
+        const delta = score(a) - score(b);
         if (delta !== 0) {
             return delta;
         }
@@ -122,8 +133,46 @@ function filterOptionsLocally(
     }
 
     return options.filter((option) =>
-        (option.label ?? '').toLowerCase().includes(q),
+        searchableTexts(option).some((value) => value.includes(q)),
     );
+}
+
+/**
+ * Modal dialogs (Radix Dialog/Sheet) trap focus and block outside scrolling, so the
+ * panel must live inside the dialog element for its search input and list to work.
+ */
+function resolvePanelContainer(trigger: HTMLElement): HTMLElement {
+    return trigger.closest<HTMLElement>('[role="dialog"]') ?? document.body;
+}
+
+/** A transformed/filtered ancestor becomes the containing block for fixed children. */
+function containingBlockOffset(container: HTMLElement): {
+    top: number;
+    left: number;
+} {
+    if (container === document.body) {
+        return { top: 0, left: 0 };
+    }
+    const style = window.getComputedStyle(container);
+    const createsContainingBlock =
+        [
+            style.transform,
+            style.translate,
+            style.scale,
+            style.rotate,
+            style.filter,
+            style.backdropFilter,
+            style.perspective,
+        ].some((value) => value !== '' && value !== 'none') ||
+        /paint|layout|strict|content/.test(style.contain) ||
+        /transform|translate|scale|rotate|filter|perspective/.test(
+            style.willChange,
+        );
+    if (!createsContainingBlock) {
+        return { top: 0, left: 0 };
+    }
+    const rect = container.getBoundingClientRect();
+    return { top: rect.top, left: rect.left };
 }
 
 function computePanelPosition(
@@ -133,6 +182,8 @@ function computePanelPosition(
         return null;
     }
 
+    const container = resolvePanelContainer(trigger);
+    const offset = containingBlockOffset(container);
     const rect = trigger.getBoundingClientRect();
     const spaceBelow = window.innerHeight - rect.bottom - VIEWPORT_GAP;
     const spaceAbove = rect.top - VIEWPORT_GAP;
@@ -150,11 +201,12 @@ function computePanelPosition(
             : Math.max(VIEWPORT_GAP, rect.top - 4 - maxHeight);
 
     return {
-        top,
-        left: rect.left,
+        top: top - offset.top,
+        left: rect.left - offset.left,
         width: rect.width,
         maxHeight,
         placement,
+        container,
     };
 }
 
@@ -424,8 +476,23 @@ export function SearchableCombobox({
             }
             setOpen(false);
         };
+        // Window capture runs before an enclosing dialog's Escape handler, so Escape closes only the panel.
+        const handleEscape = (event: globalThis.KeyboardEvent) => {
+            if (event.key !== 'Escape') {
+                return;
+            }
+            event.preventDefault();
+            event.stopPropagation();
+            setOpen(false);
+            setQuery('');
+            triggerRef.current?.focus();
+        };
         document.addEventListener('mousedown', handlePointer);
-        return () => document.removeEventListener('mousedown', handlePointer);
+        window.addEventListener('keydown', handleEscape, true);
+        return () => {
+            document.removeEventListener('mousedown', handlePointer);
+            window.removeEventListener('keydown', handleEscape, true);
+        };
     }, [open]);
 
     const applySelection = useCallback(
@@ -517,20 +584,10 @@ export function SearchableCombobox({
         ) {
             event.preventDefault();
             setOpen(true);
-            return;
-        }
-        if (event.key === 'Escape') {
-            setOpen(false);
         }
     };
 
     const onPanelKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-        if (event.key === 'Escape') {
-            event.preventDefault();
-            setOpen(false);
-            setQuery('');
-            return;
-        }
         if (
             event.key.length === 1 &&
             !event.ctrlKey &&
@@ -694,7 +751,7 @@ export function SearchableCombobox({
                           </p>
                       ) : null}
                   </div>,
-                  document.body,
+                  panelPosition.container,
               )
             : null;
 

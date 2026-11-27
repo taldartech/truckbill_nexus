@@ -792,7 +792,12 @@ final class LorryReceiptService
 
         if ($payeeType === 'owner') {
             $ownerId = $vehicle->owner_party_id;
-            if ($ownerId === null || $ownerId === '' || $ownerId !== $payeePartyId) {
+            if ($ownerId === null || $ownerId === '') {
+                throw ValidationException::withMessages([
+                    'intended_payee_party_id' => 'This market vehicle has no Truck Owner. Select Pay To Agency, or add the Truck Owner on the vehicle master.',
+                ]);
+            }
+            if ($ownerId !== $payeePartyId) {
                 throw ValidationException::withMessages([
                     'intended_payee_party_id' => 'Truck Owner payee must match the vehicle’s registered owner.',
                 ]);

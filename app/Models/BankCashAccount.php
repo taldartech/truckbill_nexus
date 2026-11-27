@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\Presentation\AccountNumberMask;
 use Database\Factories\BankCashAccountFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -73,17 +74,7 @@ class BankCashAccount extends Model
 
     public function maskedAccountNumber(): ?string
     {
-        $number = $this->account_number;
-        if ($number === null || $number === '') {
-            return null;
-        }
-
-        $length = strlen($number);
-        if ($length <= 4) {
-            return str_repeat('*', $length);
-        }
-
-        return str_repeat('*', $length - 4).substr($number, -4);
+        return AccountNumberMask::mask($this->account_number);
     }
 
     /**

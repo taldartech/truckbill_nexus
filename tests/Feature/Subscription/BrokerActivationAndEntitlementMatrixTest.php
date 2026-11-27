@@ -338,9 +338,8 @@ test('broker purchase activates immediately without invoice approval and restore
         'roles' => [[
             'role' => PartyRoleType::Transporter->value,
             'attributes' => [
-                'pan_status' => 'valid',
+                'pan_status' => 'active',
                 'declaration' => true,
-                'declaration_type' => 'owner',
                 'goods_vehicles_count' => 2,
             ],
         ]],

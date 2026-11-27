@@ -16,6 +16,8 @@ export type PartyFieldModel = {
     /** Party-level PAN in business section (transporters use the TDS panel). */
     showPartyPanField: boolean;
     partyPanRequired: boolean;
+    /** Beneficiary bank details for roles the company pays. */
+    showBankDetails: boolean;
 };
 
 export function derivePartyFieldModel(
@@ -52,5 +54,6 @@ export function derivePartyFieldModel(
         showPartyPanField:
             (needsCustomerFamily || needsVendor) && !needsTransporter,
         partyPanRequired: needsTransporter,
+        showBankDetails: needsTransporter || needsDriver || needsVendor,
     };
 }

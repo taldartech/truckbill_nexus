@@ -30,28 +30,26 @@ class TdsReferenceRulesSeeder extends Seeder
     private const RULES = [
         [
             'code' => 'INVALID_PAN',
-            'name' => 'Invalid PAN 20%',
+            'name' => 'Inactive PAN 20%',
             'priority' => 10,
-            'condition_logic' => 'OR',
+            'condition_logic' => 'AND',
             'conditions' => [
-                ['field' => 'pan_status', 'operator' => 'eq', 'value' => 'invalid'],
                 ['field' => 'pan_status', 'operator' => 'eq', 'value' => 'inactive'],
             ],
             'rate_percent' => '20.000',
-            'description' => 'Invalid or inactive PAN attracts 20% TDS.',
+            'description' => 'Inactive (inoperative) PAN attracts 20% TDS.',
         ],
         [
             'code' => 'OWNER_DECLARATION_ZERO',
-            'name' => 'Owner declaration <=10 vehicles',
+            'name' => 'TDS declaration received <=10 vehicles',
             'priority' => 20,
             'condition_logic' => 'AND',
             'conditions' => [
-                ['field' => 'declaration_type', 'operator' => 'eq', 'value' => 'owner'],
                 ['field' => 'declaration_valid', 'operator' => 'truthy', 'value' => true],
                 ['field' => 'goods_vehicle_count', 'operator' => 'lte', 'value' => 10],
             ],
             'rate_percent' => '0.000',
-            'description' => 'Owner declaration with <=10 goods vehicles → 0% TDS.',
+            'description' => 'TDS declaration received with <=10 goods vehicles → 0% TDS.',
         ],
         [
             'code' => 'PAN_INDIVIDUAL_1',

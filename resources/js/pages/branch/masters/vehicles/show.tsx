@@ -1,4 +1,4 @@
-import { Head, Link, router, usePage } from '@inertiajs/react';
+import { Head, Link, usePage } from '@inertiajs/react';
 import { History, RefreshCw, UserMinus, UserPlus } from 'lucide-react';
 import { useState } from 'react';
 import {
@@ -12,6 +12,7 @@ import {
     DocumentDrawer,
     type DocumentDrawerProps,
 } from '@/components/masters/document-drawer';
+import { MasterRecordActions } from '@/components/masters/master-record-actions';
 import {
     VehicleDriverAssignmentModal,
     VehicleDriverRemoveModal,
@@ -25,6 +26,7 @@ import { formatDisplayDate } from '@/lib/dates';
 type VehicleDetail = {
     id: string;
     registration_number: string;
+    registration_date: string | null;
     vehicle_type: string | null;
     make: string | null;
     model: string | null;
@@ -131,6 +133,7 @@ export default function VehicleShow({
 }: Props) {
     const { flash } = usePage<{ flash?: { success?: string | null } }>().props;
     const [docsOpen, setDocsOpen] = useState(false);
+    const isMarket = vehicle.ownership === 'market';
     const [assignModalOpen, setAssignModalOpen] = useState(false);
     const [removeModalOpen, setRemoveModalOpen] = useState(false);
     const today = new Date().toISOString().slice(0, 10);
@@ -156,72 +159,49 @@ export default function VehicleShow({
                         />
                     }
                     actions={
-                        <>
-                            {permissions.can_edit ? (
-                                <Button asChild variant="outline" size="sm">
-                                    <Link href={links.edit}>Edit</Link>
-                                </Button>
-                            ) : null}
-                            {documentDrawer ? (
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => setDocsOpen(true)}
-                                >
-                                    Documents
-                                </Button>
-                            ) : (
-                                <Button asChild variant="outline" size="sm">
-                                    <Link href={links.documents}>
-                                        Documents
-                                    </Link>
-                                </Button>
-                            )}
-                            {permissions.can_delete ? (
-                                <Button
-                                    type="button"
-                                    variant="destructive"
-                                    size="sm"
-                                    onClick={() => {
-                                        const remark = window.prompt(
-                                            'Remark for soft deletion',
-                                        );
-                                        if (!remark) return;
-                                        router.delete(links.destroy, {
-                                            data: { remark },
-                                        });
-                                    }}
-                                >
-                                    Soft delete
-                                </Button>
-                            ) : null}
-                        </>
+                        <MasterRecordActions
+                            noun="vehicle"
+                            editHref={permissions.can_edit ? links.edit : null}
+                            onOpenDocuments={
+                                documentDrawer
+                                    ? () => setDocsOpen(true)
+                                    : undefined
+                            }
+                            documentsHref={links.documents}
+                            destroy={
+                                permissions.can_delete
+                                    ? {
+                                          url: links.destroy,
+                                          description: `Soft-delete ${vehicle.registration_number}. History and linked records are preserved.`,
+                                      }
+                                    : null
+                            }
+                        />
                     }
                 >
                     <FbInfoGrid>
                         <FbInfoItem
-                            label="Vehicle type"
-                            value={humanizeVehicleType(vehicle.vehicle_type)}
-                        />
-                        <FbInfoItem
                             label="Ownership"
                             value={ownershipLabel(vehicle.ownership)}
                         />
+                        {isMarket ? (
+                            <FbInfoItem
+                                label="Truck Owner"
+                                value={vehicle.owner_party_name}
+                            />
+                        ) : null}
                         <FbInfoItem
-                            label="Truck type"
+                            label="Truck Type"
                             value={vehicle.truck_type_name}
                         />
+                        {!isMarket ? (
+                            <FbInfoItem
+                                label="Tyre Layout"
+                                value={vehicle.tyre_layout_name}
+                            />
+                        ) : null}
                         <FbInfoItem
-                            label="Tyre layout"
-                            value={vehicle.tyre_layout_name}
-                        />
-                        <FbInfoItem
-                            label="Vehicle owner"
-                            value={vehicle.owner_party_name}
-                        />
-                        <FbInfoItem
-                            label="Primary driver"
+                            label={isMarket ? 'Driver' : 'Primary Driver'}
                             value={
                                 driverManagement?.active_assignment
                                     ?.driver_name ??
@@ -231,28 +211,51 @@ export default function VehicleShow({
                                     : '—')
                             }
                         />
-                        <FbInfoItem label="Make" value={vehicle.make} />
-                        <FbInfoItem label="Model" value={vehicle.model} />
                         <FbInfoItem
-                            label="Year"
+                            label="Registration Date"
                             value={
-                                vehicle.manufacture_year !== null
-                                    ? String(vehicle.manufacture_year)
+                                vehicle.registration_date
+                                    ? formatDisplayDate(
+                                          vehicle.registration_date,
+                                      )
                                     : '—'
                             }
                         />
-                        <FbInfoItem
-                            label="Capacity"
-                            value={formatCapacity(vehicle.capacity_mt)}
-                        />
-                        <FbInfoItem
-                            label="Chassis"
-                            value={vehicle.chassis_number}
-                        />
-                        <FbInfoItem
-                            label="Engine"
-                            value={vehicle.engine_number}
-                        />
+                        {!isMarket ? (
+                            <>
+                                <FbInfoItem
+                                    label="Vehicle type"
+                                    value={humanizeVehicleType(
+                                        vehicle.vehicle_type,
+                                    )}
+                                />
+                                <FbInfoItem label="Make" value={vehicle.make} />
+                                <FbInfoItem
+                                    label="Model"
+                                    value={vehicle.model}
+                                />
+                                <FbInfoItem
+                                    label="Year"
+                                    value={
+                                        vehicle.manufacture_year !== null
+                                            ? String(vehicle.manufacture_year)
+                                            : '—'
+                                    }
+                                />
+                                <FbInfoItem
+                                    label="Capacity"
+                                    value={formatCapacity(vehicle.capacity_mt)}
+                                />
+                                <FbInfoItem
+                                    label="Chassis"
+                                    value={vehicle.chassis_number}
+                                />
+                                <FbInfoItem
+                                    label="Engine"
+                                    value={vehicle.engine_number}
+                                />
+                            </>
+                        ) : null}
                     </FbInfoGrid>
                 </FbDetailCard>
 

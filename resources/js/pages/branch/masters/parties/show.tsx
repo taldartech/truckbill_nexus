@@ -1,4 +1,4 @@
-import { Head, Link, usePage } from '@inertiajs/react';
+import { Head, usePage } from '@inertiajs/react';
 import { ArrowLeft, FileText, Pencil } from 'lucide-react';
 import { useState } from 'react';
 import { AppIconAction } from '@/components/app-icon-action';
@@ -13,7 +13,6 @@ import {
     type DocumentDrawerProps,
 } from '@/components/masters/document-drawer';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { formatDisplayDate } from '@/lib/dates';
 
 type ProfileItem = { label: string; value: string; kind?: 'date' };
@@ -36,7 +35,7 @@ type Props = {
 
 function ProfileItems({ items }: { items: ProfileItem[] }) {
     return (
-        <FbInfoGrid>
+        <FbInfoGrid relaxed>
             {items.map((item) => (
                 <FbInfoItem
                     key={item.label}
@@ -46,7 +45,7 @@ function ProfileItems({ items }: { items: ProfileItem[] }) {
                             ? formatDisplayDate(item.value)
                             : item.value
                     }
-                    full={item.label === 'Address'}
+                    span2={item.label === 'Address'}
                 />
             ))}
         </FbInfoGrid>
@@ -62,21 +61,15 @@ export default function PartyShow({
 }: Props) {
     const { flash } = usePage<{ flash?: { success?: string | null } }>().props;
     const [docsOpen, setDocsOpen] = useState(false);
-    const basicSection = party.sections.find(
-        (section) => section.key === 'basic',
-    );
-    const otherSections = party.sections.filter(
-        (section) => section.key !== 'basic',
-    );
 
     return (
         <>
             <Head title={party.name} />
-            <FbDetailPage>
+            <FbDetailPage className="space-y-4">
                 {flash?.success ? (
                     <p
                         role="status"
-                        className="mb-3 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm"
+                        className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm"
                     >
                         {flash.success}
                     </p>
@@ -84,40 +77,35 @@ export default function PartyShow({
 
                 <FbDetailCard
                     title={<span data-testid="party-name">{party.name}</span>}
-                    badges={
-                        <>
-                            <span
-                                className="flex flex-wrap gap-1"
-                                aria-label="Roles"
-                            >
-                                {party.roles.map((role) => (
-                                    <Badge key={role} variant="secondary">
-                                        {role}
-                                    </Badge>
-                                ))}
-                            </span>
-                            <Badge variant="outline">Active</Badge>
-                        </>
+                    badges={<Badge variant="outline">Active</Badge>}
+                    meta={
+                        <span
+                            className="flex flex-wrap gap-1"
+                            aria-label="Roles"
+                        >
+                            {party.roles.map((role) => (
+                                <Badge key={role} variant="secondary">
+                                    {role}
+                                </Badge>
+                            ))}
+                        </span>
                     }
                     actions={
                         <>
-                            <Button asChild variant="outline" size="sm">
-                                <Link href={links.index}>
-                                    <ArrowLeft className="size-4" />
-                                    Back
-                                </Link>
-                            </Button>
+                            <AppIconAction
+                                icon={ArrowLeft}
+                                label="Back to parties"
+                                href={links.index}
+                                size="sm"
+                            />
                             {documentDrawer ? (
-                                <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    className="gap-2"
+                                <AppIconAction
+                                    icon={FileText}
+                                    label="Documents"
                                     onClick={() => setDocsOpen(true)}
-                                >
-                                    <FileText className="size-4" />
-                                    Documents
-                                </Button>
+                                    variant="info"
+                                    size="sm"
+                                />
                             ) : (
                                 <AppIconAction
                                     icon={FileText}
@@ -137,13 +125,9 @@ export default function PartyShow({
                             />
                         </>
                     }
-                >
-                    {basicSection ? (
-                        <ProfileItems items={basicSection.items} />
-                    ) : null}
-                </FbDetailCard>
+                />
 
-                {otherSections.map((section) => (
+                {party.sections.map((section) => (
                     <FbDetailCard key={section.key} title={section.title}>
                         <ProfileItems items={section.items} />
                     </FbDetailCard>
@@ -151,7 +135,7 @@ export default function PartyShow({
 
                 {bookBalance ? (
                     <FbDetailCard title="Financial">
-                        <FbInfoGrid>
+                        <FbInfoGrid relaxed>
                             <FbInfoItem
                                 label="Available advance balance"
                                 value={bookBalance.available_balance}
@@ -161,7 +145,7 @@ export default function PartyShow({
                                 value={
                                     <a
                                         href={bookBalance.statement_url}
-                                        className="text-sm font-medium text-[#0f766e] underline"
+                                        className="text-sm text-[#0f766e] underline"
                                     >
                                         View book balance detail
                                     </a>

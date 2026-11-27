@@ -10,10 +10,12 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Str;
 
 /**
  * @property VehicleOwnership|null $ownership
+ * @property Carbon|null $registration_date
  */
 class Vehicle extends Model
 {
@@ -29,6 +31,7 @@ class Vehicle extends Model
         'company_id',
         'branch_id',
         'registration_number',
+        'registration_date',
         'vehicle_type',
         'make',
         'model',
@@ -48,6 +51,7 @@ class Vehicle extends Model
     {
         return [
             'is_active' => 'boolean',
+            'registration_date' => 'date',
             'manufacture_year' => 'integer',
             'capacity_mt' => 'decimal:3',
             'ownership' => VehicleOwnership::class,

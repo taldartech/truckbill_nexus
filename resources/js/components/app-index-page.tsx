@@ -1,4 +1,5 @@
 import type { FormEvent, ReactNode } from 'react';
+import { AppCardHeader } from '@/components/app-card-header';
 import { cn } from '@/lib/utils';
 
 export function AppIndexPage({
@@ -38,16 +39,13 @@ export function AppIndexListCard({
                 className,
             )}
         >
-            <div className="app-index-list-card__header flex flex-wrap items-center justify-between gap-2 bg-[linear-gradient(135deg,#2fb36f_0%,#23965c_100%)] px-4 py-2.5 text-white">
-                <h2 className="text-[0.95rem] font-semibold tracking-normal text-white">
-                    {title}
-                </h2>
-                {toolbar ? (
-                    <div className="app-index-card-toolbar ml-auto flex flex-wrap items-center gap-2">
-                        {toolbar}
-                    </div>
-                ) : null}
-            </div>
+            <AppCardHeader
+                className="app-index-list-card__header items-center bg-[linear-gradient(135deg,#2fb36f_0%,#23965c_100%)] px-4 py-2.5 text-white"
+                title={title}
+                titleClassName="text-[0.95rem] font-semibold tracking-normal text-white"
+                actions={toolbar}
+                actionsClassName="app-index-card-toolbar gap-2"
+            />
             <div className="app-index-list-card__body min-w-0 p-0">
                 {children}
             </div>

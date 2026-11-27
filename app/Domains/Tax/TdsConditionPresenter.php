@@ -10,8 +10,7 @@ final class TdsConditionPresenter
     private const FIELD_LABELS = [
         'pan_status' => 'PAN status',
         'pan_fourth_char' => 'PAN 4th character',
-        'declaration_type' => 'Payee type',
-        'declaration_valid' => 'Declaration',
+        'declaration_valid' => 'TDS declaration received',
         'goods_vehicle_count' => 'Goods vehicle count',
         'entity_type' => 'Entity type',
     ];
@@ -70,16 +69,10 @@ final class TdsConditionPresenter
         $value = $condition['value'] ?? null;
         $label = self::FIELD_LABELS[$field] ?? str_replace('_', ' ', $field);
 
-        if ($field === 'declaration_type') {
-            $payee = is_string($value) ? ucfirst($value) : $this->formatValue($value);
-
-            return 'payee is '.$payee;
-        }
-
         if ($field === 'declaration_valid') {
             $yes = $this->isTruthy($value);
 
-            return $yes ? 'declaration is valid' : 'declaration is not valid';
+            return $yes ? 'TDS declaration is received' : 'TDS declaration is not received';
         }
 
         if ($field === 'pan_status') {

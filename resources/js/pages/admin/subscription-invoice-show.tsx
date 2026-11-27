@@ -1,5 +1,7 @@
-import { Form, Head, Link, useForm, usePage } from '@inertiajs/react';
+import { Form, Head, useForm, usePage } from '@inertiajs/react';
+import { ArrowLeft, Download } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { AppIconAction } from '@/components/app-icon-action';
 import {
     PortalErrorList,
     PortalFlashBanner,
@@ -180,30 +182,33 @@ export default function AdminSubscriptionInvoiceShow({
                         ? `FY ${inv.financial_year} · Invoice Date ${formatDisplayDateSmart(inv.invoice_date ?? inv.issued_at)} · Approved by ${inv.approved_by_name || 'Internal Team'}`
                         : `Payment Date ${formatDisplayDateSmart(approvalDefaults.payment_date)} · Statutory Issuance Deadline ${formatDisplayDateSmart(approvalDefaults.statutory_deadline)}`
                 }
+                badges={
+                    <WorkspaceStatusBadge
+                        status={
+                            document.is_approved
+                                ? inv.status
+                                : 'pending_approval'
+                        }
+                    />
+                }
                 actions={
-                    <div className="flex flex-wrap items-center gap-2">
-                        <WorkspaceStatusBadge
-                            status={
-                                document.is_approved
-                                    ? inv.status
-                                    : 'pending_approval'
-                            }
+                    <>
+                        <AppIconAction
+                            icon={ArrowLeft}
+                            label="Back to Register"
+                            href={links.index}
+                            size="sm"
                         />
-                        <Button asChild variant="outline" size="sm">
-                            <Link href={links.index}>Back to Register</Link>
-                        </Button>
-                        {links.download ? (
-                            <Button asChild size="sm">
-                                <a
-                                    href={links.download}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                >
-                                    Download / Print
-                                </a>
-                            </Button>
-                        ) : null}
-                    </div>
+                        <AppIconAction
+                            icon={Download}
+                            label="Download / Print"
+                            href={links.download ?? undefined}
+                            external
+                            variant="info"
+                            size="sm"
+                            visible={Boolean(links.download)}
+                        />
+                    </>
                 }
             >
                 <PortalFlashBanner message={flash?.success} />

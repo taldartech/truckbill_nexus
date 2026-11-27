@@ -11,6 +11,7 @@ use App\Support\Tenant\TenantContextHolder;
 use Database\Seeders\RbacSeeder;
 use Database\Seeders\TdsReferenceRulesSeeder;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 
 beforeEach(function () {
     TenantContextHolder::clear();
@@ -69,11 +70,10 @@ test('tds rule priority and and/or evaluation', function () {
 
     $rules->create($admin, [
         'code' => 'INVALID_PAN',
-        'name' => 'Invalid PAN 20%',
+        'name' => 'Inactive PAN 20%',
         'priority' => 10,
-        'condition_logic' => 'OR',
+        'condition_logic' => 'AND',
         'conditions' => [
-            ['field' => 'pan_status', 'operator' => 'eq', 'value' => 'invalid'],
             ['field' => 'pan_status', 'operator' => 'eq', 'value' => 'inactive'],
         ],
         'rate_percent' => '20.000',
@@ -81,11 +81,10 @@ test('tds rule priority and and/or evaluation', function () {
 
     $rules->create($admin, [
         'code' => 'OWNER_DECLARATION_ZERO',
-        'name' => 'Owner declaration <=10 vehicles',
+        'name' => 'TDS declaration received <=10 vehicles',
         'priority' => 20,
         'condition_logic' => 'AND',
         'conditions' => [
-            ['field' => 'declaration_type', 'operator' => 'eq', 'value' => 'owner'],
             ['field' => 'declaration_valid', 'operator' => 'truthy', 'value' => true],
             ['field' => 'goods_vehicle_count', 'operator' => 'lte', 'value' => 10],
         ],
@@ -106,12 +105,11 @@ test('tds rule priority and and/or evaluation', function () {
 
     $evaluator = app(TdsRuleEvaluator::class);
 
-    $invalid = $evaluator->evaluate(['pan_status' => 'invalid']);
+    $invalid = $evaluator->evaluate(['pan_status' => 'inactive']);
     expect($invalid['rate_percent'])->toBe('20.000')
         ->and($invalid['snapshot']['code'])->toBe('INVALID_PAN');
 
     $zero = $evaluator->evaluate([
-        'declaration_type' => 'owner',
         'declaration_valid' => true,
         'goods_vehicle_count' => 8,
         'pan_status' => 'active',
@@ -122,10 +120,26 @@ test('tds rule priority and and/or evaluation', function () {
     $one = $evaluator->evaluate([
         'pan_status' => 'active',
         'pan_fourth_char' => 'P',
-        'declaration_type' => 'agency',
     ]);
     expect($one['rate_percent'])->toBe('1.000');
 });
+
+test('tds rules reject declaration type conditions and legacy PAN statuses', function (array $condition, string $message) {
+    $admin = User::factory()->internal()->superAdmin()->create();
+    $this->actingAs($admin);
+
+    expect(fn () => app(TdsRuleService::class)->create($admin, [
+        'code' => 'LEGACY_RULE',
+        'name' => 'Legacy rule',
+        'priority' => 5,
+        'condition_logic' => 'AND',
+        'conditions' => [$condition],
+        'rate_percent' => '1.000',
+    ]))->toThrow(ValidationException::class, $message);
+})->with([
+    'declaration type' => [['field' => 'declaration_type', 'operator' => 'eq', 'value' => 'owner'], 'Unsupported TDS condition field: declaration_type.'],
+    'legacy invalid PAN status' => [['field' => 'pan_status', 'operator' => 'eq', 'value' => 'invalid'], 'PAN status conditions must be Active or Inactive.'],
+]);
 
 test('inactive tds rules are skipped and no-match throws', function () {
     $admin = User::factory()->internal()->superAdmin()->create();
@@ -188,7 +202,7 @@ test('tds admin evaluate endpoint returns matching rule without writing financia
 
     $this->actingAs($admin)
         ->post(route('admin.tds-rules.evaluate'), [
-            'pan_status' => 'invalid',
+            'pan_status' => 'inactive',
         ])
         ->assertRedirect();
 

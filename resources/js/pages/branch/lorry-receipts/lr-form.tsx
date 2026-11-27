@@ -148,6 +148,7 @@ type Props = {
         drivers?: PartyOption[];
         vehicleQuickCreate?: {
             ownershipOptions?: Option[];
+            truckTypesAvailable?: boolean;
             truckTypes: NamedOption[];
             tyreLayouts: NamedOption[];
             drivers: NamedOption[];
@@ -791,6 +792,8 @@ export default function LrForm({
         () =>
             formOptions.vehicleQuickCreate
                 ? {
+                      truckTypesAvailable:
+                          formOptions.vehicleQuickCreate.truckTypesAvailable,
                       truckTypes: formOptions.vehicleQuickCreate.truckTypes,
                       tyreLayouts: formOptions.vehicleQuickCreate.tyreLayouts,
                       drivers: formOptions.vehicleQuickCreate.drivers,

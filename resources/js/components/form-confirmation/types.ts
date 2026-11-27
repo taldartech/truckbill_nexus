@@ -15,6 +15,8 @@ export type ChangeReview = {
     previous: string;
     next: string;
     changeType: 'modified' | 'added' | 'removed';
+    /** Optional section heading; grouped changes render under their section. */
+    group?: string;
 };
 
 export type FormConfirmationMode = 'create' | 'edit' | 'destructive';

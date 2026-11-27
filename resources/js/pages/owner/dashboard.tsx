@@ -54,9 +54,9 @@ export default function OwnerDashboard({
                     { label: 'Companies', href: '/owner/companies' },
                     { label: company.name },
                 ]}
+                badges={<WorkspaceStatusBadge status={company.status} />}
                 actions={
                     <>
-                        <WorkspaceStatusBadge status={company.status} />
                         {links.create_company ? (
                             <Button asChild>
                                 <Link

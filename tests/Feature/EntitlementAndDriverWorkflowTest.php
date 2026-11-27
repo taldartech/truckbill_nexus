@@ -273,7 +273,7 @@ test('broker-only company allows market vehicles only, blocks ownfleet and partl
         company: $ctx['company'],
         branch: null,
         attributes: ['name' => 'Broker Transporter', 'contact_number' => '9811112222', 'state' => 'MH', 'city' => 'Pune', 'pan' => 'ABCDE1234F', 'is_gst_applicable' => false],
-        roles: [['role' => PartyRoleType::Transporter->value, 'attributes' => ['pan' => 'ABCDE1234F', 'pan_status' => 'valid', 'declaration' => true, 'declaration_type' => 'owner', 'goods_vehicles_count' => 2]]],
+        roles: [['role' => PartyRoleType::Transporter->value, 'attributes' => ['pan' => 'ABCDE1234F', 'pan_status' => 'active', 'declaration' => true, 'goods_vehicles_count' => 2]]],
         remark: 'Broker transporter',
     );
     asBranchHttp($ctx['owner'], $ctx['company'], $ctx['branch']);

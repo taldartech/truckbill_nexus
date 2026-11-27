@@ -94,7 +94,7 @@ export default function OwnerUsersShow({
             <OwnerPageHeader
                 title={`${membership.user.name ?? 'User'}${membership.is_owner ? ' · Owner' : ''}`}
                 description={`${membership.user.email ?? ''} · ${company.name}`}
-                actions={<WorkspaceStatusBadge status={membership.status} />}
+                badges={<WorkspaceStatusBadge status={membership.status} />}
             >
                 {flash?.success ? (
                     <p

@@ -11,6 +11,7 @@ import { useCallback, useMemo, useRef, useState } from 'react';
 export type PartyOption = {
     id: string;
     name: string;
+    short_name?: string | null;
     city?: string | null;
     state?: string | null;
     contact_number?: string | null;
@@ -46,7 +47,12 @@ type Props = {
 };
 
 function partyOptionLabel(option: PartyOption): string {
-    const parts = [option.name];
+    const shortName = option.short_name?.trim() ?? '';
+    const parts = [
+        shortName !== '' && shortName !== option.name
+            ? `${option.name} (${shortName})`
+            : option.name,
+    ];
     if (option.city) {
         parts.push(option.city);
     }
@@ -60,6 +66,7 @@ function toComboboxOption(option: PartyOption): ComboboxOption {
     return {
         id: option.id,
         label: partyOptionLabel(option),
+        keywords: option.short_name ? [option.short_name] : undefined,
     };
 }
 

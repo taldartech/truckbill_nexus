@@ -50,7 +50,6 @@ test('party options endpoint returns role-filtered searchable results', function
             'pan' => 'AABCT9999C',
             'pan_status' => 'active',
             'declaration' => true,
-            'declaration_type' => 'owner',
             'goods_vehicles_count' => 1,
         ],
     ]], 'bto');

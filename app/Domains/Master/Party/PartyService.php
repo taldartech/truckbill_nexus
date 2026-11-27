@@ -35,6 +35,29 @@ use Illuminate\Validation\ValidationException;
  */
 final class PartyService
 {
+    /** @var list<string> */
+    private const PARTY_FIELDS = [
+        'name',
+        'short_name',
+        'contact_person',
+        'contact_number',
+        'email',
+        'gstin',
+        'pan',
+        'is_gst_applicable',
+        'state',
+        'state_id',
+        'city',
+        'city_id',
+        'address',
+        'bank_name',
+        'bank_account_holder_name',
+        'bank_account_number',
+        'bank_ifsc',
+        'bank_short_name',
+        'bank_beneficiary_id',
+    ];
+
     use ResolvesAddressGeography;
 
     public function __construct(
@@ -45,6 +68,7 @@ final class PartyService
         private readonly PartyRoleAttributeValidator $roleAttributes = new PartyRoleAttributeValidator,
         private readonly TransporterTdsCalculationService $transporterTds = new TransporterTdsCalculationService,
         private readonly PartyRoleDependencyGuard $roleDependencies = new PartyRoleDependencyGuard,
+        private readonly PartySearch $search = new PartySearch,
     ) {}
 
     /**
@@ -79,28 +103,14 @@ final class PartyService
         return $this->auditedTransaction->run(function () use ($actor, $company, $branch, $attributes, $normalizedRoles): Party {
             return $this->withTenant($actor, $company, $branch, function () use ($company, $branch, $attributes, $normalizedRoles): Party {
                 $party = Party::query()->create([
+                    ...$this->normalizeFieldValues(collect($attributes)->only(self::PARTY_FIELDS)->all()),
                     'id' => (string) Str::uuid(),
                     'company_id' => $company->id,
                     'branch_id' => $branch?->id,
-                    'name' => $attributes['name'],
-                    'contact_person' => $attributes['contact_person'] ?? null,
-                    'contact_number' => $attributes['contact_number'] ?? null,
-                    'email' => $attributes['email'] ?? null,
-                    'gstin' => isset($attributes['gstin']) && filled($attributes['gstin'])
-                        ? strtoupper(trim((string) $attributes['gstin']))
-                        : null,
-                    'pan' => isset($attributes['pan']) && filled($attributes['pan'])
-                        ? strtoupper(trim((string) $attributes['pan']))
-                        : null,
                     'is_gst_applicable' => $this->resolveGstApplicableOnCreate(
                         $attributes,
                         array_column($normalizedRoles, 'role'),
                     ),
-                    'state' => $attributes['state'] ?? null,
-                    'state_id' => $attributes['state_id'] ?? null,
-                    'city' => $attributes['city'] ?? null,
-                    'city_id' => $attributes['city_id'] ?? null,
-                    'address' => $attributes['address'] ?? null,
                 ]);
 
                 foreach ($normalizedRoles as $rolePayload) {
@@ -147,33 +157,10 @@ final class PartyService
 
         $attributes = $this->withResolvedGeography($attributes);
 
-        $mergedPartyAttributes = array_merge($party->only([
-            'name',
-            'contact_person',
-            'contact_number',
-            'email',
-            'gstin',
-            'pan',
-            'is_gst_applicable',
-            'state',
-            'state_id',
-            'city',
-            'city_id',
-            'address',
-        ]), collect($attributes)->only([
-            'name',
-            'contact_person',
-            'contact_number',
-            'email',
-            'gstin',
-            'pan',
-            'is_gst_applicable',
-            'state',
-            'state_id',
-            'city',
-            'city_id',
-            'address',
-        ])->all());
+        $mergedPartyAttributes = array_merge(
+            $party->only(self::PARTY_FIELDS),
+            collect($attributes)->only(self::PARTY_FIELDS)->all(),
+        );
 
         $normalizedRoles = null;
         if ($roles !== null) {
@@ -195,27 +182,7 @@ final class PartyService
         return $this->auditedTransaction->run(function () use ($actor, $party, $company, $branch, $attributes, $remark, $normalizedRoles): Party {
             return $this->withTenant($actor, $company, $branch, function () use ($party, $company, $attributes, $remark, $normalizedRoles): Party {
                 $before = $party->load('roles')->toArray();
-                $fill = collect($attributes)->only([
-                    'name',
-                    'contact_person',
-                    'contact_number',
-                    'email',
-                    'gstin',
-                    'pan',
-                    'is_gst_applicable',
-                    'state',
-                    'state_id',
-                    'city',
-                    'city_id',
-                    'address',
-                ])->all();
-
-                if (isset($fill['gstin']) && filled($fill['gstin'])) {
-                    $fill['gstin'] = strtoupper(trim((string) $fill['gstin']));
-                }
-                if (isset($fill['pan']) && filled($fill['pan'])) {
-                    $fill['pan'] = strtoupper(trim((string) $fill['pan']));
-                }
+                $fill = $this->normalizeFieldValues(collect($attributes)->only(self::PARTY_FIELDS)->all());
 
                 $party->fill($fill);
                 $party->save();
@@ -283,19 +250,9 @@ final class PartyService
         $builder = Party::query()
             ->when($deleted, fn (Builder $q) => $q->onlyTrashed())
             ->visibleInBranch($company->id, $branch->id)
-            ->with(['roles' => fn ($q) => $q->whereNull('deactivated_at')])
-            ->orderBy('name');
+            ->with(['roles' => fn ($q) => $q->whereNull('deactivated_at')]);
 
-        if ($query !== null && trim($query) !== '') {
-            CaseInsensitiveLike::whereAnyContains($builder, [
-                'name',
-                'contact_person',
-                'contact_number',
-                'email',
-                'pan',
-                'gstin',
-            ], $query);
-        }
+        $this->search->apply($builder, $query ?? '');
 
         if ($role !== null && $role !== '') {
             $builder->whereHas('roles', function ($q) use ($role): void {
@@ -485,6 +442,28 @@ final class PartyService
         $attributes['applicable_tds_rate'] = $result->applicableRate;
 
         return $attributes;
+    }
+
+    /**
+     * Trim submitted Party fields and upper-case tax and bank identifiers; blanks become null.
+     *
+     * @param  array<string, mixed>  $fields
+     * @return array<string, mixed>
+     */
+    private function normalizeFieldValues(array $fields): array
+    {
+        foreach ($fields as $key => $value) {
+            if (! is_string($value)) {
+                continue;
+            }
+            $value = trim($value);
+            if (in_array($key, ['gstin', 'pan', 'bank_ifsc'], true)) {
+                $value = strtoupper($value);
+            }
+            $fields[$key] = $value === '' ? null : $value;
+        }
+
+        return $fields;
     }
 
     /**

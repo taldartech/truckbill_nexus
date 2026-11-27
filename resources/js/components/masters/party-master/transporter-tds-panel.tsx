@@ -11,7 +11,6 @@ type TdsPreviewRequest = {
     pan: string;
     pan_status: string;
     declaration: boolean;
-    declaration_type: string;
     goods_vehicles_count: string;
 };
 
@@ -93,14 +92,15 @@ export function TransporterTdsPanel({
         cancel,
     } = useHttp<TdsPreviewRequest, TdsPreviewResponse>({
         pan: '',
-        pan_status: 'active',
+        pan_status: '',
         declaration: false,
-        declaration_type: 'owner',
         goods_vehicles_count: '',
     });
+    const previewReady =
+        transporter.pan_status !== '' && transporter.declaration !== '';
 
     useEffect(() => {
-        if (!previewUrl) {
+        if (!previewUrl || !previewReady) {
             return undefined;
         }
 
@@ -108,8 +108,7 @@ export function TransporterTdsPanel({
             setData({
                 pan,
                 pan_status: transporter.pan_status,
-                declaration: transporter.declaration,
-                declaration_type: transporter.declaration_type,
+                declaration: transporter.declaration === '1',
                 goods_vehicles_count: transporter.goods_vehicles_count,
             });
             void post(previewUrl, {
@@ -163,9 +162,9 @@ export function TransporterTdsPanel({
         pan,
         transporter.pan_status,
         transporter.declaration,
-        transporter.declaration_type,
         transporter.goods_vehicles_count,
         previewUrl,
+        previewReady,
         setData,
         post,
         cancel,
@@ -179,32 +178,6 @@ export function TransporterTdsPanel({
             {nativeForm ? (
                 <input type="hidden" name={attrName('pan')} value={pan} />
             ) : null}
-            <div className="space-y-2">
-                <Label htmlFor={`${idPrefix}declaration_type`}>
-                    Declaration type (Owner / Agency)
-                </Label>
-                <select
-                    id={`${idPrefix}declaration_type`}
-                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
-                    value={transporter.declaration_type}
-                    onChange={(event) =>
-                        setTransporter((current) => ({
-                            ...current,
-                            declaration_type: event.target.value,
-                        }))
-                    }
-                >
-                    <option value="owner">Owner</option>
-                    <option value="agency">Agency</option>
-                </select>
-                {nativeForm ? (
-                    <input
-                        type="hidden"
-                        name={attrName('declaration_type')}
-                        value={transporter.declaration_type}
-                    />
-                ) : null}
-            </div>
             <div className="space-y-2">
                 <Label htmlFor={`${idPrefix}transporter_pan`} required>
                     PAN
@@ -225,7 +198,7 @@ export function TransporterTdsPanel({
             </div>
             <div className="space-y-2">
                 <Label htmlFor={`${idPrefix}pan_status`} required>
-                    PAN status
+                    PAN Status
                 </Label>
                 <select
                     id={`${idPrefix}pan_status`}
@@ -235,14 +208,14 @@ export function TransporterTdsPanel({
                     onChange={(event) =>
                         setTransporter((current) => ({
                             ...current,
-                            pan_status: event.target.value,
+                            pan_status: event.target
+                                .value as TransporterAttrs['pan_status'],
                         }))
                     }
                 >
+                    <option value="">Select PAN status</option>
                     <option value="active">Active</option>
                     <option value="inactive">Inactive</option>
-                    <option value="invalid">Invalid</option>
-                    <option value="valid">Valid</option>
                 </select>
                 {nativeForm ? (
                     <input
@@ -277,34 +250,36 @@ export function TransporterTdsPanel({
                     />
                 ) : null}
             </div>
-            <div className="flex items-center gap-2 sm:col-span-2">
-                <input
+            <div className="space-y-2">
+                <Label htmlFor={`${idPrefix}declaration`} required>
+                    TDS Declaration Received
+                </Label>
+                <select
                     id={`${idPrefix}declaration`}
-                    type="checkbox"
-                    checked={transporter.declaration}
+                    required
+                    className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    value={transporter.declaration}
                     onChange={(event) =>
                         setTransporter((current) => ({
                             ...current,
-                            declaration: event.target.checked,
+                            declaration: event.target
+                                .value as TransporterAttrs['declaration'],
                         }))
                     }
-                />
-                <Label
-                    htmlFor={`${idPrefix}declaration`}
-                    required
-                    className="font-normal"
                 >
-                    Declaration affirmed
-                </Label>
-                {nativeForm ? (
+                    <option value="">Select Yes or No</option>
+                    <option value="1">Yes</option>
+                    <option value="0">No</option>
+                </select>
+                {nativeForm && transporter.declaration !== '' ? (
                     <input
                         type="hidden"
                         name={attrName('declaration')}
-                        value={transporter.declaration ? '1' : '0'}
+                        value={transporter.declaration}
                     />
                 ) : null}
+                <InputError message={errors['roles.attributes.declaration']} />
             </div>
-            <InputError message={errors['roles.attributes.declaration']} />
 
             {previewUrl ? (
                 <div
@@ -315,12 +290,14 @@ export function TransporterTdsPanel({
                     <p className="text-xs font-medium tracking-wide text-info uppercase">
                         Live TDS preview
                     </p>
-                    {previewLoading ? (
+                    {previewReady && previewLoading ? (
                         <p className="text-sm text-muted-foreground">
                             Calculating applicable TDS…
                         </p>
                     ) : null}
-                    {!previewLoading && previewPercent !== null ? (
+                    {previewReady &&
+                    !previewLoading &&
+                    previewPercent !== null ? (
                         <p className="text-sm font-semibold text-foreground">
                             Applicable TDS{' '}
                             <span className="text-primary">
@@ -328,21 +305,28 @@ export function TransporterTdsPanel({
                             </span>
                         </p>
                     ) : null}
-                    {!previewLoading && previewExplanation ? (
+                    {previewReady && !previewLoading && previewExplanation ? (
                         <p className="text-sm text-muted-foreground">
                             {previewExplanation}
                         </p>
                     ) : null}
-                    {!previewLoading && previewMessage ? (
+                    {previewReady && !previewLoading && previewMessage ? (
                         <p className="text-sm text-muted-foreground">
                             {previewMessage}
                         </p>
                     ) : null}
-                    {!previewLoading &&
+                    {!previewReady ? (
+                        <p className="text-sm text-muted-foreground">
+                            Select PAN Status and TDS Declaration Received to
+                            preview the applicable TDS.
+                        </p>
+                    ) : null}
+                    {previewReady &&
+                    !previewLoading &&
                     previewPercent === null &&
                     !previewMessage ? (
                         <p className="text-sm text-muted-foreground">
-                            Update declaration fields to refresh the preview.
+                            Update the TDS inputs to refresh the preview.
                         </p>
                     ) : null}
                 </div>
@@ -442,7 +426,7 @@ export function TransporterTdsPanel({
         return (
             <FormSection
                 title="Transporter TDS"
-                description="Declaration and PAN details required for hire settlement."
+                description="PAN and TDS declaration details required for hire settlement."
                 className="border-info/20"
                 data-testid="transporter-tds-panel"
             >
@@ -454,7 +438,7 @@ export function TransporterTdsPanel({
     return (
         <AppFormSection
             title="Transporter TDS"
-            description="Declaration inputs drive the live applicable TDS preview."
+            description="PAN status, declaration and vehicle count drive the live applicable TDS preview."
             className="border-info/20"
         >
             <div data-testid="transporter-tds-panel">{body}</div>

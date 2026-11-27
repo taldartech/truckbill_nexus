@@ -1,9 +1,10 @@
 import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
-import type { FieldReview } from '@/components/form-confirmation/types';
 import { PartyMasterFormFields } from '@/components/masters/party-master/party-master-form-fields';
+import { buildPartyCreateReview } from '@/components/masters/party-master/party-master-review';
 import { derivePartyFieldModel } from '@/components/masters/party-master/party-role-field-model';
 import {
     buildPartyStorePayload,
+    EMPTY_PARTY_BASIC,
     initialDriver,
     initialTransporter,
     roleIndexMap,
@@ -54,17 +55,6 @@ const ROLE_TITLES: Record<QuickCreatePartyRole, string> = {
     general_vendor: 'General Vendor',
 };
 
-const EMPTY_BASIC: PartyBasicValues = {
-    name: '',
-    contact_person: '',
-    contact_number: '',
-    email: '',
-    address: '',
-    gstin: '',
-    pan: '',
-    is_gst_applicable: '',
-};
-
 function normalizeErrors(
     errors: Record<string, string[] | string> | undefined,
 ): Record<string, string> {
@@ -103,7 +93,7 @@ export function QuickCreatePartySheet({
     );
     const fieldModel = derivePartyFieldModel(selectedRoles);
 
-    const [basic, setBasic] = useState<PartyBasicValues>(EMPTY_BASIC);
+    const [basic, setBasic] = useState<PartyBasicValues>(EMPTY_PARTY_BASIC);
     const [transporter, setTransporter] = useState<TransporterAttrs>(() =>
         initialTransporter(undefined),
     );
@@ -125,49 +115,23 @@ export function QuickCreatePartySheet({
         [role, title],
     );
 
-    const reviewFields = useMemo<FieldReview[]>(() => {
-        const fields: FieldReview[] = [
-            { label: 'Name', value: basic.name },
-            { label: 'Contact number', value: basic.contact_number },
-            { label: 'State', value: state },
-            { label: 'City', value: city },
-            { label: 'Role', value: title },
-        ];
-        if (basic.contact_person) {
-            fields.push({
-                label: 'Contact person',
-                value: basic.contact_person,
-            });
-        }
-        if (basic.email) {
-            fields.push({ label: 'Email', value: basic.email });
-        }
-        if (fieldModel.showGstBusinessTax && basic.gstin) {
-            fields.push({ label: 'GSTIN', value: basic.gstin });
-        }
-        if (pan) {
-            fields.push({ label: 'PAN', value: pan });
-        }
-        if (fieldModel.needsTransporter) {
-            fields.push({
-                label: 'Declaration',
-                value: transporter.declaration ? 'Yes' : 'No',
-            });
-        }
-        return fields;
-    }, [
-        basic,
-        state,
-        city,
-        title,
-        fieldModel.showGstBusinessTax,
-        fieldModel.needsTransporter,
-        pan,
-        transporter.declaration,
-    ]);
+    const reviewSections = useMemo(
+        () =>
+            buildPartyCreateReview({
+                selectedRoles,
+                roleLabel: () => title,
+                basic,
+                state,
+                city,
+                pan,
+                transporter,
+                driver,
+            }),
+        [selectedRoles, title, basic, state, city, pan, transporter, driver],
+    );
 
     const reset = () => {
-        setBasic(EMPTY_BASIC);
+        setBasic(EMPTY_PARTY_BASIC);
         setTransporter(initialTransporter(undefined));
         setDriver(initialDriver(undefined));
         setPan('');
@@ -259,6 +223,7 @@ export function QuickCreatePartySheet({
             onCreated({
                 id: created.id,
                 name: created.name,
+                short_name: created.short_name ?? null,
                 city: created.city ?? null,
                 state: created.state ?? null,
                 contact_number: created.contact_number ?? null,
@@ -359,7 +324,7 @@ export function QuickCreatePartySheet({
                 title={`Confirm create ${title}`}
                 description="Review the new master before saving. The Bilty form stays open."
                 mode="create"
-                fields={reviewFields}
+                sections={reviewSections}
                 processing={processing}
                 onConfirm={() => {
                     void submit();

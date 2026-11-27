@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Domains\Tax\Enums\PanStatus;
 use App\Domains\Tax\Exceptions\TaxDomainException;
 use App\Domains\Tax\Exceptions\TdsNoMatchException;
 use App\Domains\Tax\TdsConditionPresenter;
@@ -14,6 +15,7 @@ use App\Support\Database\CaseInsensitiveLike;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -70,14 +72,7 @@ class TdsRuleController extends Controller
             ])->values()->all(),
             'store_url' => route('admin.tds-rules.store'),
             'evaluate_url' => route('admin.tds-rules.evaluate'),
-            'condition_fields' => [
-                'pan_status',
-                'declaration_type',
-                'declaration_valid',
-                'goods_vehicle_count',
-                'pan_fourth_char',
-                'entity_type',
-            ],
+            'condition_fields' => TdsRuleService::CONDITION_FIELDS,
             'default_priority' => $maxPriority > 0 ? $maxPriority + 10 : 100,
             'preview_result' => $request->session()->get('tds_preview'),
         ]);
@@ -199,8 +194,7 @@ class TdsRuleController extends Controller
         $this->assertPlatformOperator($request);
 
         $validated = $request->validate([
-            'pan_status' => ['nullable', 'string', 'max:32'],
-            'declaration_type' => ['nullable', 'string', 'max:32'],
+            'pan_status' => ['nullable', Rule::enum(PanStatus::class)],
             'declaration_valid' => ['nullable', 'string', 'in:yes,no,'],
             'goods_vehicle_count' => ['nullable', 'integer', 'min:0', 'max:100000'],
             'pan_fourth_char' => ['nullable', 'string', 'max:1'],
@@ -210,9 +204,6 @@ class TdsRuleController extends Controller
         $context = [];
         if (filled($validated['pan_status'] ?? null)) {
             $context['pan_status'] = strtolower((string) $validated['pan_status']);
-        }
-        if (filled($validated['declaration_type'] ?? null)) {
-            $context['declaration_type'] = strtolower((string) $validated['declaration_type']);
         }
         if (($validated['declaration_valid'] ?? '') === 'yes') {
             $context['declaration_valid'] = true;

@@ -8,10 +8,12 @@ import { StateCityFields } from '@/components/geography/state-city-fields';
 import InputError from '@/components/input-error';
 import { partyRoleDisplayLabel } from '@/components/masters/party-master/party-role-labels';
 import { derivePartyFieldModel } from '@/components/masters/party-master/party-role-field-model';
-import type {
-    DriverAttrs,
-    PartyBasicValues,
-    TransporterAttrs,
+import {
+    nameChangePatch,
+    PARTY_BANK_FIELDS,
+    type DriverAttrs,
+    type PartyBasicValues,
+    type TransporterAttrs,
 } from '@/components/masters/party-master/party-master-types';
 import { TransporterTdsPanel } from '@/components/masters/party-master/transporter-tds-panel';
 import { Input } from '@/components/ui/input';
@@ -52,6 +54,8 @@ export type PartyMasterFormFieldsProps = {
     tdsPreviewUrl?: string;
     /** Existing party GST flag for edit mode display only. */
     partyGstApplicable?: boolean | null;
+    /** Stored account number (masked) shown as a hint on edit. */
+    maskedAccountNumber?: string | null;
 };
 
 function roleHiddenInput(
@@ -99,6 +103,7 @@ export function PartyMasterFormFields({
     setDriver,
     tdsPreviewUrl,
     partyGstApplicable,
+    maskedAccountNumber,
 }: PartyMasterFormFieldsProps) {
     const model = derivePartyFieldModel(selectedRoles);
     const sectionWrapper =
@@ -226,21 +231,52 @@ export function PartyMasterFormFields({
                     ? 'Name and mobile used for dispatch.'
                     : 'Legal or trading identity and reachable contact.',
                 <div className="space-y-4">
-                    <div className="space-y-2">
-                        <Label htmlFor={`${idPrefix}name`} required>
-                            Name
-                        </Label>
-                        <Input
-                            id={`${idPrefix}name`}
-                            name={nativeForm ? 'name' : undefined}
-                            required
-                            value={basic.name}
-                            onChange={(event) =>
-                                onBasicChange({ name: event.target.value })
-                            }
-                        />
-                        <InputError message={errors.name} />
-                    </div>
+                    <AppFormGrid cols={2}>
+                        <div className="space-y-2">
+                            <Label htmlFor={`${idPrefix}name`} required>
+                                Party Name
+                            </Label>
+                            <Input
+                                id={`${idPrefix}name`}
+                                name={nativeForm ? 'name' : undefined}
+                                required
+                                value={basic.name}
+                                onChange={(event) =>
+                                    onBasicChange(
+                                        nameChangePatch(
+                                            basic,
+                                            event.target.value,
+                                        ),
+                                    )
+                                }
+                            />
+                            <InputError message={errors.name} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor={`${idPrefix}short_name`}>
+                                Party Short Name
+                            </Label>
+                            <Input
+                                id={`${idPrefix}short_name`}
+                                name={nativeForm ? 'short_name' : undefined}
+                                value={basic.short_name}
+                                aria-describedby={`${idPrefix}short_name-hint`}
+                                onChange={(event) =>
+                                    onBasicChange({
+                                        short_name: event.target.value,
+                                    })
+                                }
+                            />
+                            <p
+                                id={`${idPrefix}short_name-hint`}
+                                className="text-xs text-muted-foreground"
+                            >
+                                Follows the Party Name until you change it. Used
+                                for search; documents keep the full name.
+                            </p>
+                            <InputError message={errors.short_name} />
+                        </div>
+                    </AppFormGrid>
                     <AppFormGrid cols={3}>
                         {model.showBusinessContact ? (
                             <div className="space-y-2">
@@ -466,13 +502,6 @@ export function PartyMasterFormFields({
                                               'Monthly payment base',
                                               'text',
                                           ],
-                                          ['bank_name', 'Bank name', 'text'],
-                                          [
-                                              'bank_account_number',
-                                              'Bank account number',
-                                              'text',
-                                          ],
-                                          ['ifsc', 'IFSC', 'text'],
                                       ] as const
                                   ).map(([key, label, type]) => (
                                       <div key={key} className="space-y-2">
@@ -599,83 +628,55 @@ export function PartyMasterFormFields({
                         nativeForm={nativeForm}
                         variant={variant}
                     />
-                    <AppFormSection
-                        title="Transporter settlement"
-                        description="Payout identifiers for broker hire settlement."
-                    >
-                        <AppFormGrid cols={2}>
-                            <div className="space-y-2">
-                                <Label htmlFor={`${idPrefix}short_name`}>
-                                    Short name
-                                </Label>
-                                <Input
-                                    id={`${idPrefix}short_name`}
-                                    value={transporter.short_name}
-                                    onChange={(event) =>
-                                        setTransporter((current) => ({
-                                            ...current,
-                                            short_name: event.target.value,
-                                        }))
-                                    }
-                                />
-                                {nativeForm && transporter.short_name !== '' ? (
-                                    <input
-                                        type="hidden"
-                                        name={`roles[${roleIndex.transporter}][attributes][short_name]`}
-                                        value={transporter.short_name}
-                                    />
-                                ) : null}
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor={`${idPrefix}beneficiary_id`}>
-                                    Beneficiary ID
-                                </Label>
-                                <Input
-                                    id={`${idPrefix}beneficiary_id`}
-                                    value={transporter.beneficiary_id}
-                                    onChange={(event) =>
-                                        setTransporter((current) => ({
-                                            ...current,
-                                            beneficiary_id: event.target.value,
-                                        }))
-                                    }
-                                />
-                                {nativeForm &&
-                                transporter.beneficiary_id !== '' ? (
-                                    <input
-                                        type="hidden"
-                                        name={`roles[${roleIndex.transporter}][attributes][beneficiary_id]`}
-                                        value={transporter.beneficiary_id}
-                                    />
-                                ) : null}
-                            </div>
-                            <div className="space-y-2 sm:col-span-2">
-                                <Label htmlFor={`${idPrefix}bank_account`}>
-                                    Bank account
-                                </Label>
-                                <Input
-                                    id={`${idPrefix}bank_account`}
-                                    value={transporter.bank_account}
-                                    onChange={(event) =>
-                                        setTransporter((current) => ({
-                                            ...current,
-                                            bank_account: event.target.value,
-                                        }))
-                                    }
-                                />
-                                {nativeForm &&
-                                transporter.bank_account !== '' ? (
-                                    <input
-                                        type="hidden"
-                                        name={`roles[${roleIndex.transporter}][attributes][bank_account]`}
-                                        value={transporter.bank_account}
-                                    />
-                                ) : null}
-                            </div>
-                        </AppFormGrid>
-                    </AppFormSection>
                 </AppFormCard>
             ) : null}
+
+            {model.showBankDetails
+                ? sectionWrapper(
+                      'Bank Details',
+                      "The Party's beneficiary account for payouts and settlements. Optional.",
+                      <AppFormGrid cols={3}>
+                          {PARTY_BANK_FIELDS.map(([key, label]) => (
+                              <div key={key} className="space-y-2">
+                                  <Label htmlFor={`${idPrefix}${key}`}>
+                                      {label}
+                                  </Label>
+                                  <Input
+                                      id={`${idPrefix}${key}`}
+                                      name={nativeForm ? key : undefined}
+                                      value={basic[key]}
+                                      autoComplete="off"
+                                      inputMode={
+                                          key === 'bank_account_number'
+                                              ? 'numeric'
+                                              : undefined
+                                      }
+                                      placeholder={
+                                          key === 'bank_account_number' &&
+                                          maskedAccountNumber
+                                              ? `${maskedAccountNumber} (leave blank to keep)`
+                                              : undefined
+                                      }
+                                      className={
+                                          key === 'bank_ifsc'
+                                              ? 'uppercase'
+                                              : undefined
+                                      }
+                                      onChange={(event) =>
+                                          onBasicChange({
+                                              [key]:
+                                                  key === 'bank_ifsc'
+                                                      ? event.target.value.toUpperCase()
+                                                      : event.target.value,
+                                          })
+                                      }
+                                  />
+                                  <InputError message={errors[key]} />
+                              </div>
+                          ))}
+                      </AppFormGrid>,
+                  )
+                : null}
         </div>
     );
 }
