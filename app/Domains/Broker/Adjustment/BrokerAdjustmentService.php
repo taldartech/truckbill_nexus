@@ -69,6 +69,9 @@ final class BrokerAdjustmentService
             ->where('lorry_hire_id', $hire->id)
             ->where('type', $type)
             ->whereNull('deleted_at')
+            ->orderByDesc('updated_at')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
             ->first();
     }
 
