@@ -3,7 +3,7 @@
 **Assignment:** Legacy test case execution & functional parity certification  
 **Initial HEAD (assignment):** `3d87e815ce371a6cabffacdf8dded559933b5e6f`  
 **Prior certification HEAD:** `a61a308` (adjustment migration batch)  
-**Register updated HEAD:** _(see git HEAD after certification commit)_  
+**Register updated HEAD:** `7addde8` (module batches + scenario sync); docs pass follows in next commit  
 **Scenario catalog:** `docs/engineering/LEGACY_SCENARIO_CATALOG.json` (**1,490** scenarios)  
 **Scenario outcomes (explicit):** `docs/engineering/LEGACY_SCENARIO_EXECUTION_REGISTER.json` → sync via `php scripts/sync-legacy-scenario-execution.php`  
 **Batch runner log:** `docs/engineering/LEGACY_CERTIFICATION_EXECUTION.json`  
@@ -59,15 +59,15 @@
 
 ### Module Nexus batches (MySQL `nexus_test`, 2026-11-28)
 
-| Stage | Nexus tests | Result | Runner |
-| ----- | ----------: | ------ | ------ |
-| 1 Admin / Owner | 139 | **139 PASS** | `run-legacy-certification-batch.php 1-admin-owner` |
-| 2 Masters | 76 | **76 PASS** | `2-masters` |
-| 3 Broker | 155 | **155 PASS** | `3-broker` |
-| 4 OwnFleet | 59 | **59 PASS** | `4-ownfleet` |
-| 5 Partload | 9 | **9 PASS** | `5-partload` (PO-authorized; not blanket Phase 7 blocked) |
-| 6 Accounting | 25 | **25 PASS** | `6-accounting` |
-| **Total** | **463** | **463 PASS** | Focused batches only — not full Nexus suite |
+| Stage           | Nexus tests | Result       | Runner                                                    |
+| --------------- | ----------: | ------------ | --------------------------------------------------------- |
+| 1 Admin / Owner |         139 | **139 PASS** | `run-legacy-certification-batch.php 1-admin-owner`        |
+| 2 Masters       |          76 | **76 PASS**  | `2-masters`                                               |
+| 3 Broker        |         155 | **155 PASS** | `3-broker`                                                |
+| 4 OwnFleet      |          59 | **59 PASS**  | `4-ownfleet`                                              |
+| 5 Partload      |           9 | **9 PASS**   | `5-partload` (PO-authorized; not blanket Phase 7 blocked) |
+| 6 Accounting    |          25 | **25 PASS**  | `6-accounting`                                            |
+| **Total**       |     **463** | **463 PASS** | Focused batches only — not full Nexus suite               |
 
 **Defects fixed this batch:** invalid test vehicle registrations (`tests/Support/ValidVehicleRegistration.php`); enquiry party selector fields; broker entitlement matrix plate; **Lorry Hire edit + unloading weight** requires delivered LR before fixed-adjustment sync (`LorryHireEditTest`).
 
@@ -101,14 +101,14 @@
 
 ## Module certification status (honest)
 
-| Stage           | Legacy scenarios (catalog) | Nexus batch tests | Scenario-level PASS | Module status |
-| --------------- | -------------------------: | ----------------: | ------------------: | ------------- |
+| Stage           | Legacy scenarios (catalog) | Nexus batch tests | Scenario-level PASS | Module status                                                       |
+| --------------- | -------------------------: | ----------------: | ------------------: | ------------------------------------------------------------------- |
 | 1 Admin / Owner |                        224 |               139 |                   0 | **IN PROGRESS** — batch PASS; CRM scenarios not individually closed |
-| 2 Masters       |                        ~250 |                76 |                   0 | **IN PROGRESS** |
-| 3 Broker        |                        ~500 |               155 |                **8** | **IN PROGRESS** — financial/voucher/LR calc seeds certified |
-| 4 OwnFleet      |                        ~613 |                59 |                   0 | **IN PROGRESS** |
-| 5 Partload      |                        233 |                 9 |                   0 | **IN PROGRESS** |
-| 6 Accounting    |                        ~150 |                25 |                   0 | **IN PROGRESS** |
+| 2 Masters       |                       ~250 |                76 |                   0 | **IN PROGRESS**                                                     |
+| 3 Broker        |                       ~500 |               155 |               **8** | **IN PROGRESS** — financial/voucher/LR calc seeds certified         |
+| 4 OwnFleet      |                       ~613 |                59 |                   0 | **IN PROGRESS**                                                     |
+| 5 Partload      |                        233 |                 9 |                   0 | **IN PROGRESS**                                                     |
+| 6 Accounting    |                       ~150 |                25 |                   0 | **IN PROGRESS**                                                     |
 
 **Overall assignment status:** **IN PROGRESS.**  
 **Nexus adapted tests executed:** **463 PASS** (module batches).  
@@ -118,15 +118,15 @@
 
 ## Consolidated result counts (scenario register)
 
-| Status           | Count |
-| ---------------- | ----: |
-| PASS             | 8 |
-| FAIL             | 0 |
-| FIXED AND PASSED | 1 (LorryHireEdit unloading + delivery gate) |
-| BLOCKED          | Browser replay, PostgreSQL local auth |
-| SUPERSEDED       | See NX-01…NX-08 |
+| Status           |                                                               Count |
+| ---------------- | ------------------------------------------------------------------: |
+| PASS             |                                                                   8 |
+| FAIL             |                                                                   0 |
+| FIXED AND PASSED |                         1 (LorryHireEdit unloading + delivery gate) |
+| BLOCKED          |                               Browser replay, PostgreSQL local auth |
+| SUPERSEDED       |                                                     See NX-01…NX-08 |
 | NOT APPLICABLE   | 1 (`LEG-BRO-00070` legacy amount verifier) + legacy repair commands |
-| UNMAPPED         | 1,481 |
+| UNMAPPED         |                                                               1,481 |
 
 ---
 
