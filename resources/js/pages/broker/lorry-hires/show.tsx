@@ -134,6 +134,14 @@ type Props = {
     adjustments: AdjustmentRow[];
     revisions?: RevisionRow[];
     adjustmentTypeOptions: Array<{ value: string; label: string }>;
+    fixed_adjustments: {
+        detention: string;
+        deviation: string;
+        misc_expense: string;
+        unloading_weight: string;
+        shortage: string;
+        damage: string;
+    };
     delivery: {
         status: string | null;
         memo_number: string | null;
@@ -169,7 +177,8 @@ export default function LorryHireShow({
     cancelPreview,
     adjustments,
     revisions = [],
-    adjustmentTypeOptions,
+    adjustmentTypeOptions: _adjustmentTypeOptions,
+    fixed_adjustments,
     delivery,
     permissions,
     urls,
@@ -190,12 +199,8 @@ export default function LorryHireShow({
             );
         }
     };
-    const adjustmentSubmitAllowed = useRef(false);
     const cancelSubmitAllowed = useRef(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
-    const [confirmMode, setConfirmMode] = useState<'adjustment' | 'cancel'>(
-        'adjustment',
-    );
     const [reviewFields, setReviewFields] = useState<FieldReview[]>([]);
     const [confirmTitle, setConfirmTitle] = useState('');
     const [confirmDescription, setConfirmDescription] = useState('');
@@ -210,76 +215,10 @@ export default function LorryHireShow({
         settle_outstanding: true as boolean,
     });
 
-    const adjustmentForm = useForm({
-        type: adjustmentTypeOptions[0]?.value ?? 'detention',
-        amount: '',
-        new_weight: '',
-        quantity: '',
-        rate: '',
-        reason: '',
-    });
-
-    const adjustmentTypeLabel = (type: string): string =>
-        adjustmentTypeOptions.find((option) => option.value === type)?.label ??
-        type.replaceAll('_', ' ');
-
-    const adjustmentAmountOrWeightLabel = (type: string): string => {
-        if (type === 'unloading_weight') {
-            return 'New unloading weight (MT)';
-        }
-        if (['shortage', 'damage'].includes(type)) {
-            return 'Quantity and rate';
-        }
-        return 'Amount';
-    };
-
-    const adjustmentAmountOrWeightValue = (
-        data: typeof adjustmentForm.data,
-    ): string => {
-        if (data.type === 'unloading_weight') {
-            return data.new_weight.trim() !== '' ? data.new_weight : '—';
-        }
-        if (['shortage', 'damage'].includes(data.type)) {
-            const qty = data.quantity.trim() !== '' ? data.quantity : '—';
-            const rate = data.rate.trim() !== '' ? data.rate : '—';
-            return `Qty ${qty} @ ${rate}`;
-        }
-        return data.amount.trim() !== '' ? data.amount : '—';
-    };
-
-    const openAdjustmentConfirmation = () => {
-        setConfirmMode('adjustment');
-        setConfirmDialogMode('create');
-        setConfirmTitle('Save this adjustment?');
-        setConfirmDescription(
-            'Review adjustment type, amount or weight, and reason before submitting.',
-        );
-        setConfirmLabel('Confirm save');
-        setReviewFields([
-            {
-                label: 'Type',
-                value: adjustmentTypeLabel(adjustmentForm.data.type),
-            },
-            {
-                label: adjustmentAmountOrWeightLabel(adjustmentForm.data.type),
-                value: adjustmentAmountOrWeightValue(adjustmentForm.data),
-            },
-            {
-                label: 'Reason',
-                value:
-                    adjustmentForm.data.reason.trim() !== ''
-                        ? adjustmentForm.data.reason
-                        : '—',
-            },
-        ]);
-        setConfirmOpen(true);
-    };
-
     const openCancelConfirmation = () => {
         if (!cancelPreview) {
             return;
         }
-        setConfirmMode('cancel');
         setConfirmDialogMode('destructive');
         setConfirmTitle('Cancel this Lorry Hire?');
         setConfirmDescription(
@@ -325,28 +264,17 @@ export default function LorryHireShow({
     };
 
     const handleConfirmDialog = () => {
-        if (confirmMode === 'adjustment') {
-            adjustmentSubmitAllowed.current = true;
-        } else {
-            cancelSubmitAllowed.current = true;
-        }
+        cancelSubmitAllowed.current = true;
         setConfirmOpen(false);
         window.setTimeout(() => {
-            const formId =
-                confirmMode === 'adjustment'
-                    ? 'lorry-hire-adjustment-form'
-                    : 'lorry-hire-cancel-form';
             const formElement = document.getElementById(
-                formId,
+                'lorry-hire-cancel-form',
             ) as HTMLFormElement | null;
             formElement?.requestSubmit();
         }, 0);
     };
 
-    const confirmProcessing =
-        confirmMode === 'adjustment'
-            ? adjustmentForm.processing
-            : cancelForm.processing;
+    const confirmProcessing = cancelForm.processing;
 
     const goodsLabel = useMemo(() => {
         const first = lorryHire.goods_lines[0];
@@ -736,245 +664,114 @@ export default function LorryHireShow({
                             ) : null}
 
                             <FbDetailCard title="Freight Adjustments">
-                                {permissions.can_create_adjustment ? (
-                                    <form
-                                        id="lorry-hire-adjustment-form"
-                                        className="mb-4 border-b border-slate-100 px-4 py-3"
-                                        onSubmit={(event) => {
-                                            event.preventDefault();
-                                            if (
-                                                !adjustmentSubmitAllowed.current
-                                            ) {
-                                                openAdjustmentConfirmation();
-                                                return;
-                                            }
-                                            adjustmentSubmitAllowed.current = false;
-                                            adjustmentForm.post(
-                                                urls.adjustment_store,
-                                                {
-                                                    preserveScroll: true,
-                                                },
-                                            );
-                                        }}
-                                    >
-                                        <h3 className="text-sm font-semibold">
-                                            New adjustment
-                                        </h3>
-                                        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                                            <div>
-                                                <Label htmlFor="adj_type">
-                                                    Type
-                                                </Label>
-                                                <select
-                                                    id="adj_type"
-                                                    className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-                                                    value={
-                                                        adjustmentForm.data.type
-                                                    }
-                                                    onChange={(e) =>
-                                                        adjustmentForm.setData(
-                                                            'type',
-                                                            e.target.value,
-                                                        )
-                                                    }
-                                                >
-                                                    {adjustmentTypeOptions.map(
-                                                        (opt) => (
-                                                            <option
-                                                                key={opt.value}
-                                                                value={
-                                                                    opt.value
-                                                                }
-                                                            >
-                                                                {opt.label}
-                                                            </option>
-                                                        ),
-                                                    )}
-                                                </select>
-                                            </div>
-                                            {[
-                                                'detention',
-                                                'deviation',
-                                                'misc_expense',
-                                            ].includes(
-                                                adjustmentForm.data.type,
-                                            ) ? (
-                                                <div>
-                                                    <Label htmlFor="adj_amount">
-                                                        Amount
-                                                    </Label>
-                                                    <Input
-                                                        id="adj_amount"
-                                                        type="number"
-                                                        step="0.01"
-                                                        value={
-                                                            adjustmentForm.data
-                                                                .amount
-                                                        }
-                                                        onChange={(e) =>
-                                                            adjustmentForm.setData(
-                                                                'amount',
-                                                                e.target.value,
-                                                            )
-                                                        }
-                                                        required
-                                                    />
-                                                </div>
-                                            ) : null}
-                                            {adjustmentForm.data.type ===
-                                            'unloading_weight' ? (
-                                                <div>
-                                                    <Label htmlFor="adj_weight">
-                                                        New unloading weight
-                                                        (MT)
-                                                    </Label>
-                                                    <Input
-                                                        id="adj_weight"
-                                                        type="number"
-                                                        step="0.001"
-                                                        value={
-                                                            adjustmentForm.data
-                                                                .new_weight
-                                                        }
-                                                        onChange={(e) =>
-                                                            adjustmentForm.setData(
-                                                                'new_weight',
-                                                                e.target.value,
-                                                            )
-                                                        }
-                                                        required
-                                                    />
-                                                </div>
-                                            ) : null}
-                                            {['shortage', 'damage'].includes(
-                                                adjustmentForm.data.type,
-                                            ) ? (
-                                                <>
-                                                    <div>
-                                                        <Label htmlFor="adj_qty">
-                                                            Quantity
-                                                        </Label>
-                                                        <Input
-                                                            id="adj_qty"
-                                                            type="number"
-                                                            step="0.001"
-                                                            value={
-                                                                adjustmentForm
-                                                                    .data
-                                                                    .quantity
-                                                            }
-                                                            onChange={(e) =>
-                                                                adjustmentForm.setData(
-                                                                    'quantity',
-                                                                    e.target
-                                                                        .value,
-                                                                )
-                                                            }
-                                                            required
-                                                        />
-                                                    </div>
-                                                    <div>
-                                                        <Label htmlFor="adj_rate">
-                                                            Rate
-                                                        </Label>
-                                                        <Input
-                                                            id="adj_rate"
-                                                            type="number"
-                                                            step="0.0001"
-                                                            value={
-                                                                adjustmentForm
-                                                                    .data.rate
-                                                            }
-                                                            onChange={(e) =>
-                                                                adjustmentForm.setData(
-                                                                    'rate',
-                                                                    e.target
-                                                                        .value,
-                                                                )
-                                                            }
-                                                            required
-                                                        />
-                                                    </div>
-                                                </>
-                                            ) : null}
-                                            <div className="sm:col-span-2">
-                                                <Label htmlFor="adj_reason">
-                                                    Reason
-                                                </Label>
-                                                <Input
-                                                    id="adj_reason"
-                                                    value={
-                                                        adjustmentForm.data
-                                                            .reason
-                                                    }
-                                                    onChange={(e) =>
-                                                        adjustmentForm.setData(
-                                                            'reason',
-                                                            e.target.value,
-                                                        )
-                                                    }
-                                                />
-                                            </div>
-                                        </div>
-                                        <Button
-                                            type="submit"
-                                            className="mt-4 bg-[#2FB36F] text-white hover:bg-[#279960]"
-                                            disabled={adjustmentForm.processing}
+                                {permissions.can_edit && urls.edit ? (
+                                    <p className="border-b border-slate-100 px-4 py-3 text-sm text-muted-foreground">
+                                        Detention, deviation, misc. expense,
+                                        unloading weight, shortage and damage
+                                        are edited on{' '}
+                                        <a
+                                            href={urls.edit}
+                                            className="font-medium text-[#2FB36F] underline-offset-2 hover:underline"
                                         >
-                                            Save adjustment
-                                        </Button>
-                                    </form>
+                                            Lorry Hire Edit
+                                        </a>
+                                        .
+                                    </p>
                                 ) : null}
-                                <div className="overflow-x-auto px-4 pb-3">
-                                    <table className="min-w-full text-sm">
-                                        <thead>
-                                            <tr className="text-left text-xs text-slate-500">
-                                                <th className="px-2 py-2">
-                                                    Type
-                                                </th>
-                                                <th className="px-2 py-2">
-                                                    Amount
-                                                </th>
-                                                <th className="px-2 py-2">
-                                                    Weights
-                                                </th>
-                                                <th className="px-2 py-2">
-                                                    When
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {adjustments.map((row) => (
-                                                <tr
-                                                    key={row.id}
-                                                    className="border-t border-slate-100"
-                                                >
-                                                    <td className="px-2 py-2">
-                                                        {row.type}
-                                                    </td>
-                                                    <td className="px-2 py-2">
-                                                        {row.amount ?? '—'}
-                                                    </td>
-                                                    <td className="px-2 py-2 text-xs text-muted-foreground">
-                                                        {row.previous_weight
-                                                            ? `${row.previous_weight} → ${row.new_weight}`
-                                                            : row.quantity
-                                                              ? `Qty ${row.quantity} @ ${row.rate}`
-                                                              : '—'}
-                                                    </td>
-                                                    <td className="px-2 py-2">
-                                                        {row.created_at ?? '—'}
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                    {adjustments.length === 0 ? (
-                                        <p className="px-2 py-3 text-sm text-muted-foreground">
-                                            No adjustments yet.
-                                        </p>
-                                    ) : null}
+                                <div
+                                    className="lrf-grid lrf-grid--6 border-b border-slate-100 px-4 py-3"
+                                    data-testid="lorry-hire-fixed-adjustments-readonly"
+                                >
+                                    <FbInfoItem
+                                        label="Detention"
+                                        value={
+                                            fixed_adjustments.detention || '—'
+                                        }
+                                    />
+                                    <FbInfoItem
+                                        label="Deviation"
+                                        value={
+                                            fixed_adjustments.deviation || '—'
+                                        }
+                                    />
+                                    <FbInfoItem
+                                        label="Misc. Expense"
+                                        value={
+                                            fixed_adjustments.misc_expense ||
+                                            '—'
+                                        }
+                                    />
+                                    <FbInfoItem
+                                        label="Unloading Wt."
+                                        value={
+                                            fixed_adjustments.unloading_weight ||
+                                            '—'
+                                        }
+                                    />
+                                    <FbInfoItem
+                                        label="Shortage Amt."
+                                        value={
+                                            fixed_adjustments.shortage || '—'
+                                        }
+                                    />
+                                    <FbInfoItem
+                                        label="Damage Amt."
+                                        value={fixed_adjustments.damage || '—'}
+                                    />
                                 </div>
+                                {permissions.can_view_adjustment ? (
+                                    <div className="overflow-x-auto px-4 pb-3">
+                                        <table className="min-w-full text-sm">
+                                            <thead>
+                                                <tr className="text-left text-xs text-slate-500">
+                                                    <th className="px-2 py-2">
+                                                        Type
+                                                    </th>
+                                                    <th className="px-2 py-2">
+                                                        Amount
+                                                    </th>
+                                                    <th className="px-2 py-2">
+                                                        Weights
+                                                    </th>
+                                                    <th className="px-2 py-2">
+                                                        When
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {adjustments.map((row) => (
+                                                    <tr
+                                                        key={row.id}
+                                                        className="border-t border-slate-100"
+                                                    >
+                                                        <td className="px-2 py-2">
+                                                            {row.type}
+                                                        </td>
+                                                        <td className="px-2 py-2">
+                                                            {row.amount ?? '—'}
+                                                        </td>
+                                                        <td className="px-2 py-2 text-xs text-muted-foreground">
+                                                            {row.previous_weight
+                                                                ? `${row.previous_weight} → ${row.new_weight}`
+                                                                : row.quantity
+                                                                  ? `Qty ${row.quantity} @ ${row.rate}`
+                                                                  : '—'}
+                                                        </td>
+                                                        <td className="px-2 py-2">
+                                                            {row.created_at ??
+                                                                '—'}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                        {adjustments.length === 0 ? (
+                                            <p className="px-2 py-3 text-sm text-muted-foreground">
+                                                No adjustments yet.
+                                            </p>
+                                        ) : null}
+                                    </div>
+                                ) : null}
                             </FbDetailCard>
 
                             <FbDetailCard title="Delivery / Memo / POD">

@@ -370,6 +370,7 @@ class LorryHireController extends Controller
                 'value' => $type->value,
                 'label' => ucwords(str_replace('_', ' ', $type->value)),
             ])->values()->all(),
+            'fixed_adjustments' => $this->adjustments->snapshotFixedAdjustments($lorryHire),
             'delivery' => $deliveryPanel,
             'revisions' => $this->revisionHistoryPayload($lorryHire, $maySeeFreight),
             'permissions' => array_merge(
@@ -525,7 +526,7 @@ class LorryHireController extends Controller
     private function adjustmentDeliveryPermissions(User $actor, Company $company, Branch $branch): array
     {
         return [
-            'can_create_adjustment' => $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_ADJUSTMENT_CREATE, $company, $branch),
+            'can_create_adjustment' => false,
             'can_view_adjustment' => $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_ADJUSTMENT_VIEW, $company, $branch),
             'can_manage_delivery' => $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_DELIVERY_MANAGE, $company, $branch),
         ];

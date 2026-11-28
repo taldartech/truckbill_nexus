@@ -3,6 +3,7 @@
 namespace App\Domains\Broker\LorryHire;
 
 use App\Domains\Accounting\OperationalAccountingPoster;
+use App\Domains\Broker\Adjustment\BrokerAdjustmentService;
 use App\Domains\Broker\Enums\LorryHireStatus;
 use App\Domains\Broker\Exceptions\BrokerAuthorizationException;
 use App\Domains\Broker\Exceptions\BrokerDomainException;
@@ -75,6 +76,7 @@ final class LorryHireRevisionService
         private readonly LorryHireGoodsLineBuilder $goodsLines = new LorryHireGoodsLineBuilder,
         private readonly LorryHireCustomAmountService $customAmounts = new LorryHireCustomAmountService,
         private readonly OperationalAccountingPoster $accounting = new OperationalAccountingPoster,
+        private readonly BrokerAdjustmentService $adjustments = new BrokerAdjustmentService,
     ) {}
 
     public function canEdit(User $actor, Company $company, Branch $branch, LorryHire $hire): bool
@@ -120,7 +122,8 @@ final class LorryHireRevisionService
             }
 
             [$plan, $built] = $this->plan($locked, $company, $payload);
-            if (! $plan['changed']) {
+            $adjustmentsChanging = $this->adjustments->fixedAdjustmentsDiffer($locked, $payload);
+            if (! $plan['changed'] && ! $adjustmentsChanging) {
                 throw ValidationException::withMessages(['goods_lines' => 'No changes to save.']);
             }
 
@@ -168,6 +171,14 @@ final class LorryHireRevisionService
                 'freight_total' => $after['freight_total'],
                 'tds_amount' => $after['tds_amount'],
             ])->save();
+
+            if ($adjustmentsChanging && is_array($payload['fixed_adjustments'] ?? null)) {
+                $this->adjustments->syncFixedAdjustments(
+                    $locked->fresh(['goodsLines.lrGoodsRow', 'adjustments']) ?? $locked,
+                    $actor,
+                    $payload['fixed_adjustments'],
+                );
+            }
 
             $summaryAfter = $this->calculations->summarize($locked->fresh([
                 'customAmounts',
@@ -349,13 +360,16 @@ final class LorryHireRevisionService
             'outstanding_amount' => $outstandingAfter,
         ];
 
+        $changed = $this->hasChanges($before, $after)
+            || $this->adjustments->fixedAdjustmentsDiffer($hire, $payload);
+
         return [[
             'before' => $before,
             'after' => $after,
             'settled_amount' => $settled,
             'reserved_voucher_amount' => $summary['reserved_voucher_amount'],
             'tds_locked_reason' => $tdsLockedReason,
-            'changed' => $this->hasChanges($before, $after),
+            'changed' => $changed,
         ], $built];
     }
 

@@ -72,7 +72,7 @@ test('memo / pod from the register delivers the bilty, attaches the optional pod
             'lorry_receipt_ids' => [$hire->lorry_receipt_id],
             'memo_number' => 'MEMO-HTTP-1',
             'memo_date' => now()->toDateString(),
-            'pod_documents' => [$hire->lorry_receipt_id => UploadedFile::fake()->create('pod.pdf', 100, 'application/pdf')],
+            'pod_document' => UploadedFile::fake()->create('pod.pdf', 100, 'application/pdf'),
         ])
         ->assertRedirect($register)
         ->assertSessionHas('success', 'Memo / POD MEMO-HTTP-1 assigned to 1 Bilty; marked delivered.');

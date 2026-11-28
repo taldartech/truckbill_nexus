@@ -94,6 +94,22 @@ trait PresentsLorryHireForm
         ];
     }
 
+    /**
+     * @return array<string, mixed>
+     */
+    protected function lorryHireFixedAdjustmentRules(): array
+    {
+        return [
+            'fixed_adjustments' => ['nullable', 'array'],
+            'fixed_adjustments.detention' => ['nullable', 'numeric', 'min:0'],
+            'fixed_adjustments.deviation' => ['nullable', 'numeric', 'min:0'],
+            'fixed_adjustments.misc_expense' => ['nullable', 'numeric', 'min:0'],
+            'fixed_adjustments.unloading_weight' => ['nullable', 'numeric', 'min:0'],
+            'fixed_adjustments.shortage' => ['nullable', 'numeric', 'min:0'],
+            'fixed_adjustments.damage' => ['nullable', 'numeric', 'min:0'],
+        ];
+    }
+
     protected function loadingStationLabel(LorryReceipt $lorryReceipt): ?string
     {
         return $lorryReceipt->fromStation !== null

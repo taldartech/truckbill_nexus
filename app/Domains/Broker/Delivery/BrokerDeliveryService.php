@@ -124,7 +124,7 @@ final class BrokerDeliveryService
      *     lorry_receipt_ids: list<string>,
      *     memo_number: string,
      *     memo_date?: string|null,
-     *     pod_documents?: array<string, UploadedFile>
+     *     pod_document?: UploadedFile|null
      * }  $payload
      * @return Collection<int, BrokerDelivery>
      */
@@ -148,27 +148,46 @@ final class BrokerDeliveryService
             throw ValidationException::withMessages(['memo_date' => 'The memo date cannot be in the future.']);
         }
 
-        $documents = $payload['pod_documents'] ?? [];
+        /** @var UploadedFile|null $podDocument */
+        $podDocument = $payload['pod_document'] ?? null;
 
-        return $this->auditedTransaction->run(function () use ($company, $branch, $actor, $payload, $memoNumber, $memoDate, $documents): Collection {
-            return $this->withTenant($company, $branch, function () use ($company, $branch, $actor, $payload, $memoNumber, $memoDate, $documents): Collection {
+        return $this->auditedTransaction->run(function () use ($company, $branch, $actor, $payload, $memoNumber, $memoDate, $podDocument): Collection {
+            return $this->withTenant($company, $branch, function () use ($company, $branch, $actor, $payload, $memoNumber, $memoDate, $podDocument): Collection {
                 $receipts = $this->resolveMemoCandidates($company, $branch, $payload['lorry_receipt_ids'], lock: true);
                 $this->assertMemoNumberAvailable($company, $memoNumber, (string) $receipts->first()?->billing_customer_party_id);
 
-                return $receipts->map(function (LorryReceipt $receipt) use ($company, $branch, $actor, $memoNumber, $memoDate, $documents): BrokerDelivery {
+                $sharedStoredFile = null;
+
+                return $receipts->map(function (LorryReceipt $receipt) use ($company, $branch, $actor, $memoNumber, $memoDate, $podDocument, &$sharedStoredFile): BrokerDelivery {
                     $delivery = $this->deliverWithMemo($company, $branch, $actor, $receipt, $memoNumber, $memoDate);
 
-                    if (isset($documents[$receipt->id])) {
-                        $this->documents->uploadAndAttach(
-                            $actor,
-                            $company,
-                            $branch,
-                            DocumentParentTypes::BROKER_DELIVERY,
-                            $delivery->id,
-                            $documents[$receipt->id],
-                            documentType: DocumentTypeCatalog::POD,
-                            remark: 'Attach POD for memo '.$memoNumber.' LR '.$receipt->lr_number,
-                        );
+                    if ($podDocument !== null) {
+                        if ($sharedStoredFile === null) {
+                            $attachment = $this->documents->uploadAndAttach(
+                                $actor,
+                                $company,
+                                $branch,
+                                DocumentParentTypes::BROKER_DELIVERY,
+                                $delivery->id,
+                                $podDocument,
+                                documentType: DocumentTypeCatalog::POD,
+                                remark: 'Attach common POD for memo '.$memoNumber,
+                            );
+                            $attachment->load('storedFile');
+                            $sharedStoredFile = $attachment->storedFile;
+                        } else {
+                            $this->documents->attachExistingFile(
+                                $actor,
+                                $company,
+                                $branch,
+                                DocumentParentTypes::BROKER_DELIVERY,
+                                $delivery->id,
+                                $sharedStoredFile,
+                                documentType: DocumentTypeCatalog::POD,
+                                label: 'POD — '.$memoNumber,
+                                remark: 'Attach shared POD for memo '.$memoNumber.' LR '.$receipt->lr_number,
+                            );
+                        }
                     }
 
                     return $delivery;

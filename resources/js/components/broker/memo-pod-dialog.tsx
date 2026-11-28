@@ -22,7 +22,6 @@ type MemoContext = {
         lr_date: string | null;
         vehicle_registration: string | null;
         freight_total: string | null;
-        shortage_damage_amount: string | null;
     }>;
 };
 
@@ -30,7 +29,7 @@ type MemoForm = {
     lorry_receipt_ids: string[];
     memo_number: string;
     memo_date: string;
-    pod_documents: Record<string, File>;
+    pod_document: File | null;
 };
 
 export type MemoPodUrls = { memo_context: string; memo_store: string };
@@ -64,7 +63,7 @@ export function MemoPodDialog({
         lorry_receipt_ids: [],
         memo_number: '',
         memo_date: '',
-        pod_documents: {},
+        pod_document: null,
     });
 
     const idsKey = lorryReceiptIds.join(',');
@@ -88,7 +87,7 @@ export function MemoPodDialog({
                     lorry_receipt_ids: payload.receipts.map((row) => row.id),
                     memo_number: '',
                     memo_date: payload.today,
-                    pod_documents: {},
+                    pod_document: null,
                 });
             },
             onError: (errors) => {
@@ -124,10 +123,8 @@ export function MemoPodDialog({
     const errorFor = (key: keyof MemoForm): string | undefined =>
         form.errors[key] ??
         (attempted || key === 'memo_date' ? clientErrors[key] : undefined);
-    const documentError = (id: string): string | undefined =>
-        (form.errors as Record<string, string | undefined>)[
-            `pod_documents.${id}`
-        ];
+    const podDocumentError = (form.errors as Record<string, string | undefined>)
+        .pod_document;
     const totalFreight = receipts.reduce(
         (sum, row) => sum + Number(row.freight_total ?? 0),
         0,
@@ -273,12 +270,6 @@ export function MemoPodDialog({
                                                 <th className="px-3 py-2 text-end">
                                                     Freight
                                                 </th>
-                                                <th className="px-3 py-2 text-end">
-                                                    Shortage / Damage
-                                                </th>
-                                                <th className="px-3 py-2">
-                                                    POD Document
-                                                </th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -302,48 +293,6 @@ export function MemoPodDialog({
                                                             row.freight_total,
                                                         )}
                                                     </td>
-                                                    <td className="px-3 py-2 text-end tabular-nums">
-                                                        {money(
-                                                            row.shortage_damage_amount,
-                                                        )}
-                                                    </td>
-                                                    <td className="px-3 py-2">
-                                                        <input
-                                                            type="file"
-                                                            accept=".pdf,.jpg,.jpeg,.png,.webp"
-                                                            aria-label={`POD document for ${row.lr_number} (optional)`}
-                                                            className="max-w-[12rem] text-xs"
-                                                            onChange={(
-                                                                event,
-                                                            ) => {
-                                                                const file =
-                                                                    event.target
-                                                                        .files?.[0];
-                                                                const next = {
-                                                                    ...form.data
-                                                                        .pod_documents,
-                                                                };
-                                                                if (file) {
-                                                                    next[
-                                                                        row.id
-                                                                    ] = file;
-                                                                } else {
-                                                                    delete next[
-                                                                        row.id
-                                                                    ];
-                                                                }
-                                                                form.setData(
-                                                                    'pod_documents',
-                                                                    next,
-                                                                );
-                                                            }}
-                                                        />
-                                                        <FieldError
-                                                            message={documentError(
-                                                                row.id,
-                                                            )}
-                                                        />
-                                                    </td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -358,16 +307,38 @@ export function MemoPodDialog({
                                                 <td className="px-3 py-2 text-end tabular-nums">
                                                     {formatInr(totalFreight)}
                                                 </td>
-                                                <td colSpan={2} />
                                             </tr>
                                         </tfoot>
                                     </table>
                                 </div>
                             </div>
-                            <p className="text-xs text-slate-500">
-                                POD documents are optional (PDF or image, up to
-                                2 MB) and do not change the delivery status.
-                            </p>
+
+                            <div
+                                className="space-y-1"
+                                data-testid="memo-common-pod-upload"
+                            >
+                                <Label htmlFor="memo_pod_document">
+                                    POD document (optional, shared)
+                                </Label>
+                                <input
+                                    id="memo_pod_document"
+                                    type="file"
+                                    accept=".pdf,.jpg,.jpeg,.png,.webp"
+                                    className="max-w-md text-sm"
+                                    onChange={(event) => {
+                                        const file =
+                                            event.target.files?.[0] ?? null;
+                                        form.setData('pod_document', file);
+                                        form.clearErrors('pod_document');
+                                    }}
+                                />
+                                <FieldError message={podDocumentError} />
+                                <p className="text-xs text-slate-500">
+                                    One upload applies to every selected Bilty
+                                    (PDF or image, up to 2 MB). This does not
+                                    change delivery status.
+                                </p>
+                            </div>
                             <FieldError
                                 message={
                                     (
@@ -436,11 +407,10 @@ export function MemoPodDialog({
                                     value: form.data.memo_date,
                                 },
                                 {
-                                    label: 'POD documents',
-                                    value: String(
-                                        Object.keys(form.data.pod_documents)
-                                            .length,
-                                    ),
+                                    label: 'POD document',
+                                    value: form.data.pod_document
+                                        ? form.data.pod_document.name
+                                        : '—',
                                 },
                             ],
                         },

@@ -21,6 +21,11 @@ import type { HireRateBasis } from '@/lib/lorry-hire-financials';
 import { formatInr } from '@/lib/money';
 import { formatMtLabel, kgToMt, parseNumeric } from '@/lib/operational-weight';
 import { CustomAmountsSection } from '@/pages/broker/lorry-hires/components/custom-amounts-section';
+import {
+    FixedAdjustmentsSection,
+    type FixedAdjustmentsDraft,
+    emptyFixedAdjustments,
+} from '@/pages/broker/lorry-hires/components/fixed-adjustments-section';
 import { LinkedBiltyContextPanel } from '@/pages/broker/lorry-hires/components/linked-bilty-context-panel';
 import {
     LrfActions,
@@ -54,6 +59,7 @@ type HireFormData = {
     edit_remark: string;
     goods_lines: LineDraft[];
     custom_amounts: CustomAmountDraft[];
+    fixed_adjustments: FixedAdjustmentsDraft;
 };
 
 type RevisionLine = {
@@ -110,6 +116,7 @@ export type EditableHire = {
     reserved_voucher_amount: string;
     tds_locked_reason: string | null;
     has_unloading_adjustment: boolean;
+    fixed_adjustments: FixedAdjustmentsDraft;
 };
 
 export type LorryHireFormProps = {
@@ -331,6 +338,9 @@ export default function LorryHireForm({
         edit_remark: '',
         goods_lines: initialLines(goodsRows, defaults.rate_type, hire),
         custom_amounts: initialCustomAmounts(hire),
+        fixed_adjustments: isEdit
+            ? { ...hire.fixed_adjustments }
+            : emptyFixedAdjustments(),
     });
     const previewRequest = useHttp<Record<string, never>, RevisionPlan>({});
     const submitting = useRef(false);
@@ -371,13 +381,31 @@ export default function LorryHireForm({
         [lineFreights, tdsPreview, lockedTds, customTotal],
     );
     const existingCustom = isEdit ? customAmountsTotal(hire.custom_amounts) : 0;
-    const adjustmentsNet = isEdit
+    const baselineAdjustmentsNet = isEdit
         ? Number(hire.net_payable) -
           Number(hire.freight_total) +
           Number(hire.tds_amount) -
           existingCustom
         : 0;
-    const netPayable = financials.netPayable + adjustmentsNet;
+    const fixedAdjustmentImpact = useMemo(() => {
+        if (!isEdit) {
+            return 0;
+        }
+        const cur = form.data.fixed_adjustments;
+        const base = hire.fixed_adjustments;
+        const parseMoney = (value: string) =>
+            value.trim() === '' ? 0 : Number(value);
+        return (
+            parseMoney(cur.detention) -
+            parseMoney(base.detention) +
+            (parseMoney(cur.deviation) - parseMoney(base.deviation)) -
+            (parseMoney(cur.misc_expense) - parseMoney(base.misc_expense)) -
+            (parseMoney(cur.shortage) - parseMoney(base.shortage)) -
+            (parseMoney(cur.damage) - parseMoney(base.damage))
+        );
+    }, [form.data.fixed_adjustments, hire, isEdit]);
+    const netPayable =
+        financials.netPayable + baselineAdjustmentsNet + fixedAdjustmentImpact;
 
     const route =
         [lorryReceipt.loading_station, lorryReceipt.unloading_station]
@@ -450,6 +478,17 @@ export default function LorryHireForm({
                 description: row.description.trim(),
                 amount: row.amount,
             })),
+        fixed_adjustments: isEdit
+            ? {
+                  detention: data.fixed_adjustments.detention.trim(),
+                  deviation: data.fixed_adjustments.deviation.trim(),
+                  misc_expense: data.fixed_adjustments.misc_expense.trim(),
+                  unloading_weight:
+                      data.fixed_adjustments.unloading_weight.trim(),
+                  shortage: data.fixed_adjustments.shortage.trim(),
+                  damage: data.fixed_adjustments.damage.trim(),
+              }
+            : undefined,
     });
 
     const createReviewSections = (): FieldReviewSection[] => [
@@ -944,6 +983,26 @@ export default function LorryHireForm({
                         </div>
 
                         {isEdit ? (
+                            <FixedAdjustmentsSection
+                                values={form.data.fixed_adjustments}
+                                formErrors={
+                                    form.errors as Record<string, string>
+                                }
+                                chargedWeightKg={
+                                    goodsRows[0]?.charged_weight ??
+                                    goodsRows[0]?.actual_weight ??
+                                    null
+                                }
+                                onChange={(patch) =>
+                                    form.setData('fixed_adjustments', {
+                                        ...form.data.fixed_adjustments,
+                                        ...patch,
+                                    })
+                                }
+                            />
+                        ) : null}
+
+                        {isEdit ? (
                             <CustomAmountsSection
                                 rows={form.data.custom_amounts}
                                 total={customTotal}
@@ -1040,12 +1099,16 @@ export default function LorryHireForm({
                                                 name: `Applicable TDS (${tdsPercentLabel})`,
                                                 value: tdsAmountLabel,
                                             },
-                                            ...(isEdit && adjustmentsNet !== 0
+                                            ...(isEdit &&
+                                            baselineAdjustmentsNet +
+                                                fixedAdjustmentImpact !==
+                                                0
                                                 ? [
                                                       {
                                                           name: 'Freight Adjustments',
                                                           value: formatInr(
-                                                              adjustmentsNet,
+                                                              baselineAdjustmentsNet +
+                                                                  fixedAdjustmentImpact,
                                                           ),
                                                       },
                                                   ]

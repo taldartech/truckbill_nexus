@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Branch;
 
 use App\Domains\Accounting\Exceptions\AccountingDomainException;
+use App\Domains\Broker\Adjustment\BrokerAdjustmentService;
 use App\Domains\Broker\Exceptions\BrokerAuthorizationException;
 use App\Domains\Broker\Exceptions\BrokerDomainException;
 use App\Domains\Broker\LorryHire\LorryHireCalculationService;
@@ -36,6 +37,7 @@ class LorryHireEditController extends Controller
         private readonly CompanyAccessService $access,
         private readonly LorryHireRevisionService $revisions,
         private readonly LorryHireCalculationService $calculations,
+        private readonly BrokerAdjustmentService $adjustments,
     ) {}
 
     public function edit(Request $request, LorryHire $lorryHire, Company $company, Branch $branch): Response
@@ -91,6 +93,7 @@ class LorryHireEditController extends Controller
                 'reserved_voucher_amount' => $summary['reserved_voucher_amount'],
                 'tds_locked_reason' => $this->revisions->tdsLockedReason($lorryHire, $company, $summary['outstanding_amount']),
                 'has_unloading_adjustment' => $this->calculations->latestUnloadingWeight($lorryHire) !== null,
+                'fixed_adjustments' => $this->adjustments->snapshotFixedAdjustments($lorryHire),
             ],
             'urls' => [
                 'store' => route('branch.broker.lorry-hires.update', [$lorryHire], absolute: false),
@@ -104,7 +107,10 @@ class LorryHireEditController extends Controller
     public function preview(Request $request, LorryHire $lorryHire, Company $company, Branch $branch): JsonResponse
     {
         $actor = $this->authorizeEdit($request, $lorryHire, $company, $branch);
-        $validated = $request->validate($this->lorryHireFormRules());
+        $validated = $request->validate([
+            ...$this->lorryHireFormRules(),
+            ...$this->lorryHireFixedAdjustmentRules(),
+        ]);
 
         return response()->json($this->guard(fn (): array => $this->revisions->preview($lorryHire, $actor, $validated)));
     }
@@ -114,6 +120,7 @@ class LorryHireEditController extends Controller
         $actor = $this->authorizeEdit($request, $lorryHire, $company, $branch);
         $validated = $request->validate([
             ...$this->lorryHireFormRules(),
+            ...$this->lorryHireFixedAdjustmentRules(),
             'edit_remark' => ['required', 'string', 'max:2000'],
         ], [
             'edit_remark.required' => 'Enter the reason for editing this Lorry Hire.',

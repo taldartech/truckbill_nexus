@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Branch;
 
 use App\Domains\Broker\Delivery\BrokerDeliveryService;
-use App\Domains\Broker\Enums\BrokerAdjustmentType;
 use App\Domains\Broker\Exceptions\BrokerAuthorizationException;
 use App\Domains\Broker\Exceptions\BrokerConflictException;
 use App\Domains\Broker\Exceptions\BrokerDomainException;
@@ -78,12 +77,6 @@ class BrokerDeliveryController extends Controller
                 'lr_date' => $lr->lr_date?->format('d-m-Y'),
                 'vehicle_registration' => $lr->vehicle?->registration_number,
                 'freight_total' => $this->freightPresentation->presentAmount($lr->freight_total, $maySeeFreight),
-                'shortage_damage_amount' => $this->freightPresentation->presentAmount(
-                    $lr->lorryHire?->adjustments
-                        ->filter(fn ($row): bool => in_array($row->type, [BrokerAdjustmentType::Shortage, BrokerAdjustmentType::Damage], true))
-                        ->sum(fn ($row): float => (float) $row->amount) ?? 0,
-                    $maySeeFreight,
-                ),
             ])->values()->all(),
         ]);
     }
@@ -98,8 +91,7 @@ class BrokerDeliveryController extends Controller
             'lorry_receipt_ids.*' => ['required', 'uuid', 'distinct'],
             'memo_number' => ['required', 'string', 'max:64'],
             'memo_date' => ['nullable', 'date'],
-            'pod_documents' => ['nullable', 'array'],
-            'pod_documents.*' => ['file', 'max:2048', 'mimes:pdf,jpg,jpeg,png,webp'],
+            'pod_document' => ['nullable', 'file', 'max:2048', 'mimes:pdf,jpg,jpeg,png,webp'],
         ], [
             'memo_number.required' => 'Enter the Memo / POD number.',
         ]);

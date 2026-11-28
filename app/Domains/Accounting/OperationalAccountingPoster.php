@@ -399,6 +399,37 @@ final class OperationalAccountingPoster
         );
     }
 
+    public function correctBrokerAdjustment(
+        BrokerAdjustment $adjustment,
+        LorryHire $hire,
+        User $actor,
+        ?string $freightDelta = null,
+    ): void {
+        $company = Company::query()->findOrFail($hire->company_id);
+        $this->reverseBySource(
+            $company,
+            BrokerAdjustment::class,
+            $adjustment->id,
+            'broker_adjustment',
+            $actor,
+            'Correct broker adjustment '.$adjustment->type->value,
+        );
+        $this->postBrokerAdjustment($adjustment, $hire, $actor, $freightDelta, allowBypass: true);
+    }
+
+    public function reverseBrokerAdjustment(BrokerAdjustment $adjustment, User $actor): void
+    {
+        $company = Company::query()->findOrFail($adjustment->company_id);
+        $this->reverseBySource(
+            $company,
+            BrokerAdjustment::class,
+            $adjustment->id,
+            'broker_adjustment',
+            $actor,
+            'Reverse broker adjustment '.$adjustment->type->value,
+        );
+    }
+
     public function postBrokerAdjustment(
         BrokerAdjustment $adjustment,
         LorryHire $hire,

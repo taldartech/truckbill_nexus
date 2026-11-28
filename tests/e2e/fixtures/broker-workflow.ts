@@ -448,14 +448,11 @@ export async function assignMemoPodFromRegister(
         timeout: 15_000,
     });
     await dialog.locator('#memo_number').fill(memoNumber);
-    await dialog
-        .getByLabel(/POD document for/)
-        .first()
-        .setInputFiles({
-            name: 'e2e-pod.png',
-            mimeType: 'image/png',
-            buffer: POD_PNG,
-        });
+    await dialog.locator('#memo_pod_document').setInputFiles({
+        name: 'e2e-pod.png',
+        mimeType: 'image/png',
+        buffer: POD_PNG,
+    });
     await dialog.getByRole('button', { name: 'Review Memo / POD' }).click();
     await page
         .getByRole('button', { name: 'Assign Memo / POD', exact: true })
@@ -471,20 +468,21 @@ export async function addBrokerLorryHireAdjustment(
     page: Page,
     amount: string,
 ): Promise<void> {
-    const adjustments = page
-        .locator('main')
-        .getByText('Freight Adjustments')
-        .first();
-    await expect(adjustments).toBeVisible({ timeout: 15_000 });
-    await adjustments.scrollIntoViewIfNeeded();
-    await page.locator('#adj_type').selectOption('detention');
-    await page.locator('#adj_amount').fill(amount);
-    await page.locator('#adj_reason').fill('E2E detention adjustment');
-    await page.getByRole('button', { name: 'Save adjustment' }).click();
+    await page.getByRole('link', { name: 'Edit' }).click();
+    await expect(page.locator('#adj_detention')).toBeVisible({
+        timeout: 15_000,
+    });
+    await page.locator('#adj_detention').fill(amount);
+    await page.locator('#edit_remark').fill('E2E detention adjustment');
+    await page.getByRole('button', { name: 'Review changes' }).click();
     await confirmFormDialog(page);
-    await expect(
-        page.getByRole('cell', { name: 'detention', exact: true }),
-    ).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByTestId('lorry-hire-fixed-adjustments-readonly'))
+        .toContainText(amount)
+        .catch(async () => {
+            await expect(
+                page.getByText('Freight Adjustments', { exact: false }),
+            ).toContainText(amount);
+        });
 }
 
 export async function createBrokerCustomerInvoice(

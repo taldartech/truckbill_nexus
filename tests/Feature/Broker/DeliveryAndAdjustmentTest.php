@@ -257,7 +257,7 @@ test('shortage reduces net payable', function () {
     expect(bccomp($after['net_payable'], $base['net_payable'], 2))->toBe(-1);
 });
 
-test('multiple unloading adjustments are preserved', function () {
+test('second unloading weight replaces the first active entry', function () {
     $ctx = brokerWorkspace();
     tripActivate($ctx['company'], $ctx['branch']);
 
@@ -285,5 +285,24 @@ test('multiple unloading adjustments are preserved', function () {
         ->where('type', BrokerAdjustmentType::UnloadingWeight->value)
         ->count();
 
-    expect($count)->toBe(2);
+    expect($count)->toBe(1);
+
+    $active = BrokerAdjustment::query()
+        ->where('lorry_hire_id', $hire->id)
+        ->where('type', BrokerAdjustmentType::UnloadingWeight->value)
+        ->whereNull('deleted_at')
+        ->first();
+
+    expect($active?->new_weight)->toBe('75.000');
+});
+
+test('duplicate detention via standalone store is rejected', function () {
+    $ctx = brokerWorkspace();
+    tripActivate($ctx['company'], $ctx['branch']);
+    $hire = brokerCreateLorryHire($ctx);
+
+    expect(fn () => app(BrokerAdjustmentService::class)->store($hire, $ctx['member'], [
+        'type' => BrokerAdjustmentType::Detention->value,
+        'amount' => '100',
+    ]))->toThrow(ValidationException::class);
 });
