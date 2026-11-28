@@ -28,6 +28,7 @@ use App\Models\PartloadInvoice;
 use App\Models\PartloadInvoicePayment;
 use App\Models\PartloadMainChallan;
 use App\Models\SubscriptionInvoice;
+use App\Models\TransporterBookBalanceEntry;
 use App\Models\TransporterVoucher;
 use App\Models\TripExpense;
 use App\Models\TripInvoice;
@@ -247,6 +248,15 @@ final class AccountingReconciliationService
             BrokerAdjustment::class, 'broker_adjustment', TransporterVoucher::class, 'transporter_voucher' => [
                 'Broker Lorry Hire / Voucher',
                 null,
+            ],
+            TransporterBookBalanceEntry::class, 'transporter_book_balance_entry' => [
+                'Transporter Book Balance',
+                route('branch.broker.transporter-balances.index', array_filter([
+                    'transporter_party_id' => TransporterBookBalanceEntry::query()
+                        ->where('company_id', $company->id)
+                        ->whereKey($link->source_id)
+                        ->value('transporter_party_id'),
+                ]), absolute: false),
             ],
             TripInvoice::class, 'trip_invoice' => [
                 'OwnFleet Trip Invoice',

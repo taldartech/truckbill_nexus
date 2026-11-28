@@ -137,6 +137,33 @@ class PartyController extends Controller
             return response()->json($page);
         }
 
+        $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
+        $mayViewBookBalance = $maySeeFreight
+            && $this->capabilities()->allowsRead($company, CompanyCapabilities::BROKER_BOOK_BALANCE)
+            && $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_BOOK_BALANCE_VIEW, $company, $branch);
+        $canManageBookBalance = $mayViewBookBalance
+            && $this->capabilities()->allowsMutate($company, CompanyCapabilities::BROKER_BOOK_BALANCE)
+            && $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_BOOK_BALANCE_MANAGE, $company, $branch);
+
+        /** @var list<Party> $items */
+        $items = $page->items();
+        $transporterIds = [];
+        if ($mayViewBookBalance && $status === 'active') {
+            foreach ($items as $party) {
+                $isTransporter = $party->roles->contains(
+                    static fn (PartyRole $role): bool => (string) $role->role === PartyRoleType::Transporter->value
+                        && $role->deactivated_at === null,
+                );
+                if ($isTransporter) {
+                    $transporterIds[] = $party->id;
+                }
+            }
+        }
+        $balances = $mayViewBookBalance
+            ? $this->bookBalances->balancesForTransporters($company, $branch, $transporterIds)
+            : [];
+        $canCreateBankCash = $canManageBookBalance && $permissions['can_create'];
+
         return Inertia::render('branch/masters/parties/index', [
             'company' => $this->companyPayload($company),
             'branch' => $this->branchPayload($branch),
@@ -156,7 +183,19 @@ class PartyController extends Controller
                 ->map(fn (State $state): array => ['value' => $state->id, 'label' => $state->name])
                 ->all(),
             'parties' => [
-                'data' => collect($page->items())->map(fn (Party $party): array => $this->partyListPayload($party))->values()->all(),
+                'data' => collect($items)->map(function (Party $party) use ($balances, $mayViewBookBalance): array {
+                    $payload = $this->partyListPayload($party);
+                    $isTransporter = $party->roles->contains(
+                        static fn (PartyRole $role): bool => (string) $role->role === PartyRoleType::Transporter->value
+                            && $role->deactivated_at === null,
+                    );
+                    $payload['is_transporter'] = $isTransporter;
+                    $payload['book_balance'] = ($mayViewBookBalance && $isTransporter && ! $party->trashed())
+                        ? $this->freightPresentation->presentAmount($balances[$party->id] ?? '0.00', true)
+                        : null;
+
+                    return $payload;
+                })->values()->all(),
                 'meta' => [
                     'current_page' => $page->currentPage(),
                     'last_page' => $page->lastPage(),
@@ -164,11 +203,22 @@ class PartyController extends Controller
                     'per_page' => $page->perPage(),
                 ],
             ],
+            'bookBalance' => [
+                'can_view' => $mayViewBookBalance,
+                'can_manage' => $canManageBookBalance,
+                'today' => $canManageBookBalance ? $this->bookBalances->defaultEntryDate($company) : null,
+                'bank_cash_accounts' => $canManageBookBalance ? $this->bookBalances->activeBankAccounts($company, $branch) : [],
+                'can_create_bank_cash' => $canCreateBankCash,
+            ],
             'dataVisibility' => $this->dataVisibilityPresentation($company),
             'links' => array_merge($this->branchMasterNavLinks(), [
                 'index' => route('branch.parties.index', absolute: false),
                 'create' => route('branch.parties.create', absolute: false),
                 'store' => route('branch.parties.store', absolute: false),
+                'book_balance_store' => $canManageBookBalance ? route('branch.broker.transporter-balances.store', absolute: false) : null,
+                'book_balance_context' => $mayViewBookBalance ? route('branch.broker.transporter-balances.context', absolute: false) : null,
+                'book_balance_index' => $mayViewBookBalance ? route('branch.broker.transporter-balances.index', absolute: false) : null,
+                'bank_cash_store' => $canCreateBankCash ? route('branch.bank-cash.store', absolute: false) : null,
             ]),
         ]);
     }
@@ -286,6 +336,13 @@ class PartyController extends Controller
             abort(403, 'Not authorized to create parties.');
         }
 
+        $roleOptions = $this->partyRoleOptions($company);
+        $allowedRoleValues = array_column($roleOptions, 'value');
+        $requestedRole = $request->string('default_role')->toString();
+        $defaultRoles = in_array($requestedRole, $allowedRoleValues, true)
+            ? [$requestedRole]
+            : null;
+
         return Inertia::render('branch/masters/parties/form', [
             'company' => $this->companyPayload($company),
             'branch' => $this->branchPayload($branch),
@@ -293,7 +350,11 @@ class PartyController extends Controller
             'mode' => 'create',
             'party' => null,
             'dataVisibility' => $this->dataVisibilityPresentation($company),
-            'roleOptions' => $this->partyRoleOptions($company),
+            'roleOptions' => $roleOptions,
+            'defaultRoles' => $defaultRoles,
+            'defaultDriverType' => $this->capabilities()->allowsRead($company, CompanyCapabilities::OWNFLEET_VEHICLE_DRIVERS)
+                ? 'permanent'
+                : 'market',
             'links' => array_merge($this->branchMasterNavLinks(), [
                 'index' => route('branch.parties.index', absolute: false),
                 'store' => route('branch.parties.store', absolute: false),
@@ -389,6 +450,7 @@ class PartyController extends Controller
             'roles.*.role' => ['required', Rule::enum(PartyRoleType::class)],
             'roles.*.attributes' => ['nullable', 'array'],
             'remark' => ['nullable', 'string', 'max:1000'],
+            'return_to' => ['nullable', 'string', Rule::in(['drivers'])],
         ]);
 
         $roles = $this->normalizeIncomingRoles($validated['roles']);
@@ -422,9 +484,12 @@ class PartyController extends Controller
             ], 201);
         }
 
+        $returnToDrivers = ($validated['return_to'] ?? null) === 'drivers'
+            && $party->roles->contains(fn (PartyRole $role): bool => (string) $role->role === PartyRoleType::Driver->value && $role->deactivated_at === null);
+
         return redirect()
-            ->route('branch.parties.show', [$party])
-            ->with('success', 'Party created.');
+            ->route($returnToDrivers ? 'branch.drivers.show' : 'branch.parties.show', [$party])
+            ->with('success', $returnToDrivers ? 'Driver created.' : 'Party created.');
     }
 
     public function show(Request $request, Party $party, Company $company, Branch $branch): Response
@@ -460,8 +525,33 @@ class PartyController extends Controller
         $bookBalance = null;
         if ($mayViewBookBalance) {
             $running = $this->bookBalances->runningBalanceForTransporter($company, $branch, $party->id);
+            $available = $this->bookBalances->availableBalance($company, $branch, $party->id);
+            $canManageBookBalance = $this->capabilities()->allowsMutate($company, CompanyCapabilities::BROKER_BOOK_BALANCE)
+                && $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_BOOK_BALANCE_MANAGE, $company, $branch);
+            $canCreateBankCash = $canManageBookBalance && $permissions['can_create'];
+            $recent = $this->bookBalances->recentEntriesForTransporter($company, $branch, $party->id, 10);
+
             $bookBalance = [
-                'available_balance' => $this->freightPresentation->presentAmount($running, true),
+                'party_id' => $party->id,
+                'party_name' => $party->name,
+                'available_balance' => $this->freightPresentation->presentAmount($available, true),
+                'running_balance' => $this->freightPresentation->presentAmount($running, true),
+                'can_manage' => $canManageBookBalance,
+                'today' => $canManageBookBalance ? $this->bookBalances->defaultEntryDate($company) : null,
+                'bank_cash_accounts' => $canManageBookBalance ? $this->bookBalances->activeBankAccounts($company, $branch) : [],
+                'can_create_bank_cash' => $canCreateBankCash,
+                'recent_entries' => array_map(
+                    fn (array $row): array => [
+                        ...$row,
+                        'debit' => $this->freightPresentation->presentAmount($row['debit'], true),
+                        'credit' => $this->freightPresentation->presentAmount($row['credit'], true),
+                        'amount' => $this->freightPresentation->presentAmount($row['amount'], true),
+                    ],
+                    $recent,
+                ),
+                'store_url' => $canManageBookBalance ? route('branch.broker.transporter-balances.store', absolute: false) : null,
+                'context_url' => route('branch.broker.transporter-balances.context', absolute: false),
+                'bank_cash_store_url' => $canCreateBankCash ? route('branch.bank-cash.store', absolute: false) : null,
                 'statement_url' => route('branch.broker.transporter-balances.index', [
                     'transporter_party_id' => $party->id,
                 ], absolute: false),
@@ -473,6 +563,7 @@ class PartyController extends Controller
             'branch' => $this->branchPayload($branch),
             'permissions' => $permissions,
             'party' => [
+                'id' => $party->id,
                 'name' => $party->name,
                 'roles' => $party->roles
                     ->filter(fn (PartyRole $role): bool => $role->deactivated_at === null)
@@ -546,6 +637,7 @@ class PartyController extends Controller
             'roles.*.role' => ['required_with:roles', Rule::enum(PartyRoleType::class)],
             'roles.*.attributes' => ['nullable', 'array'],
             'remark' => ['required', 'string', 'max:1000'],
+            'return_to' => ['nullable', 'string', Rule::in(['drivers'])],
         ]);
 
         $roles = array_key_exists('roles', $validated)
@@ -578,9 +670,12 @@ class PartyController extends Controller
             return response()->json(['data' => $updated]);
         }
 
+        $returnToDrivers = ($validated['return_to'] ?? null) === 'drivers'
+            && ($updated->roles()->where('role', PartyRoleType::Driver->value)->whereNull('deleted_at')->whereNull('deactivated_at')->exists());
+
         return redirect()
-            ->route('branch.parties.show', [$party])
-            ->with('success', 'Party updated.');
+            ->route($returnToDrivers ? 'branch.drivers.show' : 'branch.parties.show', [$party])
+            ->with('success', $returnToDrivers ? 'Driver updated.' : 'Party updated.');
     }
 
     public function destroy(Request $request, Party $party, Company $company, Branch $branch): RedirectResponse|JsonResponse
@@ -593,6 +688,7 @@ class PartyController extends Controller
 
         $validated = $request->validate([
             'remark' => ['required', 'string', 'max:1000'],
+            'return_to' => ['nullable', 'string', Rule::in(['drivers'])],
         ]);
 
         try {
@@ -605,9 +701,13 @@ class PartyController extends Controller
             return response()->json(['status' => 'deleted']);
         }
 
+        $returnRoute = ($validated['return_to'] ?? null) === 'drivers'
+            ? 'branch.drivers.index'
+            : 'branch.parties.index';
+
         return redirect()
-            ->route('branch.parties.index')
-            ->with('success', 'Party deleted.');
+            ->route($returnRoute)
+            ->with('success', $returnRoute === 'branch.drivers.index' ? 'Driver deleted.' : 'Party deleted.');
     }
 
     /**
@@ -715,7 +815,7 @@ class PartyController extends Controller
      */
     private function normalizePartyAttributes(array $validated): array
     {
-        $attributes = collect($validated)->except(['roles', 'remark'])->all();
+        $attributes = collect($validated)->except(['roles', 'remark', 'return_to'])->all();
 
         if (array_key_exists('is_gst_applicable', $attributes) && $attributes['is_gst_applicable'] === null) {
             unset($attributes['is_gst_applicable']);

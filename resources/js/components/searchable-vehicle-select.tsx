@@ -26,19 +26,19 @@ type Props = {
     name: string;
     label: string;
     options: VehicleSelectOption[];
-    searchUrl?: string;
+    searchUrl?: string | null;
     ownership?: string | string[];
     required?: boolean;
     defaultValue?: string;
     value?: string;
     onValueChange?: (value: string, option: VehicleSelectOption | null) => void;
     emptyMessage?: string;
-    createHref?: string;
+    createHref?: string | null;
     createLabel?: string;
-    createStoreUrl?: string;
+    createStoreUrl?: string | null;
     /** Party options endpoint for Market truck-owner quick create. */
-    partiesOptionsUrl?: string;
-    partiesStoreUrl?: string;
+    partiesOptionsUrl?: string | null;
+    partiesStoreUrl?: string | null;
     vehicleCatalogues?: VehicleQuickCreateCatalogues;
     defaultOwnership?: 'market' | 'own';
     allowOwnQuickCreate?: boolean;
@@ -186,7 +186,7 @@ export function SearchableVehicleSelect({
                             : null);
                     onValueChange?.(nextId, nextId === '' ? null : vehicle);
                 }}
-                searchUrl={searchUrl}
+                searchUrl={searchUrl ?? undefined}
                 buildSearchParams={searchUrl ? buildSearchParams : undefined}
                 mapResponse={searchUrl ? mapResponse : undefined}
                 required={required}
@@ -203,7 +203,7 @@ export function SearchableVehicleSelect({
                     open={quickCreateOpen}
                     onOpenChange={setQuickCreateOpen}
                     storeUrl={createStoreUrl}
-                    partiesOptionsUrl={partiesOptionsUrl}
+                    partiesOptionsUrl={partiesOptionsUrl ?? undefined}
                     partiesStoreUrl={partiesStoreUrl}
                     catalogues={vehicleCatalogues}
                     defaultOwnership={defaultOwnership}

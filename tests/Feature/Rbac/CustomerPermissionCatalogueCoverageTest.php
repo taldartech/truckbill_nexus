@@ -94,8 +94,8 @@ test('every PermissionCodes customer constant is registered in Permission Master
     $fromClass = permissionCodesClassCustomerConstants();
     $fromCatalogues = customerCatalogueCodes();
 
-    expect($fromClass)->toHaveCount(83)
-        ->and($fromCatalogues)->toHaveCount(83)
+    expect($fromClass)->toHaveCount(84)
+        ->and($fromCatalogues)->toHaveCount(84)
         ->and($fromClass)->toEqualCanonicalizing($fromCatalogues);
 
     foreach ($fromCatalogues as $code) {

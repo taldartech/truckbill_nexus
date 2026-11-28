@@ -167,16 +167,16 @@ type Props = {
         store?: string;
         update?: string;
         show?: string;
-        parties_options?: string;
-        parties_tds_for_payee?: string;
-        parties_create?: string;
-        parties_store?: string;
-        vehicles_options?: string;
-        vehicles_create?: string;
-        vehicles_store?: string;
-        goods_types_store?: string;
-        package_types_store?: string;
-        stations_store?: string;
+        parties_options?: string | null;
+        parties_tds_for_payee?: string | null;
+        parties_create?: string | null;
+        parties_store?: string | null;
+        vehicles_options?: string | null;
+        vehicles_create?: string | null;
+        vehicles_store?: string | null;
+        goods_types_store?: string | null;
+        package_types_store?: string | null;
+        stations_store?: string | null;
     };
     permissions?: {
         can_view_freight?: boolean;

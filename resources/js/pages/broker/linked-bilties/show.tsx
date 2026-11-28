@@ -91,12 +91,33 @@ export default function LinkedBiltyShow({
     const paySubmitAllowed = useRef(false);
     const [payConfirmOpen, setPayConfirmOpen] = useState(false);
     const [payReviewFields, setPayReviewFields] = useState<FieldReview[]>([]);
+    const [amountClientError, setAmountClientError] = useState<string | null>(
+        null,
+    );
+
+    const validateClientAmount = (
+        rawValue: FormDataEntryValue | null,
+    ): boolean => {
+        const str = typeof rawValue === 'string' ? rawValue.trim() : '';
+        const parsed = Number(str);
+        if (str === '' || !Number.isFinite(parsed) || parsed <= 0) {
+            setAmountClientError('Enter a positive payment amount.');
+            return false;
+        }
+        setAmountClientError(null);
+        return true;
+    };
 
     const runPreview = useCallback(
         async (form: HTMLFormElement) => {
+            const data = new FormData(form);
+            if (!validateClientAmount(data.get('amount'))) {
+                setPreview(null);
+                setPreviewError('Enter a positive payment amount.');
+                return;
+            }
             setPreviewing(true);
             setPreviewError(null);
-            const data = new FormData(form);
             try {
                 const response = await fetch(urls.pay_preview, {
                     method: 'POST',
@@ -230,6 +251,7 @@ export default function LinkedBiltyShow({
                                             action={urls.pay}
                                             method="post"
                                             id="linked-bilty-pay-form"
+                                            noValidate
                                             className="grid gap-4 md:grid-cols-2"
                                             onBefore={() => {
                                                 if (!paySubmitAllowed.current) {
@@ -240,6 +262,13 @@ export default function LinkedBiltyShow({
                                                     );
                                                     const amountValue =
                                                         data.get('amount');
+                                                    if (
+                                                        !validateClientAmount(
+                                                            amountValue,
+                                                        )
+                                                    ) {
+                                                        return false;
+                                                    }
                                                     const amount =
                                                         typeof amountValue ===
                                                         'string'
@@ -351,7 +380,10 @@ export default function LinkedBiltyShow({
                                             {({ processing, errors }) => (
                                                 <>
                                                     <div className="space-y-1">
-                                                        <Label htmlFor="amount">
+                                                        <Label
+                                                            htmlFor="amount"
+                                                            required
+                                                        >
                                                             Payment amount
                                                         </Label>
                                                         <Input
@@ -361,12 +393,22 @@ export default function LinkedBiltyShow({
                                                             min="0.01"
                                                             step="0.01"
                                                             required
+                                                            onChange={() =>
+                                                                setAmountClientError(
+                                                                    null,
+                                                                )
+                                                            }
                                                         />
-                                                        {errors.amount && (
-                                                            <p className="text-xs text-destructive">
-                                                                {errors.amount}
+                                                        {amountClientError ||
+                                                        errors.amount ? (
+                                                            <p
+                                                                role="alert"
+                                                                className="text-xs text-destructive"
+                                                            >
+                                                                {amountClientError ??
+                                                                    errors.amount}
                                                             </p>
-                                                        )}
+                                                        ) : null}
                                                     </div>
                                                     <div className="space-y-1">
                                                         <Label htmlFor="voucher_date">

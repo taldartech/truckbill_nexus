@@ -75,6 +75,7 @@ export function AppSidebar() {
         '/operations',
         '/enquiries',
         '/parties',
+        '/drivers',
         '/vehicles',
         '/vehicle-drivers',
         '/bank-cash',
@@ -346,6 +347,15 @@ export function AppSidebar() {
                       title: 'Party Master',
                       href: '/parties',
                       icon: Users,
+                  },
+              ]
+            : []),
+        ...(nav?.masters_drivers
+            ? [
+                  {
+                      title: 'Driver Master',
+                      href: '/drivers',
+                      icon: UserCog,
                   },
               ]
             : []),

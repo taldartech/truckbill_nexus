@@ -151,6 +151,8 @@ final class PermissionCodes
 
     public const BROKER_BOOK_BALANCE_VIEW = 'broker.book_balance.view';
 
+    public const BROKER_BOOK_BALANCE_MANAGE = 'broker.book_balance.manage';
+
     // Customer Partload
     public const PARTLOAD_CHALLAN_VIEW = 'partload.challan.view';
 
@@ -368,6 +370,7 @@ final class PermissionCodes
             self::BROKER_LINKED_BILTY_CREATE,
             self::BROKER_LINKED_BILTY_PAY,
             self::BROKER_BOOK_BALANCE_VIEW,
+            self::BROKER_BOOK_BALANCE_MANAGE,
         ];
     }
 

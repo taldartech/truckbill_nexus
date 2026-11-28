@@ -158,6 +158,7 @@ class RbacSeeder extends Seeder
             [PermissionCodes::BROKER_LINKED_BILTY_CREATE, 'broker', 'linked_bilty', 'Create Linked Bilties', 'Create linked bilty groups'],
             [PermissionCodes::BROKER_LINKED_BILTY_PAY, 'broker', 'linked_bilty', 'Pay Linked Bilties', 'Record linked bilty payments'],
             [PermissionCodes::BROKER_BOOK_BALANCE_VIEW, 'broker', 'book_balance', 'View Book Balance', 'View transporter book balance'],
+            [PermissionCodes::BROKER_BOOK_BALANCE_MANAGE, 'broker', 'book_balance', 'Manage Book Balance', 'Record transporter advances, recoveries, adjustments and opening balance'],
         ];
 
         foreach ($definitions as [$code, $module, $submodule, $name, $description]) {

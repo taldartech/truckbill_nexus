@@ -35,11 +35,11 @@ type Props = {
         index: string;
         store: string;
         filter: string;
-        parties_options?: string;
-        vehicles_options?: string;
-        vehicles_create?: string;
-        vehicles_store?: string;
-        parties_store?: string;
+        parties_options?: string | null;
+        vehicles_options?: string | null;
+        vehicles_create?: string | null;
+        vehicles_store?: string | null;
+        parties_store?: string | null;
     };
 };
 

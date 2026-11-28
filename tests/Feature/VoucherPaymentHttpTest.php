@@ -1,6 +1,8 @@
 <?php
 
 use App\Domains\Auth\WebSessionService;
+use App\Domains\Broker\LorryHire\LorryHireService;
+use App\Models\CustomerWebSession;
 use App\Models\TransporterVoucher;
 use App\Support\Tenant\TenantContextHolder;
 use Database\Seeders\RbacSeeder;
@@ -30,6 +32,7 @@ afterEach(function () {
 function actAsVoucherOperator(array $ctx): void
 {
     test()->flushSession();
+    CustomerWebSession::query()->where('user_id', $ctx['member']->id)->delete();
     test()->actingAs($ctx['member']);
     session()->forget(WebSessionService::SESSION_VERSION_KEY);
     seedBranchSession($ctx['company'], $ctx['branch']);
@@ -121,4 +124,68 @@ test('voucher index links payments to the good hires register', function () {
             ->where('urls.lorry_hires', route('branch.broker.lorry-hires.index', absolute: false))
             ->missing('urls.create')
             ->missing('urls.bulk'));
+});
+
+test('voucher store rejects blank, zero, or missing row amounts without silently filling outstanding', function () {
+    $ctx = brokerWorkspace();
+    tripActivate($ctx['company'], $ctx['branch']);
+    $hire = brokerCreateLorryHire($ctx);
+
+    actAsVoucherOperator($ctx);
+    $this->post(route('branch.broker.vouchers.store'), [
+        'lines' => [['lorry_hire_id' => $hire->id, 'amount' => '']],
+        'payment_type' => 'advance',
+        'payment_mode' => 'cash',
+        'voucher_date' => now()->toDateString(),
+    ])->assertSessionHasErrors('lines.0.amount');
+
+    actAsVoucherOperator($ctx);
+    $this->post(route('branch.broker.vouchers.store'), [
+        'lines' => [['lorry_hire_id' => $hire->id, 'amount' => '0']],
+        'payment_type' => 'advance',
+        'payment_mode' => 'cash',
+        'voucher_date' => now()->toDateString(),
+    ])->assertSessionHasErrors('lines.0.amount');
+
+    expect(TransporterVoucher::query()->where('lorry_hire_id', $hire->id)->count())->toBe(0);
+});
+
+test('bulk voucher store rejects partial blank rows and creates zero vouchers', function () {
+    $ctx = brokerWorkspace();
+    tripActivate($ctx['company'], $ctx['branch']);
+    $hireOne = brokerCreateLorryHire($ctx);
+    $lrTwo = brokerCreateBrokerLrOnVehicle($ctx, $hireOne->vehicle);
+    $hireTwo = app(LorryHireService::class)->createFromLorryReceipt(
+        $lrTwo,
+        $ctx['member'],
+        brokerHirePayloadFromLr($lrTwo),
+    );
+
+    actAsVoucherOperator($ctx);
+    $this->post(route('branch.broker.vouchers.store'), [
+        'lines' => [
+            ['lorry_hire_id' => $hireOne->id, 'amount' => '500.00'],
+            ['lorry_hire_id' => $hireTwo->id, 'amount' => ''],
+        ],
+        'payment_type' => 'advance',
+        'payment_mode' => 'cash',
+        'voucher_date' => now()->toDateString(),
+    ])->assertSessionHasErrors('lines.1.amount');
+
+    expect(TransporterVoucher::query()->whereIn('lorry_hire_id', [$hireOne->id, $hireTwo->id])->count())->toBe(0);
+});
+
+test('book balance store rejects empty or non-positive amounts', function () {
+    $ctx = brokerWorkspace();
+    tripActivate($ctx['company'], $ctx['branch']);
+    ['transporter' => $transporter] = brokerCreateTransporterAndMarketVehicle($ctx);
+
+    actAsVoucherOperator($ctx);
+    $this->post(route('branch.broker.transporter-balances.store'), [
+        'transporter_party_id' => $transporter->id,
+        'transaction_type' => 'advance',
+        'amount' => '',
+        'entry_date' => now()->toDateString(),
+        'payment_mode' => 'cash',
+    ])->assertSessionHasErrors('amount');
 });

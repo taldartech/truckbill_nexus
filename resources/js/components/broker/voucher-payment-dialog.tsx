@@ -80,8 +80,6 @@ type Props = {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     hireIds: string[];
-    /** Register payments start at each hire's remaining payable; the hire page leaves amounts blank (legacy). */
-    prefillAmounts: boolean;
     urls: VoucherPaymentUrls;
     onRecorded?: (hireIds: string[]) => void;
 };
@@ -133,7 +131,6 @@ export function VoucherPaymentDialog({
     open,
     onOpenChange,
     hireIds,
-    prefillAmounts,
     urls,
     onRecorded,
 }: Props) {
@@ -162,7 +159,17 @@ export function VoucherPaymentDialog({
     const hireKey = hireIds.join(',');
 
     useEffect(() => {
-        if (!open || hireKey === '') {
+        if (!open) {
+            setContext(null);
+            setLoadError(null);
+            setTypeTouched(false);
+            setShowClientErrors(false);
+            setConfirmOpen(false);
+            form.reset();
+            form.clearErrors();
+            return;
+        }
+        if (hireKey === '') {
             return;
         }
         setContext(null);
@@ -181,11 +188,9 @@ export function VoucherPaymentDialog({
                 form.setData({
                     lines: payload.hires.map((hire) => ({
                         lorry_hire_id: hire.id,
-                        amount: prefillAmounts
-                            ? (hire.remaining_payable ?? '')
-                            : '',
+                        amount: '',
                     })),
-                    payment_type: prefillAmounts ? 'final' : 'advance',
+                    payment_type: 'advance',
                     payment_mode: '',
                     voucher_date: payload.today,
                     bank_cash_account_id: '',
@@ -299,9 +304,6 @@ export function VoucherPaymentDialog({
         );
     };
     const hasClientErrors = Object.keys(clientErrors).length > 0;
-    const hasVisibleClientErrors = Object.keys(clientErrors).some(
-        (key) => showClientErrors || isImmediate(key),
-    );
 
     const setLineAmount = (index: number, amount: string) => {
         const lines = form.data.lines.map((line, position) =>
@@ -360,7 +362,7 @@ export function VoucherPaymentDialog({
                     }
                 }}
             >
-                <DialogContent className="max-h-[92vh] overflow-y-auto sm:max-w-4xl">
+                <DialogContent className="max-h-[88vh] overflow-y-auto p-5 sm:max-w-4xl">
                     <DialogHeader>
                         <DialogTitle>
                             {context ? title : 'Voucher Payment'}
@@ -890,9 +892,7 @@ export function VoucherPaymentDialog({
                             <Button
                                 type="submit"
                                 form="voucher-payment-form"
-                                disabled={
-                                    form.processing || hasVisibleClientErrors
-                                }
+                                disabled={form.processing}
                                 className="bg-[#2FB36F] text-white hover:bg-[#279960]"
                             >
                                 Review payment

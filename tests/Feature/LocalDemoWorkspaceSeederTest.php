@@ -1,5 +1,6 @@
 <?php
 
+use App\Domains\Subscription\Entitlement\CompanyCapabilityResolver;
 use App\Models\BrokerInvoice;
 use App\Models\Company;
 use App\Models\Enquiry;
@@ -11,6 +12,7 @@ use App\Models\LorryHireRevision;
 use App\Models\Party;
 use App\Models\Role;
 use App\Models\RolePermission;
+use App\Models\TransporterBookBalanceEntry;
 use App\Models\TransporterVoucher;
 use App\Models\User;
 use App\Support\Tenant\TenantContextHolder;
@@ -84,12 +86,16 @@ test('local demo seeder creates isolated companies roles masters and enquiries i
 
     $companyC = Company::query()->where('owner_user_id', $ownerA->id)->where('name', LocalDemoWorkspaceSeeder::COMPANY_C_NAME)->firstOrFail();
     $companyD = Company::query()->where('owner_user_id', $ownerA->id)->where('name', LocalDemoWorkspaceSeeder::COMPANY_D_NAME)->firstOrFail();
+    $ownerBroker = User::query()->where('email', LocalDemoWorkspaceSeeder::OWNER_BROKER_EMAIL)->firstOrFail();
+    $companyBroker = Company::query()->where('owner_user_id', $ownerBroker->id)->where('name', LocalDemoWorkspaceSeeder::COMPANY_BROKER_NAME)->firstOrFail();
 
     expect($companyA->id)->not->toBe($companyB->id)
+        ->and($companyBroker->id)->not->toBe($companyA->id)
         ->and($companyA->branches()->whereNull('deactivated_at')->count())->toBeGreaterThanOrEqual(2)
         ->and($companyB->branches()->whereNull('deactivated_at')->count())->toBeGreaterThanOrEqual(2)
         ->and($companyC->branches()->whereNull('deactivated_at')->count())->toBe(1)
         ->and($companyD->deactivated_at)->not->toBeNull()
+        ->and($companyBroker->branches()->whereNull('deactivated_at')->count())->toBe(1)
         ->and(Company::query()->where('owner_user_id', $ownerA->id)->count())->toBeGreaterThanOrEqual(3);
 
     expect(User::query()->where('email', LocalDemoWorkspaceSeeder::MANAGER_A_EMAIL)->exists())->toBeTrue()
@@ -159,12 +165,19 @@ test('local demo seeder creates isolated companies roles masters and enquiries i
     expect($adminEnquiryGrants)->toBe(0);
 
     $companyACount = Company::query()->where('name', LocalDemoWorkspaceSeeder::COMPANY_A_NAME)->count();
+    $companyBrokerCount = Company::query()->where('name', LocalDemoWorkspaceSeeder::COMPANY_BROKER_NAME)->count();
+    $brokerEntryCount = TransporterBookBalanceEntry::query()->where('company_id', $companyBroker->id)->count();
     $enquiryACount = Enquiry::query()->where('company_id', $companyA->id)->whereNull('deleted_at')->count();
     $userACount = User::query()->where('email', LocalDemoWorkspaceSeeder::OWNER_A_EMAIL)->count();
+
+    expect(app(CompanyCapabilityResolver::class)->resolve($companyBroker)['active_modules'])->toBe(['broker'])
+        ->and($brokerEntryCount)->toBeGreaterThanOrEqual(2);
 
     runLocalDemoSeeder('small');
 
     expect(Company::query()->where('name', LocalDemoWorkspaceSeeder::COMPANY_A_NAME)->count())->toBe($companyACount)
+        ->and(Company::query()->where('name', LocalDemoWorkspaceSeeder::COMPANY_BROKER_NAME)->count())->toBe($companyBrokerCount)
+        ->and(TransporterBookBalanceEntry::query()->where('company_id', $companyBroker->id)->count())->toBe($brokerEntryCount)
         ->and(Enquiry::query()->where('company_id', $companyA->id)->whereNull('deleted_at')->count())->toBe($enquiryACount)
         ->and(User::query()->where('email', LocalDemoWorkspaceSeeder::OWNER_A_EMAIL)->count())->toBe($userACount);
 

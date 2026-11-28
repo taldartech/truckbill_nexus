@@ -437,7 +437,6 @@ export default function LorryHiresIndex({
                     open={paymentOpen}
                     onOpenChange={setPaymentOpen}
                     hireIds={selection.ids}
-                    prefillAmounts
                     urls={voucherUrls}
                     onRecorded={selection.remove}
                 />

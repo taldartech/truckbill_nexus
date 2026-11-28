@@ -174,6 +174,8 @@ final class LorryHireCancellationService
                         'lorry_hire_id' => $locked->id,
                         'amount' => $outstanding,
                         'entry_type' => BookBalanceEntryType::LorryHireCancellationSettlement,
+                        'entry_date' => $cancelledAt->toDateString(),
+                        'reference_number' => $locked->hire_number,
                         'source_type' => TransporterBookBalanceService::SOURCE_LORRY_HIRE_CANCEL,
                         'source_id' => $locked->id,
                         'remark' => 'Lorry Hire cancellation settlement '.$locked->hire_number,

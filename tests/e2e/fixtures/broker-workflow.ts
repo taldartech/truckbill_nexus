@@ -392,10 +392,9 @@ export async function recordVoucherPaymentFromHire(
         timeout: 15_000,
     });
 
-    await dialog
-        .getByLabel(/Payment amount for/)
-        .first()
-        .fill(amount);
+    const amountInput = dialog.getByLabel(/Payment amount for/).first();
+    await expect(amountInput).toHaveValue('');
+    await amountInput.fill(amount);
     await dialog.locator('#voucher_payment_mode').selectOption('cash');
     await dialog.getByRole('button', { name: 'Review payment' }).click();
     await page
@@ -415,15 +414,7 @@ export async function assertTransporterBookBalanceHasActivity(
         page.getByRole('heading', { name: 'Transporter Book Balance' }),
     ).toBeVisible({ timeout: 15_000 });
 
-    const transporterSelect = page.locator('#transporter_party_id');
-    const firstTransporter = transporterSelect
-        .locator('option[value]:not([value=""])')
-        .first();
-    const transporterId = await firstTransporter.getAttribute('value');
-    if (!transporterId) {
-        throw new Error('No transporter options for book balance.');
-    }
-    await transporterSelect.selectOption(transporterId);
+    await selectOptionAt(page, '#transporter_party_id', 0);
     await page.getByRole('button', { name: 'View statement' }).click();
     await expect(page.getByText('Running balance').first()).toBeVisible({
         timeout: 15_000,
@@ -605,7 +596,10 @@ export async function createLinkedBiltyGroup(
     await expect(page).toHaveURL(/\/broker\/linked-bilties\/[0-9a-f-]+$/, {
         timeout: 30_000,
     });
-    const title = await page.getByRole('heading', { level: 1 }).innerText();
+    const title = await page
+        .getByText(/Linked Bilty Group/i)
+        .first()
+        .innerText();
     return title.trim();
 }
 
@@ -614,8 +608,14 @@ export async function recordLinkedBiltyGroupPayment(
     amount: string,
 ): Promise<void> {
     await expect(
-        page.getByRole('heading', { name: 'Group payment' }),
+        page.getByText('Group payment', { exact: true }).first(),
     ).toBeVisible({ timeout: 15_000 });
+
+    await expect(page.locator('#amount')).toHaveValue('');
+    await page.getByRole('button', { name: 'Preview allocation' }).click();
+    await expect(
+        page.getByText('Enter a positive payment amount.').first(),
+    ).toBeVisible();
 
     await page.locator('#amount').fill(amount);
     await page.locator('#voucher_date').fill(todayIsoDate());

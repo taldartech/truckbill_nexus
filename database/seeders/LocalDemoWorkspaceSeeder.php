@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use App\Domains\Broker\Adjustment\BrokerAdjustmentService;
 use App\Domains\Broker\Delivery\BrokerDeliveryService;
-use App\Domains\Broker\Enums\BookBalanceEntryType;
 use App\Domains\Broker\Enums\VoucherPaymentMode;
 use App\Domains\Broker\Enums\VoucherPaymentType;
 use App\Domains\Broker\Enums\VoucherStatus;
@@ -119,9 +118,14 @@ class LocalDemoWorkspaceSeeder extends Seeder
     /** Deactivated company owned by Owner A — limited Owner Panel fixture. */
     public const COMPANY_D_NAME = 'Demo Suspended Delta';
 
+    /** Broker-only company (no OwnFleet / Partload / Accounting) for capability & Driver Master demos. */
+    public const COMPANY_BROKER_NAME = 'Demo Broker Express';
+
     public const OWNER_A_EMAIL = 'owner.alpha@demo.test';
 
     public const OWNER_B_EMAIL = 'owner.beta@demo.test';
+
+    public const OWNER_BROKER_EMAIL = 'owner.broker@demo.test';
 
     public const MANAGER_A_EMAIL = 'manager.alpha@demo.test';
 
@@ -233,6 +237,15 @@ class LocalDemoWorkspaceSeeder extends Seeder
             $sa = $this->ensureSuperAdminUser('sa.demo.lifecycle@demo.test', 'Demo Lifecycle SA', $password);
             $workspace->deactivateCompany($sa, $suspended, 'Local demo: suspended company fixture');
         }
+
+        $this->seedBrokerOnlyWorkspace(
+            workspace: $workspace,
+            access: $access,
+            rbac: $rbac,
+            parties: $parties,
+            contracts: $contracts,
+            password: $password,
+        );
 
         $this->ensureCustomerUser(self::NO_ACCESS_EMAIL, 'Demo No Access', $password);
 
@@ -813,6 +826,7 @@ class LocalDemoWorkspaceSeeder extends Seeder
                     PermissionCodes::BROKER_LINKED_BILTY_CREATE,
                     PermissionCodes::BROKER_LINKED_BILTY_PAY,
                     PermissionCodes::BROKER_BOOK_BALANCE_VIEW,
+                    PermissionCodes::BROKER_BOOK_BALANCE_MANAGE,
                 ],
             ],
             self::ROLE_OPERATOR => [
@@ -882,6 +896,111 @@ class LocalDemoWorkspaceSeeder extends Seeder
                 );
             }
         }
+    }
+
+    private function seedBrokerOnlyWorkspace(
+        CompanyWorkspaceService $workspace,
+        CompanyAccessService $access,
+        RoleAssignmentService $rbac,
+        PartyService $parties,
+        CompanySubscriptionContractService $contracts,
+        string $password,
+    ): void {
+        $owner = $this->ensureCustomerUser(self::OWNER_BROKER_EMAIL, 'Demo Broker Owner', $password);
+        $company = $this->seedMinimalOwnedCompany(
+            workspace: $workspace,
+            ownerEmail: self::OWNER_BROKER_EMAIL,
+            companyName: self::COMPANY_BROKER_NAME,
+            headOfficeName: 'Pune Broker HO',
+            createSecondBranch: false,
+        );
+        $head = $company->branches()->whereNull('deactivated_at')->orderBy('created_at')->firstOrFail();
+
+        $membership = CompanyMembership::query()
+            ->where('company_id', $company->id)
+            ->where('user_id', $owner->id)
+            ->whereNull('deactivated_at')
+            ->firstOrFail();
+        $branchAssignment = $this->ensureBranchAssignment($workspace, $membership, $head);
+        $this->ensureBranchRole($rbac, $owner, $membership, $head, $branchAssignment, self::ROLE_MANAGER);
+
+        $this->ensureActiveSubscription($contracts, $owner, $company, ['broker']);
+
+        Auth::login($owner);
+        $access->activateContext($owner, $company, $head);
+
+        $this->ensureCatalogue($owner, OwnerCatalogueType::GoodsType, 'Broker General Cargo');
+        $this->ensureCatalogue($owner, OwnerCatalogueType::PackageType, 'Box');
+        $this->ensureStation($owner, 'Pune Yard', 'Maharashtra', 'Pune');
+        $this->ensureStation($owner, 'Nashik Hub', 'Maharashtra', 'Nashik');
+        $bank = $this->ensureBank($company, $head, 'demo-bank:broker-only:1');
+
+        $transporter = $this->ensurePartyWithRoles(
+            $parties,
+            $owner,
+            $company,
+            null,
+            'demo-party:'.$company->id.':broker-transporter',
+            'Broker Express Transporter',
+            [[
+                'role' => PartyRoleType::Transporter->value,
+                'attributes' => [
+                    'pan' => 'BEXPT1234K',
+                    'pan_status' => 'active',
+                    'declaration' => true,
+                    'goods_vehicles_count' => 3,
+                ],
+            ]],
+            'Pune',
+        );
+        $driver = $this->ensurePartyWithRoles(
+            $parties,
+            $owner,
+            $company,
+            null,
+            'demo-party:'.$company->id.':broker-driver',
+            'Broker Express Driver',
+            [[
+                'role' => PartyRoleType::Driver->value,
+                'attributes' => [
+                    'driver_type' => 'market',
+                    'license_number' => 'MH14EXP20261',
+                    'license_expiry' => CarbonImmutable::now()->addYears(3)->toDateString(),
+                ],
+            ]],
+            'Pune',
+        );
+        $this->ensureVehicle(
+            $company,
+            $head,
+            'MH14EXP0001',
+            ownership: VehicleOwnership::Market,
+            primaryDriverPartyId: $driver->id,
+            ownerPartyId: $transporter->id,
+            sharedScope: true,
+        );
+
+        $bookBalances = app(TransporterBookBalanceService::class);
+        $bookBalances->recordTransaction($company, $head, $owner, [
+            'transporter_party_id' => $transporter->id,
+            'transaction_type' => 'opening_balance',
+            'amount' => '3000.00',
+            'entry_date' => CarbonImmutable::now()->subDays(4)->toDateString(),
+            'reference_number' => 'OB-EXP-01',
+            'remark' => 'Demo broker-only opening Book Balance',
+            'idempotency_key' => 'demo-broker-only-opening:'.$company->id,
+        ]);
+        $bookBalances->recordTransaction($company, $head, $owner, [
+            'transporter_party_id' => $transporter->id,
+            'transaction_type' => 'advance',
+            'amount' => '2000.00',
+            'entry_date' => CarbonImmutable::now()->subDays(2)->toDateString(),
+            'payment_mode' => 'bank',
+            'bank_cash_account_id' => $bank->id,
+            'reference_number' => 'ADV-EXP-01',
+            'remark' => 'Demo broker-only advance without accounting',
+            'idempotency_key' => 'demo-broker-only-advance:'.$company->id,
+        ]);
     }
 
     private function seedMinimalOwnedCompany(
@@ -2359,12 +2478,18 @@ class LocalDemoWorkspaceSeeder extends Seeder
             ->where('name', 'Alpha Substitute Driver')
             ->first();
 
+        $marketDriver = Party::query()
+            ->where('company_id', $company->id)
+            ->where('name', 'Alpha Market Driver')
+            ->whereNull('deleted_at')
+            ->first();
+
         $ownerVehicle = $this->ensureVehicle(
             $company,
             $branch,
             'MH12BRKOWN'.substr((string) crc32($company->id.'broker-owner'), 0, 2),
             ownership: VehicleOwnership::Market,
-            primaryDriverPartyId: null,
+            primaryDriverPartyId: $marketDriver?->id,
             ownerPartyId: $ownerTransporter->id,
         );
 
@@ -2512,13 +2637,36 @@ class LocalDemoWorkspaceSeeder extends Seeder
             ]);
         }
 
-        app(TransporterBookBalanceService::class)->createSignedEntry($company, $branch, $owner, [
+        $bookBalances = app(TransporterBookBalanceService::class);
+        $bookBalances->recordTransaction($company, $branch, $owner, [
             'transporter_party_id' => $activeHire->transporter_party_id,
-            'amount' => '10000.00',
-            'entry_type' => BookBalanceEntryType::AdvanceAdjustment,
-            'source_type' => 'local_demo_book_balance',
-            'source_id' => $activeHire->id,
-            'remark' => 'Demo transporter Book Balance',
+            'transaction_type' => 'opening_balance',
+            'amount' => '4000.00',
+            'entry_date' => CarbonImmutable::now()->subDays(5)->toDateString(),
+            'reference_number' => 'OB-DEMO-01',
+            'remark' => 'Demo transporter opening Book Balance',
+            'idempotency_key' => 'demo-bb-opening:'.$company->id,
+        ]);
+        $bookBalances->recordTransaction($company, $branch, $owner, [
+            'transporter_party_id' => $activeHire->transporter_party_id,
+            'transaction_type' => 'advance',
+            'amount' => '8000.00',
+            'entry_date' => CarbonImmutable::now()->subDays(3)->toDateString(),
+            'payment_mode' => 'bank',
+            'bank_cash_account_id' => $bankAccount->id,
+            'reference_number' => 'ADV-DEMO-01',
+            'remark' => 'Demo direct transporter advance',
+            'idempotency_key' => 'demo-bb-advance:'.$company->id,
+        ]);
+        $bookBalances->recordTransaction($company, $branch, $owner, [
+            'transporter_party_id' => $activeHire->transporter_party_id,
+            'transaction_type' => 'recovery',
+            'amount' => '2000.00',
+            'entry_date' => CarbonImmutable::now()->subDays(2)->toDateString(),
+            'payment_mode' => 'cash',
+            'reference_number' => 'REC-DEMO-01',
+            'remark' => 'Demo transporter balance recovery',
+            'idempotency_key' => 'demo-bb-recovery:'.$company->id,
         ]);
 
         if (! TransporterVoucher::query()

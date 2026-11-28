@@ -45,6 +45,7 @@ export type WorkspaceNavigation = {
     partload_invoices?: boolean;
     accounting: boolean;
     masters_parties: boolean;
+    masters_drivers?: boolean;
     masters_vehicles: boolean;
     masters_vehicle_drivers: boolean;
     masters_bank_cash: boolean;

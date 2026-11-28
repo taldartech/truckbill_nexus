@@ -201,6 +201,7 @@ if (! function_exists('brokerGrantVoucherPermissions')) {
             PermissionCodes::BROKER_VOUCHER_STATUS,
             PermissionCodes::BROKER_VOUCHER_BULK,
             PermissionCodes::BROKER_BOOK_BALANCE_VIEW,
+            PermissionCodes::BROKER_BOOK_BALANCE_MANAGE,
         ] as $code) {
             tripGrant('customer.admin', $code);
         }

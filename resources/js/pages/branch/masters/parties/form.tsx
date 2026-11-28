@@ -62,6 +62,10 @@ type Props = {
     mode: 'create' | 'edit';
     party: Party | null;
     roleOptions: { value: string; label: string }[];
+    defaultRoles?: string[] | null;
+    defaultDriverType?: 'permanent' | 'market';
+    driverMasterContext?: boolean;
+    returnTo?: string | null;
     links: {
         hub: string;
         dashboard: string;
@@ -104,17 +108,34 @@ function initialBasic(party: Party | null): PartyBasicValues {
     };
 }
 
-function initialRoles(mode: Props['mode'], party: Party | null): string[] {
+function initialRoles(
+    mode: Props['mode'],
+    party: Party | null,
+    defaultRoles?: string[] | null,
+): string[] {
     if (mode === 'edit' && party?.roles?.length) {
         return party.roles
             .filter((role) => role.is_active !== false)
             .map((role) => role.role);
     }
 
+    if (defaultRoles && defaultRoles.length > 0) {
+        return defaultRoles;
+    }
+
     return ['customer'];
 }
 
-export default function PartyForm({ mode, party, roleOptions, links }: Props) {
+export default function PartyForm({
+    mode,
+    party,
+    roleOptions,
+    defaultRoles,
+    defaultDriverType = 'permanent',
+    driverMasterContext = false,
+    returnTo = null,
+    links,
+}: Props) {
     const canQuickCreateGeography = readCanQuickCreateGeography(
         usePage().props,
     );
@@ -127,7 +148,7 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
     const [reviewRemark, setReviewRemark] = useState('');
 
     const [selectedRoles, setSelectedRoles] = useState<string[]>(() =>
-        initialRoles(mode, party),
+        initialRoles(mode, party, defaultRoles),
     );
     const [basic, setBasic] = useState<PartyBasicValues>(() =>
         initialBasic(party),
@@ -135,9 +156,13 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
     const [transporter, setTransporter] = useState<TransporterAttrs>(() =>
         initialTransporter(party?.roles),
     );
-    const [driver, setDriver] = useState<DriverAttrs>(() =>
-        initialDriver(party?.roles),
-    );
+    const [driver, setDriver] = useState<DriverAttrs>(() => {
+        const initial = initialDriver(party?.roles);
+        if (mode === 'create' && defaultDriverType === 'market') {
+            return { ...initial, driver_type: 'market' };
+        }
+        return initial;
+    });
     const [pan, setPan] = useState(party?.pan ?? '');
     const [stateId, setStateId] = useState(party?.state_id ?? '');
     const [cityId, setCityId] = useState(party?.city_id ?? '');
@@ -179,7 +204,7 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
     });
 
     const originalReviewInput = (): PartyReviewInput => ({
-        selectedRoles: initialRoles(mode, party),
+        selectedRoles: initialRoles(mode, party, defaultRoles),
         roleLabel,
         basic: initialBasic(party),
         state: party?.state ?? '',
@@ -228,17 +253,31 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
         }, 0);
     };
 
-    const title = mode === 'create' ? 'Create party' : `Edit ${party?.name}`;
+    const title = driverMasterContext
+        ? mode === 'create'
+            ? 'Add Driver'
+            : `Edit ${party?.name}`
+        : mode === 'create'
+          ? 'Create party'
+          : `Edit ${party?.name}`;
 
     return (
         <>
             <Head title={title} />
             <AppFormPage
                 title={title}
-                description="Choose roles first, then enter contact details and only the information that applies to those roles."
+                description={
+                    driverMasterContext
+                        ? 'Enter driver contact details, licence information, and location.'
+                        : 'Choose roles first, then enter contact details and only the information that applies to those roles.'
+                }
                 actions={
                     <Button asChild variant="outline">
-                        <Link href={links.index}>Back to parties</Link>
+                        <Link href={links.index}>
+                            {driverMasterContext
+                                ? 'Back to drivers'
+                                : 'Back to parties'}
+                        </Link>
                     </Button>
                 }
             >
@@ -251,6 +290,13 @@ export default function PartyForm({ mode, party, roleOptions, links }: Props) {
                 >
                     {({ errors, processing }) => (
                         <>
+                            {returnTo ? (
+                                <input
+                                    type="hidden"
+                                    name="return_to"
+                                    value={returnTo}
+                                />
+                            ) : null}
                             <PartyMasterFormFields
                                 errors={errors}
                                 roleOptions={roleOptions}

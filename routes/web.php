@@ -44,6 +44,7 @@ use App\Http\Controllers\Branch\CatalogueController;
 use App\Http\Controllers\Branch\CustomerInvoiceController;
 use App\Http\Controllers\Branch\DocumentAttachmentController;
 use App\Http\Controllers\Branch\DriverAdvanceController;
+use App\Http\Controllers\Branch\DriverMasterController;
 use App\Http\Controllers\Branch\EnquiryController;
 use App\Http\Controllers\Branch\LinkedBiltyGroupController;
 use App\Http\Controllers\Branch\LorryHireController;
@@ -349,6 +350,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::middleware('company.capability:broker.book_balance')->group(function () {
             Route::get('/broker/transporter-balances', [TransporterBookBalanceController::class, 'index'])->name('branch.broker.transporter-balances.index');
+            Route::get('/broker/transporter-balances/context', [TransporterBookBalanceController::class, 'context'])->name('branch.broker.transporter-balances.context');
+            Route::post('/broker/transporter-balances', [TransporterBookBalanceController::class, 'store'])
+                ->middleware('company.capability:broker.book_balance,mutate')
+                ->name('branch.broker.transporter-balances.store');
         });
 
         Route::middleware('company.capability:broker.invoices')->group(function () {
@@ -506,6 +511,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/parties/{party}/edit', [PartyController::class, 'edit'])->name('branch.parties.edit');
             Route::patch('/parties/{party}', [PartyController::class, 'update'])->name('branch.parties.update');
             Route::delete('/parties/{party}', [PartyController::class, 'destroy'])->name('branch.parties.destroy');
+
+            Route::middleware('company.capability:masters.parties.driver_role')->group(function () {
+                Route::get('/drivers', [DriverMasterController::class, 'index'])->name('branch.drivers.index');
+                Route::get('/drivers/create', [DriverMasterController::class, 'create'])->name('branch.drivers.create');
+                Route::get('/drivers/{party}', [DriverMasterController::class, 'show'])->name('branch.drivers.show');
+                Route::get('/drivers/{party}/edit', [DriverMasterController::class, 'edit'])->name('branch.drivers.edit');
+            });
         });
 
         Route::middleware('company.capability:masters.vehicles')->group(function () {

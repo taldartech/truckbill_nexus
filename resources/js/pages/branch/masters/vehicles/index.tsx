@@ -146,10 +146,10 @@ export default function VehiclesIndex({
                                                       : '—'}
                                             </td>
                                             <td>
-                                                {row.ownership === 'own'
-                                                    ? (row.primary_driver_name ??
-                                                      'Unassigned')
-                                                    : '—'}
+                                                {row.primary_driver_name ??
+                                                    (row.ownership === 'own'
+                                                        ? 'Unassigned'
+                                                        : '—')}
                                             </td>
                                             <td>
                                                 <WorkspaceStatusBadge

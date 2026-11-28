@@ -46,7 +46,7 @@ type Props = {
     storeUrl: string;
     onCreated: (vehicle: VehicleSelectOption) => void;
     partiesOptionsUrl?: string;
-    partiesStoreUrl?: string;
+    partiesStoreUrl?: string | null;
     catalogues?: VehicleQuickCreateCatalogues;
     defaultOwnership?: 'market' | 'own';
     allowOwn?: boolean;

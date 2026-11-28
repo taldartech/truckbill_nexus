@@ -81,3 +81,10 @@
 ## Next execution
 
 Batch 2 authorized operational-flow work is complete. Do **not** begin Batch 3 / Phase 7 without separate PO authorization.
+
+## Subsequent accepted remediations (Rules §§36–40)
+
+- **Lorry Hire Edit & Custom Amount (Rules §37):** Guarded edit via shared form (`LorryHireEditController`, `LorryHireRevisionService`), `Custom Amount` per line, immutable `LorryHireRevision`, and delta Accounting posting (`hire_revised`). **PO-LGC-007** updated accordingly.
+- **Transporter Book Balance Management (Rules §38):** Restored legacy independent advance, recovery, balance adjustment (with mandatory remark), opening balance, and full Running Balance statement via shared `BookBalanceDialog` accessible from Party Master register, Party Details, and `/broker/transporter-balances`, backed by `TransporterBookBalanceService` row locking and optional Accounting GL auto-posting.
+- **Broker Driver Master & Capability Isolation (Rules §39):** Added dedicated `/drivers` register (`DriverMasterController`) reusing unified `Party` (`Driver` role + `Driving Licence` document fallback) for Broker and OwnFleet, plus Market Vehicle/Bilty Quick Add, while keeping OwnFleet Vehicle Drivers assignments and attendance strictly isolated.
+- **Blank Payment Amount Defaults (Rules §40):** Removed prefilled amounts from single/bulk Voucher Payment modals, Create & Record Voucher (`?pay=1`), Book Balance modal, and Linked Bilty Group payment with strict client and server positive-amount validation per processed row.

@@ -25,7 +25,7 @@ type Props = {
     label: string;
     options: PartyOption[];
     /** Server search endpoint (e.g. /parties/options). When set, searches beyond the initial option list. */
-    searchUrl?: string;
+    searchUrl?: string | null;
     /** Required role for remote search (e.g. customer). */
     role?: string;
     /** Optional multi-role remote search. */
@@ -37,10 +37,10 @@ type Props = {
     onPartyChange?: (party: PartyOption | null) => void;
     emptyMessage?: string;
     /** Full-page create fallback when quick create is unavailable. */
-    createHref?: string;
+    createHref?: string | null;
     createLabel?: string;
     /** JSON store URL for inline quick create (preferred over createHref). */
-    createStoreUrl?: string;
+    createStoreUrl?: string | null;
     /** Role assigned when quick-creating from this selector. */
     createRole?: QuickCreatePartyRole;
     error?: string;
@@ -207,7 +207,7 @@ export function SearchablePartySelect({
                         null;
                     applyParty(party);
                 }}
-                searchUrl={remoteEnabled ? searchUrl : undefined}
+                searchUrl={remoteEnabled && searchUrl ? searchUrl : undefined}
                 buildSearchParams={
                     remoteEnabled ? buildSearchParams : undefined
                 }

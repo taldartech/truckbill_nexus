@@ -15,6 +15,8 @@ use App\Domains\Master\Vehicle\Enums\VehicleOwnership;
 use App\Domains\Master\Vehicle\VehicleOptionQuery;
 use App\Domains\Rbac\PermissionAuthorizer;
 use App\Domains\Rbac\PermissionCodes;
+use App\Domains\Subscription\Entitlement\CompanyCapabilities;
+use App\Domains\Subscription\Entitlement\CompanyCapabilityResolver;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Controller;
 use App\Models\BankCashAccount;
@@ -101,6 +103,11 @@ class LinkedBiltyGroupController extends Controller
             100,
         );
 
+        $masterPermissions = $this->masterPermissions($actor, $company, $branch, $this->access, $this->authorizer);
+        $capabilities = app(CompanyCapabilityResolver::class);
+        $canCreateParty = $masterPermissions['can_create'] && $capabilities->allowsMutate($company, CompanyCapabilities::MASTERS_PARTIES);
+        $canCreateVehicle = $masterPermissions['can_create'] && $capabilities->allowsMutate($company, CompanyCapabilities::MASTERS_VEHICLES);
+
         return Inertia::render('broker/linked-bilties/create', [
             'filters' => ['vehicle_id' => $vehicleId],
             'vehicles' => $vehicles,
@@ -112,10 +119,10 @@ class LinkedBiltyGroupController extends Controller
                 'store' => route('branch.broker.linked-bilties.store', absolute: false),
                 'filter' => route('branch.broker.linked-bilties.create', absolute: false),
                 'parties_options' => route('branch.parties.options', absolute: false),
-                'parties_store' => route('branch.parties.store', absolute: false),
+                'parties_store' => $canCreateParty ? route('branch.parties.store', absolute: false) : null,
                 'vehicles_options' => route('branch.vehicles.options', absolute: false),
-                'vehicles_create' => route('branch.vehicles.create', absolute: false),
-                'vehicles_store' => route('branch.vehicles.store', absolute: false),
+                'vehicles_create' => $canCreateVehicle ? route('branch.vehicles.create', absolute: false) : null,
+                'vehicles_store' => $canCreateVehicle ? route('branch.vehicles.store', absolute: false) : null,
             ],
         ]);
     }

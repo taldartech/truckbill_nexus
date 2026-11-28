@@ -5,6 +5,7 @@ namespace App\Domains\Accounting;
 use App\Domains\Accounting\Enums\AccountingPostingStatus;
 use App\Domains\Accounting\Enums\AccountingVoucherType;
 use App\Domains\Accounting\Exceptions\AccountingDomainException;
+use App\Domains\Broker\Enums\BookBalanceEntryType;
 use App\Domains\Broker\Enums\BrokerInvoiceStatus;
 use App\Domains\Broker\Enums\LorryHireStatus;
 use App\Domains\Broker\Enums\VoucherPaymentType;
@@ -37,6 +38,7 @@ use App\Models\PartloadInvoice;
 use App\Models\PartloadInvoicePayment;
 use App\Models\PartloadMainChallan;
 use App\Models\SubscriptionInvoice;
+use App\Models\TransporterBookBalanceEntry;
 use App\Models\TransporterVoucher;
 use App\Models\TripExpense;
 use App\Models\TripInvoice;
@@ -203,7 +205,19 @@ final class AccountingActivationLifecycleService
             ->whereNull('deleted_at')
             ->whereHas('lorryHire', fn ($q) => $q->where('outstanding_amount', '>', 0)->where('status', '!=', LorryHireStatus::Cancelled->value)->whereNull('deleted_at'))
             ->sum('amount');
-        $transporterAdvance = $this->money($openAdvanceVouchers);
+        $manualBookBalanceNet = $this->money(TransporterBookBalanceEntry::query()
+            ->where('company_id', $company->id)
+            ->whereIn('entry_type', [
+                BookBalanceEntryType::DirectAdvance->value,
+                BookBalanceEntryType::BalanceRecovery->value,
+                BookBalanceEntryType::BalanceAdjustment->value,
+                BookBalanceEntryType::OpeningBalance->value,
+                BookBalanceEntryType::AdjustInAdvanceVoucher->value,
+            ])
+            ->whereNull('deleted_at')
+            ->sum('amount'));
+        $positiveBookBalance = bccomp($manualBookBalanceNet, '0.00', 2) === 1 ? $manualBookBalanceNet : '0.00';
+        $transporterAdvance = bcadd($this->money($openAdvanceVouchers), $positiveBookBalance, 2);
 
         $creditExpenses = TripExpense::query()
             ->where('company_id', $company->id)
@@ -408,6 +422,7 @@ final class AccountingActivationLifecycleService
             'lorry_hires' => 0,
             'broker_adjustments' => 0,
             'transporter_vouchers' => 0,
+            'transporter_book_balance_entries' => 0,
             'trip_invoices' => 0,
             'trip_payments' => 0,
             'trip_expenses' => 0,
@@ -482,6 +497,25 @@ final class AccountingActivationLifecycleService
             ->each(function (string $id) use ($postedKeys, &$counts): void {
                 if (! isset($postedKeys[TransporterVoucher::class.":{$id}:transporter_voucher_paid"])) {
                     $counts['transporter_vouchers']++;
+                }
+            });
+
+        TransporterBookBalanceEntry::query()
+            ->where('company_id', $company->id)
+            ->whereIn('entry_type', [
+                BookBalanceEntryType::DirectAdvance->value,
+                BookBalanceEntryType::BalanceRecovery->value,
+                BookBalanceEntryType::BalanceAdjustment->value,
+                BookBalanceEntryType::OpeningBalance->value,
+            ])
+            ->whereRaw('COALESCE(entry_date, CAST(created_at AS DATE)) >= ?', [$from])
+            ->whereRaw('COALESCE(entry_date, CAST(created_at AS DATE)) <= ?', [$to])
+            ->whereNull('deleted_at')
+            ->get(['id', 'entry_type'])
+            ->each(function (TransporterBookBalanceEntry $entry) use ($postedKeys, &$counts): void {
+                $purpose = 'transporter_book_balance_'.$entry->entry_type->value;
+                if (! isset($postedKeys[TransporterBookBalanceEntry::class.":{$entry->id}:{$purpose}"])) {
+                    $counts['transporter_book_balance_entries']++;
                 }
             });
 
@@ -724,6 +758,21 @@ final class AccountingActivationLifecycleService
                 ->whereNull('deleted_at')
                 ->orderBy('voucher_date')
                 ->each(fn (TransporterVoucher $v) => $this->poster->postTransporterVoucherPaid($v, $actor));
+
+            TransporterBookBalanceEntry::query()
+                ->where('company_id', $company->id)
+                ->whereIn('entry_type', [
+                    BookBalanceEntryType::DirectAdvance->value,
+                    BookBalanceEntryType::BalanceRecovery->value,
+                    BookBalanceEntryType::BalanceAdjustment->value,
+                    BookBalanceEntryType::OpeningBalance->value,
+                ])
+                ->whereRaw('COALESCE(entry_date, CAST(created_at AS DATE)) >= ?', [$from])
+                ->whereRaw('COALESCE(entry_date, CAST(created_at AS DATE)) <= ?', [$to])
+                ->whereNull('deleted_at')
+                ->orderByRaw('COALESCE(entry_date, CAST(created_at AS DATE)) ASC')
+                ->orderBy('created_at')
+                ->each(fn (TransporterBookBalanceEntry $entry) => $this->poster->postTransporterBookBalanceEntry($entry, $actor));
 
             TripInvoice::query()
                 ->where('company_id', $company->id)

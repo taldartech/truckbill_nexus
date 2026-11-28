@@ -55,7 +55,7 @@ final class VoucherPaymentService
         }
 
         $hires = $this->resolvePayableHires($company, $branch, $lines);
-        $amounts = array_map(fn (array $line): string => $this->money($line['amount']), $lines);
+        $amounts = $this->validatedLineAmounts($lines);
 
         return $this->auditedTransaction->run(function () use ($company, $branch, $actor, $lines, $common, $hires, $amounts): array {
             if (VoucherPaymentMode::tryFrom($common['payment_mode']) === VoucherPaymentMode::AdjustInAdvance) {
@@ -185,10 +185,36 @@ final class VoucherPaymentService
     }
 
     /**
-     * @return numeric-string
+     * @param  list<array{lorry_hire_id: string, amount?: mixed}>  $lines
+     * @return list<numeric-string>
      */
-    private function money(mixed $value): string
+    private function validatedLineAmounts(array $lines): array
     {
-        return is_numeric($value) ? number_format((float) $value, 2, '.', '') : '0.00';
+        $errors = [];
+        $amounts = [];
+
+        foreach ($lines as $index => $line) {
+            $raw = $line['amount'] ?? null;
+            if ($raw === null || $raw === '' || ! is_numeric($raw)) {
+                $errors["lines.{$index}.amount"] = 'Enter the payment amount.';
+
+                continue;
+            }
+
+            $formatted = number_format((float) $raw, 2, '.', '');
+            if (bccomp($formatted, '0', 2) !== 1) {
+                $errors["lines.{$index}.amount"] = 'Payment amount must be greater than zero.';
+
+                continue;
+            }
+
+            $amounts[] = $formatted;
+        }
+
+        if ($errors !== []) {
+            throw ValidationException::withMessages($errors);
+        }
+
+        return $amounts;
     }
 }

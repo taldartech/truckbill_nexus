@@ -294,6 +294,7 @@ test('broker purchase activates immediately without invoice approval and restore
             ->where('workspace.navigation.customer_invoices', true)
             ->where('workspace.navigation.customer_payments', true)
             ->where('workspace.navigation.masters_parties', true)
+            ->where('workspace.navigation.masters_drivers', true)
             ->where('workspace.navigation.masters_vehicles', true)
             ->where('workspace.navigation.masters_bank_cash', true)
             ->where('workspace.navigation.masters_stations', true)

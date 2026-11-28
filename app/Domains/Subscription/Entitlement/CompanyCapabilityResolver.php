@@ -233,8 +233,8 @@ final class CompanyCapabilityResolver
             // mutations obey subscription gate + module ownership rules)
             CompanyCapabilities::MASTERS_PARTIES => ['read' => $historicalViewAllowed, 'mutate' => $mutationsAllowed],
             CompanyCapabilities::MASTERS_PARTIES_DRIVER_ROLE => [
-                'read' => $hasOwnFleetRead || $hasPartloadRead,
-                'mutate' => $mutationsAllowed && ($hasOwnFleet || $hasPartload),
+                'read' => $hasBrokerRead || $hasOwnFleetRead || $hasPartloadRead,
+                'mutate' => $mutationsAllowed && ($hasBroker || $hasOwnFleet || $hasPartload),
             ],
             CompanyCapabilities::MASTERS_VEHICLES => ['read' => $hasAnyCoreRead, 'mutate' => $mutationsAllowed && $hasAnyCore],
             CompanyCapabilities::MASTERS_BANK_CASH => ['read' => $historicalViewAllowed, 'mutate' => $mutationsAllowed],
@@ -430,6 +430,9 @@ final class CompanyCapabilityResolver
 
             // Masters sidebar
             'masters_parties' => $capRead(CompanyCapabilities::MASTERS_PARTIES) && $perm(PermissionCodes::PLATFORM_VIEW),
+            'masters_drivers' => $capRead(CompanyCapabilities::MASTERS_PARTIES_DRIVER_ROLE)
+                && $capRead(CompanyCapabilities::MASTERS_PARTIES)
+                && $perm(PermissionCodes::PLATFORM_VIEW),
             'masters_vehicles' => $capRead(CompanyCapabilities::MASTERS_VEHICLES) && $perm(PermissionCodes::PLATFORM_VIEW),
             'masters_vehicle_drivers' => $capRead(CompanyCapabilities::OWNFLEET_VEHICLE_DRIVERS) && $perm(PermissionCodes::PLATFORM_VIEW),
             'masters_bank_cash' => $capRead(CompanyCapabilities::MASTERS_BANK_CASH) && $perm(PermissionCodes::PLATFORM_VIEW),

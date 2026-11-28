@@ -1,7 +1,8 @@
-import { Head, usePage } from '@inertiajs/react';
-import { ArrowLeft, FileText, Pencil } from 'lucide-react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
+import { ArrowLeft, FileText, Pencil, Wallet } from 'lucide-react';
 import { useState } from 'react';
 import { AppIconAction } from '@/components/app-icon-action';
+import { BookBalanceDialog } from '@/components/broker/book-balance-dialog';
 import {
     FbDetailCard,
     FbDetailPage,
@@ -16,18 +17,50 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { formatDisplayDate } from '@/lib/dates';
+import { formatInr } from '@/lib/money';
 
 type ProfileItem = { label: string; value: string; kind?: 'date' };
 
 type ProfileSection = { key: string; title: string; items: ProfileItem[] };
 
+type BookBalanceEntry = {
+    id: string;
+    transaction_date: string;
+    transaction_type: string;
+    particulars: string;
+    reference_number: string | null;
+    debit: string | null;
+    credit: string | null;
+};
+
 type Props = {
     permissions: { can_edit: boolean };
-    party: { name: string; roles: string[]; sections: ProfileSection[] };
+    party: {
+        id?: string;
+        name: string;
+        roles: string[];
+        sections: ProfileSection[];
+    };
     bookBalance?: {
-        available_balance: string;
+        party_id?: string;
+        party_name?: string;
+        available_balance: string | null;
+        running_balance?: string | null;
+        can_manage?: boolean;
+        today?: string | null;
+        bank_cash_accounts?: Array<{
+            id: string;
+            name: string;
+            account_kind?: string;
+        }>;
+        can_create_bank_cash?: boolean;
+        recent_entries?: BookBalanceEntry[];
+        store_url?: string | null;
+        context_url?: string | null;
+        bank_cash_store_url?: string | null;
         statement_url: string;
     } | null;
+    driverMasterContext?: boolean;
     documentDrawer: Omit<DocumentDrawerProps, 'open' | 'onOpenChange'> | null;
     links: { index: string; edit: string; documents: string };
 };
@@ -55,11 +88,13 @@ export default function PartyShow({
     permissions,
     party,
     bookBalance = null,
+    driverMasterContext = false,
     documentDrawer,
     links,
 }: Props) {
     const { flash } = usePage<{ flash?: { success?: string | null } }>().props;
     const [docsOpen, setDocsOpen] = useState(false);
+    const [bookBalanceOpen, setBookBalanceOpen] = useState(false);
 
     return (
         <>
@@ -93,10 +128,25 @@ export default function PartyShow({
                         <>
                             <AppIconAction
                                 icon={ArrowLeft}
-                                label="Back to parties"
+                                label={
+                                    driverMasterContext
+                                        ? 'Back to drivers'
+                                        : 'Back to parties'
+                                }
                                 href={links.index}
                                 size="sm"
                             />
+                            {bookBalance?.can_manage &&
+                            bookBalance.store_url ? (
+                                <AppIconAction
+                                    icon={Wallet}
+                                    label="Book Balance"
+                                    type="button"
+                                    onClick={() => setBookBalanceOpen(true)}
+                                    variant="primary"
+                                    size="sm"
+                                />
+                            ) : null}
                             {documentDrawer ? (
                                 <AppIconAction
                                     icon={FileText}
@@ -116,7 +166,11 @@ export default function PartyShow({
                             )}
                             <AppIconAction
                                 icon={Pencil}
-                                label="Edit party"
+                                label={
+                                    driverMasterContext
+                                        ? 'Edit driver'
+                                        : 'Edit party'
+                                }
                                 href={links.edit}
                                 variant="warning"
                                 size="sm"
@@ -156,24 +210,139 @@ export default function PartyShow({
                 ) : null}
 
                 {bookBalance ? (
-                    <FbDetailCard title="Financial">
-                        <FbInfoGrid relaxed>
-                            <FbInfoItem
-                                label="Available advance balance"
-                                value={bookBalance.available_balance}
-                            />
-                            <FbInfoItem
-                                label="Statement"
-                                value={
-                                    <a
-                                        href={bookBalance.statement_url}
-                                        className="text-sm text-[#0f766e] underline"
+                    <FbDetailCard
+                        title="Transporter Book Balance"
+                        actions={
+                            <div className="flex flex-wrap items-center gap-2">
+                                {bookBalance.can_manage &&
+                                bookBalance.store_url ? (
+                                    <Button
+                                        type="button"
+                                        size="sm"
+                                        className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                                        onClick={() => setBookBalanceOpen(true)}
                                     >
-                                        View book balance detail
-                                    </a>
-                                }
-                            />
-                        </FbInfoGrid>
+                                        <Wallet className="mr-1.5 h-3.5 w-3.5" />
+                                        Book Balance
+                                    </Button>
+                                ) : null}
+                                <Button asChild size="sm" variant="outline">
+                                    <Link href={bookBalance.statement_url}>
+                                        View Statement
+                                    </Link>
+                                </Button>
+                            </div>
+                        }
+                    >
+                        <div className="space-y-4 px-4 py-3">
+                            <FbInfoGrid relaxed>
+                                <FbInfoItem
+                                    label="Available Book Balance"
+                                    value={
+                                        <span
+                                            className="text-base font-bold text-emerald-900 tabular-nums"
+                                            data-testid="party-book-balance"
+                                        >
+                                            {bookBalance.available_balance !==
+                                            null
+                                                ? formatInr(
+                                                      bookBalance.available_balance,
+                                                  )
+                                                : '—'}
+                                        </span>
+                                    }
+                                />
+                                <FbInfoItem
+                                    label="Statement"
+                                    value={
+                                        <Link
+                                            href={bookBalance.statement_url}
+                                            className="text-sm font-medium text-[#0f766e] underline"
+                                        >
+                                            Open full transaction statement
+                                        </Link>
+                                    }
+                                />
+                            </FbInfoGrid>
+
+                            {bookBalance.recent_entries &&
+                            bookBalance.recent_entries.length > 0 ? (
+                                <div className="overflow-x-auto rounded-md border border-border">
+                                    <table className="w-full text-xs">
+                                        <thead className="bg-muted/40 text-left text-muted-foreground">
+                                            <tr>
+                                                <th className="px-3 py-1.5">
+                                                    Date
+                                                </th>
+                                                <th className="px-3 py-1.5">
+                                                    Transaction Type
+                                                </th>
+                                                <th className="px-3 py-1.5">
+                                                    Particulars
+                                                </th>
+                                                <th className="px-3 py-1.5">
+                                                    Reference
+                                                </th>
+                                                <th className="px-3 py-1.5 text-end">
+                                                    Debit
+                                                </th>
+                                                <th className="px-3 py-1.5 text-end">
+                                                    Credit
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {bookBalance.recent_entries.map(
+                                                (entry) => (
+                                                    <tr
+                                                        key={entry.id}
+                                                        className="border-t border-border/60"
+                                                    >
+                                                        <td className="px-3 py-1.5">
+                                                            {
+                                                                entry.transaction_date
+                                                            }
+                                                        </td>
+                                                        <td className="px-3 py-1.5">
+                                                            {
+                                                                entry.transaction_type
+                                                            }
+                                                        </td>
+                                                        <td className="px-3 py-1.5 text-slate-600">
+                                                            {entry.particulars}
+                                                        </td>
+                                                        <td className="px-3 py-1.5 font-mono text-slate-600">
+                                                            {entry.reference_number ??
+                                                                '—'}
+                                                        </td>
+                                                        <td className="px-3 py-1.5 text-end text-emerald-700 tabular-nums">
+                                                            {entry.debit &&
+                                                            Number(
+                                                                entry.debit,
+                                                            ) > 0
+                                                                ? formatInr(
+                                                                      entry.debit,
+                                                                  )
+                                                                : '—'}
+                                                        </td>
+                                                        <td className="px-3 py-1.5 text-end text-amber-700 tabular-nums">
+                                                            {entry.credit &&
+                                                            Number(
+                                                                entry.credit,
+                                                            ) > 0
+                                                                ? formatInr(
+                                                                      entry.credit,
+                                                                  )
+                                                                : '—'}
+                                                        </td>
+                                                    </tr>
+                                                ),
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : null}
+                        </div>
                     </FbDetailCard>
                 ) : null}
             </FbDetailPage>
@@ -183,6 +352,28 @@ export default function PartyShow({
                     open={docsOpen}
                     onOpenChange={setDocsOpen}
                     {...documentDrawer}
+                />
+            ) : null}
+
+            {bookBalance?.can_manage &&
+            bookBalance.store_url &&
+            bookBalance.today &&
+            (bookBalance.party_id ?? party.id) ? (
+                <BookBalanceDialog
+                    open={bookBalanceOpen}
+                    onOpenChange={setBookBalanceOpen}
+                    transporter={{
+                        id: bookBalance.party_id ?? party.id!,
+                        name: bookBalance.party_name ?? party.name,
+                        available_balance: bookBalance.available_balance,
+                    }}
+                    contextUrl={bookBalance.context_url}
+                    storeUrl={bookBalance.store_url}
+                    bankCashAccounts={bookBalance.bank_cash_accounts ?? []}
+                    bankCashStoreUrl={bookBalance.bank_cash_store_url}
+                    canCreateBankCash={bookBalance.can_create_bank_cash}
+                    today={bookBalance.today}
+                    onRecorded={() => router.reload()}
                 />
             ) : null}
         </>

@@ -169,6 +169,7 @@ class VehicleController extends Controller
 
         $ownsAllowed = $this->capabilities->allowsMutate($company, CompanyCapabilities::VEHICLE_OWNERSHIP_OWN);
         $driversEnabled = $this->capabilities->allowsMutate($company, CompanyCapabilities::OWNFLEET_VEHICLE_DRIVERS);
+        $canCreateParty = $this->capabilities->allowsMutate($company, CompanyCapabilities::MASTERS_PARTIES);
 
         return Inertia::render('branch/masters/vehicles/form', [
             'company' => $this->companyPayload($company),
@@ -187,7 +188,7 @@ class VehicleController extends Controller
                     : null,
                 'tyreLayoutsStoreUrl' => $ownsAllowed ? route('branch.tyre-layouts.store', absolute: false) : null,
                 'partiesOptionsUrl' => route('branch.parties.options', absolute: false),
-                'partiesStoreUrl' => route('branch.parties.store', absolute: false),
+                'partiesStoreUrl' => $canCreateParty ? route('branch.parties.store', absolute: false) : null,
             ]),
         ]);
     }
@@ -365,6 +366,7 @@ class VehicleController extends Controller
 
         $ownsAllowed = $this->capabilities->allowsMutate($company, CompanyCapabilities::VEHICLE_OWNERSHIP_OWN);
         $driversEnabled = $this->capabilities->allowsMutate($company, CompanyCapabilities::OWNFLEET_VEHICLE_DRIVERS);
+        $canCreateParty = $permissions['can_create'] && $this->capabilities->allowsMutate($company, CompanyCapabilities::MASTERS_PARTIES);
 
         return Inertia::render('branch/masters/vehicles/form', [
             'company' => $this->companyPayload($company),
@@ -383,7 +385,7 @@ class VehicleController extends Controller
                     : null,
                 'tyreLayoutsStoreUrl' => $ownsAllowed ? route('branch.tyre-layouts.store', absolute: false) : null,
                 'partiesOptionsUrl' => route('branch.parties.options', absolute: false),
-                'partiesStoreUrl' => route('branch.parties.store', absolute: false),
+                'partiesStoreUrl' => $canCreateParty ? route('branch.parties.store', absolute: false) : null,
             ]),
         ]);
     }
@@ -545,7 +547,9 @@ class VehicleController extends Controller
             'transporters' => $allowsMarket
                 ? $partyOptions->forRoles($company, $branch, PartyRoleType::Transporter)
                 : [],
-            'drivers' => $partyOptions->forRoles($company, $branch, PartyRoleType::Driver),
+            'drivers' => $this->capabilities->allowsRead($company, CompanyCapabilities::MASTERS_PARTIES_DRIVER_ROLE)
+                ? $partyOptions->forRoles($company, $branch, PartyRoleType::Driver)
+                : [],
         ];
     }
 

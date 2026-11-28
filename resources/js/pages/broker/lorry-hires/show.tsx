@@ -1197,7 +1197,6 @@ export default function LorryHireShow({
                         open={paymentOpen}
                         onOpenChange={closePayment}
                         hireIds={[lorryHire.id]}
-                        prefillAmounts={false}
                         urls={{
                             payment_context: urls.payment_context,
                             voucher_store: urls.voucher_store,

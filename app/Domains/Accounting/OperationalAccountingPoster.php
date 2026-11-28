@@ -4,6 +4,7 @@ namespace App\Domains\Accounting;
 
 use App\Domains\Accounting\Enums\AccountingPostingStatus;
 use App\Domains\Accounting\Enums\AccountingVoucherType;
+use App\Domains\Broker\Enums\BookBalanceEntryType;
 use App\Domains\Broker\Enums\BrokerAdjustmentType;
 use App\Domains\Broker\Enums\VoucherPaymentMode;
 use App\Domains\Broker\Enums\VoucherPaymentType;
@@ -31,6 +32,7 @@ use App\Models\PartloadInvoice;
 use App\Models\PartloadInvoicePayment;
 use App\Models\PartloadMainChallan;
 use App\Models\SubscriptionInvoice;
+use App\Models\TransporterBookBalanceEntry;
 use App\Models\TransporterVoucher;
 use App\Models\TripExpense;
 use App\Models\TripInvoice;
@@ -487,6 +489,111 @@ final class OperationalAccountingPoster
             ],
             branch: $branch,
             allowControlledCorrection: $allowControlled,
+        );
+    }
+
+    public function postTransporterBookBalanceEntry(TransporterBookBalanceEntry $entry, User $actor, bool $allowBypass = false): void
+    {
+        if (! $entry->entry_type->isManualBookBalanceTransaction()) {
+            return;
+        }
+
+        $company = Company::query()->findOrFail($entry->company_id);
+        if (! $allowBypass && ! $this->shouldAutoPost($company)) {
+            return;
+        }
+
+        $branch = Branch::query()->findOrFail($entry->branch_id);
+        $this->prepare($company);
+
+        $signed = is_numeric($entry->amount) ? number_format((float) $entry->amount, 2, '.', '') : '0.00';
+        $cmp = bccomp($signed, '0', 2);
+        if ($cmp === 0) {
+            return;
+        }
+
+        $isPositive = $cmp === 1;
+        $absAmount = $isPositive ? $signed : bcmul($signed, '-1', 2);
+        $zero = $this->zeroAmount();
+
+        $advanceLedger = $this->ledgers->requireByName($company, 'Transporter Advances');
+        $refSuffix = filled($entry->reference_number) ? ' ('.$entry->reference_number.')' : '';
+
+        if ($entry->entry_type === BookBalanceEntryType::DirectAdvance) {
+            $cashOrBank = $this->resolveCashOrBank($company, $entry->bank_cash_account_id, $entry->payment_mode ?? 'cash');
+            $voucherType = AccountingVoucherType::Payment;
+            $lines = [
+                ['gl_ledger_id' => $advanceLedger->id, 'debit_amount' => $absAmount, 'credit_amount' => $zero, 'narration' => 'Transporter book balance advance'.$refSuffix],
+                ['gl_ledger_id' => $cashOrBank->id, 'debit_amount' => $zero, 'credit_amount' => $absAmount, 'narration' => 'Transporter advance payment'.$refSuffix],
+            ];
+        } elseif ($entry->entry_type === BookBalanceEntryType::BalanceRecovery) {
+            $cashOrBank = $this->resolveCashOrBank($company, $entry->bank_cash_account_id, $entry->payment_mode ?? 'cash');
+            $voucherType = AccountingVoucherType::Receipt;
+            $lines = [
+                ['gl_ledger_id' => $cashOrBank->id, 'debit_amount' => $absAmount, 'credit_amount' => $zero, 'narration' => 'Transporter advance refund/recovery'.$refSuffix],
+                ['gl_ledger_id' => $advanceLedger->id, 'debit_amount' => $zero, 'credit_amount' => $absAmount, 'narration' => 'Transporter book balance recovery'.$refSuffix],
+            ];
+        } elseif ($entry->entry_type === BookBalanceEntryType::OpeningBalance) {
+            $capitalLedger = $this->ledgers->requireByName($company, 'Capital');
+            $voucherType = AccountingVoucherType::Journal;
+            $lines = $isPositive
+                ? [
+                    ['gl_ledger_id' => $advanceLedger->id, 'debit_amount' => $absAmount, 'credit_amount' => $zero, 'narration' => 'Transporter opening book balance'.$refSuffix],
+                    ['gl_ledger_id' => $capitalLedger->id, 'debit_amount' => $zero, 'credit_amount' => $absAmount, 'narration' => 'Opening transporter advance offset'.$refSuffix],
+                ]
+                : [
+                    ['gl_ledger_id' => $capitalLedger->id, 'debit_amount' => $absAmount, 'credit_amount' => $zero, 'narration' => 'Opening transporter advance offset'.$refSuffix],
+                    ['gl_ledger_id' => $advanceLedger->id, 'debit_amount' => $zero, 'credit_amount' => $absAmount, 'narration' => 'Transporter opening book balance'.$refSuffix],
+                ];
+        } else {
+            // BalanceAdjustment: Cash/Bank if paid/received, else Journal against Transporter Freight Expense.
+            if (in_array($entry->payment_mode, ['cash', 'bank'], true)) {
+                $cashOrBank = $this->resolveCashOrBank($company, $entry->bank_cash_account_id, (string) $entry->payment_mode);
+                $voucherType = $isPositive ? AccountingVoucherType::Payment : AccountingVoucherType::Receipt;
+                $lines = $isPositive
+                    ? [
+                        ['gl_ledger_id' => $advanceLedger->id, 'debit_amount' => $absAmount, 'credit_amount' => $zero, 'narration' => 'Transporter book balance addition'.$refSuffix],
+                        ['gl_ledger_id' => $cashOrBank->id, 'debit_amount' => $zero, 'credit_amount' => $absAmount, 'narration' => 'Transporter book balance addition'.$refSuffix],
+                    ]
+                    : [
+                        ['gl_ledger_id' => $cashOrBank->id, 'debit_amount' => $absAmount, 'credit_amount' => $zero, 'narration' => 'Transporter book balance deduction'.$refSuffix],
+                        ['gl_ledger_id' => $advanceLedger->id, 'debit_amount' => $zero, 'credit_amount' => $absAmount, 'narration' => 'Transporter book balance deduction'.$refSuffix],
+                    ];
+            } else {
+                $expenseLedger = $this->ledgers->requireByName($company, 'Transporter Freight Expense');
+                $voucherType = AccountingVoucherType::Journal;
+                $lines = $isPositive
+                    ? [
+                        ['gl_ledger_id' => $advanceLedger->id, 'debit_amount' => $absAmount, 'credit_amount' => $zero, 'narration' => 'Transporter book balance adjustment (+)'.$refSuffix],
+                        ['gl_ledger_id' => $expenseLedger->id, 'debit_amount' => $zero, 'credit_amount' => $absAmount, 'narration' => 'Transporter book balance adjustment offset'.$refSuffix],
+                    ]
+                    : [
+                        ['gl_ledger_id' => $expenseLedger->id, 'debit_amount' => $absAmount, 'credit_amount' => $zero, 'narration' => 'Transporter book balance adjustment offset'.$refSuffix],
+                        ['gl_ledger_id' => $advanceLedger->id, 'debit_amount' => $zero, 'credit_amount' => $absAmount, 'narration' => 'Transporter book balance adjustment (-)'.$refSuffix],
+                    ];
+            }
+        }
+
+        $voucherDate = $entry->entry_date?->toDateString() ?? $entry->created_at?->toDateString() ?? now()->toDateString();
+
+        $this->posting->postManual(
+            company: $company,
+            actor: $actor,
+            header: [
+                'voucher_type' => $voucherType,
+                'voucher_date' => $voucherDate,
+                'narration' => Str::limit(
+                    'Transporter Book Balance · '.$entry->entry_type->label().($entry->remark ? ': '.$entry->remark : ''),
+                    1990,
+                ),
+                'branch_id' => $branch->id,
+                'source_type' => TransporterBookBalanceEntry::class,
+                'source_id' => $entry->id,
+                'posting_purpose' => 'transporter_book_balance_'.$entry->entry_type->value,
+            ],
+            lines: $lines,
+            branch: $branch,
+            allowControlledCorrection: $allowBypass,
         );
     }
 

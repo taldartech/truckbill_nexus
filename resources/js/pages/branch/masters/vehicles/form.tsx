@@ -72,7 +72,7 @@ type Props = {
         truckTypesStoreUrl?: string | null;
         tyreLayoutsStoreUrl?: string | null;
         partiesOptionsUrl?: string;
-        partiesStoreUrl?: string;
+        partiesStoreUrl?: string | null;
     };
 };
 
@@ -234,7 +234,8 @@ export default function VehicleForm({
                                                 }
                                                 role="transporter"
                                                 createStoreUrl={
-                                                    links.partiesStoreUrl
+                                                    links.partiesStoreUrl ??
+                                                    undefined
                                                 }
                                                 createLabel="Add"
                                                 createRole="transporter"
@@ -366,7 +367,8 @@ export default function VehicleForm({
                                                 }
                                                 role="driver"
                                                 createStoreUrl={
-                                                    links.partiesStoreUrl
+                                                    links.partiesStoreUrl ??
+                                                    undefined
                                                 }
                                                 createLabel="Add"
                                                 createRole="driver"

@@ -1,5 +1,5 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import { Eye, Pencil, Plus, Trash2 } from 'lucide-react';
+import { BookOpen, Eye, Pencil, Plus, Trash2, Wallet } from 'lucide-react';
 import { useState } from 'react';
 import { AppIconAction } from '@/components/app-icon-action';
 import {
@@ -7,12 +7,14 @@ import {
     AppIndexListCard,
     AppIndexPage,
 } from '@/components/app-index-page';
+import { BookBalanceDialog } from '@/components/broker/book-balance-dialog';
 import { MasterAuditRemarkDialog } from '@/components/masters/master-audit-remark-dialog';
 import { TablePagination } from '@/components/table-pagination';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { formatInr } from '@/lib/money';
 
 type PartyRow = {
     id: string;
@@ -24,6 +26,8 @@ type PartyRow = {
     state: string | null;
     status: 'active' | 'deleted';
     roles: string[];
+    is_transporter?: boolean;
+    book_balance?: string | null;
 };
 
 type Option = { value: string; label: string };
@@ -54,7 +58,25 @@ type Props = {
             per_page?: number;
         };
     };
-    links: { index: string; create: string };
+    bookBalance?: {
+        can_view: boolean;
+        can_manage: boolean;
+        today: string | null;
+        bank_cash_accounts: Array<{
+            id: string;
+            name: string;
+            account_kind?: string;
+        }>;
+        can_create_bank_cash: boolean;
+    };
+    links: {
+        index: string;
+        create: string;
+        book_balance_store?: string | null;
+        book_balance_context?: string | null;
+        book_balance_index?: string | null;
+        bank_cash_store?: string | null;
+    };
 };
 
 const SELECT_CLASS =
@@ -76,12 +98,17 @@ export default function PartiesIndex({
     roleOptions,
     stateOptions,
     parties,
+    bookBalance,
     links,
 }: Props) {
     const { flash } = usePage<{ flash?: { success?: string | null } }>().props;
     const [deleteRow, setDeleteRow] = useState<PartyRow | null>(null);
     const [deleteProcessing, setDeleteProcessing] = useState(false);
     const [deleteError, setDeleteError] = useState<string | null>(null);
+    const [bookBalanceParty, setBookBalanceParty] = useState<PartyRow | null>(
+        null,
+    );
+    const showBookBalanceCol = bookBalance?.can_view === true;
 
     const roleLabel = (role: string) =>
         roleOptions.find((option) => option.value === role)?.label ?? role;
@@ -232,14 +259,21 @@ export default function PartiesIndex({
                                     <th>Contact Number</th>
                                     <th>Location</th>
                                     <th>GSTIN</th>
+                                    {showBookBalanceCol ? (
+                                        <th className="text-end">
+                                            Book Balance
+                                        </th>
+                                    ) : null}
                                     <th>Status</th>
-                                    <th className="text-center">Actions</th>
+                                    <th className="text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {parties.data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={7}>
+                                        <td
+                                            colSpan={showBookBalanceCol ? 8 : 7}
+                                        >
                                             <p className="app-index-empty">
                                                 No parties found. Create a party
                                                 or adjust filters.
@@ -283,6 +317,41 @@ export default function PartiesIndex({
                                             <td className="font-mono text-xs text-slate-600">
                                                 {row.gstin || '—'}
                                             </td>
+                                            {showBookBalanceCol ? (
+                                                <td className="text-end font-medium tabular-nums">
+                                                    {row.status === 'active' &&
+                                                    row.is_transporter ? (
+                                                        links.book_balance_index ? (
+                                                            <Link
+                                                                href={`${links.book_balance_index}?transporter_party_id=${row.id}`}
+                                                                className="text-[#0f766e] hover:underline"
+                                                            >
+                                                                {row.book_balance !==
+                                                                    null &&
+                                                                row.book_balance !==
+                                                                    undefined
+                                                                    ? formatInr(
+                                                                          row.book_balance,
+                                                                      )
+                                                                    : '—'}
+                                                            </Link>
+                                                        ) : row.book_balance !==
+                                                              null &&
+                                                          row.book_balance !==
+                                                              undefined ? (
+                                                            formatInr(
+                                                                row.book_balance,
+                                                            )
+                                                        ) : (
+                                                            '—'
+                                                        )
+                                                    ) : (
+                                                        <span className="text-slate-400">
+                                                            —
+                                                        </span>
+                                                    )}
+                                                </td>
+                                            ) : null}
                                             <td>
                                                 <Badge
                                                     variant={
@@ -298,7 +367,32 @@ export default function PartiesIndex({
                                             </td>
                                             <td>
                                                 {row.status === 'active' ? (
-                                                    <div className="flex items-center justify-center gap-1">
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        {row.is_transporter &&
+                                                        bookBalance?.can_manage &&
+                                                        links.book_balance_store ? (
+                                                            <AppIconAction
+                                                                icon={Wallet}
+                                                                label="Book Balance"
+                                                                type="button"
+                                                                variant="primary"
+                                                                onClick={() =>
+                                                                    setBookBalanceParty(
+                                                                        row,
+                                                                    )
+                                                                }
+                                                            />
+                                                        ) : null}
+                                                        {row.is_transporter &&
+                                                        bookBalance?.can_view &&
+                                                        links.book_balance_index ? (
+                                                            <AppIconAction
+                                                                icon={BookOpen}
+                                                                label="View Book Balance Statement"
+                                                                href={`${links.book_balance_index}?transporter_party_id=${row.id}`}
+                                                                variant="outline"
+                                                            />
+                                                        ) : null}
                                                         <AppIconAction
                                                             icon={Eye}
                                                             label="View party"
@@ -388,6 +482,36 @@ export default function PartiesIndex({
                     });
                 }}
             />
+
+            {bookBalance?.can_manage &&
+            links.book_balance_store &&
+            bookBalance.today ? (
+                <BookBalanceDialog
+                    open={bookBalanceParty !== null}
+                    onOpenChange={(open) => {
+                        if (!open) {
+                            setBookBalanceParty(null);
+                        }
+                    }}
+                    transporter={
+                        bookBalanceParty
+                            ? {
+                                  id: bookBalanceParty.id,
+                                  name: bookBalanceParty.name,
+                                  available_balance:
+                                      bookBalanceParty.book_balance,
+                              }
+                            : null
+                    }
+                    contextUrl={links.book_balance_context}
+                    storeUrl={links.book_balance_store}
+                    bankCashAccounts={bookBalance.bank_cash_accounts}
+                    bankCashStoreUrl={links.bank_cash_store}
+                    canCreateBankCash={bookBalance.can_create_bank_cash}
+                    today={bookBalance.today}
+                    onRecorded={() => router.reload()}
+                />
+            ) : null}
         </>
     );
 }

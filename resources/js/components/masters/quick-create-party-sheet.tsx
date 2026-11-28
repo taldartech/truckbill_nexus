@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/sheet';
 import { readCanQuickCreateGeography } from '@/lib/geography-permissions';
 import { getCsrfToken } from '@/lib/csrf';
+import type { WorkspaceShare } from '@/types/workspace';
 import { usePage } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 
@@ -82,9 +83,17 @@ export function QuickCreatePartySheet({
     onCreated,
     tdsPreviewUrl,
 }: Props) {
-    const canQuickCreateGeography = readCanQuickCreateGeography(
-        usePage().props,
-    );
+    const pageProps = usePage<{ workspace?: WorkspaceShare }>().props;
+    const canQuickCreateGeography = readCanQuickCreateGeography(pageProps);
+    const ownFleetDriversEnabled =
+        pageProps.workspace?.capabilities?.ownfleet_drivers_enabled ?? true;
+    const defaultDriverAttrs = (): DriverAttrs => {
+        const base = initialDriver(undefined);
+        if (role === 'driver' && !ownFleetDriversEnabled) {
+            return { ...base, driver_type: 'market' };
+        }
+        return base;
+    };
     const title = ROLE_TITLES[role];
     const selectedRoles = useMemo(() => [role], [role]);
     const roleIndex = useMemo(
@@ -97,9 +106,7 @@ export function QuickCreatePartySheet({
     const [transporter, setTransporter] = useState<TransporterAttrs>(() =>
         initialTransporter(undefined),
     );
-    const [driver, setDriver] = useState<DriverAttrs>(() =>
-        initialDriver(undefined),
-    );
+    const [driver, setDriver] = useState<DriverAttrs>(defaultDriverAttrs);
     const [pan, setPan] = useState('');
     const [stateId, setStateId] = useState('');
     const [cityId, setCityId] = useState('');
@@ -133,7 +140,7 @@ export function QuickCreatePartySheet({
     const reset = () => {
         setBasic(EMPTY_PARTY_BASIC);
         setTransporter(initialTransporter(undefined));
-        setDriver(initialDriver(undefined));
+        setDriver(defaultDriverAttrs());
         setPan('');
         setStateId('');
         setCityId('');

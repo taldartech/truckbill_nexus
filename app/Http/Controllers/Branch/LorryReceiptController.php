@@ -157,6 +157,11 @@ class LorryReceiptController extends Controller
         $formMode = $resolution['form_mode'];
         $context = $resolution['context'];
 
+        $masterPermissions = $this->masterPermissions($actor, $company, $branch, $this->access, $this->authorizer);
+        $canCreateMaster = $masterPermissions['can_create'];
+        $canCreateParty = $canCreateMaster && $this->capabilities()->allowsMutate($company, CompanyCapabilities::MASTERS_PARTIES);
+        $canCreateVehicle = $canCreateMaster && $this->capabilities()->allowsMutate($company, CompanyCapabilities::MASTERS_VEHICLES);
+
         return Inertia::render('branch/lorry-receipts/create', [
             'mode' => 'create',
             'formMode' => $formMode,
@@ -177,14 +182,20 @@ class LorryReceiptController extends Controller
                 'store' => route('branch.lorry-receipts.store', absolute: false),
                 'parties_options' => route('branch.parties.options', absolute: false),
                 'parties_tds_for_payee' => route('branch.parties.tds-for-payee', absolute: false),
-                'parties_create' => route('branch.parties.create', absolute: false),
-                'parties_store' => route('branch.parties.store', absolute: false),
+                'parties_create' => $canCreateParty ? route('branch.parties.create', absolute: false) : null,
+                'parties_store' => $canCreateParty ? route('branch.parties.store', absolute: false) : null,
                 'vehicles_options' => route('branch.vehicles.options', absolute: false),
-                'vehicles_create' => route('branch.vehicles.create', absolute: false),
-                'vehicles_store' => route('branch.vehicles.store', absolute: false),
-                'goods_types_store' => route('branch.goods-types.store', absolute: false),
-                'package_types_store' => route('branch.package-types.store', absolute: false),
-                'stations_store' => route('branch.stations.store', absolute: false),
+                'vehicles_create' => $canCreateVehicle ? route('branch.vehicles.create', absolute: false) : null,
+                'vehicles_store' => $canCreateVehicle ? route('branch.vehicles.store', absolute: false) : null,
+                'goods_types_store' => $canCreateMaster && $this->capabilities()->allowsMutate($company, CompanyCapabilities::MASTERS_GOODS_TYPES)
+                    ? route('branch.goods-types.store', absolute: false)
+                    : null,
+                'package_types_store' => $canCreateMaster && $this->capabilities()->allowsMutate($company, CompanyCapabilities::MASTERS_PACKAGE_TYPES)
+                    ? route('branch.package-types.store', absolute: false)
+                    : null,
+                'stations_store' => $canCreateMaster && $this->capabilities()->allowsMutate($company, CompanyCapabilities::MASTERS_STATIONS)
+                    ? route('branch.stations.store', absolute: false)
+                    : null,
             ],
         ]);
     }
@@ -454,6 +465,10 @@ class LorryReceiptController extends Controller
             : LrWorkflowContextResolver::FORM_TRUCK;
 
         $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
+        $masterPermissions = $this->masterPermissions($actor, $company, $branch, $this->access, $this->authorizer);
+        $canCreateMaster = $masterPermissions['can_create'];
+        $canCreateParty = $canCreateMaster && $this->capabilities()->allowsMutate($company, CompanyCapabilities::MASTERS_PARTIES);
+        $canCreateVehicle = $canCreateMaster && $this->capabilities()->allowsMutate($company, CompanyCapabilities::MASTERS_VEHICLES);
 
         return Inertia::render('branch/lorry-receipts/edit', [
             'mode' => 'edit',
@@ -469,14 +484,20 @@ class LorryReceiptController extends Controller
                 'update' => route('branch.lorry-receipts.update', [$lorryReceipt], absolute: false),
                 'parties_options' => route('branch.parties.options', absolute: false),
                 'parties_tds_for_payee' => route('branch.parties.tds-for-payee', absolute: false),
-                'parties_create' => route('branch.parties.create', absolute: false),
-                'parties_store' => route('branch.parties.store', absolute: false),
+                'parties_create' => $canCreateParty ? route('branch.parties.create', absolute: false) : null,
+                'parties_store' => $canCreateParty ? route('branch.parties.store', absolute: false) : null,
                 'vehicles_options' => route('branch.vehicles.options', absolute: false),
-                'vehicles_create' => route('branch.vehicles.create', absolute: false),
-                'vehicles_store' => route('branch.vehicles.store', absolute: false),
-                'goods_types_store' => route('branch.goods-types.store', absolute: false),
-                'package_types_store' => route('branch.package-types.store', absolute: false),
-                'stations_store' => route('branch.stations.store', absolute: false),
+                'vehicles_create' => $canCreateVehicle ? route('branch.vehicles.create', absolute: false) : null,
+                'vehicles_store' => $canCreateVehicle ? route('branch.vehicles.store', absolute: false) : null,
+                'goods_types_store' => $canCreateMaster && $this->capabilities()->allowsMutate($company, CompanyCapabilities::MASTERS_GOODS_TYPES)
+                    ? route('branch.goods-types.store', absolute: false)
+                    : null,
+                'package_types_store' => $canCreateMaster && $this->capabilities()->allowsMutate($company, CompanyCapabilities::MASTERS_PACKAGE_TYPES)
+                    ? route('branch.package-types.store', absolute: false)
+                    : null,
+                'stations_store' => $canCreateMaster && $this->capabilities()->allowsMutate($company, CompanyCapabilities::MASTERS_STATIONS)
+                    ? route('branch.stations.store', absolute: false)
+                    : null,
             ],
         ]);
     }
@@ -773,7 +794,7 @@ class LorryReceiptController extends Controller
                 'name' => $item->name,
             ])->values()->all(),
             'vehicles' => $vehicles,
-            'drivers' => $this->capabilities()->allowsRead($company, CompanyCapabilities::OWNFLEET_VEHICLE_DRIVERS)
+            'drivers' => $this->capabilities()->allowsRead($company, CompanyCapabilities::MASTERS_PARTIES_DRIVER_ROLE)
                 ? $partyOptions->forRoles($company, $branch, PartyRoleType::Driver, 300)
                 : [],
             'vehicleQuickCreate' => $this->vehicleQuickCreateOptions($company, $branch),
@@ -839,12 +860,14 @@ class LorryReceiptController extends Controller
                 ->get(['id', 'name'])
             : collect();
 
-        $drivers = app(PartyOptionQuery::class)->forRoles(
-            $company,
-            $branch,
-            PartyRoleType::Driver,
-            100,
-        );
+        $drivers = $capabilities->allowsRead($company, CompanyCapabilities::MASTERS_PARTIES_DRIVER_ROLE)
+            ? app(PartyOptionQuery::class)->forRoles(
+                $company,
+                $branch,
+                PartyRoleType::Driver,
+                100,
+            )
+            : [];
 
         return [
             'ownershipOptions' => array_values(collect($allowedOwnerships)->map(fn (VehicleOwnership $ownership): array => [

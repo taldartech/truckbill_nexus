@@ -54,7 +54,7 @@ test.describe('Broker operational-flow parity', () => {
             timeout: 30_000,
         });
         await expect(
-            page.getByRole('link', { name: /Record [Vv]oucher/i }),
+            page.getByRole('button', { name: 'Voucher Payment' }),
         ).toBeVisible();
     });
 
@@ -71,7 +71,7 @@ test.describe('Broker operational-flow parity', () => {
         await editBrokerLrWithChangeReview(page, lr.lrPath);
     });
 
-    test('Record voucher from hire show preselects hire context', async ({
+    test('Voucher Payment modal from hire show preselects hire with blank initial amount', async ({
         page,
     }) => {
         test.setTimeout(300_000);
@@ -83,20 +83,25 @@ test.describe('Broker operational-flow parity', () => {
         expect(hire.hirePath.length).toBeGreaterThan(0);
 
         await page.goto(hire.hirePath);
-        const recordVoucher = page.getByRole('link', {
-            name: /Record [Vv]oucher/i,
+        const voucherButton = page.getByRole('button', {
+            name: 'Voucher Payment',
         });
-        await expect(recordVoucher).toBeVisible({ timeout: 15_000 });
-        await recordVoucher.click();
-        await expect(page).toHaveURL(/lorry_hire_id=/, { timeout: 15_000 });
+        await expect(voucherButton).toBeVisible({ timeout: 15_000 });
+        await voucherButton.click();
+
+        const dialog = page.getByRole('dialog');
         await expect(
-            page.getByRole('heading', { name: 'Add Voucher Payment' }),
-        ).toBeVisible();
+            dialog.getByRole('heading', { name: /Voucher Payment/i }),
+        ).toBeVisible({ timeout: 15_000 });
         await expect(
-            page.getByText(hire.hireNumber, { exact: false }).first(),
+            dialog.getByText(hire.hireNumber, { exact: false }).first(),
         ).toBeVisible({ timeout: 10_000 });
         await expect(
-            page.getByText(/LR Number|Transporter|Truck/i).first(),
+            dialog.getByLabel(/Payment amount for/).first(),
+        ).toHaveValue('');
+        await dialog.getByRole('button', { name: 'Review payment' }).click();
+        await expect(
+            dialog.getByText('Enter the payment amount.').first(),
         ).toBeVisible();
     });
 });

@@ -232,6 +232,7 @@ test('broker-only company allows market vehicles only, blocks ownfleet and partl
 
             expect($nav['broker_lorry_hires'])->toBeTrue()
                 ->and($nav['bilty_register'])->toBeTrue()
+                ->and($nav['masters_drivers'])->toBeTrue()
                 ->and($nav['ownfleet_vehicle_drivers'])->toBeFalse()
                 ->and($nav['masters_vehicle_drivers'])->toBeFalse()
                 ->and($nav['masters_truck_types'])->toBeFalse()
@@ -247,10 +248,15 @@ test('broker-only company allows market vehicles only, blocks ownfleet and partl
         'remark' => 'Forged own vehicle on Broker-only plan',
     ])->assertForbidden();
 
-    // Party options endpoint must reject Driver role query on Broker-only plan.
+    // Broker-only company permits Driver role lookup and Driver Master routes while blocking OwnFleet Vehicle Drivers.
     asBranchHttp($ctx['owner'], $ctx['company'], $ctx['branch']);
     $this->getJson(route('branch.parties.options', ['role' => PartyRoleType::Driver->value]))
-        ->assertForbidden();
+        ->assertOk();
+
+    asBranchHttp($ctx['owner'], $ctx['company'], $ctx['branch']);
+    $this->get(route('branch.drivers.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->component('branch/masters/drivers/index'));
 
     asBranchHttp($ctx['owner'], $ctx['company'], $ctx['branch']);
     $this->postJson(route('branch.vehicles.store'), [
