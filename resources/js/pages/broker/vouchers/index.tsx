@@ -18,8 +18,11 @@ type VoucherRow = {
     voucher_number: string;
     voucher_date: string | null;
     status: string;
+    status_label?: string | null;
     payment_mode: string | null;
+    payment_mode_label?: string | null;
     payment_type: string;
+    payment_type_label?: string | null;
     amount: string | null;
     lr_number: string | null;
     billing_customer_name: string | null;
@@ -341,7 +344,10 @@ export default function VouchersIndex({
                                             </td>
                                             <td>
                                                 <WorkspaceStatusBadge
-                                                    status={row.status}
+                                                    status={
+                                                        row.status_label ??
+                                                        row.status
+                                                    }
                                                 />
                                             </td>
                                             <td>

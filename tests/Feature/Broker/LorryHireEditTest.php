@@ -42,6 +42,7 @@ beforeEach(function () {
     (new SubscriptionCatalogueSeeder)->run();
     (new TdsReferenceRulesSeeder)->run();
     brokerGrantLorryHirePermissions();
+    brokerGrantDeliveryAdjustmentPermissions();
 });
 
 afterEach(function () {
@@ -382,7 +383,14 @@ test('edit screen, preview and update work over http and the register and detail
             ->where('hire.goods_lines.0.rate', '1000')
             ->has('hire.custom_amounts', 0)
             ->where('payee.id', $hire->transporter_party_id)
-            ->has('goodsRows', 1));
+            ->has('goodsRows', 1)
+            ->where('operational_delivery.can_mark_delivered', true)
+            ->where(
+                'operational_delivery.lorry_receipt_id',
+                $hire->lorry_receipt_id,
+            )
+            ->where('urls.memo_context', fn ($url) => is_string($url) && $url !== '')
+            ->where('urls.memo_store', fn ($url) => is_string($url) && $url !== ''));
 
     $payload = editHirePayload($hire, [], [
         'custom_amounts' => [[

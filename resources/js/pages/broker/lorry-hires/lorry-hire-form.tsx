@@ -1,4 +1,4 @@
-import { Head, Link, useForm, useHttp } from '@inertiajs/react';
+import { Head, Link, router, useForm, useHttp } from '@inertiajs/react';
 import { useMemo, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { FormConfirmationDialog } from '@/components/form-confirmation/form-confirmation-dialog';
@@ -27,6 +27,8 @@ import {
     emptyFixedAdjustments,
 } from '@/pages/broker/lorry-hires/components/fixed-adjustments-section';
 import { FreightProfitabilitySection } from '@/pages/broker/lorry-hires/components/freight-profitability-section';
+import { MemoPodDialog } from '@/components/broker/memo-pod-dialog';
+import { HireEditMarkDelivered } from '@/pages/broker/lorry-hires/components/hire-edit-mark-delivered';
 import { LinkedBiltyContextPanel } from '@/pages/broker/lorry-hires/components/linked-bilty-context-panel';
 import {
     LrfActions,
@@ -157,11 +159,17 @@ export type LorryHireFormProps = {
         total: string;
     } | null;
     hire?: EditableHire;
+    operational_delivery?: {
+        can_mark_delivered: boolean;
+        lorry_receipt_id: string;
+    };
     urls: {
         store: string;
         lr_show: string;
         lr_edit: string;
         preview?: string;
+        memo_context?: string | null;
+        memo_store?: string | null;
     };
 };
 
@@ -349,6 +357,7 @@ export default function LorryHireForm({
     permissions,
     customer_freight = null,
     hire,
+    operational_delivery,
     urls,
 }: LorryHireFormProps & { mode: 'create' | 'edit' }) {
     const isEdit = mode === 'edit' && hire !== undefined;
@@ -366,6 +375,7 @@ export default function LorryHireForm({
     const submitting = useRef(false);
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [plan, setPlan] = useState<RevisionPlan | null>(null);
+    const [memoDeliverOpen, setMemoDeliverOpen] = useState(false);
 
     const calculatedFreights = useMemo(
         () =>
@@ -481,6 +491,24 @@ export default function LorryHireForm({
             form.data.custom_amounts.filter((_, i) => i !== index),
         );
     };
+
+    const deliverBaselineRef = useRef(
+        isEdit && hire !== undefined
+            ? JSON.stringify(
+                  {
+                      hire_date: hire.hire_date ?? defaults.hire_date,
+                      remarks: hire.remarks ?? '',
+                      goods_lines: initialLines(
+                          goodsRows,
+                          defaults.rate_type,
+                          hire,
+                      ),
+                      custom_amounts: initialCustomAmounts(hire),
+                      fixed_adjustments: { ...hire.fixed_adjustments },
+                  },
+              )
+            : '',
+    );
 
     const payload = (data: HireFormData) => ({
         hire_date: data.hire_date,
@@ -712,6 +740,53 @@ export default function LorryHireForm({
         : 'Add New Good Hire (Lorry Hire)';
     const busy = form.processing || previewRequest.processing;
 
+    const deliverSnapshot = useMemo(
+        () =>
+            JSON.stringify({
+                hire_date: form.data.hire_date,
+                remarks: form.data.remarks,
+                goods_lines: form.data.goods_lines,
+                custom_amounts: form.data.custom_amounts,
+                fixed_adjustments: form.data.fixed_adjustments,
+            }),
+        [form.data],
+    );
+
+    const saveForDelivery = () => {
+        if (!isEdit || hire === undefined) {
+            return;
+        }
+        if (form.data.edit_remark.trim() === '') {
+            form.setError(
+                'edit_remark',
+                'Enter the reason for editing this Lorry Hire before continuing.',
+            );
+
+            return;
+        }
+        form.clearErrors();
+        form.transform((data) => ({
+            ...payload(data),
+            edit_remark: data.edit_remark.trim(),
+        }));
+        form.put(urls.store, {
+            preserveScroll: true,
+            onSuccess: () => {
+                router.reload({
+                    onSuccess: () => setMemoDeliverOpen(true),
+                });
+            },
+        });
+    };
+
+    const memoUrls =
+        urls.memo_context && urls.memo_store
+            ? {
+                  memo_context: urls.memo_context,
+                  memo_store: urls.memo_store,
+              }
+            : null;
+
     return (
         <>
             <Head
@@ -730,6 +805,21 @@ export default function LorryHireForm({
                 }
                 backHref={urls.lr_show}
                 backLabel={isEdit ? 'Back to Lorry Hire' : 'Back to bilty'}
+                actions={
+                    isEdit &&
+                    operational_delivery?.can_mark_delivered ? (
+                        <HireEditMarkDelivered
+                            canMarkDelivered={
+                                operational_delivery.can_mark_delivered
+                            }
+                            saveInProgress={busy}
+                            deliverBaseline={deliverBaselineRef.current}
+                            currentPayload={deliverSnapshot}
+                            onProceedToMemo={() => setMemoDeliverOpen(true)}
+                            onSaveThenDeliver={saveForDelivery}
+                        />
+                    ) : null
+                }
             >
                 <LinkedBiltyContextPanel
                     lorryReceipt={lorryReceipt}
@@ -1283,6 +1373,22 @@ export default function LorryHireForm({
                     />
                 )}
             </LrfPage>
+
+            {isEdit &&
+            memoDeliverOpen &&
+            memoUrls &&
+            operational_delivery?.lorry_receipt_id ? (
+                <MemoPodDialog
+                    open={memoDeliverOpen}
+                    onOpenChange={setMemoDeliverOpen}
+                    lorryReceiptIds={[operational_delivery.lorry_receipt_id]}
+                    urls={memoUrls}
+                    onAssigned={() => {
+                        setMemoDeliverOpen(false);
+                        router.reload();
+                    }}
+                />
+            ) : null}
         </>
     );
 }

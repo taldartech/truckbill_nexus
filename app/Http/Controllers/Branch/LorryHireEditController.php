@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Branch;
 
 use App\Domains\Accounting\Exceptions\AccountingDomainException;
 use App\Domains\Broker\Adjustment\BrokerAdjustmentService;
+use App\Domains\Broker\Enums\LorryHireStatus;
 use App\Domains\Broker\Exceptions\BrokerAuthorizationException;
 use App\Domains\Broker\Exceptions\BrokerDomainException;
 use App\Domains\Broker\LorryHire\LorryHireCalculationService;
@@ -11,6 +12,8 @@ use App\Domains\Broker\LorryHire\LorryHireOperationalDelivery;
 use App\Domains\Broker\LorryHire\LorryHireRevisionService;
 use App\Domains\Company\CompanyAccessService;
 use App\Domains\Consignment\Support\FreightRateTypeCatalog;
+use App\Domains\Rbac\PermissionAuthorizer;
+use App\Domains\Rbac\PermissionCodes;
 use App\Http\Controllers\Branch\Concerns\AuthorizesBranchPanel;
 use App\Http\Controllers\Branch\Concerns\PresentsLorryHireForm;
 use App\Http\Controllers\Controller;
@@ -37,6 +40,7 @@ class LorryHireEditController extends Controller
 
     public function __construct(
         private readonly CompanyAccessService $access,
+        private readonly PermissionAuthorizer $authorizer,
         private readonly LorryHireRevisionService $revisions,
         private readonly LorryHireCalculationService $calculations,
         private readonly BrokerAdjustmentService $adjustments,
@@ -51,6 +55,14 @@ class LorryHireEditController extends Controller
         $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
 
         $summary = $this->calculations->summarize($lorryHire);
+        $canDeliver = $this->authorizer->allowsCustomer(
+            $actor,
+            PermissionCodes::BROKER_DELIVERY_MANAGE,
+            $company,
+            $branch,
+        )
+            && $lorryHire->status !== LorryHireStatus::Cancelled
+            && ! LorryHireOperationalDelivery::isDelivered($lorryHire);
         $hireRowIds = $lorryHire->goodsLines->pluck('lr_goods_row_id')->all();
         $formProps = $this->lorryHireFormProps($lorryReceipt);
         $formProps['goodsRows'] = array_values(array_filter(
@@ -104,11 +116,21 @@ class LorryHireEditController extends Controller
                 'fixed_adjustments' => $this->adjustments->snapshotFixedAdjustments($lorryHire),
                 'adjustments_editable' => LorryHireOperationalDelivery::isDelivered($lorryHire),
             ],
+            'operational_delivery' => [
+                'can_mark_delivered' => $canDeliver,
+                'lorry_receipt_id' => $lorryReceipt->id,
+            ],
             'urls' => [
                 'store' => route('branch.broker.lorry-hires.update', [$lorryHire], absolute: false),
                 'preview' => route('branch.broker.lorry-hires.revision-preview', [$lorryHire], absolute: false),
                 'lr_show' => route('branch.broker.lorry-hires.show', [$lorryHire], absolute: false),
                 'lr_edit' => route('branch.lorry-receipts.edit', [$lorryReceipt], absolute: false),
+                'memo_context' => $canDeliver
+                    ? route('branch.broker.deliveries.memo-context', absolute: false)
+                    : null,
+                'memo_store' => $canDeliver
+                    ? route('branch.broker.deliveries.memo', absolute: false)
+                    : null,
             ],
         ]);
     }

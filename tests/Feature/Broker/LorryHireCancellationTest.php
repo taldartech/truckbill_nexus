@@ -17,6 +17,7 @@ use App\Domains\Consignment\LorryReceiptService;
 use App\Domains\Rbac\PermissionCodes;
 use App\Models\LorryHire;
 use App\Models\TransporterBookBalanceEntry;
+use App\Models\TransporterVoucher;
 use App\Support\Tenant\TenantContextHolder;
 use Database\Seeders\RbacSeeder;
 use Database\Seeders\SubscriptionCatalogueSeeder;
@@ -212,6 +213,65 @@ test('delivered lr cancel remains blocked after hire cancelled', function () {
 
     expect(fn () => app(LorryReceiptService::class)->cancel($lr->fresh(), $ctx['member'], 'Too late'))
         ->toThrow(LorryReceiptDomainException::class);
+});
+
+test('cancel soft-deletes pending voucher but keeps paid voucher history', function () {
+    $ctx = brokerWorkspace();
+    tripActivate($ctx['company'], $ctx['branch']);
+    $hire = brokerCreateLorryHire($ctx);
+
+    $pending = app(TransporterVoucherService::class)->createForLorryHire($hire, $ctx['member'], [
+        'amount' => '1000.00',
+        'payment_type' => VoucherPaymentType::Advance->value,
+        'payment_mode' => VoucherPaymentMode::Bank->value,
+    ]);
+
+    $paid = app(TransporterVoucherService::class)->createForLorryHire($hire->fresh(), $ctx['member'], [
+        'amount' => '500.00',
+        'payment_type' => VoucherPaymentType::Advance->value,
+        'payment_mode' => VoucherPaymentMode::Cash->value,
+    ]);
+    app(TransporterVoucherService::class)->transitionStatus($paid, $ctx['member'], VoucherStatus::Paid);
+
+    app(LorryHireCancellationService::class)->cancel($hire->fresh(), $ctx['member'], [
+        'reason' => 'Release reservations',
+        'settle_outstanding' => false,
+    ]);
+
+    expect(TransporterVoucher::withTrashed()->find($pending->id)?->trashed())->toBeTrue();
+    expect(TransporterVoucher::query()->find($paid->id))->not->toBeNull()
+        ->and(TransporterVoucher::query()->find($paid->id)?->status)->toBe(VoucherStatus::Paid);
+});
+
+test('cancel settle yes does not create duplicate book entries on repeat preview attempt', function () {
+    $ctx = brokerWorkspace();
+    tripActivate($ctx['company'], $ctx['branch']);
+    $hire = brokerCreateLorryHire($ctx);
+    $service = app(LorryHireCancellationService::class);
+
+    $voucher = app(TransporterVoucherService::class)->createForLorryHire($hire, $ctx['member'], [
+        'amount' => '1500.00',
+        'payment_type' => VoucherPaymentType::Advance->value,
+        'payment_mode' => VoucherPaymentMode::Cash->value,
+    ]);
+    app(TransporterVoucherService::class)->transitionStatus($voucher, $ctx['member'], VoucherStatus::Paid);
+
+    $service->cancel($hire->fresh(), $ctx['member'], [
+        'reason' => 'Once',
+        'settle_outstanding' => true,
+    ]);
+
+    expect(
+        TransporterBookBalanceEntry::query()
+            ->where('source_type', TransporterBookBalanceService::SOURCE_LORRY_HIRE_CANCEL)
+            ->where('source_id', $hire->id)
+            ->count(),
+    )->toBe(1);
+
+    expect(fn () => $service->cancel($hire->fresh(), $ctx['member'], [
+        'reason' => 'Again',
+        'settle_outstanding' => true,
+    ]))->toThrow(BrokerConflictException::class);
 });
 
 test('cancelled lorry hire soft-deletes when lr soft-deleted', function () {

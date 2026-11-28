@@ -53,16 +53,10 @@
             "notes": "Legacy FreightBookingAmountVerifier console guard has no direct Nexus twin; FinancialInvariantsTest covers hire ledger invariants instead."
         },
         {
-            "legacy_scenario_id": "LEG-BRO-CANCEL-PAID",
+            "legacy_scenario_id": "LEG-BRO-00147",
             "status": "PASS",
-            "nexus_test": "tests/Feature/Broker/LorryHireCancellationTest.php — cancel with settle yes transfers only paid cash voucher amount",
-            "notes": "PO P0: eligible paid voucher settlement only; unpaid freight never transferred to book."
-        },
-        {
-            "legacy_scenario_id": "LEG-BRO-CANCEL-ZERO",
-            "status": "PASS",
-            "nexus_test": "tests/Feature/Broker/LorryHireCancellationTest.php — cancel with settle yes and no paid vouchers",
-            "notes": "Zero eligible settlement; no book entry."
+            "nexus_test": "tests/Feature/Broker/LorryHireCancellationTest.php — cancel lifecycle + LR rules",
+            "notes": "Adapted: Nexus cancel service + LR status coupling; not legacy checkbox edit flow."
         }
     ]
 }

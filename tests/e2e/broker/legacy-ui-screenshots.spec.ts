@@ -14,6 +14,7 @@ test.describe('Broker legacy UI screenshots (Nexus)', () => {
     test.use({ viewport: { width: 1440, height: 900 } });
 
     test.beforeEach(async ({ page }) => {
+        test.setTimeout(180_000);
         await loginAndEnterBrokerBranch(page);
     });
 
@@ -61,6 +62,18 @@ test.describe('Broker legacy UI screenshots (Nexus)', () => {
                 path: path.join(OUT_DIR, '02-lorry-hire-edit-1440.png'),
                 fullPage: true,
             });
+            const markDelivered = page.getByTestId(
+                'lorry-hire-edit-mark-delivered',
+            );
+            if (await markDelivered.count()) {
+                await page.screenshot({
+                    path: path.join(
+                        OUT_DIR,
+                        '12-lorry-hire-edit-mark-delivered-1440.png',
+                    ),
+                    fullPage: false,
+                });
+            }
         }
 
         await page.goto('/broker/vouchers');
@@ -98,6 +111,18 @@ test.describe('Broker legacy UI screenshots (Nexus)', () => {
         await voucherModal.waitFor({ state: 'visible', timeout: 20_000 });
         await page.screenshot({
             path: path.join(OUT_DIR, '08-voucher-payment-modal-1440.png'),
+            fullPage: false,
+        });
+        await page
+            .locator('#voucher_payment_mode')
+            .selectOption({ label: 'Bank' });
+        await page.getByLabel('Bank Account').click();
+        await page.waitForTimeout(300);
+        await page.screenshot({
+            path: path.join(
+                OUT_DIR,
+                '09-voucher-bank-combobox-dropdown-1440.png',
+            ),
             fullPage: false,
         });
         await page.keyboard.press('Escape');

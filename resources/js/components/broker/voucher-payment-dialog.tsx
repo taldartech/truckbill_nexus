@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
 import { formatInr, formatInrPlain, formatPercent } from '@/lib/money';
 
 type Option = { value: string; label: string };
@@ -363,7 +364,10 @@ export function VoucherPaymentDialog({
                 }}
             >
                 <DialogContent
-                    className="fb-pay-dialog gap-0 overflow-hidden border border-slate-200 p-0 sm:max-w-6xl"
+                    className={cn(
+                        'fb-pay-dialog relative gap-0 overflow-hidden border border-slate-200 p-0',
+                        isBulk ? 'sm:max-w-6xl' : 'sm:max-w-3xl',
+                    )}
                     data-testid="voucher-payment-modal"
                 >
                     <DialogHeader className="border-b border-slate-200 bg-slate-50 px-4 py-3 text-left">
@@ -758,12 +762,19 @@ export function VoucherPaymentDialog({
                                         </p>
                                     ) : null}
 
-                                    {form.data.payment_mode === 'bank' ? (
+                                    {form.data.payment_mode === 'bank' ||
+                                    form.data.payment_mode === 'cash' ? (
                                         <div className="sm:col-span-2">
                                             <SearchableCombobox
                                                 id="voucher_bank_cash_account_id"
                                                 name="bank_cash_account_id"
-                                                label="Bank Account"
+                                                label={
+                                                    form.data.payment_mode ===
+                                                    'cash'
+                                                        ? 'Cash Account'
+                                                        : 'Bank Account'
+                                                }
+                                                required
                                                 options={accountOptions}
                                                 value={
                                                     form.data

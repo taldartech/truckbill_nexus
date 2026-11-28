@@ -147,6 +147,72 @@
 .voucher-register-index #voucherPaymentsTable {
     table-layout: fixed;
     width: 100%;
+    min-width: 68rem;
+}
+
+.voucher-register-index .app-index-table thead th:nth-child(1),
+.voucher-register-index .app-index-table tbody td:nth-child(1) {
+    width: 6.5rem;
+}
+
+.voucher-register-index .app-index-table thead th:nth-child(2),
+.voucher-register-index .app-index-table tbody td:nth-child(2) {
+    width: 7rem;
+}
+
+.voucher-register-index .app-index-table thead th:nth-child(3),
+.voucher-register-index .app-index-table tbody td:nth-child(3) {
+    width: 8rem;
+}
+
+.voucher-register-index .app-index-table thead th:nth-child(4),
+.voucher-register-index .app-index-table tbody td:nth-child(4) {
+    width: 6.5rem;
+}
+
+.voucher-register-index .app-index-table thead th:nth-child(5),
+.voucher-register-index .app-index-table tbody td:nth-child(5) {
+    width: 8rem;
+}
+
+.voucher-register-index .app-index-table thead th:nth-child(6),
+.voucher-register-index .app-index-table tbody td:nth-child(6) {
+    width: 7rem;
+}
+
+.voucher-register-index .app-index-table thead th:nth-child(7),
+.voucher-register-index .app-index-table tbody td:nth-child(7) {
+    width: 7rem;
+}
+
+.voucher-register-index .app-index-table thead th:nth-child(8),
+.voucher-register-index .app-index-table tbody td:nth-child(8) {
+    width: 6rem;
+    white-space: nowrap;
+}
+
+.voucher-register-index .app-index-table thead th:nth-child(9),
+.voucher-register-index .app-index-table tbody td:nth-child(9) {
+    width: 6.5rem;
+}
+
+.voucher-register-index .app-index-table thead th:last-child,
+.voucher-register-index .app-index-table tbody td:last-child {
+    width: 7rem;
+}
+
+.voucher-register-index .app-index-table td {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    vertical-align: middle;
+}
+
+.voucher-register-index .app-index-table td:nth-child(3),
+.voucher-register-index .app-index-table td:nth-child(5),
+.voucher-register-index .app-index-table td:nth-child(6),
+.voucher-register-index .app-index-table td:nth-child(7) {
+    white-space: normal;
+    word-break: break-word;
 }
 
 .daily-payments-index #paymentsTable {
@@ -275,6 +341,7 @@
     max-width: min(1140px, 96vw) !important;
     padding: 0 !important;
     gap: 0 !important;
+    position: relative;
 }
 
 .fb-pay-dialog > [data-slot='dialog-header'] {

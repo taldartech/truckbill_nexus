@@ -1,0 +1,23 @@
+{
+    "version": 1,
+    "description": "Product Owner regression scenarios that extend or clarify legacy behaviour (not in LEGACY_SCENARIO_CATALOG).",
+    "scenarios": [
+        {
+            "id": "NX-REG-BRK-CANCEL-001",
+            "module": "broker",
+            "summary": "Cancel hire with settle: only eligible paid voucher amounts move to Transporter Book Balance",
+            "nexus_tests": [
+                "tests/Feature/Broker/LorryHireCancellationTest.php"
+            ],
+            "status": "PASS"
+        },
+        {
+            "id": "NX-REG-BRK-CANCEL-002",
+            "summary": "Cancel hire with no paid vouchers: zero book settlement",
+            "nexus_tests": [
+                "tests/Feature/Broker/LorryHireCancellationTest.php"
+            ],
+            "status": "PASS"
+        }
+    ]
+}

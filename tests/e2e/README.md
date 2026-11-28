@@ -44,6 +44,8 @@ tests/e2e/
 
 Persona smokes (`roles/customer/*.smoke.spec.ts`) skip unless `E2E_REQUIRE_DEMO=1` and a password env (`E2E_USER_PASSWORD` or `LOCAL_DEMO_PASSWORD`) is set. Demo emails are public fixtures (`@demo.test`); never commit passwords.
 
+When **Demo Logistics Alpha** is missing from the dev database, `php artisan e2e:ensure-broker-journey` (Playwright global setup) can run `LocalDemoWorkspaceSeeder` once if `E2E_ALLOW_DEMO_SEED=1` and `LOCAL_DEMO_PASSWORD` is set — it does not reset the database or overwrite user password hashes.
+
 ## CI
 
 GitHub Actions installs Chromium and runs `npm run test:e2e:smoke` after the app build.

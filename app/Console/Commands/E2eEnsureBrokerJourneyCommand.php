@@ -9,7 +9,6 @@ use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
-use RuntimeException;
 
 /**
  * Writes Playwright auth fixture for Broker journeys on the local dev database.
@@ -43,9 +42,20 @@ class E2eEnsureBrokerJourneyCommand extends Command
             ->first();
 
         if ($company === null) {
-            $this->error('Demo Logistics Alpha not found. Run LocalDemoWorkspaceSeeder on this database first.');
+            if (filter_var(env('E2E_ALLOW_DEMO_SEED', false), FILTER_VALIDATE_BOOL)) {
+                $this->warn('Demo Logistics Alpha missing — running LocalDemoWorkspaceSeeder (E2E_ALLOW_DEMO_SEED).');
+                $this->call('db:seed', ['--class' => LocalDemoWorkspaceSeeder::class, '--no-interaction' => true]);
+                $company = Company::query()
+                    ->where('name', LocalDemoWorkspaceSeeder::COMPANY_A_NAME)
+                    ->whereNull('deactivated_at')
+                    ->first();
+            }
 
-            return self::FAILURE;
+            if ($company === null) {
+                $this->error('Demo Logistics Alpha not found. Set E2E_ALLOW_DEMO_SEED=true and LOCAL_DEMO_PASSWORD, or seed manually.');
+
+                return self::FAILURE;
+            }
         }
 
         $owner = User::query()->find($company->owner_user_id);

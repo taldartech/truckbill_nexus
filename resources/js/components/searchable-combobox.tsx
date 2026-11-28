@@ -72,6 +72,7 @@ type PanelPosition = {
     maxHeight: number;
     placement: 'below' | 'above';
     container: HTMLElement;
+    anchor: 'absolute' | 'fixed';
 };
 
 const CUSTOM_ID_PREFIX = 'custom:';
@@ -183,10 +184,18 @@ function computePanelPosition(
     }
 
     const container = resolvePanelContainer(trigger);
-    const offset = containingBlockOffset(container);
     const rect = trigger.getBoundingClientRect();
-    const spaceBelow = window.innerHeight - rect.bottom - VIEWPORT_GAP;
-    const spaceAbove = rect.top - VIEWPORT_GAP;
+    const anchor: 'absolute' | 'fixed' =
+        container === document.body ? 'fixed' : 'absolute';
+    const containerRect = container.getBoundingClientRect();
+    const spaceBelow =
+        anchor === 'fixed'
+            ? window.innerHeight - rect.bottom - VIEWPORT_GAP
+            : containerRect.bottom - rect.bottom - VIEWPORT_GAP;
+    const spaceAbove =
+        anchor === 'fixed'
+            ? rect.top - VIEWPORT_GAP
+            : rect.top - containerRect.top - VIEWPORT_GAP;
     const preferBelow = spaceBelow >= Math.min(PANEL_MAX_HEIGHT, 160);
     const placement: 'below' | 'above' =
         preferBelow || spaceBelow >= spaceAbove ? 'below' : 'above';
@@ -195,18 +204,36 @@ function computePanelPosition(
             ? Math.max(120, spaceBelow)
             : Math.max(120, spaceAbove);
     const maxHeight = Math.min(PANEL_MAX_HEIGHT, available);
-    const top =
-        placement === 'below'
-            ? rect.bottom + 4
-            : Math.max(VIEWPORT_GAP, rect.top - 4 - maxHeight);
+
+  const scrollTop =
+      container instanceof HTMLElement ? container.scrollTop : 0;
+  const scrollLeft =
+      container instanceof HTMLElement ? container.scrollLeft : 0;
+
+    let top: number;
+    let left: number;
+    if (anchor === 'fixed') {
+        top =
+            placement === 'below'
+                ? rect.bottom + 4
+                : Math.max(VIEWPORT_GAP, rect.top - 4 - maxHeight);
+        left = rect.left;
+    } else {
+        top =
+            placement === 'below'
+                ? rect.bottom - containerRect.top + scrollTop + 4
+                : rect.top - containerRect.top + scrollTop - 4 - maxHeight;
+        left = rect.left - containerRect.left + scrollLeft;
+    }
 
     return {
-        top: top - offset.top,
-        left: rect.left - offset.left,
+        top,
+        left,
         width: rect.width,
         maxHeight,
         placement,
         container,
+        anchor,
     };
 }
 
@@ -686,7 +713,12 @@ export function SearchableCombobox({
                   <div
                       ref={panelRef}
                       data-searchable-combobox-panel=""
-                      className="pointer-events-auto fixed z-[200] rounded-md border border-input bg-popover text-popover-foreground shadow-md"
+                      className={cn(
+                          'pointer-events-auto z-[200] rounded-md border border-input bg-popover text-popover-foreground shadow-md',
+                          panelPosition.anchor === 'fixed'
+                              ? 'fixed'
+                              : 'absolute',
+                      )}
                       style={{
                           top: panelPosition.top,
                           left: panelPosition.left,
