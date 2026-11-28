@@ -59,7 +59,7 @@ export default function DailyPaymentsIndex({
     return (
         <>
             <Head title="Daily Transporter Payments" />
-            <AppIndexPage>
+            <AppIndexPage className="daily-payments-index">
                 <AppIndexListCard title="Daily Transporter Payments">
                     <AppIndexFilters
                         onSubmit={(event) => {

@@ -642,8 +642,8 @@ export default function LorryHireForm({
         ];
 
     const title = isEdit
-        ? `Edit Lorry Hire ${hire.hire_number}`
-        : 'Create Lorry Hire';
+        ? `Edit Good Hire (Lorry Hire) — ${hire.hire_number}`
+        : 'Add New Good Hire (Lorry Hire)';
     const busy = form.processing || previewRequest.processing;
 
     return (
@@ -658,9 +658,9 @@ export default function LorryHireForm({
             <LrfPage
                 title={title}
                 subtitle={
-                    lorryReceipt.lr_number
-                        ? `Freight booking from bilty ${lorryReceipt.lr_number}`
-                        : 'Freight booking from linked bilty'
+                    isEdit
+                        ? 'Linked bilty is read-only. Update hire charges and optional details below.'
+                        : 'Linked bilty is shown for reference. Complete hire charges to continue.'
                 }
                 backHref={urls.lr_show}
                 backLabel={isEdit ? 'Back to Lorry Hire' : 'Back to bilty'}
@@ -707,7 +707,7 @@ export default function LorryHireForm({
                             <LrfSection
                                 step={2}
                                 title="Hire Charges"
-                                description="TR rate, amount, TDS and balance per goods line from the linked Bilty"
+                                description="TR rate, amount, TDS and balance"
                                 tone="goods"
                             >
                                 <div className="grid gap-3 md:grid-cols-3">
@@ -921,8 +921,10 @@ export default function LorryHireForm({
                             <LrfSection
                                 step={isEdit ? 4 : 3}
                                 title="Optional Details"
-                                description="Remarks for this hire"
+                                description="E-way bill and remarks"
                                 tone="optional"
+                                collapsible
+                                defaultOpen={form.data.remarks.trim() !== ''}
                             >
                                 <div className="space-y-1">
                                     <Label htmlFor="remarks">Remark</Label>
@@ -971,94 +973,92 @@ export default function LorryHireForm({
                             </LrfSection>
                         </div>
 
-                        <div data-testid="lorry-hire-section-financial-summary">
-                            <LrfSection
-                                step={isEdit ? 5 : 4}
-                                title="Financial summary"
-                                description={
-                                    isEdit
-                                        ? 'Effective freight, TDS, payable and the revised balance after existing payments'
-                                        : 'Transporter freight, applicable TDS and net payable'
-                                }
-                                tone="optional"
-                            >
-                                <LrfSummaryMetrics
-                                    items={[
-                                        {
-                                            name: 'Transporter Freight',
-                                            value: formatInr(
-                                                financials.transporterFreight,
-                                            ),
-                                        },
-                                        ...(customTotal !== 0
-                                            ? [
-                                                  {
-                                                      name: 'Custom Amounts',
-                                                      value: formatInr(
-                                                          customTotal,
-                                                      ),
-                                                  },
-                                              ]
-                                            : []),
-                                        {
-                                            name: `Applicable TDS (${tdsPercentLabel})`,
-                                            value: tdsAmountLabel,
-                                        },
-                                        ...(isEdit && adjustmentsNet !== 0
-                                            ? [
-                                                  {
-                                                      name: 'Freight Adjustments',
-                                                      value: formatInr(
-                                                          adjustmentsNet,
-                                                      ),
-                                                  },
-                                              ]
-                                            : []),
-                                        {
-                                            name: 'Net Payable',
-                                            value: formatInr(netPayable),
-                                            hero: !isEdit,
-                                        },
-                                        ...(isEdit
-                                            ? [
-                                                  {
-                                                      name: 'Paid / adjusted',
-                                                      value: money(
-                                                          hire.settled_amount,
-                                                      ),
-                                                  },
-                                                  {
-                                                      name: 'Revised Outstanding',
-                                                      value: formatInr(
-                                                          netPayable -
-                                                              Number(
-                                                                  hire.settled_amount,
-                                                              ),
-                                                      ),
-                                                      hero: true,
-                                                  },
-                                              ]
-                                            : []),
-                                    ]}
-                                />
-                                {isEdit && hire.tds_locked_reason ? (
-                                    <p className="mt-2 text-xs text-muted-foreground">
-                                        {hire.tds_locked_reason}
-                                    </p>
-                                ) : tdsPreview?.explanation ? (
-                                    <p className="mt-2 text-xs text-muted-foreground">
-                                        {tdsPreview.explanation}
-                                    </p>
-                                ) : null}
-                                {isEdit && hire.has_unloading_adjustment ? (
-                                    <p className="mt-1 text-xs text-muted-foreground">
-                                        An unloading weight adjustment applies;
-                                        the final freight is confirmed on
-                                        review.
-                                    </p>
-                                ) : null}
-                            </LrfSection>
-                        </div>
+                        {isEdit ? (
+                            <div data-testid="lorry-hire-section-financial-summary">
+                                <LrfSection
+                                    step={5}
+                                    title="Financial summary"
+                                    description="Effective freight, TDS, payable and revised balance after payments"
+                                    tone="optional"
+                                >
+                                    <LrfSummaryMetrics
+                                        items={[
+                                            {
+                                                name: 'Transporter Freight',
+                                                value: formatInr(
+                                                    financials.transporterFreight,
+                                                ),
+                                            },
+                                            ...(customTotal !== 0
+                                                ? [
+                                                      {
+                                                          name: 'Custom Amounts',
+                                                          value: formatInr(
+                                                              customTotal,
+                                                          ),
+                                                      },
+                                                  ]
+                                                : []),
+                                            {
+                                                name: `Applicable TDS (${tdsPercentLabel})`,
+                                                value: tdsAmountLabel,
+                                            },
+                                            ...(isEdit && adjustmentsNet !== 0
+                                                ? [
+                                                      {
+                                                          name: 'Freight Adjustments',
+                                                          value: formatInr(
+                                                              adjustmentsNet,
+                                                          ),
+                                                      },
+                                                  ]
+                                                : []),
+                                            {
+                                                name: 'Net Payable',
+                                                value: formatInr(netPayable),
+                                                hero: !isEdit,
+                                            },
+                                            ...(isEdit
+                                                ? [
+                                                      {
+                                                          name: 'Paid / adjusted',
+                                                          value: money(
+                                                              hire.settled_amount,
+                                                          ),
+                                                      },
+                                                      {
+                                                          name: 'Revised Outstanding',
+                                                          value: formatInr(
+                                                              netPayable -
+                                                                  Number(
+                                                                      hire.settled_amount,
+                                                                  ),
+                                                          ),
+                                                          hero: true,
+                                                      },
+                                                  ]
+                                                : []),
+                                        ]}
+                                    />
+                                    {isEdit && hire.tds_locked_reason ? (
+                                        <p className="mt-2 text-xs text-muted-foreground">
+                                            {hire.tds_locked_reason}
+                                        </p>
+                                    ) : tdsPreview?.explanation ? (
+                                        <p className="mt-2 text-xs text-muted-foreground">
+                                            {tdsPreview.explanation}
+                                        </p>
+                                    ) : null}
+                                    {isEdit && hire.has_unloading_adjustment ? (
+                                        <p className="mt-1 text-xs text-muted-foreground">
+                                            An unloading weight adjustment
+                                            applies; the final freight is
+                                            confirmed on review.
+                                        </p>
+                                    ) : null}
+                                </LrfSection>
+                            </div>
+                        ) : null}
 
                         <LrfActions>
                             <Button

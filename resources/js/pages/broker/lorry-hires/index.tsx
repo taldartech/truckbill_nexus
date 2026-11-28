@@ -185,7 +185,7 @@ export default function LorryHiresIndex({
     return (
         <>
             <Head title="Good Hires (Lorry Hire)" />
-            <AppIndexPage>
+            <AppIndexPage className="freight-bookings-index">
                 <AppIndexListCard title="Good Hires (Lorry Hire)">
                     <AppIndexFilters
                         onSubmit={(event) => {
@@ -259,6 +259,7 @@ export default function LorryHiresIndex({
                             <Button
                                 type="button"
                                 variant="outline"
+                                className="header-pill-btn"
                                 disabled={memoReason !== null}
                                 onClick={() => setMemoOpen(true)}
                             >
@@ -268,7 +269,7 @@ export default function LorryHiresIndex({
                         {voucherUrls ? (
                             <Button
                                 type="button"
-                                className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                                className="header-pill-btn bg-[#2FB36F] text-white hover:bg-[#279960]"
                                 disabled={voucherReason !== null}
                                 onClick={() => setPaymentOpen(true)}
                             >
@@ -281,7 +282,10 @@ export default function LorryHiresIndex({
                         className="overflow-x-auto"
                         data-testid="good-hires-register"
                     >
-                        <table className="app-index-table min-w-full">
+                        <table
+                            id="freightBookingsTable"
+                            className="app-index-table min-w-full"
+                        >
                             <thead>
                                 <tr>
                                     {canSelect ? (
@@ -401,7 +405,7 @@ export default function LorryHiresIndex({
                                                 {row.outstanding_amount ?? '—'}
                                             </td>
                                             <td>
-                                                <div className="flex items-center justify-center gap-1">
+                                                <div className="btn-action-row">
                                                     <AppIconAction
                                                         icon={Eye}
                                                         label="Open lorry hire"

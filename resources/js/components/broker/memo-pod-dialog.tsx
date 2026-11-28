@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogContent,
-    DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
@@ -159,20 +158,15 @@ export function MemoPodDialog({
                 }}
             >
                 <DialogContent
-                    className="max-h-[92vh] overflow-y-auto sm:max-w-3xl"
+                    className="fb-pay-dialog gap-0 overflow-hidden border border-slate-200 p-0 sm:max-w-4xl"
                     data-testid="memo-pod-modal"
                 >
-                    <DialogHeader>
-                        <DialogTitle>
+                    <DialogHeader className="border-b border-slate-200 bg-slate-50 px-4 py-3 text-left">
+                        <DialogTitle className="text-base font-extrabold text-slate-900">
                             {context
-                                ? `Memo / POD — ${receipts.length} ${receipts.length === 1 ? 'Bilty' : 'Bilties'}`
+                                ? `Bulk Memo / POD ID Assignment — ${receipts.length} ${receipts.length === 1 ? 'Bilty' : 'Bilties'}`
                                 : 'Memo / POD'}
                         </DialogTitle>
-                        <DialogDescription>
-                            One Memo / POD number for Bilties of the same
-                            customer. Assigning it marks every selected Bilty
-                            Delivered.
-                        </DialogDescription>
                     </DialogHeader>
 
                     {loadError ? (
@@ -193,7 +187,7 @@ export function MemoPodDialog({
                     {context ? (
                         <form
                             id="memo-pod-form"
-                            className="space-y-4"
+                            className="fb-pay-dialog__body space-y-3"
                             onSubmit={(event) => {
                                 event.preventDefault();
                                 setAttempted(true);
@@ -259,100 +253,116 @@ export function MemoPodDialog({
                                 </div>
                             </div>
 
-                            <div className="overflow-x-auto rounded-lg border border-slate-200">
-                                <table className="w-full text-sm">
-                                    <thead className="bg-slate-50 text-left text-xs font-semibold text-slate-600 uppercase">
-                                        <tr>
-                                            <th className="px-3 py-2">LR No</th>
-                                            <th className="px-3 py-2">Date</th>
-                                            <th className="px-3 py-2">Truck</th>
-                                            <th className="px-3 py-2 text-end">
-                                                Freight
-                                            </th>
-                                            <th className="px-3 py-2 text-end">
-                                                Shortage / Damage
-                                            </th>
-                                            <th className="px-3 py-2">
-                                                POD Document
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {receipts.map((row) => (
-                                            <tr
-                                                key={row.id}
-                                                className="border-t border-slate-100 align-top"
-                                            >
-                                                <td className="px-3 py-2 font-medium">
-                                                    {row.lr_number}
-                                                </td>
-                                                <td className="px-3 py-2">
-                                                    {row.lr_date ?? '—'}
-                                                </td>
-                                                <td className="px-3 py-2">
-                                                    {row.vehicle_registration ??
-                                                        '—'}
-                                                </td>
-                                                <td className="px-3 py-2 text-end tabular-nums">
-                                                    {money(row.freight_total)}
-                                                </td>
-                                                <td className="px-3 py-2 text-end tabular-nums">
-                                                    {money(
-                                                        row.shortage_damage_amount,
-                                                    )}
-                                                </td>
-                                                <td className="px-3 py-2">
-                                                    <input
-                                                        type="file"
-                                                        accept=".pdf,.jpg,.jpeg,.png,.webp"
-                                                        aria-label={`POD document for ${row.lr_number} (optional)`}
-                                                        className="max-w-[12rem] text-xs"
-                                                        onChange={(event) => {
-                                                            const file =
-                                                                event.target
-                                                                    .files?.[0];
-                                                            const next = {
-                                                                ...form.data
-                                                                    .pod_documents,
-                                                            };
-                                                            if (file) {
-                                                                next[row.id] =
-                                                                    file;
-                                                            } else {
-                                                                delete next[
-                                                                    row.id
-                                                                ];
-                                                            }
-                                                            form.setData(
-                                                                'pod_documents',
-                                                                next,
-                                                            );
-                                                        }}
-                                                    />
-                                                    <FieldError
-                                                        message={documentError(
-                                                            row.id,
-                                                        )}
-                                                    />
-                                                </td>
+                            <div className="fb-pay-panel fb-pay-panel--alloc overflow-hidden">
+                                <div className="fb-pay-panel__head">
+                                    Selected Bilties
+                                </div>
+                                <div className="fb-pay-panel__body--flush overflow-x-auto">
+                                    <table className="fb-pay-table mb-0 w-full">
+                                        <thead>
+                                            <tr>
+                                                <th className="px-3 py-2">
+                                                    LR No
+                                                </th>
+                                                <th className="px-3 py-2">
+                                                    Date
+                                                </th>
+                                                <th className="px-3 py-2">
+                                                    Truck
+                                                </th>
+                                                <th className="px-3 py-2 text-end">
+                                                    Freight
+                                                </th>
+                                                <th className="px-3 py-2 text-end">
+                                                    Shortage / Damage
+                                                </th>
+                                                <th className="px-3 py-2">
+                                                    POD Document
+                                                </th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                    <tfoot>
-                                        <tr className="border-t border-slate-200 bg-slate-50 font-semibold">
-                                            <td
-                                                className="px-3 py-2 text-end"
-                                                colSpan={3}
-                                            >
-                                                Total Freight
-                                            </td>
-                                            <td className="px-3 py-2 text-end tabular-nums">
-                                                {formatInr(totalFreight)}
-                                            </td>
-                                            <td colSpan={2} />
-                                        </tr>
-                                    </tfoot>
-                                </table>
+                                        </thead>
+                                        <tbody>
+                                            {receipts.map((row) => (
+                                                <tr
+                                                    key={row.id}
+                                                    className="border-t border-slate-100 align-top"
+                                                >
+                                                    <td className="px-3 py-2 font-medium">
+                                                        {row.lr_number}
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        {row.lr_date ?? '—'}
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        {row.vehicle_registration ??
+                                                            '—'}
+                                                    </td>
+                                                    <td className="px-3 py-2 text-end tabular-nums">
+                                                        {money(
+                                                            row.freight_total,
+                                                        )}
+                                                    </td>
+                                                    <td className="px-3 py-2 text-end tabular-nums">
+                                                        {money(
+                                                            row.shortage_damage_amount,
+                                                        )}
+                                                    </td>
+                                                    <td className="px-3 py-2">
+                                                        <input
+                                                            type="file"
+                                                            accept=".pdf,.jpg,.jpeg,.png,.webp"
+                                                            aria-label={`POD document for ${row.lr_number} (optional)`}
+                                                            className="max-w-[12rem] text-xs"
+                                                            onChange={(
+                                                                event,
+                                                            ) => {
+                                                                const file =
+                                                                    event.target
+                                                                        .files?.[0];
+                                                                const next = {
+                                                                    ...form.data
+                                                                        .pod_documents,
+                                                                };
+                                                                if (file) {
+                                                                    next[
+                                                                        row.id
+                                                                    ] = file;
+                                                                } else {
+                                                                    delete next[
+                                                                        row.id
+                                                                    ];
+                                                                }
+                                                                form.setData(
+                                                                    'pod_documents',
+                                                                    next,
+                                                                );
+                                                            }}
+                                                        />
+                                                        <FieldError
+                                                            message={documentError(
+                                                                row.id,
+                                                            )}
+                                                        />
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr className="border-t border-slate-200 bg-slate-50 font-semibold">
+                                                <td
+                                                    className="px-3 py-2 text-end"
+                                                    colSpan={3}
+                                                >
+                                                    Total Freight
+                                                </td>
+                                                <td className="px-3 py-2 text-end tabular-nums">
+                                                    {formatInr(totalFreight)}
+                                                </td>
+                                                <td colSpan={2} />
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
                             </div>
                             <p className="text-xs text-slate-500">
                                 POD documents are optional (PDF or image, up to
@@ -371,14 +381,15 @@ export function MemoPodDialog({
                         </form>
                     ) : null}
 
-                    <DialogFooter>
+                    <DialogFooter className="fb-pay-dialog__footer">
                         <Button
                             type="button"
                             variant="outline"
+                            size="sm"
                             disabled={form.processing}
                             onClick={() => onOpenChange(false)}
                         >
-                            Cancel
+                            Close
                         </Button>
                         {context ? (
                             <Button

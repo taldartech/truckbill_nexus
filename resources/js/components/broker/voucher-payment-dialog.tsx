@@ -10,7 +10,6 @@ import { Button } from '@/components/ui/button';
 import {
     Dialog,
     DialogContent,
-    DialogDescription,
     DialogFooter,
     DialogHeader,
     DialogTitle,
@@ -364,17 +363,13 @@ export function VoucherPaymentDialog({
                 }}
             >
                 <DialogContent
-                    className="max-h-[88vh] overflow-y-auto p-5 sm:max-w-4xl"
+                    className="fb-pay-dialog gap-0 overflow-hidden border border-slate-200 p-0 sm:max-w-6xl"
                     data-testid="voucher-payment-modal"
                 >
-                    <DialogHeader>
-                        <DialogTitle>
+                    <DialogHeader className="border-b border-slate-200 bg-slate-50 px-4 py-3 text-left">
+                        <DialogTitle className="text-base font-extrabold text-slate-900">
                             {context ? title : 'Voucher Payment'}
                         </DialogTitle>
-                        <DialogDescription>
-                            Same Payee and Truck only. Payment Type, Mode, Date
-                            and Remarks apply to every selected Lorry Hire.
-                        </DialogDescription>
                     </DialogHeader>
 
                     {loadError ? (
@@ -395,7 +390,7 @@ export function VoucherPaymentDialog({
                     {context ? (
                         <form
                             id="voucher-payment-form"
-                            className="space-y-4"
+                            className="fb-pay-dialog__body space-y-0"
                             onSubmit={(event) => {
                                 event.preventDefault();
                                 review();
@@ -404,6 +399,7 @@ export function VoucherPaymentDialog({
                             <LegacyPayPanel
                                 title="Previous Payments"
                                 testId="voucher-panel-previous-payments"
+                                flush
                             >
                                 {context.previous_payments.length === 0 ? (
                                     <p className="text-sm text-slate-500">
@@ -488,7 +484,7 @@ export function VoucherPaymentDialog({
                                 title="Transporter Details"
                                 testId="voucher-panel-transporter"
                             >
-                                <dl className="grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2 lg:grid-cols-3">
+                                <div className="fb-pay-facts fb-pay-facts--7">
                                     <Fact
                                         label="Transporter"
                                         value={context.payee.name}
@@ -512,21 +508,24 @@ export function VoucherPaymentDialog({
                                     <Fact
                                         label="Truck Number"
                                         value={context.vehicle_registration}
+                                        accent
                                     />
                                     <Fact
                                         label="Book Balance"
                                         value={money(context.book_balance)}
                                     />
-                                </dl>
+                                </div>
                             </LegacyPayPanel>
 
                             <LegacyPayPanel
                                 title="Payment Allocation"
                                 testId="voucher-panel-allocation"
+                                flush
+                                alloc
                             >
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-sm">
-                                        <thead className="bg-slate-50 text-left text-xs font-semibold text-slate-600 uppercase">
+                                <div className="table-responsive overflow-x-auto">
+                                    <table className="fb-pay-table mb-0 w-full">
+                                        <thead>
                                             <tr>
                                                 <th className="px-3 py-2">
                                                     FR No.
@@ -619,20 +618,11 @@ export function VoucherPaymentDialog({
                                                 },
                                             )}
                                         </tbody>
-                                        <tfoot>
-                                            <tr className="border-t border-slate-200 bg-slate-50 font-semibold">
-                                                <td
-                                                    className="px-3 py-2 text-end"
-                                                    colSpan={3}
-                                                >
-                                                    Total Payment Amount
-                                                </td>
-                                                <td className="px-3 py-2 text-end tabular-nums">
-                                                    {formatInr(totalPayment)}
-                                                </td>
-                                            </tr>
-                                        </tfoot>
                                     </table>
+                                </div>
+                                <div className="fb-pay-total">
+                                    <span>Total Payment Amount</span>
+                                    <strong>{formatInr(totalPayment)}</strong>
                                 </div>
                                 {errorFor('lines') ? (
                                     <p
@@ -648,7 +638,7 @@ export function VoucherPaymentDialog({
                                 title="Payment Details"
                                 testId="voucher-panel-payment-details"
                             >
-                                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                                <div className="fb-pay-fields fb-pay-fields--4">
                                     <div className="space-y-1">
                                         <Label
                                             htmlFor="voucher_payment_type"
@@ -876,23 +866,25 @@ export function VoucherPaymentDialog({
                         </form>
                     ) : null}
 
-                    <DialogFooter>
+                    <DialogFooter className="fb-pay-dialog__footer">
                         <Button
                             type="button"
                             variant="outline"
+                            size="sm"
                             disabled={form.processing}
                             onClick={() => onOpenChange(false)}
                         >
-                            Cancel
+                            Close
                         </Button>
                         {context ? (
                             <Button
                                 type="submit"
                                 form="voucher-payment-form"
+                                size="sm"
                                 disabled={form.processing}
                                 className="bg-[#2FB36F] text-white hover:bg-[#279960]"
                             >
-                                Review payment
+                                Submit Payment
                             </Button>
                         ) : null}
                     </DialogFooter>
@@ -1049,31 +1041,55 @@ function LegacyPayPanel({
     title,
     testId,
     children,
+    flush = false,
+    alloc = false,
 }: {
     title: string;
     testId: string;
     children: ReactNode;
+    flush?: boolean;
+    alloc?: boolean;
 }) {
     return (
         <section
             data-testid={testId}
-            className="overflow-hidden rounded-lg border border-slate-200"
+            className={
+                alloc ? 'fb-pay-panel fb-pay-panel--alloc' : 'fb-pay-panel'
+            }
         >
-            <h3 className="border-b border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold text-slate-800">
-                {title}
-            </h3>
-            <div className="p-3">{children}</div>
+            <div className="fb-pay-panel__head">{title}</div>
+            <div
+                className={
+                    flush ? 'fb-pay-panel__body--flush' : 'fb-pay-panel__body'
+                }
+            >
+                {children}
+            </div>
         </section>
     );
 }
 
-function Fact({ label, value }: { label: string; value: string | null }) {
+function Fact({
+    label,
+    value,
+    accent = false,
+}: {
+    label: string;
+    value: string | null;
+    accent?: boolean;
+}) {
     return (
-        <div className="flex justify-between gap-2 sm:block">
-            <dt className="text-xs text-slate-500">{label}</dt>
-            <dd className="font-medium text-slate-900 tabular-nums">
+        <div className="fb-pay-fact">
+            <span className="fb-pay-fact__label">{label}</span>
+            <div
+                className={
+                    accent
+                        ? 'fb-pay-fact__value fb-pay-fact__value--accent'
+                        : 'fb-pay-fact__value'
+                }
+            >
                 {value ?? '—'}
-            </dd>
+            </div>
         </div>
     );
 }

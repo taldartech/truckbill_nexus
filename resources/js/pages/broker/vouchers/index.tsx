@@ -61,7 +61,7 @@ export default function VouchersIndex({
     return (
         <>
             <Head title="Voucher Payments" />
-            <AppIndexPage>
+            <AppIndexPage className="voucher-register-index">
                 <AppIndexListCard
                     title="Voucher Payments"
                     toolbar={
