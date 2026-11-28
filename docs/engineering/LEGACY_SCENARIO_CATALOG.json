@@ -1,6 +1,6 @@
 {
     "generated_at": "2026-11-28T12:11:38+00:00",
-    "nexus_head": "6a3d5ab260f5bcccabba978ad220d98000a702cc",
+    "nexus_head": "c513bcbbc76fe4d2aedda95d48aa8ef453d8daca",
     "scenarios": [
         {
             "id": "LEG-BRO-00001",
@@ -254,7 +254,9 @@
             "legacy_identifier": "test_round_up_tds_amount_rounds_up_to_integer",
             "legacy_kind": "phpunit",
             "stage": "3-broker",
-            "execution_status": "UNMAPPED"
+            "execution_status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerCustomerFreightCalculationTest.php \u2014 legacy transporter FR variable uses min weight",
+            "notes": "Transporter hire line uses min(actual, charged) MT basis."
         },
         {
             "id": "LEG-BRO-00028",
@@ -1337,7 +1339,9 @@
             "legacy_identifier": "test_update_syncs_lorry_receipt_status_and_unlinks_when_booking_is_cancelled",
             "legacy_kind": "phpunit",
             "stage": "3-broker",
-            "execution_status": "UNMAPPED"
+            "execution_status": "PASS",
+            "nexus_test": "tests/Feature/Broker/LorryHireCancellationTest.php \u2014 cancel lifecycle + LR rules",
+            "notes": "Adapted: Nexus cancel service + LR status coupling; not legacy checkbox edit flow."
         },
         {
             "id": "LEG-BRO-00148",
@@ -13430,5 +13434,5 @@
     "totals": {
         "scenarios": 1490
     },
-    "scenario_execution_synced_at": "2026-11-28T12:56:29+00:00"
+    "scenario_execution_synced_at": "2026-11-28T13:45:31+00:00"
 }
