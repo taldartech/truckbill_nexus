@@ -1,0 +1,1140 @@
+{
+    "generated_at": "2026-11-28T11:58:00+00:00",
+    "nexus_head": "a61a308acdba25663678d815242203ac51cdfdb5",
+    "applications": {
+        "Broker": {
+            "legacy_directory": "legacy/truckbill_broker",
+            "test_files": [
+                {
+                    "relative_path": "Feature/Api/Select2SearchTest.php",
+                    "module": "Api",
+                    "estimated_cases": 6
+                },
+                {
+                    "relative_path": "Feature/AuditLogDeletedLrFilterTest.php",
+                    "module": "AuditLogDeletedLrFilterTest.php",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/AuditLogTest.php",
+                    "module": "AuditLogTest.php",
+                    "estimated_cases": 8
+                },
+                {
+                    "relative_path": "Feature/Auth/AuthRBACTest.php",
+                    "module": "Auth",
+                    "estimated_cases": 20
+                },
+                {
+                    "relative_path": "Feature/Company/CompanyBankDetailsTest.php",
+                    "module": "Company",
+                    "estimated_cases": 3
+                },
+                {
+                    "relative_path": "Feature/Company/CompanyBranchTest.php",
+                    "module": "Company",
+                    "estimated_cases": 21
+                },
+                {
+                    "relative_path": "Feature/Company/CompanyDigitalSignatureTest.php",
+                    "module": "Company",
+                    "estimated_cases": 3
+                },
+                {
+                    "relative_path": "Feature/Company/CompanyEnterExitTest.php",
+                    "module": "Company",
+                    "estimated_cases": 14
+                },
+                {
+                    "relative_path": "Feature/Company/CompanyGstSchemeRestrictionTest.php",
+                    "module": "Company",
+                    "estimated_cases": 4
+                },
+                {
+                    "relative_path": "Feature/Company/CompanySettingsTest.php",
+                    "module": "Company",
+                    "estimated_cases": 4
+                },
+                {
+                    "relative_path": "Feature/Company/CompanyShortNameCollisionTest.php",
+                    "module": "Company",
+                    "estimated_cases": 5
+                },
+                {
+                    "relative_path": "Feature/Consignee/ConsigneeTest.php",
+                    "module": "Consignee",
+                    "estimated_cases": 8
+                },
+                {
+                    "relative_path": "Feature/Console/CorrectCombinedVoucherLinkedAmountsCommandTest.php",
+                    "module": "Console",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/Dashboard/DecisionDashboardTest.php",
+                    "module": "Dashboard",
+                    "estimated_cases": 15
+                },
+                {
+                    "relative_path": "Feature/Drivers/DriverTest.php",
+                    "module": "Drivers",
+                    "estimated_cases": 6
+                },
+                {
+                    "relative_path": "Feature/Freight/FreightBookingTest.php",
+                    "module": "Freight",
+                    "estimated_cases": 38
+                },
+                {
+                    "relative_path": "Feature/Invoice/CustomInvoiceTest.php",
+                    "module": "Invoice",
+                    "estimated_cases": 13
+                },
+                {
+                    "relative_path": "Feature/Invoice/InvoiceTest.php",
+                    "module": "Invoice",
+                    "estimated_cases": 25
+                },
+                {
+                    "relative_path": "Feature/LR/LorryReceiptDeleteCascadeTest.php",
+                    "module": "LR",
+                    "estimated_cases": 5
+                },
+                {
+                    "relative_path": "Feature/LR/LorryReceiptTest.php",
+                    "module": "LR",
+                    "estimated_cases": 17
+                },
+                {
+                    "relative_path": "Feature/Master/LocationQuickAddTest.php",
+                    "module": "Master",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/Master/MasterFieldsTest.php",
+                    "module": "Master",
+                    "estimated_cases": 10
+                },
+                {
+                    "relative_path": "Feature/Master/MasterPanelSummaryDashboardTest.php",
+                    "module": "Master",
+                    "estimated_cases": 7
+                },
+                {
+                    "relative_path": "Feature/Master/PumpQuickAddTest.php",
+                    "module": "Master",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/Master/TransporterMasterTest.php",
+                    "module": "Master",
+                    "estimated_cases": 6
+                },
+                {
+                    "relative_path": "Feature/Master/TruckTypeTest.php",
+                    "module": "Master",
+                    "estimated_cases": 6
+                },
+                {
+                    "relative_path": "Feature/Payments/AdvancePaymentTest.php",
+                    "module": "Payments",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/PromoPayment/PromoPaymentTest.php",
+                    "module": "PromoPayment",
+                    "estimated_cases": 4
+                },
+                {
+                    "relative_path": "Feature/Reports/PartyLedgerReportTest.php",
+                    "module": "Reports",
+                    "estimated_cases": 1
+                },
+                {
+                    "relative_path": "Feature/Reports/PartyPendingInvoiceReportTest.php",
+                    "module": "Reports",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/Reports/ReportExportTest.php",
+                    "module": "Reports",
+                    "estimated_cases": 18
+                },
+                {
+                    "relative_path": "Feature/Subscription/AdminExtendTrialTest.php",
+                    "module": "Subscription",
+                    "estimated_cases": 3
+                },
+                {
+                    "relative_path": "Feature/Subscription/AdminOfflinePaymentCouponTest.php",
+                    "module": "Subscription",
+                    "estimated_cases": 3
+                },
+                {
+                    "relative_path": "Feature/Subscription/CompanySubscriptionTest.php",
+                    "module": "Subscription",
+                    "estimated_cases": 3
+                },
+                {
+                    "relative_path": "Feature/Subscription/EnsureActiveSubscriptionTest.php",
+                    "module": "Subscription",
+                    "estimated_cases": 6
+                },
+                {
+                    "relative_path": "Feature/Subscription/SubscriptionIndexTest.php",
+                    "module": "Subscription",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/Transport/TransporterOwnerTest.php",
+                    "module": "Transport",
+                    "estimated_cases": 20
+                },
+                {
+                    "relative_path": "Feature/Transport/TruckTest.php",
+                    "module": "Transport",
+                    "estimated_cases": 8
+                },
+                {
+                    "relative_path": "Feature/Users/UserManagementTest.php",
+                    "module": "Users",
+                    "estimated_cases": 15
+                },
+                {
+                    "relative_path": "Feature/Voucher/VoucherPaymentTest.php",
+                    "module": "Voucher",
+                    "estimated_cases": 9
+                },
+                {
+                    "relative_path": "Unit/Helpers/NumberHelpersTest.php",
+                    "module": "Helpers",
+                    "estimated_cases": 3
+                },
+                {
+                    "relative_path": "Unit/LorryReceiptCalculationServiceTest.php",
+                    "module": "LorryReceiptCalculationServiceTest.php",
+                    "estimated_cases": 6
+                },
+                {
+                    "relative_path": "Unit/Models/ConsigneeDisplayNameTest.php",
+                    "module": "Models",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Unit/Models/FreightBookingTest.php",
+                    "module": "Models",
+                    "estimated_cases": 9
+                },
+                {
+                    "relative_path": "Unit/Services/FreightBookingAmountVerifierTest.php",
+                    "module": "Services",
+                    "estimated_cases": 3
+                },
+                {
+                    "relative_path": "Unit/Services/TallyAccountingTest.php",
+                    "module": "Services",
+                    "estimated_cases": 38
+                },
+                {
+                    "relative_path": "Unit/Support/ListingQueryStringTest.php",
+                    "module": "Support",
+                    "estimated_cases": 4
+                },
+                {
+                    "relative_path": "Unit/Support/MoneyTest.php",
+                    "module": "Support",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Unit/Support/SubscriptionProrationTest.php",
+                    "module": "Support",
+                    "estimated_cases": 3
+                }
+            ],
+            "file_count": 49,
+            "estimated_cases": 418,
+            "manual_qa": [
+                "docs/Truckbill (Broker) - Calculations.md",
+                "MODEL_DOCUMENTATION.md"
+            ]
+        },
+        "OwnFleet": {
+            "legacy_directory": "legacy/truckbill_ownfleet",
+            "test_files": [
+                {
+                    "relative_path": "Feature/AdminSubscriptionApiTest.php",
+                    "module": "AdminSubscriptionApiTest.php",
+                    "estimated_cases": 1
+                },
+                {
+                    "relative_path": "Feature/Api/AttendanceExceptionFlowTest.php",
+                    "module": "Api",
+                    "estimated_cases": 16
+                },
+                {
+                    "relative_path": "Feature/Api/AttendancePhaseOneTest.php",
+                    "module": "Api",
+                    "estimated_cases": 22
+                },
+                {
+                    "relative_path": "Feature/Api/BatteryManagementTest.php",
+                    "module": "Api",
+                    "estimated_cases": 27
+                },
+                {
+                    "relative_path": "Feature/Api/BranchManagementTest.php",
+                    "module": "Api",
+                    "estimated_cases": 17
+                },
+                {
+                    "relative_path": "Feature/Api/BrokerIdentityValidationTest.php",
+                    "module": "Api",
+                    "estimated_cases": 5
+                },
+                {
+                    "relative_path": "Feature/Api/BrokerNameUniquenessTest.php",
+                    "module": "Api",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/Api/BulkInvoiceTest.php",
+                    "module": "Api",
+                    "estimated_cases": 7
+                },
+                {
+                    "relative_path": "Feature/Api/BulkUploadTest.php",
+                    "module": "Api",
+                    "estimated_cases": 15
+                },
+                {
+                    "relative_path": "Feature/Api/ChallanManagementTest.php",
+                    "module": "Api",
+                    "estimated_cases": 8
+                },
+                {
+                    "relative_path": "Feature/Api/CompanyManagementTest.php",
+                    "module": "Api",
+                    "estimated_cases": 21
+                },
+                {
+                    "relative_path": "Feature/Api/CustomerAndBrokerTenantSharingTest.php",
+                    "module": "Api",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/Api/CustomerIdentityValidationTest.php",
+                    "module": "Api",
+                    "estimated_cases": 5
+                },
+                {
+                    "relative_path": "Feature/Api/CustomerNameUniquenessTest.php",
+                    "module": "Api",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/Api/DocumentTypeManagementTest.php",
+                    "module": "Api",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/Api/DriverAdvanceLedgerTest.php",
+                    "module": "Api",
+                    "estimated_cases": 7
+                },
+                {
+                    "relative_path": "Feature/Api/DriverManagementModuleTest.php",
+                    "module": "Api",
+                    "estimated_cases": 31
+                },
+                {
+                    "relative_path": "Feature/Api/FleetMonthlyReportTest.php",
+                    "module": "Api",
+                    "estimated_cases": 6
+                },
+                {
+                    "relative_path": "Feature/Api/FuelAlertsTest.php",
+                    "module": "Api",
+                    "estimated_cases": 1
+                },
+                {
+                    "relative_path": "Feature/Api/FuelPerformanceReportTest.php",
+                    "module": "Api",
+                    "estimated_cases": 1
+                },
+                {
+                    "relative_path": "Feature/Api/GoodsTypeManagementTest.php",
+                    "module": "Api",
+                    "estimated_cases": 3
+                },
+                {
+                    "relative_path": "Feature/Api/InvoiceManagementTest.php",
+                    "module": "Api",
+                    "estimated_cases": 34
+                },
+                {
+                    "relative_path": "Feature/Api/LocationManagementTest.php",
+                    "module": "Api",
+                    "estimated_cases": 6
+                },
+                {
+                    "relative_path": "Feature/Api/ManagedUserBranchTest.php",
+                    "module": "Api",
+                    "estimated_cases": 3
+                },
+                {
+                    "relative_path": "Feature/Api/MonthlyExpenseTest.php",
+                    "module": "Api",
+                    "estimated_cases": 4
+                },
+                {
+                    "relative_path": "Feature/Api/MultiPointTripTest.php",
+                    "module": "Api",
+                    "estimated_cases": 9
+                },
+                {
+                    "relative_path": "Feature/Api/PayrollPayDaysSettingTest.php",
+                    "module": "Api",
+                    "estimated_cases": 3
+                },
+                {
+                    "relative_path": "Feature/Api/PhaseOneCloseTest.php",
+                    "module": "Api",
+                    "estimated_cases": 19
+                },
+                {
+                    "relative_path": "Feature/Api/ProductionReadinessTest.php",
+                    "module": "Api",
+                    "estimated_cases": 9
+                },
+                {
+                    "relative_path": "Feature/Api/RolePermissionManagementTest.php",
+                    "module": "Api",
+                    "estimated_cases": 9
+                },
+                {
+                    "relative_path": "Feature/Api/StationManagementTest.php",
+                    "module": "Api",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/Api/SuperAdminDashboardTest.php",
+                    "module": "Api",
+                    "estimated_cases": 7
+                },
+                {
+                    "relative_path": "Feature/Api/TripBiltyPdfTest.php",
+                    "module": "Api",
+                    "estimated_cases": 6
+                },
+                {
+                    "relative_path": "Feature/Api/TripExpenseImportTest.php",
+                    "module": "Api",
+                    "estimated_cases": 8
+                },
+                {
+                    "relative_path": "Feature/Api/TripExpenseTypeManagementTest.php",
+                    "module": "Api",
+                    "estimated_cases": 13
+                },
+                {
+                    "relative_path": "Feature/Api/TripManagementTest.php",
+                    "module": "Api",
+                    "estimated_cases": 94
+                },
+                {
+                    "relative_path": "Feature/Api/TruckTypeManagementTest.php",
+                    "module": "Api",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/Api/TyreLayoutManagementTest.php",
+                    "module": "Api",
+                    "estimated_cases": 6
+                },
+                {
+                    "relative_path": "Feature/Api/TyreManagementTest.php",
+                    "module": "Api",
+                    "estimated_cases": 32
+                },
+                {
+                    "relative_path": "Feature/Api/VehicleDocumentStorageTest.php",
+                    "module": "Api",
+                    "estimated_cases": 7
+                },
+                {
+                    "relative_path": "Feature/Api/VehicleMaintenanceTest.php",
+                    "module": "Api",
+                    "estimated_cases": 17
+                },
+                {
+                    "relative_path": "Feature/Api/VehicleManagementTest.php",
+                    "module": "Api",
+                    "estimated_cases": 23
+                },
+                {
+                    "relative_path": "Feature/Api/VehicleUtilizationReportTest.php",
+                    "module": "Api",
+                    "estimated_cases": 5
+                },
+                {
+                    "relative_path": "Feature/Feature/Api/AttendanceApiTest.php",
+                    "module": "Feature",
+                    "estimated_cases": 1
+                },
+                {
+                    "relative_path": "Feature/Feature/Api/DriverApiTest.php",
+                    "module": "Feature",
+                    "estimated_cases": 1
+                },
+                {
+                    "relative_path": "Feature/Feature/Api/TripApiTest.php",
+                    "module": "Feature",
+                    "estimated_cases": 1
+                },
+                {
+                    "relative_path": "Feature/Feature/Api/VehicleApiTest.php",
+                    "module": "Feature",
+                    "estimated_cases": 1
+                },
+                {
+                    "relative_path": "Feature/LegacyRouteRegistrationTest.php",
+                    "module": "LegacyRouteRegistrationTest.php",
+                    "estimated_cases": 1
+                },
+                {
+                    "relative_path": "Feature/LoginBranchValidationTest.php",
+                    "module": "LoginBranchValidationTest.php",
+                    "estimated_cases": 8
+                },
+                {
+                    "relative_path": "Feature/PermissionSystemTest.php",
+                    "module": "PermissionSystemTest.php",
+                    "estimated_cases": 6
+                },
+                {
+                    "relative_path": "Feature/Subscription/SubscriptionManageTest.php",
+                    "module": "Subscription",
+                    "estimated_cases": 1
+                },
+                {
+                    "relative_path": "Feature/Subscription/TenantSubscriptionTest.php",
+                    "module": "Subscription",
+                    "estimated_cases": 3
+                },
+                {
+                    "relative_path": "Feature/VueAppTest.php",
+                    "module": "VueAppTest.php",
+                    "estimated_cases": 16
+                },
+                {
+                    "relative_path": "Feature/WebAuthenticationTest.php",
+                    "module": "WebAuthenticationTest.php",
+                    "estimated_cases": 6
+                },
+                {
+                    "relative_path": "Feature/WebCompanyManagementTest.php",
+                    "module": "WebCompanyManagementTest.php",
+                    "estimated_cases": 3
+                },
+                {
+                    "relative_path": "Unit/ApiResponseTest.php",
+                    "module": "ApiResponseTest.php",
+                    "estimated_cases": 3
+                },
+                {
+                    "relative_path": "Unit/Modules/InvoiceManagement/GstCalculatorTest.php",
+                    "module": "Modules",
+                    "estimated_cases": 5
+                },
+                {
+                    "relative_path": "Unit/Modules/TripManagement/LoadClassifierTest.php",
+                    "module": "Modules",
+                    "estimated_cases": 1
+                },
+                {
+                    "relative_path": "Unit/Modules/TripManagement/TripDieselPerformanceTest.php",
+                    "module": "Modules",
+                    "estimated_cases": 4
+                },
+                {
+                    "relative_path": "Unit/Modules/TripManagement/TripFuelCalculatorTest.php",
+                    "module": "Modules",
+                    "estimated_cases": 4
+                },
+                {
+                    "relative_path": "Unit/MonthlySettlementCalculatorTest.php",
+                    "module": "MonthlySettlementCalculatorTest.php",
+                    "estimated_cases": 8
+                },
+                {
+                    "relative_path": "Unit/MonthlyWageAccrualTest.php",
+                    "module": "MonthlyWageAccrualTest.php",
+                    "estimated_cases": 3
+                },
+                {
+                    "relative_path": "Unit/PermissionSeederValidationTest.php",
+                    "module": "PermissionSeederValidationTest.php",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Unit/ReferencedPermissionSlugTest.php",
+                    "module": "ReferencedPermissionSlugTest.php",
+                    "estimated_cases": 1
+                },
+                {
+                    "relative_path": "Unit/ReportDateRangeTest.php",
+                    "module": "ReportDateRangeTest.php",
+                    "estimated_cases": 5
+                },
+                {
+                    "relative_path": "Unit/ReportPaginatorTest.php",
+                    "module": "ReportPaginatorTest.php",
+                    "estimated_cases": 3
+                },
+                {
+                    "relative_path": "Unit/Support/GstSettingsResolverTest.php",
+                    "module": "Support",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Unit/Support/SubscriptionProrationTest.php",
+                    "module": "Support",
+                    "estimated_cases": 3
+                },
+                {
+                    "relative_path": "Unit/TyreReportServiceTest.php",
+                    "module": "TyreReportServiceTest.php",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Unit/VehicleDocumentStatusTest.php",
+                    "module": "VehicleDocumentStatusTest.php",
+                    "estimated_cases": 0
+                }
+            ],
+            "file_count": 70,
+            "estimated_cases": 613,
+            "manual_qa": ["docs/Truckbill (Broker) - Calculations.md"]
+        },
+        "Partload": {
+            "legacy_directory": "legacy/truckbill_partload",
+            "test_files": [
+                {
+                    "relative_path": "Feature/Accounting/AccountingAuditTrailTest.php",
+                    "module": "Accounting",
+                    "estimated_cases": 3
+                },
+                {
+                    "relative_path": "Feature/Accounting/AccountingEventPostingTest.php",
+                    "module": "Accounting",
+                    "estimated_cases": 11
+                },
+                {
+                    "relative_path": "Feature/Accounting/AccountingIntegrityTest.php",
+                    "module": "Accounting",
+                    "estimated_cases": 8
+                },
+                {
+                    "relative_path": "Feature/Accounting/AccountingReportsTest.php",
+                    "module": "Accounting",
+                    "estimated_cases": 3
+                },
+                {
+                    "relative_path": "Feature/Accounting/ChartOfAccountsServiceTest.php",
+                    "module": "Accounting",
+                    "estimated_cases": 1
+                },
+                {
+                    "relative_path": "Feature/Accounting/Concerns/BuildsAccountingContext.php",
+                    "module": "Accounting",
+                    "estimated_cases": 0
+                },
+                {
+                    "relative_path": "Feature/Accounting/EntityAccountLinkerTest.php",
+                    "module": "Accounting",
+                    "estimated_cases": 1
+                },
+                {
+                    "relative_path": "Feature/Accounting/FinancialYearServiceTest.php",
+                    "module": "Accounting",
+                    "estimated_cases": 5
+                },
+                {
+                    "relative_path": "Feature/Accounting/MainChallanAccountingTest.php",
+                    "module": "Accounting",
+                    "estimated_cases": 9
+                },
+                {
+                    "relative_path": "Feature/Accounting/ManualVoucherTemplateTest.php",
+                    "module": "Accounting",
+                    "estimated_cases": 5
+                },
+                {
+                    "relative_path": "Feature/Accounting/OperationalBridgeTest.php",
+                    "module": "Accounting",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/Accounting/QuickStoreAccountingTest.php",
+                    "module": "Accounting",
+                    "estimated_cases": 5
+                },
+                {
+                    "relative_path": "Feature/Accounting/TrialBalanceReportTest.php",
+                    "module": "Accounting",
+                    "estimated_cases": 1
+                },
+                {
+                    "relative_path": "Feature/Accounting/VoucherServiceTest.php",
+                    "module": "Accounting",
+                    "estimated_cases": 4
+                },
+                {
+                    "relative_path": "Feature/AccountingModuleTest.php",
+                    "module": "AccountingModuleTest.php",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/AgentBulkUploadTest.php",
+                    "module": "AgentBulkUploadTest.php",
+                    "estimated_cases": 9
+                },
+                {
+                    "relative_path": "Feature/AgentShowTest.php",
+                    "module": "AgentShowTest.php",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/BankAccountShowTest.php",
+                    "module": "BankAccountShowTest.php",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/BiltyAdvancePaymentModeTest.php",
+                    "module": "BiltyAdvancePaymentModeTest.php",
+                    "estimated_cases": 4
+                },
+                {
+                    "relative_path": "Feature/BiltyChargeMinimumTest.php",
+                    "module": "BiltyChargeMinimumTest.php",
+                    "estimated_cases": 4
+                },
+                {
+                    "relative_path": "Feature/BiltyIndexFilterTest.php",
+                    "module": "BiltyIndexFilterTest.php",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/BiltyPrintViewTest.php",
+                    "module": "BiltyPrintViewTest.php",
+                    "estimated_cases": 6
+                },
+                {
+                    "relative_path": "Feature/BiltyShowTest.php",
+                    "module": "BiltyShowTest.php",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/BranchContextTest.php",
+                    "module": "BranchContextTest.php",
+                    "estimated_cases": 5
+                },
+                {
+                    "relative_path": "Feature/BranchHeadOfficeTest.php",
+                    "module": "BranchHeadOfficeTest.php",
+                    "estimated_cases": 4
+                },
+                {
+                    "relative_path": "Feature/BranchSettingsTest.php",
+                    "module": "BranchSettingsTest.php",
+                    "estimated_cases": 3
+                },
+                {
+                    "relative_path": "Feature/BranchShowTest.php",
+                    "module": "BranchShowTest.php",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/BulkUploadTest.php",
+                    "module": "BulkUploadTest.php",
+                    "estimated_cases": 11
+                },
+                {
+                    "relative_path": "Feature/ChallanIndexFilterTest.php",
+                    "module": "ChallanIndexFilterTest.php",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/ChallanShowTest.php",
+                    "module": "ChallanShowTest.php",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/CitiesByStateTest.php",
+                    "module": "CitiesByStateTest.php",
+                    "estimated_cases": 3
+                },
+                {
+                    "relative_path": "Feature/CompanyMasterBranchIdTest.php",
+                    "module": "CompanyMasterBranchIdTest.php",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/CompanyShowTest.php",
+                    "module": "CompanyShowTest.php",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/CompanyStationAgentTest.php",
+                    "module": "CompanyStationAgentTest.php",
+                    "estimated_cases": 7
+                },
+                {
+                    "relative_path": "Feature/DeliveryReceiptFormTest.php",
+                    "module": "DeliveryReceiptFormTest.php",
+                    "estimated_cases": 7
+                },
+                {
+                    "relative_path": "Feature/DeliveryReceiptShowTest.php",
+                    "module": "DeliveryReceiptShowTest.php",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/ExampleTest.php",
+                    "module": "ExampleTest.php",
+                    "estimated_cases": 1
+                },
+                {
+                    "relative_path": "Feature/GoodShowTest.php",
+                    "module": "GoodShowTest.php",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/GroupShowTest.php",
+                    "module": "GroupShowTest.php",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/GstExemptionLimitTest.php",
+                    "module": "GstExemptionLimitTest.php",
+                    "estimated_cases": 5
+                },
+                {
+                    "relative_path": "Feature/InvoiceShowTest.php",
+                    "module": "InvoiceShowTest.php",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/InwardRegisterShowTest.php",
+                    "module": "InwardRegisterShowTest.php",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/LoadingReportFormTest.php",
+                    "module": "LoadingReportFormTest.php",
+                    "estimated_cases": 6
+                },
+                {
+                    "relative_path": "Feature/LoadingReportsBackupMigrationTest.php",
+                    "module": "LoadingReportsBackupMigrationTest.php",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/MainChallanIndexFilterTest.php",
+                    "module": "MainChallanIndexFilterTest.php",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/MainChallanPrintTest.php",
+                    "module": "MainChallanPrintTest.php",
+                    "estimated_cases": 1
+                },
+                {
+                    "relative_path": "Feature/MainChallanShowTest.php",
+                    "module": "MainChallanShowTest.php",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/MasterQuickStoreTest.php",
+                    "module": "MasterQuickStoreTest.php",
+                    "estimated_cases": 5
+                },
+                {
+                    "relative_path": "Feature/PackageTypeShowTest.php",
+                    "module": "PackageTypeShowTest.php",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/PartyBulkUploadTest.php",
+                    "module": "PartyBulkUploadTest.php",
+                    "estimated_cases": 10
+                },
+                {
+                    "relative_path": "Feature/PartyChargeDefaultsTest.php",
+                    "module": "PartyChargeDefaultsTest.php",
+                    "estimated_cases": 8
+                },
+                {
+                    "relative_path": "Feature/PartyShowTest.php",
+                    "module": "PartyShowTest.php",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/RoleShowTest.php",
+                    "module": "RoleShowTest.php",
+                    "estimated_cases": 3
+                },
+                {
+                    "relative_path": "Feature/StationShowTest.php",
+                    "module": "StationShowTest.php",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/Subscription/CompanySubscriptionTest.php",
+                    "module": "Subscription",
+                    "estimated_cases": 3
+                },
+                {
+                    "relative_path": "Feature/SuperAdminOwnerIsolationTest.php",
+                    "module": "SuperAdminOwnerIsolationTest.php",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/TruckBulkUploadTest.php",
+                    "module": "TruckBulkUploadTest.php",
+                    "estimated_cases": 6
+                },
+                {
+                    "relative_path": "Feature/TruckShowTest.php",
+                    "module": "TruckShowTest.php",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/TruckTypeShowTest.php",
+                    "module": "TruckTypeShowTest.php",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/UserShowTest.php",
+                    "module": "UserShowTest.php",
+                    "estimated_cases": 3
+                },
+                {
+                    "relative_path": "Feature/VoucherIndexFilterTest.php",
+                    "module": "VoucherIndexFilterTest.php",
+                    "estimated_cases": 1
+                },
+                {
+                    "relative_path": "Feature/VoucherShowTest.php",
+                    "module": "VoucherShowTest.php",
+                    "estimated_cases": 1
+                },
+                {
+                    "relative_path": "Unit/BiltyPrintTest.php",
+                    "module": "BiltyPrintTest.php",
+                    "estimated_cases": 7
+                },
+                {
+                    "relative_path": "Unit/ExampleTest.php",
+                    "module": "ExampleTest.php",
+                    "estimated_cases": 1
+                },
+                {
+                    "relative_path": "Unit/Support/SubscriptionProrationTest.php",
+                    "module": "Support",
+                    "estimated_cases": 3
+                }
+            ],
+            "file_count": 65,
+            "estimated_cases": 233,
+            "manual_qa": []
+        },
+        "Admin": {
+            "legacy_directory": "legacy/truckbill_admin",
+            "test_files": [
+                {
+                    "relative_path": "Feature/Api/Admin/AdminApiFullCoverageTest.php",
+                    "module": "Api",
+                    "estimated_cases": 9
+                },
+                {
+                    "relative_path": "Feature/Audit/AuditLogAndSensitiveMaskingTest.php",
+                    "module": "Audit",
+                    "estimated_cases": 3
+                },
+                {
+                    "relative_path": "Feature/Auth/AuthenticationTest.php",
+                    "module": "Auth",
+                    "estimated_cases": 6
+                },
+                {
+                    "relative_path": "Feature/Auth/PasswordResetTest.php",
+                    "module": "Auth",
+                    "estimated_cases": 5
+                },
+                {
+                    "relative_path": "Feature/ComprehensiveFailureScenariosTest.php",
+                    "module": "ComprehensiveFailureScenariosTest.php",
+                    "estimated_cases": 13
+                },
+                {
+                    "relative_path": "Feature/ControlPlane/AddonAndOverridesTest.php",
+                    "module": "ControlPlane",
+                    "estimated_cases": 6
+                },
+                {
+                    "relative_path": "Feature/ControlPlane/CustomerOnboardingProvisioningTest.php",
+                    "module": "ControlPlane",
+                    "estimated_cases": 8
+                },
+                {
+                    "relative_path": "Feature/ControlPlane/PartnerAffiliateWorkflowTest.php",
+                    "module": "ControlPlane",
+                    "estimated_cases": 6
+                },
+                {
+                    "relative_path": "Feature/ControlPlane/PlansPricingRenewalsTest.php",
+                    "module": "ControlPlane",
+                    "estimated_cases": 9
+                },
+                {
+                    "relative_path": "Feature/ControlPlane/ProductCombinationsTest.php",
+                    "module": "ControlPlane",
+                    "estimated_cases": 8
+                },
+                {
+                    "relative_path": "Feature/ControlPlane/ProvisioningErrorReconciliationTest.php",
+                    "module": "ControlPlane",
+                    "estimated_cases": 5
+                },
+                {
+                    "relative_path": "Feature/Crm/LeadManagementTest.php",
+                    "module": "Crm",
+                    "estimated_cases": 25
+                },
+                {
+                    "relative_path": "Feature/Crm/LeadPermissionTest.php",
+                    "module": "Crm",
+                    "estimated_cases": 9
+                },
+                {
+                    "relative_path": "Feature/Crm/OnboardingTest.php",
+                    "module": "Crm",
+                    "estimated_cases": 4
+                },
+                {
+                    "relative_path": "Feature/Crm/PartnerOnboardingTest.php",
+                    "module": "Crm",
+                    "estimated_cases": 6
+                },
+                {
+                    "relative_path": "Feature/Crm/UserManagementTest.php",
+                    "module": "Crm",
+                    "estimated_cases": 8
+                },
+                {
+                    "relative_path": "Feature/DashboardTest.php",
+                    "module": "DashboardTest.php",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/Database/DatabaseIntegrityAndTransactionsTest.php",
+                    "module": "Database",
+                    "estimated_cases": 5
+                },
+                {
+                    "relative_path": "Feature/E2E/CompleteUserJourneysUatTest.php",
+                    "module": "E2E",
+                    "estimated_cases": 3
+                },
+                {
+                    "relative_path": "Feature/ExampleTest.php",
+                    "module": "ExampleTest.php",
+                    "estimated_cases": 1
+                },
+                {
+                    "relative_path": "Feature/FinalFullCoverageTest.php",
+                    "module": "FinalFullCoverageTest.php",
+                    "estimated_cases": 18
+                },
+                {
+                    "relative_path": "Feature/MultiTenant/MultiProductIsolationTest.php",
+                    "module": "MultiTenant",
+                    "estimated_cases": 4
+                },
+                {
+                    "relative_path": "Feature/Performance/PerformanceAndDashboardLoadTest.php",
+                    "module": "Performance",
+                    "estimated_cases": 3
+                },
+                {
+                    "relative_path": "Feature/Reliability/ReliabilityAndTimeoutRecoveryTest.php",
+                    "module": "Reliability",
+                    "estimated_cases": 3
+                },
+                {
+                    "relative_path": "Feature/Security/SecurityAndHmacSignatureTest.php",
+                    "module": "Security",
+                    "estimated_cases": 8
+                },
+                {
+                    "relative_path": "Feature/Settings/ProfileUpdateTest.php",
+                    "module": "Settings",
+                    "estimated_cases": 4
+                },
+                {
+                    "relative_path": "Feature/Settings/SecurityTest.php",
+                    "module": "Settings",
+                    "estimated_cases": 4
+                },
+                {
+                    "relative_path": "Feature/Subscriptions/OfflinePaymentCouponTest.php",
+                    "module": "Subscriptions",
+                    "estimated_cases": 4
+                },
+                {
+                    "relative_path": "Feature/Subscriptions/PricingCalculatorTest.php",
+                    "module": "Subscriptions",
+                    "estimated_cases": 3
+                },
+                {
+                    "relative_path": "Feature/Subscriptions/PromoCodeSoftDeleteTest.php",
+                    "module": "Subscriptions",
+                    "estimated_cases": 2
+                },
+                {
+                    "relative_path": "Feature/Subscriptions/SubscriptionPermissionTest.php",
+                    "module": "Subscriptions",
+                    "estimated_cases": 7
+                },
+                {
+                    "relative_path": "Feature/UnitAndModelsDeepCoverageTest.php",
+                    "module": "UnitAndModelsDeepCoverageTest.php",
+                    "estimated_cases": 9
+                },
+                {
+                    "relative_path": "Feature/Web/WebControllersAndCoverageTest.php",
+                    "module": "Web",
+                    "estimated_cases": 8
+                },
+                {
+                    "relative_path": "Unit/ExampleTest.php",
+                    "module": "ExampleTest.php",
+                    "estimated_cases": 1
+                },
+                {
+                    "relative_path": "Unit/Support/MoneyAndCalculationUnitTest.php",
+                    "module": "Support",
+                    "estimated_cases": 5
+                }
+            ],
+            "file_count": 35,
+            "estimated_cases": 224,
+            "manual_qa": []
+        }
+    },
+    "totals": {
+        "files": 219,
+        "estimated_cases": 1488
+    }
+}
