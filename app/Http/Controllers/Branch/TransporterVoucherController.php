@@ -60,18 +60,48 @@ class TransporterVoucherController extends Controller
 
         $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
 
+        $validated = $request->validate([
+            'search' => ['nullable', 'string', 'max:120'],
+            'lr_number' => ['nullable', 'string', 'max:60'],
+            'hire_number' => ['nullable', 'string', 'max:60'],
+            'truck_no' => ['nullable', 'string', 'max:40'],
+            'transporter_party_id' => ['nullable', 'uuid'],
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date'],
+            'status' => ['nullable', Rule::enum(VoucherStatus::class)],
+            'payment_mode' => ['nullable', Rule::enum(VoucherPaymentMode::class)],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
         $page = $this->vouchers->search(
             company: $company,
             branch: $branch,
-            status: $request->string('status')->toString() ?: null,
-            paymentMode: $request->string('payment_mode')->toString() ?: null,
-            perPage: min(100, max(1, (int) $request->input('per_page', 25))),
+            status: $validated['status'] ?? null,
+            paymentMode: $validated['payment_mode'] ?? null,
+            transporterPartyId: $validated['transporter_party_id'] ?? null,
+            perPage: min(100, max(1, (int) ($validated['per_page'] ?? 25))),
+            search: $validated['search'] ?? null,
+            lrNumber: $validated['lr_number'] ?? null,
+            hireNumber: $validated['hire_number'] ?? null,
+            vehicleRegistration: $validated['truck_no'] ?? null,
+            startDate: $validated['start_date'] ?? null,
+            endDate: $validated['end_date'] ?? null,
         );
 
         return Inertia::render('broker/vouchers/index', [
             'filters' => [
+                'search' => $request->string('search')->toString(),
+                'lr_number' => $request->string('lr_number')->toString(),
+                'hire_number' => $request->string('hire_number')->toString(),
+                'truck_no' => $request->string('truck_no')->toString(),
+                'transporter_party_id' => $request->string('transporter_party_id')->toString(),
+                'start_date' => $request->string('start_date')->toString(),
+                'end_date' => $request->string('end_date')->toString(),
                 'status' => $request->string('status')->toString(),
                 'payment_mode' => $request->string('payment_mode')->toString(),
+            ],
+            'filterOptions' => [
+                'transporters' => $this->vouchers->registerTransporterOptions($company, $branch),
             ],
             'permissions' => $this->voucherPermissions($actor, $company, $branch, $maySeeFreight),
             'statusOptions' => $this->statusOptions(),
@@ -195,7 +225,34 @@ class TransporterVoucherController extends Controller
                 'index' => route('branch.broker.vouchers.index', absolute: false),
                 'lorry_hire_show' => route('branch.broker.lorry-hires.show', [$voucher->lorry_hire_id], absolute: false),
                 'status' => route('branch.broker.vouchers.status', [$voucher], absolute: false),
+                'print' => route('branch.broker.vouchers.print', [$voucher], absolute: false),
             ],
+        ]);
+    }
+
+    public function print(
+        Request $request,
+        TransporterVoucher $voucher,
+        Company $company,
+        Branch $branch,
+    ): Response {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertPermission($actor, $company, $branch, PermissionCodes::BROKER_VOUCHER_VIEW);
+        $this->assertVoucher($voucher, $company, $branch);
+
+        $voucher = $this->vouchers->findForBranch($company, $branch, $voucher->id);
+        $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
+
+        return Inertia::render('broker/vouchers/print', [
+            'company' => [
+                'name' => $company->name,
+                'gstin' => $company->gstin,
+            ],
+            'branch' => [
+                'name' => $branch->name,
+            ],
+            'voucher' => $this->detailPayload($voucher, $maySeeFreight),
+            'sampleBanner' => 'Voucher payment receipt — retain for transporter records.',
         ]);
     }
 

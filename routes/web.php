@@ -317,6 +317,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
         Route::middleware('company.capability:broker.lorry_hire')->group(function () {
             Route::get('/broker/lorry-hires', [LorryHireController::class, 'index'])->name('branch.broker.lorry-hires.index');
+            Route::get('/broker/lorry-hires/{lorryHire}/print', [LorryHireController::class, 'print'])->name('branch.broker.lorry-hires.print');
+            Route::get('/broker/lorry-hires/{lorryHire}/memo-print', [LorryHireController::class, 'printMemo'])->name('branch.broker.lorry-hires.memo-print');
             Route::get('/broker/lorry-hires/{lorryHire}', [LorryHireController::class, 'show'])->name('branch.broker.lorry-hires.show');
             Route::get('/broker/lorry-hires/{lorryHire}/edit', [LorryHireEditController::class, 'edit'])->name('branch.broker.lorry-hires.edit');
             Route::post('/broker/lorry-hires/{lorryHire}/revision-preview', [LorryHireEditController::class, 'preview'])->name('branch.broker.lorry-hires.revision-preview');
@@ -339,6 +341,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
             Route::get('/broker/vouchers/export-payout', [TransporterVoucherController::class, 'exportPayout'])->name('branch.broker.vouchers.export-payout');
             Route::get('/broker/vouchers/payment-context', [TransporterVoucherController::class, 'paymentContext'])->name('branch.broker.vouchers.payment-context');
             Route::post('/broker/vouchers', [TransporterVoucherController::class, 'store'])->name('branch.broker.vouchers.store');
+            Route::get('/broker/vouchers/{voucher}/print', [TransporterVoucherController::class, 'print'])->name('branch.broker.vouchers.print');
             Route::get('/broker/vouchers/{voucher}', [TransporterVoucherController::class, 'show'])->name('branch.broker.vouchers.show');
             Route::post('/broker/vouchers/{voucher}/status', [TransporterVoucherController::class, 'updateStatus'])->name('branch.broker.vouchers.status');
         });

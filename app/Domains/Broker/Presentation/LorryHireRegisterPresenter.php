@@ -40,8 +40,15 @@ final class LorryHireRegisterPresenter
             && $receipt?->status === LrStatus::InProgress
             && $memoNumber === null;
 
+        $rowTone = match (true) {
+            $hire->status === LorryHireStatus::Cancelled => 'cancelled',
+            $memoNumber !== null => 'delivered',
+            default => 'pending',
+        };
+
         return [
             'id' => $hire->id,
+            'row_tone' => $rowTone,
             'hire_number' => $hire->hire_number,
             'status' => $hire->status->value,
             'hire_date' => $hire->hire_date?->format('d-m-Y'),

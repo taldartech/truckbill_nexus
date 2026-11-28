@@ -17,12 +17,39 @@ test.describe('Broker legacy UI screenshots (Nexus)', () => {
         await loginAndEnterBrokerBranch(page);
     });
 
-    test('capture Good Hires register and edit layout', async ({ page }) => {
+    test('capture core broker registers and forms', async ({ page }) => {
         await openGoodHiresRegister(page);
         await page.screenshot({
             path: path.join(OUT_DIR, '05-good-hires-register-1440.png'),
             fullPage: true,
         });
+
+        const firstShow = page
+            .getByRole('link', { name: 'Open lorry hire' })
+            .first();
+        if (await firstShow.count()) {
+            await firstShow.click();
+            await page.waitForURL(/\/broker\/lorry-hires\//);
+            await page.screenshot({
+                path: path.join(OUT_DIR, '03-lorry-hire-view-1440.png'),
+                fullPage: true,
+            });
+            const printHref = page.locator('a[href*="/print"]').first();
+            if (await printHref.count()) {
+                const href = await printHref.getAttribute('href');
+                if (href) {
+                    await page.goto(href);
+                    await page.screenshot({
+                        path: path.join(
+                            OUT_DIR,
+                            '11-lorry-hire-print-1440.png',
+                        ),
+                        fullPage: true,
+                    });
+                    await page.goBack();
+                }
+            }
+        }
 
         const edit = page.getByRole('link', { name: /Edit/i }).first();
         if (await edit.count()) {
@@ -35,9 +62,27 @@ test.describe('Broker legacy UI screenshots (Nexus)', () => {
                 fullPage: true,
             });
         }
+
+        await page.goto('/broker/vouchers');
+        await page
+            .getByTestId('voucher-payments-register')
+            .waitFor({ state: 'visible', timeout: 20_000 });
+        await page.screenshot({
+            path: path.join(OUT_DIR, '06-voucher-register-1440.png'),
+            fullPage: true,
+        });
+
+        await page.goto('/broker/daily-payments');
+        await page
+            .getByTestId('daily-transporter-payments')
+            .waitFor({ state: 'visible', timeout: 20_000 });
+        await page.screenshot({
+            path: path.join(OUT_DIR, '07-daily-payments-1440.png'),
+            fullPage: true,
+        });
     });
 
-    test('capture voucher payment modal', async ({ page }) => {
+    test('capture voucher and memo modals', async ({ page }) => {
         await openGoodHiresRegister(page);
         const checkbox = page
             .getByRole('checkbox', { name: /^Select hire / })
@@ -49,11 +94,30 @@ test.describe('Broker legacy UI screenshots (Nexus)', () => {
         await page
             .getByRole('button', { name: 'Voucher Payment', exact: true })
             .click();
-        const modal = page.getByTestId('voucher-payment-modal');
-        await modal.waitFor({ state: 'visible', timeout: 20_000 });
+        const voucherModal = page.getByTestId('voucher-payment-modal');
+        await voucherModal.waitFor({ state: 'visible', timeout: 20_000 });
         await page.screenshot({
-            path: path.join(OUT_DIR, '06-voucher-payment-modal-1440.png'),
+            path: path.join(OUT_DIR, '08-voucher-payment-modal-1440.png'),
             fullPage: false,
         });
+        await page.keyboard.press('Escape');
+        await voucherModal.waitFor({ state: 'hidden' });
+
+        const memoCheckbox = page
+            .getByRole('checkbox', { name: /^Select hire / })
+            .filter({ hasNot: page.locator(':disabled') });
+        const memoTarget = memoCheckbox.first();
+        if (await memoTarget.count()) {
+            await memoTarget.check();
+            await page
+                .getByRole('button', { name: 'Memo / POD', exact: true })
+                .click();
+            const memoModal = page.getByTestId('memo-pod-modal');
+            await memoModal.waitFor({ state: 'visible', timeout: 20_000 });
+            await page.screenshot({
+                path: path.join(OUT_DIR, '10-memo-pod-modal-1440.png'),
+                fullPage: false,
+            });
+        }
     });
 });

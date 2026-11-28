@@ -6,31 +6,37 @@ import {
     AppIndexListCard,
     AppIndexPage,
 } from '@/components/app-index-page';
-import { WorkspaceStatusBadge } from '@/components/workspace-status-badge';
+import { TablePagination } from '@/components/table-pagination';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 
 type VoucherRow = {
     id: string;
     voucher_number: string;
-    voucher_date: string | null;
-    status: string;
-    payment_mode: string | null;
-    payment_type: string;
-    amount: string | null;
-    hire_number: string | null;
     lr_number: string | null;
     billing_customer_name: string | null;
     transporter_name: string | null;
     vehicle_registration: string | null;
     source: string | null;
     destination: string | null;
-    created_at: string | null;
     urls: { show: string };
 };
 
+type FilterOption = { value: string; label: string };
+
 type Props = {
-    filters: { status: string; payment_mode: string };
+    filters: {
+        search: string;
+        lr_number: string;
+        hire_number: string;
+        truck_no: string;
+        transporter_party_id: string;
+        start_date: string;
+        end_date: string;
+        status: string;
+        payment_mode: string;
+    };
+    filterOptions: { transporters: FilterOption[] };
     permissions: { can_create: boolean };
     statusOptions: Array<{ value: string; label: string }>;
     paymentModeOptions: Array<{ value: string; label: string }>;
@@ -52,33 +58,36 @@ type Props = {
 
 export default function VouchersIndex({
     filters,
+    filterOptions,
     permissions,
     statusOptions,
     paymentModeOptions,
     vouchers,
     urls,
 }: Props) {
+    const filterQuery = {
+        search: filters.search || undefined,
+        lr_number: filters.lr_number || undefined,
+        hire_number: filters.hire_number || undefined,
+        truck_no: filters.truck_no || undefined,
+        transporter_party_id: filters.transporter_party_id || undefined,
+        start_date: filters.start_date || undefined,
+        end_date: filters.end_date || undefined,
+        status: filters.status || undefined,
+        payment_mode: filters.payment_mode || undefined,
+    };
+
     return (
         <>
             <Head title="Voucher Payments" />
-            <AppIndexPage className="voucher-register-index">
+            <AppIndexPage className="voucher-register-index voucher-payments-index">
                 <AppIndexListCard
                     title="Voucher Payments"
                     toolbar={
                         <div className="flex flex-wrap items-center gap-2">
                             {urls.export_payout ? (
                                 <a
-                                    href={`${urls.export_payout}${
-                                        filters.status || filters.payment_mode
-                                            ? `?${new URLSearchParams(
-                                                  filters.status
-                                                      ? {
-                                                            status: filters.status,
-                                                        }
-                                                      : {},
-                                              ).toString()}`
-                                            : ''
-                                    }`}
+                                    href={urls.export_payout}
                                     className="app-index-header-btn"
                                 >
                                     Export bank payout
@@ -98,36 +107,124 @@ export default function VouchersIndex({
                     }
                 >
                     <AppIndexFilters
+                        className="app-index-filters--legacy"
                         onSubmit={(event) => {
                             event.preventDefault();
-                            const form = event.currentTarget;
-                            const status = (
-                                form.elements.namedItem(
-                                    'status',
-                                ) as HTMLSelectElement
-                            ).value;
-                            const payment_mode = (
-                                form.elements.namedItem(
-                                    'payment_mode',
-                                ) as HTMLSelectElement
-                            ).value;
-                            router.get(
-                                urls.index,
-                                {
-                                    status: status || undefined,
-                                    payment_mode: payment_mode || undefined,
-                                },
-                                { preserveState: true },
-                            );
+                            const data = new FormData(event.currentTarget);
+                            router.get(urls.index, {
+                                search:
+                                    (data.get('search') as string) || undefined,
+                                lr_number:
+                                    (data.get('lr_number') as string) ||
+                                    undefined,
+                                hire_number:
+                                    (data.get('hire_number') as string) ||
+                                    undefined,
+                                truck_no:
+                                    (data.get('truck_no') as string) ||
+                                    undefined,
+                                transporter_party_id:
+                                    (data.get(
+                                        'transporter_party_id',
+                                    ) as string) || undefined,
+                                start_date:
+                                    (data.get('start_date') as string) ||
+                                    undefined,
+                                end_date:
+                                    (data.get('end_date') as string) ||
+                                    undefined,
+                                status:
+                                    (data.get('status') as string) || undefined,
+                                payment_mode:
+                                    (data.get('payment_mode') as string) ||
+                                    undefined,
+                            });
                         }}
                     >
-                        <div className="space-y-1">
+                        <div className="broker-filter-field">
+                            <Label htmlFor="search">Search</Label>
+                            <input
+                                id="search"
+                                name="search"
+                                defaultValue={filters.search}
+                                className="broker-filter-control broker-filter-control--search"
+                            />
+                        </div>
+                        <div className="broker-filter-field">
+                            <Label htmlFor="lr_number">Bilty / LR</Label>
+                            <input
+                                id="lr_number"
+                                name="lr_number"
+                                defaultValue={filters.lr_number}
+                                className="broker-filter-control"
+                            />
+                        </div>
+                        <div className="broker-filter-field">
+                            <Label htmlFor="hire_number">Good Hire No</Label>
+                            <input
+                                id="hire_number"
+                                name="hire_number"
+                                defaultValue={filters.hire_number}
+                                className="broker-filter-control"
+                            />
+                        </div>
+                        <div className="broker-filter-field">
+                            <Label htmlFor="truck_no">Truck No</Label>
+                            <input
+                                id="truck_no"
+                                name="truck_no"
+                                defaultValue={filters.truck_no}
+                                className="broker-filter-control"
+                            />
+                        </div>
+                        <div className="broker-filter-field">
+                            <Label htmlFor="transporter_party_id">
+                                Transporter
+                            </Label>
+                            <select
+                                id="transporter_party_id"
+                                name="transporter_party_id"
+                                defaultValue={filters.transporter_party_id}
+                                className="broker-filter-control"
+                            >
+                                <option value="">All</option>
+                                {filterOptions.transporters.map((option) => (
+                                    <option
+                                        key={option.value}
+                                        value={option.value}
+                                    >
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="broker-filter-field">
+                            <Label htmlFor="start_date">From</Label>
+                            <input
+                                id="start_date"
+                                name="start_date"
+                                type="date"
+                                defaultValue={filters.start_date}
+                                className="broker-filter-control"
+                            />
+                        </div>
+                        <div className="broker-filter-field">
+                            <Label htmlFor="end_date">To</Label>
+                            <input
+                                id="end_date"
+                                name="end_date"
+                                type="date"
+                                defaultValue={filters.end_date}
+                                className="broker-filter-control"
+                            />
+                        </div>
+                        <div className="broker-filter-field">
                             <Label htmlFor="status">Status</Label>
                             <select
                                 id="status"
                                 name="status"
                                 defaultValue={filters.status}
-                                className="h-9 min-w-[10rem] rounded-md border border-input bg-background px-3 text-sm"
+                                className="broker-filter-control"
                             >
                                 <option value="">All</option>
                                 {statusOptions.map((option) => (
@@ -140,13 +237,13 @@ export default function VouchersIndex({
                                 ))}
                             </select>
                         </div>
-                        <div className="space-y-1">
+                        <div className="broker-filter-field">
                             <Label htmlFor="payment_mode">Mode</Label>
                             <select
                                 id="payment_mode"
                                 name="payment_mode"
                                 defaultValue={filters.payment_mode}
-                                className="h-9 min-w-[10rem] rounded-md border border-input bg-background px-3 text-sm"
+                                className="broker-filter-control"
                             >
                                 <option value="">All</option>
                                 {paymentModeOptions.map((option) => (
@@ -161,7 +258,7 @@ export default function VouchersIndex({
                         </div>
                         <Button
                             type="submit"
-                            className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                            className="h-8 bg-[#2FB36F] px-3 text-xs text-white hover:bg-[#279960]"
                         >
                             Filter
                         </Button>
@@ -171,7 +268,10 @@ export default function VouchersIndex({
                         className="overflow-x-auto"
                         data-testid="voucher-payments-register"
                     >
-                        <table className="app-index-table min-w-full">
+                        <table
+                            id="voucherPaymentsTable"
+                            className="app-index-table min-w-full"
+                        >
                             <thead>
                                 <tr>
                                     <th>Voucher #</th>
@@ -181,19 +281,15 @@ export default function VouchersIndex({
                                     <th>Transporter</th>
                                     <th>Source</th>
                                     <th>Destination</th>
-                                    <th>Type</th>
-                                    <th>Mode</th>
-                                    <th className="text-end">Amount</th>
-                                    <th>Status</th>
                                     <th className="text-center">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {vouchers.data.length === 0 ? (
                                     <tr>
-                                        <td colSpan={12}>
+                                        <td colSpan={8}>
                                             <p className="app-index-empty">
-                                                No vouchers yet.
+                                                No payments found.
                                             </p>
                                         </td>
                                     </tr>
@@ -201,7 +297,12 @@ export default function VouchersIndex({
                                     vouchers.data.map((row) => (
                                         <tr key={row.id}>
                                             <td className="font-medium">
-                                                {row.voucher_number}
+                                                <Link
+                                                    href={row.urls.show}
+                                                    className="text-[#0f766e] hover:underline"
+                                                >
+                                                    {row.voucher_number}
+                                                </Link>
                                             </td>
                                             <td>{row.lr_number ?? '—'}</td>
                                             <td>
@@ -217,18 +318,8 @@ export default function VouchersIndex({
                                             </td>
                                             <td>{row.source ?? '—'}</td>
                                             <td>{row.destination ?? '—'}</td>
-                                            <td>{row.payment_type}</td>
-                                            <td>{row.payment_mode ?? '—'}</td>
-                                            <td className="text-end tabular-nums">
-                                                {row.amount ?? '—'}
-                                            </td>
                                             <td>
-                                                <WorkspaceStatusBadge
-                                                    status={row.status}
-                                                />
-                                            </td>
-                                            <td>
-                                                <div className="flex justify-center">
+                                                <div className="btn-action-row">
                                                     <AppIconAction
                                                         icon={Eye}
                                                         label="Open voucher"
@@ -242,6 +333,14 @@ export default function VouchersIndex({
                                 )}
                             </tbody>
                         </table>
+                    </div>
+
+                    <div className="border-t border-[#e5e7eb] px-4 py-3">
+                        <TablePagination
+                            baseUrl={urls.index}
+                            meta={vouchers.meta}
+                            query={filterQuery}
+                        />
                     </div>
                 </AppIndexListCard>
             </AppIndexPage>

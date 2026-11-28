@@ -24,8 +24,10 @@ final class CaseInsensitiveLike
         'email',
         'from_text',
         'gstin',
+        'hire_number',
         'invoice_number',
         'lr_number',
+        'voucher_number',
         'make',
         'model',
         'name',
@@ -97,6 +99,7 @@ final class CaseInsensitiveLike
                     'email' => 'LOWER(`email`) LIKE ?',
                     'from_text' => 'LOWER(`from_text`) LIKE ?',
                     'gstin' => 'LOWER(`gstin`) LIKE ?',
+                    'hire_number' => 'LOWER(`hire_number`) LIKE ?',
                     'invoice_number' => 'LOWER(`invoice_number`) LIKE ?',
                     'lr_number' => 'LOWER(`lr_number`) LIKE ?',
                     'make' => 'LOWER(`make`) LIKE ?',
@@ -106,6 +109,7 @@ final class CaseInsensitiveLike
                     'registration_number' => 'LOWER(`registration_number`) LIKE ?',
                     'short_name' => 'LOWER(`short_name`) LIKE ?',
                     'to_text' => 'LOWER(`to_text`) LIKE ?',
+                    'voucher_number' => 'LOWER(`voucher_number`) LIKE ?',
                     default => throw new InvalidArgumentException("Unsupported LIKE column [{$column}]."),
                 };
                 if ($index === 0) {

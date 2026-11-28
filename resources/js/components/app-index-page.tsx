@@ -56,13 +56,18 @@ export function AppIndexListCard({
 export function AppIndexFilters({
     children,
     onSubmit,
+    className,
 }: {
     children: ReactNode;
     onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+    className?: string;
 }) {
     return (
         <form
-            className="app-index-filters flex flex-wrap items-end gap-3 border-b border-[#e5e7eb] bg-[#f8fafc] px-4 py-3"
+            className={cn(
+                'app-index-filters flex flex-wrap items-end gap-2 border-b border-[#e5e7eb] bg-[#f8fafc] px-4 py-3',
+                className,
+            )}
             onSubmit={onSubmit}
         >
             {children}

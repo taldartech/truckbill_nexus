@@ -57,16 +57,32 @@ class BrokerDailyPaymentsController extends Controller
             perPage: min(200, max(1, (int) $request->input('per_page', 50))),
         );
 
+        $rows = collect($page->items());
+        $amountTotal = $rows->reduce(
+            fn (float $carry, TransporterVoucher $row): float => $carry + (float) $row->amount,
+            0.0,
+        );
+
         return Inertia::render('broker/daily-payments/index', [
             'filters' => [
                 'date' => $forDate,
                 'status' => $request->string('status')->toString(),
             ],
+            'totals' => [
+                'count' => $rows->count(),
+                'amount' => $maySeeFreight
+                    ? number_format($amountTotal, 2, '.', '')
+                    : null,
+            ],
             'permissions' => [
                 'can_status' => $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_VOUCHER_STATUS, $company, $branch),
                 'can_view_freight' => $maySeeFreight,
             ],
-            'vouchers' => collect($page->items())->map(
+            'statusOptions' => collect(VoucherStatus::cases())->map(fn (VoucherStatus $status): array => [
+                'value' => $status->value,
+                'label' => ucwords(str_replace('_', ' ', $status->value)),
+            ])->values()->all(),
+            'vouchers' => $rows->map(
                 fn (TransporterVoucher $row): array => $this->dailyPaymentVoucherRow($row, $maySeeFreight),
             )->values()->all(),
             'urls' => [

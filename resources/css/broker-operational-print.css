@@ -1,0 +1,74 @@
+.broker-op-print {
+    max-width: 210mm;
+    margin: 0 auto;
+    padding: 8mm;
+    color: #0f172a;
+    font-size: 11px;
+    line-height: 1.35;
+}
+
+.broker-op-print__banner {
+    margin-bottom: 8px;
+    border: 1px solid #d97706;
+    background: #fffbeb;
+    padding: 6px 8px;
+    font-weight: 600;
+}
+
+.broker-op-print__header {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    border-bottom: 1px solid #000;
+    padding-bottom: 6px;
+    margin-bottom: 8px;
+}
+
+.broker-op-print__title {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 800;
+}
+
+.broker-op-print table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 8px;
+}
+
+.broker-op-print th,
+.broker-op-print td {
+    border: 1px solid #334155;
+    padding: 4px 6px;
+    vertical-align: top;
+}
+
+.broker-op-print th {
+    background: #f1f5f9;
+    font-weight: 700;
+    text-align: left;
+}
+
+.broker-op-print .text-end {
+    text-align: right;
+}
+
+.broker-op-print__signatures {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 18px;
+}
+
+.broker-op-print__signatures p {
+    margin: 0;
+    border-top: 1px solid #000;
+    padding-top: 4px;
+    font-size: 10px;
+}
+
+@media print {
+    .broker-op-print {
+        padding: 0;
+    }
+}

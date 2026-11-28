@@ -23,11 +23,13 @@ use App\Domains\Subscription\Enums\SubscriptionModule;
 use App\Models\Branch;
 use App\Models\Company;
 use App\Models\LorryHire;
+use App\Models\Party;
 use App\Models\TransporterVoucher;
 use App\Models\User;
 use App\Support\Audit\AuditAction;
 use App\Support\Audit\AuditedTransaction;
 use App\Support\Audit\AuditWriter;
+use App\Support\Database\CaseInsensitiveLike;
 use App\Support\Presentation\Money;
 use App\Support\Tenant\TenantContext;
 use App\Support\Tenant\TenantContextHolder;
@@ -65,6 +67,12 @@ final class TransporterVoucherService
         ?string $transporterPartyId = null,
         ?string $voucherDate = null,
         int $perPage = 25,
+        ?string $search = null,
+        ?string $lrNumber = null,
+        ?string $hireNumber = null,
+        ?string $vehicleRegistration = null,
+        ?string $startDate = null,
+        ?string $endDate = null,
     ): LengthAwarePaginator {
         $this->ensureTenantMatches($company, $branch);
 
@@ -79,6 +87,7 @@ final class TransporterVoucherService
                 'lorryHire.vehicle',
                 'lorryHire.transporter',
             ])
+            ->orderByDesc('voucher_date')
             ->orderByDesc('created_at');
 
         if (filled($status)) {
@@ -94,7 +103,86 @@ final class TransporterVoucherService
             $builder->whereDate('voucher_date', $voucherDate);
         }
 
-        return $builder->paginate($perPage);
+        if (filled($startDate) || filled($endDate)) {
+            $start = filled($startDate)
+                ? CarbonImmutable::parse($startDate)->startOfDay()
+                : CarbonImmutable::parse((string) $endDate)->subDays(30)->startOfDay();
+            $end = filled($endDate)
+                ? CarbonImmutable::parse($endDate)->endOfDay()
+                : CarbonImmutable::now()->endOfDay();
+
+            if ($end->lessThan($start)) {
+                $end = $start->endOfDay();
+            }
+
+            $builder->whereBetween('voucher_date', [$start->toDateString(), $end->toDateString()]);
+        }
+
+        $lrFilter = trim((string) $lrNumber);
+        if ($lrFilter !== '') {
+            $builder->whereHas(
+                'lorryHire.lorryReceipt',
+                fn ($receipt) => CaseInsensitiveLike::whereContains($receipt, 'lr_number', $lrFilter),
+            );
+        }
+
+        $hireFilter = trim((string) $hireNumber);
+        if ($hireFilter !== '') {
+            $builder->whereHas(
+                'lorryHire',
+                fn ($hire) => CaseInsensitiveLike::whereContains($hire, 'hire_number', $hireFilter),
+            );
+        }
+
+        $truckFilter = trim((string) $vehicleRegistration);
+        if ($truckFilter !== '') {
+            $builder->whereHas(
+                'lorryHire.vehicle',
+                fn ($vehicle) => CaseInsensitiveLike::whereContains($vehicle, 'registration_number', $truckFilter),
+            );
+        }
+
+        $searchFilter = trim((string) $search);
+        if ($searchFilter !== '') {
+            $builder->where(function ($query) use ($searchFilter): void {
+                CaseInsensitiveLike::whereContains($query, 'voucher_number', $searchFilter);
+                $query->orWhereHas('lorryHire', function ($hire) use ($searchFilter): void {
+                    CaseInsensitiveLike::whereContains($hire, 'hire_number', $searchFilter);
+                });
+                $query->orWhereHas('lorryHire.lorryReceipt', function ($receipt) use ($searchFilter): void {
+                    CaseInsensitiveLike::whereContains($receipt, 'lr_number', $searchFilter);
+                });
+            });
+        }
+
+        return $builder->paginate(min(100, max(1, $perPage)));
+    }
+
+    /**
+     * @return list<array{value: string, label: string}>
+     */
+    public function registerTransporterOptions(Company $company, Branch $branch): array
+    {
+        $this->ensureTenantMatches($company, $branch);
+
+        $ids = TransporterVoucher::query()
+            ->where('company_id', $company->id)
+            ->where('branch_id', $branch->id)
+            ->whereNull('deleted_at')
+            ->whereNotNull('transporter_party_id')
+            ->distinct()
+            ->pluck('transporter_party_id');
+
+        return Party::query()
+            ->whereIn('id', $ids)
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (Party $party): array => [
+                'value' => $party->id,
+                'label' => (string) $party->name,
+            ])
+            ->values()
+            ->all();
     }
 
     public function findForBranch(Company $company, Branch $branch, string $voucherId): TransporterVoucher

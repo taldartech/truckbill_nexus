@@ -710,9 +710,13 @@ export default function LorryHireForm({
                                 description="TR rate, amount, TDS and balance"
                                 tone="goods"
                             >
-                                <div className="grid gap-3 md:grid-cols-3">
-                                    <div className="space-y-1">
-                                        <Label htmlFor="hire_date" required>
+                                <div className="lrf-grid lrf-grid--4">
+                                    <div className="lrf-pf">
+                                        <Label
+                                            htmlFor="hire_date"
+                                            className="lrf-pf__lbl"
+                                            required
+                                        >
                                             Hire Date
                                         </Label>
                                         <Input
@@ -734,143 +738,176 @@ export default function LorryHireForm({
                                     </div>
                                 </div>
 
-                                <div className="mt-3 space-y-2">
+                                <div className="mt-3 space-y-3">
                                     {goodsRows.map((row, index) => {
                                         const draft =
                                             form.data.goods_lines[index];
                                         const isFixed =
                                             draft.rate_type === FIXED_RATE;
                                         const freight = lineFreights[index];
+                                        const multiGoods = goodsRows.length > 1;
 
                                         return (
                                             <div
                                                 key={row.id}
-                                                className="grid items-start gap-3 rounded-lg border border-border bg-muted/20 p-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1.2fr)_minmax(10.5rem,1fr)_minmax(0,0.9fr)_minmax(0,0.9fr)]"
+                                                className={
+                                                    multiGoods
+                                                        ? 'rounded-md border border-border/70 bg-muted/10 p-2'
+                                                        : undefined
+                                                }
                                             >
-                                                <div className="min-w-0 space-y-0.5">
-                                                    <p className="text-xs text-muted-foreground">
-                                                        Goods
-                                                    </p>
-                                                    <p className="text-sm font-medium break-words">
-                                                        {row.label}
-                                                    </p>
-                                                    <p className="text-xs text-muted-foreground">
+                                                {multiGoods ? (
+                                                    <p className="mb-2 text-xs font-semibold text-slate-700">
+                                                        {row.label} ·{' '}
                                                         {dash(
                                                             row.package_count,
                                                         )}{' '}
                                                         units ·{' '}
-                                                        {sumKgAsMtLabel([
-                                                            row.actual_weight,
-                                                        ])}{' '}
-                                                        actual ·{' '}
                                                         {sumKgAsMtLabel([
                                                             row.charged_weight ??
                                                                 row.actual_weight,
                                                         ])}{' '}
                                                         charged
                                                     </p>
-                                                </div>
-
-                                                <div className="space-y-1">
-                                                    <Label
-                                                        htmlFor={`rate_type_${index}`}
-                                                        className="text-xs"
-                                                        required
-                                                    >
-                                                        Rate Type
-                                                    </Label>
-                                                    <select
-                                                        id={`rate_type_${index}`}
-                                                        className={SELECT_CLASS}
-                                                        value={draft.rate_type}
-                                                        onChange={(event) =>
-                                                            updateLine(index, {
-                                                                rate_type:
-                                                                    event.target
-                                                                        .value,
-                                                            })
-                                                        }
-                                                        required
-                                                    >
-                                                        {rateTypeOptions.map(
-                                                            (option) => (
-                                                                <option
-                                                                    key={
-                                                                        option.value
-                                                                    }
-                                                                    value={
-                                                                        option.value
-                                                                    }
-                                                                >
+                                                ) : null}
+                                                <div className="lrf-grid lrf-grid--4">
+                                                    {!multiGoods ? (
+                                                        <div className="lrf-pf md:col-span-1">
+                                                            <span className="lrf-pf__lbl">
+                                                                Goods
+                                                            </span>
+                                                            <p className="text-sm font-medium">
+                                                                {row.label}
+                                                            </p>
+                                                            <p className="lrf-pf__hint">
+                                                                {dash(
+                                                                    row.package_count,
+                                                                )}{' '}
+                                                                units ·{' '}
+                                                                {sumKgAsMtLabel(
+                                                                    [
+                                                                        row.charged_weight ??
+                                                                            row.actual_weight,
+                                                                    ],
+                                                                )}{' '}
+                                                                charged
+                                                            </p>
+                                                        </div>
+                                                    ) : null}
+                                                    <div className="lrf-pf">
+                                                        <Label
+                                                            htmlFor={`rate_type_${index}`}
+                                                            className="lrf-pf__lbl"
+                                                            required
+                                                        >
+                                                            Rate Type
+                                                        </Label>
+                                                        <select
+                                                            id={`rate_type_${index}`}
+                                                            className={
+                                                                SELECT_CLASS
+                                                            }
+                                                            value={
+                                                                draft.rate_type
+                                                            }
+                                                            onChange={(event) =>
+                                                                updateLine(
+                                                                    index,
                                                                     {
-                                                                        option.label
-                                                                    }
-                                                                </option>
-                                                            ),
-                                                        )}
-                                                    </select>
-                                                    <InputError
-                                                        message={lineError(
-                                                            index,
-                                                            'rate_type',
-                                                        )}
-                                                    />
-                                                </div>
-
-                                                <div className="space-y-1">
-                                                    <Label
-                                                        htmlFor={`rate_${index}`}
-                                                        className="text-xs"
-                                                        required
-                                                    >
-                                                        {isFixed
-                                                            ? 'Amount'
-                                                            : 'Rate'}
-                                                    </Label>
-                                                    <Input
-                                                        id={`rate_${index}`}
-                                                        type="number"
-                                                        min="0"
-                                                        step="0.0001"
-                                                        className="h-9"
-                                                        value={draft.rate}
-                                                        onChange={(event) =>
-                                                            updateLine(index, {
-                                                                rate: event
-                                                                    .target
-                                                                    .value,
-                                                            })
-                                                        }
-                                                        placeholder={rateUnitHint(
-                                                            draft.rate_type,
-                                                            row.rate_semantics,
-                                                        )}
-                                                        required
-                                                    />
-                                                    <p className="text-xs text-muted-foreground">
-                                                        {rateUnitHint(
-                                                            draft.rate_type,
-                                                            row.rate_semantics,
-                                                        )}
-                                                    </p>
-                                                    <InputError
-                                                        message={lineError(
-                                                            index,
-                                                            'rate',
-                                                        )}
-                                                    />
-                                                </div>
-
-                                                <div className="space-y-1">
-                                                    <p className="text-xs font-medium text-muted-foreground">
-                                                        Transporter Freight
-                                                    </p>
-                                                    <p
-                                                        className="flex h-9 items-center text-sm font-semibold tabular-nums"
-                                                        data-testid={`line_freight_${index}`}
-                                                    >
-                                                        {money(freight)}
-                                                    </p>
+                                                                        rate_type:
+                                                                            event
+                                                                                .target
+                                                                                .value,
+                                                                    },
+                                                                )
+                                                            }
+                                                            required
+                                                        >
+                                                            {rateTypeOptions.map(
+                                                                (option) => (
+                                                                    <option
+                                                                        key={
+                                                                            option.value
+                                                                        }
+                                                                        value={
+                                                                            option.value
+                                                                        }
+                                                                    >
+                                                                        {
+                                                                            option.label
+                                                                        }
+                                                                    </option>
+                                                                ),
+                                                            )}
+                                                        </select>
+                                                        <InputError
+                                                            message={lineError(
+                                                                index,
+                                                                'rate_type',
+                                                            )}
+                                                        />
+                                                    </div>
+                                                    <div className="lrf-pf">
+                                                        <Label
+                                                            htmlFor={`rate_${index}`}
+                                                            className="lrf-pf__lbl"
+                                                            required
+                                                        >
+                                                            {isFixed
+                                                                ? 'Amount'
+                                                                : 'Rate'}
+                                                        </Label>
+                                                        <Input
+                                                            id={`rate_${index}`}
+                                                            type="number"
+                                                            min="0"
+                                                            step="0.0001"
+                                                            className="h-9"
+                                                            value={draft.rate}
+                                                            onChange={(event) =>
+                                                                updateLine(
+                                                                    index,
+                                                                    {
+                                                                        rate: event
+                                                                            .target
+                                                                            .value,
+                                                                    },
+                                                                )
+                                                            }
+                                                            placeholder={rateUnitHint(
+                                                                draft.rate_type,
+                                                                row.rate_semantics,
+                                                            )}
+                                                            required
+                                                        />
+                                                        <p className="lrf-pf__hint">
+                                                            {rateUnitHint(
+                                                                draft.rate_type,
+                                                                row.rate_semantics,
+                                                            )}
+                                                        </p>
+                                                        <InputError
+                                                            message={lineError(
+                                                                index,
+                                                                'rate',
+                                                            )}
+                                                        />
+                                                    </div>
+                                                    <div className="lrf-pf">
+                                                        <span className="lrf-pf__lbl">
+                                                            Transporter Freight
+                                                        </span>
+                                                        <p
+                                                            className="flex h-9 items-center text-sm font-semibold tabular-nums"
+                                                            data-testid={`line_freight_${index}`}
+                                                        >
+                                                            {money(freight)}
+                                                        </p>
+                                                        <p className="lrf-pf__hint">
+                                                            Auto-calculated from
+                                                            rate × weight
+                                                        </p>
+                                                    </div>
                                                 </div>
                                             </div>
                                         );

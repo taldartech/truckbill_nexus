@@ -29,8 +29,10 @@ use App\Models\LorryHireRevision;
 use App\Models\LorryReceipt;
 use App\Models\User;
 use App\Support\Presentation\FreightAmountPresentation;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -60,12 +62,45 @@ class LorryHireController extends Controller
         $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
         $this->assertPermission($actor, $company, $branch, PermissionCodes::BROKER_LORRY_HIRE_VIEW);
 
+        $timezone = $this->companyTimezone($company);
+        $defaultEnd = CarbonImmutable::now($timezone)->toDateString();
+        $defaultStart = CarbonImmutable::now($timezone)->subDays(15)->toDateString();
+
+        $validated = $request->validate([
+            'search' => ['nullable', 'string', 'max:120'],
+            'lr_number' => ['nullable', 'string', 'max:60'],
+            'customer_party_id' => ['nullable', 'uuid'],
+            'transporter_party_id' => ['nullable', 'uuid'],
+            'vehicle_id' => ['nullable', 'uuid'],
+            'start_date' => ['nullable', 'date'],
+            'end_date' => ['nullable', 'date'],
+            'status' => ['nullable', Rule::enum(LorryHireStatus::class)],
+            'pending_memo' => ['nullable', 'boolean'],
+            'payable_only' => ['nullable', 'boolean'],
+            'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        $startDate = $request->filled('start_date')
+            ? (string) $request->input('start_date')
+            : $defaultStart;
+        $endDate = $request->filled('end_date')
+            ? (string) $request->input('end_date')
+            : $defaultEnd;
+
         $page = $this->lorryHires->search(
             company: $company,
             branch: $branch,
-            status: $request->string('status')->toString() ?: null,
-            perPage: min(100, max(1, (int) $request->input('per_page', 15))),
+            status: $validated['status'] ?? null,
+            perPage: min(100, max(1, (int) ($validated['per_page'] ?? 15))),
             pendingMemo: $request->boolean('pending_memo'),
+            search: $validated['search'] ?? null,
+            lrNumber: $validated['lr_number'] ?? null,
+            customerPartyId: $validated['customer_party_id'] ?? null,
+            transporterPartyId: $validated['transporter_party_id'] ?? null,
+            vehicleId: $validated['vehicle_id'] ?? null,
+            startDate: $startDate,
+            endDate: $endDate,
+            payableOnly: $request->boolean('payable_only'),
         );
 
         $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
@@ -97,9 +132,18 @@ class LorryHireController extends Controller
 
         return Inertia::render('broker/lorry-hires/index', [
             'filters' => [
+                'search' => $request->string('search')->toString(),
+                'lr_number' => $request->string('lr_number')->toString(),
+                'customer_party_id' => $request->string('customer_party_id')->toString(),
+                'transporter_party_id' => $request->string('transporter_party_id')->toString(),
+                'vehicle_id' => $request->string('vehicle_id')->toString(),
+                'start_date' => $startDate,
+                'end_date' => $endDate,
                 'status' => $request->string('status')->toString(),
                 'pending_memo' => $request->boolean('pending_memo'),
+                'payable_only' => $request->boolean('payable_only'),
             ],
+            'filterOptions' => $this->lorryHires->registerFilterOptions($company, $branch),
             'permissions' => array_merge(
                 $this->lorryHirePermissions($actor, $company, $branch, $maySeeFreight),
                 [
@@ -306,6 +350,7 @@ class LorryHireController extends Controller
             && $lorryHire->status !== LorryHireStatus::Cancelled;
         $canCreateVoucher = $this->authorizer->allowsCustomer($actor, PermissionCodes::BROKER_VOUCHER_CREATE, $company, $branch);
         $canEdit = $this->revisions->canEdit($actor, $company, $branch, $lorryHire);
+        $deliveryPanel = $this->deliveryPanelPayload($lorryHire);
 
         return Inertia::render('broker/lorry-hires/show', [
             'lorryHire' => $this->detailPayload($lorryHire, $maySeeFreight, $summary),
@@ -325,7 +370,7 @@ class LorryHireController extends Controller
                 'value' => $type->value,
                 'label' => ucwords(str_replace('_', ' ', $type->value)),
             ])->values()->all(),
-            'delivery' => $this->deliveryPanelPayload($lorryHire),
+            'delivery' => $deliveryPanel,
             'revisions' => $this->revisionHistoryPayload($lorryHire, $maySeeFreight),
             'permissions' => array_merge(
                 $this->lorryHirePermissions($actor, $company, $branch, $maySeeFreight),
@@ -348,6 +393,10 @@ class LorryHireController extends Controller
                     : null,
                 'edit' => $canEdit
                     ? route('branch.broker.lorry-hires.edit', [$lorryHire], absolute: false)
+                    : null,
+                'print' => route('branch.broker.lorry-hires.print', [$lorryHire], absolute: false),
+                'memo_print' => filled($deliveryPanel['memo_number'] ?? null)
+                    ? route('branch.broker.lorry-hires.memo-print', [$lorryHire], absolute: false)
                     : null,
             ],
         ]);
@@ -652,5 +701,80 @@ class LorryHireController extends Controller
     private function freightRateTypeLabel(FreightRateType $type): string
     {
         return FreightRateTypeCatalog::label($type);
+    }
+
+    private function companyTimezone(Company $company): string
+    {
+        $timezone = $company->timezone ?? null;
+
+        return is_string($timezone) && $timezone !== '' ? $timezone : 'Asia/Kolkata';
+    }
+
+    public function printMemo(
+        Request $request,
+        LorryHire $lorryHire,
+        Company $company,
+        Branch $branch,
+    ): Response {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertPermission($actor, $company, $branch, PermissionCodes::BROKER_LORRY_HIRE_VIEW);
+        $this->assertLorryHire($lorryHire, $company, $branch);
+
+        $hire = $this->lorryHires->findForBranch($company, $branch, $lorryHire->id);
+        $lr = $hire->lorryReceipt;
+        $delivery = $lr?->delivery;
+
+        if ($delivery === null || $delivery->memo_number === null) {
+            abort(404, 'Memo is not assigned for this Bilty.');
+        }
+
+        return Inertia::render('broker/deliveries/memo-print', [
+            'company' => [
+                'name' => $company->name,
+                'gstin' => $company->gstin,
+            ],
+            'branch' => [
+                'name' => $branch->name,
+            ],
+            'memo' => [
+                'memo_number' => $delivery->memo_number,
+                'memo_date' => $delivery->delivery_date?->format('d-m-Y'),
+                'pod_number' => $delivery->pod_number,
+                'lr_number' => $lr?->lr_number,
+                'lr_date' => $lr?->lr_date?->format('d-m-Y'),
+                'customer_name' => $lr?->billingCustomer?->name,
+                'vehicle_registration' => $hire->vehicle?->registration_number,
+                'from_station' => $lr !== null ? $this->loadingStationLabel($lr) : null,
+                'to_station' => $lr !== null ? $this->unloadingStationLabel($lr) : null,
+                'hire_number' => $hire->hire_number,
+            ],
+        ]);
+    }
+
+    public function print(
+        Request $request,
+        LorryHire $lorryHire,
+        Company $company,
+        Branch $branch,
+    ): Response {
+        $actor = $this->activateBranchPanel($request, $company, $branch, $this->access);
+        $this->assertPermission($actor, $company, $branch, PermissionCodes::BROKER_LORRY_HIRE_VIEW);
+        $this->assertLorryHire($lorryHire, $company, $branch);
+
+        $hire = $this->lorryHires->findForBranch($company, $branch, $lorryHire->id);
+        $maySeeFreight = $this->freightPresentation->viewerMaySeeFreight($actor, $company, $branch);
+        $summary = $this->calculations->summarize($hire);
+
+        return Inertia::render('broker/lorry-hires/print', [
+            'company' => [
+                'name' => $company->name,
+                'gstin' => $company->gstin,
+            ],
+            'branch' => [
+                'name' => $branch->name,
+            ],
+            'lorryHire' => $this->detailPayload($hire, $maySeeFreight, $summary),
+            'sampleBanner' => 'Operational good hire statement — not a tax voucher.',
+        ]);
     }
 }

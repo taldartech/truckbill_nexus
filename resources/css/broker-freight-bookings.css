@@ -51,6 +51,121 @@
     gap: 4px;
 }
 
+.freight-bookings-index .app-index-filters--legacy {
+    gap: 8px 10px;
+}
+
+.freight-bookings-index .app-index-filters--legacy .broker-filter-field {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.freight-bookings-index .app-index-filters--legacy .broker-filter-field label {
+    font-size: 10.5px;
+    font-weight: 600;
+    color: #475569;
+}
+
+.freight-bookings-index .app-index-filters--legacy .broker-filter-control {
+    height: 30px;
+    min-width: 7.5rem;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    padding: 0 8px;
+    font-size: 12px;
+}
+
+.freight-bookings-index
+    .app-index-filters--legacy
+    .broker-filter-control--search {
+    min-width: 10rem;
+}
+
+.freight-bookings-index .app-index-filters__chip {
+    display: inline-flex;
+    height: 30px;
+    align-items: center;
+    gap: 6px;
+    align-self: end;
+    border-radius: 999px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    padding: 0 10px;
+    font-size: 11.5px;
+}
+
+.freight-bookings-index #freightBookingsTable th:nth-child(1),
+.freight-bookings-index #freightBookingsTable td:nth-child(1) {
+    width: 40px;
+}
+
+.freight-bookings-index #freightBookingsTable th:nth-child(2),
+.freight-bookings-index #freightBookingsTable td:nth-child(2) {
+    width: 82px;
+}
+
+.freight-bookings-index #freightBookingsTable th:nth-child(12),
+.freight-bookings-index #freightBookingsTable td:nth-child(12) {
+    width: 100px;
+}
+
+.freight-bookings-index #freightBookingsTable tr.is-row-cancelled td {
+    opacity: 0.72;
+}
+
+.freight-bookings-index #freightBookingsTable tr.is-row-delivered td {
+    background: rgba(22, 163, 74, 0.04);
+}
+
+.voucher-register-index .broker-filter-field,
+.voucher-payments-index .broker-filter-field,
+.daily-payments-index .broker-filter-field {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.voucher-register-index .broker-filter-control,
+.voucher-payments-index .broker-filter-control,
+.daily-payments-index .broker-filter-control {
+    height: 30px;
+    min-width: 7.5rem;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    padding: 0 8px;
+    font-size: 12px;
+}
+
+.voucher-register-index #voucherPaymentsTable {
+    table-layout: fixed;
+    width: 100%;
+}
+
+.daily-payments-index #paymentsTable {
+    table-layout: fixed;
+    width: 100%;
+}
+
+.daily-payments-index .daily-payments-totals {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    border-bottom: 1px solid #e5e7eb;
+    background: #fff;
+    padding: 8px 16px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.freight-booking-show.fb-detail-page > h1 {
+    display: none;
+}
+
 .voucher-register-index .app-index-table,
 .daily-payments-index .app-index-table {
     font-size: 12px;

@@ -39,6 +39,7 @@ type HireRow = {
     billing_customer_party_id: string | null;
     memo_number: string | null;
     memo_pending: boolean;
+    row_tone?: string;
     urls: { show: string; edit?: string | null };
 };
 
@@ -54,8 +55,26 @@ type SelectedHire = Pick<
     | 'memo_pending'
 >;
 
+type FilterOption = { value: string; label: string };
+
 type Props = {
-    filters: { status: string; pending_memo: boolean };
+    filters: {
+        search: string;
+        lr_number: string;
+        customer_party_id: string;
+        transporter_party_id: string;
+        vehicle_id: string;
+        start_date: string;
+        end_date: string;
+        status: string;
+        pending_memo: boolean;
+        payable_only: boolean;
+    };
+    filterOptions: {
+        customers: FilterOption[];
+        transporters: FilterOption[];
+        vehicles: FilterOption[];
+    };
     permissions: {
         can_view: boolean;
         can_create: boolean;
@@ -132,8 +151,20 @@ function memoBlocker(rows: SelectedHire[]): string | null {
     return null;
 }
 
+function rowToneClass(tone?: string): string {
+    if (tone === 'cancelled') {
+        return 'is-row-cancelled';
+    }
+    if (tone === 'delivered') {
+        return 'is-row-delivered';
+    }
+
+    return '';
+}
+
 export default function LorryHiresIndex({
     filters,
+    filterOptions,
     permissions,
     statusOptions,
     lorryHires,
@@ -177,8 +208,16 @@ export default function LorryHiresIndex({
         memo_pending: row.memo_pending,
     });
     const filterQuery = {
+        search: filters.search || undefined,
+        lr_number: filters.lr_number || undefined,
+        customer_party_id: filters.customer_party_id || undefined,
+        transporter_party_id: filters.transporter_party_id || undefined,
+        vehicle_id: filters.vehicle_id || undefined,
+        start_date: filters.start_date || undefined,
+        end_date: filters.end_date || undefined,
         status: filters.status || undefined,
         pending_memo: filters.pending_memo ? 1 : undefined,
+        payable_only: filters.payable_only ? 1 : undefined,
     };
     const columnCount = canSelect ? 12 : 11;
 
@@ -188,36 +227,156 @@ export default function LorryHiresIndex({
             <AppIndexPage className="freight-bookings-index">
                 <AppIndexListCard title="Good Hires (Lorry Hire)">
                     <AppIndexFilters
+                        className="app-index-filters--legacy"
                         onSubmit={(event) => {
                             event.preventDefault();
                             const form = event.currentTarget;
-                            const status = (
-                                form.elements.namedItem(
-                                    'status',
-                                ) as HTMLSelectElement
-                            ).value;
-                            const pendingMemo = (
-                                form.elements.namedItem(
-                                    'pending_memo',
-                                ) as HTMLInputElement
-                            ).checked;
+                            const data = new FormData(form);
                             router.get(
                                 urls.index,
                                 {
-                                    status: status || undefined,
-                                    pending_memo: pendingMemo ? 1 : undefined,
+                                    search:
+                                        (data.get('search') as string) ||
+                                        undefined,
+                                    lr_number:
+                                        (data.get('lr_number') as string) ||
+                                        undefined,
+                                    customer_party_id:
+                                        (data.get(
+                                            'customer_party_id',
+                                        ) as string) || undefined,
+                                    transporter_party_id:
+                                        (data.get(
+                                            'transporter_party_id',
+                                        ) as string) || undefined,
+                                    vehicle_id:
+                                        (data.get('vehicle_id') as string) ||
+                                        undefined,
+                                    start_date:
+                                        (data.get('start_date') as string) ||
+                                        undefined,
+                                    end_date:
+                                        (data.get('end_date') as string) ||
+                                        undefined,
+                                    status:
+                                        (data.get('status') as string) ||
+                                        undefined,
+                                    pending_memo: data.get('pending_memo')
+                                        ? 1
+                                        : undefined,
+                                    payable_only: data.get('payable_only')
+                                        ? 1
+                                        : undefined,
                                 },
                                 { preserveState: true },
                             );
                         }}
                     >
-                        <div className="space-y-1">
+                        <div className="broker-filter-field">
+                            <Label htmlFor="search">Search</Label>
+                            <input
+                                id="search"
+                                name="search"
+                                defaultValue={filters.search}
+                                placeholder="LR, city, route…"
+                                className="broker-filter-control broker-filter-control--search"
+                            />
+                        </div>
+                        <div className="broker-filter-field">
+                            <Label htmlFor="lr_number">Bilty / LR</Label>
+                            <input
+                                id="lr_number"
+                                name="lr_number"
+                                defaultValue={filters.lr_number}
+                                className="broker-filter-control"
+                            />
+                        </div>
+                        <div className="broker-filter-field">
+                            <Label htmlFor="customer_party_id">Customer</Label>
+                            <select
+                                id="customer_party_id"
+                                name="customer_party_id"
+                                defaultValue={filters.customer_party_id}
+                                className="broker-filter-control"
+                            >
+                                <option value="">All Customers</option>
+                                {filterOptions.customers.map((option) => (
+                                    <option
+                                        key={option.value}
+                                        value={option.value}
+                                    >
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="broker-filter-field">
+                            <Label htmlFor="transporter_party_id">
+                                Transporter
+                            </Label>
+                            <select
+                                id="transporter_party_id"
+                                name="transporter_party_id"
+                                defaultValue={filters.transporter_party_id}
+                                className="broker-filter-control"
+                            >
+                                <option value="">All Transporters</option>
+                                {filterOptions.transporters.map((option) => (
+                                    <option
+                                        key={option.value}
+                                        value={option.value}
+                                    >
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="broker-filter-field">
+                            <Label htmlFor="vehicle_id">Truck</Label>
+                            <select
+                                id="vehicle_id"
+                                name="vehicle_id"
+                                defaultValue={filters.vehicle_id}
+                                className="broker-filter-control"
+                            >
+                                <option value="">All Trucks</option>
+                                {filterOptions.vehicles.map((option) => (
+                                    <option
+                                        key={option.value}
+                                        value={option.value}
+                                    >
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div className="broker-filter-field">
+                            <Label htmlFor="start_date">From</Label>
+                            <input
+                                id="start_date"
+                                name="start_date"
+                                type="date"
+                                defaultValue={filters.start_date}
+                                className="broker-filter-control"
+                            />
+                        </div>
+                        <div className="broker-filter-field">
+                            <Label htmlFor="end_date">To</Label>
+                            <input
+                                id="end_date"
+                                name="end_date"
+                                type="date"
+                                defaultValue={filters.end_date}
+                                className="broker-filter-control"
+                            />
+                        </div>
+                        <div className="broker-filter-field">
                             <Label htmlFor="status">Status</Label>
                             <select
                                 id="status"
                                 name="status"
                                 defaultValue={filters.status}
-                                className="h-9 min-w-[10rem] rounded-md border border-input bg-background px-3 text-sm"
+                                className="broker-filter-control"
                             >
                                 <option value="">All</option>
                                 {statusOptions.map((option) => (
@@ -230,22 +389,47 @@ export default function LorryHiresIndex({
                                 ))}
                             </select>
                         </div>
-                        <label className="flex h-9 items-center gap-2 self-end text-sm">
+                        <label className="app-index-filters__chip">
                             <input
                                 type="checkbox"
                                 name="pending_memo"
-                                className="size-4 rounded border-input"
+                                value="1"
+                                className="size-3.5 rounded border-input"
                                 defaultChecked={filters.pending_memo}
                             />
                             Pending Memo / POD
                         </label>
+                        <label className="app-index-filters__chip">
+                            <input
+                                type="checkbox"
+                                name="payable_only"
+                                value="1"
+                                className="size-3.5 rounded border-input"
+                                defaultChecked={filters.payable_only}
+                            />
+                            Payable balance
+                        </label>
                         <Button
                             type="submit"
-                            className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                            className="h-8 bg-[#2FB36F] px-3 text-xs text-white hover:bg-[#279960]"
                         >
                             Filter
                         </Button>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            className="h-8 px-3 text-xs"
+                            onClick={() => router.get(urls.index)}
+                        >
+                            Reset
+                        </Button>
                     </AppIndexFilters>
+
+                    {filters.search ? (
+                        <p className="border-b border-[#e5e7eb] bg-white px-4 py-2 text-xs text-slate-600">
+                            Results for: <strong>{filters.search}</strong>
+                        </p>
+                    ) : null}
 
                     <BulkSelectionToolbar
                         count={selection.count}
@@ -335,7 +519,12 @@ export default function LorryHiresIndex({
                                     </tr>
                                 ) : (
                                     lorryHires.data.map((row) => (
-                                        <tr key={row.id}>
+                                        <tr
+                                            key={row.id}
+                                            className={rowToneClass(
+                                                row.row_tone,
+                                            )}
+                                        >
                                             {canSelect ? (
                                                 <td className="text-center">
                                                     <input

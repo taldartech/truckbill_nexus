@@ -15,6 +15,7 @@ import {
     ExternalLink,
     FileText,
     Pencil,
+    Printer,
     Wallet,
 } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
@@ -158,6 +159,8 @@ type Props = {
         voucher_store: string | null;
         cancel: string | null;
         edit?: string | null;
+        print?: string;
+        memo_print?: string | null;
     };
 };
 
@@ -374,7 +377,7 @@ export default function LorryHireShow({
     return (
         <>
             <Head title={`Lorry Hire ${lorryHire.hire_number}`} />
-            <FbDetailPage title={`Lorry Hire ${lorryHire.hire_number}`}>
+            <FbDetailPage className="freight-booking-show">
                 {lorryHire.status === 'cancelled' ? (
                     <div
                         className="mb-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900"
@@ -428,6 +431,26 @@ export default function LorryHireShow({
                                                 icon={Pencil}
                                                 label="Edit Lorry Hire"
                                                 href={urls.edit}
+                                                variant="outline"
+                                                size="sm"
+                                            />
+                                        ) : null}
+                                        {urls.print ? (
+                                            <AppIconAction
+                                                icon={Printer}
+                                                label="Print good hire"
+                                                href={urls.print}
+                                                external
+                                                variant="outline"
+                                                size="sm"
+                                            />
+                                        ) : null}
+                                        {urls.memo_print ? (
+                                            <AppIconAction
+                                                icon={Printer}
+                                                label="Print memo"
+                                                href={urls.memo_print}
+                                                external
                                                 variant="outline"
                                                 size="sm"
                                             />

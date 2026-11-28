@@ -30,16 +30,27 @@ type VoucherRow = {
 
 type Props = {
     filters: { date: string; status: string };
-    permissions: { can_status: boolean };
+    permissions: { can_status: boolean; can_view_freight?: boolean };
+    totals: { count: number; amount: string | null };
     vouchers: VoucherRow[];
     urls: { index: string; bulk_status: string };
+    statusOptions?: Array<{ value: string; label: string }>;
 };
+
+const STATUS_OPTIONS = [
+    { value: '', label: 'All statuses' },
+    { value: 'pending', label: 'Pending' },
+    { value: 'in_progress', label: 'In Progress' },
+    { value: 'paid', label: 'Paid' },
+];
 
 export default function DailyPaymentsIndex({
     filters,
     permissions,
+    totals,
     vouchers,
     urls,
+    statusOptions = STATUS_OPTIONS,
 }: Props) {
     const [selected, setSelected] = useState<string[]>([]);
     const bulkForm = useForm({
@@ -62,37 +73,59 @@ export default function DailyPaymentsIndex({
             <AppIndexPage className="daily-payments-index">
                 <AppIndexListCard title="Daily Transporter Payments">
                     <AppIndexFilters
+                        className="app-index-filters--legacy"
                         onSubmit={(event) => {
                             event.preventDefault();
-                            const form = event.currentTarget;
-                            const date = (
-                                form.elements.namedItem(
-                                    'date',
-                                ) as HTMLInputElement
-                            ).value;
-                            router.get(
-                                urls.index,
-                                { date: date || undefined },
-                                { preserveState: true },
-                            );
+                            const data = new FormData(event.currentTarget);
+                            router.get(urls.index, {
+                                date: (data.get('date') as string) || undefined,
+                                status:
+                                    (data.get('status') as string) || undefined,
+                            });
                         }}
                     >
-                        <div className="space-y-1">
-                            <Label htmlFor="date">Date</Label>
+                        <div className="broker-filter-field">
+                            <Label htmlFor="date">Payment date</Label>
                             <Input
                                 id="date"
                                 name="date"
                                 type="date"
                                 defaultValue={filters.date}
+                                className="broker-filter-control h-8 text-xs"
                             />
+                        </div>
+                        <div className="broker-filter-field">
+                            <Label htmlFor="status">Status</Label>
+                            <select
+                                id="status"
+                                name="status"
+                                defaultValue={filters.status}
+                                className="broker-filter-control"
+                            >
+                                {statusOptions.map((option) => (
+                                    <option
+                                        key={option.value || 'all'}
+                                        value={option.value}
+                                    >
+                                        {option.label}
+                                    </option>
+                                ))}
+                            </select>
                         </div>
                         <Button
                             type="submit"
-                            className="bg-[#2FB36F] text-white hover:bg-[#279960]"
+                            className="h-8 bg-[#2FB36F] px-3 text-xs text-white hover:bg-[#279960]"
                         >
                             Load day
                         </Button>
                     </AppIndexFilters>
+
+                    <div className="daily-payments-totals">
+                        <span>Vouchers: {totals.count}</span>
+                        {permissions.can_view_freight && totals.amount ? (
+                            <span>Total amount: ₹{totals.amount}</span>
+                        ) : null}
+                    </div>
 
                     {permissions.can_status && selected.length > 0 ? (
                         <div className="flex flex-wrap gap-2 border-b border-[#e5e7eb] bg-white px-4 py-3">
@@ -131,7 +164,10 @@ export default function DailyPaymentsIndex({
                         className="overflow-x-auto"
                         data-testid="daily-transporter-payments"
                     >
-                        <table className="app-index-table min-w-full">
+                        <table
+                            id="paymentsTable"
+                            className="app-index-table min-w-full"
+                        >
                             <thead>
                                 <tr>
                                     {permissions.can_status ? (

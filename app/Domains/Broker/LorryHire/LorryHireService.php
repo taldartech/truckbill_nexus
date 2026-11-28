@@ -34,6 +34,7 @@ use App\Models\Vehicle;
 use App\Support\Audit\AuditAction;
 use App\Support\Audit\AuditedTransaction;
 use App\Support\Audit\AuditWriter;
+use App\Support\Database\CaseInsensitiveLike;
 use App\Support\Tenant\TenantContext;
 use App\Support\Tenant\TenantContextHolder;
 use Carbon\CarbonImmutable;
@@ -70,6 +71,14 @@ final class LorryHireService
         ?string $status = null,
         int $perPage = 15,
         bool $pendingMemo = false,
+        ?string $search = null,
+        ?string $lrNumber = null,
+        ?string $customerPartyId = null,
+        ?string $transporterPartyId = null,
+        ?string $vehicleId = null,
+        ?string $startDate = null,
+        ?string $endDate = null,
+        bool $payableOnly = false,
     ): LengthAwarePaginator {
         $this->ensureTenantMatches($company, $branch);
 
@@ -100,7 +109,155 @@ final class LorryHireService
                 ));
         }
 
-        return $builder->paginate($perPage);
+        if ($payableOnly) {
+            $builder->where('status', '!=', LorryHireStatus::Cancelled->value)
+                ->where('outstanding_amount', '>', 0);
+        }
+
+        if (filled($customerPartyId)) {
+            $builder->whereHas(
+                'lorryReceipt',
+                fn ($receipt) => $receipt->where('billing_customer_party_id', $customerPartyId),
+            );
+        }
+
+        if (filled($transporterPartyId)) {
+            $builder->where('transporter_party_id', $transporterPartyId);
+        }
+
+        if (filled($vehicleId)) {
+            $builder->where('vehicle_id', $vehicleId);
+        }
+
+        if (filled($startDate) || filled($endDate)) {
+            $start = filled($startDate)
+                ? CarbonImmutable::parse($startDate)->startOfDay()
+                : CarbonImmutable::parse((string) $endDate)->subDays(15)->startOfDay();
+            $end = filled($endDate)
+                ? CarbonImmutable::parse($endDate)->endOfDay()
+                : CarbonImmutable::now()->endOfDay();
+
+            if ($end->lessThan($start)) {
+                $end = $start->endOfDay();
+            }
+
+            $maxEnd = $start->addMonths(3)->endOfDay();
+            if ($end->greaterThan($maxEnd)) {
+                $end = $maxEnd;
+            }
+
+            $builder->whereHas(
+                'lorryReceipt',
+                fn ($receipt) => $receipt->whereBetween('lr_date', [$start, $end]),
+            );
+        }
+
+        $lrFilter = trim((string) $lrNumber);
+        if ($lrFilter !== '') {
+            $builder->whereHas(
+                'lorryReceipt',
+                fn ($receipt) => CaseInsensitiveLike::whereContains($receipt, 'lr_number', $lrFilter),
+            );
+        }
+
+        $searchFilter = trim((string) $search);
+        if ($searchFilter !== '') {
+            $builder->where(function ($query) use ($searchFilter): void {
+                CaseInsensitiveLike::whereContains($query, 'hire_number', $searchFilter);
+                $query->orWhereHas('lorryReceipt', function ($receipt) use ($searchFilter): void {
+                    CaseInsensitiveLike::whereAnyContains(
+                        $receipt,
+                        ['lr_number', 'from_text', 'to_text'],
+                        $searchFilter,
+                    );
+                });
+                $query->orWhereHas('lorryReceipt.billingCustomer', function ($customer) use ($searchFilter): void {
+                    CaseInsensitiveLike::whereContains($customer, 'name', $searchFilter);
+                });
+                $query->orWhereHas('vehicle', function ($vehicle) use ($searchFilter): void {
+                    CaseInsensitiveLike::whereContains($vehicle, 'registration_number', $searchFilter);
+                });
+                $query->orWhereHas('transporter', function ($transporter) use ($searchFilter): void {
+                    CaseInsensitiveLike::whereContains($transporter, 'name', $searchFilter);
+                });
+            });
+        }
+
+        return $builder->paginate(min(100, max(1, $perPage)));
+    }
+
+    /**
+     * @return array{
+     *     customers: list<array{value: string, label: string}>,
+     *     transporters: list<array{value: string, label: string}>,
+     *     vehicles: list<array{value: string, label: string}>
+     * }
+     */
+    public function registerFilterOptions(Company $company, Branch $branch): array
+    {
+        $this->ensureTenantMatches($company, $branch);
+
+        $base = LorryHire::query()
+            ->where('company_id', $company->id)
+            ->where('branch_id', $branch->id)
+            ->whereNull('deleted_at');
+
+        $receiptIds = (clone $base)->select('lorry_receipt_id');
+
+        $customerIds = LorryReceipt::query()
+            ->whereIn('id', $receiptIds)
+            ->whereNotNull('billing_customer_party_id')
+            ->distinct()
+            ->pluck('billing_customer_party_id');
+
+        $transporterIds = (clone $base)
+            ->whereNotNull('transporter_party_id')
+            ->distinct()
+            ->pluck('transporter_party_id');
+
+        $vehicleIds = (clone $base)
+            ->whereNotNull('vehicle_id')
+            ->distinct()
+            ->pluck('vehicle_id');
+
+        $customers = Party::query()
+            ->whereIn('id', $customerIds)
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (Party $party): array => [
+                'value' => $party->id,
+                'label' => (string) $party->name,
+            ])
+            ->values()
+            ->all();
+
+        $transporters = Party::query()
+            ->whereIn('id', $transporterIds)
+            ->orderBy('name')
+            ->get(['id', 'name'])
+            ->map(fn (Party $party): array => [
+                'value' => $party->id,
+                'label' => (string) $party->name,
+            ])
+            ->values()
+            ->all();
+
+        $vehicles = Vehicle::query()
+            ->whereIn('id', $vehicleIds)
+            ->orderBy('registration_number')
+            ->get(['id', 'registration_number'])
+            ->map(fn (Vehicle $vehicle): array => [
+                'value' => $vehicle->id,
+                'label' => (string) $vehicle->registration_number,
+            ])
+            ->values()
+            ->all();
+
+        return [
+            'customers' => $customers,
+            'transporters' => $transporters,
+            'vehicles' => $vehicles,
+        ];
     }
 
     public function findForBranch(Company $company, Branch $branch, string $hireId): LorryHire
