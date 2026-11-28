@@ -358,7 +358,7 @@ test('broker purchase activates immediately without invoice approval and restore
     ])->assertRedirect();
 
     $this->post(route('branch.vehicles.store'), [
-        'registration_number' => 'MH12OWN999',
+        'registration_number' => 'MH12OW1999',
         'ownership' => VehicleOwnership::Own->value,
     ])->assertStatus(403);
 

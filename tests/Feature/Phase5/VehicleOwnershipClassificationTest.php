@@ -186,7 +186,7 @@ test('vehicle master requires truck type for own but keeps market master fields 
         $ws['company'],
         null,
         [
-            'registration_number' => 'MH12OWNFAIL1',
+            'registration_number' => 'MH12OF1001',
             'ownership' => VehicleOwnership::Own->value,
         ],
     ))->toThrow(ValidationException::class);
@@ -196,7 +196,7 @@ test('vehicle master requires truck type for own but keeps market master fields 
         $ws['company'],
         null,
         [
-            'registration_number' => 'MH12OWNOK01',
+            'registration_number' => 'MH12OK1001',
             'ownership' => VehicleOwnership::Own->value,
             'truck_type_id' => $truckType->id,
             'tyre_layout_id' => $tyreLayout->id,
@@ -240,7 +240,7 @@ test('vehicle master requires truck type for own but keeps market master fields 
         $ws['company'],
         null,
         [
-            'registration_number' => 'MH12MKTOK01',
+            'registration_number' => 'MH12MK1001',
             'registration_date' => '2024-04-01',
             'ownership' => VehicleOwnership::Market->value,
             'owner_party_id' => $ownerParty->id,
@@ -263,7 +263,7 @@ test('vehicle master requires truck type for own but keeps market master fields 
         $ws['owner'],
         $ws['company'],
         null,
-        ['registration_number' => 'MH12MKTNOOWN', 'ownership' => VehicleOwnership::Market->value],
+        ['registration_number' => 'MH12MN1001', 'ownership' => VehicleOwnership::Market->value],
     );
 
     expect($ownerless->owner_party_id)->toBeNull()

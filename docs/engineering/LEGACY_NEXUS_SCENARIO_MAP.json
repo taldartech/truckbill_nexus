@@ -1,0 +1,177 @@
+{
+    "version": 1,
+    "description": "Explicit legacy scenario → Nexus test mapping. One Nexus test may map to multiple legacy IDs only when documented.",
+    "mappings": [
+        {
+            "legacy_ids_prefix": "LEG-ADM-",
+            "legacy_file_contains": "legacy/truckbill_admin/tests/Feature/Crm/LeadManagementTest.php",
+            "nexus_tests": ["tests/Feature/CrmLeadManagementTest.php"],
+            "coverage": "partial",
+            "notes": "Nexus internal CRM; public website lead API differs (Admin app)."
+        },
+        {
+            "legacy_ids_prefix": "LEG-ADM-",
+            "legacy_file_contains": "legacy/truckbill_admin/tests/Feature/Crm/OnboardingTest.php",
+            "nexus_tests": [
+                "tests/Feature/CrmLeadManagementTest.php",
+                "tests/Feature/InvitationLifecycleTest.php"
+            ],
+            "coverage": "partial"
+        },
+        {
+            "legacy_ids_prefix": "LEG-ADM-",
+            "legacy_file_contains": "legacy/truckbill_admin/tests/Feature/ControlPlane/CustomerOnboardingProvisioningTest.php",
+            "nexus_tests": ["tests/Feature/OwnerGlobalPanelTest.php", "tests/Feature/InvitationLifecycleTest.php"],
+            "coverage": "adapted"
+        },
+        {
+            "legacy_ids_prefix": "LEG-ADM-",
+            "legacy_file_contains": "legacy/truckbill_admin/tests/Feature/Subscriptions/",
+            "nexus_tests": [
+                "tests/Feature/Subscription/SubscriptionCatalogueAdministrationTest.php",
+                "tests/Feature/SubscriptionPricingTest.php"
+            ],
+            "coverage": "adapted"
+        },
+        {
+            "legacy_ids_prefix": "LEG-BRO-",
+            "legacy_file": "legacy/truckbill_broker/tests/Unit/LorryReceiptCalculationServiceTest.php",
+            "nexus_tests": [
+                "tests/LegacyParity/Broker/LegacyBrokerCustomerFreightCalculationTest.php",
+                "tests/Feature/Phase4/LorryReceiptServiceTest.php"
+            ],
+            "coverage": "partial"
+        },
+        {
+            "legacy_ids_prefix": "LEG-BRO-",
+            "legacy_file": "legacy/truckbill_broker/tests/Unit/Services/FreightBookingAmountVerifierTest.php",
+            "nexus_tests": ["tests/LegacyParity/Broker/LegacyBrokerHireFinancialScenariosTest.php", "tests/Feature/Financial/FinancialInvariantsTest.php"],
+            "coverage": "partial"
+        },
+        {
+            "legacy_ids_prefix": "LEG-BRO-",
+            "legacy_file_contains": "legacy/truckbill_broker/tests/Feature/Voucher/VoucherPaymentTest.php",
+            "nexus_tests": ["tests/Feature/Broker/VoucherServiceTest.php", "tests/Feature/VoucherPaymentHttpTest.php"],
+            "coverage": "adapted"
+        },
+        {
+            "legacy_ids_prefix": "LEG-BRO-",
+            "legacy_file_contains": "legacy/truckbill_broker/tests/Feature/Freight/FreightBookingTest.php",
+            "nexus_tests": [
+                "tests/Feature/Broker/LorryHireServiceTest.php",
+                "tests/Feature/Broker/LorryHireEditTest.php",
+                "tests/Feature/LorryHireIndependentFreightTest.php"
+            ],
+            "coverage": "adapted"
+        },
+        {
+            "legacy_ids_prefix": "LEG-BRO-",
+            "legacy_file_contains": "legacy/truckbill_broker/tests/Feature/LR/LorryReceiptTest.php",
+            "nexus_tests": ["tests/Feature/Phase4/LorryReceiptServiceTest.php", "tests/Feature/UnifiedBiltyWorkflowTest.php"],
+            "coverage": "adapted"
+        },
+        {
+            "legacy_ids_prefix": "LEG-BRO-",
+            "legacy_file_contains": "legacy/truckbill_broker/tests/Feature/Invoice/",
+            "nexus_tests": ["tests/Feature/Broker/BrokerInvoiceServiceTest.php"],
+            "coverage": "adapted"
+        },
+        {
+            "legacy_ids_prefix": "LEG-BRO-",
+            "legacy_file_contains": "legacy/truckbill_broker/tests/Feature/Company/CompanyEnterExitTest.php",
+            "nexus_tests": ["tests/Feature/SessionWorkspaceRoutingTest.php"],
+            "coverage": "adapted",
+            "superseded": ["NX-03 branch entry confirmation"]
+        },
+        {
+            "legacy_ids_prefix": "LEG-BRO-",
+            "legacy_file_contains": "legacy/truckbill_broker/tests/Feature/Master/TransporterMasterTest.php",
+            "nexus_tests": ["tests/Feature/PartyMasterTest.php", "tests/Feature/PartyRoleAttributesTest.php"],
+            "coverage": "adapted",
+            "superseded": ["NX-01 unified Party"]
+        },
+        {
+            "legacy_ids_prefix": "LEG-OFO-",
+            "legacy_file_contains": "legacy/truckbill_ownfleet/tests/Feature/Api/TripManagementTest.php",
+            "nexus_tests": [
+                "tests/Feature/Phase5/OwnFleetTripLifecycleTest.php",
+                "tests/Feature/Phase5/OwnFleetTripFoundationTest.php"
+            ],
+            "coverage": "partial"
+        },
+        {
+            "legacy_ids_prefix": "LEG-PAR-",
+            "legacy_file_contains": "legacy/truckbill_partload/tests/Feature/Bilty",
+            "nexus_tests": ["tests/Feature/Phase4/LorryReceiptServiceTest.php", "tests/Feature/Partload/PartloadPendingLoadingTest.php"],
+            "coverage": "partial"
+        },
+        {
+            "legacy_ids_prefix": "LEG-PAR-",
+            "legacy_file_contains": "legacy/truckbill_partload/tests/Feature/Accounting/",
+            "nexus_tests": ["tests/Feature/Accounting/OperationalPostingBridgeTest.php", "tests/Feature/Accounting/AccountingFoundationTest.php"],
+            "coverage": "partial"
+        }
+    ],
+    "module_nexus_batches": {
+        "1-admin-owner": [
+            "tests/Feature/CrmLeadManagementTest.php",
+            "tests/Feature/CrmSupportTicketTest.php",
+            "tests/Feature/InvitationLifecycleTest.php",
+            "tests/Feature/OwnerGlobalPanelTest.php",
+            "tests/Feature/OwnerPanelManagementTest.php",
+            "tests/Feature/OwnerBranchAdministrationTest.php",
+            "tests/Feature/OwnerGlobalUserCreateTest.php",
+            "tests/Feature/OwnerPanelSessionIndependenceTest.php",
+            "tests/Feature/OwnerBranchNavigationShellTest.php",
+            "tests/Feature/OwnershipTransferTest.php",
+            "tests/Feature/SessionWorkspaceRoutingTest.php",
+            "tests/Feature/PermissionMasterTest.php",
+            "tests/Feature/Rbac/OwnerOperationalPermissionHttpTest.php",
+            "tests/Feature/Rbac/InternalRolePermissionBoundaryTest.php",
+            "tests/Feature/Rbac/SubscriptionRoleCombinationTest.php",
+            "tests/Feature/Subscription/SubscriptionCatalogueAdministrationTest.php",
+            "tests/Feature/Subscription/BrokerActivationAndEntitlementMatrixTest.php",
+            "tests/Feature/SubscriptionPricingTest.php",
+            "tests/Feature/SubscriptionBillingAndRbacIntegrationTest.php"
+        ],
+        "2-masters": [
+            "tests/Feature/PartyMasterTest.php",
+            "tests/Feature/PartyRoleAttributesTest.php",
+            "tests/Feature/PartyOptionQueryTest.php",
+            "tests/Feature/PartySelectorEligibilityTest.php",
+            "tests/Feature/Phase3MastersUiTest.php",
+            "tests/Feature/MasterDataBatchBTest.php",
+            "tests/Feature/MasterCompanyVisibilityTest.php",
+            "tests/Feature/BranchMasterIsolationTest.php",
+            "tests/Feature/GeographyMasterTest.php",
+            "tests/Feature/GeographyMasterEnforcementTest.php",
+            "tests/Feature/Station/StationQuickCreateTest.php",
+            "tests/Feature/VehicleOptionsEndpointTest.php",
+            "tests/Feature/Phase5/VehicleOwnershipClassificationTest.php",
+            "tests/Feature/Master/TyreLayoutMasterTest.php",
+            "tests/Feature/Broker/DriverMasterAndCapabilityTest.php",
+            "tests/Feature/Broker/TransporterBookBalanceManagementTest.php"
+        ],
+        "3-broker": [
+            "tests/Feature/Broker",
+            "tests/Feature/Phase4/LorryReceiptServiceTest.php",
+            "tests/Feature/UnifiedBiltyWorkflowTest.php",
+            "tests/Feature/LorryHireIndependentFreightTest.php",
+            "tests/Feature/VoucherPaymentHttpTest.php",
+            "tests/Feature/Financial/FinancialInvariantsTest.php",
+            "tests/Feature/PoCriticalBusinessRulesCorrectionTest.php",
+            "tests/LegacyParity/Broker"
+        ],
+        "4-ownfleet": [
+            "tests/Feature/Phase5",
+            "tests/Feature/TripExpensesWorkspaceTest.php",
+            "tests/Feature/EntitlementAndDriverWorkflowTest.php"
+        ],
+        "5-partload": [
+            "tests/Feature/Partload"
+        ],
+        "6-accounting": [
+            "tests/Feature/Accounting"
+        ]
+    }
+}

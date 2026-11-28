@@ -10,6 +10,8 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Testing\TestResponse;
 use Tests\TestCase;
 
+require_once __DIR__.'/Support/ValidVehicleRegistration.php';
+
 /*
 |--------------------------------------------------------------------------
 | Test Case

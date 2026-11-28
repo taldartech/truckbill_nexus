@@ -243,7 +243,7 @@ test('broker-only company allows market vehicles only, blocks ownfleet and partl
     // Forged Own vehicle POST + JSON Quick Create + Domain Service must reject.
     asBranchHttp($ctx['owner'], $ctx['company'], $ctx['branch']);
     $this->post(route('branch.vehicles.store'), [
-        'registration_number' => 'MH12FORGEDOWN1',
+        'registration_number' => 'MH12FD1001',
         'ownership' => VehicleOwnership::Own->value,
         'remark' => 'Forged own vehicle on Broker-only plan',
     ])->assertForbidden();
@@ -260,7 +260,7 @@ test('broker-only company allows market vehicles only, blocks ownfleet and partl
 
     asBranchHttp($ctx['owner'], $ctx['company'], $ctx['branch']);
     $this->postJson(route('branch.vehicles.store'), [
-        'registration_number' => 'MH12FORGEDOWN2',
+        'registration_number' => 'MH12FD1002',
         'ownership' => VehicleOwnership::Own->value,
     ])->assertForbidden();
 
@@ -268,7 +268,7 @@ test('broker-only company allows market vehicles only, blocks ownfleet and partl
         $ctx['owner'],
         $ctx['company'],
         null,
-        ['registration_number' => 'MH12FORGEDOWN3', 'ownership' => VehicleOwnership::Own->value],
+        ['registration_number' => 'MH12FD1003', 'ownership' => VehicleOwnership::Own->value],
         'Direct service call',
         $ctx['branch'],
     ))->toThrow(ValidationException::class);
@@ -284,7 +284,7 @@ test('broker-only company allows market vehicles only, blocks ownfleet and partl
     );
     asBranchHttp($ctx['owner'], $ctx['company'], $ctx['branch']);
     $this->postJson(route('branch.vehicles.store'), [
-        'registration_number' => 'MH12BRKVALID01',
+        'registration_number' => 'MH12BV1001',
         'ownership' => VehicleOwnership::Market->value,
         'owner_party_id' => $transporter->id,
     ])->assertCreated();
@@ -329,7 +329,7 @@ test('ownfleet-only company enforces own vehicles only, blocks broker/partload, 
     // Market vehicle creation rejected via HTTP & service.
     asBranchHttp($ctx['owner'], $ctx['company'], $ctx['branch']);
     $this->postJson(route('branch.vehicles.store'), [
-        'registration_number' => 'MH12FORGEDMKT1',
+        'registration_number' => 'MH12FM1001',
         'ownership' => VehicleOwnership::Market->value,
     ])->assertForbidden();
 
@@ -374,7 +374,7 @@ test('partload-only company enables partload operations and blocks unrestricted 
     $historicalOwn = Vehicle::query()->create([
         'company_id' => $pl['company']->id,
         'branch_id' => null,
-        'registration_number' => 'MH12PLHISTOWN1',
+        'registration_number' => 'MH12PH1001',
         'ownership' => VehicleOwnership::Own->value,
         'is_active' => true,
     ]);
@@ -431,7 +431,7 @@ test('partload-only company enables partload operations and blocks unrestricted 
 
     asBranchHttp($owner, $pl['company'], $pl['branch']);
     $this->postJson(route('branch.vehicles.store'), [
-        'registration_number' => 'MH12PLFORGEOWN',
+        'registration_number' => 'MH12PF1001',
         'ownership' => VehicleOwnership::Own->value,
     ])->assertForbidden();
 });
@@ -479,7 +479,7 @@ test('first-company 15-day trial works only for first company, while expired and
     $vehicle = Vehicle::query()->create([
         'company_id' => $first->id,
         'branch_id' => null,
-        'registration_number' => 'MH12TRIAL999',
+        'registration_number' => 'MH12TR1999',
         'ownership' => VehicleOwnership::Own->value,
         'primary_driver_party_id' => $driver->id,
         'is_active' => true,
@@ -506,7 +506,7 @@ test('first-company 15-day trial works only for first company, while expired and
     $paidVehicle = Vehicle::query()->create([
         'company_id' => $paid['company']->id,
         'branch_id' => null,
-        'registration_number' => 'MH12GRACE999',
+        'registration_number' => 'MH12GR1999',
         'ownership' => VehicleOwnership::Own->value,
         'primary_driver_party_id' => $paidDriver->id,
         'is_active' => true,
@@ -601,7 +601,7 @@ test('ownfleet vehicle driver assignment, replacement history, overlap rejection
     $truckB = Vehicle::query()->create([
         'company_id' => $ctx['company']->id,
         'branch_id' => $ctx['branch']->id,
-        'registration_number' => 'MH12TRUCKB2',
+        'registration_number' => 'MH12TB1002',
         'ownership' => VehicleOwnership::Own->value,
         'truck_type_id' => $truckA->truck_type_id,
         'tyre_layout_id' => $truckA->tyre_layout_id,

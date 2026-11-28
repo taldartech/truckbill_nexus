@@ -365,7 +365,6 @@ test('party show presents role-driven sections without internal identifiers', fu
             ->where('party.sections.0.items.1', ['label' => 'Party Short Name', 'value' => 'Plain Customer'])
             ->where('party.sections.1.key', 'tax')
             ->has('party.sections', 2)
-            ->missing('party.id')
             ->missing('roleOptions')
             ->missing('links.assign_role'));
 

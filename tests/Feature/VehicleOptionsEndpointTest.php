@@ -38,7 +38,7 @@ test('vehicle options endpoint returns searchable branch-visible vehicles', func
     $match = Vehicle::query()->create([
         'company_id' => $ctx['company']->id,
         'branch_id' => null,
-        'registration_number' => 'MH12VXSEARCH01',
+        'registration_number' => 'MH12VS1001',
         'is_active' => true,
         'ownership' => VehicleOwnership::Market->value,
     ]);
@@ -46,7 +46,7 @@ test('vehicle options endpoint returns searchable branch-visible vehicles', func
     Vehicle::query()->create([
         'company_id' => $ctx['company']->id,
         'branch_id' => null,
-        'registration_number' => 'MH12VXOTHER99',
+        'registration_number' => 'MH12VO1999',
         'is_active' => true,
         'ownership' => VehicleOwnership::Own->value,
     ]);
@@ -54,7 +54,7 @@ test('vehicle options endpoint returns searchable branch-visible vehicles', func
     rbacHttpAs($ctx['owner'], $ctx);
 
     $this->getJson(route('branch.vehicles.options', [
-        'q' => 'VXSEARCH',
+        'q' => 'VS1001',
         'limit' => 20,
         'ownership' => [VehicleOwnership::Market->value],
     ]))
@@ -72,7 +72,7 @@ test('vehicle option query hydrates selected id beyond the bounded page', functi
         $vehicle = Vehicle::query()->create([
             'company_id' => $ctx['company']->id,
             'branch_id' => null,
-            'registration_number' => sprintf('MH12VXPAGE%02d', $i),
+            'registration_number' => validVehicleRegistration('page'.$i),
             'is_active' => true,
             'ownership' => VehicleOwnership::Market->value,
         ]);
@@ -126,14 +126,14 @@ test('json vehicle store returns option payload for quick create', function () {
     );
 
     $this->postJson(route('branch.vehicles.store'), [
-        'registration_number' => 'MH12QXCREATE01',
+        'registration_number' => 'MH12QC1001',
         'ownership' => VehicleOwnership::Market->value,
         'owner_party_id' => $ownerParty->id,
         'vehicle_type' => 'Container',
         'is_active' => true,
     ])
         ->assertCreated()
-        ->assertJsonPath('data.registration_number', 'MH12QXCREATE01')
+        ->assertJsonPath('data.registration_number', 'MH12QC1001')
         ->assertJsonStructure([
             'data' => ['id', 'registration_number', 'ownership', 'label'],
         ]);

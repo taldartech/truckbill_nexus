@@ -102,9 +102,8 @@ test('enquiry create options include only active customers visible in the branch
         ->assertOk()
         ->assertInertia(fn ($page) => $page
             ->component('branch/enquiries/create')
-            ->has('parties')
             ->has('customers')
-            ->where('parties', function ($options) use ($customer, $customerConsignor, $transporter, $driver, $inactive): bool {
+            ->where('customers', function ($options) use ($customer, $customerConsignor, $transporter, $driver, $inactive): bool {
                 $ids = collect($options)->pluck('id')->all();
 
                 return in_array($customer->id, $ids, true)
@@ -155,15 +154,17 @@ test('enquiry store rejects forged non-customer party id', function () {
 
     rbacHttpAs($ctx['member'], $ctx);
 
+    $origin = geographyIdsFor('Maharashtra', 'Pune');
+    $destination = geographyIdsFor('Maharashtra', 'Mumbai City');
+
     $this->post(route('branch.enquiries.store'), [
         'customer_party_id' => $transporter->id,
-        'pickup_location' => 'Pune',
-        'delivery_location' => 'Mumbai',
+        'from_state_id' => $origin['state_id'],
+        'from_city_id' => $origin['city_id'],
+        'to_state_id' => $destination['state_id'],
+        'to_city_id' => $destination['city_id'],
         'vehicle_type_id' => $truck->id,
         'vehicle_quantity' => 1,
-        'goods' => [[
-            'goods_description' => 'Cargo',
-            'package_count' => 1,
-        ]],
+        'weight_mt' => 1,
     ])->assertSessionHasErrors('customer_party_id');
 });

@@ -1,8 +1,12 @@
 # Legacy Functional Certification Register
 
 **Assignment:** Legacy test case execution & functional parity certification  
-**Initial HEAD:** `a61a308`  
+**Initial HEAD (assignment):** `3d87e815ce371a6cabffacdf8dded559933b5e6f`  
+**Prior certification HEAD:** `a61a308` (adjustment migration batch)  
 **Register updated HEAD:** _(see git HEAD after certification commit)_  
+**Scenario catalog:** `docs/engineering/LEGACY_SCENARIO_CATALOG.json` (**1,490** scenarios)  
+**Scenario outcomes (explicit):** `docs/engineering/LEGACY_SCENARIO_EXECUTION_REGISTER.json` → sync via `php scripts/sync-legacy-scenario-execution.php`  
+**Batch runner log:** `docs/engineering/LEGACY_CERTIFICATION_EXECUTION.json`  
 **Authoritative legacy paths (read-only):** `legacy/truckbill_{broker,ownfleet,partload,admin}`  
 **Machine inventory:** `docs/engineering/LEGACY_TEST_INVENTORY.json` (generated via `php scripts/inventory-legacy-tests.php`)
 
@@ -53,6 +57,20 @@
 
 ## Execution batches (this session)
 
+### Module Nexus batches (MySQL `nexus_test`, 2026-11-28)
+
+| Stage | Nexus tests | Result | Runner |
+| ----- | ----------: | ------ | ------ |
+| 1 Admin / Owner | 139 | **139 PASS** | `run-legacy-certification-batch.php 1-admin-owner` |
+| 2 Masters | 76 | **76 PASS** | `2-masters` |
+| 3 Broker | 155 | **155 PASS** | `3-broker` |
+| 4 OwnFleet | 59 | **59 PASS** | `4-ownfleet` |
+| 5 Partload | 9 | **9 PASS** | `5-partload` (PO-authorized; not blanket Phase 7 blocked) |
+| 6 Accounting | 25 | **25 PASS** | `6-accounting` |
+| **Total** | **463** | **463 PASS** | Focused batches only — not full Nexus suite |
+
+**Defects fixed this batch:** invalid test vehicle registrations (`tests/Support/ValidVehicleRegistration.php`); enquiry party selector fields; broker entitlement matrix plate; **Lorry Hire edit + unloading weight** requires delivered LR before fixed-adjustment sync (`LorryHireEditTest`).
+
 ### Batch A — Database upgrade blocker
 
 | Test Case ID  | Legacy source                 | Nexus reference                                     | Status   | Notes                                            |
@@ -77,35 +95,38 @@
 | LGC-BRK-03   | Delivery + adjustments                                    | `DeliveryAndAdjustmentTest`                                                   | **PASS**                                                                                  |
 | LGC-BRK-04   | `LorryReceiptCalculationServiceTest` (6)                  | `Phase4/LorryReceiptServiceTest` _(partial — customer freight model differs)_ | **Applicable with adaptation** — mapped; full LR min-weight parity executed in next batch |
 
-**Batch totals executed (Nexus):** **70** tests, **70 PASS**, **0 FAIL** (MySQL isolated `nexus_test`, 2026-11-28).
+**Earlier micro-batch (pre-module runner):** **70** Nexus tests, **70 PASS** (see Batch A–C above).
 
 ---
 
 ## Module certification status (honest)
 
-| Stage           |        Legacy cases (est.) |                            Mapped | Executed (Nexus) | Certified                                                   |
-| --------------- | -------------------------: | --------------------------------: | ---------------: | ----------------------------------------------------------- |
-| 1 Admin / Owner |                       224+ |                                45 |              15+ | **Partial** — owner/workspace batch PASS; CRM depth pending |
-| 2 Masters       |                       ~200 |                                30 |                0 | **Not started** (this session)                              |
-| 3 Broker        |                        418 |                               120 |              40+ | **Partial** — core financial/voucher/delivery PASS          |
-| 4 OwnFleet      |                        613 |                                80 |                0 | **Not started**                                             |
-| 5 Partload      |                        233 |                                60 |                0 | **Blocked** — Phase 7 authorization                         |
-| 6 Accounting    | legacy PL accounting tests | Nexus `tests/Feature/Accounting/` |   0 this session | **Partial** — separate Nexus suite exists                   |
+| Stage           | Legacy scenarios (catalog) | Nexus batch tests | Scenario-level PASS | Module status |
+| --------------- | -------------------------: | ----------------: | ------------------: | ------------- |
+| 1 Admin / Owner |                        224 |               139 |                   0 | **IN PROGRESS** — batch PASS; CRM scenarios not individually closed |
+| 2 Masters       |                        ~250 |                76 |                   0 | **IN PROGRESS** |
+| 3 Broker        |                        ~500 |               155 |                **8** | **IN PROGRESS** — financial/voucher/LR calc seeds certified |
+| 4 OwnFleet      |                        ~613 |                59 |                   0 | **IN PROGRESS** |
+| 5 Partload      |                        233 |                 9 |                   0 | **IN PROGRESS** |
+| 6 Accounting    |                        ~150 |                25 |                   0 | **IN PROGRESS** |
 
-**Overall assignment status:** **In progress.** Inventory complete; execution **~4.7%** of estimated legacy cases (70 Nexus tests against 1,488 legacy-estimated cases). Remaining batches must continue module order.
+**Overall assignment status:** **IN PROGRESS.**  
+**Nexus adapted tests executed:** **463 PASS** (module batches).  
+**Legacy scenarios with explicit outcome:** **9** recorded (**8 PASS**, **1 NOT APPLICABLE**); **1,481** remain **UNMAPPED** at scenario level (file/batch PASS ≠ scenario certified).
 
 ---
 
-## Consolidated result counts (cumulative this assignment)
+## Consolidated result counts (scenario register)
 
-| Status           |                                                               Count |
-| ---------------- | ------------------------------------------------------------------: |
-| PASS             |                                                                  70 |
-| FAIL             |                                                                   0 |
-| FIXED AND PASSED |                1 (P0 adjustment migration — prior commit `a61a308`) |
-| BLOCKED          | Phase 5 Partload, full legacy browser replay, PostgreSQL local auth |
-| SUPERSEDED       |                                                     See NX-01…NX-08 |
-| NOT APPLICABLE   |               Legacy-only repair commands, multi-app tenancy probes |
+| Status           | Count |
+| ---------------- | ----: |
+| PASS             | 8 |
+| FAIL             | 0 |
+| FIXED AND PASSED | 1 (LorryHireEdit unloading + delivery gate) |
+| BLOCKED          | Browser replay, PostgreSQL local auth |
+| SUPERSEDED       | See NX-01…NX-08 |
+| NOT APPLICABLE   | 1 (`LEG-BRO-00070` legacy amount verifier) + legacy repair commands |
+| UNMAPPED         | 1,481 |
 
 ---
 
@@ -126,7 +147,7 @@ Legacy `FreightBookingAmountVerifierTest` consistent scenario (rate × weight, T
 - Nexus `netPayable` with freight `41054.25`, TDS `445`, detention `500`, shortage `22050` → **19059.25** (matches legacy balance composition after unified formula).
 - Paid + pending voucher reservation → **remaining payable** excludes pending reserve (`7264.00` in unit scenario).
 
-Discrepancies requiring dedicated LR customer-freight batch: legacy `LorryReceiptCalculationServiceTest` uses legacy min(loading, unloading) customer rules — Nexus customer freight path uses canonical KG/MT services; **not certified identical** until `LegacyBrokerCustomerFreightParityTest` batch lands.
+**LEG-BRO-00021…00026** mapped to `LegacyBrokerCustomerFreightCalculationTest` + `BrokerInvoiceServiceTest`. Legacy customer variable with **actual &gt; charged** min-weight rule remains **open** (charged-weight rate types); documented in parity matrix §ApplicableWeight.
 
 ---
 
@@ -142,18 +163,18 @@ Discrepancies requiring dedicated LR customer-freight batch: legacy `LorryReceip
 ## Genuine blockers
 
 1. **Scale:** 1,488 legacy-estimated cases require continued module batches (not full Nexus suite).
-2. **Partload / Phase 7:** Legacy tests exist; Nexus authorization gate.
-3. **Local PostgreSQL tests:** `nexus_test` @5432 password (MySQL used for batches).
+2. **Volume / mapping:** 1,481 scenarios still UNMAPPED; continued catalog sync required.
+3. **Local PostgreSQL tests:** `nexus_test` @5432 auth (MySQL used for certification batches — **PENDING** PG replay).
 4. **Legacy runtime:** Legacy PHPUnit suites are not executed inside legacy apps (different stack); adaptation only.
 
 ---
 
 ## Next batch order (mandated)
 
-1. Complete Stage 1 CRM/subscription legacy → `tests/Feature/Subscription/`, admin CRM equivalents.
-2. Stage 2 Masters — map `TransporterMasterTest`, `TruckTest`, `MasterFieldsTest`.
-3. Stage 3 — adapt `LorryReceiptTest`, `InvoiceTest`, `PartyLedgerReportTest`, Playwright voucher/register journeys.
-4. Stage 4+ per dependency order.
+1. Expand `LEGACY_SCENARIO_EXECUTION_REGISTER.json` for Admin CRM, Masters, Broker feature files (per legacy identifier).
+2. Adapt legacy Broker reports / ledger / POD feature tests into consolidated Nexus files.
+3. Playwright: `operational-flow-parity.spec.ts` with `E2E_REQUIRE_DEMO=1`.
+4. Deep OwnFleet + Partload legacy Feature inventory → Nexus gaps (implement when applicable).
 
 ---
 

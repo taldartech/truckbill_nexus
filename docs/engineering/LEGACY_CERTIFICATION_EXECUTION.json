@@ -1,0 +1,694 @@
+{
+    "runs": [
+        {
+            "stage": "1-admin-owner",
+            "exit_code": 1,
+            "duration_ms": 73011,
+            "nexus_files": [
+                "tests/Feature/CrmLeadManagementTest.php",
+                "tests/Feature/CrmSupportTicketTest.php",
+                "tests/Feature/InvitationLifecycleTest.php",
+                "tests/Feature/OwnerBranchAdministrationTest.php",
+                "tests/Feature/OwnerBranchNavigationShellTest.php",
+                "tests/Feature/OwnerGlobalPanelTest.php",
+                "tests/Feature/OwnerGlobalUserCreateTest.php",
+                "tests/Feature/OwnerPanelManagementTest.php",
+                "tests/Feature/OwnerPanelSessionIndependenceTest.php",
+                "tests/Feature/OwnershipTransferTest.php",
+                "tests/Feature/PermissionMasterTest.php",
+                "tests/Feature/Rbac/InternalRolePermissionBoundaryTest.php",
+                "tests/Feature/Rbac/OwnerOperationalPermissionHttpTest.php",
+                "tests/Feature/Rbac/SubscriptionRoleCombinationTest.php",
+                "tests/Feature/SessionWorkspaceRoutingTest.php",
+                "tests/Feature/Subscription/BrokerActivationAndEntitlementMatrixTest.php",
+                "tests/Feature/Subscription/SubscriptionCatalogueAdministrationTest.php",
+                "tests/Feature/SubscriptionBillingAndRbacIntegrationTest.php",
+                "tests/Feature/SubscriptionPricingTest.php"
+            ],
+            "pest_summary": {
+                "tool": "pest",
+                "result": "failed",
+                "tests": 139,
+                "passed": 138,
+                "assertions": 1890,
+                "duration_ms": 72388,
+                "failed": 1,
+                "failures": [
+                    {
+                        "test": "P\\Tests\\Feature\\Subscription\\BrokerActivationAndEntitlementMatrixTest::__pest_evaluable_broker_purchase_activates_immediately_without_invoice_approval_and_restores_all_broker_navigation_and_operations_for_owner",
+                        "file": "/Users/ttc/Sites/truckbill/nexus/vendor/laravel/framework/src/Illuminate/Testing/TestResponseAssert.php",
+                        "line": 46,
+                        "message": "Expected response status code [403] but received 302.\nFailed asserting that 302 is identical to 403.\n\nThe following errors occurred during the last request:\n\nEnter a valid Indian vehicle registration number (for example MH12AB1234 or 21BH1234AA).",
+                        "trace": [
+                            "/Users/ttc/Sites/truckbill/nexus/vendor/laravel/framework/src/Illuminate/Testing/TestResponseAssert.php:46",
+                            "/Users/ttc/Sites/truckbill/nexus/tests/Feature/Subscription/BrokerActivationAndEntitlementMatrixTest.php:363"
+                        ]
+                    }
+                ],
+                "warnings": 3,
+                "warning_details": []
+            },
+            "stderr_tail": ""
+        },
+        {
+            "stage": "2-masters",
+            "exit_code": 2,
+            "duration_ms": 62753,
+            "nexus_files": [
+                "tests/Feature/BranchMasterIsolationTest.php",
+                "tests/Feature/Broker/DriverMasterAndCapabilityTest.php",
+                "tests/Feature/Broker/TransporterBookBalanceManagementTest.php",
+                "tests/Feature/GeographyMasterEnforcementTest.php",
+                "tests/Feature/GeographyMasterTest.php",
+                "tests/Feature/Master/TyreLayoutMasterTest.php",
+                "tests/Feature/MasterCompanyVisibilityTest.php",
+                "tests/Feature/MasterDataBatchBTest.php",
+                "tests/Feature/PartyMasterTest.php",
+                "tests/Feature/PartyOptionQueryTest.php",
+                "tests/Feature/PartySelectorEligibilityTest.php",
+                "tests/Feature/Phase3MastersUiTest.php",
+                "tests/Feature/Phase5/VehicleOwnershipClassificationTest.php",
+                "tests/Feature/Station/StationQuickCreateTest.php",
+                "tests/Feature/VehicleOptionsEndpointTest.php"
+            ],
+            "pest_summary": {
+                "tool": "pest",
+                "result": "failed",
+                "tests": 76,
+                "passed": 71,
+                "assertions": 686,
+                "duration_ms": 62172,
+                "failed": 4,
+                "failures": [
+                    {
+                        "test": "P\\Tests\\Feature\\PartySelectorEligibilityTest::__pest_evaluable_enquiry_create_options_include_only_active_customers_visible_in_the_branch",
+                        "file": "/Users/ttc/Sites/truckbill/nexus/vendor/laravel/framework/src/Illuminate/Testing/Fluent/Concerns/Has.php",
+                        "line": 91,
+                        "message": "Property [parties] does not exist.\nFailed asserting that false is true.",
+                        "trace": [
+                            "/Users/ttc/Sites/truckbill/nexus/vendor/laravel/framework/src/Illuminate/Testing/Fluent/Concerns/Has.php:91",
+                            "/Users/ttc/Sites/truckbill/nexus/tests/Feature/PartySelectorEligibilityTest.php:105",
+                            "/Users/ttc/Sites/truckbill/nexus/tests/Feature/PartySelectorEligibilityTest.php:103"
+                        ]
+                    },
+                    {
+                        "test": "P\\Tests\\Feature\\PartySelectorEligibilityTest::__pest_evaluable_enquiry_store_rejects_forged_non_customer_party_id",
+                        "file": "/Users/ttc/Sites/truckbill/nexus/vendor/laravel/framework/src/Illuminate/Testing/TestResponseAssert.php",
+                        "line": 46,
+                        "message": "Session missing error: customer_party_id\nFailed asserting that false is true.\n\nThe following errors occurred during the last request:\n\nThe pickup location field is prohibited.\nThe delivery location field is prohibited.",
+                        "trace": [
+                            "/Users/ttc/Sites/truckbill/nexus/vendor/laravel/framework/src/Illuminate/Testing/TestResponseAssert.php:46",
+                            "/Users/ttc/Sites/truckbill/nexus/tests/Feature/PartySelectorEligibilityTest.php:168"
+                        ]
+                    },
+                    {
+                        "test": "P\\Tests\\Feature\\Phase3MastersUiTest::__pest_evaluable_party_show_presents_role_driven_sections_without_internal_identifiers",
+                        "file": "/Users/ttc/Sites/truckbill/nexus/vendor/laravel/framework/src/Illuminate/Testing/Fluent/Concerns/Has.php",
+                        "line": 190,
+                        "message": "Property [party.id] was found while it was expected to be missing.\nFailed asserting that true is not true.",
+                        "trace": [
+                            "/Users/ttc/Sites/truckbill/nexus/vendor/laravel/framework/src/Illuminate/Testing/Fluent/Concerns/Has.php:190",
+                            "/Users/ttc/Sites/truckbill/nexus/tests/Feature/Phase3MastersUiTest.php:368",
+                            "/Users/ttc/Sites/truckbill/nexus/tests/Feature/Phase3MastersUiTest.php:361"
+                        ]
+                    },
+                    {
+                        "test": "P\\Tests\\Feature\\VehicleOptionsEndpointTest::__pest_evaluable_json_vehicle_store_returns_option_payload_for_quick_create",
+                        "file": "/Users/ttc/Sites/truckbill/nexus/vendor/laravel/framework/src/Illuminate/Testing/TestResponseAssert.php",
+                        "line": 46,
+                        "message": "Expected response status code [201] but received 422.\nFailed asserting that 422 is identical to 201.\n\nThe following errors occurred during the last request:\n\n{\n \"message\": \"Enter a valid Indian vehicle registration number (for example MH12AB1234 or 21BH1234AA).\",\n \"errors\": {\n \"registration_number\": [\n \"Enter a valid Indian vehicle registration number (for example MH12AB1234 or 21BH1234AA).\"\n ]\n }\n}",
+                        "trace": [
+                            "/Users/ttc/Sites/truckbill/nexus/vendor/laravel/framework/src/Illuminate/Testing/TestResponseAssert.php:46",
+                            "/Users/ttc/Sites/truckbill/nexus/tests/Feature/VehicleOptionsEndpointTest.php:135"
+                        ]
+                    }
+                ],
+                "errors": 1,
+                "error_details": [
+                    {
+                        "test": "P\\Tests\\Feature\\Phase5\\VehicleOwnershipClassificationTest::__pest_evaluable_vehicle_master_requires_truck_type_for_own_but_keeps_market_master_fields_optional",
+                        "file": "/Users/ttc/Sites/truckbill/nexus/vendor/laravel/framework/src/Illuminate/Validation/ValidationException.php",
+                        "line": 70,
+                        "message": "Enter a valid Indian vehicle registration number (for example MH12AB1234 or 21BH1234AA).",
+                        "trace": [
+                            "/Users/ttc/Sites/truckbill/nexus/vendor/laravel/framework/src/Illuminate/Validation/ValidationException.php:70",
+                            "/Users/ttc/Sites/truckbill/nexus/app/Support/Vehicle/IndianVehicleRegistration.php:51",
+                            "/Users/ttc/Sites/truckbill/nexus/app/Domains/Master/Vehicle/VehicleService.php:77",
+                            "/Users/ttc/Sites/truckbill/nexus/tests/Feature/Phase5/VehicleOwnershipClassificationTest.php:194"
+                        ]
+                    }
+                ]
+            },
+            "stderr_tail": ""
+        },
+        {
+            "stage": "3-broker",
+            "exit_code": 2,
+            "duration_ms": 150917,
+            "nexus_files": [
+                "tests/Feature/Broker/BrokerInvoiceServiceTest.php",
+                "tests/Feature/Broker/DeliveryAndAdjustmentTest.php",
+                "tests/Feature/Broker/DriverMasterAndCapabilityTest.php",
+                "tests/Feature/Broker/HireRegisterAndPayoutExportTest.php",
+                "tests/Feature/Broker/LinkedBiltyGroupServiceTest.php",
+                "tests/Feature/Broker/LorryHireCancellationTest.php",
+                "tests/Feature/Broker/LorryHireEditTest.php",
+                "tests/Feature/Broker/LorryHirePayableOnlyFilterTest.php",
+                "tests/Feature/Broker/LorryHireServiceTest.php",
+                "tests/Feature/Broker/MemoPodHttpTest.php",
+                "tests/Feature/Broker/TransporterBookBalanceManagementTest.php",
+                "tests/Feature/Broker/VoucherServiceTest.php",
+                "tests/Feature/Financial/FinancialInvariantsTest.php",
+                "tests/Feature/LorryHireIndependentFreightTest.php",
+                "tests/Feature/Phase4/LorryReceiptServiceTest.php",
+                "tests/Feature/PoCriticalBusinessRulesCorrectionTest.php",
+                "tests/Feature/UnifiedBiltyWorkflowTest.php",
+                "tests/Feature/VoucherPaymentHttpTest.php",
+                "tests/LegacyParity/Broker/LegacyBrokerCustomerFreightCalculationTest.php",
+                "tests/LegacyParity/Broker/LegacyBrokerHireFinancialScenariosTest.php"
+            ],
+            "pest_summary": {
+                "tool": "pest",
+                "result": "failed",
+                "tests": 155,
+                "passed": 154,
+                "assertions": 830,
+                "duration_ms": 150232,
+                "errors": 1,
+                "error_details": [
+                    {
+                        "test": "P\\Tests\\Feature\\Broker\\LorryHireEditTest::__pest_evaluable_unloading_weight_keeps_applying_to_the_edited_variable_rate_while_tds_uses_loading_weight",
+                        "file": "/Users/ttc/Sites/truckbill/nexus/vendor/laravel/framework/src/Illuminate/Validation/ValidationException.php",
+                        "line": 70,
+                        "message": "Delivery adjustments cannot be changed until the Bilty is delivered.",
+                        "trace": [
+                            "/Users/ttc/Sites/truckbill/nexus/vendor/laravel/framework/src/Illuminate/Validation/ValidationException.php:70",
+                            "/Users/ttc/Sites/truckbill/nexus/app/Domains/Broker/LorryHire/LorryHireRevisionService.php:177",
+                            "/Users/ttc/Sites/truckbill/nexus/app/Support/Audit/AuditedTransaction.php:36",
+                            "/Users/ttc/Sites/truckbill/nexus/app/Support/Audit/AuditedTransaction.php:35",
+                            "/Users/ttc/Sites/truckbill/nexus/app/Domains/Broker/LorryHire/LorryHireRevisionService.php:111"
+                        ]
+                    }
+                ]
+            },
+            "stderr_tail": ""
+        },
+        {
+            "stage": "4-ownfleet",
+            "exit_code": 2,
+            "duration_ms": 65076,
+            "nexus_files": [
+                "tests/Feature/EntitlementAndDriverWorkflowTest.php",
+                "tests/Feature/Phase5/OwnFleetNoFreightViewTest.php",
+                "tests/Feature/Phase5/OwnFleetTripAllocationTest.php",
+                "tests/Feature/Phase5/OwnFleetTripCancelDeleteTest.php",
+                "tests/Feature/Phase5/OwnFleetTripExpenseTest.php",
+                "tests/Feature/Phase5/OwnFleetTripFoundationTest.php",
+                "tests/Feature/Phase5/OwnFleetTripInvoiceChargesEditTest.php",
+                "tests/Feature/Phase5/OwnFleetTripInvoicePaymentTest.php",
+                "tests/Feature/Phase5/OwnFleetTripInvoiceTest.php",
+                "tests/Feature/Phase5/OwnFleetTripLifecycleTest.php",
+                "tests/Feature/Phase5/OwnFleetTripLrDeliveryContractTest.php",
+                "tests/Feature/Phase5/OwnFleetTripMovementCorrectionTest.php",
+                "tests/Feature/Phase5/VehicleOwnershipClassificationTest.php",
+                "tests/Feature/TripExpensesWorkspaceTest.php"
+            ],
+            "pest_summary": {
+                "tool": "pest",
+                "result": "failed",
+                "tests": 59,
+                "passed": 55,
+                "assertions": 433,
+                "duration_ms": 64449,
+                "failed": 3,
+                "failures": [
+                    {
+                        "test": "P\\Tests\\Feature\\EntitlementAndDriverWorkflowTest::__pest_evaluable_broker_only_company_allows_market_vehicles_only__blocks_ownfleet_and_partload_navigation_and_endpoints__and_prevents_upgrade_bypass",
+                        "file": "/Users/ttc/Sites/truckbill/nexus/vendor/laravel/framework/src/Illuminate/Testing/TestResponseAssert.php",
+                        "line": 46,
+                        "message": "Expected response status code [403] but received 302.\nFailed asserting that 302 is identical to 403.\n\nThe following errors occurred during the last request:\n\nEnter a valid Indian vehicle registration number (for example MH12AB1234 or 21BH1234AA).",
+                        "trace": [
+                            "/Users/ttc/Sites/truckbill/nexus/vendor/laravel/framework/src/Illuminate/Testing/TestResponseAssert.php:46",
+                            "/Users/ttc/Sites/truckbill/nexus/tests/Feature/EntitlementAndDriverWorkflowTest.php:249"
+                        ]
+                    },
+                    {
+                        "test": "P\\Tests\\Feature\\EntitlementAndDriverWorkflowTest::__pest_evaluable_ownfleet_only_company_enforces_own_vehicles_only__blocks_broker_partload__and_blocks_market_vehicle_forgery",
+                        "file": "/Users/ttc/Sites/truckbill/nexus/vendor/laravel/framework/src/Illuminate/Testing/TestResponseAssert.php",
+                        "line": 46,
+                        "message": "Expected response status code [403] but received 422.\nFailed asserting that 422 is identical to 403.\n\nThe following errors occurred during the last request:\n\n{\n \"message\": \"Enter a valid Indian vehicle registration number (for example MH12AB1234 or 21BH1234AA).\",\n \"errors\": {\n \"registration_number\": [\n \"Enter a valid Indian vehicle registration number (for example MH12AB1234 or 21BH1234AA).\"\n ]\n }\n}",
+                        "trace": [
+                            "/Users/ttc/Sites/truckbill/nexus/vendor/laravel/framework/src/Illuminate/Testing/TestResponseAssert.php:46",
+                            "/Users/ttc/Sites/truckbill/nexus/tests/Feature/EntitlementAndDriverWorkflowTest.php:334"
+                        ]
+                    },
+                    {
+                        "test": "P\\Tests\\Feature\\EntitlementAndDriverWorkflowTest::__pest_evaluable_partload_only_company_enables_partload_operations_and_blocks_unrestricted_broker_and_ownfleet_workflows",
+                        "file": "/Users/ttc/Sites/truckbill/nexus/vendor/laravel/framework/src/Illuminate/Testing/TestResponseAssert.php",
+                        "line": 46,
+                        "message": "Expected response status code [403] but received 422.\nFailed asserting that 422 is identical to 403.\n\nThe following errors occurred during the last request:\n\n{\n \"message\": \"Enter a valid Indian vehicle registration number (for example MH12AB1234 or 21BH1234AA).\",\n \"errors\": {\n \"registration_number\": [\n \"Enter a valid Indian vehicle registration number (for example MH12AB1234 or 21BH1234AA).\"\n ]\n }\n}",
+                        "trace": [
+                            "/Users/ttc/Sites/truckbill/nexus/vendor/laravel/framework/src/Illuminate/Testing/TestResponseAssert.php:46",
+                            "/Users/ttc/Sites/truckbill/nexus/tests/Feature/EntitlementAndDriverWorkflowTest.php:436"
+                        ]
+                    }
+                ],
+                "errors": 1,
+                "error_details": [
+                    {
+                        "test": "P\\Tests\\Feature\\Phase5\\VehicleOwnershipClassificationTest::__pest_evaluable_vehicle_master_requires_truck_type_for_own_but_keeps_market_master_fields_optional",
+                        "file": "/Users/ttc/Sites/truckbill/nexus/vendor/laravel/framework/src/Illuminate/Validation/ValidationException.php",
+                        "line": 70,
+                        "message": "Enter a valid Indian vehicle registration number (for example MH12AB1234 or 21BH1234AA).",
+                        "trace": [
+                            "/Users/ttc/Sites/truckbill/nexus/vendor/laravel/framework/src/Illuminate/Validation/ValidationException.php:70",
+                            "/Users/ttc/Sites/truckbill/nexus/app/Support/Vehicle/IndianVehicleRegistration.php:51",
+                            "/Users/ttc/Sites/truckbill/nexus/app/Domains/Master/Vehicle/VehicleService.php:77",
+                            "/Users/ttc/Sites/truckbill/nexus/tests/Feature/Phase5/VehicleOwnershipClassificationTest.php:194"
+                        ]
+                    }
+                ]
+            },
+            "stderr_tail": ""
+        },
+        {
+            "stage": "5-partload",
+            "exit_code": 0,
+            "duration_ms": 25130,
+            "nexus_files": [
+                "tests/Feature/Partload/PartloadChallanServiceTest.php",
+                "tests/Feature/Partload/PartloadInTransitTest.php",
+                "tests/Feature/Partload/PartloadMainChallanServiceTest.php",
+                "tests/Feature/Partload/PartloadPendingDeliveryTest.php",
+                "tests/Feature/Partload/PartloadPendingLoadingTest.php"
+            ],
+            "pest_summary": {
+                "tool": "pest",
+                "result": "passed",
+                "tests": 9,
+                "passed": 9,
+                "assertions": 45,
+                "duration_ms": 24567
+            },
+            "stderr_tail": ""
+        },
+        {
+            "stage": "6-accounting",
+            "exit_code": 0,
+            "duration_ms": 43516,
+            "nexus_files": [
+                "tests/Feature/Accounting/AccountingAddonLifecycleAndReconciliationTest.php",
+                "tests/Feature/Accounting/AccountingDayBookPostingTest.php",
+                "tests/Feature/Accounting/AccountingFinancialStatementsTest.php",
+                "tests/Feature/Accounting/AccountingFoundationTest.php",
+                "tests/Feature/Accounting/AccountingWorkspaceGatewayTest.php",
+                "tests/Feature/Accounting/AccountingWorkspaceTest.php",
+                "tests/Feature/Accounting/FundTransferServiceTest.php",
+                "tests/Feature/Accounting/GlLedgerQuickCreateTest.php",
+                "tests/Feature/Accounting/OpeningBalanceHttpTest.php",
+                "tests/Feature/Accounting/OpeningBalanceServiceTest.php",
+                "tests/Feature/Accounting/OperationalPostingBridgeTest.php"
+            ],
+            "pest_summary": {
+                "tool": "pest",
+                "result": "passed",
+                "tests": 25,
+                "passed": 25,
+                "assertions": 287,
+                "duration_ms": 42967
+            },
+            "stderr_tail": ""
+        },
+        {
+            "stage": "1-admin-owner",
+            "exit_code": 0,
+            "duration_ms": 77518,
+            "nexus_files": [
+                "tests/Feature/CrmLeadManagementTest.php",
+                "tests/Feature/CrmSupportTicketTest.php",
+                "tests/Feature/InvitationLifecycleTest.php",
+                "tests/Feature/OwnerBranchAdministrationTest.php",
+                "tests/Feature/OwnerBranchNavigationShellTest.php",
+                "tests/Feature/OwnerGlobalPanelTest.php",
+                "tests/Feature/OwnerGlobalUserCreateTest.php",
+                "tests/Feature/OwnerPanelManagementTest.php",
+                "tests/Feature/OwnerPanelSessionIndependenceTest.php",
+                "tests/Feature/OwnershipTransferTest.php",
+                "tests/Feature/PermissionMasterTest.php",
+                "tests/Feature/Rbac/InternalRolePermissionBoundaryTest.php",
+                "tests/Feature/Rbac/OwnerOperationalPermissionHttpTest.php",
+                "tests/Feature/Rbac/SubscriptionRoleCombinationTest.php",
+                "tests/Feature/SessionWorkspaceRoutingTest.php",
+                "tests/Feature/Subscription/BrokerActivationAndEntitlementMatrixTest.php",
+                "tests/Feature/Subscription/SubscriptionCatalogueAdministrationTest.php",
+                "tests/Feature/SubscriptionBillingAndRbacIntegrationTest.php",
+                "tests/Feature/SubscriptionPricingTest.php"
+            ],
+            "pest_summary": {
+                "tool": "pest",
+                "result": "passed",
+                "tests": 139,
+                "passed": 139,
+                "assertions": 1914,
+                "duration_ms": 76585,
+                "warnings": 3,
+                "warning_details": []
+            },
+            "stderr_tail": ""
+        },
+        {
+            "stage": "2-masters",
+            "exit_code": 0,
+            "duration_ms": 65912,
+            "nexus_files": [
+                "tests/Feature/BranchMasterIsolationTest.php",
+                "tests/Feature/Broker/DriverMasterAndCapabilityTest.php",
+                "tests/Feature/Broker/TransporterBookBalanceManagementTest.php",
+                "tests/Feature/GeographyMasterEnforcementTest.php",
+                "tests/Feature/GeographyMasterTest.php",
+                "tests/Feature/Master/TyreLayoutMasterTest.php",
+                "tests/Feature/MasterCompanyVisibilityTest.php",
+                "tests/Feature/MasterDataBatchBTest.php",
+                "tests/Feature/PartyMasterTest.php",
+                "tests/Feature/PartyOptionQueryTest.php",
+                "tests/Feature/PartySelectorEligibilityTest.php",
+                "tests/Feature/Phase3MastersUiTest.php",
+                "tests/Feature/Phase5/VehicleOwnershipClassificationTest.php",
+                "tests/Feature/Station/StationQuickCreateTest.php",
+                "tests/Feature/VehicleOptionsEndpointTest.php"
+            ],
+            "pest_summary": {
+                "tool": "pest",
+                "result": "passed",
+                "tests": 76,
+                "passed": 76,
+                "assertions": 728,
+                "duration_ms": 65076
+            },
+            "stderr_tail": ""
+        },
+        {
+            "stage": "4-ownfleet",
+            "exit_code": 0,
+            "duration_ms": 65913,
+            "nexus_files": [
+                "tests/Feature/EntitlementAndDriverWorkflowTest.php",
+                "tests/Feature/Phase5/OwnFleetNoFreightViewTest.php",
+                "tests/Feature/Phase5/OwnFleetTripAllocationTest.php",
+                "tests/Feature/Phase5/OwnFleetTripCancelDeleteTest.php",
+                "tests/Feature/Phase5/OwnFleetTripExpenseTest.php",
+                "tests/Feature/Phase5/OwnFleetTripFoundationTest.php",
+                "tests/Feature/Phase5/OwnFleetTripInvoiceChargesEditTest.php",
+                "tests/Feature/Phase5/OwnFleetTripInvoicePaymentTest.php",
+                "tests/Feature/Phase5/OwnFleetTripInvoiceTest.php",
+                "tests/Feature/Phase5/OwnFleetTripLifecycleTest.php",
+                "tests/Feature/Phase5/OwnFleetTripLrDeliveryContractTest.php",
+                "tests/Feature/Phase5/OwnFleetTripMovementCorrectionTest.php",
+                "tests/Feature/Phase5/VehicleOwnershipClassificationTest.php",
+                "tests/Feature/TripExpensesWorkspaceTest.php"
+            ],
+            "pest_summary": {
+                "tool": "pest",
+                "result": "passed",
+                "tests": 59,
+                "passed": 59,
+                "assertions": 494,
+                "duration_ms": 65131
+            },
+            "stderr_tail": ""
+        },
+        {
+            "stage": "1-admin-owner",
+            "exit_code": 0,
+            "duration_ms": 69913,
+            "nexus_files": [
+                "tests/Feature/CrmLeadManagementTest.php",
+                "tests/Feature/CrmSupportTicketTest.php",
+                "tests/Feature/InvitationLifecycleTest.php",
+                "tests/Feature/OwnerBranchAdministrationTest.php",
+                "tests/Feature/OwnerBranchNavigationShellTest.php",
+                "tests/Feature/OwnerGlobalPanelTest.php",
+                "tests/Feature/OwnerGlobalUserCreateTest.php",
+                "tests/Feature/OwnerPanelManagementTest.php",
+                "tests/Feature/OwnerPanelSessionIndependenceTest.php",
+                "tests/Feature/OwnershipTransferTest.php",
+                "tests/Feature/PermissionMasterTest.php",
+                "tests/Feature/Rbac/InternalRolePermissionBoundaryTest.php",
+                "tests/Feature/Rbac/OwnerOperationalPermissionHttpTest.php",
+                "tests/Feature/Rbac/SubscriptionRoleCombinationTest.php",
+                "tests/Feature/SessionWorkspaceRoutingTest.php",
+                "tests/Feature/Subscription/BrokerActivationAndEntitlementMatrixTest.php",
+                "tests/Feature/Subscription/SubscriptionCatalogueAdministrationTest.php",
+                "tests/Feature/SubscriptionBillingAndRbacIntegrationTest.php",
+                "tests/Feature/SubscriptionPricingTest.php"
+            ],
+            "pest_summary": {
+                "tool": "pest",
+                "result": "passed",
+                "tests": 139,
+                "passed": 139,
+                "assertions": 1914,
+                "duration_ms": 69266,
+                "warnings": 3,
+                "warning_details": []
+            },
+            "stderr_tail": ""
+        },
+        {
+            "stage": "3-broker",
+            "exit_code": 2,
+            "duration_ms": 146721,
+            "nexus_files": [
+                "tests/Feature/Broker/BrokerInvoiceServiceTest.php",
+                "tests/Feature/Broker/DeliveryAndAdjustmentTest.php",
+                "tests/Feature/Broker/DriverMasterAndCapabilityTest.php",
+                "tests/Feature/Broker/HireRegisterAndPayoutExportTest.php",
+                "tests/Feature/Broker/LinkedBiltyGroupServiceTest.php",
+                "tests/Feature/Broker/LorryHireCancellationTest.php",
+                "tests/Feature/Broker/LorryHireEditTest.php",
+                "tests/Feature/Broker/LorryHirePayableOnlyFilterTest.php",
+                "tests/Feature/Broker/LorryHireServiceTest.php",
+                "tests/Feature/Broker/MemoPodHttpTest.php",
+                "tests/Feature/Broker/TransporterBookBalanceManagementTest.php",
+                "tests/Feature/Broker/VoucherServiceTest.php",
+                "tests/Feature/Financial/FinancialInvariantsTest.php",
+                "tests/Feature/LorryHireIndependentFreightTest.php",
+                "tests/Feature/Phase4/LorryReceiptServiceTest.php",
+                "tests/Feature/PoCriticalBusinessRulesCorrectionTest.php",
+                "tests/Feature/UnifiedBiltyWorkflowTest.php",
+                "tests/Feature/VoucherPaymentHttpTest.php",
+                "tests/LegacyParity/Broker/LegacyBrokerCustomerFreightCalculationTest.php",
+                "tests/LegacyParity/Broker/LegacyBrokerHireFinancialScenariosTest.php"
+            ],
+            "pest_summary": {
+                "tool": "pest",
+                "result": "failed",
+                "tests": 155,
+                "passed": 154,
+                "assertions": 830,
+                "duration_ms": 145879,
+                "errors": 1,
+                "error_details": [
+                    {
+                        "test": "P\\Tests\\Feature\\Broker\\LorryHireEditTest::__pest_evaluable_unloading_weight_keeps_applying_to_the_edited_variable_rate_while_tds_uses_loading_weight",
+                        "file": "/Users/ttc/Sites/truckbill/nexus/vendor/laravel/framework/src/Illuminate/Validation/ValidationException.php",
+                        "line": 70,
+                        "message": "Delivery adjustments cannot be changed until the Bilty is delivered.",
+                        "trace": [
+                            "/Users/ttc/Sites/truckbill/nexus/vendor/laravel/framework/src/Illuminate/Validation/ValidationException.php:70",
+                            "/Users/ttc/Sites/truckbill/nexus/app/Domains/Broker/LorryHire/LorryHireRevisionService.php:177",
+                            "/Users/ttc/Sites/truckbill/nexus/app/Support/Audit/AuditedTransaction.php:36",
+                            "/Users/ttc/Sites/truckbill/nexus/app/Support/Audit/AuditedTransaction.php:35",
+                            "/Users/ttc/Sites/truckbill/nexus/app/Domains/Broker/LorryHire/LorryHireRevisionService.php:111"
+                        ]
+                    }
+                ]
+            },
+            "stderr_tail": ""
+        },
+        {
+            "stage": "3-broker",
+            "exit_code": 0,
+            "duration_ms": 154640,
+            "nexus_files": [
+                "tests/Feature/Broker/BrokerInvoiceServiceTest.php",
+                "tests/Feature/Broker/DeliveryAndAdjustmentTest.php",
+                "tests/Feature/Broker/DriverMasterAndCapabilityTest.php",
+                "tests/Feature/Broker/HireRegisterAndPayoutExportTest.php",
+                "tests/Feature/Broker/LinkedBiltyGroupServiceTest.php",
+                "tests/Feature/Broker/LorryHireCancellationTest.php",
+                "tests/Feature/Broker/LorryHireEditTest.php",
+                "tests/Feature/Broker/LorryHirePayableOnlyFilterTest.php",
+                "tests/Feature/Broker/LorryHireServiceTest.php",
+                "tests/Feature/Broker/MemoPodHttpTest.php",
+                "tests/Feature/Broker/TransporterBookBalanceManagementTest.php",
+                "tests/Feature/Broker/VoucherServiceTest.php",
+                "tests/Feature/Financial/FinancialInvariantsTest.php",
+                "tests/Feature/LorryHireIndependentFreightTest.php",
+                "tests/Feature/Phase4/LorryReceiptServiceTest.php",
+                "tests/Feature/PoCriticalBusinessRulesCorrectionTest.php",
+                "tests/Feature/UnifiedBiltyWorkflowTest.php",
+                "tests/Feature/VoucherPaymentHttpTest.php",
+                "tests/LegacyParity/Broker/LegacyBrokerCustomerFreightCalculationTest.php",
+                "tests/LegacyParity/Broker/LegacyBrokerHireFinancialScenariosTest.php"
+            ],
+            "pest_summary": {
+                "tool": "pest",
+                "result": "passed",
+                "tests": 155,
+                "passed": 155,
+                "assertions": 832,
+                "duration_ms": 153907
+            },
+            "stderr_tail": ""
+        },
+        {
+            "stage": "1-admin-owner",
+            "exit_code": 0,
+            "duration_ms": 75516,
+            "nexus_files": [
+                "tests/Feature/CrmLeadManagementTest.php",
+                "tests/Feature/CrmSupportTicketTest.php",
+                "tests/Feature/InvitationLifecycleTest.php",
+                "tests/Feature/OwnerBranchAdministrationTest.php",
+                "tests/Feature/OwnerBranchNavigationShellTest.php",
+                "tests/Feature/OwnerGlobalPanelTest.php",
+                "tests/Feature/OwnerGlobalUserCreateTest.php",
+                "tests/Feature/OwnerPanelManagementTest.php",
+                "tests/Feature/OwnerPanelSessionIndependenceTest.php",
+                "tests/Feature/OwnershipTransferTest.php",
+                "tests/Feature/PermissionMasterTest.php",
+                "tests/Feature/Rbac/InternalRolePermissionBoundaryTest.php",
+                "tests/Feature/Rbac/OwnerOperationalPermissionHttpTest.php",
+                "tests/Feature/Rbac/SubscriptionRoleCombinationTest.php",
+                "tests/Feature/SessionWorkspaceRoutingTest.php",
+                "tests/Feature/Subscription/BrokerActivationAndEntitlementMatrixTest.php",
+                "tests/Feature/Subscription/SubscriptionCatalogueAdministrationTest.php",
+                "tests/Feature/SubscriptionBillingAndRbacIntegrationTest.php",
+                "tests/Feature/SubscriptionPricingTest.php"
+            ],
+            "pest_summary": {
+                "tool": "pest",
+                "result": "passed",
+                "tests": 139,
+                "passed": 139,
+                "assertions": 1914,
+                "duration_ms": 74646,
+                "warnings": 3,
+                "warning_details": []
+            },
+            "stderr_tail": ""
+        },
+        {
+            "stage": "2-masters",
+            "exit_code": 0,
+            "duration_ms": 61819,
+            "nexus_files": [
+                "tests/Feature/BranchMasterIsolationTest.php",
+                "tests/Feature/Broker/DriverMasterAndCapabilityTest.php",
+                "tests/Feature/Broker/TransporterBookBalanceManagementTest.php",
+                "tests/Feature/GeographyMasterEnforcementTest.php",
+                "tests/Feature/GeographyMasterTest.php",
+                "tests/Feature/Master/TyreLayoutMasterTest.php",
+                "tests/Feature/MasterCompanyVisibilityTest.php",
+                "tests/Feature/MasterDataBatchBTest.php",
+                "tests/Feature/PartyMasterTest.php",
+                "tests/Feature/PartyOptionQueryTest.php",
+                "tests/Feature/PartySelectorEligibilityTest.php",
+                "tests/Feature/Phase3MastersUiTest.php",
+                "tests/Feature/Phase5/VehicleOwnershipClassificationTest.php",
+                "tests/Feature/Station/StationQuickCreateTest.php",
+                "tests/Feature/VehicleOptionsEndpointTest.php"
+            ],
+            "pest_summary": {
+                "tool": "pest",
+                "result": "passed",
+                "tests": 76,
+                "passed": 76,
+                "assertions": 728,
+                "duration_ms": 61148
+            },
+            "stderr_tail": ""
+        },
+        {
+            "stage": "4-ownfleet",
+            "exit_code": 0,
+            "duration_ms": 69895,
+            "nexus_files": [
+                "tests/Feature/EntitlementAndDriverWorkflowTest.php",
+                "tests/Feature/Phase5/OwnFleetNoFreightViewTest.php",
+                "tests/Feature/Phase5/OwnFleetTripAllocationTest.php",
+                "tests/Feature/Phase5/OwnFleetTripCancelDeleteTest.php",
+                "tests/Feature/Phase5/OwnFleetTripExpenseTest.php",
+                "tests/Feature/Phase5/OwnFleetTripFoundationTest.php",
+                "tests/Feature/Phase5/OwnFleetTripInvoiceChargesEditTest.php",
+                "tests/Feature/Phase5/OwnFleetTripInvoicePaymentTest.php",
+                "tests/Feature/Phase5/OwnFleetTripInvoiceTest.php",
+                "tests/Feature/Phase5/OwnFleetTripLifecycleTest.php",
+                "tests/Feature/Phase5/OwnFleetTripLrDeliveryContractTest.php",
+                "tests/Feature/Phase5/OwnFleetTripMovementCorrectionTest.php",
+                "tests/Feature/Phase5/VehicleOwnershipClassificationTest.php",
+                "tests/Feature/TripExpensesWorkspaceTest.php"
+            ],
+            "pest_summary": {
+                "tool": "pest",
+                "result": "passed",
+                "tests": 59,
+                "passed": 59,
+                "assertions": 494,
+                "duration_ms": 69224
+            },
+            "stderr_tail": ""
+        },
+        {
+            "stage": "5-partload",
+            "exit_code": 0,
+            "duration_ms": 23160,
+            "nexus_files": [
+                "tests/Feature/Partload/PartloadChallanServiceTest.php",
+                "tests/Feature/Partload/PartloadInTransitTest.php",
+                "tests/Feature/Partload/PartloadMainChallanServiceTest.php",
+                "tests/Feature/Partload/PartloadPendingDeliveryTest.php",
+                "tests/Feature/Partload/PartloadPendingLoadingTest.php"
+            ],
+            "pest_summary": {
+                "tool": "pest",
+                "result": "passed",
+                "tests": 9,
+                "passed": 9,
+                "assertions": 45,
+                "duration_ms": 22428
+            },
+            "stderr_tail": ""
+        },
+        {
+            "stage": "6-accounting",
+            "exit_code": 0,
+            "duration_ms": 47863,
+            "nexus_files": [
+                "tests/Feature/Accounting/AccountingAddonLifecycleAndReconciliationTest.php",
+                "tests/Feature/Accounting/AccountingDayBookPostingTest.php",
+                "tests/Feature/Accounting/AccountingFinancialStatementsTest.php",
+                "tests/Feature/Accounting/AccountingFoundationTest.php",
+                "tests/Feature/Accounting/AccountingWorkspaceGatewayTest.php",
+                "tests/Feature/Accounting/AccountingWorkspaceTest.php",
+                "tests/Feature/Accounting/FundTransferServiceTest.php",
+                "tests/Feature/Accounting/GlLedgerQuickCreateTest.php",
+                "tests/Feature/Accounting/OpeningBalanceHttpTest.php",
+                "tests/Feature/Accounting/OpeningBalanceServiceTest.php",
+                "tests/Feature/Accounting/OperationalPostingBridgeTest.php"
+            ],
+            "pest_summary": {
+                "tool": "pest",
+                "result": "passed",
+                "tests": 25,
+                "passed": 25,
+                "assertions": 287,
+                "duration_ms": 47071
+            },
+            "stderr_tail": ""
+        }
+    ],
+    "updated_at": "2026-11-28T12:41:27+00:00",
+    "nexus_head": "3d87e815ce371a6cabffacdf8dded559933b5e6f"
+}

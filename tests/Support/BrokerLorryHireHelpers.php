@@ -296,7 +296,7 @@ if (! function_exists('brokerCreateTransporterAndMarketVehicle')) {
 
         $vehicle = Vehicle::query()->create([
             'company_id' => $ctx['company']->id,
-            'registration_number' => 'MH12BRK'.strtoupper(substr(md5((string) microtime(true)), 0, 4)),
+            'registration_number' => validVehicleRegistration('brk'.(string) microtime(true)),
             'is_active' => true,
             'ownership' => VehicleOwnership::Market->value,
             'owner_party_id' => $transporter->id,

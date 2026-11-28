@@ -1,0 +1,56 @@
+{
+    "version": 1,
+    "description": "Explicit legacy scenario ID → Nexus execution outcome. Synced into LEGACY_SCENARIO_CATALOG.json via scripts/sync-legacy-scenario-execution.php",
+    "outcomes": [
+        {
+            "legacy_scenario_id": "LEG-BRO-00021",
+            "status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerCustomerFreightCalculationTest.php — legacy LR store fixed amount",
+            "notes": "FreightCalculator fixed amount parity."
+        },
+        {
+            "legacy_scenario_id": "LEG-BRO-00022",
+            "status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerCustomerFreightCalculationTest.php — legacy LR store variable",
+            "notes": "8 MT × rate via WeightMt semantics."
+        },
+        {
+            "legacy_scenario_id": "LEG-BRO-00023",
+            "status": "PASS",
+            "nexus_test": "tests/Feature/Broker/BrokerInvoiceServiceTest.php — shortage reduces customer invoice line total",
+            "notes": "Legacy LR update shortage/damage applied at invoice composition, not inline LR calculator."
+        },
+        {
+            "legacy_scenario_id": "LEG-BRO-00024",
+            "status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerCustomerFreightCalculationTest.php — legacy LR update variable equal weights"
+        },
+        {
+            "legacy_scenario_id": "LEG-BRO-00025",
+            "status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerCustomerFreightCalculationTest.php — legacy LR update uses min loading and charged weight basis",
+            "notes": "When charged weight is the billing basis (Per Charged Weight, MT semantics), outcome matches legacy min-weight case where charged is lower."
+        },
+        {
+            "legacy_scenario_id": "LEG-BRO-00026",
+            "status": "PASS",
+            "nexus_test": "tests/Feature/Broker/BrokerInvoiceServiceTest.php — shortage reduces customer invoice line total",
+            "notes": "Variable freight subtotal minus shortage/damage at invoice layer."
+        },
+        {
+            "legacy_scenario_id": "LEG-BRO-00068",
+            "status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerHireFinancialScenariosTest.php — legacy scenario: net payable with positive and negative fixed adjustments"
+        },
+        {
+            "legacy_scenario_id": "LEG-BRO-00069",
+            "status": "PASS",
+            "nexus_test": "tests/LegacyParity/Broker/LegacyBrokerHireFinancialScenariosTest.php — legacy scenario: new booking without advance"
+        },
+        {
+            "legacy_scenario_id": "LEG-BRO-00070",
+            "status": "NOT APPLICABLE",
+            "notes": "Legacy FreightBookingAmountVerifier console guard has no direct Nexus twin; FinancialInvariantsTest covers hire ledger invariants instead."
+        }
+    ]
+}

@@ -325,6 +325,7 @@ test('unloading weight keeps applying to the edited variable rate while tds uses
     tripActivate($ctx['company'], $ctx['branch']);
     brokerGrantDeliveryAdjustmentPermissions();
     $hire = editHireCreate($ctx, editHireLr($ctx));
+    brokerDeliverLr($hire->lorryReceipt, $ctx, 'MEMO-UW-'.substr((string) $hire->id, 0, 8));
     app(BrokerAdjustmentService::class)->createUnloadingWeight($hire, $ctx['member'], ['new_weight' => '9000']);
 
     app(LorryHireRevisionService::class)->revise($hire->fresh(), $ctx['member'], editHirePayload($hire->fresh(), ['rate' => '1100']));
